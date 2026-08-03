@@ -14,23 +14,23 @@ import (
 var _ = apidoc.JsonResponseError{}
 var _ = model.GetPayeeListResult{}
 
-// OrderPayeeList handles POST /api/v1/payee/order-payee-list (auth).
+// MovePayee handles POST /api/v1/payee/move-payee (auth).
 //
-// @Summary     Reorder the payee list
-// @Description Applies position changes to the user's payees and returns the full ordered list.
+// @Summary     Move a payee
+// @Description Places one payee immediately after another (afterId null = first) and returns the full ordered list.
 // @Tags        Payee
 // @Accept      json
 // @Produce     json
-// @Param       request body     model.OrderPayeeListRequest true "Order payee list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderPayeeListResult}
+// @Param       request body     model.MovePayeeRequest true "Move payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MovePayeeResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
-// @Router      /api/v1/payee/order-payee-list [post]
-func (h *Handlers) OrderPayeeList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.OrderPayeeList)
+// @Router      /api/v1/payee/move-payee [post]
+func (h *Handlers) MovePayee(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MovePayee)
 }
 
 // GetPayeeList handles GET /api/v1/payee/get-payee-list (auth). The request has

@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -37,7 +38,7 @@ func newRepo(t *testing.T) (*payeerepo.Repo, *payeerepo.ReadRepo, *dbtest.DB, *f
 }
 
 func payee(id, userID, name string, pos int16) *model.Payee {
-	return &model.Payee{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+	return &model.Payee{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos, SortKey: keyAt(pos),
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
@@ -70,7 +71,7 @@ func TestPayeeRepo_GetByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestPayeeRepo_ListAndCountByOwner(t *testing.T) {
+func TestPayeeRepo_ListByOwner(t *testing.T) {
 	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
@@ -88,10 +89,6 @@ func TestPayeeRepo_ListAndCountByOwner(t *testing.T) {
 	}
 	if list[0].ID.String() != payeeA2 || list[1].ID.String() != payeeA1 {
 		t.Errorf("order by position wrong: %s, %s", list[0].ID, list[1].ID)
-	}
-	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
-	if err != nil || n != 2 {
-		t.Errorf("CountByOwner = %d, %v; want 2", n, err)
 	}
 }
 
@@ -151,4 +148,16 @@ func TestPayeeReadRepo_OwnPlusShared(t *testing.T) {
 	if len(shared) != 2 {
 		t.Fatalf("want own + shared (2), got %d", len(shared))
 	}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits. Tests keep expressing intended order as a small
+// integer while the repo orders by key.
+func keyAt(pos int16) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }

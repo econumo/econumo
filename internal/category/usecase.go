@@ -167,3 +167,23 @@ func assignPositions(items []model.CategoryResult) {
 		items[i].Position = i
 	}
 }
+
+// itemResult builds a single-item write response, stamping the dense index the
+// item occupies in the caller's available list. Single-item responses must derive
+// "position" exactly like list responses do, because the entity no longer carries
+// one -- the stored sort key never leaves the server.
+func (s *Service) itemResult(ctx context.Context, userID vo.Id, c *model.Category) (model.CategoryResult, error) {
+	res := toResult(c)
+	items, err := s.listResults(ctx, userID)
+	if err != nil {
+		return model.CategoryResult{}, err
+	}
+	id := c.ID.String()
+	for i, it := range items {
+		if it.Id == id {
+			res.Position = i
+			break
+		}
+	}
+	return res, nil
+}

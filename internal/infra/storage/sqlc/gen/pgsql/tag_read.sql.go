@@ -20,7 +20,7 @@ WHERE t.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
-ORDER BY t.position, t.id
+ORDER BY t.sort_key, t.id
 `
 
 // Read-model query for the tag module (PostgreSQL variant: $N placeholders).

@@ -26,7 +26,6 @@ type (
 type querier interface {
 	GetTagByID(ctx context.Context, db backend.DBTX, id string) (tagRow, error)
 	ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error)
-	CountTagsByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
 }
@@ -86,14 +85,6 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, err
 		out = append(out, t)
 	}
 	return out, nil
-}
-
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountTagsByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
 }
 
 // Save: the caller runs this inside TxManager.WithTx.

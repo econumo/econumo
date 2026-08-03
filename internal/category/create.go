@@ -63,7 +63,6 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 	}
 
 	var created *model.Category
-	var createdIndex int
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		already, cerr := s.ops.Claim(ctx, opID, s.clock.Now())
 		if cerr != nil {
@@ -81,7 +80,6 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 		if kerr != nil {
 			return kerr
 		}
-		createdIndex = len(cats)
 		now := s.clock.Now()
 		c := model.NewCategory(id, ownerID, name, typ, icon, now)
 		c.SetSortKey(key)
@@ -97,9 +95,9 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 		return nil, err
 	}
 
-	// The created row appends, so its dense index is the count of the owner's
-	// pre-existing categories -- the same number the old position column held.
-	item := toResult(created)
-	item.Position = createdIndex
+	item, err := s.itemResult(ctx, ownerID, created)
+	if err != nil {
+		return nil, err
+	}
 	return &model.CreateCategoryResult{Item: item}, nil
 }

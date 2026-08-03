@@ -20,7 +20,7 @@ WHERE t.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ? AND aa.is_accepted = 1
    )
-ORDER BY t.position, t.id
+ORDER BY t.sort_key, t.id
 `
 
 type GetTagListViewParams struct {

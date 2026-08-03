@@ -4545,14 +4545,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payee/order-payee-list": {
+        "/api/v1/payee/move-payee": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's payees and returns the full ordered list.",
+                "description": "Places one payee immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -4562,15 +4562,15 @@ const docTemplate = `{
                 "tags": [
                     "Payee"
                 ],
-                "summary": "Reorder the payee list",
+                "summary": "Move a payee",
                 "parameters": [
                     {
-                        "description": "Order payee list request",
+                        "description": "Move payee request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderPayeeListRequest"
+                            "$ref": "#/definitions/model.MovePayeeRequest"
                         }
                     }
                 ],
@@ -4586,7 +4586,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderPayeeListResult"
+                                            "$ref": "#/definitions/model.MovePayeeResult"
                                         }
                                     }
                                 }
@@ -5517,14 +5517,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/tag/order-tag-list": {
+        "/api/v1/tag/move-tag": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's tags and returns the full ordered list.",
+                "description": "Places one tag immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5534,15 +5534,15 @@ const docTemplate = `{
                 "tags": [
                     "Tag"
                 ],
-                "summary": "Reorder the tag list",
+                "summary": "Move a tag",
                 "parameters": [
                     {
-                        "description": "Order tag list request",
+                        "description": "Move tag request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderTagListRequest"
+                            "$ref": "#/definitions/model.MoveTagRequest"
                         }
                     }
                 ],
@@ -5558,7 +5558,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderTagListResult"
+                                            "$ref": "#/definitions/model.MoveTagResult"
                                         }
                                     }
                                 }
@@ -9627,6 +9627,50 @@ const docTemplate = `{
         "model.MoveElementListResult": {
             "type": "object"
         },
+        "model.MovePayeeRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MovePayeeResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PayeeResult"
+                    }
+                }
+            }
+        },
+        "model.MoveTagRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveTagResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TagResult"
+                    }
+                }
+            }
+        },
         "model.OptionResult": {
             "type": "object",
             "properties": {
@@ -9706,50 +9750,6 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.AccountFolderResult"
-                    }
-                }
-            }
-        },
-        "model.OrderPayeeListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderPayeeListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PayeeResult"
-                    }
-                }
-            }
-        },
-        "model.OrderTagListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderTagListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.TagResult"
                     }
                 }
             }
@@ -9848,17 +9848,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "model.PositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
                 }
             }
         },

@@ -27,12 +27,6 @@ func TestOrderRequests_RejectOutOfRangePosition(t *testing.T) {
 		t.Fatalf("no position out-of-range field error; got %+v", v.Fields)
 	}
 
-	t.Run("tag underflow", func(t *testing.T) {
-		assertRejected(t, OrderTagListRequest{Changes: []PositionChange{{Id: "x", Position: underflow}}}.Validate())
-	})
-	t.Run("payee overflow", func(t *testing.T) {
-		assertRejected(t, OrderPayeeListRequest{Changes: []PositionChange{{Id: "x", Position: overflow}}}.Validate())
-	})
 	t.Run("account overflow", func(t *testing.T) {
 		assertRejected(t, OrderAccountListRequest{Changes: []AccountPositionChange{{Id: "x", FolderId: "f", Position: overflow}}}.Validate())
 	})
@@ -41,7 +35,7 @@ func TestOrderRequests_RejectOutOfRangePosition(t *testing.T) {
 	})
 
 	t.Run("in-range accepted", func(t *testing.T) {
-		if err := (OrderTagListRequest{Changes: []PositionChange{{Id: "x", Position: ok}}}).Validate(); err != nil {
+		if err := (OrderAccountListRequest{Changes: []AccountPositionChange{{Id: "x", FolderId: "f", Position: ok}}}).Validate(); err != nil {
 			t.Fatalf("in-range position rejected: %v", err)
 		}
 	})

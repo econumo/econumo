@@ -5,6 +5,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -55,13 +56,17 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req model.Creat
 			return uerr
 		}
 
-		count, cerr := s.repo.CountByOwner(txCtx, ownerID)
+		rows, cerr := s.repo.ListByOwner(txCtx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
+		key, kerr := sortkey.Append(rows, payeeItem, sortkey.GrowsUp)
+		if kerr != nil {
+			return kerr
+		}
 		now := s.clock.Now()
 		p := model.NewPayee(id, ownerID, name, now)
-		p.SetPosition(int16(count))
+		p.SetSortKey(key)
 		if serr := s.repo.Save(txCtx, p); serr != nil {
 			return serr
 		}
@@ -74,5 +79,9 @@ func (s *Service) CreatePayee(ctx context.Context, userID vo.Id, req model.Creat
 		return nil, err
 	}
 
-	return &model.CreatePayeeResult{Item: toResult(created)}, nil
+	item, err := s.itemResult(ctx, ownerID, created)
+	if err != nil {
+		return nil, err
+	}
+	return &model.CreatePayeeResult{Item: item}, nil
 }

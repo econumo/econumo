@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // PayeeResult is one payee in the API. isArchived is an int 0/1 (NOT bool);
@@ -112,27 +113,30 @@ func (r DeletePayeeRequest) Validate() error {
 
 type DeletePayeeResult struct{}
 
-type OrderPayeeListRequest struct {
-	Changes []PositionChange `json:"changes"`
+// MovePayeeRequest is the move-payee request body. AfterId is the id of the
+// sibling this payee should land immediately after; null means "move to the
+// front". An AfterId that is not one of the caller's own payees appends to the end
+// rather than erroring, matching the silent-skip behaviour of the
+// absolute-position endpoint this replaces.
+type MovePayeeRequest struct {
+	Id      string  `json:"id"`
+	AfterId *string `json:"afterId"`
 }
 
-// Validate enforces a non-empty changes list (an empty list is rejected with
-// "Payees list is empty").
-func (r OrderPayeeListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Payees list is empty", MsgCode: errs.CodePayeeListEmpty}
+func (r MovePayeeRequest) Validate() error {
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
 	}
-	var fields []errs.FieldError
-	for _, c := range r.Changes {
-		fields = append(fields, validatePositionField("position", c.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-type OrderPayeeListResult struct {
+// MovePayeeResult is the move-payee response: {items: [...]}.
+type MovePayeeResult struct {
 	Items []PayeeResult `json:"items"`
 }
 

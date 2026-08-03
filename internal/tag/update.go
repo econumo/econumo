@@ -23,7 +23,11 @@ func (s *Service) UpdateTag(ctx context.Context, userID vo.Id, req model.UpdateT
 	if err != nil {
 		return nil, err
 	}
-	return &model.UpdateTagResult{Item: toResult(t)}, nil
+	item, err := s.itemResult(ctx, userID, t)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateTagResult{Item: item}, nil
 }
 
 // mutateWithUnique is the update variant of mutate: it additionally enforces

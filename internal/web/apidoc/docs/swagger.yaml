@@ -1084,6 +1084,34 @@ definitions:
     type: object
   model.MoveElementListResult:
     type: object
+  model.MovePayeeRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MovePayeeResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.MoveTagRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveTagResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
   model.OptionResult:
     properties:
       name:
@@ -1135,34 +1163,6 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.AccountFolderResult'
-        type: array
-    type: object
-  model.OrderPayeeListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.PayeeResult'
-        type: array
-    type: object
-  model.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.TagResult'
         type: array
     type: object
   model.ParentElementResult:
@@ -1228,13 +1228,6 @@ definitions:
         type: string
       name:
         type: string
-    type: object
-  model.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
     type: object
   model.PostRecurringTransactionRequest:
     properties:
@@ -4585,19 +4578,19 @@ paths:
       summary: Get the payee list
       tags:
       - Payee
-  /api/v1/payee/order-payee-list:
+  /api/v1/payee/move-payee:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's payees and returns the full
-        ordered list.
+      description: Places one payee immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order payee list request
+      - description: Move payee request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderPayeeListRequest'
+          $ref: '#/definitions/model.MovePayeeRequest'
       produces:
       - application/json
       responses:
@@ -4608,7 +4601,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderPayeeListResult'
+                  $ref: '#/definitions/model.MovePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -4628,7 +4621,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the payee list
+      summary: Move a payee
       tags:
       - Payee
   /api/v1/payee/unarchive-payee:
@@ -5175,19 +5168,19 @@ paths:
       summary: Get the tag list
       tags:
       - Tag
-  /api/v1/tag/order-tag-list:
+  /api/v1/tag/move-tag:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's tags and returns the full
-        ordered list.
+      description: Places one tag immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order tag list request
+      - description: Move tag request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderTagListRequest'
+          $ref: '#/definitions/model.MoveTagRequest'
       produces:
       - application/json
       responses:
@@ -5198,7 +5191,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderTagListResult'
+                  $ref: '#/definitions/model.MoveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -5218,7 +5211,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the tag list
+      summary: Move a tag
       tags:
       - Tag
   /api/v1/tag/unarchive-tag:

@@ -26,7 +26,6 @@ type (
 type querier interface {
 	GetPayeeByID(ctx context.Context, db backend.DBTX, id string) (payeeRow, error)
 	ListPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]payeeRow, error)
-	CountPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertPayee(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
 }
@@ -86,14 +85,6 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, e
 		out = append(out, p)
 	}
 	return out, nil
-}
-
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountPayeesByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
 }
 
 // Save: the caller runs this inside TxManager.WithTx.

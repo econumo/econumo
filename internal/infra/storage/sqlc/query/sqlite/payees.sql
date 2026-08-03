@@ -20,7 +20,7 @@ SELECT COUNT(*) FROM payees WHERE user_id = ?
 SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE user_id = ?
-ORDER BY position, id
+ORDER BY sort_key, id
 ;
 
 -- name: UpsertPayee :exec
