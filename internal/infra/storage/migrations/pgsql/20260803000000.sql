@@ -1,5 +1,8 @@
 -- PostgreSQL variant. See the sqlite sibling for the semantics.
 --
+-- row_number() is bigint here, and substr() has no (text, bigint, int) overload,
+-- so the rank is cast to int once in each subquery.
+--
 -- COLLATE "C" is load-bearing: SQLite compares TEXT byte-wise (BINARY) while
 -- PostgreSQL compares by database collation, which folds case and orders digits
 -- against letters differently. The enginecompare suite requires byte-identical
@@ -18,7 +21,7 @@ UPDATE categories SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1)::int AS n
         FROM categories) r
   WHERE r.id = categories.id
 );
@@ -28,7 +31,7 @@ UPDATE tags SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1)::int AS n
         FROM tags) r
   WHERE r.id = tags.id
 );
@@ -38,7 +41,7 @@ UPDATE payees SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1)::int AS n
         FROM payees) r
   WHERE r.id = payees.id
 );
@@ -48,7 +51,7 @@ UPDATE folders SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY user_id ORDER BY position, id) - 1)::int AS n
         FROM folders) r
   WHERE r.id = folders.id
 );
@@ -58,7 +61,7 @@ UPDATE accounts_options SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT account_id, user_id, row_number() OVER (PARTITION BY user_id ORDER BY position, account_id) - 1 AS n
+  FROM (SELECT account_id, user_id, (row_number() OVER (PARTITION BY user_id ORDER BY position, account_id) - 1)::int AS n
         FROM accounts_options) r
   WHERE r.account_id = accounts_options.account_id AND r.user_id = accounts_options.user_id
 );
@@ -68,7 +71,7 @@ UPDATE budgets_folders SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY budget_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY budget_id ORDER BY position, id) - 1)::int AS n
         FROM budgets_folders) r
   WHERE r.id = budgets_folders.id
 );
@@ -78,7 +81,7 @@ UPDATE budgets_elements SET sort_key = (
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n /   62) % 62, 1)
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  r.n         % 62, 1)
-  FROM (SELECT id, row_number() OVER (PARTITION BY budget_id, folder_id ORDER BY position, id) - 1 AS n
+  FROM (SELECT id, (row_number() OVER (PARTITION BY budget_id, folder_id ORDER BY position, id) - 1)::int AS n
         FROM budgets_elements) r
   WHERE r.id = budgets_elements.id
 );
