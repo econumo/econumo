@@ -1,5 +1,9 @@
 # Fractional Sort Keys Implementation Plan
 
+> **STATUS: COMPLETE.** All 13 tasks implemented on `feature/fractional-sort-keys`.
+> See the "Deviations from the plan" section at the end for what changed during
+> implementation.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the `int16` `position` column and absolute-position reorder API with base-62 fractional sort keys and relative `move-*` endpoints, so one drag writes one row instead of N.
@@ -1749,3 +1753,52 @@ Expected: PASS, including `test-engines` (byte-identical sqlite vs PostgreSQL) a
 
 **Release note (Task 13 follow-up, not a code task):** breaking API change — seven `order-*-list` routes removed, `position` dropped, no down migration. Needs a minor version bump and a "back up your database first" line.
 
+---
+
+## Deviations from the plan
+
+Recorded during implementation, most caught by a test the plan called for.
+
+1. **`az` rolls over to `b00`, not `b10`** (Task 1). Magnitude `b` spans the full
+   `b00`-`bzz` range (62² = 3,844); there is no leading-digit-nonzero rule. The
+   prepend headroom from a `c000` seed is therefore **3,906**, not 3,844. Both
+   figures were wrong in the spec and are now measured and pinned by tests.
+
+2. **`sort_key` must be appended LAST in every SELECT list** (Task 4). `ALTER
+   TABLE ADD COLUMN` appends the column, so a mid-list projection stops matching
+   the table's column order and sqlc emits a fresh row type per query, breaking
+   the engine-adapter pattern's canonical type aliases across ~20 call sites.
+
+3. **`sortkey.Relocate` / `Append` / `Prepend` were added** (Task 5). Without
+   them each of the seven move use cases re-implemented the same "exclude the
+   moved row, project siblings, place" boilerplate.
+
+4. **Single-item write responses need a derived index** (Tasks 6-10). `toResult`
+   read the entity's now-unused `Position`, so `update-tag` started reporting 0
+   instead of 1. Fixed with `Service.itemResult` (classifications),
+   `accountIndex` / `folderIndex` (account), `folderIndex` (budget folders) and
+   `elementIndex` (budget elements). The apiparity golden caught it.
+
+5. **The A-Z sort dialog needed its own path** (Task 12). Sorting alphabetically
+   reorders the WHOLE list, which no single relative move can express. It became
+   a separate `onSort` callback replayed as a chain of moves. The plan did not
+   anticipate this feature.
+
+6. **`SavePosition` had to preserve the key** during the transitional state
+   (Task 4), because its upsert rewrites every column. Removed in Task 13.
+
+7. **`row_number()` is bigint in PostgreSQL** and `substr()` has no
+   `(text, bigint, integer)` overload, so the backfill failed to apply there.
+   Only the engine-comparison suite could catch this.
+
+8. **Fixture builders keep a `Position` field** as test sugar that derives
+   `SortKey`, rather than being removed. Dozens of tests express intended order
+   as a small integer, and churning them all would have added risk for no gain.
+
+## Verification
+
+- `make go-test` — passes, coverage **80.2%** (gate 80%)
+- `go test -tags enginecompare ./internal/test/enginecompare/` — passes against
+  real PostgreSQL 17, confirming `COLLATE "C"` gives byte-identical ordering
+- `DBTEST_ENGINE=pgsql` repo suite — passes
+- `pnpm exec tsc -b`, `pnpm test` (814 tests), `pnpm lint` — pass
