@@ -159,7 +159,7 @@ func (q *Queries) GetBudgetByID(ctx context.Context, id string) (Budget, error) 
 }
 
 const getBudgetElement = `-- name: GetBudgetElement :one
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
 FROM budgets_elements WHERE id = ?
 `
 
@@ -176,12 +176,13 @@ func (q *Queries) GetBudgetElement(ctx context.Context, id string) (BudgetsEleme
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Position,
+		&i.SortKey,
 	)
 	return i, err
 }
 
 const getBudgetElementByExternal = `-- name: GetBudgetElementByExternal :one
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
 FROM budgets_elements WHERE budget_id = ? AND external_id = ?
 `
 
@@ -203,6 +204,7 @@ func (q *Queries) GetBudgetElementByExternal(ctx context.Context, arg GetBudgetE
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Position,
+		&i.SortKey,
 	)
 	return i, err
 }
@@ -228,7 +230,7 @@ func (q *Queries) GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnve
 }
 
 const getBudgetFolder = `-- name: GetBudgetFolder :one
-SELECT id, budget_id, name, position, created_at, updated_at
+SELECT id, budget_id, name, position, created_at, updated_at, sort_key
 FROM budgets_folders WHERE id = ?
 `
 
@@ -242,6 +244,7 @@ func (q *Queries) GetBudgetFolder(ctx context.Context, id string) (BudgetsFolder
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
@@ -306,7 +309,7 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 }
 
 const listBudgetElements = `-- name: ListBudgetElements :many
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
 FROM budgets_elements WHERE budget_id = ?
 `
 
@@ -329,6 +332,7 @@ func (q *Queries) ListBudgetElements(ctx context.Context, budgetID string) ([]Bu
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Position,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -407,7 +411,7 @@ func (q *Queries) ListBudgetExcludedAccountIDs(ctx context.Context, budgetID str
 }
 
 const listBudgetFolders = `-- name: ListBudgetFolders :many
-SELECT id, budget_id, name, position, created_at, updated_at
+SELECT id, budget_id, name, position, created_at, updated_at, sort_key
 FROM budgets_folders WHERE budget_id = ? ORDER BY position ASC, id ASC
 `
 
@@ -427,6 +431,7 @@ func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]Bud
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -652,13 +657,14 @@ func (q *Queries) UpsertBudgetAccess(ctx context.Context, arg UpsertBudgetAccess
 }
 
 const upsertBudgetElement = `-- name: UpsertBudgetElement :exec
-INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     folder_id   = excluded.folder_id,
     type        = excluded.type,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     updated_at  = excluded.updated_at
 `
 
@@ -672,6 +678,7 @@ type UpsertBudgetElementParams struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Position   int16
+	SortKey    string
 }
 
 func (q *Queries) UpsertBudgetElement(ctx context.Context, arg UpsertBudgetElementParams) error {
@@ -685,6 +692,7 @@ func (q *Queries) UpsertBudgetElement(ctx context.Context, arg UpsertBudgetEleme
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.Position,
+		arg.SortKey,
 	)
 	return err
 }
@@ -723,11 +731,12 @@ func (q *Queries) UpsertBudgetEnvelope(ctx context.Context, arg UpsertBudgetEnve
 }
 
 const upsertBudgetFolder = `-- name: UpsertBudgetFolder :exec
-INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
     position   = excluded.position,
+    sort_key   = excluded.sort_key,
     updated_at = excluded.updated_at
 `
 
@@ -738,6 +747,7 @@ type UpsertBudgetFolderParams struct {
 	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 func (q *Queries) UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolderParams) error {
@@ -748,6 +758,7 @@ func (q *Queries) UpsertBudgetFolder(ctx context.Context, arg UpsertBudgetFolder
 		arg.Position,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

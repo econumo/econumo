@@ -11,7 +11,7 @@ import (
 
 const getTagListView = `-- name: GetTagListView :many
 
-SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at, t.sort_key
 FROM tags t
 WHERE t.user_id = $1
    OR t.user_id IN (
@@ -44,6 +44,7 @@ func (q *Queries) GetTagListView(ctx context.Context, userID string) ([]Tag, err
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}

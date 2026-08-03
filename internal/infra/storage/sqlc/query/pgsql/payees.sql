@@ -3,7 +3,7 @@
 -- placeholder syntax. The payees table has no type/icon columns.
 
 -- name: GetPayeeByID :one
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE id = $1
 ;
@@ -13,19 +13,20 @@ SELECT COUNT(*) FROM payees WHERE user_id = $1
 ;
 
 -- name: ListPayeesByOwner :many
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE user_id = $1
 ORDER BY position, id
 ;
 
 -- name: UpsertPayee :exec
-INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 ;

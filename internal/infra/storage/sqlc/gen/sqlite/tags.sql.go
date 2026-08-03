@@ -39,7 +39,7 @@ func (q *Queries) DeleteTag(ctx context.Context, id string) error {
 
 const getTagByID = `-- name: GetTagByID :one
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE id = ?
 `
@@ -59,6 +59,7 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
@@ -66,7 +67,7 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 const listTagsByOwner = `-- name: ListTagsByOwner :many
 ;
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE user_id = ?
 ORDER BY position, id
@@ -91,6 +92,7 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -108,12 +110,13 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 const upsertTag = `-- name: UpsertTag :exec
 ;
 
-INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
@@ -126,6 +129,7 @@ type UpsertTagParams struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
@@ -137,6 +141,7 @@ func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

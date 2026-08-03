@@ -167,11 +167,25 @@ func (r *Repo) MaxPosition(ctx context.Context, userID vo.Id) (int16, error) {
 }
 
 // SavePosition upserts an accounts_options row.
+//
+// The upsert rewrites every column, but sort_key is not one of this call's
+// inputs, so the row's existing key is read back and written through unchanged.
+// Without that, saving a position would blank the key the migration backfilled.
+// Both this method and the read-back disappear with the move-account rework.
 func (r *Repo) SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error {
+	var key string
+	row, err := r.q.GetAccountOption(ctx, r.db(ctx), getOptionP{AccountID: accountID.String(), UserID: userID.String()})
+	switch {
+	case err == nil:
+		key = row.SortKey
+	case !errors.Is(err, sql.ErrNoRows):
+		return err
+	}
 	return r.q.UpsertAccountOption(ctx, r.db(ctx), upsertOptionP{
 		AccountID: accountID.String(),
 		UserID:    userID.String(),
 		Position:  position,
+		SortKey:   key,
 		CreatedAt: now,
 		UpdatedAt: now,
 	})

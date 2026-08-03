@@ -13,6 +13,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -109,6 +110,7 @@ func (r *Repo) Save(ctx context.Context, c *model.Category) error {
 		UserID:     c.UserID.String(),
 		Name:       c.Name,
 		Position:   c.Position,
+		SortKey:    string(c.SortKey),
 		Type:       c.Type.Int16(),
 		Icon:       c.Icon,
 		IsArchived: c.IsArchived,
@@ -174,7 +176,7 @@ func hydrate(row categoryRow) (*model.Category, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position, SortKey: sortkey.Key(row.SortKey),
 		Type: model.CategoryType(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

@@ -8,7 +8,7 @@
 -- PayeeRepository::findAvailableForUserId (self + DISTINCT owners of accounts
 -- granted via accounts_access), ordered by position. The user id is repeated
 -- positionally -> two-field Params struct.
-SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at
+SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at, p.sort_key
 FROM payees p
 WHERE p.user_id = ?
    OR p.user_id IN (

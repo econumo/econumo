@@ -4,7 +4,7 @@
 -- columns): a payee is a name + position + archived flag.
 
 -- name: GetPayeeByID :one
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE id = ?
 ;
@@ -17,19 +17,20 @@ SELECT COUNT(*) FROM payees WHERE user_id = ?
 -- name: ListPayeesByOwner :many
 -- The owner's payees ordered by position; used by order-payee-list (load, apply
 -- position changes, re-save) and as the basis for the returned list.
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE user_id = ?
 ORDER BY position, id
 ;
 
 -- name: UpsertPayee :exec
-INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 ;

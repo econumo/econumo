@@ -219,6 +219,7 @@ type Folder struct {
 	UserID   string
 	Name     string // default "Main"
 	Position int
+	SortKey  string
 	Hidden   bool // default visible
 }
 
@@ -232,9 +233,13 @@ func (b *Builder) Folder(f Folder) string {
 	if f.Hidden {
 		visible = "FALSE"
 	}
+	if f.SortKey == "" {
+		f.SortKey = sortKeyAt(f.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, ?, ?, `+visible+`, ?, ?)`,
-		id, f.UserID, f.Name, f.Position, now, now)
+	b.insert(`INSERT INTO folders (id, user_id, name, position, sort_key, is_visible, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+visible+`, ?, ?)`,
+		id, f.UserID, f.Name, f.Position, f.SortKey, now, now)
 	return id
 }
 
@@ -284,8 +289,8 @@ func (b *Builder) AccountInFolder(folderID, accountID string) {
 func (b *Builder) AccountOption(accountID, userID string, position int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, position, now, now)
+	b.insert(`INSERT INTO accounts_options (account_id, user_id, position, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		accountID, userID, position, sortKeyAt(position), now, now)
 }
 
 // AccountAccess grants a user ACCEPTED access to an account (accounts_access).
@@ -312,6 +317,7 @@ type Category struct {
 	UserID   string
 	Name     string // default "Category"
 	Position int
+	SortKey  string
 	Type     int    // 0 expense, 1 income
 	Icon     string // default "i"
 	Archived bool
@@ -330,9 +336,13 @@ func (b *Builder) Category(c Category) string {
 	if c.Archived {
 		arch = "TRUE"
 	}
+	if c.SortKey == "" {
+		c.SortKey = sortKeyAt(c.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, c.UserID, c.Name, c.Position, c.Type, c.Icon, now, now)
+	b.insert(`INSERT INTO categories (id, user_id, name, position, sort_key, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, c.UserID, c.Name, c.Position, c.SortKey, c.Type, c.Icon, now, now)
 	return id
 }
 
@@ -342,6 +352,7 @@ type Tag struct {
 	UserID   string
 	Name     string // default "Tag"
 	Position int
+	SortKey  string
 	Archived bool
 }
 
@@ -355,9 +366,13 @@ func (b *Builder) Tag(tg Tag) string {
 	if tg.Archived {
 		arch = "TRUE"
 	}
+	if tg.SortKey == "" {
+		tg.SortKey = sortKeyAt(tg.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, tg.UserID, tg.Name, tg.Position, now, now)
+	b.insert(`INSERT INTO tags (id, user_id, name, position, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, tg.UserID, tg.Name, tg.Position, tg.SortKey, now, now)
 	return id
 }
 
@@ -367,6 +382,7 @@ type Payee struct {
 	UserID   string
 	Name     string // default "Payee"
 	Position int
+	SortKey  string
 	Archived bool
 }
 
@@ -380,9 +396,13 @@ func (b *Builder) Payee(p Payee) string {
 	if p.Archived {
 		arch = "TRUE"
 	}
+	if p.SortKey == "" {
+		p.SortKey = sortKeyAt(p.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, p.UserID, p.Name, p.Position, now, now)
+	b.insert(`INSERT INTO payees (id, user_id, name, position, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, p.UserID, p.Name, p.Position, p.SortKey, now, now)
 	return id
 }
 
@@ -466,14 +486,19 @@ type BudgetElement struct {
 	ExternalID string
 	Type       int
 	Position   int
+	SortKey    string
 }
 
 func (b *Builder) BudgetElement(e BudgetElement) string {
 	b.t.Helper()
 	id := b.orNewID(e.ID)
+	if e.SortKey == "" {
+		e.SortKey = sortKeyAt(e.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.Position, now, now)
+	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, position, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.Position, e.SortKey, now, now)
 	return id
 }
 
@@ -504,6 +529,7 @@ type BudgetFolder struct {
 	BudgetID string
 	Name     string // default "Folder"
 	Position int
+	SortKey  string
 }
 
 func (b *Builder) BudgetFolder(f BudgetFolder) string {
@@ -512,9 +538,13 @@ func (b *Builder) BudgetFolder(f BudgetFolder) string {
 	if f.Name == "" {
 		f.Name = "Folder"
 	}
+	if f.SortKey == "" {
+		f.SortKey = sortKeyAt(f.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, f.BudgetID, f.Name, f.Position, now, now)
+	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, position, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		id, f.BudgetID, f.Name, f.Position, f.SortKey, now, now)
 	return id
 }
 
@@ -587,4 +617,19 @@ func nullable(s string) any {
 		return nil
 	}
 	return s
+}
+
+// sortKeyAt encodes a fixture's Position as a sort key using the same scheme as
+// the 20260803000000 backfill: the 'c' magnitude head plus three base-62 digits.
+// Deriving the key from Position keeps every seeded row's intended order intact
+// once the read paths sort by sort_key instead.
+func sortKeyAt(position int) string {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	if position < 0 {
+		position = 0
+	}
+	return "c" +
+		string(alphabet[(position/3844)%62]) +
+		string(alphabet[(position/62)%62]) +
+		string(alphabet[position%62])
 }

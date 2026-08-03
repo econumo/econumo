@@ -39,7 +39,7 @@ func (q *Queries) DeletePayee(ctx context.Context, id string) error {
 
 const getPayeeByID = `-- name: GetPayeeByID :one
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE id = ?
 `
@@ -59,6 +59,7 @@ func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
@@ -66,7 +67,7 @@ func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 const listPayeesByOwner = `-- name: ListPayeesByOwner :many
 ;
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE user_id = ?
 ORDER BY position, id
@@ -91,6 +92,7 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -108,12 +110,13 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 const upsertPayee = `-- name: UpsertPayee :exec
 ;
 
-INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
@@ -126,6 +129,7 @@ type UpsertPayeeParams struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 func (q *Queries) UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error {
@@ -137,6 +141,7 @@ func (q *Queries) UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error 
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

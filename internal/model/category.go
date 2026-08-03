@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -63,10 +64,14 @@ func TypeFromAlias(alias string) (CategoryType, bool) {
 // logic lives on the CategoryType value object above (Alias/Int16/
 // TypeFromAlias), not on Category.
 type Category struct {
-	ID         vo.Id
-	UserID     vo.Id
-	Name       string
-	Position   int16
+	ID       vo.Id
+	UserID   vo.Id
+	Name     string
+	Position int16
+	// SortKey is the fractional index key that decides this row's slot in its
+	// list. Position is retained until every read path has moved over; see
+	// docs/superpowers/specs/2026-08-02-fractional-sort-keys-design.md.
+	SortKey    sortkey.Key
 	Type       CategoryType
 	Icon       string
 	IsArchived bool
@@ -115,6 +120,18 @@ func (c *Category) Archive(now time.Time) {
 func (c *Category) Unarchive(now time.Time) {
 	if c.IsArchived {
 		c.IsArchived = false
+		c.UpdatedAt = now
+	}
+}
+
+// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
+// bump UpdatedAt, because it is part of construction.
+func (c *Category) SetSortKey(k sortkey.Key) { c.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (c *Category) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if c.SortKey != k {
+		c.SortKey = k
 		c.UpdatedAt = now
 	}
 }

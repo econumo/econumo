@@ -215,3 +215,24 @@ func TestCategoryRepo_OperationGuard_Idempotency(t *testing.T) {
 		t.Error("is_handled should be true after MarkHandled")
 	}
 }
+
+// TestCategoryRepo_SortKeyRoundTrip pins that the new ordering column survives a
+// save/load cycle on both engines.
+func TestCategoryRepo_SortKeyRoundTrip(t *testing.T) {
+	repo, _, _, f := newRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA)
+
+	c := cat(catA1, userA, "Food", 2, model.TypeExpense)
+	c.SetSortKey("c00A")
+	if err := repo.Save(ctx, c); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := repo.GetByID(ctx, vo.MustParseId(catA1))
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.SortKey != "c00A" {
+		t.Errorf("SortKey = %q, want \"c00A\"", got.SortKey)
+	}
+}

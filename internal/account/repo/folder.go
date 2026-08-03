@@ -13,6 +13,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -106,6 +107,7 @@ func (r *FolderRepo) Save(ctx context.Context, f *model.Folder) error {
 		UserID:    f.UserID.String(),
 		Name:      f.Name,
 		Position:  f.Position,
+		SortKey:   string(f.SortKey),
 		IsVisible: f.IsVisible,
 		CreatedAt: f.CreatedAt,
 		UpdatedAt: f.UpdatedAt,
@@ -155,7 +157,7 @@ func hydrateFolder(row folderRow) (*model.Folder, error) {
 		return nil, err
 	}
 	return &model.Folder{
-		ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+		ID: id, UserID: userID, Name: row.Name, Position: row.Position, SortKey: sortkey.Key(row.SortKey),
 		IsVisible: row.IsVisible, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }

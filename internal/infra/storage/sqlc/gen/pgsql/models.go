@@ -53,6 +53,7 @@ type AccountsOption struct {
 	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 type Budget struct {
@@ -84,6 +85,7 @@ type BudgetsElement struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	Position   int16
+	SortKey    string
 }
 
 type BudgetsElementsLimit struct {
@@ -122,6 +124,7 @@ type BudgetsFolder struct {
 	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 type Category struct {
@@ -134,6 +137,7 @@ type Category struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 type CurrenciesRate struct {
@@ -163,6 +167,7 @@ type Folder struct {
 	IsVisible bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 type MessengerMessage struct {
@@ -190,6 +195,7 @@ type Payee struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 type RecurringTransaction struct {
@@ -218,6 +224,7 @@ type Tag struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 type Transaction struct {

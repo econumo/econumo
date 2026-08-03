@@ -53,7 +53,7 @@ func (q *Queries) GetAccountByID(ctx context.Context, id string) (Account, error
 }
 
 const getAccountOption = `-- name: GetAccountOption :one
-SELECT account_id, user_id, position, created_at, updated_at
+SELECT account_id, user_id, position, created_at, updated_at, sort_key
 FROM accounts_options
 WHERE account_id = $1 AND user_id = $2
 `
@@ -72,12 +72,13 @@ func (q *Queries) GetAccountOption(ctx context.Context, arg GetAccountOptionPara
 		&i.Position,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
 
 const listAccountOptionsByUser = `-- name: ListAccountOptionsByUser :many
-SELECT account_id, user_id, position, created_at, updated_at
+SELECT account_id, user_id, position, created_at, updated_at, sort_key
 FROM accounts_options
 WHERE user_id = $1
 `
@@ -97,6 +98,7 @@ func (q *Queries) ListAccountOptionsByUser(ctx context.Context, userID string) (
 			&i.Position,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -195,10 +197,11 @@ func (q *Queries) UpsertAccount(ctx context.Context, arg UpsertAccountParams) er
 }
 
 const upsertAccountOption = `-- name: UpsertAccountOption :exec
-INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (account_id, user_id) DO UPDATE SET
     position   = excluded.position,
+    sort_key   = excluded.sort_key,
     updated_at = excluded.updated_at
 `
 
@@ -208,6 +211,7 @@ type UpsertAccountOptionParams struct {
 	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 func (q *Queries) UpsertAccountOption(ctx context.Context, arg UpsertAccountOptionParams) error {
@@ -217,6 +221,7 @@ func (q *Queries) UpsertAccountOption(ctx context.Context, arg UpsertAccountOpti
 		arg.Position,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

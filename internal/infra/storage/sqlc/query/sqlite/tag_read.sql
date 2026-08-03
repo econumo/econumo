@@ -7,7 +7,7 @@
 -- an account WITH this user. Mirrors PHP TagRepository::findAvailableForUserId
 -- (self + DISTINCT owners of accounts granted via accounts_access), ordered by
 -- position. The user id is repeated positionally -> two-field Params struct.
-SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at, t.sort_key
 FROM tags t
 WHERE t.user_id = ?
    OR t.user_id IN (

@@ -48,7 +48,7 @@ func (q *Queries) DeleteFolder(ctx context.Context, id string) error {
 
 const getFolderByID = `-- name: GetFolderByID :one
 
-SELECT id, user_id, name, position, is_visible, created_at, updated_at
+SELECT id, user_id, name, position, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE id = ?
 `
@@ -67,6 +67,7 @@ func (q *Queries) GetFolderByID(ctx context.Context, id string) (Folder, error) 
 		&i.IsVisible,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
@@ -132,7 +133,7 @@ func (q *Queries) ListFolderMembershipsByUser(ctx context.Context, userID string
 }
 
 const listFoldersByUser = `-- name: ListFoldersByUser :many
-SELECT id, user_id, name, position, is_visible, created_at, updated_at
+SELECT id, user_id, name, position, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE user_id = ?
 `
@@ -155,6 +156,7 @@ func (q *Queries) ListFoldersByUser(ctx context.Context, userID string) ([]Folde
 			&i.IsVisible,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -193,11 +195,12 @@ func (q *Queries) RemoveAccountFromFolder(ctx context.Context, arg RemoveAccount
 }
 
 const upsertFolder = `-- name: UpsertFolder :exec
-INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
     position   = excluded.position,
+    sort_key   = excluded.sort_key,
     is_visible = excluded.is_visible,
     updated_at = excluded.updated_at
 `
@@ -210,6 +213,7 @@ type UpsertFolderParams struct {
 	IsVisible bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 func (q *Queries) UpsertFolder(ctx context.Context, arg UpsertFolderParams) error {
@@ -221,6 +225,7 @@ func (q *Queries) UpsertFolder(ctx context.Context, arg UpsertFolderParams) erro
 		arg.IsVisible,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

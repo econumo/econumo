@@ -4,7 +4,7 @@
 -- categories): a tag's icon is a fixed "tag" and is not persisted.
 
 -- name: GetTagByID :one
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE id = ?
 ;
@@ -17,19 +17,20 @@ SELECT COUNT(*) FROM tags WHERE user_id = ?
 -- name: ListTagsByOwner :many
 -- The owner's tags ordered by position; used by order-tag-list (load, apply
 -- position changes, re-save) and as the basis for the returned list.
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE user_id = ?
 ORDER BY position, id
 ;
 
 -- name: UpsertTag :exec
-INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 ;

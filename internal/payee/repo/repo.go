@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	dompayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -102,6 +103,7 @@ func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 		UserID:     p.UserID.String(),
 		Name:       p.Name,
 		Position:   p.Position,
+		SortKey:    string(p.SortKey),
 		IsArchived: p.IsArchived,
 		CreatedAt:  p.CreatedAt,
 		UpdatedAt:  p.UpdatedAt,
@@ -121,6 +123,6 @@ func hydrate(row payeeRow) (*model.Payee, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

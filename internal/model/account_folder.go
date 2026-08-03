@@ -6,16 +6,21 @@ package model
 import (
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Folder is the account-folder aggregate root. Fields are exported for direct
 // read access; all writes after construction go through the mutators.
 type Folder struct {
-	ID        vo.Id
-	UserID    vo.Id
-	Name      string
-	Position  int16
+	ID       vo.Id
+	UserID   vo.Id
+	Name     string
+	Position int16
+	// SortKey is the fractional index key that decides this row's slot in its
+	// list. Position is retained until every read path has moved over; see
+	// docs/superpowers/specs/2026-08-02-fractional-sort-keys-design.md.
+	SortKey   sortkey.Key
 	IsVisible bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -57,6 +62,18 @@ func (f *Folder) MakeVisible(now time.Time) {
 func (f *Folder) MakeInvisible(now time.Time) {
 	if f.IsVisible {
 		f.IsVisible = false
+		f.UpdatedAt = now
+	}
+}
+
+// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
+// bump UpdatedAt, because it is part of construction.
+func (f *Folder) SetSortKey(k sortkey.Key) { f.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (f *Folder) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if f.SortKey != k {
+		f.SortKey = k
 		f.UpdatedAt = now
 	}
 }

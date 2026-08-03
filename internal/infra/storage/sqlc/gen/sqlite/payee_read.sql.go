@@ -11,7 +11,7 @@ import (
 
 const getPayeeListView = `-- name: GetPayeeListView :many
 
-SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at
+SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at, p.sort_key
 FROM payees p
 WHERE p.user_id = ?
    OR p.user_id IN (
@@ -53,6 +53,7 @@ func (q *Queries) GetPayeeListView(ctx context.Context, arg GetPayeeListViewPara
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}

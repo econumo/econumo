@@ -8,7 +8,7 @@
 -- CategoryRepository::findAvailableForUserId (self + DISTINCT owners of accounts
 -- granted to the user via accounts_access), ordered by position. The user id is
 -- repeated positionally, so sqlc generates a two-field Params struct.
-SELECT c.id, c.user_id, c.name, c.position, c.type, c.icon, c.is_archived, c.created_at, c.updated_at
+SELECT c.id, c.user_id, c.name, c.position, c.type, c.icon, c.is_archived, c.created_at, c.updated_at, c.sort_key
 FROM categories c
 WHERE c.user_id = ?
    OR c.user_id IN (

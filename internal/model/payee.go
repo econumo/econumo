@@ -8,6 +8,7 @@ package model
 import (
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -16,10 +17,14 @@ import (
 // bump UpdatedAt only on a real change. Fields are exported for direct read
 // access; all writes after construction go through the mutators.
 type Payee struct {
-	ID         vo.Id
-	UserID     vo.Id
-	Name       string
-	Position   int16
+	ID       vo.Id
+	UserID   vo.Id
+	Name     string
+	Position int16
+	// SortKey is the fractional index key that decides this row's slot in its
+	// list. Position is retained until every read path has moved over; see
+	// docs/superpowers/specs/2026-08-02-fractional-sort-keys-design.md.
+	SortKey    sortkey.Key
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -59,6 +64,18 @@ func (p *Payee) Archive(now time.Time) {
 func (p *Payee) Unarchive(now time.Time) {
 	if p.IsArchived {
 		p.IsArchived = false
+		p.UpdatedAt = now
+	}
+}
+
+// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
+// bump UpdatedAt, because it is part of construction.
+func (p *Payee) SetSortKey(k sortkey.Key) { p.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (p *Payee) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if p.SortKey != k {
+		p.SortKey = k
 		p.UpdatedAt = now
 	}
 }
