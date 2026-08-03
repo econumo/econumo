@@ -205,8 +205,8 @@ in the CSV section.
 - **Recurring create/update** gain `labelIds: []string`; recurring reads return
   them.
 - **`get-budget`** response gains the labels block (see below).
-- **Transaction list reads** gain an optional **label filter** param (single
-  `labelId`), backing the budget block's drill-down.
+- **`get-transaction-list` (budget module)** gains an optional `labelId` query
+  param, backing the budget block's drill-down.
 - **CSV export** adds a `labels` column (right after `tag`, `;`-joined); **CSV
   import** gains a `labels` mapping key, a `labelsSeparator` field, and an optional
   `labelIds` override (see CSV section).
@@ -226,6 +226,12 @@ and never touch envelope totals, available-to-spend, or carryover.
   accounts, the period, expenses), using the **same currency conversion** applied
   to tag/category spend, so label totals are consistent with the rest of the
   view.
+- **This must be a SEPARATE read-model method** (e.g. `CountSpendingByLabel`,
+  grouping `label_id, currency_id`), *not* an extra column on the existing
+  `CountSpending`. That query groups by `(category_id, tag_id, currency_id)` and
+  the builder assumes **one bucket per row**; joining a many-to-many there would
+  fan one transaction into N rows and double-count the element totals. Keeping the
+  label aggregation on its own query is what makes the overlap safe.
 - The builder emits a **separate "labels" block**: collapsible, positioned near
   the uncategorized bucket, each label rendered as a chip (icon + name + period
   spend), in `position` order. "Read-only" means **no limits and no budget math** —
@@ -235,12 +241,17 @@ and never touch envelope totals, available-to-spend, or carryover.
   with no period spend are hidden.
 - **Drill-down:** clicking a label chip opens the existing budget-transactions
   dialog filtered to that label, mirroring how a budgeting tag element drills down
-  today. This requires a **label filter on the transaction read path** —
-  `TransactionFilter` gains a `LabelID *vo.Id` (joining `transactions_labels`,
-  served by its `label_id` index), plus the corresponding query/DTO plumbing and
-  the frontend query param. Without this the block would show a number the user
-  cannot investigate, which defeats the "where did the money for kid A go" use
-  case.
+  today. This runs through the **budget module's own** transaction list
+  (`GET /api/v1/budget/get-transaction-list`), not the transaction feature's
+  filter, so the work is: `BudgetTransactionListRequest` gains `LabelId *string`;
+  the dispatch switch in `internal/budget/txlist.go` gains a label branch; the read
+  repo gains `BudgetTransactionsByLabel` mirroring the existing
+  `BudgetTransactionsByTag` (joining `transactions_labels`, served by its
+  `label_id` index); and the frontend `BudgetTransactionsParams` gains `labelId`.
+  Without this the block would show a number the user cannot investigate, which
+  defeats the "where did the money for kid A go" use case.
+  (The transaction feature's own `TransactionFilter` is **not** changed in v1 —
+  filtering the main transaction list by label is a separate follow-up.)
 - **Whose labels (shared budgets):** the block aggregates under the **account
   owner's** labels, consistent with the shared-account rule above and with how the
   budget already attributes shared-account spend. So a budget spanning a
@@ -421,8 +432,9 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   joined by `;` on export); import gains a `labels` mapping key with a
   **user-chosen separator** (button → dialog, default `;`; name-match + auto-create
   like tags) and an optional `labelIds` override.
-- **Drill-down:** label chips are clickable → transactions filtered by label; adds
-  a `labelId` filter to the transaction read path.
+- **Drill-down:** label chips are clickable → transactions filtered by label, via a
+  `labelId` param on the budget module's `get-transaction-list` (the transaction
+  feature's own filter is untouched in v1).
 - **Shared budgets:** the labels block aggregates under the **account owner's**
   labels, so a collaborator's labels can appear alongside your own.
 - **Import guardrails:** cap 10 labels/row, preview the new-label count before
