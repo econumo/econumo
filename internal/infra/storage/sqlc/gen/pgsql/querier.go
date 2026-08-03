@@ -44,6 +44,9 @@ type Querier interface {
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Link rows between a transaction and its reporting labels. See the sqlite
+	// variant for documentation.
+	DeleteTransactionLabels(ctx context.Context, transactionID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
@@ -195,6 +198,7 @@ type Querier interface {
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
 	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
@@ -248,6 +252,7 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	ListLabelIDsByTransaction(ctx context.Context, transactionID string) ([]string, error)
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants

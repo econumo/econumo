@@ -55,6 +55,10 @@ type Querier interface {
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Link rows between a transaction and its reporting labels. Writes are
+	// delete-then-insert inside the caller's transaction, so a re-save is
+	// idempotent and never duplicates a pair.
+	DeleteTransactionLabels(ctx context.Context, transactionID string) error
 	// Pending change-email requests (users_email_change_requests). The request is
 	// replaced with a fresh one, read back by user, and deleted once confirmed.
 	// Expiry is compared in the app layer (Go time), not in SQL.
@@ -297,6 +301,7 @@ type Querier interface {
 	// Claim a request id. The PK conflict is detected by the caller via a pre-check
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
 	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
@@ -372,6 +377,7 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	ListLabelIDsByTransaction(ctx context.Context, transactionID string) ([]string, error)
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.

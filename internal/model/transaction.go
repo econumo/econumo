@@ -4,9 +4,10 @@
 // request/result DTOs stay in internal/transaction.
 //
 // A transaction is an expense (type 0), income (1), or transfer (2). Transfers
-// carry a recipient account + recipient amount and no category/payee/tag;
-// non-transfers carry an optional category/payee/tag and no recipient. The
-// entity enforces those type-dependent field rules in its mutators.
+// carry a recipient account + recipient amount and no category/payee/tag/labels;
+// non-transfers carry an optional category/payee/tag and any number of labels,
+// and no recipient. The entity enforces those type-dependent field rules in
+// its mutators.
 package model
 
 import (
@@ -63,10 +64,14 @@ type Transaction struct {
 	CategoryID      *vo.Id
 	PayeeID         *vo.Id
 	TagID           *vo.Id
-	Description     string
-	SpentAt         time.Time
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	// LabelIDs are the reporting labels attached to this transaction (nil/empty
+	// = none). Unlike CategoryID/PayeeID/TagID this is a many-relation, backed
+	// by the transactions_labels join table rather than a column.
+	LabelIDs    []vo.Id
+	Description string
+	SpentAt     time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 	// RecurringID is the template this transaction was materialized from (nil
 	// for hand-entered ones). Provenance, not mutable state: Update leaves it
 	// alone, so editing a posted instance never severs its origin.
@@ -86,6 +91,7 @@ type NewState struct {
 	CategoryID      *vo.Id
 	PayeeID         *vo.Id
 	TagID           *vo.Id
+	LabelIDs        []vo.Id
 	Description     string
 	SpentAt         time.Time
 	CreatedAt       time.Time
@@ -116,7 +122,7 @@ func New(s NewState) *Transaction {
 	return &Transaction{
 		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
-		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
+		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.CreatedAt,
 		RecurringID: s.RecurringID,
 	}
@@ -128,17 +134,17 @@ func FromState(s NewState) *Transaction {
 	return &Transaction{
 		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount, AmountRecipient: s.AmountRecipient,
-		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
+		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, SpentAt: s.SpentAt, CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
 		RecurringID: s.RecurringID,
 	}
 }
 
 // Update applies a full update from the given state, enforcing the
-// type-dependent field rules: a transfer clears category/payee/tag and keeps
-// recipient account+amount; a non-transfer clears recipient and keeps
-// category/payee/tag. Always stamps UpdatedAt = now, since a full update
-// replaces the mutable state.
+// type-dependent field rules: a transfer clears category/payee/tag/labels and
+// keeps recipient account+amount; a non-transfer clears recipient and keeps
+// category/payee/tag/labels. Always stamps UpdatedAt = now, since a full
+// update replaces the mutable state.
 func (t *Transaction) Update(s NewState, now time.Time) {
 	t.Type = s.Type
 	t.AccountID = s.AccountID
@@ -149,6 +155,7 @@ func (t *Transaction) Update(s NewState, now time.Time) {
 		t.CategoryID = nil
 		t.PayeeID = nil
 		t.TagID = nil
+		t.LabelIDs = nil
 		t.AccountRecipID = s.AccountRecipID
 		t.AmountRecipient = s.AmountRecipient
 	} else {
@@ -157,6 +164,7 @@ func (t *Transaction) Update(s NewState, now time.Time) {
 		t.CategoryID = s.CategoryID
 		t.PayeeID = s.PayeeID
 		t.TagID = s.TagID
+		t.LabelIDs = s.LabelIDs
 	}
 	t.UpdatedAt = now
 }

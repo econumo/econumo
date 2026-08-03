@@ -108,3 +108,25 @@ func TestUpdate_Transfer_KeepsRecipient_ClearsMetadata(t *testing.T) {
 		t.Fatal("transfer must clear category/payee/tag")
 	}
 }
+
+func TestUpdateClearsLabelsOnTransfer(t *testing.T) {
+	now := time.Now()
+	labels := []vo.Id{vo.NewId(), vo.NewId()}
+	tx := New(NewState{
+		ID: vo.NewId(), UserID: vo.NewId(), Type: TransactionTypeExpense,
+		AccountID: vo.NewId(), Amount: "10", LabelIDs: labels,
+		SpentAt: now, CreatedAt: now,
+	})
+	if len(tx.LabelIDs) != 2 {
+		t.Fatalf("expense should keep labels, got %d", len(tx.LabelIDs))
+	}
+
+	recip := vo.NewId()
+	tx.Update(NewState{
+		Type: TransactionTypeTransfer, AccountID: tx.AccountID,
+		AccountRecipID: &recip, Amount: "10", LabelIDs: labels, SpentAt: now,
+	}, now)
+	if len(tx.LabelIDs) != 0 {
+		t.Fatalf("transfer must clear labels, got %d", len(tx.LabelIDs))
+	}
+}

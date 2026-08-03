@@ -15,12 +15,15 @@ import (
 )
 
 const (
-	usdID = "dffc2a06-6f29-4704-8575-31709adee926"
-	userA = "11111111-1111-1111-1111-111111111111"
-	userB = "22222222-2222-2222-2222-222222222222"
-	acct1 = "aaaa1111-0000-0000-0000-0000000000a1"
-	acct2 = "aaaa1111-0000-0000-0000-0000000000a2"
-	acctB = "bbbb1111-0000-0000-0000-0000000000b1"
+	usdID  = "dffc2a06-6f29-4704-8575-31709adee926"
+	userA  = "11111111-1111-1111-1111-111111111111"
+	userB  = "22222222-2222-2222-2222-222222222222"
+	acct1  = "aaaa1111-0000-0000-0000-0000000000a1"
+	acct2  = "aaaa1111-0000-0000-0000-0000000000a2"
+	acctB  = "bbbb1111-0000-0000-0000-0000000000b1"
+	label1 = "1ab00000-0000-0000-0000-0000000000a1"
+	label2 = "1ab00000-0000-0000-0000-0000000000a2"
+	label3 = "1ab00000-0000-0000-0000-0000000000a3"
 )
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
@@ -42,6 +45,11 @@ func seedUser(t *testing.T, db *dbtest.DB, id string) {
 func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
 	fixture.New(t, db).Account(fixture.Account{ID: id, CurrencyID: usdID, UserID: userID, Name: "A", Icon: "x"})
+}
+
+func seedLabel(t *testing.T, db *dbtest.DB, id, userID string) {
+	t.Helper()
+	fixture.New(t, db).Label(fixture.Label{ID: id, UserID: userID})
 }
 
 func deref(s *string) string {
@@ -351,5 +359,150 @@ func TestTransactionRepo_ListExportAccountsForUser_OwnPlusShared(t *testing.T) {
 		if r.CurrencyCode != "USD" {
 			t.Errorf("currency code mismatch: %q", r.CurrencyCode)
 		}
+	}
+}
+
+// sameSet compares two string slices ignoring order: ReplaceLabels/
+// LabelsByTransactionIDs make no ordering promise (the join table has no
+// natural sort column), so tests must not depend on row order.
+func sameSet(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	counts := make(map[string]int, len(want))
+	for _, w := range want {
+		counts[w]++
+	}
+	for _, g := range got {
+		counts[g]--
+	}
+	for _, n := range counts {
+		if n != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func TestTransactionRepo_ReplaceLabels_RoundTrip(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	seedLabel(t, db, label2, userA)
+	txID := "7c000000-0000-0000-0000-000000000020"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1), vo.MustParseId(label2)}); err != nil {
+		t.Fatalf("ReplaceLabels: %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !sameSet(got[txID], []string{label1, label2}) {
+		t.Fatalf("labels = %v, want [%s %s]", got[txID], label1, label2)
+	}
+}
+
+// TestTransactionRepo_ReplaceLabels_Idempotent exercises the delete-then-insert
+// contract directly: calling ReplaceLabels twice with the SAME set must not
+// error (would fail on a naive INSERT without delete-first) and must not
+// duplicate the pair (would inflate the label count on a second call).
+func TestTransactionRepo_ReplaceLabels_Idempotent(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	txID := "7c000000-0000-0000-0000-000000000021"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	ids := []vo.Id{vo.MustParseId(label1)}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), ids); err != nil {
+		t.Fatalf("ReplaceLabels (1st): %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), ids); err != nil {
+		t.Fatalf("ReplaceLabels (2nd, re-save): %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !sameSet(got[txID], []string{label1}) {
+		t.Fatalf("labels = %v, want exactly one [%s] (no duplication)", got[txID], label1)
+	}
+}
+
+func TestTransactionRepo_ReplaceLabels_ClearsOnEmpty(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	txID := "7c000000-0000-0000-0000-000000000022"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1)}); err != nil {
+		t.Fatalf("ReplaceLabels (set): %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), nil); err != nil {
+		t.Fatalf("ReplaceLabels (clear): %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if len(got[txID]) != 0 {
+		t.Fatalf("labels after clear = %v, want none", got[txID])
+	}
+}
+
+func TestTransactionRepo_LabelsByTransactionIDs_MultipleTransactions(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	seedLabel(t, db, label2, userA)
+	seedLabel(t, db, label3, userA)
+	tx1 := "7c000000-0000-0000-0000-000000000023"
+	tx2 := "7c000000-0000-0000-0000-000000000024"
+	tx3 := "7c000000-0000-0000-0000-000000000025"
+	for _, id := range []string{tx1, tx2, tx3} {
+		if err := repo.Save(ctx, expense(id, acct1, "1.00", fixedTime)); err != nil {
+			t.Fatalf("Save %s: %v", id, err)
+		}
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx1), []vo.Id{vo.MustParseId(label1), vo.MustParseId(label2)}); err != nil {
+		t.Fatalf("ReplaceLabels tx1: %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx2), []vo.Id{vo.MustParseId(label3)}); err != nil {
+		t.Fatalf("ReplaceLabels tx2: %v", err)
+	}
+	// tx3 gets no labels at all -- must be absent from the result map, not a
+	// present-but-empty entry (the caller ranges over the map).
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(tx1), vo.MustParseId(tx2), vo.MustParseId(tx3)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !sameSet(got[tx1], []string{label1, label2}) {
+		t.Fatalf("tx1 labels = %v, want [%s %s]", got[tx1], label1, label2)
+	}
+	if !sameSet(got[tx2], []string{label3}) {
+		t.Fatalf("tx2 labels = %v, want [%s]", got[tx2], label3)
+	}
+	if _, ok := got[tx3]; ok {
+		t.Fatalf("tx3 should have no entry, got %v", got[tx3])
+	}
+}
+
+func TestTransactionRepo_LabelsByTransactionIDs_EmptyIDs(t *testing.T) {
+	repo, _ := setup(t)
+	got, err := repo.LabelsByTransactionIDs(context.Background(), nil)
+	if err != nil || got != nil {
+		t.Fatalf("empty ids should yield nil,nil (guards the IN() syntax error on PostgreSQL); got %v, %v", got, err)
 	}
 }

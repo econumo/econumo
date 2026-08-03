@@ -21,11 +21,12 @@ import (
 )
 
 type (
-	txRow         = sqlitegen.Transaction
-	upsertParams  = sqlitegen.UpsertTransactionParams
-	linkParams    = sqlitegen.LinkTransactionToRecurringParams
-	listAccParams = sqlitegen.ListTransactionsByAccountParams
-	exportAcctRow = sqlitegen.ListExportAccountsForUserRow
+	txRow             = sqlitegen.Transaction
+	upsertParams      = sqlitegen.UpsertTransactionParams
+	linkParams        = sqlitegen.LinkTransactionToRecurringParams
+	listAccParams     = sqlitegen.ListTransactionsByAccountParams
+	exportAcctRow     = sqlitegen.ListExportAccountsForUserRow
+	insertLabelParams = sqlitegen.InsertTransactionLabelParams
 )
 
 type querier interface {
@@ -35,6 +36,8 @@ type querier interface {
 	DeleteTransaction(ctx context.Context, db backend.DBTX, id string) error
 	ListTransactionsByAccount(ctx context.Context, db backend.DBTX, p listAccParams) ([]txRow, error)
 	ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error)
+	DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error
+	InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
 }
 
 // ExportAccountRow is one accessible account (own + shared) with its currency
@@ -104,6 +107,57 @@ func (r *Repo) Save(ctx context.Context, t *model.Transaction) error {
 		AmountRecipient:    t.AmountRecipient,
 		RecurringID:        idPtr(t.RecurringID),
 	})
+}
+
+// ReplaceLabels rewrites a transaction's label links. The caller runs this
+// inside the same tx as Save, so the delete-then-insert is atomic and a
+// re-save is idempotent (never duplicates a pair).
+func (r *Repo) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error {
+	db := r.db(ctx)
+	if err := r.q.DeleteTransactionLabels(ctx, db, transactionID.String()); err != nil {
+		return err
+	}
+	for _, id := range labelIDs {
+		if err := r.q.InsertTransactionLabel(ctx, db, insertLabelParams{
+			TransactionID: transactionID.String(),
+			LabelID:       id.String(),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LabelsByTransactionIDs batch-loads label ids for many transactions, keyed by
+// transaction id. hydrate is per-row and takes no ctx, so labels are attached
+// after hydration by the caller; loading per row here would be an N+1 on
+// every list endpoint. An empty ids is a no-op on SQLite but a syntax error on
+// PostgreSQL ("IN ()"), so it short-circuits before building the query.
+func (r *Repo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id.String()
+	}
+	query := "SELECT transaction_id, label_id FROM transactions_labels WHERE transaction_id IN (" +
+		placeholders(r.driver, 1, len(args)) + ")"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := make(map[string][]string, len(ids))
+	for rows.Next() {
+		var txID, labelID string
+		if err := rows.Scan(&txID, &labelID); err != nil {
+			return nil, err
+		}
+		out[txID] = append(out[txID], labelID)
+	}
+	return out, rows.Err()
 }
 
 // LinkRecurring stamps recurring_id on an existing transaction (Save never
@@ -345,6 +399,12 @@ func (sqliteQuerier) ListTransactionsByAccount(ctx context.Context, db backend.D
 func (sqliteQuerier) ListExportAccountsForUser(ctx context.Context, db backend.DBTX, userID string) ([]exportAcctRow, error) {
 	return sqlitegen.New(db).ListExportAccountsForUser(ctx, sqlitegen.ListExportAccountsForUserParams{UserID: userID, UserID_2: userID})
 }
+func (sqliteQuerier) DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error {
+	return sqlitegen.New(db).DeleteTransactionLabels(ctx, transactionID)
+}
+func (sqliteQuerier) InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
+	return sqlitegen.New(db).InsertTransactionLabel(ctx, p)
+}
 
 type pgsqlQuerier struct{}
 
@@ -382,4 +442,10 @@ func (pgsqlQuerier) ListExportAccountsForUser(ctx context.Context, db backend.DB
 		out[i] = exportAcctRow(v)
 	}
 	return out, nil
+}
+func (pgsqlQuerier) DeleteTransactionLabels(ctx context.Context, db backend.DBTX, transactionID string) error {
+	return pgsqlgen.New(db).DeleteTransactionLabels(ctx, transactionID)
+}
+func (pgsqlQuerier) InsertTransactionLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
+	return pgsqlgen.New(db).InsertTransactionLabel(ctx, pgsqlgen.InsertTransactionLabelParams(p))
 }
