@@ -28,6 +28,13 @@ it('restores storage then fetches server config in app mode', async () => {
   expect(hide).toHaveBeenCalledOnce()
 })
 
+it('resolves even when storage restore rejects, so the splash never hangs', async () => {
+  window.Capacitor = { isNativePlatform: () => true, Plugins: {} }
+  vi.mocked(restoreNativeStorage).mockRejectedValueOnce(new Error('boom'))
+  await expect(bootNativeApp()).resolves.toBeUndefined()
+  expect(fetchServerConfig).toHaveBeenCalledOnce()
+})
+
 it('maps hardware back to history-back, minimizing at the root', () => {
   let handler: (() => void) | undefined
   const minimizeApp = vi.fn(async () => {})

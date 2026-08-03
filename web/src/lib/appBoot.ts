@@ -20,7 +20,11 @@ export async function bootNativeApp(): Promise<void> {
   if (!isNativeApp()) {
     return
   }
-  await restoreNativeStorage()
+  try {
+    await restoreNativeStorage()
+  } catch {
+    // Boot must never leave the splash up - a failed restore just means a fresh login.
+  }
   installExternalLinkInterceptor()
   installBackHandler()
   void fetchServerConfig()

@@ -20,6 +20,16 @@ Release builds label the UI with the app version:
 Older servers show a non-blocking warning banner in the app. Bump both
 together when the bundled SPA starts depending on newer API behavior.
 
+## Plain-HTTP self-hosted servers
+
+Cleartext traffic is deliberately enabled on both platforms
+(`android:usesCleartextTraffic="true"` in the Android manifest,
+`NSAppTransportSecurity` / `NSAllowsArbitraryLoads` in `Info.plist`) so
+user-configured self-hosted servers on a LAN work without TLS, with zero
+configuration. For App Store submission, justify `NSAllowsArbitraryLoads` in
+App Review notes as: "the app connects to user-configured self-hosted
+servers" — standard for self-hosting clients.
+
 ## Store submission checklist
 
 - App id `com.econumo.app` on both stores.

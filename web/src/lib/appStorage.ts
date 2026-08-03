@@ -24,7 +24,8 @@ export function mirrorWrite(key: string, value: string | null): void {
   if (!p) {
     return
   }
-  void (value === null ? p.remove({ key }) : p.set({ key, value }))
+  // Best-effort mirror; localStorage stays the source of truth.
+  void (value === null ? p.remove({ key }).catch(() => {}) : p.set({ key, value }).catch(() => {}))
 }
 
 // Runs before first render (the splash screen covers it). localStorage wins

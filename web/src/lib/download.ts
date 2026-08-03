@@ -14,7 +14,8 @@ export function localDateStamp(d: Date = new Date()): string {
 
 export function downloadBlob(blob: Blob, filename: string): void {
   if (isNativeApp()) {
-    void shareNative(blob, filename)
+    // Cancelling the share sheet rejects; a lost export is retryable.
+    shareNative(blob, filename).catch(() => {})
     return
   }
   const url = URL.createObjectURL(blob)
