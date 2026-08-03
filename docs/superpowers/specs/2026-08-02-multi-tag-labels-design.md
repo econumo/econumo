@@ -125,8 +125,21 @@ New `internal/label/` package mirroring `internal/tag/`:
 - Wired in `server.BuildAPI` alongside tags; archtest auto-detects the new
   feature package.
 
-Shared-account behavior mirrors tags: a user sees own labels + labels of users
-who shared an account (via `accounts_access`, `is_accepted`).
+### Shared accounts
+
+Labels keep **exactly the same shared-account behavior as tags** — a label always
+**belongs to the account's owner**, never to whoever created it:
+- `create-label` carries the same optional `accountId` pointer as `create-tag`.
+  When present, the service resolves the shared account's **owner** and creates the
+  label under that owner (subject to the same `AccountAccess` port check tags use),
+  so a collaborator adding a label to a shared account creates it for the owner —
+  not for themselves.
+- `get-label-list` returns **own labels + labels of users who shared an account**
+  with the caller (the `accounts_access`, `is_accepted` union, identical to
+  `get-tag-list`), so shared labels resolve for rendering.
+- In the budget view, a transaction on a shared account aggregates under the
+  **owner's** labels, consistent with how the owner's budget already attributes
+  shared-account spend.
 
 ## Wire contract
 
