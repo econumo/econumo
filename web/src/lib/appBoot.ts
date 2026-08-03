@@ -1,6 +1,7 @@
 import { isNativeApp, nativePlugin } from './platform'
 import { restoreNativeStorage } from './appStorage'
 import { fetchServerConfig } from './appConfig'
+import { installExternalLinkInterceptor } from './externalLinks'
 
 interface SplashScreenPlugin {
   hide(): Promise<void>
@@ -13,6 +14,7 @@ export async function bootNativeApp(): Promise<void> {
     return
   }
   await restoreNativeStorage()
+  installExternalLinkInterceptor()
   void fetchServerConfig()
 }
 
