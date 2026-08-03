@@ -34,8 +34,10 @@ it('leaves in-app relative links alone', () => {
 })
 
 it('installs nothing on the web', () => {
+  // Spy on addEventListener to verify the click listener is NOT installed on web
+  const addEventListenerSpy = vi.spyOn(document, 'addEventListener')
   installExternalLinkInterceptor()
-  // Use a fragment URL which doesn't trigger document navigation in jsdom
-  const event = clickAnchor('#external-section')
-  expect(event.defaultPrevented).toBe(false)
+  // Verify the 'click' listener was never added (isNativeApp() guard returned early)
+  expect(addEventListenerSpy).not.toHaveBeenCalledWith('click', expect.any(Function))
+  addEventListenerSpy.mockRestore()
 })
