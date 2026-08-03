@@ -173,6 +173,8 @@ All additive; existing envelopes unchanged.
 - **Recurring create/update** gain `labelIds: []string`; recurring reads return
   them.
 - **`get-budget`** response gains a read-only labels block (see below).
+- **CSV export** appends a `labels` column; **CSV import** gains a `labels`
+  mapping key + optional `labelIds` override (see CSV section).
 
 Deletion: deleting a label cascades its `transactions_labels` /
 `recurring_transactions_labels` rows (many-to-many, `ON DELETE CASCADE`). No
@@ -220,6 +222,58 @@ and never touch envelope totals, available-to-spend, or carryover.
   transaction (into `transactions_labels`), alongside the existing single-tag
   copy. Posting stays idempotent on the client-supplied transaction id — a
   re-post does not duplicate label attachments.
+
+## CSV import / export
+
+Today the CSV format carries a single `tag` column (a tag **name**; empty when
+nil), and import matches that name case-insensitively against the owner's tags,
+**auto-creating** on miss. The budgeting tag and reporting labels must be
+**separate columns**, because they are separate concepts and labels are
+multi-valued.
+
+### Export (`internal/transaction/export.go`)
+- **Keep the existing `tag` column unchanged** — same position, same meaning (the
+  single budgeting tag name, empty when nil). Backward compatible.
+- **Append a new `labels` column at the end** of the frozen header row (after
+  `date`), so every existing column index is preserved for position-based
+  consumers (Econumo's own import matches by header *name*, so append vs insert is
+  invisible to a round-trip; append is chosen only to avoid disturbing external
+  position-based readers):
+  ```
+  transaction_id,account_name,account_currency,category,description,tag,payee,amount,date,labels
+  ```
+- The `labels` cell is the transaction's label **names joined by `|`** (pipe), in
+  label `position` order; empty string when none. Pipe is chosen because no
+  multi-value delimiter exists yet and `|` is rare in names and never the CSV field
+  separator; the cell is still CSV-quoted normally. Each label name passes through
+  the existing `sanitizeExportValue` (CR/LF collapse + formula-injection guard)
+  **before** joining. (Edge case: a label name containing a literal `|` is not
+  round-trip-safe — acceptable, and documented.)
+- Transfer recipient rows write `labels` empty, exactly as they do for `tag`.
+
+### Import (`internal/transaction/import.go`, `api/import.go`)
+- **New mapping key `labels`** (a CSV column header name or null), parallel to
+  `tag`. The mapped cell is **split on `|`**, each piece trimmed, blanks dropped,
+  deduped case-insensitively, then each resolved by name against the owner's labels
+  and **auto-created on miss** — mirroring the tag find-or-create path, but against
+  the label repo. Resolved ids attach via `transactions_labels`.
+- Blank/absent `labels` cell → no labels (mirrors blank tag → nil).
+- **New optional override `labelIds`** (comma-joined id list) parallel to the
+  single `tagId` override — applies the same labels to every imported row. Each id
+  is belongs-to checked against the account owner, same rule as the `tagId`
+  override (`OwnerID == accountOwnerID`); an id given but not found is the same
+  top-level error style as `tagId`.
+- Backend does all label resolution/creation; the frontend forwards a column name
+  or the `labelIds`, exactly as it does for tags.
+
+### Frontend (`web/src/features/transactions/importCsv.ts`, `ImportCsvDialog.tsx`)
+- Add `labels` to the import field keys and `autoDetect` (new translated label
+  `transactions.import_csv.fields.labels`); `buildImportPayload` sets
+  `mapping.labels` in `csv_column` mode.
+- In "existing" mode, add an optional **label multi-select** (owner-scoped, like
+  the existing single-tag `tagId` picker) that sends `labelIds`.
+- Export dialog is unchanged (download-only) — the new `labels` column comes from
+  the backend automatically.
 
 ## Management UX (create/edit dialog)
 
@@ -269,6 +323,8 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   the additive `icon` field.
 - `mcpparity` scenarios + goldens for the label MCP surface.
 - Budget goldens updated for the new read-only labels block.
+- CSV export/import goldens updated for the appended `labels` column and the
+  `labels` mapping key; `importCsv.test.ts` gains label-mapping + `|`-split cases.
 - `enginecompare` (sqlite vs pgsql byte-identical) for all of the above.
 - `i18ntest` parity guards; `archtest` picks up the new feature package
   automatically.
@@ -288,4 +344,7 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   frontend constant (not stored). User-defined icons are a future additive change.
 - **Create/edit dialog:** improve the existing tag dialog — name input + kind radio,
   showing the kind's icon/color live; no icon picker.
+- **CSV:** keep `tag` column as-is (budgeting tag); append a `labels` column
+  (names joined by `|`); import gains a `labels` mapping key (split on `|`,
+  name-match + auto-create like tags) and an optional `labelIds` override.
 - **Dropped:** proportional split across multiple budgeting tags.
