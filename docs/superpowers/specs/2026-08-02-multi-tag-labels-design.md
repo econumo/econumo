@@ -35,16 +35,20 @@ Two backend concepts, one user-facing word:
 | Per transaction | at most **one** (unchanged) | **many** |
 | Budget role | full: limits, envelope math, carryover | none — read-only spend overlay |
 | Shown in budget | as today | collapsible read-only block near uncategorized |
-| Icon | **hardcoded by kind** — `tag` (hashtag `#`) | **hardcoded by kind** — `label` |
+| Icon | seeded to `tag` (hashtag `#`) at create; **stored + rendered from the row** | seeded to `label` at create; **stored + rendered from the row** |
 | Color | **hardcoded by kind**, applied to the icon | **hardcoded by kind**, applied to the icon |
 
 In the UI both appear under the umbrella word **"Tags."** The words "tag" and
-"label" are internal/backend. In v1 **both icon and color encode only the *kind***
-(budget vs report), not identity — every budgeting tag shows the same hashtag icon
-in one color, every label the same `label` icon in another. The icon is
-nonetheless **persisted per row** in the DB (seeded to the kind default on create),
-so a future version can let users pick it without a schema change. Material Symbols
-provides both ligatures directly: `tag` renders as a hashtag `#`, `label` as the
+"label" are internal/backend. In v1 the icon value is **hardcoded only at
+create** (seeded to the kind default) and thereafter **stored on the row and
+rendered from the DB value** everywhere — never re-derived from kind at render
+time. So every budgeting tag currently shows the same hashtag icon and every
+label the same `label` icon, but the rendering path already reads the persisted
+value, meaning user-defined icons later need only a create/edit change, no
+rendering or schema change. Color, by contrast, is **not stored** — it is a
+frontend constant keyed on kind, applied to whichever icon the row carries.
+Material Symbols provides both ligatures directly: `tag` renders as a hashtag
+`#`, `label` as the
 label shape.
 
 ## Non-goals
@@ -198,15 +202,15 @@ and never touch envelope totals, available-to-spend, or carryover.
 ## Transaction editor UX
 
 - One **"Tags"** section. Budgeting tags and labels render as chips in a **single
-  flat list**, distinguished by the **hardcoded per-kind icon + color**: budgeting
-  tags show the hashtag icon in one color, labels the `label` icon in another. Each
-  chip shows that kind icon + the name.
+  flat list**. Each chip renders the **icon stored on its row** (currently the kind
+  default — hashtag for tags, `label` for labels) plus the **per-kind color**
+  constant, and the name.
 - Selection behaves per kind:
   - **Budgeting tags are radio-like** — selecting one deselects the previous
     (preserves the single `tag_id`).
   - **Labels toggle freely** — any number.
-- Inline create picks the **kind** (radio); the icon/color follow from the kind
-  automatically — no icon picker.
+- Inline create picks the **kind** (radio) — no icon picker; the server seeds the
+  icon from the kind, and the chip then renders that stored value.
 - Recurring editor mirrors this (single tag + many labels).
 
 ## Recurring transactions (v1)
@@ -222,20 +226,23 @@ and never touch envelope totals, available-to-spend, or carryover.
 Improve the **existing tag create/edit dialog** (rather than build a new one):
 - Fields are just a **name input** and a **kind radio** (budgeting tag / label) —
   no icon picker.
-- The dialog **shows the icon** for the selected kind (hashtag for a budgeting tag,
-  `label` for a label), in the kind's hardcoded color, and **swaps it live** as the
-  radio changes — so the user sees what they're creating.
+- The dialog **shows the icon** the row will get — for a not-yet-saved row it
+  previews the selected kind's default (hashtag / `label`) in the kind's color, and
+  **swaps it live** as the radio changes. Saved rows in the list render the icon
+  **from the stored DB value**, not re-derived from kind.
 - Delete/archive/reorder mirror today's tag management.
-- The settings surface lists **both kinds under "Tags,"** each chip showing its
-  per-kind icon + color. (Backend: two separate CRUD surfaces; the settings screen
-  composes both lists.)
+- The settings surface lists **both kinds under "Tags,"** each chip rendering its
+  stored icon + per-kind color. (Backend: two separate CRUD surfaces; the settings
+  screen composes both lists.)
 
 ## Icons & color (both hardcoded per kind)
 
-- **No icon picker in v1.** The icon is fixed by kind — `tag` (hashtag `#`) for
-  budgeting tags, `label` for labels — but is **stored per row** in `tags.icon` /
-  `labels.icon` (seeded to the kind default on create), so user-defined icons are a
-  future additive change, not a schema migration.
+- **No icon picker in v1**, but the icon is **not a render-time constant** — it is
+  **hardcoded only at create** (the server seeds `tags.icon`/`labels.icon` to the
+  kind default: `tag` for budgeting tags, `label` for labels) and then **stored per
+  row and rendered from the stored value** on every surface. Because the whole
+  render path already reads the DB value, user-defined icons later are a pure
+  create/edit change — no rendering or schema work.
 - Budget view renders the stored icon (currently always the kind default) instead
   of the hardcoded `"tag"`; falls back to `"tag"` when null.
 - Color is a **frontend constant per kind** (mirrors the `avatars.ts` /
@@ -275,9 +282,10 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
 - **Model:** two backend entities (tags + labels), unified under "Tags" in UI.
 - **Recurring labels:** included in v1.
 - **Picker:** one flat list, kind distinguished by hardcoded per-kind icon + color.
-- **Visuals:** icon AND color hardcoded per kind in v1 (hashtag `tag` for budgeting
-  tags, `label` for labels; no icon picker). The `icon` column is persisted per row
-  so user-defined icons are a future additive change.
+- **Visuals:** no icon picker in v1. Icon is hardcoded **only at create** (seeded to
+  the kind default — hashtag `tag` for budgeting tags, `label` for labels) then
+  **stored per row and rendered from the DB value** everywhere; color is a per-kind
+  frontend constant (not stored). User-defined icons are a future additive change.
 - **Create/edit dialog:** improve the existing tag dialog — name input + kind radio,
   showing the kind's icon/color live; no icon picker.
 - **Dropped:** proportional split across multiple budgeting tags.
