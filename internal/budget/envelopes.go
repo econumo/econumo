@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -40,27 +41,24 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
-	// The new envelope element is created at position 0 (the front of its group);
-	// restoreElementsOrder then renumbers the rest. The response reports position 0
-	// because it is built from the just-created element, before restore mutates the
-	// reloaded rows.
-	const newPosition = 0
+	// A new envelope element lands at the FRONT of its group. With sort keys that
+	// is a single write -- a key below the group's current first -- so no sibling
+	// is touched.
+	newKey, kerr := sortkey.Prepend(groupElements(b.elements, folderID, vo.Id{}), func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsDown)
+	if kerr != nil {
+		return nil, kerr
+	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if eerr := s.requireFreeEnvelopeID(txCtx, envelopeID); eerr != nil {
 			return eerr
 		}
-		// Shift existing same-group (same folder) elements up by one to free
-		// position 0, so the new element is the unique position-0 row in its group
-		// before restoreElementsOrder runs.
-		if serr := s.shiftElements(txCtx, b, folderID, newPosition, now); serr != nil {
-			return serr
-		}
 		env := model.NewBudgetEnvelope(envelopeID, budgetID, req.Name, req.Icon, now)
 		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, int16(newPosition), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, 0, now)
+		el.SetSortKey(newKey)
 		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 			return serr
 		}
@@ -73,7 +71,7 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 				return serr
 			}
 		}
-		return s.restoreElementsOrder(txCtx, budgetID, now)
+		return s.syncElements(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
@@ -82,7 +80,8 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if err != nil {
 		return nil, err
 	}
-	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, newPosition, false, children)}, nil
+	// The new envelope lands at the front of its group, so its dense index is 0.
+	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, 0, false, children)}, nil
 }
 
 // UpdateEnvelope updates an envelope's name/icon/archived + categories (canUpdate).
@@ -158,7 +157,7 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 				}
 			}
 		}
-		return s.restoreElementsOrder(txCtx, budgetID, now)
+		return s.syncElements(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
@@ -201,7 +200,7 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 		if serr := s.envelopes.DeleteEnvelope(txCtx, envelopeID); serr != nil {
 			return serr
 		}
-		return s.restoreElementsOrder(txCtx, budgetID, now)
+		return s.syncElements(txCtx, budgetID, now)
 	})
 	if err != nil {
 		return nil, err
@@ -209,15 +208,17 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 	return &model.DeleteEnvelopeResult{}, nil
 }
 
-// nextElementPosition returns max(element position)+1 for a budget.
-func nextElementPosition(b *budgetAggregate) int {
-	max := -1
+// lastElementKey returns the greatest sort key among a budget's elements, so a
+// caller can append after it. Unset (archived / child) elements carry no key and
+// are naturally excluded by the string comparison.
+func lastElementKey(b *budgetAggregate) sortkey.Key {
+	var max sortkey.Key
 	for _, e := range b.elements {
-		if int(e.Position) > max {
-			max = int(e.Position)
+		if e.SortKey > max {
+			max = e.SortKey
 		}
 	}
-	return max + 1
+	return max
 }
 
 // newEnvelopeElementResult builds the model.ParentElementResult for a freshly

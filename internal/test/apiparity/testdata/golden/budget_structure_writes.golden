@@ -11,9 +11,9 @@
 {"success":true,"message":"","data":{"item":{"id":"be000000-0000-0000-0000-0000000000aa","type":0,"name":"Groceries","icon":"cart","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":"bf000000-0000-0000-0000-0000000000aa","position":0,"budgeted":"0","available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":null}}}
 
 == update-envelope POST /api/v1/budget/update-envelope [owner] -> 200
-{"success":true,"message":"","data":{"item":{"id":"be000000-0000-0000-0000-000000000001","type":0,"name":"Envelope 2","icon":"cart","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":1,"budgeted":"0","available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":null}}}
+{"success":true,"message":"","data":{"item":{"id":"be000000-0000-0000-0000-000000000001","type":0,"name":"Envelope 2","icon":"cart","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","available":"0","spent":"0","budgetSpent":"0","children":[],"ownerUserId":null}}}
 
-== move-element-list POST /api/v1/budget/move-element-list [owner] -> 200
+== move-element POST /api/v1/budget/move-element [owner] -> 200
 {"success":true,"message":"","data":{}}
 
 == change-element-currency POST /api/v1/budget/change-element-currency [owner] -> 200

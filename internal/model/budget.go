@@ -12,9 +12,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// PositionUnset is BudgetElement::POSITION_UNSET.
-const PositionUnset = 0
-
 // Budget is the aggregate root. Its excluded accounts, access grants, folders,
 // envelopes, and elements are loaded/persisted alongside it by the repository,
 // but modeled here as the root plus separate entities the repo manages. Fields
@@ -190,9 +187,9 @@ func NewBudgetElement(id, budgetID, externalID vo.Id, typ ElementType, currencyI
 	return &BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: typ, CurrencyID: currencyID, FolderID: folderID, Position: position, CreatedAt: now, UpdatedAt: now}
 }
 
-// IsPositionUnset reports whether the element still has its unset (zero)
-// position — a comparison against PositionUnset, not a bare field return.
-func (e *BudgetElement) IsPositionUnset() bool { return e.Position == PositionUnset }
+// IsSortKeyUnset reports whether the element is excluded from the listing: an
+// archived entity, an envelope-child category, or a row not yet given a key.
+func (e *BudgetElement) IsSortKeyUnset() bool { return e.SortKey == "" }
 
 func (e *BudgetElement) UpdatePosition(position int16, now time.Time) {
 	if e.Position != position {

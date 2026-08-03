@@ -438,8 +438,8 @@ func TestMoveElementTool(t *testing.T) {
 	moveRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "move_element",
 		Arguments: map[string]any{
-			"budget_id": budgetID,
-			"items":     []any{map[string]any{"element_id": categoryID, "folder_id": folderID, "position": 0}},
+			"budget_id":  budgetID,
+			"element_id": categoryID, "folder_id": folderID,
 		},
 	})
 	if err != nil {
@@ -511,8 +511,8 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 	moveRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "move_element",
 		Arguments: map[string]any{
-			"budget_id": budgetID,
-			"items":     []any{map[string]any{"element_id": absentID, "folder_id": folderID, "position": 0}},
+			"budget_id":  budgetID,
+			"element_id": absentID, "folder_id": folderID,
 		},
 	})
 	if err != nil {

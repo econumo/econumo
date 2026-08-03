@@ -245,16 +245,16 @@ func TestBudgetAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestBudgetElement_PositionUnset(t *testing.T) {
+func TestBudgetElement_SortKeyUnset(t *testing.T) {
 	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
 		mustID(t, "22222222-2222-2222-2222-222222222222"),
-		mustID(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, PositionUnset, t0)
-	if !e.IsPositionUnset() {
-		t.Fatal("position 0 should be unset")
+		mustID(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, 0, t0)
+	if !e.IsSortKeyUnset() {
+		t.Fatal("a freshly built element carries no key, so it must read as unset")
 	}
-	e.UpdatePosition(5, t1)
-	if e.IsPositionUnset() || e.Position != 5 || !e.UpdatedAt.Equal(t1) {
-		t.Fatalf("after UpdatePosition: pos=%d unset=%v", e.Position, e.IsPositionUnset())
+	e.UpdateSortKey("c005", t1)
+	if e.IsSortKeyUnset() || e.SortKey != "c005" || !e.UpdatedAt.Equal(t1) {
+		t.Fatalf("after UpdateSortKey: key=%q unset=%v", e.SortKey, e.IsSortKeyUnset())
 	}
 }
 

@@ -1089,25 +1089,18 @@ definitions:
           $ref: '#/definitions/model.CategoryResult'
         type: array
     type: object
-  model.MoveElementListItem:
+  model.MoveElementRequest:
     properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
       folderId:
         type: string
       id:
         type: string
-      position:
-        type: integer
     type: object
-  model.MoveElementListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/model.MoveElementListItem'
-        type: array
-    type: object
-  model.MoveElementListResult:
+  model.MoveElementResult:
     type: object
   model.MovePayeeRequest:
     properties:
@@ -3176,17 +3169,17 @@ paths:
       summary: Include an account in a budget
       tags:
       - Budget
-  /api/v1/budget/move-element-list:
+  /api/v1/budget/move-element:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Move elements
+      - description: Move element
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.MoveElementListRequest'
+          $ref: '#/definitions/model.MoveElementRequest'
       produces:
       - application/json
       responses:
@@ -3197,7 +3190,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MoveElementListResult'
+                  $ref: '#/definitions/model.MoveElementResult'
               type: object
         "400":
           description: Bad Request
@@ -3211,13 +3204,17 @@ paths:
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move/reorder budget elements
+      summary: Move a budget element
       tags:
       - Budget
   /api/v1/budget/move-folder:

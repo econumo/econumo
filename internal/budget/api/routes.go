@@ -38,6 +38,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/include-account", auth(h.IncludeAccount))
 		mux.Handle("POST /api/v1/budget/change-element-currency", auth(h.ChangeElementCurrency))
 		mux.Handle("POST /api/v1/budget/set-limit", auth(h.SetLimit))
-		mux.Handle("POST /api/v1/budget/move-element-list", auth(h.MoveElementList))
+		mux.Handle("POST /api/v1/budget/move-element", auth(h.MoveElement))
 	}
 }

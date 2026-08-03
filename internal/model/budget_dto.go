@@ -430,38 +430,37 @@ func (r SetLimitRequest) Validate() error {
 // SetLimitResult is empty.
 type SetLimitResult struct{}
 
-// MoveElementListItem is one element move/reorder instruction. The wire shape is
-// {id, position, folderId?} — the element is identified by its EXTERNAL id alone
-// (no type), matched against the budget element whose external id equals it
-// (first-seen wins).
-type MoveElementListItem struct {
+// MoveElementRequest is the move-element request body. The element is
+// identified by its EXTERNAL id (no type discriminator, first match wins).
+// AfterId is the element it should land immediately after within FolderId; null
+// means "move to the front". FolderId null puts it in the no-folder group.
+type MoveElementRequest struct {
+	BudgetId string  `json:"budgetId"`
 	Id       string  `json:"id"`
 	FolderId *string `json:"folderId"`
-	Position int     `json:"position"`
+	AfterId  *string `json:"afterId"`
 }
 
-// MoveElementListRequest moves/reorders elements.
-type MoveElementListRequest struct {
-	BudgetId string                `json:"budgetId"`
-	Items    []MoveElementListItem `json:"items"`
-}
-
-func (r MoveElementListRequest) Validate() error {
-	if err := ValidateBlank(map[string]string{"budgetId": r.BudgetId}); err != nil {
+func (r MoveElementRequest) Validate() error {
+	if _, err := vo.ParseId(r.BudgetId); err != nil {
+		return ValidateBlank(map[string]string{"budgetId": ""})
+	}
+	if _, err := vo.ParseId(r.Id); err != nil {
 		return err
 	}
-	var fields []errs.FieldError
-	for _, it := range r.Items {
-		fields = append(fields, validatePositionField("position", it.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	for _, opt := range []*string{r.FolderId, r.AfterId} {
+		if opt == nil || *opt == "" {
+			continue
+		}
+		if _, err := vo.ParseId(*opt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// MoveElementListResult is empty.
-type MoveElementListResult struct{}
+// MoveElementResult is the move-element response: {}.
+type MoveElementResult struct{}
 
 // BudgetTransactionListRequest is the budget transaction-list query.
 type BudgetTransactionListRequest struct {
@@ -504,21 +503,6 @@ type BudgetTransactionResult struct {
 // GetBudgetTransactionListResult is {items: [...]}.
 type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
-}
-
-// Positions are persisted into an int16 column; a value outside this range would
-// wrap silently and corrupt ordering, so it is rejected at the edge.
-const (
-	positionMin = -32768
-	positionMax = 32767
-)
-
-// validatePositionField reports a single out-of-int16-range position.
-func validatePositionField(key string, pos int) []errs.FieldError {
-	if pos < positionMin || pos > positionMax {
-		return []errs.FieldError{{Key: key, Message: "This value is out of range.", Code: errs.CodeOutOfRange}}
-	}
-	return nil
 }
 
 // ValidateBlank returns a ValidationError listing every blank field with the

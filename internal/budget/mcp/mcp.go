@@ -85,19 +85,15 @@ type accountIncludedResult struct {
 	Included  bool   `json:"included"`
 }
 
-type moveElementItemInput struct {
-	ElementID string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
-	FolderID  string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
-	Position  int    `json:"position" jsonschema:"0-based position within the target folder"`
-}
-
 type moveElementInput struct {
-	BudgetID string                 `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	Items    []moveElementItemInput `json:"items" jsonschema:"the elements to move; each names an element_id and its target folder_id + position"`
+	BudgetID       string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	ElementID      string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
+	FolderID       string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
+	AfterElementID string `json:"after_element_id,omitempty" jsonschema:"place the element directly after this one within the target folder; omit to place it first"`
 }
 
-// moveElementResult reports no move count: MoveElementList silently skips any
-// item whose element_id isn't found in the budget, so a count would overstate
+// moveElementResult echoes the element that was asked for: MoveElement silently
+// skips an element_id that isn't in the budget, so reporting a count would overstate
 // what actually happened. Verify the outcome with get_budget.
 type moveElementResult struct {
 	BudgetID   string   `json:"budget_id"`
@@ -324,32 +320,22 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move budget elements (envelopes, tags, standalone categories) into folders or reorder them. Use get_budget for element_id and folder_id; omit folder_id to move an element to the default ungrouped area."},
+			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, moveElementResult{}, err
 				}
-				items := make([]model.MoveElementListItem, 0, len(in.Items))
-				for _, it := range in.Items {
-					items = append(items, model.MoveElementListItem{
-						Id:       it.ElementID,
-						FolderId: strPtr(it.FolderID),
-						Position: it.Position,
-					})
-				}
-				if _, err := svc.MoveElementList(ctx, userID, model.MoveElementListRequest{
+				if _, err := svc.MoveElement(ctx, userID, model.MoveElementRequest{
 					BudgetId: in.BudgetID,
-					Items:    items,
+					Id:       in.ElementID,
+					FolderId: strPtr(in.FolderID),
+					AfterId:  strPtr(in.AfterElementID),
 				}); err != nil {
 					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
 				}
-				elementIDs := make([]string, 0, len(in.Items))
-				for _, it := range in.Items {
-					elementIDs = append(elementIDs, it.ElementID)
-				}
-				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: elementIDs}, nil
+				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: []string{in.ElementID}}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_budget_account_included",

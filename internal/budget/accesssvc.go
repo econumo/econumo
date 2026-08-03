@@ -94,11 +94,11 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		for _, el := range b.elements {
 			existing[el.ExternalID] = true
 		}
-		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, nextElementPosition(b), now, existing)
+		after, serr := s.seedCategoryElements(txCtx, userID, budgetID, lastElementKey(b), now, existing)
 		if serr != nil {
 			return serr
 		}
-		return s.seedTagElements(txCtx, userID, budgetID, pos, now, existing)
+		return s.seedTagElements(txCtx, userID, budgetID, after, now, existing)
 	})
 	if err != nil {
 		return nil, err

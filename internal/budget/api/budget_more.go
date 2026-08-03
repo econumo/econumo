@@ -282,20 +282,21 @@ func (h *Handlers) SetLimit(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.SetLimit)
 }
 
-// MoveElementList handles POST /api/v1/budget/move-element-list.
+// MoveElement handles POST /api/v1/budget/move-element.
 //
-// @Summary Move/reorder budget elements
+// @Summary Move a budget element
 // @Tags Budget
 // @Accept json
 // @Produce json
-// @Param request body model.MoveElementListRequest true "Move elements"
-// @Success 200 {object} apidoc.JsonResponseOk{data=model.MoveElementListResult}
+// @Param request body model.MoveElementRequest true "Move element"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.MoveElementResult}
 // @Failure 400 {object} apidoc.JsonResponseError
 // @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 403 {object} apidoc.JsonResponseError
 // @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
-// @Router /api/v1/budget/move-element-list [post]
-func (h *Handlers) MoveElementList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.MoveElementList)
+// @Router /api/v1/budget/move-element [post]
+func (h *Handlers) MoveElement(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveElement)
 }

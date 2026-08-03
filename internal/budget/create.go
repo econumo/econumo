@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/reqctx"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -64,11 +65,11 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 				return serr
 			}
 		}
-		pos, serr := s.seedCategoryElements(txCtx, userID, budgetID, 0, now, nil)
+		after, serr := s.seedCategoryElements(txCtx, userID, budgetID, "", now, nil)
 		if serr != nil {
 			return serr
 		}
-		if serr := s.seedTagElements(txCtx, userID, budgetID, pos, now, nil); serr != nil {
+		if serr := s.seedTagElements(txCtx, userID, budgetID, after, now, nil); serr != nil {
 			return serr
 		}
 		return s.users.SetActiveBudget(txCtx, userID, budgetID)
@@ -90,48 +91,57 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 }
 
 // seedCategoryElements creates a budget element for each non-income category of
-// the user; archived categories get the unset position, others get an
-// incrementing position. Ids in skip already have an element in the budget
-// (accept after an earlier membership) and are left untouched. Returns the
-// next free position.
-func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time, skip map[vo.Id]bool) (int, error) {
+// the user; archived categories get the unset key, others get an increasing one.
+// Ids in skip already have an element in the budget (accept after an earlier
+// membership) and are left untouched. Returns the key the next element follows.
+func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, after sortkey.Key, now time.Time, skip map[vo.Id]bool) (sortkey.Key, error) {
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{userID})
 	if err != nil {
-		return startPos, err
+		return after, err
 	}
-	pos := startPos
 	for _, c := range cats {
 		if c.IsIncome {
 			continue
 		}
 		extID, perr := vo.ParseId(c.ID)
 		if perr != nil {
-			return pos, perr
+			return after, perr
 		}
 		if skip[extID] {
 			continue
 		}
-		position := model.PositionUnset
+		key := sortkey.Key("")
 		if !c.IsArchived {
-			position = pos
-			pos++
+			next, kerr := nextSeedKey(after)
+			if kerr != nil {
+				return after, kerr
+			}
+			key, after = next, next
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, int16(position), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, 0, now)
+		el.SetSortKey(key)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
-			return pos, serr
+			return after, serr
 		}
 	}
-	return pos, nil
+	return after, nil
+}
+
+// nextSeedKey appends after the given key, seeding the group when it is empty.
+func nextSeedKey(after sortkey.Key) (sortkey.Key, error) {
+	if after == "" {
+		return sortkey.Seed(sortkey.GrowsDown), nil
+	}
+	return sortkey.Between(after, "")
 }
 
 // seedTagElements creates a budget element for each tag of the user (archived ->
-// unset position). Ids in skip are left untouched, as in seedCategoryElements.
-func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, startPos int, now time.Time, skip map[vo.Id]bool) error {
+// unset key). Ids in skip are left untouched, as in seedCategoryElements.
+func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, after sortkey.Key, now time.Time, skip map[vo.Id]bool) error {
 	tags, err := s.metadata.TagsByOwners(ctx, []vo.Id{userID})
 	if err != nil {
 		return err
 	}
-	pos := startPos
 	for _, t := range tags {
 		extID, perr := vo.ParseId(t.ID)
 		if perr != nil {
@@ -140,12 +150,16 @@ func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, s
 		if skip[extID] {
 			continue
 		}
-		position := model.PositionUnset
+		key := sortkey.Key("")
 		if !t.IsArchived {
-			position = pos
-			pos++
+			next, kerr := nextSeedKey(after)
+			if kerr != nil {
+				return kerr
+			}
+			key, after = next, next
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, int16(position), now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, 0, now)
+		el.SetSortKey(key)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return serr
 		}

@@ -21,7 +21,7 @@ func init() {
 				Body: map[string]any{"budgetId": Budget, "id": BudgetFolder1, "afterId": newFolder}},
 			// Element identification (verified against internal/budget/move.go and
 			// accounts.go's ChangeElementCurrency before writing this scenario):
-			// move-element-list and change-element-currency both key elements by their
+			// move-element and change-element-currency both key elements by their
 			// EXTERNAL id (category/tag/envelope id), not the budgets_elements row id —
 			// so CatFood works directly for both calls below.
 			{Label: "create-envelope", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
@@ -30,8 +30,8 @@ func init() {
 			{Label: "update-envelope", Method: "POST", Path: "/api/v1/budget/update-envelope", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": Envelope1, "name": "Envelope 2", "icon": "cart",
 					"currencyId": USD, "isArchived": 0, "categories": []string{CatSalary}}},
-			{Label: "move-element-list", Method: "POST", Path: "/api/v1/budget/move-element-list", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "items": []map[string]any{{"id": CatFood, "folderId": BudgetFolder1, "position": 0}}}},
+			{Label: "move-element", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": CatFood, "folderId": BudgetFolder1, "afterId": nil}},
 			{Label: "change-element-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": CatFood, "currencyId": USD}},
 			{Label: "delete-envelope", Method: "POST", Path: "/api/v1/budget/delete-envelope", Auth: "owner",

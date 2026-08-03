@@ -2250,7 +2250,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/budget/move-element-list": {
+        "/api/v1/budget/move-element": {
             "post": {
                 "security": [
                     {
@@ -2266,15 +2266,15 @@ const docTemplate = `{
                 "tags": [
                     "Budget"
                 ],
-                "summary": "Move/reorder budget elements",
+                "summary": "Move a budget element",
                 "parameters": [
                     {
-                        "description": "Move elements",
+                        "description": "Move element",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.MoveElementListRequest"
+                            "$ref": "#/definitions/model.MoveElementRequest"
                         }
                     }
                 ],
@@ -2290,7 +2290,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MoveElementListResult"
+                                            "$ref": "#/definitions/model.MoveElementResult"
                                         }
                                     }
                                 }
@@ -2311,6 +2311,12 @@ const docTemplate = `{
                     },
                     "402": {
                         "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
@@ -9635,35 +9641,24 @@ const docTemplate = `{
                 }
             }
         },
-        "model.MoveElementListItem": {
+        "model.MoveElementRequest": {
             "type": "object",
             "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
                 "folderId": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
-                },
-                "position": {
-                    "type": "integer"
                 }
             }
         },
-        "model.MoveElementListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.MoveElementListItem"
-                    }
-                }
-            }
-        },
-        "model.MoveElementListResult": {
+        "model.MoveElementResult": {
             "type": "object"
         },
         "model.MovePayeeRequest": {
