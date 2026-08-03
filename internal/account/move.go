@@ -120,6 +120,40 @@ func (s *Service) reorderAccount(ctx context.Context, userID, accountID vo.Id, a
 		}
 		return items[i].ID < items[j].ID
 	})
+
+	// Legacy data can hold accounts with NO accounts_options row (the old read
+	// path tolerated it as "position 0", so the migration had nothing to
+	// backfill). Their empty keys all compare equal and sort first, so no real
+	// key can land BETWEEN two of them -- anchoring on one would drop the moved
+	// account after every keyless sibling. Give them keys in their current
+	// order first; Resequence rewrites exactly the rows whose key breaks the
+	// sequence, which here is exactly the keyless ones.
+	if len(items) > 0 && items[0].Key == "" {
+		order := make([]string, 0, len(items))
+		for _, it := range items {
+			order = append(order, it.ID)
+		}
+		changed, rerr := sortkey.Resequence(items, order, func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsUp)
+		if rerr != nil {
+			return rerr
+		}
+		now := s.clock.Now()
+		for i := range items {
+			k, ok := changed[items[i].ID]
+			if !ok {
+				continue
+			}
+			id, perr := vo.ParseId(items[i].ID)
+			if perr != nil {
+				return perr
+			}
+			if serr := s.positions.SaveSortKey(ctx, id, userID, k, now); serr != nil {
+				return serr
+			}
+			items[i].Key = k
+		}
+	}
+
 	// The moved item is discarded: an account's key lives in accounts_options,
 	// keyed by id, so there is no entity here to apply it to.
 	_, key, ok, err := sortkey.MoveWithin(items, accountID.String(), afterID, func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsUp)

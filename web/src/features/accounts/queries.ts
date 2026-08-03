@@ -132,8 +132,16 @@ export function useMoveAccount() {
     onMutate: async ({ id, afterId, folderId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.accounts })
       const previous = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)
+      // The RAW cache holds get-account-list's response, which is REVERSED
+      // (useAccounts sorts a derived view, never the cache). applyMove assumes
+      // position order and re-stamps positions by array index, so applied to
+      // the reversed array it would flip the whole list until the echo lands.
       queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) =>
-        applyMove(prev ?? [], id, afterId).map((a) => (a.id === id ? { ...a, folderId } : a)),
+        applyMove(
+          [...(prev ?? [])].sort((a, b) => a.position - b.position),
+          id,
+          afterId,
+        ).map((a) => (a.id === id ? { ...a, folderId } : a)),
       )
       return { previous }
     },

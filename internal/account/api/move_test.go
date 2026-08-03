@@ -3,6 +3,8 @@ package api_test
 import (
 	"net/http"
 	"testing"
+
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 type itemsEnvelope struct {
@@ -183,4 +185,30 @@ func TestMoveAccount_UnknownAccountIsIgnored(t *testing.T) {
 	if status != http.StatusOK {
 		t.Fatalf("status = %d, want 200 (an account the user cannot see is ignored); body: %s", status, env.raw)
 	}
+}
+
+// TestMoveAccount_AnchorOnKeylessAccount covers legacy data: an (account, user)
+// pair with no accounts_options row carries no sort key. Empty keys all compare
+// equal and sort first, so without normalization no real key can land BETWEEN
+// two keyless accounts -- anchoring on the first would drop the moved account
+// after every keyless sibling instead of directly after its anchor.
+func TestMoveAccount_AnchorOnKeylessAccount(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	// Seed three accounts directly, bypassing create-account, so NONE has an
+	// accounts_options row -- the state migrated legacy data can be in.
+	idA := "aaaa1111-0000-7000-8000-00000000000a"
+	idB := "aaaa1111-0000-7000-8000-00000000000b"
+	idC := "aaaa1111-0000-7000-8000-00000000000c"
+	for _, a := range []struct{ id, name string }{{idA, "Alpha"}, {idB, "Bravo"}, {idC, "Charlie"}} {
+		h.f.Account(fixture.Account{ID: a.id, UserID: seedUserID, CurrencyID: usdID, Name: a.name, Type: 2, Icon: "wallet"})
+	}
+
+	// Keyless accounts order by id, so the list reads A, B, C. Drop C after A.
+	status, env := h.do(t, http.MethodPost, "/api/v1/account/move-account", tok,
+		map[string]any{"id": idC, "afterId": idA, "folderId": nil})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, body: %s", status, env.raw)
+	}
+	assertMoveOrder(t, moveIDs(t, env), []string{idA, idC, idB})
 }
