@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
 
 # Default target
 .DEFAULT_GOAL := help
@@ -18,6 +18,12 @@ help:
 	@echo "  make web-test         - Run web tests"
 	@echo "  make web-lint         - Run web linter"
 	@echo "  make web-bundle       - Bundle web for production"
+	@echo ""
+	@echo "Mobile (mobile/):"
+	@echo "  make mobile-install   - Install mobile dependencies"
+	@echo "  make mobile-sync      - Build web/ and sync into the native iOS/Android projects"
+	@echo "  make mobile-ios       - Sync + open the iOS project in Xcode"
+	@echo "  make mobile-android   - Sync + open the Android project in Android Studio"
 	@echo ""
 	@echo "Releases:"
 	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
@@ -50,6 +56,21 @@ web-lint:
 web-bundle:
 	@echo "Bundling web for production..."
 	cd web && pnpm build
+
+# --- Mobile (Capacitor, mobile/) ---
+
+mobile-install:
+	cd mobile && pnpm install
+
+mobile-sync:
+	cd web && pnpm build
+	cd mobile && pnpm exec cap sync
+
+mobile-ios: mobile-sync
+	cd mobile && pnpm exec cap open ios
+
+mobile-android: mobile-sync
+	cd mobile && pnpm exec cap open android
 
 # --- Backend (Go) ---
 
