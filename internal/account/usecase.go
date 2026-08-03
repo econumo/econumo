@@ -115,9 +115,10 @@ func wallClockIn(now time.Time, loc *time.Location) time.Time {
 
 // buildAccountResult assembles the full AccountResult for one account as seen by
 // userID: owner, currency (with Intl-resolved name), folderId (the first folder
-// containing the account among the user's folders), per-user position, the
-// supplied balance, and an empty sharedAccess (until the connection module
-// lands). memberships maps folderID -> account ids (pass nil to load lazily).
+// containing the account among the user's folders), the supplied balance, and an
+// empty sharedAccess (until the connection module lands). memberships maps
+// folderID -> account ids (pass nil to load lazily). Position is left zero and
+// stamped by buildAccountList, which is where the ordering is known.
 func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *model.Account, balance string, foldersSorted []*model.Folder, memberships map[string][]string, cache *accountEmbedCache) (model.AccountResult, error) {
 	ownerRes, err := s.resolveOwner(ctx, cache, acct.UserID.String())
 	if err != nil {
@@ -144,12 +145,6 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *mo
 		}
 	}
 
-	// position from accounts_options (0 if no row).
-	pos, _, err := s.positions.GetPosition(ctx, acct.ID, userID)
-	if err != nil {
-		return model.AccountResult{}, err
-	}
-
 	shared, err := s.sharedAccessFor(ctx, acct.ID, cache)
 	if err != nil {
 		return model.AccountResult{}, err
@@ -160,7 +155,6 @@ func (s *Service) buildAccountResult(ctx context.Context, userID vo.Id, acct *mo
 		Owner:        ownerRes,
 		FolderId:     folderID,
 		Name:         acct.Name,
-		Position:     int(pos),
 		Currency:     curRes,
 		Balance:      vo.NewDecimal(balance).String(),
 		Type:         int(acct.Type.Int16()),
@@ -263,6 +257,20 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 		return nil, err
 	}
 
+	// Accounts carry no order of their own: it is per-user and lives in
+	// accounts_options, so the list is sorted here rather than by the query.
+	keys, err := s.positions.SortKeysByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(accts, func(i, j int) bool {
+		ki, kj := keys[accts[i].ID.String()], keys[accts[j].ID.String()]
+		if ki != kj {
+			return ki < kj
+		}
+		return accts[i].ID.String() < accts[j].ID.String()
+	})
+
 	cache := newAccountEmbedCache()
 	items := make([]model.AccountResult, 0, len(accts))
 	for _, a := range accts {
@@ -274,6 +282,9 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 		if berr != nil {
 			return nil, berr
 		}
+		// "position" on the wire is the dense 0-based index; the sort key that
+		// produced this order never leaves the server.
+		item.Position = len(items)
 		items = append(items, item)
 	}
 	if reversed {
@@ -304,13 +315,19 @@ func (s *Service) buildAccountList(ctx context.Context, userID vo.Id, reversed b
 	return items, nil
 }
 
-// sortedFolders returns the user's folders ordered by position (ascending).
+// sortedFolders returns the user's folders ordered by sort key, with an id
+// tie-break (keys can collide in data backfilled from the legacy positions).
 func (s *Service) sortedFolders(ctx context.Context, userID vo.Id) ([]*model.Folder, error) {
 	folders, err := s.folders.ListByUser(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
+	sort.SliceStable(folders, func(i, j int) bool {
+		if folders[i].SortKey != folders[j].SortKey {
+			return folders[i].SortKey < folders[j].SortKey
+		}
+		return folders[i].ID.String() < folders[j].ID.String()
+	})
 	return folders, nil
 }
 
@@ -364,4 +381,46 @@ func toFolderResult(f *model.Folder) model.AccountFolderResult {
 		Position:  int(f.Position),
 		IsVisible: vis,
 	}
+}
+
+// accountIndex returns the dense 0-based index the account occupies in the
+// user's ordered list, which is what the wire contract calls "position".
+// Single-item write responses must derive it the same way buildAccountList does,
+// because the ordering lives in accounts_options rather than on the account.
+func (s *Service) accountIndex(ctx context.Context, userID, accountID vo.Id) (int, error) {
+	accts, err := s.accounts.ListAvailable(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	keys, err := s.positions.SortKeysByUser(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	sort.SliceStable(accts, func(i, j int) bool {
+		ki, kj := keys[accts[i].ID.String()], keys[accts[j].ID.String()]
+		if ki != kj {
+			return ki < kj
+		}
+		return accts[i].ID.String() < accts[j].ID.String()
+	})
+	for i, a := range accts {
+		if a.ID.Equal(accountID) {
+			return i, nil
+		}
+	}
+	return 0, nil
+}
+
+// folderIndex is accountIndex's counterpart for folders.
+func (s *Service) folderIndex(ctx context.Context, userID, folderID vo.Id) (int, error) {
+	folders, err := s.sortedFolders(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	for i, f := range folders {
+		if f.ID.Equal(folderID) {
+			return i, nil
+		}
+	}
+	return 0, nil
 }

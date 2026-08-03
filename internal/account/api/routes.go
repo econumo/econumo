@@ -16,7 +16,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/account/update-account", auth(h.UpdateAccount))
 		mux.Handle("POST /api/v1/account/delete-account", auth(h.DeleteAccount))
 		mux.Handle("GET /api/v1/account/get-account-list", auth(h.GetAccountList))
-		mux.Handle("POST /api/v1/account/order-account-list", auth(h.OrderAccountList))
+		mux.Handle("POST /api/v1/account/move-account", auth(h.MoveAccount))
 
 		mux.Handle("POST /api/v1/account/grant-access", auth(h.GrantAccess))
 		mux.Handle("POST /api/v1/account/accept-access", auth(h.AcceptAccess))
@@ -29,6 +29,6 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/account/show-folder", auth(h.ShowFolder))
 		mux.Handle("POST /api/v1/account/replace-folder", auth(h.ReplaceFolder))
 		mux.Handle("GET /api/v1/account/get-folder-list", auth(h.GetFolderList))
-		mux.Handle("POST /api/v1/account/order-folder-list", auth(h.OrderFolderList))
+		mux.Handle("POST /api/v1/account/move-folder", auth(h.MoveFolder))
 	}
 }

@@ -15,8 +15,8 @@ var _ = apidoc.JsonResponseError{}
 
 // CreateAccount handles POST /api/v1/account/create-account (auth).
 //
-// @Summary     Create an account
-// @Description Creates an account (idempotent on the request id), optionally seeding its balance, in the given folder.
+// @Summary     Move an account
+// @Description Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.
 // @Tags        Account
 // @Accept      json
 // @Produce     json
@@ -37,7 +37,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 // UpdateAccount handles POST /api/v1/account/update-account (auth).
 //
-// @Summary     Update an account
+// @Summary     Move an account
 // @Description Updates an account's name/icon/currency and reconciles its balance via a correction transaction. Requires ownership.
 // @Tags        Account
 // @Accept      json
@@ -56,7 +56,7 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 // DeleteAccount handles POST /api/v1/account/delete-account (auth).
 //
-// @Summary     Delete an account
+// @Summary     Move an account
 // @Description Soft-deletes an account. Requires ownership.
 // @Tags        Account
 // @Accept      json
@@ -75,7 +75,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // GetAccountList handles GET /api/v1/account/get-account-list (auth).
 //
-// @Summary     Get the account list
+// @Summary     Move an account
 // @Description Returns all the user's available accounts (each with owner, currency, folder, position, balance) in reverse order.
 // @Tags        Account
 // @Produce     json
@@ -88,21 +88,21 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.svc.GetAccountList)
 }
 
-// OrderAccountList handles POST /api/v1/account/order-account-list (auth).
+// MoveAccount handles POST /api/v1/account/move-account (auth).
 //
-// @Summary     Reorder the account list
-// @Description Repositions accounts and moves them between folders, returning the full list.
+// @Summary     Move an account
+// @Description Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     model.OrderAccountListRequest true "Order account list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderAccountListResult}
+// @Param       request body     model.MoveAccountRequest true "Move account request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MoveAccountResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
-// @Router      /api/v1/account/order-account-list [post]
-func (h *Handlers) OrderAccountList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.OrderAccountList)
+// @Router      /api/v1/account/move-account [post]
+func (h *Handlers) MoveAccount(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveAccount)
 }

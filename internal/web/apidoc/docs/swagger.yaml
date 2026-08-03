@@ -122,15 +122,6 @@ definitions:
       position:
         type: integer
     type: object
-  model.AccountPositionChange:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.AccountResult:
     properties:
       balance:
@@ -824,13 +815,6 @@ definitions:
       periodStart:
         type: string
     type: object
-  model.FolderPositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.GenerateInviteRequest:
     type: object
   model.GenerateInviteResult:
@@ -1050,6 +1034,36 @@ definitions:
       startedAt:
         type: string
     type: object
+  model.MoveAccountFolderRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveAccountFolderResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.MoveAccountRequest:
+    properties:
+      afterId:
+        type: string
+      folderId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveAccountResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountResult'
+        type: array
+    type: object
   model.MoveCategoryRequest:
     properties:
       afterId:
@@ -1119,20 +1133,6 @@ definitions:
       value:
         type: string
     type: object
-  model.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.AccountPositionChange'
-        type: array
-    type: object
-  model.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountResult'
-        type: array
-    type: object
   model.OrderBudgetFolderListRequest:
     properties:
       budgetId:
@@ -1150,20 +1150,6 @@ definitions:
         type: string
       position:
         type: integer
-    type: object
-  model.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.FolderPositionChange'
-        type: array
-    type: object
-  model.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountFolderResult'
-        type: array
     type: object
   model.ParentElementResult:
     properties:
@@ -1906,8 +1892,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates an account (idempotent on the request id), optionally seeding
-        its balance, in the given folder.
+      description: Places one account immediately after another (afterId null = first)
+        and sets its folder; returns the full list.
       parameters:
       - description: Create account request
         in: body
@@ -1945,7 +1931,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Create an account
+      summary: Move an account
       tags:
       - Account
   /api/v1/account/create-folder:
@@ -2081,7 +2067,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Delete an account
+      summary: Move an account
       tags:
       - Account
   /api/v1/account/get-account-list:
@@ -2110,7 +2096,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Get the account list
+      summary: Move an account
       tags:
       - Account
   /api/v1/account/get-folder-list:
@@ -2232,19 +2218,19 @@ paths:
       summary: Hide a folder
       tags:
       - Account
-  /api/v1/account/order-account-list:
+  /api/v1/account/move-account:
     post:
       consumes:
       - application/json
-      description: Repositions accounts and moves them between folders, returning
-        the full list.
+      description: Places one account immediately after another (afterId null = first)
+        and sets its folder; returns the full list.
       parameters:
-      - description: Order account list request
+      - description: Move account request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderAccountListRequest'
+          $ref: '#/definitions/model.MoveAccountRequest'
       produces:
       - application/json
       responses:
@@ -2255,7 +2241,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderAccountListResult'
+                  $ref: '#/definitions/model.MoveAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -2275,22 +2261,22 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the account list
+      summary: Move an account
       tags:
       - Account
-  /api/v1/account/order-folder-list:
+  /api/v1/account/move-folder:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's folders and returns the
-        full ordered list.
+      description: Places one folder immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order folder list request
+      - description: Move folder request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderFolderListRequest'
+          $ref: '#/definitions/model.MoveAccountFolderRequest'
       produces:
       - application/json
       responses:
@@ -2301,7 +2287,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderFolderListResult'
+                  $ref: '#/definitions/model.MoveAccountFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -2321,7 +2307,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the folder list
+      summary: Move a folder
       tags:
       - Account
   /api/v1/account/replace-folder:
@@ -2503,7 +2489,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Update an account
+      summary: Move an account
       tags:
       - Account
   /api/v1/account/update-folder:

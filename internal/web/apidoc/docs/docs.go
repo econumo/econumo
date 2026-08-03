@@ -97,7 +97,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Creates an account (idempotent on the request id), optionally seeding its balance, in the given folder.",
+                "description": "Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -107,7 +107,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Create an account",
+                "summary": "Move an account",
                 "parameters": [
                     {
                         "description": "Create account request",
@@ -332,7 +332,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Delete an account",
+                "summary": "Move an account",
                 "parameters": [
                     {
                         "description": "Delete account request",
@@ -404,7 +404,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Get the account list",
+                "summary": "Move an account",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -638,14 +638,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/account/order-account-list": {
+        "/api/v1/account/move-account": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Repositions accounts and moves them between folders, returning the full list.",
+                "description": "Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -655,15 +655,15 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Reorder the account list",
+                "summary": "Move an account",
                 "parameters": [
                     {
-                        "description": "Order account list request",
+                        "description": "Move account request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderAccountListRequest"
+                            "$ref": "#/definitions/model.MoveAccountRequest"
                         }
                     }
                 ],
@@ -679,7 +679,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderAccountListResult"
+                                            "$ref": "#/definitions/model.MoveAccountResult"
                                         }
                                     }
                                 }
@@ -713,14 +713,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/account/order-folder-list": {
+        "/api/v1/account/move-folder": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's folders and returns the full ordered list.",
+                "description": "Places one folder immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -730,15 +730,15 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Reorder the folder list",
+                "summary": "Move a folder",
                 "parameters": [
                     {
-                        "description": "Order folder list request",
+                        "description": "Move folder request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderFolderListRequest"
+                            "$ref": "#/definitions/model.MoveAccountFolderRequest"
                         }
                     }
                 ],
@@ -754,7 +754,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderFolderListResult"
+                                            "$ref": "#/definitions/model.MoveAccountFolderResult"
                                         }
                                     }
                                 }
@@ -1030,7 +1030,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Update an account",
+                "summary": "Move an account",
                 "parameters": [
                     {
                         "description": "Update account request",
@@ -8139,20 +8139,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AccountPositionChange": {
-            "type": "object",
-            "properties": {
-                "folderId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
         "model.AccountResult": {
             "type": "object",
             "properties": {
@@ -9220,17 +9206,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.FolderPositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
         "model.GenerateInviteRequest": {
             "type": "object"
         },
@@ -9574,6 +9549,53 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveAccountFolderRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveAccountFolderResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountFolderResult"
+                    }
+                }
+            }
+        },
+        "model.MoveAccountRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveAccountResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AccountResult"
+                    }
+                }
+            }
+        },
         "model.MoveCategoryRequest": {
             "type": "object",
             "properties": {
@@ -9682,28 +9704,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.OrderAccountListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AccountPositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AccountResult"
-                    }
-                }
-            }
-        },
         "model.OrderBudgetFolderListRequest": {
             "type": "object",
             "properties": {
@@ -9729,28 +9729,6 @@ const docTemplate = `{
                 },
                 "position": {
                     "type": "integer"
-                }
-            }
-        },
-        "model.OrderFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.FolderPositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderFolderListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AccountFolderResult"
-                    }
                 }
             }
         },

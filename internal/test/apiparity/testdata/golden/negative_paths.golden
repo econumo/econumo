@@ -4,8 +4,8 @@
 == err:move-category-bad-anchor POST /api/v1/category/move-category [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 
-== err:account-order-empty POST /api/v1/account/order-account-list [owner] -> 400
-{"success":false,"message":"Accounts list is empty","code":400,"errors":{}}
+== err:move-account-bad-folder POST /api/v1/account/move-account [owner] -> 400
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:replace-folder-blank POST /api/v1/account/replace-folder [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"id":["This value should not be blank."],"replaceId":["This value should not be blank."]}}
@@ -58,10 +58,10 @@
 == err:show-folder-bad-uuid POST /api/v1/account/show-folder [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 
-== err:order-account-bad-uuid POST /api/v1/account/order-account-list [owner] -> 400
+== err:move-account-bad-uuid POST /api/v1/account/move-account [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 
-== err:order-folder-bad-uuid POST /api/v1/account/order-folder-list [owner] -> 400
+== err:move-folder-bad-uuid POST /api/v1/account/move-folder [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:archive-category-bad-uuid POST /api/v1/category/archive-category [owner] -> 400

@@ -160,38 +160,38 @@ type GetAccountListResult struct {
 	Items []AccountResult `json:"items"`
 }
 
-// AccountPositionChange is one {id, folderId, position} entry in an order
-// request — it both repositions the account (accounts_options) and moves it
-// between folders.
-type AccountPositionChange struct {
-	Id       string `json:"id"`
-	FolderId string `json:"folderId"`
-	Position int    `json:"position"`
+// MoveAccountRequest is the move-account request body. AfterId is the id of the
+// account this one should land immediately after; null means "move to the
+// front". FolderId is the account's target folder; null removes it from every
+// folder. An AfterId outside the caller's available accounts appends to the end
+// rather than erroring, matching the silent-skip behaviour of the
+// absolute-position endpoint this replaces.
+type MoveAccountRequest struct {
+	Id       string  `json:"id"`
+	AfterId  *string `json:"afterId"`
+	FolderId *string `json:"folderId"`
 }
 
-// OrderAccountListRequest is the order-account-list body.
-type OrderAccountListRequest struct {
-	Changes []AccountPositionChange `json:"changes"`
-}
-
-// Validate enforces a non-empty changes list.
-func (r OrderAccountListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Accounts list is empty", MsgCode: errs.CodeAccountListEmpty}
+func (r MoveAccountRequest) Validate() error {
+	for _, id := range []*string{&r.Id} {
+		if _, err := vo.ParseId(*id); err != nil {
+			return err
+		}
 	}
-	var fields []errs.FieldError
-	for _, c := range r.Changes {
-		fields = append(fields, validatePositionField("position", c.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	for _, opt := range []*string{r.AfterId, r.FolderId} {
+		if opt == nil {
+			continue
+		}
+		if _, err := vo.ParseId(*opt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// OrderAccountListResult is the order-account-list response: {items: [...]} (not
-// reversed, unlike get-account-list).
-type OrderAccountListResult struct {
+// MoveAccountResult is the move-account response: {items: [...]} (not reversed,
+// unlike get-account-list).
+type MoveAccountResult struct {
 	Items []AccountResult `json:"items"`
 }
 
@@ -309,27 +309,28 @@ type GetFolderListResult struct {
 	Items []AccountFolderResult `json:"items"`
 }
 
-// FolderPositionChange is one {id, position} entry in an order-folder request.
-type FolderPositionChange struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
+// MoveAccountFolderRequest is the move-folder request body (account module).
+// AfterId is the id of the folder this one should land immediately after; null
+// means "move to the front".
+type MoveAccountFolderRequest struct {
+	Id      string  `json:"id"`
+	AfterId *string `json:"afterId"`
 }
 
-// OrderFolderListRequest is the order-folder-list body.
-type OrderFolderListRequest struct {
-	Changes []FolderPositionChange `json:"changes"`
-}
-
-// Validate enforces a non-empty changes list.
-func (r OrderFolderListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Folders list is empty", MsgCode: errs.CodeAccountFolderListEmpty}
+func (r MoveAccountFolderRequest) Validate() error {
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
+	}
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// OrderFolderListResult is the order-folder-list response: {items: [...]}.
-type OrderFolderListResult struct {
+// MoveAccountFolderResult is the move-folder response: {items: [...]}.
+type MoveAccountFolderResult struct {
 	Items []AccountFolderResult `json:"items"`
 }
 

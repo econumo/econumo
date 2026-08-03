@@ -109,51 +109,44 @@ func TestAccountRepo_ListAndCountAvailable(t *testing.T) {
 	}
 }
 
-func TestAccountRepo_Positions(t *testing.T) {
+func TestAccountRepo_SortKeys(t *testing.T) {
 	repo, _, f := newAccountRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA, "A")
 	seedAccount(t, f, acctCash, userA, "Cash")
 	seedAccount(t, f, acctBank, userA, "Bank")
 
-	// No option row yet.
-	_, ok, err := repo.GetPosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA))
+	// No option row yet, so the account is absent from the key map.
+	keys, err := repo.SortKeysByUser(ctx, vo.MustParseId(userA))
 	if err != nil {
-		t.Fatalf("GetPosition: %v", err)
+		t.Fatalf("SortKeysByUser: %v", err)
 	}
-	if ok {
-		t.Error("expected no position row")
-	}
-
-	if err := repo.SavePosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA), 3, fixedTime); err != nil {
-		t.Fatalf("SavePosition cash: %v", err)
-	}
-	if err := repo.SavePosition(ctx, vo.MustParseId(acctBank), vo.MustParseId(userA), 7, fixedTime); err != nil {
-		t.Fatalf("SavePosition bank: %v", err)
+	if len(keys) != 0 {
+		t.Errorf("want no keys before any save, got %v", keys)
 	}
 
-	pos, ok, err := repo.GetPosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA))
-	if err != nil || !ok {
-		t.Fatalf("GetPosition cash: ok=%v err=%v", ok, err)
+	if err := repo.SaveSortKey(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA), "c003", fixedTime); err != nil {
+		t.Fatalf("SaveSortKey cash: %v", err)
 	}
-	if pos != 3 {
-		t.Errorf("want position 3, got %d", pos)
+	if err := repo.SaveSortKey(ctx, vo.MustParseId(acctBank), vo.MustParseId(userA), "c007", fixedTime); err != nil {
+		t.Fatalf("SaveSortKey bank: %v", err)
 	}
-	max, err := repo.MaxPosition(ctx, vo.MustParseId(userA))
+
+	keys, err = repo.SortKeysByUser(ctx, vo.MustParseId(userA))
 	if err != nil {
-		t.Fatalf("MaxPosition: %v", err)
+		t.Fatalf("SortKeysByUser: %v", err)
 	}
-	if max != 7 {
-		t.Errorf("want max position 7, got %d", max)
+	if keys[acctCash] != "c003" || keys[acctBank] != "c007" {
+		t.Errorf("keys = %v, want cash=c003 bank=c007", keys)
 	}
 
-	// Upsert: re-save with a new position overwrites.
-	if err := repo.SavePosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA), 9, fixedTime); err != nil {
-		t.Fatalf("SavePosition re-save: %v", err)
+	// Upsert: re-saving overwrites the key in place.
+	if err := repo.SaveSortKey(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA), "c009", fixedTime); err != nil {
+		t.Fatalf("SaveSortKey re-save: %v", err)
 	}
-	pos, _, _ = repo.GetPosition(ctx, vo.MustParseId(acctCash), vo.MustParseId(userA))
-	if pos != 9 {
-		t.Errorf("want position 9 after upsert, got %d", pos)
+	keys, _ = repo.SortKeysByUser(ctx, vo.MustParseId(userA))
+	if keys[acctCash] != "c009" {
+		t.Errorf("key after upsert = %q, want c009", keys[acctCash])
 	}
 }
 
