@@ -153,6 +153,7 @@ type Currency struct {
 	FractionDigits *int   // default 2; pointer so an explicit 0 (e.g. JPY/unknown) is honored
 	UserID         string // empty = global (NULL)
 	Rate           string // fixed rate for customs (e.g. "10.00000000"); empty -> NULL
+	Deleted        bool   // seeds a soft-deleted currency row
 }
 
 func (b *Builder) Currency(c Currency) string {
@@ -168,12 +169,16 @@ func (b *Builder) Currency(c Currency) string {
 	if c.FractionDigits != nil {
 		digits = *c.FractionDigits
 	}
+	deleted := "FALSE"
+	if c.Deleted {
+		deleted = "TRUE"
+	}
 	now := b.now()
 	if c.Name == "" {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?)`,
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at, is_deleted) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, `+deleted+`)`,
 			id, c.Code, c.Symbol, digits, nullable(c.UserID), nullable(c.Rate), now)
 	} else {
-		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		b.insert(`INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at, is_deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, `+deleted+`)`,
 			id, c.Code, c.Symbol, c.Name, digits, nullable(c.UserID), nullable(c.Rate), now)
 	}
 	return id

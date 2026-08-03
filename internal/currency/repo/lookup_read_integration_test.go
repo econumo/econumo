@@ -118,6 +118,45 @@ func TestLookup_EnsureUsable(t *testing.T) {
 	}
 }
 
+func TestLookup_EnsureUsableRejectsDeletedOwnCustom(t *testing.T) {
+	db := dbtest.New(t)
+	lk := currencyrepo.New(db.Engine, db.TX)
+	f := fixture.New(t, db)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid, Deleted: true})
+
+	if err := lk.EnsureUsable(ctx, uid, cid); err == nil {
+		t.Fatal("a deleted currency must not be usable for a NEW entity")
+	}
+}
+
+// The list view feeds BOTH get-currency-list and the rate list's visibility
+// filter, so dropping deleted rows here would strip an account's currency AND
+// its exchange rate -- and clients fall back to 1:1 on a missing rate.
+func TestCurrencyReadRepo_ListViewKeepsDeletedRows(t *testing.T) {
+	db := dbtest.New(t)
+	read := currencyrepo.NewReadRepo(db.Engine, db.TX)
+	f := fixture.New(t, db)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid, Rate: "10.00000000", Deleted: true})
+
+	rows, err := read.UserCurrencyListView(ctx, uid)
+	if err != nil {
+		t.Fatalf("UserCurrencyListView: %v", err)
+	}
+	for _, r := range rows {
+		if r.ID == cid {
+			if !r.IsDeleted {
+				t.Fatal("IsDeleted did not survive the read")
+			}
+			return
+		}
+	}
+	t.Fatal("deleted currency missing from the list view: accounts holding it would render at 1:1")
+}
+
 func TestCurrencyReadRepo_UserCurrencyListView(t *testing.T) {
 	db := dbtest.New(t)
 	read := currencyrepo.NewReadRepo(db.Engine, db.TX)

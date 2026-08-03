@@ -81,8 +81,13 @@ func (f *fakeManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, sy
 	return nil
 }
 
-func (f *fakeManageRepo) DeleteCurrency(ctx context.Context, id string) error {
-	delete(f.records, id)
+func (f *fakeManageRepo) SoftDeleteCurrency(ctx context.Context, id string) error {
+	rec, ok := f.records[id]
+	if !ok {
+		return errs.NewNotFound("Currency not found")
+	}
+	rec.IsDeleted = true
+	f.records[id] = rec
 	return nil
 }
 
@@ -444,6 +449,25 @@ func TestUpdateCurrency_MissingRate(t *testing.T) {
 	assertField(t, v, "rate", "This value should not be blank.")
 }
 
+// Editing a deleted currency's rate is allowed (it re-prices history), but
+// the response must report the true isDeleted state rather than hardcoding
+// it not-deleted -- get-currency-list and update-currency must agree.
+func TestUpdateCurrency_OnDeletedCurrency_ReportsIsDeleted(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", FractionDigits: 2, UserID: strPtr(manageMeID), IsDeleted: true}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+	uid := vo.MustParseId(manageMeID)
+	req := model.UpdateCustomCurrencyRequest{Id: "own-pts", Name: "Reward Points", Symbol: "RP", FractionDigits: 0, Rate: "2.5"}
+
+	res, err := svc.UpdateCurrency(context.Background(), uid, req)
+	if err != nil {
+		t.Fatalf("UpdateCurrency: %v", err)
+	}
+	if res.Item.IsDeleted != 1 {
+		t.Errorf("IsDeleted = %d, want 1", res.Item.IsDeleted)
+	}
+}
+
 func TestUpdateCurrency_NotOwner(t *testing.T) {
 	cases := map[string]model.CurrencyRecord{
 		"global":  {ID: "global-usd", Code: "USD", Symbol: "$"},
@@ -499,8 +523,31 @@ func TestDeleteCurrency_RefusesWhenUsed(t *testing.T) {
 	if _, ok := repo.records["own-pts"]; !ok {
 		t.Error("record should NOT have been deleted")
 	}
+	if repo.records["own-pts"].IsDeleted {
+		t.Error("a refused delete must not set the flag")
+	}
 }
 
+// A global currency must never be deletable, by anyone: a regression here
+// would let one user remove a currency out from under every other user on
+// the instance.
+func TestDeleteCurrency_GlobalIsNeverDeletable(t *testing.T) {
+	repo := newFakeManageRepo()
+	repo.records["global-eur"] = model.CurrencyRecord{ID: "global-eur", Code: "EUR", Symbol: "E"}
+	svc := newManageSvc(repo, &fakeOps{}, manageNow)
+
+	_, err := svc.DeleteCurrency(context.Background(), vo.MustParseId(manageMeID), model.DeleteCurrencyRequest{Id: "global-eur"})
+	if _, ok := errs.AsAccessDenied(err); !ok {
+		t.Fatalf("err = %v, want *AccessDeniedError", err)
+	}
+	if repo.records["global-eur"].IsDeleted {
+		t.Fatal("a refused delete must not set the flag")
+	}
+}
+
+// A currency whose only references are soft-deleted accounts reaches the
+// service with usage 0 -- the census counts live references only -- so this is
+// the case the bug report describes.
 func TestDeleteCurrency_HappyPath(t *testing.T) {
 	repo := newFakeManageRepo()
 	repo.records["own-pts"] = model.CurrencyRecord{ID: "own-pts", Code: "PTS", Symbol: "PTS", UserID: strPtr(manageMeID)}
@@ -510,8 +557,12 @@ func TestDeleteCurrency_HappyPath(t *testing.T) {
 	if _, err := svc.DeleteCurrency(context.Background(), uid, model.DeleteCurrencyRequest{Id: "own-pts"}); err != nil {
 		t.Fatalf("DeleteCurrency: %v", err)
 	}
-	if _, ok := repo.records["own-pts"]; ok {
-		t.Error("record should have been deleted")
+	rec, ok := repo.records["own-pts"]
+	if !ok {
+		t.Fatal("the record must survive a delete (currencies are never hard-deleted)")
+	}
+	if !rec.IsDeleted {
+		t.Error("record should have IsDeleted = true")
 	}
 }
 
@@ -524,6 +575,9 @@ func TestDeleteCurrency_NotOwner(t *testing.T) {
 	_, err := svc.DeleteCurrency(context.Background(), uid, model.DeleteCurrencyRequest{Id: "foreign-pts"})
 	if _, ok := errs.AsAccessDenied(err); !ok {
 		t.Fatalf("err = %v, want *AccessDeniedError", err)
+	}
+	if repo.records["foreign-pts"].IsDeleted {
+		t.Error("another user's currency must never be deletable")
 	}
 }
 

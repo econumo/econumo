@@ -66,6 +66,9 @@ type CurrencyRecord struct {
 	// always nil for globals. NULL customs predate the mandatory-rate rule.
 	Rate      *string
 	CreatedAt time.Time
+	// IsDeleted marks a soft-deleted custom currency: it stays resolvable for
+	// the entities that still reference it, but leaves every picker and list.
+	IsDeleted bool
 }
 
 // BaseCurrency is the instance base currency, resolved at boot: every stored

@@ -62,7 +62,7 @@ func (s *ManageService) DeleteCurrency(ctx context.Context, userID vo.Id, req mo
 		if used > 0 {
 			return &errs.ValidationError{Msg: "Currency is in use and cannot be deleted", MsgCode: errs.CodeCurrencyInUse}
 		}
-		return s.repo.DeleteCurrency(ctx, rec.ID)
+		return s.repo.SoftDeleteCurrency(ctx, rec.ID)
 	}); err != nil {
 		return nil, err
 	}

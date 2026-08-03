@@ -47,14 +47,15 @@ SELECT base_currency_id FROM currencies_rates ORDER BY published_at DESC LIMIT 1
 -- have user_id NULL; custom currencies carry their owner id.
 
 -- name: GetCurrencyRecord :one
-SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at
+SELECT id, code, symbol, name, fraction_digits, user_id, rate, created_at, is_deleted
 FROM currencies WHERE id = $1;
 
 -- name: GlobalCurrencyCodeExists :one
 SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id IS NULL;
 
+-- Deleted customs release their code, so they must not block a re-create.
 -- name: OwnerCurrencyCodeExists :one
-SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2;
+SELECT COUNT(*) FROM currencies WHERE code = $1 AND user_id = $2 AND is_deleted = false;
 
 -- name: InsertUserCurrency :exec
 INSERT INTO currencies (id, code, symbol, name, fraction_digits, user_id, rate, created_at)
@@ -69,15 +70,16 @@ UPDATE currencies SET name = $1, symbol = $2, fraction_digits = $3, rate = $4 WH
 SELECT id, rate FROM currencies WHERE rate IS NOT NULL;
 
 
--- name: DeleteCurrency :exec
-DELETE FROM currencies WHERE id = $1;
+-- Currencies are never removed: accounts.currency_id and transactions.account_id
+-- both cascade, so a DELETE would destroy account and transaction history.
+-- name: SoftDeleteCurrency :exec
+UPDATE currencies SET is_deleted = true WHERE id = $1;
 
--- Usage census for delete protection: accounts (including soft-deleted ones,
--- they still hold the FK), budgets, budget elements, and any user whose
--- profile currency option stores this currency id. $1 is reused everywhere,
--- so the generated param is a single field.
+-- Usage census for delete protection. Only LIVE references count: a soft-deleted
+-- account is unreachable and unrestorable, so it must not pin a currency forever.
+-- $1 is reused everywhere, so the generated param is a single field.
 -- name: CountCurrencyUsage :one
-SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1)
+SELECT (SELECT COUNT(*) FROM accounts WHERE accounts.currency_id = $1 AND accounts.is_deleted = false)
      + (SELECT COUNT(*) FROM budgets WHERE budgets.currency_id = $1)
      + (SELECT COUNT(*) FROM budgets_elements WHERE budgets_elements.currency_id = $1)
      + (SELECT COUNT(*) FROM users_options WHERE users_options.name = 'currency' AND users_options.value = $1) AS usage_count;

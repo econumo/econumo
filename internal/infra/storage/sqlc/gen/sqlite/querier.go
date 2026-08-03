@@ -16,9 +16,8 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
-	// Usage census for delete protection: accounts (including soft-deleted ones,
-	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this currency id.
+	// Usage census for delete protection. Only LIVE references count: a soft-deleted
+	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
@@ -37,7 +36,6 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCurrency(ctx context.Context, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
@@ -152,6 +150,8 @@ type Querier interface {
 	// is frozen to show codes).
 	GetCurrencyCodeByID(ctx context.Context, id string) (string, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
+	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
@@ -372,6 +372,7 @@ type Querier interface {
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
@@ -381,6 +382,9 @@ type Querier interface {
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
+	// Currencies are never removed: accounts.currency_id and transactions.account_id
+	// both cascade, so a DELETE would destroy account and transaction history.
+	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

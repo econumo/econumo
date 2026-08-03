@@ -8,8 +8,8 @@ import { coreHandlers, fixtureUser, fixtureUsd, fixtureEur } from '@/test/fixtur
 import { queryKeys } from '@/app/queryKeys'
 import { CurrenciesPage } from './CurrenciesPage'
 
-const fixturePts = { id: 'cur-pts', code: 'PTS', name: 'Points', symbol: 'pt', fractionDigits: 0, scope: 'own', isHidden: 0 }
-const fixtureGbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 1 }
+const fixturePts = { id: 'cur-pts', code: 'PTS', name: 'Points', symbol: 'pt', fractionDigits: 0, scope: 'own', isHidden: 0, isDeleted: 0 }
+const fixtureGbp = { id: 'cur-gbp', code: 'GBP', name: 'Pound', symbol: '£', fractionDigits: 2, scope: 'global', isHidden: 1, isDeleted: 0 }
 
 const defaultRates = [
   { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', updatedAt: '2026-07-01 00:00:00' },
@@ -88,45 +88,19 @@ it('create flow: uuidv7 id + uppercased code posted, list invalidated', async ()
   await waitFor(() => expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.currencies }))
 })
 
-it('own custom rows carry the same visibility switch: posts hide-currency / show-currency', async () => {
-  let hideBody: unknown
-  let showBody: unknown
-  server.use(
-    ...coreHandlers({
-      currencies: [fixtureUsd, fixtureEur, fixturePts, { ...fixturePts, id: 'cur-old', code: 'OLD', name: 'Old points', isHidden: 1 }, fixtureGbp],
-      rates: defaultRates,
-    }),
-    http.post('*/api/v1/currency/hide-currency', async ({ request }) => {
-      hideBody = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-    http.post('*/api/v1/currency/show-currency', async ({ request }) => {
-      showBody = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-  )
-  const user = userEvent.setup()
+it('does not list a deleted own currency', async () => {
+  server.use(...coreHandlers({ currencies: [fixtureUsd, { ...fixturePts, isDeleted: 1 }], rates: defaultRates }))
   renderPage()
-  await screen.findByText('Points')
-  await user.click(screen.getByRole('switch', { name: 'enable Points' }))
-  await waitFor(() => expect(hideBody).toEqual({ id: 'cur-pts' }))
-  await user.click(screen.getByRole('switch', { name: 'enable Old points' }))
-  await waitFor(() => expect(showBody).toEqual({ id: 'cur-old' }))
+  expect(await screen.findByText('US Dollar')).toBeInTheDocument()
+  expect(screen.queryByText('Points')).not.toBeInTheDocument()
 })
 
-it("an own custom that is the profile currency has its switch disabled", async () => {
-  server.use(
-    ...coreHandlers({
-      currencies: [fixtureUsd, fixtureEur, fixturePts, fixtureGbp],
-      rates: defaultRates,
-      user: { ...fixtureUser, options: fixtureUser.options.map((o) => (o.name === 'currency_id' ? { ...o, value: 'cur-pts' } : o)) },
-    }),
-  )
+it('gives own customs no enable/disable switch', async () => {
   renderPage()
   await screen.findByText('Points')
-  const sw = screen.getByRole('switch', { name: 'enable Points' })
-  expect(sw).toBeDisabled()
-  expect(sw).toHaveAttribute('title', 'Your profile currency is always enabled')
+  expect(screen.queryByLabelText('enable Points')).not.toBeInTheDocument()
+  // Globals keep theirs.
+  expect(screen.getByLabelText('enable Euro')).toBeInTheDocument()
 })
 
 it('delete flow surfaces server refusal text', async () => {
@@ -282,7 +256,7 @@ it('compact: own rows sheet has Edit/Delete; global rows sheet has only Enable/D
   expect(within(globalSheet).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
 
-it('no active-only filter: hidden currencies are always listed, switch off', async () => {
+it('no active-only filter: hidden currencies are always listed, Pound switch off', async () => {
   server.use(
     ...coreHandlers({
       currencies: [fixtureUsd, fixtureEur, { ...fixturePts, isHidden: 1 }, fixtureGbp],
@@ -291,12 +265,12 @@ it('no active-only filter: hidden currencies are always listed, switch off', asy
   )
   renderPage()
   expect(await screen.findByText('Points')).toBeInTheDocument()
-  expect(screen.getByRole('switch', { name: 'enable Points' })).not.toBeChecked()
   expect(screen.getByText('Pound')).toBeInTheDocument()
+  expect(screen.getByRole('switch', { name: 'enable Pound' })).not.toBeChecked()
   expect(screen.queryByRole('switch', { name: 'Active only' })).toBeNull()
 })
 
-it('enabled currencies sort above disabled ones inside each section, code order kept within each half', async () => {
+it('enabled globals sort above disabled ones, code order kept within each half; own customs carry no switch', async () => {
   server.use(
     ...coreHandlers({
       currencies: [
@@ -313,10 +287,9 @@ it('enabled currencies sort above disabled ones inside each section, code order 
   await screen.findByText('Points')
   const names = screen.getAllByRole('switch').map((sw) => sw.getAttribute('aria-label'))
   expect(names).toEqual([
-    // own: enabled Points before disabled Old points
-    'enable Points',
-    'enable Old points',
-    // globals: enabled USD/EUR (server order) before disabled GBP
+    // Only globals carry a switch -- own customs have Delete as their one
+    // lifecycle action, so Points and Old points contribute none, and the
+    // enabled-first sort applies to the globals section alone.
     'enable US Dollar',
     'enable Euro',
     'enable Pound',

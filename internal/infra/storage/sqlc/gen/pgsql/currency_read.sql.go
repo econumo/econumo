@@ -175,7 +175,7 @@ func (q *Queries) GetLatestCurrencyRateListView(ctx context.Context) ([]GetLates
 
 const getUserCurrencyListView = `-- name: GetUserCurrencyListView :many
 
-SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.rate, c.created_at
+SELECT c.id, c.code, c.symbol, c.name, c.fraction_digits, c.user_id, c.rate, c.created_at, c.is_deleted
 FROM currencies c
 WHERE c.user_id IS NULL
    OR c.user_id = $1
@@ -206,6 +206,7 @@ type GetUserCurrencyListViewRow struct {
 	UserID         *string
 	Rate           *string
 	CreatedAt      time.Time
+	IsDeleted      bool
 }
 
 // Read-model queries for the currency module (PostgreSQL variant). No $N
@@ -234,6 +235,7 @@ func (q *Queries) GetUserCurrencyListView(ctx context.Context, userID *string) (
 			&i.UserID,
 			&i.Rate,
 			&i.CreatedAt,
+			&i.IsDeleted,
 		); err != nil {
 			return nil, err
 		}
