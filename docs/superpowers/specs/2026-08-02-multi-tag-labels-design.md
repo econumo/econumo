@@ -48,8 +48,7 @@ value, meaning user-defined icons later need only a create/edit change, no
 rendering or schema change. Color, by contrast, is **not stored** — it is a
 frontend constant keyed on kind, applied to whichever icon the row carries.
 Material Symbols provides both ligatures directly: `tag` renders as a hashtag
-`#`, `label` as the
-label shape.
+`#`, `label` as the label shape.
 
 ## Non-goals
 
@@ -108,14 +107,19 @@ future additive change; in v1 it is always the kind default.
 transaction_id TEXT  FK transactions ON DELETE CASCADE
 label_id       TEXT  FK labels       ON DELETE CASCADE
 PRIMARY KEY (transaction_id, label_id)
+INDEX (label_id)          -- reverse lookup: delete-label, filter-by-label
 ```
 Many-to-many. `transactions.tag_id` stays a single nullable FK — unchanged.
+The PK's leading `transaction_id` serves the budget aggregation (join from the
+transactions it already walks); the separate `label_id` index serves the reverse
+direction, mirroring the existing `IDX_…BAD26311 (tag_id)` on `transactions`.
 
 ### New join table `recurring_transactions_labels` (v1 includes recurring)
 ```
 recurring_transaction_id TEXT FK recurring_transactions ON DELETE CASCADE
 label_id                 TEXT FK labels                 ON DELETE CASCADE
 PRIMARY KEY (recurring_transaction_id, label_id)
+INDEX (label_id)
 ```
 Posting a due template copies its labels onto the created transaction (see
 Recurring below). `recurring_transactions.tag_id` stays single.
@@ -156,7 +160,10 @@ Labels keep **exactly the same shared-account behavior as tags** — a label alw
 
 ## Wire contract
 
-All additive; existing envelopes unchanged.
+All JSON changes are additive; existing envelopes unchanged. **The one
+non-additive change in the whole spec is the CSV export column order** (the
+inserted `labels` column shifts `payee,amount,date` right by one) — called out
+in the CSV section.
 
 - **`TagResult`** gains `icon` (additive field; in v1 always the kind default).
 - **`LabelResult`**: `{id, ownerUserId, name, icon, position, isArchived (0/1),
@@ -332,8 +339,9 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   the additive `icon` field.
 - `mcpparity` scenarios + goldens for the label MCP surface.
 - Budget goldens updated for the new read-only labels block.
-- CSV export/import goldens updated for the appended `labels` column and the
-  `labels` mapping key; `importCsv.test.ts` gains label-mapping + `|`-split cases.
+- CSV export/import goldens updated for the inserted `labels` column (and the
+  resulting index shift of `payee,amount,date`) and the `labels` mapping key;
+  `importCsv.test.ts` gains label-mapping + custom-separator split cases.
 - `enginecompare` (sqlite vs pgsql byte-identical) for all of the above.
 - `i18ntest` parity guards; `archtest` picks up the new feature package
   automatically.
