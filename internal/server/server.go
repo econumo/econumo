@@ -364,6 +364,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		MCP:                mcpHandler,
 		SPA:                spaFS,
 		SPAVersion:         spaVersion,
+		MinAppVersion:      version.MinAppVersion,
 	}), adminHandler, rateUpdater, nil
 }
 

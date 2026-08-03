@@ -12,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/version"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -206,7 +205,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	}
 	allowCustom := false
 	h := router.New(router.Deps{
-		SPA: os.DirFS(dir),
+		SPA:           os.DirFS(dir),
+		MinAppVersion: "v9.9.9",
 		Cfg: config.Config{
 			Analytics:      true,
 			AllowCustomAPI: &allowCustom,
@@ -219,7 +219,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"BILLING_URL":"https://pay.example.test/cloud/","MIN_APP_VERSION":"` + version.MinAppVersion + `"});`
+	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"BILLING_URL":"https://pay.example.test/cloud/","MIN_APP_VERSION":"v9.9.9"});`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}

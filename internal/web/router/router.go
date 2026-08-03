@@ -26,7 +26,6 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
-	"github.com/econumo/econumo/internal/version"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
 	"github.com/econumo/econumo/web"
@@ -92,6 +91,13 @@ type Deps struct {
 	// as VERSION (the binary version, or the ECONUMO_VERSION override), resolved
 	// by the composition root. Empty is tolerated (the embedded default remains).
 	SPAVersion string
+
+	// MinAppVersion is merged into the served econumo-config.js as
+	// MIN_APP_VERSION — the oldest mobile-app build this backend accepts
+	// (version.MinAppVersion, injected by the composition root like SPAVersion
+	// so this leaf never imports the version package). The web SPA ships
+	// embedded, so it can never be stale and ignores the key.
+	MinAppVersion string
 }
 
 // New builds the root http.Handler from deps.
@@ -153,10 +159,9 @@ func New(deps Deps) http.Handler {
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL": deps.Cfg.BillingURL,
-		// The oldest mobile-app build this backend accepts; an older app
-		// hard-blocks itself against this server (the web SPA ships embedded,
-		// so it can never be stale and ignores this key).
-		"MIN_APP_VERSION": version.MinAppVersion,
+	}
+	if deps.MinAppVersion != "" {
+		overrides["MIN_APP_VERSION"] = deps.MinAppVersion
 	}
 	// The running binary's version (or the ECONUMO_VERSION override), resolved by
 	// the composition root; always non-empty in production, so the UI label
