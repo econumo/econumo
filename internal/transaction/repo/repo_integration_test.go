@@ -362,22 +362,20 @@ func TestTransactionRepo_ListExportAccountsForUser_OwnPlusShared(t *testing.T) {
 	}
 }
 
-// sameSet compares two string slices ignoring order: ReplaceLabels/
-// LabelsByTransactionIDs make no ordering promise (the join table has no
-// natural sort column), so tests must not depend on row order.
-func sameSet(got, want []string) bool {
+// equalOrdered compares two string slices element-by-element, INCLUDING
+// order: LabelsByTransactionIDs's query carries an explicit
+// "ORDER BY transaction_id, label_id" precisely so the label order per
+// transaction is byte-identical across engines (SQLite's PK-index scan vs.
+// PostgreSQL's insertion-order seq-scan on a small table would otherwise
+// diverge -- see ListByAccountIDs above for the same hazard). Tests that only
+// check set membership would not catch a dropped ORDER BY, so this helper
+// (unlike a set-comparison) is order-sensitive by construction.
+func equalOrdered(got, want []string) bool {
 	if len(got) != len(want) {
 		return false
 	}
-	counts := make(map[string]int, len(want))
-	for _, w := range want {
-		counts[w]++
-	}
-	for _, g := range got {
-		counts[g]--
-	}
-	for _, n := range counts {
-		if n != 0 {
+	for i := range got {
+		if got[i] != want[i] {
 			return false
 		}
 	}
@@ -394,7 +392,11 @@ func TestTransactionRepo_ReplaceLabels_RoundTrip(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1), vo.MustParseId(label2)}); err != nil {
+	// Inserted in DESCENDING label id order: if LabelsByTransactionIDs merely
+	// reflected insertion/scan order instead of "ORDER BY ... label_id", this
+	// would come back [label2, label1] and the ordered assertion below would
+	// catch it.
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label2), vo.MustParseId(label1)}); err != nil {
 		t.Fatalf("ReplaceLabels: %v", err)
 	}
 
@@ -402,8 +404,8 @@ func TestTransactionRepo_ReplaceLabels_RoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LabelsByTransactionIDs: %v", err)
 	}
-	if !sameSet(got[txID], []string{label1, label2}) {
-		t.Fatalf("labels = %v, want [%s %s]", got[txID], label1, label2)
+	if !equalOrdered(got[txID], []string{label1, label2}) {
+		t.Fatalf("labels = %v, want [%s %s] in ascending label_id order", got[txID], label1, label2)
 	}
 }
 
@@ -432,7 +434,7 @@ func TestTransactionRepo_ReplaceLabels_Idempotent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LabelsByTransactionIDs: %v", err)
 	}
-	if !sameSet(got[txID], []string{label1}) {
+	if !equalOrdered(got[txID], []string{label1}) {
 		t.Fatalf("labels = %v, want exactly one [%s] (no duplication)", got[txID], label1)
 	}
 }
@@ -475,7 +477,11 @@ func TestTransactionRepo_LabelsByTransactionIDs_MultipleTransactions(t *testing.
 			t.Fatalf("Save %s: %v", id, err)
 		}
 	}
-	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx1), []vo.Id{vo.MustParseId(label1), vo.MustParseId(label2)}); err != nil {
+	// tx1 inserted in DESCENDING label id order, same rationale as
+	// TestTransactionRepo_ReplaceLabels_RoundTrip: the ordered assertion below
+	// only passes if the query orders by label_id rather than reflecting
+	// insertion/scan order.
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx1), []vo.Id{vo.MustParseId(label2), vo.MustParseId(label1)}); err != nil {
 		t.Fatalf("ReplaceLabels tx1: %v", err)
 	}
 	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx2), []vo.Id{vo.MustParseId(label3)}); err != nil {
@@ -488,10 +494,10 @@ func TestTransactionRepo_LabelsByTransactionIDs_MultipleTransactions(t *testing.
 	if err != nil {
 		t.Fatalf("LabelsByTransactionIDs: %v", err)
 	}
-	if !sameSet(got[tx1], []string{label1, label2}) {
-		t.Fatalf("tx1 labels = %v, want [%s %s]", got[tx1], label1, label2)
+	if !equalOrdered(got[tx1], []string{label1, label2}) {
+		t.Fatalf("tx1 labels = %v, want [%s %s] in ascending label_id order", got[tx1], label1, label2)
 	}
-	if !sameSet(got[tx2], []string{label3}) {
+	if !equalOrdered(got[tx2], []string{label3}) {
 		t.Fatalf("tx2 labels = %v, want [%s]", got[tx2], label3)
 	}
 	if _, ok := got[tx3]; ok {

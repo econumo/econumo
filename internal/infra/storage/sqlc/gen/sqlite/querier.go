@@ -377,7 +377,6 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	ListLabelIDsByTransaction(ctx context.Context, transactionID string) ([]string, error)
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.

@@ -39,32 +39,3 @@ func (q *Queries) InsertTransactionLabel(ctx context.Context, arg InsertTransact
 	_, err := q.db.ExecContext(ctx, insertTransactionLabel, arg.TransactionID, arg.LabelID)
 	return err
 }
-
-const listLabelIDsByTransaction = `-- name: ListLabelIDsByTransaction :many
-;
-
-SELECT label_id FROM transactions_labels WHERE transaction_id = ?
-`
-
-func (q *Queries) ListLabelIDsByTransaction(ctx context.Context, transactionID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listLabelIDsByTransaction, transactionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var label_id string
-		if err := rows.Scan(&label_id); err != nil {
-			return nil, err
-		}
-		items = append(items, label_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}

@@ -11,7 +11,3 @@ INSERT INTO transactions_labels (transaction_id, label_id)
 VALUES (?, ?)
 ON CONFLICT (transaction_id, label_id) DO NOTHING
 ;
-
--- name: ListLabelIDsByTransaction :many
-SELECT label_id FROM transactions_labels WHERE transaction_id = ?
-;

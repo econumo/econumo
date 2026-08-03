@@ -252,7 +252,6 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	ListLabelIDsByTransaction(ctx context.Context, transactionID string) ([]string, error)
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants

@@ -141,8 +141,13 @@ func (r *Repo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[str
 	for i, id := range ids {
 		args[i] = id.String()
 	}
+	// ORDER BY pins row order across engines (see ListByAccountIDs above for the
+	// same hazard): without it, SQLite satisfies the query from the
+	// (transaction_id, label_id) PK index (label_id order) while PostgreSQL
+	// seq-scans a small table in insertion order, so the label slice per
+	// transaction would diverge between engines.
 	query := "SELECT transaction_id, label_id FROM transactions_labels WHERE transaction_id IN (" +
-		placeholders(r.driver, 1, len(args)) + ")"
+		placeholders(r.driver, 1, len(args)) + ") ORDER BY transaction_id, label_id"
 	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
