@@ -76,6 +76,13 @@ func newHarness(t *testing.T) *harness {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
+	// Production (internal/infra/storage/sqlite) and dbtest both turn this on;
+	// without it, ON DELETE CASCADE (e.g. transactions_labels on a transaction
+	// delete) silently never fires, so writes here could pass while the
+	// equivalent production behavior would differ.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("pragma foreign_keys: %v", err)
+	}
 	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
