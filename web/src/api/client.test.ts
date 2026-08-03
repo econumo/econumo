@@ -90,3 +90,24 @@ it('on 402 fires the metric, toasts once by id, and invalidates the user query',
   expect(invalidate).toHaveBeenCalledWith({ queryKey: ['user'] })
   invalidate.mockRestore()
 })
+
+it('on 401 navigates via the registered router instead of a page load', async () => {
+  const { setRouter } = await import('@/app/routerRef')
+  const navigate = vi.fn(async () => {})
+  setRouter({ navigate } as unknown as Parameters<typeof setRouter>[0])
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', {
+    value: { ...window.location, assign },
+    writable: true,
+  })
+  server.use(
+    http.get('*/api/v1/x', () =>
+      HttpResponse.json({ success: false, message: 'Unauthorized', code: 0, errors: {} }, { status: 401 }),
+    ),
+  )
+  setToken('expired-tok')
+  await expect(api.get(apiUrl('/api/v1/x'))).rejects.toThrow()
+  expect(navigate).toHaveBeenCalledWith('/login?reason=expired')
+  expect(assign).not.toHaveBeenCalled()
+  setRouter(null)
+})

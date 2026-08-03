@@ -8,8 +8,11 @@ import { createRouter } from '@/app/routes'
 import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
 import { queryClient } from '@/app/queryClient'
 import { bootNativeApp, hideSplash } from '@/lib/appBoot'
+import { setRouter } from '@/app/routerRef'
 
 void bootNativeApp().then(() => {
+  const router = createRouter()
+  setRouter(router)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <PersistQueryClientProvider
@@ -17,7 +20,7 @@ void bootNativeApp().then(() => {
         persistOptions={createPersistOptions()}
         onSuccess={() => refreshRestoredQueries(queryClient)}
       >
-        <RouterProvider router={createRouter()} />
+        <RouterProvider router={router} />
       </PersistQueryClientProvider>
     </StrictMode>,
   )
