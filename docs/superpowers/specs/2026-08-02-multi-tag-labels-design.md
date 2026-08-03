@@ -20,9 +20,10 @@ incompatible with budget math (they'd double-count into envelope totals).
 
 Add a **reporting-only** classification — a **label** — that:
 - can be attached **many-per-transaction**,
-- is **display-only**: never has limits, never affects envelope math / carryover,
-- surfaces its per-period spend in the existing budget view as a read-only
-  overlay, so users get the "per kid/pet" answer without a net-new reports page.
+- is **budget-neutral**: never has limits, never affects envelope math / carryover,
+- surfaces its per-period spend in the existing budget view as an overlay you can
+  click through to the underlying transactions, so users get the "per kid/pet"
+  answer without a net-new reports page.
 
 Keep today's **tag** exactly as it is (single-per-transaction, budgeting).
 
@@ -33,8 +34,8 @@ Two backend concepts, one user-facing word:
 | | **Tag** (budgeting) | **Label** (reporting) |
 |---|---|---|
 | Per transaction | at most **one** (unchanged) | **many** |
-| Budget role | full: limits, envelope math, carryover | none — read-only spend overlay |
-| Shown in budget | as today | collapsible read-only block near uncategorized |
+| Budget role | full: limits, envelope math, carryover | none — budget-neutral spend overlay |
+| Shown in budget | as today | collapsible budget-neutral block near uncategorized (clickable → transactions) |
 | Icon | seeded to `tag` (hashtag `#`) at create; **stored + rendered from the row** | seeded to `label` at create; **stored + rendered from the row** |
 | Color | **hardcoded by kind**, applied to the icon | **hardcoded by kind**, applied to the icon |
 
@@ -179,7 +180,9 @@ in the CSV section.
   none). `get-transaction*` responses include `labelIds`.
 - **Recurring create/update** gain `labelIds: []string`; recurring reads return
   them.
-- **`get-budget`** response gains a read-only labels block (see below).
+- **`get-budget`** response gains the labels block (see below).
+- **Transaction list reads** gain an optional **label filter** param (single
+  `labelId`), backing the budget block's drill-down.
 - **CSV export** adds a `labels` column (right after `tag`, `;`-joined); **CSV
   import** gains a `labels` mapping key, a `labelsSeparator` field, and an optional
   `labelIds` override (see CSV section).
@@ -199,12 +202,26 @@ and never touch envelope totals, available-to-spend, or carryover.
   accounts, the period, expenses), using the **same currency conversion** applied
   to tag/category spend, so label totals are consistent with the rest of the
   view.
-- The builder emits a **separate read-only "labels" block**: collapsible,
-  positioned near the uncategorized bucket, each label rendered as a read-only
-  chip (icon + name + period spend), in `position` order.
+- The builder emits a **separate "labels" block**: collapsible, positioned near
+  the uncategorized bucket, each label rendered as a chip (icon + name + period
+  spend), in `position` order. "Read-only" means **no limits and no budget math** —
+  the chips are still interactive (see drill-down).
 - **Visibility:** a label appears in the block only if it has spend in the
   period (labels have no limits, so spend is the only trigger). Archived labels
   with no period spend are hidden.
+- **Drill-down:** clicking a label chip opens the existing budget-transactions
+  dialog filtered to that label, mirroring how a budgeting tag element drills down
+  today. This requires a **label filter on the transaction read path** —
+  `TransactionFilter` gains a `LabelID *vo.Id` (joining `transactions_labels`,
+  served by its `label_id` index), plus the corresponding query/DTO plumbing and
+  the frontend query param. Without this the block would show a number the user
+  cannot investigate, which defeats the "where did the money for kid A go" use
+  case.
+- **Whose labels (shared budgets):** the block aggregates under the **account
+  owner's** labels, consistent with the shared-account rule above and with how the
+  budget already attributes shared-account spend. So a budget spanning a
+  collaborator's shared account can show that owner's labels alongside your own,
+  and a collaborator's labelling work stays visible to you.
 - **Overlap is intentional and safe**: a €50 expense labeled `kid-A` + `kid-B`
   shows €50 under each. The block is display-only, so it need not (and will not)
   sum to total spend, and it must not feed any envelope/available/carryover math.
@@ -269,6 +286,17 @@ multi-valued.
   string. This decouples import from the export default, so a CSV produced by
   another tool (comma-, pipe-, or newline-in-cell separated) still imports.
 - Blank/absent `labels` cell → no labels (mirrors blank tag → nil).
+- **Guardrails against a mis-mapped column.** Auto-create is convenient but a user
+  who maps `description` to `labels` would otherwise mass-create junk — a bigger
+  blast radius than tags, since every cell now splits into many values:
+  - **Cap labels per row** at 10; a row exceeding it is a row-level error rather
+    than a silent truncation.
+  - **Preview the count**: before the import runs, the dialog states how many
+    **new** labels it will create ("this import will create N new labels"), so a
+    wrong mapping is obvious at the confirm step rather than after the fact.
+  - Pieces that fail label name validation (outside 3–64 runes) are reported via
+    the existing per-row error reporting (surfaced by `ImportResultDialog`), not
+    silently dropped.
 - **New optional override `labelIds`** (comma-joined id list) parallel to the
   single `tagId` override — applies the same labels to every imported row. Each id
   is belongs-to checked against the account owner, same rule as the `tagId`
@@ -338,7 +366,7 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   transaction/recurring `labelIds` field; existing tag goldens change only by
   the additive `icon` field.
 - `mcpparity` scenarios + goldens for the label MCP surface.
-- Budget goldens updated for the new read-only labels block.
+- Budget goldens updated for the new labels block.
 - CSV export/import goldens updated for the inserted `labels` column (and the
   resulting index shift of `payee,amount,date`) and the `labels` mapping key;
   `importCsv.test.ts` gains label-mapping + custom-separator split cases.
@@ -347,7 +375,11 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   automatically.
 - Feature tests mirroring `internal/tag/` and the budget label-visibility /
   overlap behavior (analogous to `tag_limit_visibility_test.go` /
-  `tag_child_drilldown_test.go`).
+  `tag_child_drilldown_test.go`), plus label drill-down (the new `labelId`
+  transaction filter) and the shared-budget case where a collaborator's
+  owner-scoped labels appear in the block.
+- Import guardrail tests: labels-per-row cap, the new-label count preview, and
+  name-validation failures surfacing as row errors.
 
 ## Decisions log
 
@@ -365,4 +397,10 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   joined by `;` on export); import gains a `labels` mapping key with a
   **user-chosen separator** (button → dialog, default `;`; name-match + auto-create
   like tags) and an optional `labelIds` override.
+- **Drill-down:** label chips are clickable → transactions filtered by label; adds
+  a `labelId` filter to the transaction read path.
+- **Shared budgets:** the labels block aggregates under the **account owner's**
+  labels, so a collaborator's labels can appear alongside your own.
+- **Import guardrails:** cap 10 labels/row, preview the new-label count before
+  running, surface name-validation failures as row errors.
 - **Dropped:** proportional split across multiple budgeting tags.
