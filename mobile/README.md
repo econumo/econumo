@@ -14,6 +14,50 @@ Release builds label the UI with the app version:
 
     ECONUMO_VERSION=v1.0.0 make mobile-sync
 
+## Signing (one-time)
+
+The App target uses automatic signing with team `P9839674AJ` (set in the
+Xcode project). The only manual prerequisite on a new machine: sign into the
+Apple ID in **Xcode → Settings → Accounts** — automatic signing then creates
+the iOS development certificate and provisioning profiles on demand
+(`-allowProvisioningUpdates` does the same for command-line builds).
+
+## Install on your iPhone (cable)
+
+1. Connect the phone via USB and tap **Trust** on it.
+2. `make mobile-ios`, select the phone as the run destination, press Run.
+3. First run only: the phone asks to enable **Developer Mode**
+   (Settings → Privacy & Security → Developer Mode, then reboot), and the
+   app must be trusted under Settings → General → VPN & Device Management.
+
+A development-signed install expires after 7 days on a free Apple ID; with
+the paid Developer Program it lasts a year — or use TestFlight below and
+forget about expiry.
+
+## TestFlight
+
+One-time setup:
+
+1. Xcode signed into the Apple ID (see Signing above).
+2. Create the app record once in [App Store Connect](https://appstoreconnect.apple.com/)
+   → My Apps → **+** → New App: platform iOS, bundle ID `com.econumo.app`
+   (automatic signing registers the identifier on the developer portal during
+   the first device build; if it is not listed yet, add it under
+   Identifiers on developer.apple.com), any SKU, name "Econumo".
+3. In the app's TestFlight tab, add yourself (and any teammates) as internal
+   testers — internal testing needs no Apple review.
+
+Each upload:
+
+    make mobile-testflight APP_VERSION=1.0.0 BUILD=1
+
+This archives with the given marketing version + build number (BUILD must be
+unique per upload — bump it every time), stamps the SPA's version label to
+match, and uploads straight to App Store Connect
+(`ExportOptions.plist`: method `app-store-connect`, destination `upload`).
+After a few minutes of processing the build appears in TestFlight and
+installs on the phone through the TestFlight app.
+
 ## Version compatibility handshake
 
 The app and the server check each other in both directions; each side owns

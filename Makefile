@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
 
 # Default target
 .DEFAULT_GOAL := help
@@ -71,6 +71,24 @@ mobile-ios: mobile-sync
 
 mobile-android: mobile-sync
 	cd mobile && pnpm exec cap open android
+
+# Archive the iOS app and upload it to App Store Connect / TestFlight using
+# the Apple ID stored in Xcode (one-time: Xcode -> Settings -> Accounts).
+# APP_VERSION is the marketing version, BUILD must be unique per upload; the
+# SPA's version label follows APP_VERSION automatically. See mobile/README.md.
+mobile-testflight: export ECONUMO_VERSION = v$(APP_VERSION)
+mobile-testflight: mobile-testflight-guard mobile-sync
+	cd mobile/ios/App && xcodebuild -project App.xcodeproj -scheme App \
+		-destination generic/platform=iOS -archivePath build/App.xcarchive \
+		MARKETING_VERSION=$(APP_VERSION) CURRENT_PROJECT_VERSION=$(BUILD) \
+		archive -allowProvisioningUpdates
+	cd mobile/ios/App && xcodebuild -exportArchive -archivePath build/App.xcarchive \
+		-exportOptionsPlist ExportOptions.plist -exportPath build/export \
+		-allowProvisioningUpdates
+
+mobile-testflight-guard:
+	@test -n "$(APP_VERSION)" && test -n "$(BUILD)" || \
+		{ echo "usage: make mobile-testflight APP_VERSION=1.0.0 BUILD=1"; exit 1; }
 
 # --- Backend (Go) ---
 
