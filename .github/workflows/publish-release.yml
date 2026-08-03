@@ -273,6 +273,30 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # The website's release page carries the screenshots and the long-form
+      # write-up the GitHub body has no room for, so every release links to it
+      # from its first line. Done here rather than only in the hand-written
+      # notes so patch releases that keep the auto-generated body get it too.
+      # Idempotent: re-running (or a later hand-written body that already opens
+      # with the link) leaves the notes untouched.
+      - name: Link the release notes on econumo.com
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.create-tag.outputs.version }}
+        run: |
+          LINK="📖 **[Read the full release notes, with screenshots →](https://econumo.com/releases/${TAG}/)**"
+          BODY="$(gh release view "$TAG" --json body -q .body)"
+          case "$BODY" in
+            "$LINK"*)
+              echo "Notes already open with the release-notes link; nothing to do"
+              ;;
+            *)
+              printf '%s\n\n%s\n' "$LINK" "$BODY" > release-notes.md
+              gh release edit "$TAG" --notes-file release-notes.md
+              echo "Prepended the econumo.com release-notes link"
+              ;;
+          esac
+
       - name: Download release binaries
         uses: actions/download-artifact@v4
         with:

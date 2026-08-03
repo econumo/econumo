@@ -115,6 +115,8 @@ whether/how to upgrade, and API-client authors who need to know about wire chang
 House style (see the v1.0.0 release for the reference tone):
 
 ```markdown
+📖 **[Read the full release notes, with screenshots →](https://econumo.com/releases/vX.Y.Z/)**
+
 <one-paragraph summary of the release's themes>
 
 ## What's new
@@ -139,6 +141,15 @@ exact version use `ghcr.io/econumo/econumo:vX.Y.Z`.
 [@login](https://github.com/login) — ...
 
 **Full changelog**: [vLAST...vX.Y.Z](https://github.com/econumo/econumo/compare/vLAST...vX.Y.Z)
+```
+
+The first line is always the link to that version's page on econumo.com, which carries the
+screenshots and the long-form write-up the GitHub body can't. Every released version has one
+(`https://econumo.com/releases/vX.Y.Z/`); confirm it before publishing the notes, and publish
+the site page first if it 404s:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://econumo.com/releases/vX.Y.Z/
 ```
 
 Contributors come from the actual range, not memory:
