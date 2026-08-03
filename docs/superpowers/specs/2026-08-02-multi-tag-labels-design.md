@@ -35,19 +35,25 @@ Two backend concepts, one user-facing word:
 | Per transaction | at most **one** (unchanged) | **many** |
 | Budget role | full: limits, envelope math, carryover | none — read-only spend overlay |
 | Shown in budget | as today | collapsible read-only block near uncategorized |
-| Icon | user-picked (new) | user-picked |
-| Color | **hardcoded by kind** (not user-picked) | **hardcoded by kind** |
+| Icon | **hardcoded by kind** — `tag` (hashtag `#`) | **hardcoded by kind** — `label` |
+| Color | **hardcoded by kind**, applied to the icon | **hardcoded by kind**, applied to the icon |
 
 In the UI both appear under the umbrella word **"Tags."** The words "tag" and
-"label" are internal/backend. Color encodes *kind* (budget vs report); the
-user-picked **icon** encodes *identity*.
+"label" are internal/backend. In v1 **both icon and color encode only the *kind***
+(budget vs report), not identity — every budgeting tag shows the same hashtag icon
+in one color, every label the same `label` icon in another. The icon is
+nonetheless **persisted per row** in the DB (seeded to the kind default on create),
+so a future version can let users pick it without a schema change. Material Symbols
+provides both ligatures directly: `tag` renders as a hashtag `#`, `label` as the
+label shape.
 
 ## Non-goals
 
 - **Proportional split across multiple budgeting tags** — explicitly dropped. It
   fights the "one envelope, clear math" model and confuses users.
-- **User-picked colors** — color is a fixed constant per kind. Only the icon is
-  user-selectable.
+- **User-picked colors and icons** — both are fixed constants per kind in v1
+  (no icon-picker UI). The `icon` column is still stored per row so user-defined
+  icons become an additive follow-up, not a schema change.
 - **Converting a tag into a label (or vice versa) in place** — not supported. A
   user re-creates + re-assigns. (Two separate tables make this a clean
   non-issue; folding labels into `tags` later stays possible if the concepts
@@ -80,7 +86,7 @@ Mirrors `tags`, plus an `icon` column:
 id          TEXT PK
 user_id     TEXT  FK users ON DELETE CASCADE
 name        VARCHAR(64)   -- 3-64 runes, unique per owner
-icon        TEXT          -- Material ligature name (e.g. "child_care", "pets")
+icon        TEXT          -- Material ligature; seeded to the kind default "label"
 position    SMALLINT
 is_archived BOOLEAN DEFAULT 0
 created_at, updated_at
@@ -88,8 +94,10 @@ created_at, updated_at
 Per-owner name uniqueness, independent of `tags`.
 
 ### New `icon` column on `tags`
-Budgeting tags get an icon picker too. Additive, nullable; existing rows render
-the current fallback `"tag"` when null. Color for tags stays a fixed constant.
+Additive, nullable. New tags are seeded to the kind default `"tag"` (hashtag);
+the migration backfills existing rows to `"tag"` as well (matching the current
+hardcoded budget-view fallback). Persisted per row so user-defined icons stay a
+future additive change; in v1 it is always the kind default.
 
 ### New join table `transactions_labels`
 ```
@@ -117,7 +125,8 @@ New `internal/label/` package mirroring `internal/tag/`:
 - `internal/model/label.go` (`model.Label`: id, userId, name, icon, position,
   isArchived, timestamps + invariant-preserving mutators) and
   `internal/model/label_dto.go` (`LabelResult`, request DTOs).
-- Use cases: `create`, `update` (rename + icon), `archive`/`unarchive`,
+- Use cases: `create`, `update` (rename; icon is not user-editable in v1),
+  `archive`/`unarchive`,
   `delete`, `read` (get-label-list, own + shared-account union like tags),
   `order`.
 - `repository.go` interfaces, `repo/` engine adapters (sqlite + pgsql),
@@ -145,9 +154,13 @@ Labels keep **exactly the same shared-account behavior as tags** — a label alw
 
 All additive; existing envelopes unchanged.
 
-- **`TagResult`** gains `icon` (additive field).
+- **`TagResult`** gains `icon` (additive field; in v1 always the kind default).
 - **`LabelResult`**: `{id, ownerUserId, name, icon, position, isArchived (0/1),
   createdAt, updatedAt}`.
+- **Create/update requests carry no `icon` field in v1** — the server sets it to
+  the kind default (`create-tag` → `"tag"`, `create-label` → `"label"`). The
+  column and the response field exist so a picker can be added later without a
+  contract change.
 - **Routes** under `/api/v1/label/`: `get-label-list`, `create-label`,
   `update-label`, `archive-label`, `unarchive-label`, `delete-label`,
   `order-label-list` — mirroring the tag routes and conventions.
@@ -185,13 +198,15 @@ and never touch envelope totals, available-to-spend, or carryover.
 ## Transaction editor UX
 
 - One **"Tags"** section. Budgeting tags and labels render as chips in a **single
-  flat list**, visually distinguished by a **hardcoded color per kind** (tags one
-  color, labels another). Each chip shows its user-picked icon + name.
+  flat list**, distinguished by the **hardcoded per-kind icon + color**: budgeting
+  tags show the hashtag icon in one color, labels the `label` icon in another. Each
+  chip shows that kind icon + the name.
 - Selection behaves per kind:
   - **Budgeting tags are radio-like** — selecting one deselects the previous
     (preserves the single `tag_id`).
   - **Labels toggle freely** — any number.
-- Inline create supports choosing kind + icon.
+- Inline create picks the **kind** (radio); the icon/color follow from the kind
+  automatically — no icon picker.
 - Recurring editor mirrors this (single tag + many labels).
 
 ## Recurring transactions (v1)
@@ -202,21 +217,30 @@ and never touch envelope totals, available-to-spend, or carryover.
   copy. Posting stays idempotent on the client-supplied transaction id — a
   re-post does not duplicate label attachments.
 
-## Management UX
+## Management UX (create/edit dialog)
 
-The existing tags settings surface lists **both kinds under "Tags,"** each chip
-tinted by kind and showing its icon. Create/edit dialog picks kind (budget tag /
-label) + icon; archive/reorder mirror today's tag management. (Backend: two
-separate CRUD surfaces; the settings screen composes both lists.)
+Improve the **existing tag create/edit dialog** (rather than build a new one):
+- Fields are just a **name input** and a **kind radio** (budgeting tag / label) —
+  no icon picker.
+- The dialog **shows the icon** for the selected kind (hashtag for a budgeting tag,
+  `label` for a label), in the kind's hardcoded color, and **swaps it live** as the
+  radio changes — so the user sees what they're creating.
+- Delete/archive/reorder mirror today's tag management.
+- The settings surface lists **both kinds under "Tags,"** each chip showing its
+  per-kind icon + color. (Backend: two separate CRUD surfaces; the settings screen
+  composes both lists.)
 
-## Icons (color hardcoded)
+## Icons & color (both hardcoded per kind)
 
-- Reuse the category icon-picker pattern; store **only the ligature name** (no
-  color) on `tags.icon` / `labels.icon`.
-- Budget view renders the chosen icon instead of the current hardcoded `"tag"`
-  (fallback `"tag"` when null).
+- **No icon picker in v1.** The icon is fixed by kind — `tag` (hashtag `#`) for
+  budgeting tags, `label` for labels — but is **stored per row** in `tags.icon` /
+  `labels.icon` (seeded to the kind default on create), so user-defined icons are a
+  future additive change, not a schema migration.
+- Budget view renders the stored icon (currently always the kind default) instead
+  of the hardcoded `"tag"`; falls back to `"tag"` when null.
 - Color is a **frontend constant per kind** (mirrors the `avatars.ts` /
-  category-color approach): one fixed color for budgeting tags, one for labels.
+  category-color approach), applied to the icon: one fixed color for budgeting
+  tags, one for labels.
 
 ## MCP, analytics, i18n
 
@@ -250,6 +274,10 @@ separate CRUD surfaces; the settings screen composes both lists.)
 - **Reporting surface:** reuse the budget view (no net-new reports page).
 - **Model:** two backend entities (tags + labels), unified under "Tags" in UI.
 - **Recurring labels:** included in v1.
-- **Picker:** one flat list, kind distinguished by hardcoded color.
-- **Visuals:** user-picked icon; color hardcoded per kind (not per tag).
+- **Picker:** one flat list, kind distinguished by hardcoded per-kind icon + color.
+- **Visuals:** icon AND color hardcoded per kind in v1 (hashtag `tag` for budgeting
+  tags, `label` for labels; no icon picker). The `icon` column is persisted per row
+  so user-defined icons are a future additive change.
+- **Create/edit dialog:** improve the existing tag dialog — name input + kind radio,
+  showing the kind's icon/color live; no icon picker.
 - **Dropped:** proportional split across multiple budgeting tags.
