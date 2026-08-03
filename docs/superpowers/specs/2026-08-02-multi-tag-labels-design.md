@@ -173,8 +173,9 @@ All additive; existing envelopes unchanged.
 - **Recurring create/update** gain `labelIds: []string`; recurring reads return
   them.
 - **`get-budget`** response gains a read-only labels block (see below).
-- **CSV export** appends a `labels` column; **CSV import** gains a `labels`
-  mapping key + optional `labelIds` override (see CSV section).
+- **CSV export** adds a `labels` column (right after `tag`, `;`-joined); **CSV
+  import** gains a `labels` mapping key, a `labelsSeparator` field, and an optional
+  `labelIds` override (see CSV section).
 
 Deletion: deleting a label cascades its `transactions_labels` /
 `recurring_transactions_labels` rows (many-to-many, `ON DELETE CASCADE`). No
@@ -232,31 +233,34 @@ nil), and import matches that name case-insensitively against the owner's tags,
 multi-valued.
 
 ### Export (`internal/transaction/export.go`)
-- **Keep the existing `tag` column unchanged** — same position, same meaning (the
-  single budgeting tag name, empty when nil). Backward compatible.
-- **Append a new `labels` column at the end** of the frozen header row (after
-  `date`), so every existing column index is preserved for position-based
-  consumers (Econumo's own import matches by header *name*, so append vs insert is
-  invisible to a round-trip; append is chosen only to avoid disturbing external
-  position-based readers):
+- **Keep the existing `tag` column** — same meaning (the single budgeting tag
+  name, empty when nil).
+- **Insert a new `labels` column immediately after `tag`**, so the two
+  classification columns sit together:
   ```
-  transaction_id,account_name,account_currency,category,description,tag,payee,amount,date,labels
+  transaction_id,account_name,account_currency,category,description,tag,labels,payee,amount,date
   ```
-- The `labels` cell is the transaction's label **names joined by `|`** (pipe), in
-  label `position` order; empty string when none. Pipe is chosen because no
-  multi-value delimiter exists yet and `|` is rare in names and never the CSV field
-  separator; the cell is still CSV-quoted normally. Each label name passes through
+  This shifts `payee,amount,date` right by one index. Econumo's own import matches
+  by header *name*, so a round-trip is unaffected; a position-based external
+  consumer of those three columns would need to re-map (documented).
+- The `labels` cell is the transaction's label **names joined by `;`** (semicolon),
+  in label `position` order; empty string when none. Each label name passes through
   the existing `sanitizeExportValue` (CR/LF collapse + formula-injection guard)
-  **before** joining. (Edge case: a label name containing a literal `|` is not
+  **before** joining. (Edge case: a label name containing a literal `;` is not
   round-trip-safe — acceptable, and documented.)
 - Transfer recipient rows write `labels` empty, exactly as they do for `tag`.
 
 ### Import (`internal/transaction/import.go`, `api/import.go`)
 - **New mapping key `labels`** (a CSV column header name or null), parallel to
-  `tag`. The mapped cell is **split on `|`**, each piece trimmed, blanks dropped,
-  deduped case-insensitively, then each resolved by name against the owner's labels
-  and **auto-created on miss** — mirroring the tag find-or-create path, but against
-  the label repo. Resolved ids attach via `transactions_labels`.
+  `tag`. The mapped cell is **split on a user-chosen separator** (see below), each
+  piece trimmed, blanks dropped, deduped case-insensitively, then each resolved by
+  name against the owner's labels and **auto-created on miss** — mirroring the tag
+  find-or-create path, but against the label repo. Resolved ids attach via
+  `transactions_labels`.
+- **Configurable separator.** The import posts a new `labelsSeparator` field
+  (default `;`). The backend splits the mapped `labels` cell on exactly that
+  string. This decouples import from the export default, so a CSV produced by
+  another tool (comma-, pipe-, or newline-in-cell separated) still imports.
 - Blank/absent `labels` cell → no labels (mirrors blank tag → nil).
 - **New optional override `labelIds`** (comma-joined id list) parallel to the
   single `tagId` override — applies the same labels to every imported row. Each id
@@ -270,6 +274,11 @@ multi-valued.
 - Add `labels` to the import field keys and `autoDetect` (new translated label
   `transactions.import_csv.fields.labels`); `buildImportPayload` sets
   `mapping.labels` in `csv_column` mode.
+- **Separator picker.** When the `labels` column is mapped, show a small
+  **"separator" button** next to it that opens a dialog to choose how that cell is
+  split — presets (`;` default, `,`, `|`, tab/newline) plus a custom free-text
+  value. The choice is sent as `labelsSeparator`. The button/dialog appear only in
+  `csv_column` mode (no separator needed when applying fixed `labelIds`).
 - In "existing" mode, add an optional **label multi-select** (owner-scoped, like
   the existing single-tag `tagId` picker) that sends `labelIds`.
 - Export dialog is unchanged (download-only) — the new `labels` column comes from
@@ -344,7 +353,8 @@ Improve the **existing tag create/edit dialog** (rather than build a new one):
   frontend constant (not stored). User-defined icons are a future additive change.
 - **Create/edit dialog:** improve the existing tag dialog — name input + kind radio,
   showing the kind's icon/color live; no icon picker.
-- **CSV:** keep `tag` column as-is (budgeting tag); append a `labels` column
-  (names joined by `|`); import gains a `labels` mapping key (split on `|`,
-  name-match + auto-create like tags) and an optional `labelIds` override.
+- **CSV:** keep `tag` column; add a `labels` column **right after `tag`** (names
+  joined by `;` on export); import gains a `labels` mapping key with a
+  **user-chosen separator** (button → dialog, default `;`; name-match + auto-create
+  like tags) and an optional `labelIds` override.
 - **Dropped:** proportional split across multiple budgeting tags.
