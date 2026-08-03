@@ -138,49 +138,49 @@ type row struct {
 
 func rowItem(r row) Item { return Item{ID: r.id, Key: r.key} }
 
-// TestRelocate_MovesWithinItsOwnList confirms the moved row is excluded from its
+// TestMoveWithin_MovesWithinItsOwnList confirms the moved row is excluded from its
 // own sibling set, so it never anchors against its current key.
-func TestRelocate_MovesWithinItsOwnList(t *testing.T) {
+func TestMoveWithin_MovesWithinItsOwnList(t *testing.T) {
 	items := []row{{"x", "a0"}, {"y", "a1"}, {"z", "a2"}}
-	got, found, err := Relocate(items, "z", "x", rowItem, GrowsUp)
+	_, got, found, err := MoveWithin(items, "z", "x", rowItem, GrowsUp)
 	if err != nil || !found {
-		t.Fatalf("Relocate: key=%q found=%v err=%v", got, found, err)
+		t.Fatalf("MoveWithin: key=%q found=%v err=%v", got, found, err)
 	}
 	if !(got > "a0" && got < "a1") {
 		t.Fatalf("key = %q, want strictly between a0 and a1", got)
 	}
 }
 
-// TestRelocate_ReportsMissingRow is the silent no-op every caller relies on.
-func TestRelocate_ReportsMissingRow(t *testing.T) {
+// TestMoveWithin_ReportsMissingRow is the silent no-op every caller relies on.
+func TestMoveWithin_ReportsMissingRow(t *testing.T) {
 	items := []row{{"x", "a0"}}
-	_, found, err := Relocate(items, "nope", "", rowItem, GrowsUp)
+	_, _, found, err := MoveWithin(items, "nope", "", rowItem, GrowsUp)
 	if err != nil {
-		t.Fatalf("Relocate: %v", err)
+		t.Fatalf("MoveWithin: %v", err)
 	}
 	if found {
 		t.Fatal("found = true for a row that is not in the list")
 	}
 }
 
-// TestRelocate_ToFrontOfARemainingList pins the null-anchor case after exclusion.
-func TestRelocate_ToFrontOfARemainingList(t *testing.T) {
+// TestMoveWithin_ToFrontOfARemainingList pins the null-anchor case after exclusion.
+func TestMoveWithin_ToFrontOfARemainingList(t *testing.T) {
 	items := []row{{"x", "a0"}, {"y", "a1"}}
-	got, found, err := Relocate(items, "y", "", rowItem, GrowsUp)
+	_, got, found, err := MoveWithin(items, "y", "", rowItem, GrowsUp)
 	if err != nil || !found {
-		t.Fatalf("Relocate: found=%v err=%v", found, err)
+		t.Fatalf("MoveWithin: found=%v err=%v", found, err)
 	}
 	if got >= "a0" {
 		t.Fatalf("key = %q, want before a0", got)
 	}
 }
 
-// TestRelocate_OnlyRowInTheListFallsBackToTheSeed: excluding the moved row can
+// TestMoveWithin_OnlyRowInTheListFallsBackToTheSeed: excluding the moved row can
 // leave no siblings at all.
-func TestRelocate_OnlyRowInTheListFallsBackToTheSeed(t *testing.T) {
-	got, found, err := Relocate([]row{{"x", "a5"}}, "x", "", rowItem, GrowsUp)
+func TestMoveWithin_OnlyRowInTheListFallsBackToTheSeed(t *testing.T) {
+	_, got, found, err := MoveWithin([]row{{"x", "a5"}}, "x", "", rowItem, GrowsUp)
 	if err != nil || !found {
-		t.Fatalf("Relocate: found=%v err=%v", found, err)
+		t.Fatalf("MoveWithin: found=%v err=%v", found, err)
 	}
 	if got != "a0" {
 		t.Fatalf("key = %q, want the seed \"a0\"", got)
@@ -203,5 +203,34 @@ func TestAppendAndPrepend(t *testing.T) {
 	got, err = Prepend(items, rowItem, GrowsDown)
 	if err != nil || got >= "c000" {
 		t.Errorf("Prepend = %q, %v; want a key before c000", got, err)
+	}
+}
+
+// TestMoveWithin_ReturnsTheMovedItem is the difference from MoveWithin: the caller
+// gets the item back, so it never has to search the slice a second time.
+func TestMoveWithin_ReturnsTheMovedItem(t *testing.T) {
+	items := []row{{"x", "a0"}, {"y", "a1"}, {"z", "a2"}}
+	moved, key, ok, err := MoveWithin(items, "z", "x", rowItem, GrowsUp)
+	if err != nil || !ok {
+		t.Fatalf("MoveWithin: ok=%v err=%v", ok, err)
+	}
+	if moved.id != "z" {
+		t.Fatalf("returned item id = %q, want \"z\"", moved.id)
+	}
+	if !(key > "a0" && key < "a1") {
+		t.Fatalf("key = %q, want strictly between a0 and a1", key)
+	}
+}
+
+// TestMoveWithin_MatchesTheFirstOccurrence pins the behaviour for duplicate ids,
+// which the budget element path can produce (elements are keyed by external id).
+func TestMoveWithin_MatchesTheFirstOccurrence(t *testing.T) {
+	items := []row{{"dup", "a0"}, {"dup", "a1"}, {"z", "a2"}}
+	moved, _, ok, err := MoveWithin(items, "dup", "", rowItem, GrowsUp)
+	if err != nil || !ok {
+		t.Fatalf("MoveWithin: ok=%v err=%v", ok, err)
+	}
+	if moved.key != "a0" {
+		t.Fatalf("returned the %q row, want the first occurrence (a0)", moved.key)
 	}
 }

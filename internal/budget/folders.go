@@ -155,23 +155,16 @@ func (s *Service) MoveFolder(ctx context.Context, userID vo.Id, req model.MoveBu
 
 	folders := append([]*model.BudgetFolder(nil), b.folders...)
 	sortBudgetFolders(folders)
-	key, found, err := sortkey.Relocate(folders, folderID.String(), afterID, budgetFolderItem, sortkey.GrowsDown)
+	moved, key, ok, err := sortkey.MoveWithin(folders, folderID.String(), afterID, budgetFolderItem, sortkey.GrowsDown)
 	if err != nil {
 		return nil, err
 	}
-	if !found {
+	if !ok {
 		return &model.MoveBudgetFolderResult{}, nil
 	}
-	now := s.clock.Now()
+	moved.UpdateSortKey(key, s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		for _, f := range folders {
-			if !f.ID.Equal(folderID) {
-				continue
-			}
-			f.UpdateSortKey(key, now)
-			return s.folders.SaveFolder(txCtx, f)
-		}
-		return nil
+		return s.folders.SaveFolder(txCtx, moved)
 	}); err != nil {
 		return nil, err
 	}

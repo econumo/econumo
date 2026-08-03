@@ -228,20 +228,14 @@ func (s *Service) MoveFolder(ctx context.Context, userID vo.Id, req model.MoveAc
 		if lerr != nil {
 			return lerr
 		}
-		key, found, kerr := sortkey.Relocate(folders, id.String(), afterID, accountFolderItem, sortkey.GrowsUp)
+		moved, key, ok, kerr := sortkey.MoveWithin(folders, id.String(), afterID, accountFolderItem, sortkey.GrowsUp)
 		if kerr != nil {
 			return kerr
 		}
-		if found {
-			for _, f := range folders {
-				if !f.ID.Equal(id) {
-					continue
-				}
-				f.UpdateSortKey(key, s.clock.Now())
-				if serr := s.folders.Save(ctx, f); serr != nil {
-					return serr
-				}
-				break
+		if ok {
+			moved.UpdateSortKey(key, s.clock.Now())
+			if serr := s.folders.Save(ctx, moved); serr != nil {
+				return serr
 			}
 		}
 		refreshed, rerr := s.sortedFolders(ctx, userID)

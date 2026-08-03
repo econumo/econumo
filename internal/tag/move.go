@@ -31,20 +31,14 @@ func (s *Service) MoveTag(ctx context.Context, userID vo.Id, req model.MoveTagRe
 		if lerr != nil {
 			return lerr
 		}
-		key, found, kerr := sortkey.Relocate(rows, id.String(), afterID, tagItem, sortkey.GrowsUp)
+		moved, key, ok, kerr := sortkey.MoveWithin(rows, id.String(), afterID, tagItem, sortkey.GrowsUp)
 		if kerr != nil {
 			return kerr
 		}
-		if found {
-			for _, t := range rows {
-				if !t.ID.Equal(id) {
-					continue
-				}
-				t.UpdateSortKey(key, s.clock.Now())
-				if serr := s.repo.Save(ctx, t); serr != nil {
-					return serr
-				}
-				break
+		if ok {
+			moved.UpdateSortKey(key, s.clock.Now())
+			if serr := s.repo.Save(ctx, moved); serr != nil {
+				return serr
 			}
 		}
 		built, berr := s.listResults(ctx, userID)

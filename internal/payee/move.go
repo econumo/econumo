@@ -31,20 +31,14 @@ func (s *Service) MovePayee(ctx context.Context, userID vo.Id, req model.MovePay
 		if lerr != nil {
 			return lerr
 		}
-		key, found, kerr := sortkey.Relocate(rows, id.String(), afterID, payeeItem, sortkey.GrowsUp)
+		moved, key, ok, kerr := sortkey.MoveWithin(rows, id.String(), afterID, payeeItem, sortkey.GrowsUp)
 		if kerr != nil {
 			return kerr
 		}
-		if found {
-			for _, p := range rows {
-				if !p.ID.Equal(id) {
-					continue
-				}
-				p.UpdateSortKey(key, s.clock.Now())
-				if serr := s.repo.Save(txCtx, p); serr != nil {
-					return serr
-				}
-				break
+		if ok {
+			moved.UpdateSortKey(key, s.clock.Now())
+			if serr := s.repo.Save(txCtx, moved); serr != nil {
+				return serr
 			}
 		}
 		built, berr := s.listResults(txCtx, userID)

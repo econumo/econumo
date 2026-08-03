@@ -31,20 +31,14 @@ func (s *Service) MoveCategory(ctx context.Context, userID vo.Id, req model.Move
 		if lerr != nil {
 			return lerr
 		}
-		key, found, kerr := sortkey.Relocate(cats, id.String(), afterID, categoryItem, sortkey.GrowsUp)
+		moved, key, ok, kerr := sortkey.MoveWithin(cats, id.String(), afterID, categoryItem, sortkey.GrowsUp)
 		if kerr != nil {
 			return kerr
 		}
-		if found {
-			for _, c := range cats {
-				if !c.ID.Equal(id) {
-					continue
-				}
-				c.UpdateSortKey(key, s.clock.Now())
-				if serr := s.repo.Save(ctx, c); serr != nil {
-					return serr
-				}
-				break
+		if ok {
+			moved.UpdateSortKey(key, s.clock.Now())
+			if serr := s.repo.Save(ctx, moved); serr != nil {
+				return serr
 			}
 		}
 		built, berr := s.listResults(ctx, userID)

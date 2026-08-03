@@ -50,31 +50,34 @@ func Place(siblings []Item, afterID string, g Growth) (Key, error) {
 	return Between(prev, "")
 }
 
-// Relocate computes the key for moving movedID to sit immediately after afterID
-// within items, and reports whether movedID was found.
+// MoveWithin gives movedID a key placing it immediately after afterID within
+// items, and returns the item itself so the caller does not have to search the
+// slice a second time. ok is false when movedID is not present.
 //
-// It exists so the seven move use cases do not each re-implement the same
-// "exclude the moved row, project the rest into []Item, call Place" boilerplate.
-// of maps a caller's own type to an Item; items must already be sorted by key.
+// It exists so the move use cases do not each re-implement the same
+// "project siblings, place, then find the row again to update it" loop, where
+// forgetting to stop at the match is a silent bug. The caller still applies the
+// key through the entity's own mutator, which is what bumps UpdatedAt -- hiding
+// that here would make a real behaviour easy to lose track of.
 //
-// found is false when movedID is not in items, which every caller treats as a
-// silent no-op: the row belongs to another owner, another folder, or was deleted
-// concurrently.
-func Relocate[T any](items []T, movedID, afterID string, of func(T) Item, g Growth) (key Key, found bool, err error) {
+// of maps a caller's type to an Item; items must already be sorted by key. A
+// duplicate id resolves to the first occurrence.
+func MoveWithin[T any](items []T, movedID, afterID string, of func(T) Item, g Growth) (moved T, key Key, ok bool, err error) {
 	siblings := make([]Item, 0, len(items))
 	for _, it := range items {
 		e := of(it)
-		if e.ID == movedID {
-			found = true
+		if e.ID == movedID && !ok {
+			moved, ok = it, true
 			continue
 		}
 		siblings = append(siblings, e)
 	}
-	if !found {
-		return "", false, nil
+	if !ok {
+		var zero T
+		return zero, "", false, nil
 	}
-	k, err := Place(siblings, afterID, g)
-	return k, true, err
+	key, err = Place(siblings, afterID, g)
+	return moved, key, true, err
 }
 
 // Append returns the key for a row added at the end of items, which is how

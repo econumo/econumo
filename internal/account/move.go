@@ -120,8 +120,10 @@ func (s *Service) reorderAccount(ctx context.Context, userID, accountID vo.Id, a
 		}
 		return items[i].ID < items[j].ID
 	})
-	key, found, err := sortkey.Relocate(items, accountID.String(), afterID, func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsUp)
-	if err != nil || !found {
+	// The moved item is discarded: an account's key lives in accounts_options,
+	// keyed by id, so there is no entity here to apply it to.
+	_, key, ok, err := sortkey.MoveWithin(items, accountID.String(), afterID, func(i sortkey.Item) sortkey.Item { return i }, sortkey.GrowsUp)
+	if err != nil || !ok {
 		return err
 	}
 	return s.positions.SaveSortKey(ctx, accountID, userID, key, s.clock.Now())
