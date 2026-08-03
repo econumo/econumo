@@ -119,6 +119,7 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.Catego
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return items, nil
 }
 
@@ -155,4 +156,14 @@ func newCategoryType(alias string) (model.CategoryType, error) {
 			errs.FieldError{Key: "type", Message: "CategoryType not exists", Code: errs.CodeCategoryTypeInvalid})
 	}
 	return typ, nil
+}
+
+// assignPositions stamps the dense 0-based index the wire contract calls
+// "position". The stored sort key never leaves the server, so this index is what
+// clients order by; it is derived from the already-sorted list rather than read
+// from a column.
+func assignPositions(items []model.CategoryResult) {
+	for i := range items {
+		items[i].Position = i
+	}
 }

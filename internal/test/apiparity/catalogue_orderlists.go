@@ -7,8 +7,8 @@ package apiparity
 func init() {
 	register(Scenario{Name: "order_lists", Calls: func() []Call {
 		return []Call{
-			{Label: "order-category-list", Method: "POST", Path: "/api/v1/category/order-category-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": CatFood, "position": 1}, {"id": CatSalary, "position": 0}}}},
+			{Label: "move-category", Method: "POST", Path: "/api/v1/category/move-category", Auth: "owner",
+				Body: map[string]any{"id": CatSalary, "afterId": nil}},
 			{Label: "get-category-list-after", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "order-tag-list", Method: "POST", Path: "/api/v1/tag/order-tag-list", Auth: "owner",
 				Body: map[string]any{"changes": []map[string]any{{"id": TagWork, "position": 0}}}},

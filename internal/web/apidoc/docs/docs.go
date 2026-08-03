@@ -3116,14 +3116,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/category/order-category-list": {
+        "/api/v1/category/move-category": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's categories and returns the full ordered list.",
+                "description": "Places one category immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3133,15 +3133,15 @@ const docTemplate = `{
                 "tags": [
                     "Category"
                 ],
-                "summary": "Reorder the category list",
+                "summary": "Move a category",
                 "parameters": [
                     {
-                        "description": "Order category list request",
+                        "description": "Move category request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderCategoryListRequest"
+                            "$ref": "#/definitions/model.MoveCategoryRequest"
                         }
                     }
                 ],
@@ -3157,7 +3157,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderCategoryListResult"
+                                            "$ref": "#/definitions/model.MoveCategoryResult"
                                         }
                                     }
                                 }
@@ -9574,6 +9574,28 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveCategoryResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
         "model.MoveElementListItem": {
             "type": "object",
             "properties": {
@@ -9654,28 +9676,6 @@ const docTemplate = `{
         },
         "model.OrderBudgetFolderListResult": {
             "type": "object"
-        },
-        "model.OrderCategoryListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.CategoryResult"
-                    }
-                }
-            }
         },
         "model.OrderFolderListItem": {
             "type": "object",

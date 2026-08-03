@@ -12,8 +12,8 @@ func init() {
 			// blank-name tier-1 case.
 			{Label: "err:category-name-too-short", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
 				Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000ef", "name": "ab", "type": "expense", "icon": "i"}},
-			{Label: "err:order-empty-changes", Method: "POST", Path: "/api/v1/category/order-category-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{}}},
+			{Label: "err:move-category-bad-anchor", Method: "POST", Path: "/api/v1/category/move-category", Auth: "owner",
+				Body: map[string]any{"id": CatFood, "afterId": "not-a-uuid"}},
 			{Label: "err:account-order-empty", Method: "POST", Path: "/api/v1/account/order-account-list", Auth: "owner",
 				Body: map[string]any{"changes": []map[string]any{}}},
 			{Label: "err:replace-folder-blank", Method: "POST", Path: "/api/v1/account/replace-folder", Auth: "owner",
@@ -78,8 +78,8 @@ func init() {
 				Body: map[string]any{"id": "not-a-uuid"}},
 			{Label: "err:delete-category-bad-uuid", Method: "POST", Path: "/api/v1/category/delete-category", Auth: "owner",
 				Body: map[string]any{"id": "not-a-uuid", "mode": "delete"}},
-			{Label: "err:order-category-bad-uuid", Method: "POST", Path: "/api/v1/category/order-category-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": "not-a-uuid", "position": 0}}}},
+			{Label: "err:move-category-bad-uuid", Method: "POST", Path: "/api/v1/category/move-category", Auth: "owner",
+				Body: map[string]any{"id": "not-a-uuid", "afterId": nil}},
 		}
 	}})
 }

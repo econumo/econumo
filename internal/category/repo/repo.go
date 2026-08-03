@@ -29,7 +29,6 @@ type (
 type querier interface {
 	GetCategoryByID(ctx context.Context, db backend.DBTX, id string) (categoryRow, error)
 	ListCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]categoryRow, error)
-	CountCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
@@ -93,14 +92,6 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category
 		out = append(out, c)
 	}
 	return out, nil
-}
-
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountCategoriesByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
 }
 
 // Save: the caller runs this inside TxManager.WithTx.

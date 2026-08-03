@@ -1050,6 +1050,20 @@ definitions:
       startedAt:
         type: string
     type: object
+  model.MoveCategoryRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveCategoryResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
   model.MoveElementListItem:
     properties:
       folderId:
@@ -1101,20 +1115,6 @@ definitions:
         type: array
     type: object
   model.OrderBudgetFolderListResult:
-    type: object
-  model.OrderCategoryListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.CategoryResult'
-        type: array
     type: object
   model.OrderFolderListItem:
     properties:
@@ -3722,19 +3722,19 @@ paths:
       summary: Get the category list
       tags:
       - Category
-  /api/v1/category/order-category-list:
+  /api/v1/category/move-category:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's categories and returns the
-        full ordered list.
+      description: Places one category immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order category list request
+      - description: Move category request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderCategoryListRequest'
+          $ref: '#/definitions/model.MoveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -3745,7 +3745,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderCategoryListResult'
+                  $ref: '#/definitions/model.MoveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -3765,7 +3765,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the category list
+      summary: Move a category
       tags:
       - Category
   /api/v1/category/unarchive-category:

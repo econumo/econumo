@@ -130,3 +130,78 @@ func TestPlace_ProducesAConsistentOrderAcrossManyMoves(t *testing.T) {
 		}
 	}
 }
+
+type row struct {
+	id  string
+	key Key
+}
+
+func rowItem(r row) Item { return Item{ID: r.id, Key: r.key} }
+
+// TestRelocate_MovesWithinItsOwnList confirms the moved row is excluded from its
+// own sibling set, so it never anchors against its current key.
+func TestRelocate_MovesWithinItsOwnList(t *testing.T) {
+	items := []row{{"x", "a0"}, {"y", "a1"}, {"z", "a2"}}
+	got, found, err := Relocate(items, "z", "x", rowItem, GrowsUp)
+	if err != nil || !found {
+		t.Fatalf("Relocate: key=%q found=%v err=%v", got, found, err)
+	}
+	if !(got > "a0" && got < "a1") {
+		t.Fatalf("key = %q, want strictly between a0 and a1", got)
+	}
+}
+
+// TestRelocate_ReportsMissingRow is the silent no-op every caller relies on.
+func TestRelocate_ReportsMissingRow(t *testing.T) {
+	items := []row{{"x", "a0"}}
+	_, found, err := Relocate(items, "nope", "", rowItem, GrowsUp)
+	if err != nil {
+		t.Fatalf("Relocate: %v", err)
+	}
+	if found {
+		t.Fatal("found = true for a row that is not in the list")
+	}
+}
+
+// TestRelocate_ToFrontOfARemainingList pins the null-anchor case after exclusion.
+func TestRelocate_ToFrontOfARemainingList(t *testing.T) {
+	items := []row{{"x", "a0"}, {"y", "a1"}}
+	got, found, err := Relocate(items, "y", "", rowItem, GrowsUp)
+	if err != nil || !found {
+		t.Fatalf("Relocate: found=%v err=%v", found, err)
+	}
+	if got >= "a0" {
+		t.Fatalf("key = %q, want before a0", got)
+	}
+}
+
+// TestRelocate_OnlyRowInTheListFallsBackToTheSeed: excluding the moved row can
+// leave no siblings at all.
+func TestRelocate_OnlyRowInTheListFallsBackToTheSeed(t *testing.T) {
+	got, found, err := Relocate([]row{{"x", "a5"}}, "x", "", rowItem, GrowsUp)
+	if err != nil || !found {
+		t.Fatalf("Relocate: found=%v err=%v", found, err)
+	}
+	if got != "a0" {
+		t.Fatalf("key = %q, want the seed \"a0\"", got)
+	}
+}
+
+func TestAppendAndPrepend(t *testing.T) {
+	empty := []row(nil)
+	if got, err := Append(empty, rowItem, GrowsUp); err != nil || got != "a0" {
+		t.Errorf("Append(empty) = %q, %v; want \"a0\"", got, err)
+	}
+	if got, err := Prepend(empty, rowItem, GrowsDown); err != nil || got != "c000" {
+		t.Errorf("Prepend(empty) = %q, %v; want \"c000\"", got, err)
+	}
+	items := []row{{"x", "c000"}, {"y", "c001"}}
+	got, err := Append(items, rowItem, GrowsUp)
+	if err != nil || got <= "c001" {
+		t.Errorf("Append = %q, %v; want a key after c001", got, err)
+	}
+	got, err = Prepend(items, rowItem, GrowsDown)
+	if err != nil || got >= "c000" {
+		t.Errorf("Prepend = %q, %v; want a key before c000", got, err)
+	}
+}

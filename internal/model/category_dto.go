@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CategoryResult is one category in the API. type is the alias string
@@ -172,29 +173,30 @@ type PositionChange struct {
 	Position int    `json:"position"`
 }
 
-// OrderCategoryListRequest is the order-category-list request body.
-type OrderCategoryListRequest struct {
-	Changes []PositionChange `json:"changes"`
+// MoveCategoryRequest is the move-category request body. AfterId is the id of
+// the sibling this category should land immediately after; null means "move to
+// the front". An AfterId that is not one of the caller's own categories appends
+// to the end rather than erroring, matching the silent-skip behaviour of the
+// absolute-position endpoint this replaces.
+type MoveCategoryRequest struct {
+	Id      string  `json:"id"`
+	AfterId *string `json:"afterId"`
 }
 
-// Validate enforces a non-empty changes list (an empty list is rejected with
-// "Categories list is empty").
-func (r OrderCategoryListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Categories list is empty", MsgCode: errs.CodeCategoryListEmpty}
+func (r MoveCategoryRequest) Validate() error {
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
 	}
-	var fields []errs.FieldError
-	for _, c := range r.Changes {
-		fields = append(fields, validatePositionField("position", c.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// OrderCategoryListResult is the order-category-list response: {items: [...]}.
-type OrderCategoryListResult struct {
+// MoveCategoryResult is the move-category response: {items: [...]}.
+type MoveCategoryResult struct {
 	Items []CategoryResult `json:"items"`
 }
 

@@ -1,8 +1,8 @@
 == err:category-name-too-short POST /api/v1/category/create-category [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"name":["Category name must be 3-64 characters"]}}
 
-== err:order-empty-changes POST /api/v1/category/order-category-list [owner] -> 400
-{"success":false,"message":"Categories list is empty","code":400,"errors":{}}
+== err:move-category-bad-anchor POST /api/v1/category/move-category [owner] -> 400
+{"success":false,"message":"invalid id","code":400,"errors":{}}
 
 == err:account-order-empty POST /api/v1/account/order-account-list [owner] -> 400
 {"success":false,"message":"Accounts list is empty","code":400,"errors":{}}
@@ -73,6 +73,6 @@
 == err:delete-category-bad-uuid POST /api/v1/category/delete-category [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 
-== err:order-category-bad-uuid POST /api/v1/category/order-category-list [owner] -> 400
+== err:move-category-bad-uuid POST /api/v1/category/move-category [owner] -> 400
 {"success":false,"message":"invalid id","code":400,"errors":{}}
 

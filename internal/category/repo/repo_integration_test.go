@@ -9,6 +9,7 @@ import (
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -36,9 +37,22 @@ func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.
 	return categoryrepo.NewRepo(db.Engine, db.TX), categoryrepo.NewReadRepo(db.Engine, db.TX), db, fixture.New(t, db)
 }
 
+// cat builds a category whose sort key is derived from pos, so tests keep
+// expressing intended order as a small integer while the repo orders by key.
 func cat(id, userID, name string, pos int16, typ model.CategoryType) *model.Category {
 	return &model.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
-		Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+		SortKey: keyAt(pos), Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits.
+func keyAt(pos int16) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }
 
 func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
@@ -74,7 +88,7 @@ func TestCategoryRepo_GetByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
+func TestCategoryRepo_ListByOwner(t *testing.T) {
 	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
@@ -90,13 +104,9 @@ func TestCategoryRepo_ListAndCountByOwner(t *testing.T) {
 	if len(list) != 2 {
 		t.Fatalf("want 2 own categories, got %d", len(list))
 	}
-	// Ordered by position: A2 (0) then A1 (1).
+	// Ordered by sort key: A2 (0) then A1 (1).
 	if list[0].ID.String() != catA2 || list[1].ID.String() != catA1 {
 		t.Errorf("order wrong: %s, %s", list[0].ID, list[1].ID)
-	}
-	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
-	if err != nil || n != 2 {
-		t.Errorf("CountByOwner = %d, %v; want 2", n, err)
 	}
 }
 

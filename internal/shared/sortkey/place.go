@@ -49,3 +49,48 @@ func Place(siblings []Item, afterID string, g Growth) (Key, error) {
 	}
 	return Between(prev, "")
 }
+
+// Relocate computes the key for moving movedID to sit immediately after afterID
+// within items, and reports whether movedID was found.
+//
+// It exists so the seven move use cases do not each re-implement the same
+// "exclude the moved row, project the rest into []Item, call Place" boilerplate.
+// of maps a caller's own type to an Item; items must already be sorted by key.
+//
+// found is false when movedID is not in items, which every caller treats as a
+// silent no-op: the row belongs to another owner, another folder, or was deleted
+// concurrently.
+func Relocate[T any](items []T, movedID, afterID string, of func(T) Item, g Growth) (key Key, found bool, err error) {
+	siblings := make([]Item, 0, len(items))
+	for _, it := range items {
+		e := of(it)
+		if e.ID == movedID {
+			found = true
+			continue
+		}
+		siblings = append(siblings, e)
+	}
+	if !found {
+		return "", false, nil
+	}
+	k, err := Place(siblings, afterID, g)
+	return k, true, err
+}
+
+// Append returns the key for a row added at the end of items, which is how
+// categories, tags, payees, accounts and account folders are created.
+func Append[T any](items []T, of func(T) Item, g Growth) (Key, error) {
+	if len(items) == 0 {
+		return Seed(g), nil
+	}
+	return Between(of(items[len(items)-1]).Key, "")
+}
+
+// Prepend returns the key for a row added at the front of items, which is how
+// budget folders and budget envelope elements are created.
+func Prepend[T any](items []T, of func(T) Item, g Growth) (Key, error) {
+	if len(items) == 0 {
+		return Seed(g), nil
+	}
+	return Between("", of(items[0]).Key)
+}
