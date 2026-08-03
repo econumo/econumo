@@ -154,10 +154,16 @@ grows on create:
 | categories, tags, payees, accounts, account folders | append | `a0` |
 | budget folders, budget envelope elements | prepend | `c000` |
 
-Seeding the prepend-oriented lists at `c000` buys 238,328 prepends of headroom
-in the plain digit/lowercase space. Without it those two tables would drop into
-the negative magnitudes on their *second* row, making the inverted-magnitude
-branch the norm rather than a rarity.
+Seeding the prepend-oriented lists at `c000` buys **≈3,844 prepends** of headroom
+before keys enter the inverted uppercase magnitudes. Note that `c000` is already
+the minimum of magnitude `c`, so the first decrement underflows straight to
+`bzz`; the headroom is the `b` range (`b10`–`bzz`, 3,782 keys) plus the `a` range
+(`a0`–`az`, 62 keys). That is ample for budget folders and envelopes, which
+number in the tens.
+
+Without the policy those two tables would seed at `a0` and drop into the
+inverted uppercase magnitudes on their *second* row, making the hardest branch
+of the algorithm the norm rather than a rarity.
 
 Magnitudes differ across users and across tables by design — keys are only ever
 compared within one scope, never across scopes.
