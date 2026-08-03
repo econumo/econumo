@@ -150,6 +150,9 @@
     "update": {
       "notice": "Econumo {version} est disponible",
       "dismiss": "Masquer"
+    },
+    "serverUpdate": {
+      "notice": "Votre serveur Econumo ({version}) est plus ancien que ce que cette application prend en charge. Veuillez le mettre à jour."
     }
   },
   "accounts": {

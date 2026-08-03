@@ -150,6 +150,9 @@
     "update": {
       "notice": "Econumo {version} is beschikbaar",
       "dismiss": "Sluiten"
+    },
+    "serverUpdate": {
+      "notice": "Je Econumo-server ({version}) is ouder dan deze app ondersteunt. Werk je server bij."
     }
   },
   "accounts": {

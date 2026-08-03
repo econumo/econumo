@@ -150,6 +150,9 @@
     "update": {
       "notice": "Econumo {version} 已发布",
       "dismiss": "忽略"
+    },
+    "serverUpdate": {
+      "notice": "您的 Econumo 服务器（{version}）版本过旧，此应用不再支持。请更新服务器。"
     }
   },
   "accounts": {

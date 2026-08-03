@@ -150,6 +150,9 @@
     "update": {
       "notice": "Вийшла Econumo {version}",
       "dismiss": "Сховати"
+    },
+    "serverUpdate": {
+      "notice": "Ваш сервер Econumo ({version}) старіший, ніж підтримує цей застосунок. Оновіть сервер."
     }
   },
   "accounts": {

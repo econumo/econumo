@@ -150,6 +150,9 @@
     "update": {
       "notice": "Econumo {version} is out",
       "dismiss": "Dismiss"
+    },
+    "serverUpdate": {
+      "notice": "Your Econumo server ({version}) is older than this app supports. Please update your server."
     }
   },
   "accounts": {

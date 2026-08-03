@@ -150,6 +150,9 @@
     "update": {
       "notice": "È disponibile Econumo {version}",
       "dismiss": "Ignora"
+    },
+    "serverUpdate": {
+      "notice": "Il tuo server Econumo ({version}) è più vecchio di quanto supportato da questa app. Aggiorna il server."
     }
   },
   "accounts": {
