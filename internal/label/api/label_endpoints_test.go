@@ -1,0 +1,413 @@
+package api_test
+
+import (
+	"encoding/json"
+	"net/http"
+	"regexp"
+	"testing"
+)
+
+// apiDatetime matches the API datetime format "2006-01-02 15:04:05" (space
+// separator, no timezone).
+var apiDatetime = regexp.MustCompile(`^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$`)
+
+const (
+	labelID1 = "aaaaaaaa-0000-0000-0000-000000000001"
+	labelID2 = "aaaaaaaa-0000-0000-0000-000000000002"
+	labelID3 = "aaaaaaaa-0000-0000-0000-000000000003"
+)
+
+func createReq(id, name string) map[string]any {
+	return map[string]any{"id": id, "name": name}
+}
+
+// createLabel creates a label via the API and returns the server-minted
+// entity id. The request id is the operation/idempotency id only; the server
+// mints a fresh entity id (a different UUIDv7), so follow-up operations must
+// use the returned id rather than the request id.
+func createLabel(t *testing.T, h *harness, token, opID, name string) string {
+	t.Helper()
+	_, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(opID, name))
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.ID == "" {
+		t.Fatalf("create returned no id; body: %s", env.raw)
+	}
+	return res.Item.ID
+}
+
+type itemWrapper struct {
+	Item labelItem `json:"item"`
+}
+type itemsWrapper struct {
+	Items []labelItem `json:"items"`
+}
+
+func TestCreateLabel_Success(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "#focus"))
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	if !env.Success {
+		t.Fatalf("success=false; body: %s", env.raw)
+	}
+
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(env.Data, &probe); err != nil {
+		t.Fatalf("decode data: %v; body: %s", err, env.raw)
+	}
+	if _, ok := probe["item"]; !ok {
+		t.Fatalf("data must have an item key; body: %s", env.raw)
+	}
+
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	it := res.Item
+	if it.ID == "" || it.ID == labelID1 {
+		t.Fatalf("item.id = %q, want a fresh server id (non-empty and != %q)", it.ID, labelID1)
+	}
+	if it.OwnerUserID != seedUserID {
+		t.Fatalf("item.ownerUserId = %q, want %q", it.OwnerUserID, seedUserID)
+	}
+	if it.Name != "#focus" {
+		t.Fatalf("item.name = %q, want #focus", it.Name)
+	}
+	if it.Icon != "label" {
+		t.Fatalf("item.icon = %q, want %q", it.Icon, "label")
+	}
+	if it.Position != 0 {
+		t.Fatalf("first label position = %d, want 0", it.Position)
+	}
+	if it.IsArchived != 0 {
+		t.Fatalf("item.isArchived = %d, want 0", it.IsArchived)
+	}
+	if !apiDatetime.MatchString(it.CreatedAt) {
+		t.Fatalf("item.createdAt = %q, want 2006-01-02 15:04:05", it.CreatedAt)
+	}
+	if !apiDatetime.MatchString(it.UpdatedAt) {
+		t.Fatalf("item.updatedAt = %q, want 2006-01-02 15:04:05", it.UpdatedAt)
+	}
+
+	// isArchived must serialize as a JSON number, not a bool.
+	itemObj := mustObject(t, probe["item"])
+	if string(itemObj["isArchived"]) != "0" {
+		t.Fatalf("isArchived raw = %s, want numeric 0", itemObj["isArchived"])
+	}
+}
+
+func mustObject(t *testing.T, raw json.RawMessage) map[string]json.RawMessage {
+	t.Helper()
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &m); err != nil {
+		t.Fatalf("decode object: %v", err)
+	}
+	return m
+}
+
+func TestCreateLabel_PositionIncrements(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "#one"))
+	_, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID2, "#two"))
+
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.Position != 1 {
+		t.Fatalf("second label position = %d, want 1", res.Item.Position)
+	}
+}
+
+func TestCreateLabel_ShortName_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "ab"))
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400; body: %s", status, env.raw)
+	}
+	msgs, ok := env.errorsMap()["name"]
+	if !ok || len(msgs) == 0 {
+		t.Fatalf("expected a name field error; body: %s", env.raw)
+	}
+	if msgs[0] != "Label name must be 3-64 characters" {
+		t.Fatalf("name error = %q, want exact 'Label name must be 3-64 characters'", msgs[0])
+	}
+}
+
+func TestCreateLabel_DuplicateName_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	if st, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "#dup")); st != http.StatusOK {
+		t.Fatalf("first create status = %d; body: %s", st, env.raw)
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID2, "#dup"))
+	if status != http.StatusBadRequest {
+		t.Fatalf("duplicate-name create status = %d, want 400; body: %s", status, env.raw)
+	}
+	if env.Message != "Label already exists." {
+		t.Fatalf("message = %q, want %q; body: %s", env.Message, "Label already exists.", env.raw)
+	}
+}
+
+func TestCreateLabel_NoToken_401(t *testing.T) {
+	h := newHarness(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", "", createReq(labelID1, "#focus"))
+	if status != http.StatusUnauthorized {
+		t.Fatalf("status = %d, want 401; body: %s", status, env.raw)
+	}
+	if env.Success {
+		t.Fatalf("expected success=false; body: %s", env.raw)
+	}
+}
+
+func TestCreateLabel_DuplicateId_Idempotency_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	if st, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "#first")); st != http.StatusOK {
+		t.Fatalf("first create status = %d; body: %s", st, env.raw)
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/create-label", token, createReq(labelID1, "#other"))
+	if status != http.StatusBadRequest {
+		t.Fatalf("duplicate-id create status = %d, want 400; body: %s", status, env.raw)
+	}
+}
+
+func TestUpdateLabel_ChangesName(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	id := createLabel(t, h, token, labelID1, "#food")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/update-label", token, map[string]any{
+		"id": id, "name": "#groceries",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("update status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[itemWrapper](t, env.Data)
+	if res.Item.Name != "#groceries" {
+		t.Fatalf("returned name = %q, want #groceries", res.Item.Name)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/label/get-label-list", token, nil)
+	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].Name != "#groceries" {
+		t.Fatalf("persisted list = %+v, want one item named #groceries", list.Items)
+	}
+}
+
+func TestUpdateLabel_DuplicateName_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, seedUserID, "#a", 0, false)
+	h.seedLabel(t, labelID2, seedUserID, "#b", 1, false)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/update-label", token, map[string]any{
+		"id": labelID2, "name": "#a",
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (duplicate name); body: %s", status, env.raw)
+	}
+}
+
+func TestUpdateLabel_SameName_Allowed(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, seedUserID, "#keep", 0, false)
+
+	// Updating a label to its own current name must NOT trip the uniqueness
+	// check.
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/update-label", token, map[string]any{
+		"id": labelID1, "name": "#keep",
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+}
+
+func TestArchiveLabel_ThenListShowsArchived(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	id := createLabel(t, h, token, labelID1, "#food")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/archive-label", token, map[string]any{"id": id})
+	if status != http.StatusOK {
+		t.Fatalf("archive status = %d, want 200; body: %s", status, env.raw)
+	}
+	if string(env.Data) != "{}" {
+		t.Fatalf("archive data = %s, want empty object {}", env.Data)
+	}
+
+	// get-label-list returns archived labels too, with isArchived=1.
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/label/get-label-list", token, nil)
+	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
+	if len(list.Items) != 1 || list.Items[0].ID != id || list.Items[0].IsArchived != 1 {
+		t.Fatalf("list = %+v, want one item (id %s) with isArchived=1", list.Items, id)
+	}
+
+	_, unEnv := h.do(t, http.MethodPost, "/api/v1/label/unarchive-label", token, map[string]any{"id": id})
+	if string(unEnv.Data) != "{}" {
+		t.Fatalf("unarchive data = %s, want empty object {}", unEnv.Data)
+	}
+	_, listEnv2 := h.do(t, http.MethodGet, "/api/v1/label/get-label-list", token, nil)
+	list2 := mustUnmarshal[itemsWrapper](t, listEnv2.Data)
+	if len(list2.Items) != 1 || list2.Items[0].ID != id || list2.Items[0].IsArchived != 0 {
+		t.Fatalf("list after unarchive = %+v, want one item (id %s) with isArchived=0", list2.Items, id)
+	}
+}
+
+func TestOrderLabelList_Reorders(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	id1 := createLabel(t, h, token, labelID1, "#first")  // pos 0
+	id2 := createLabel(t, h, token, labelID2, "#second") // pos 1
+	id3 := createLabel(t, h, token, labelID3, "#third")  // pos 2
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/order-label-list", token, map[string]any{
+		"changes": []map[string]any{
+			{"id": id3, "position": 0},
+			{"id": id1, "position": 2},
+		},
+	})
+	if status != http.StatusOK {
+		t.Fatalf("order status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[itemsWrapper](t, env.Data)
+	if len(res.Items) != 3 {
+		t.Fatalf("returned %d items, want 3", len(res.Items))
+	}
+	pos := map[string]int{}
+	for _, it := range res.Items {
+		pos[it.ID] = it.Position
+	}
+	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
+		t.Fatalf("positions = %v, want id3=%s=0 id2=%s=1 id1=%s=2", pos, id3, id2, id1)
+	}
+	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
+		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
+	}
+}
+
+func TestOrderLabelList_Empty_400(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/order-label-list", token, map[string]any{
+		"changes": []map[string]any{},
+	})
+	if status != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400 (empty changes); body: %s", status, env.raw)
+	}
+}
+
+func TestGetLabelList_OrderedByPosition(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, seedUserID, "#c", 2, false)
+	h.seedLabel(t, labelID2, seedUserID, "#a", 0, false)
+	h.seedLabel(t, labelID3, seedUserID, "#b", 1, true) // archived, still listed
+
+	status, env := h.do(t, http.MethodGet, "/api/v1/label/get-label-list", token, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[itemsWrapper](t, env.Data)
+	if len(res.Items) != 3 {
+		t.Fatalf("returned %d items, want 3", len(res.Items))
+	}
+	if res.Items[0].ID != labelID2 || res.Items[1].ID != labelID3 || res.Items[2].ID != labelID1 {
+		t.Fatalf("order = [%s,%s,%s], want [%s,%s,%s] (by position)",
+			res.Items[0].ID, res.Items[1].ID, res.Items[2].ID, labelID2, labelID3, labelID1)
+	}
+	if res.Items[1].IsArchived != 1 {
+		t.Fatalf("archived label isArchived = %d, want 1", res.Items[1].IsArchived)
+	}
+	if res.Items[0].Icon != "label" {
+		t.Fatalf("icon = %q, want %q", res.Items[0].Icon, "label")
+	}
+}
+
+func TestDeleteLabel_RemovesIt(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	id := createLabel(t, h, token, labelID1, "#food")
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/delete-label", token, map[string]any{"id": id})
+	if status != http.StatusOK {
+		t.Fatalf("delete status = %d, want 200; body: %s", status, env.raw)
+	}
+	probe := mustObject(t, env.Data)
+	if len(probe) != 0 {
+		t.Fatalf("delete data = %s, want empty object", env.Data)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/label/get-label-list", token, nil)
+	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
+	if len(list.Items) != 0 {
+		t.Fatalf("list after delete = %+v, want empty", list.Items)
+	}
+}
+
+// A label owned by another user must be indistinguishable from a nonexistent
+// one: both return the exact same envelope, "Label not found" (HTTP 400 —
+// *errs.NotFoundError always maps to 400, see internal/web/httpx/errors.go),
+// so the response can't probe which ids exist.
+func TestUpdateLabel_NotOwned_MaskedAsNotFound(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, otherUserID, "#theirs", 0, false)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/update-label", token, map[string]any{
+		"id": labelID1, "name": "#hijacked",
+	})
+	if status != http.StatusBadRequest || env.Message != "Label not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Label not found\"; body: %s", status, env.Message, env.raw)
+	}
+}
+
+func TestArchiveLabel_NotOwned_MaskedAsNotFound(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, otherUserID, "#theirs", 0, false)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/archive-label", token, map[string]any{"id": labelID1})
+	if status != http.StatusBadRequest || env.Message != "Label not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Label not found\"; body: %s", status, env.Message, env.raw)
+	}
+}
+
+func TestUnarchiveLabel_NotOwned_MaskedAsNotFound(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, otherUserID, "#theirs", 0, false)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/unarchive-label", token, map[string]any{"id": labelID1})
+	if status != http.StatusBadRequest || env.Message != "Label not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Label not found\"; body: %s", status, env.Message, env.raw)
+	}
+}
+
+func TestDeleteLabel_NotOwned_MaskedAsNotFound(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	h.seedLabel(t, labelID1, otherUserID, "#theirs", 0, false)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/label/delete-label", token, map[string]any{"id": labelID1})
+	if status != http.StatusBadRequest || env.Message != "Label not found" {
+		t.Fatalf("status = %d, message = %q; want 400 / \"Label not found\"; body: %s", status, env.Message, env.raw)
+	}
+}

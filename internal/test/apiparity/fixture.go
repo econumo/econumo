@@ -40,6 +40,7 @@ const (
 	CatSalary = "c0000000-0000-0000-0000-000000000002"
 	TagWork   = "10000000-0000-0000-0000-000000000001"
 	PayeeShop = "20000000-0000-0000-0000-000000000001"
+	LabelWork = "30000000-0000-0000-0000-000000000001"
 
 	Txn1 = "d0000000-0000-0000-0000-000000000001"
 	Txn2 = "d0000000-0000-0000-0000-000000000002"
@@ -131,9 +132,10 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.Category(fixture.Category{ID: CatFood, UserID: OwnerID, Name: "Food", Position: 0, Type: 0})
 	f.Category(fixture.Category{ID: CatSalary, UserID: OwnerID, Name: "Salary", Position: 1, Type: 1})
 
-	// Tag + payee (owner).
+	// Tag + payee + label (owner).
 	f.Tag(fixture.Tag{ID: TagWork, UserID: OwnerID, Name: "Work"})
 	f.Payee(fixture.Payee{ID: PayeeShop, UserID: OwnerID, Name: "Shop"})
+	f.Label(fixture.Label{ID: LabelWork, UserID: OwnerID, Name: "Work"})
 
 	// Transactions on the owner's account (one expense, one income). The domain
 	// enum is expense=0 / income=1 (internal/transaction/entity.go), so the

@@ -41,6 +41,12 @@ func init() {
 		}
 	}})
 
+	register(Scenario{Name: "label_reads", Calls: func() []Call {
+		return []Call{
+			{Label: "get-label-list", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
 	register(Scenario{Name: "payee_reads", Calls: func() []Call {
 		return []Call{
 			{Label: "get-payee-list", Method: "GET", Path: "/api/v1/payee/get-payee-list", Auth: "owner", Body: map[string]any{}},
@@ -110,6 +116,20 @@ func init() {
 			{Label: "unarchive-tag", Method: "POST", Path: "/api/v1/tag/unarchive-tag", Auth: "owner", Body: map[string]any{"id": &tagID}},
 			{Label: "delete-tag", Method: "POST", Path: "/api/v1/tag/delete-tag", Auth: "owner", Body: map[string]any{"id": &tagID}},
 			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/tag/get-tag-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
+	register(Scenario{Name: "label_write_read", Calls: func() []Call {
+		const newLabel = "30000000-0000-0000-0000-0000000000ff"
+		var labelID string
+		return []Call{
+			{Label: "create-label", Method: "POST", Path: "/api/v1/label/create-label", Auth: "owner", Body: map[string]any{"id": newLabel, "name": "Business"}, CaptureIDInto: &labelID},
+			{Label: "read-after-create", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "update-label", Method: "POST", Path: "/api/v1/label/update-label", Auth: "owner", Body: map[string]any{"id": &labelID, "name": "Business2"}},
+			{Label: "archive-label", Method: "POST", Path: "/api/v1/label/archive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			{Label: "unarchive-label", Method: "POST", Path: "/api/v1/label/unarchive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			{Label: "delete-label", Method: "POST", Path: "/api/v1/label/delete-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
 		}
 	}})
 

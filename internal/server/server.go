@@ -44,6 +44,9 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	applabel "github.com/econumo/econumo/internal/label"
+	handlerlabel "github.com/econumo/econumo/internal/label/api"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
@@ -201,6 +204,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
 
+	labelRepo := labelrepo.NewRepo(cfg.DatabaseDriver, txm)
+	labelReadRepo := labelrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	labelSvc := applabel.NewService(labelRepo, txm, opGuard, clk, labelReadRepo, accountAccessResolver)
+	labelReadSvc := applabel.NewReadService(labelReadRepo)
+	labelHandlers := handlerlabel.NewHandlers(labelSvc, labelReadSvc)
+
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
@@ -309,6 +318,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handleruser.RegisterAPI(userHandlers, authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
+		handlerlabel.RegisterAPI(labelHandlers, authn),
 		handlerpayee.RegisterAPI(payeeHandlers, authn),
 		handlercurrency.RegisterAPI(currencyHandlers, authn),
 		handleraccount.RegisterAPI(accountHandlers, authn),
