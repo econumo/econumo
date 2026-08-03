@@ -1331,9 +1331,9 @@
       "cannot_be_hidden": "Esta moneda no se puede ocultar."
     },
     "label": {
-      "name_length": "El nombre del marcador debe tener entre {min} y {max} caracteres.",
-      "already_exists": "El marcador ya existe.",
-      "list_empty": "La lista de marcadores está vacía."
+      "name_length": "El nombre del rótulo debe tener entre {min} y {max} caracteres.",
+      "already_exists": "El rótulo ya existe.",
+      "list_empty": "La lista de rótulos está vacía."
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",

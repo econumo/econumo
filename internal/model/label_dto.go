@@ -100,7 +100,7 @@ func (r UnarchiveLabelRequest) Validate() error {
 type UnarchiveLabelResult struct{}
 
 // DeleteLabelRequest is the delete-label request body. Label delete is
-// unconditional - there is no mode/replaceId.
+// unconditional — there is no mode/replaceId.
 type DeleteLabelRequest struct {
 	Id string `json:"id"`
 }
