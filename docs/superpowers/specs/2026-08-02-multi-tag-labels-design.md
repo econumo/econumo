@@ -1,7 +1,31 @@
 # Multi-tag mechanics: reporting labels
 
 **Date:** 2026-08-02
-**Status:** Design approved, pending spec review
+**Status:** Design approved; reviewed. Ready for implementation planning.
+
+## Delivery
+
+**One PR, built in phases.** The feature ships as a single branch/PR rather than a
+chain of smaller ones, but the work is sequenced into phases with a green suite at
+each boundary, so the PR grows in reviewable increments:
+
+1. **Label entity + persistence** — `labels` table, `tags.icon` column, migrations
+   (both engines), sqlc, `internal/label/` package, CRUD routes, shared-account
+   ownership.
+2. **Labels on transactions** — `transactions_labels`, `labelIds` on transaction
+   create/update/read, the `labelId` read filter.
+3. **Budget surfacing** — per-label period aggregation, the budget-neutral block,
+   drill-down.
+4. **Recurring** — `recurring_transactions_labels`, posting copies labels.
+5. **CSV** — export column after `tag`, import mapping key + separator +
+   guardrails.
+6. **Frontend** — create/edit dialog, transaction editor chips, budget block,
+   import separator dialog + label multi-select, per-kind icon/color.
+7. **Cross-cutting** — MCP surface, analytics keys, i18n catalogues, and the final
+   golden regeneration (apiparity, mcpparity, budget, CSV) + `enginecompare`.
+
+Phases 1–2 are the foundation everything else depends on; 3–5 are independent of
+each other once 2 lands.
 
 ## Problem
 
