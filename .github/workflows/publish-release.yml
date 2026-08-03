@@ -277,6 +277,9 @@ jobs:
       # write-up the GitHub body has no room for, so every release links to it
       # from its first line. Done here rather than only in the hand-written
       # notes so patch releases that keep the auto-generated body get it too.
+      # The link is written unconditionally and deliberately NOT checked: the
+      # GitHub release is published first and the site page follows, so a fresh
+      # release's link 404s until then.
       # Idempotent: re-running (or a later hand-written body that already opens
       # with the link) leaves the notes untouched.
       - name: Link the release notes on econumo.com

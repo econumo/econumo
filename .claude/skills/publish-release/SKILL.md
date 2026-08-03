@@ -144,13 +144,10 @@ exact version use `ghcr.io/econumo/econumo:vX.Y.Z`.
 ```
 
 The first line is always the link to that version's page on econumo.com, which carries the
-screenshots and the long-form write-up the GitHub body can't. Every released version has one
-(`https://econumo.com/releases/vX.Y.Z/`); confirm it before publishing the notes, and publish
-the site page first if it 404s:
-
-```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://econumo.com/releases/vX.Y.Z/
-```
+screenshots and the long-form write-up the GitHub body can't. The URL is always
+`https://econumo.com/releases/vX.Y.Z/` — write it without checking. The GitHub release ships
+first and the site page follows, so the link is expected to 404 for a while; that is the
+normal order, not a mistake to fix before publishing.
 
 Contributors come from the actual range, not memory:
 
