@@ -91,16 +91,16 @@ it('folder list returns isVisible as the wire int', async () => {
   expect(items[0].isVisible).toBe(1)
 })
 
-it('orderAccountList posts the changes array', async () => {
+it('moveAccount posts the relative move', async () => {
   let body: unknown
   server.use(
-    http.post('*/api/v1/account/order-account-list', async ({ request }) => {
+    http.post('*/api/v1/account/move-account', async ({ request }) => {
       body = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { items: [wireAccount] } })
     }),
   )
-  await accountApi.orderAccountList([{ id: 'a1', folderId: 'f2', position: 3 }])
-  expect(body).toEqual({ changes: [{ id: 'a1', folderId: 'f2', position: 3 }] })
+  await accountApi.moveAccount('a1', 'a0', 'f2')
+  expect(body).toEqual({ id: 'a1', afterId: 'a0', folderId: 'f2' })
 })
 
 it('grant/accept/decline/revoke access post the exact payloads', async () => {

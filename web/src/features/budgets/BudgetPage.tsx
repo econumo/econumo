@@ -5,7 +5,7 @@ import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/c
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { snapRowToPointer } from '@/lib/dnd'
-import { getChangedPositions } from '@/lib/ordering'
+import { afterIdFromDrop } from '@/lib/ordering'
 import type { SortableHandleProps } from '@/components/SortableList'
 import { Check, ChevronLeft, FolderPlus, GripVertical, MoreVertical, Plus, Settings2 } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -42,8 +42,8 @@ import {
   useCreateBudgetFolder,
   useUpdateBudgetFolder,
   useDeleteBudgetFolder,
-  useOrderBudgetFolders,
-  useMoveElements,
+  useMoveBudgetFolder,
+  useMoveElement,
   useChangeElementCurrency,
   canConfigureBudget,
   canEditBudget,
@@ -195,8 +195,8 @@ export function BudgetPage() {
   const createFolder = useCreateBudgetFolder()
   const updateFolder = useUpdateBudgetFolder()
   const deleteFolder = useDeleteBudgetFolder()
-  const orderFolders = useOrderBudgetFolders()
-  const moveElements = useMoveElements()
+  const orderFolders = useMoveBudgetFolder()
+  const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
 
@@ -416,10 +416,12 @@ export function BudgetPage() {
       if (from === -1 || to === -1 || from === to) {
         return
       }
-      const changes = getChangedPositions(folders, arrayMove(folderIds, from, to))
-      if (changes.length > 0) {
-        orderFolders.mutate({ budgetId: budget.meta.id, items: changes })
-      }
+      const reordered = arrayMove(folderIds, from, to)
+      orderFolders.mutate({
+        budgetId: budget.meta.id,
+        id: draggingFolderId,
+        afterId: afterIdFromDrop(reordered, draggingFolderId),
+      })
       return
     }
     const base = arrangementFromBuckets(serverBuckets ?? buckets)
@@ -433,7 +435,7 @@ export function BudgetPage() {
     }
     // keep the preview until the refetched budget replaces it (or rolls it back)
     setDragArrangement(final)
-    moveElements.mutate({ budgetId: budget.meta.id, items: [item] })
+    moveElement.mutate({ budgetId: budget.meta.id, item })
   }
 
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat

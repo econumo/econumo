@@ -6,6 +6,7 @@ import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 
@@ -122,24 +123,21 @@ export function useLeaveSharedAccount() {
   })
 }
 
-export function useOrderAccounts() {
+export function useMoveAccount() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: accountApi.orderAccountList,
+    mutationFn: ({ id, afterId, folderId }: { id: Id; afterId: Id | null; folderId: Id | null }) =>
+      accountApi.moveAccount(id, afterId, folderId),
     // optimistic: the new arrangement lands instantly, the echo just confirms it
-    onMutate: async (changes) => {
+    onMutate: async ({ id, afterId, folderId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.accounts })
       const previous = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)
-      const byId = new Map(changes.map((c) => [c.id, c]))
       queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) =>
-        (prev ?? []).map((a) => {
-          const change = byId.get(a.id)
-          return change ? { ...a, folderId: change.folderId, position: change.position } : a
-        }),
+        applyMove(prev ?? [], id, afterId).map((a) => (a.id === id ? { ...a, folderId } : a)),
       )
       return { previous }
     },
-    onError: (_err, _changes, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.accounts, context.previous)
       }
@@ -173,23 +171,17 @@ export function useUpdateFolder() {
   })
 }
 
-export function useOrderFolders() {
+export function useMoveFolder() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: accountApi.orderFolderList,
-    onMutate: async (changes) => {
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => accountApi.moveFolder(id, afterId),
+    onMutate: async ({ id, afterId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.folders })
       const previous = queryClient.getQueryData<FolderDto[]>(queryKeys.folders)
-      const positions = new Map(changes.map((c) => [c.id, c.position]))
-      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) =>
-        (prev ?? []).map((f) => {
-          const position = positions.get(f.id)
-          return position === undefined ? f : { ...f, position }
-        }),
-      )
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => applyMove(prev ?? [], id, afterId))
       return { previous }
     },
-    onError: (_err, _changes, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.folders, context.previous)
       }

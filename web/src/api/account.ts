@@ -50,8 +50,8 @@ export async function deleteAccount(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/account/delete-account'), { id })
 }
 
-export async function orderAccountList(changes: AccountPositionChange[]): Promise<AccountDto[]> {
-  const response = await api.post<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/order-account-list'), { changes })
+export async function moveAccount(id: Id, afterId: Id | null, folderId: Id | null): Promise<AccountDto[]> {
+  const response = await api.post<Envelope<{ items: AccountDto[] }>>(apiUrl('/api/v1/account/move-account'), { id, afterId, folderId })
   return response.data.data.items
 }
 
@@ -82,8 +82,8 @@ export async function showFolder(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/account/show-folder'), { id })
 }
 
-export async function orderFolderList(changes: { id: Id; position: number }[]): Promise<FolderDto[]> {
-  const response = await api.post<Envelope<{ items: FolderDto[] }>>(apiUrl('/api/v1/account/order-folder-list'), { changes })
+export async function moveFolder(id: Id, afterId: Id | null): Promise<FolderDto[]> {
+  const response = await api.post<Envelope<{ items: FolderDto[] }>>(apiUrl('/api/v1/account/move-folder'), { id, afterId })
   return response.data.data.items
 }
 

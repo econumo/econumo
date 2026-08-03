@@ -150,10 +150,10 @@ export function useDeleteCategory() {
   })
 }
 
-export function useOrderCategories() {
+export function useMoveCategory() {
   const ops = useEntityCacheOps('categories', false)
   return useMutation({
-    mutationFn: categoryApi.orderCategoryList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => categoryApi.moveCategory(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.CATEGORY_ORDER_LIST)
@@ -205,10 +205,10 @@ export function useDeletePayee() {
   })
 }
 
-export function useOrderPayees() {
+export function useMovePayee() {
   const ops = useEntityCacheOps('payees', false)
   return useMutation({
-    mutationFn: payeeApi.orderPayeeList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => payeeApi.movePayee(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.PAYEE_ORDER_LIST)
@@ -260,10 +260,10 @@ export function useDeleteTag() {
   })
 }
 
-export function useOrderTags() {
+export function useMoveTag() {
   const ops = useEntityCacheOps('tags', false)
   return useMutation({
-    mutationFn: tagApi.orderTagList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => tagApi.moveTag(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.TAG_ORDER_LIST)
@@ -288,6 +288,66 @@ export function useCreateTag() {
         const items = prev ?? []
         return items.some((t) => t.id === item.id) ? items : [...items, item]
       })
+    },
+  })
+}
+
+// useSortCategories replays an explicit target order as a chain of relative moves. Each
+// call must see the previous one's result, so they run in sequence rather than
+// in parallel; the last response carries the finished list.
+export function useSortCategories() {
+  const ops = useEntityCacheOps('categories', false)
+  return useMutation({
+    mutationFn: async (orderedIds: Id[]) => {
+      let items: CategoryDto[] = []
+      for (let i = 0; i < orderedIds.length; i++) {
+        items = await categoryApi.moveCategory(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
+      }
+      return items
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.CATEGORY_ORDER_LIST)
+    },
+  })
+}
+
+// useSortPayees replays an explicit target order as a chain of relative moves. Each
+// call must see the previous one's result, so they run in sequence rather than
+// in parallel; the last response carries the finished list.
+export function useSortPayees() {
+  const ops = useEntityCacheOps('payees', false)
+  return useMutation({
+    mutationFn: async (orderedIds: Id[]) => {
+      let items: PayeeDto[] = []
+      for (let i = 0; i < orderedIds.length; i++) {
+        items = await payeeApi.movePayee(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
+      }
+      return items
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.PAYEE_ORDER_LIST)
+    },
+  })
+}
+
+// useSortTags replays an explicit target order as a chain of relative moves. Each
+// call must see the previous one's result, so they run in sequence rather than
+// in parallel; the last response carries the finished list.
+export function useSortTags() {
+  const ops = useEntityCacheOps('tags', false)
+  return useMutation({
+    mutationFn: async (orderedIds: Id[]) => {
+      let items: TagDto[] = []
+      for (let i = 0; i < orderedIds.length; i++) {
+        items = await tagApi.moveTag(orderedIds[i], i === 0 ? null : orderedIds[i - 1])
+      }
+      return items
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.TAG_ORDER_LIST)
     },
   })
 }

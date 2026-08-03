@@ -32,7 +32,7 @@ export async function deletePayee(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/payee/delete-payee'), { id })
 }
 
-export async function orderPayeeList(changes: { id: Id; position: number }[]): Promise<PayeeDto[]> {
-  const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/order-payee-list'), { changes })
+export async function movePayee(id: Id, afterId: Id | null): Promise<PayeeDto[]> {
+  const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/move-payee'), { id, afterId })
   return response.data.data.items
 }

@@ -14,7 +14,7 @@ import { SortDialog } from '@/components/SortDialog'
 import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import { fuzzyMatch } from '@/lib/fuzzy'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { getChangedPositions } from '@/lib/ordering'
+import { afterIdFromDrop } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
@@ -86,7 +86,10 @@ interface ClassificationListProps<T extends ClassificationItem> {
   onDelete: (id: string) => void
   onToggleArchive?: (item: T) => void
   /** absent = the list is not orderable: no drag grips, no reorder button */
-  onOrder?: (changes: { id: string; position: number }[]) => void
+  onMove?: (move: { id: string; afterId: string | null }) => void
+  // Sorting A-Z reorders the WHOLE list, which no single relative move can
+  // express, so it is a separate callback that replays the target order.
+  onSort?: (orderedIds: string[]) => void
 }
 
 export function ClassificationList<T extends ClassificationItem>({
@@ -111,7 +114,8 @@ export function ClassificationList<T extends ClassificationItem>({
   onEdit,
   onDelete,
   onToggleArchive,
-  onOrder,
+  onMove,
+  onSort,
 }: ClassificationListProps<T>) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
@@ -190,17 +194,21 @@ export function ClassificationList<T extends ClassificationItem>({
     return items.map((item) => (subset.has(item.id) ? (queue.shift() as string) : item.id))
   }
 
-  const commitOrder = (orderedIds: string[]) => {
-    if (!onOrder) {
+  // A drag reports WHERE the item landed, not what every index became: the
+  // server derives the sort key from the anchor.
+  const commitOrder = (orderedIds: string[], movedId?: string) => {
+    if (!onMove) {
       return
     }
-    const changes = getChangedPositions(items, rebuildFullOrder(orderedIds))
-    if (changes.length > 0) {
-      onOrder(changes)
+    const full = rebuildFullOrder(orderedIds)
+    const moved = movedId ?? full.find((id, i) => items[i]?.id !== id)
+    if (!moved) {
+      return
     }
+    onMove({ id: moved, afterId: afterIdFromDrop(full, moved) })
   }
 
-  const orderable = onOrder !== undefined && items.length > 1
+  const orderable = onMove !== undefined && items.length > 1
   const reorderButton = (
     <Button
       type="button"
@@ -404,7 +412,7 @@ export function ClassificationList<T extends ClassificationItem>({
                   {section.action ?? null}
                 </div>
               ) : null}
-              {onOrder ? (
+              {onMove ? (
                 // reordering a fuzzy-filtered subset is disorienting — handles return when the query clears
                 <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, searching ? undefined : handle)} />
               ) : (
@@ -471,7 +479,7 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       </ResponsiveDialog>
 
-      {onOrder ? (
+      {onMove ? (
         <SortDialog
           open={sortOpen}
           onClose={() => setSortOpen(false)}
@@ -479,7 +487,7 @@ export function ClassificationList<T extends ClassificationItem>({
             const ordered = [...items].sort((a, b) =>
               direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language),
             )
-            commitOrder(ordered.map((i) => i.id))
+            onSort?.(ordered.map((i) => i.id))
             setSortOpen(false)
           }}
         />

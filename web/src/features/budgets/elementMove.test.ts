@@ -10,11 +10,11 @@ const budget = coerceBudgetFixture(fixtureWireBudget)
 const buckets = bucketElements(budget, makeBudgetExchange(budget, [usd, eur]))
 
 it('moves an element onto another element in a different folder', () => {
-  expect(computeElementMove(buckets, 'env-1', 'cat-food')).toEqual({ id: 'env-1', folderId: 'bf1', position: 0 })
+  expect(computeElementMove(buckets, 'env-1', 'cat-food')).toEqual({ id: 'env-1', folderId: 'bf1', position: 0, afterId: null })
 })
 
 it('moves onto a folder container id (end of folder)', () => {
-  expect(computeElementMove(buckets, 'cat-food', 'bfolder:null')).toEqual({ id: 'cat-food', folderId: null, position: 1 })
+  expect(computeElementMove(buckets, 'cat-food', 'bfolder:null')).toEqual({ id: 'cat-food', folderId: null, position: 1, afterId: 'env-1' })
 })
 
 it('no-op when dropped onto its own spot', () => {
@@ -32,10 +32,10 @@ it('arrangement round-trip: move live across containers and derive the wire item
     { folderId: 'bf1', ids: ['env-1', 'cat-food'] },
     { folderId: null, ids: [] },
   ])
-  expect(arrangementItem(moved, 'env-1')).toEqual({ id: 'env-1', folderId: 'bf1', position: 0 })
+  expect(arrangementItem(moved, 'env-1')).toEqual({ id: 'env-1', folderId: 'bf1', position: 0, afterId: null })
   // dropping onto a container id appends
   const back = moveElementInArrangement(moved, 'env-1', 'bfolder:null')
-  expect(arrangementItem(back, 'env-1')).toEqual({ id: 'env-1', folderId: null, position: 0 })
+  expect(arrangementItem(back, 'env-1')).toEqual({ id: 'env-1', folderId: null, position: 0, afterId: null })
 })
 
 // An EMPTY folder has no rows, so the only rects under the pointer are the
@@ -49,7 +49,7 @@ it('drops into an empty folder addressed by its bare folder id', () => {
     { folderId: null as string | null, ids: ['env-1'] },
   ]
   const moved = moveElementInArrangement(arrangement, 'env-1', 'bf-empty')
-  expect(arrangementItem(moved, 'env-1')).toEqual({ id: 'env-1', folderId: 'bf-empty', position: 0 })
+  expect(arrangementItem(moved, 'env-1')).toEqual({ id: 'env-1', folderId: 'bf-empty', position: 0, afterId: null })
 })
 
 it('applyArrangement patches folderId + order; archived elements untouched', () => {
