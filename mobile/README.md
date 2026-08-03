@@ -27,9 +27,13 @@ one hard floor:
   served to the app as `MIN_APP_VERSION` in `econumo-config.js`. An app build
   older than this hard-blocks itself ("update the app"). Servers predating
   the key never block the app — the app-side floor governs them.
-- **Soft tier:** compatible-but-different versions show dismissable banners
-  instead — "update the server" when the server is older than the app,
-  "update the app" when the server is newer.
+- **Soft tier:** compatible-but-outdated pairs get dismissable nudges. A
+  server older than the app shows the `ServerVersionNotice` banner. An
+  outdated app is covered by the pre-existing release notice (`UpdateNotice`
+  in the sidebar): in app mode `getVersion()` is the app build's version, so
+  the "Econumo {version} is out" block with its release-notes link fires
+  whenever the app trails the latest published release — no app-specific
+  surface needed.
 
 Both hard cases render `AppUpdateBlock` (a full-screen gate over every
 route); the soft banners live in the authenticated layout. Version checks

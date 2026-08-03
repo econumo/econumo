@@ -156,7 +156,6 @@
     },
     "appUpdate": {
       "title": "需要更新",
-      "notice": "您的服务器上有更新版本的 Econumo（{version}）。请更新应用。",
       "blockedApp": "此应用对您的 Econumo 服务器来说过旧：需要 {version} 或更新版本的应用。请更新应用后继续。",
       "blockedServer": "此应用需要 {min} 或更新版本的 Econumo 服务器，而您的服务器为 {version}。请更新服务器后继续。"
     }

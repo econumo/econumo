@@ -68,9 +68,10 @@ floor per side: `MIN_SERVER_VERSION` (`web/src/lib/appConfig.ts`) is the
 oldest server the app accepts, `version.MinAppVersion`
 (`internal/version/version.go`, served as `MIN_APP_VERSION`) is the oldest
 app the server accepts — crossing either hard-blocks the app
-(`AppUpdateBlock`); compatible-but-different versions get dismissable
-banners. Full rules in `mobile/README.md` — bump floors and that file
-together.
+(`AppUpdateBlock`); compatible-but-outdated pairs get soft nudges (the
+existing release `UpdateNotice` covers an outdated app, `ServerVersionNotice`
+an outdated server). Full rules in `mobile/README.md` — bump floors and that
+file together.
 
 ```bash
 make mobile-install   # cd mobile && pnpm install

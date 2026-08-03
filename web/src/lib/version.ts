@@ -27,15 +27,3 @@ export function getDismissedUpdateVersion(): string | null {
 export function setDismissedUpdateVersion(version: string): void {
   localStorage.setItem(DISMISSED_KEY, version)
 }
-
-// App-mode "update the app" nudge (AppUpdateNotice) — dismissed once per
-// server version, so the banner returns when the server moves again.
-const DISMISSED_APP_UPDATE_KEY = 'econumo.dismissed-app-update-version'
-
-export function getDismissedAppUpdateVersion(): string | null {
-  return localStorage.getItem(DISMISSED_APP_UPDATE_KEY)
-}
-
-export function setDismissedAppUpdateVersion(version: string): void {
-  localStorage.setItem(DISMISSED_APP_UPDATE_KEY, version)
-}

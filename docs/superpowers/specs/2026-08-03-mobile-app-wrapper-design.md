@@ -131,9 +131,11 @@ other in both directions, one hard floor per side:
   the oldest app build it accepts. An older app hard-blocks itself with an
   "update the app" gate. Servers predating the key never block the app;
   the app-side floor governs them.
-- Compatible-but-different versions get soft, dismissable banners instead:
-  "update the server" when the server is older than the app, "update the
-  app" when the server is newer.
+- Compatible-but-outdated pairs get soft, dismissable nudges instead: the
+  `ServerVersionNotice` banner when the server is older than the app, and —
+  for an outdated app — the pre-existing sidebar release notice
+  (`UpdateNotice`), which in app mode already compares the latest published
+  release against the app build's version and links to the release notes.
 
 The hard gate (`AppUpdateBlock`) mounts outside the router so it covers
 every route, login included. Comparisons only fire on strict `vX.Y.Z`

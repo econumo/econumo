@@ -156,7 +156,6 @@
     },
     "appUpdate": {
       "title": "Atualização necessária",
-      "notice": "Está disponível uma versão mais recente do Econumo ({version}) no seu servidor. Atualize a aplicação.",
       "blockedApp": "Esta aplicação é demasiado antiga para o seu servidor Econumo: é necessária a versão {version} ou mais recente. Atualize a aplicação para continuar.",
       "blockedServer": "Esta aplicação requer o servidor Econumo {min} ou mais recente, mas o seu servidor é {version}. Atualize o servidor para continuar."
     }
