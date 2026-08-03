@@ -12,7 +12,7 @@ import (
 )
 
 type readQuerier interface {
-	GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Tag, error)
+	GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetTagListViewRow, error)
 }
 
 type ReadRepo struct {
@@ -46,6 +46,7 @@ func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]model.TagV
 			ID:         t.ID,
 			UserID:     t.UserID,
 			Name:       t.Name,
+			Icon:       t.Icon,
 			Position:   t.Position,
 			IsArchived: t.IsArchived,
 			CreatedAt:  t.CreatedAt.Format(datetime.Layout),
@@ -57,21 +58,21 @@ func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]model.TagV
 
 type sqliteReadQuerier struct{}
 
-func (sqliteReadQuerier) GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Tag, error) {
+func (sqliteReadQuerier) GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetTagListViewRow, error) {
 	// own + shared: the user id is repeated positionally -> two-field param.
 	return sqlitegen.New(db).GetTagListView(ctx, sqlitegen.GetTagListViewParams{UserID: userID, UserID_2: userID})
 }
 
 type pgsqlReadQuerier struct{}
 
-func (pgsqlReadQuerier) GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.Tag, error) {
+func (pgsqlReadQuerier) GetTagListView(ctx context.Context, db backend.DBTX, userID string) ([]sqlitegen.GetTagListViewRow, error) {
 	rows, err := pgsqlgen.New(db).GetTagListView(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	out := make([]sqlitegen.Tag, len(rows))
+	out := make([]sqlitegen.GetTagListViewRow, len(rows))
 	for i, t := range rows {
-		out[i] = sqlitegen.Tag(t)
+		out[i] = sqlitegen.GetTagListViewRow(t)
 	}
 	return out, nil
 }

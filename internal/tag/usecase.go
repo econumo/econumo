@@ -125,6 +125,7 @@ func toResult(t *model.Tag) model.TagResult {
 		Id:          t.ID.String(),
 		OwnerUserId: t.UserID.String(),
 		Name:        t.Name,
+		Icon:        t.Icon,
 		Position:    int(t.Position),
 		IsArchived:  archived,
 		CreatedAt:   t.CreatedAt.Format(datetime.Layout),

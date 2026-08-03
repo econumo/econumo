@@ -37,7 +37,7 @@ func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixtu
 }
 
 func tag(id, userID, name string, pos int16) *model.Tag {
-	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
+	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Icon: "icon", Position: pos,
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
@@ -54,6 +54,9 @@ func TestTagRepo_SaveGetRoundTrip(t *testing.T) {
 	}
 	if got.Name != "Holiday" || got.Position != 4 || got.IsArchived {
 		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
+	}
+	if got.Icon != "icon" {
+		t.Errorf("icon mismatch: %q", got.Icon)
 	}
 	if !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("updatedAt mismatch: %v", got.UpdatedAt)
@@ -136,6 +139,9 @@ func TestTagReadRepo_OwnPlusShared(t *testing.T) {
 	}
 	if len(own) != 1 || own[0].ID != tagA1 {
 		t.Fatalf("want only own A1, got %+v", own)
+	}
+	if own[0].Icon != "icon" {
+		t.Errorf("icon mismatch: %q", own[0].Icon)
 	}
 	if own[0].CreatedAt != "2024-04-01 12:00:00" {
 		t.Errorf("datetime format wrong: %q", own[0].CreatedAt)

@@ -7,11 +7,12 @@ package pgsqlgen
 
 import (
 	"context"
+	"time"
 )
 
 const getTagListView = `-- name: GetTagListView :many
 
-SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.icon, t.position, t.is_archived, t.created_at, t.updated_at
 FROM tags t
 WHERE t.user_id = $1
    OR t.user_id IN (
@@ -23,23 +24,35 @@ WHERE t.user_id = $1
 ORDER BY t.position, t.id
 `
 
+type GetTagListViewRow struct {
+	ID         string
+	UserID     string
+	Name       string
+	Icon       string
+	Position   int16
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // Read-model query for the tag module (PostgreSQL variant: $N placeholders).
 // See the sqlite variant for documentation.
 // Available tags: own + tags of users who shared an account with this user.
 // $1 is reused for both positions so the generated param stays single.
-func (q *Queries) GetTagListView(ctx context.Context, userID string) ([]Tag, error) {
+func (q *Queries) GetTagListView(ctx context.Context, userID string) ([]GetTagListViewRow, error) {
 	rows, err := q.db.QueryContext(ctx, getTagListView, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Tag{}
+	items := []GetTagListViewRow{}
 	for rows.Next() {
-		var i Tag
+		var i GetTagListViewRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
+			&i.Icon,
 			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,

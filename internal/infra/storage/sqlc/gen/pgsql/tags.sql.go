@@ -32,21 +32,34 @@ func (q *Queries) DeleteTag(ctx context.Context, id string) error {
 
 const getTagByID = `-- name: GetTagByID :one
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
 FROM tags
 WHERE id = $1
 `
 
+type GetTagByIDRow struct {
+	ID         string
+	UserID     string
+	Name       string
+	Icon       string
+	Position   int16
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 // Write-side queries for the tag module (PostgreSQL variant: $N placeholders).
 // See the sqlite variant for documentation; the SQL is identical apart from the
-// placeholder syntax. The tags table has no type/icon columns.
-func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
+// placeholder syntax. Unlike categories, a tag has no type column, but it does
+// have a persisted icon.
+func (q *Queries) GetTagByID(ctx context.Context, id string) (GetTagByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getTagByID, id)
-	var i Tag
+	var i GetTagByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Name,
+		&i.Icon,
 		&i.Position,
 		&i.IsArchived,
 		&i.CreatedAt,
@@ -56,25 +69,37 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 }
 
 const listTagsByOwner = `-- name: ListTagsByOwner :many
-SELECT id, user_id, name, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
 FROM tags
 WHERE user_id = $1
 ORDER BY position, id
 `
 
-func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error) {
+type ListTagsByOwnerRow struct {
+	ID         string
+	UserID     string
+	Name       string
+	Icon       string
+	Position   int16
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
+func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]ListTagsByOwnerRow, error) {
 	rows, err := q.db.QueryContext(ctx, listTagsByOwner, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Tag{}
+	items := []ListTagsByOwnerRow{}
 	for rows.Next() {
-		var i Tag
+		var i ListTagsByOwnerRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
+			&i.Icon,
 			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
@@ -94,11 +119,12 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 }
 
 const upsertTag = `-- name: UpsertTag :exec
-INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO tags (id, user_id, name, icon, position, is_archived, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
+    icon        = excluded.icon,
     position    = excluded.position,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
@@ -108,6 +134,7 @@ type UpsertTagParams struct {
 	ID         string
 	UserID     string
 	Name       string
+	Icon       string
 	Position   int16
 	IsArchived bool
 	CreatedAt  time.Time
@@ -119,6 +146,7 @@ func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
 		arg.ID,
 		arg.UserID,
 		arg.Name,
+		arg.Icon,
 		arg.Position,
 		arg.IsArchived,
 		arg.CreatedAt,

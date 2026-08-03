@@ -166,6 +166,17 @@ type Folder struct {
 	UpdatedAt time.Time
 }
 
+type Label struct {
+	ID         string
+	UserID     string
+	Name       string
+	Icon       string
+	Position   int16
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type MessengerMessage struct {
 	ID          int64
 	Body        string
@@ -219,6 +230,7 @@ type Tag struct {
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	Icon       string
 }
 
 type Transaction struct {
@@ -237,6 +249,11 @@ type Transaction struct {
 	Amount             string
 	AmountRecipient    *string
 	RecurringID        *string
+}
+
+type TransactionsLabel struct {
+	TransactionID string
+	LabelID       string
 }
 
 type User struct {

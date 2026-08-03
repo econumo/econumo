@@ -1484,6 +1484,8 @@ definitions:
     properties:
       createdAt:
         type: string
+      icon:
+        type: string
       id:
         type: string
       isArchived:

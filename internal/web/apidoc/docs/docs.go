@@ -10245,6 +10245,9 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "icon": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },

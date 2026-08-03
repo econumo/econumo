@@ -202,9 +202,9 @@ type Querier interface {
 	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module. The read-side query lives in
 	// tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
-	// category_read.sql). The tags table has no type/icon columns (unlike
-	// categories): a tag's icon is a fixed "tag" and is not persisted.
-	GetTagByID(ctx context.Context, id string) (Tag, error)
+	// category_read.sql). Unlike categories, a tag has no type column, but it does
+	// have a persisted icon (see internal/model/tag.go).
+	GetTagByID(ctx context.Context, id string) (GetTagByIDRow, error)
 	// Read-model query for the tag module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
 	// (tags.sql) to keep the read and write concerns visibly distinct.
@@ -212,7 +212,7 @@ type Querier interface {
 	// an account WITH this user. Mirrors PHP TagRepository::findAvailableForUserId
 	// (self + DISTINCT owners of accounts granted via accounts_access), ordered by
 	// position. The user id is repeated positionally -> two-field Params struct.
-	GetTagListView(ctx context.Context, arg GetTagListViewParams) ([]Tag, error)
+	GetTagListView(ctx context.Context, arg GetTagListViewParams) ([]GetTagListViewRow, error)
 	// Write + read queries for the transaction module (SQLite). A transaction
 	// belongs to a user + account, has a type (0 expense, 1 income, 2 transfer),
 	// an amount, an optional recipient account + amount (transfers), and optional
@@ -369,7 +369,7 @@ type Querier interface {
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's tags ordered by position; used by order-tag-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
-	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
+	ListTagsByOwner(ctx context.Context, userID string) ([]ListTagsByOwnerRow, error)
 	// Transactions on an account (as source or recipient), newest first; id is the
 	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)

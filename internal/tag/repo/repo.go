@@ -17,8 +17,13 @@ import (
 	domtag "github.com/econumo/econumo/internal/tag"
 )
 
+// tagRow aliases GetTagByIDRow rather than the sqlc-generated Tag model: the
+// query column order (name, icon, ...) no longer matches Tag's physical column
+// order (icon was appended to the table by an ALTER TABLE), so sqlc emits a
+// dedicated row type per query instead of reusing Tag. ListTagsByOwnerRow is
+// structurally identical and converts to it directly.
 type (
-	tagRow       = sqlitegen.Tag
+	tagRow       = sqlitegen.GetTagByIDRow
 	upsertParams = sqlitegen.UpsertTagParams
 )
 
@@ -101,6 +106,7 @@ func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 		ID:         t.ID.String(),
 		UserID:     t.UserID.String(),
 		Name:       t.Name,
+		Icon:       t.Icon,
 		Position:   t.Position,
 		IsArchived: t.IsArchived,
 		CreatedAt:  t.CreatedAt,
@@ -121,6 +127,6 @@ func hydrate(row tagRow) (*model.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, Position: row.Position,
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

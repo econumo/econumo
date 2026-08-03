@@ -187,11 +187,12 @@ type envelope struct {
 
 // tagItem is the wire shape of a tag result. Tests assert key presence and
 // types, including isArchived as a number, the "2006-01-02 15:04:05" timestamp
-// format, and the absence of type/icon.
+// format, and the absence of a type field (unlike category).
 type tagItem struct {
 	ID          string `json:"id"`
 	OwnerUserID string `json:"ownerUserId"`
 	Name        string `json:"name"`
+	Icon        string `json:"icon"`
 	Position    int    `json:"position"`
 	IsArchived  int    `json:"isArchived"`
 	CreatedAt   string `json:"createdAt"`

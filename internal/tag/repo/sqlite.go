@@ -16,7 +16,15 @@ func (sqliteQuerier) GetTagByID(ctx context.Context, db backend.DBTX, id string)
 }
 
 func (sqliteQuerier) ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error) {
-	return sqlitegen.New(db).ListTagsByOwner(ctx, userID)
+	rows, err := sqlitegen.New(db).ListTagsByOwner(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]tagRow, len(rows))
+	for i, t := range rows {
+		out[i] = tagRow(t)
+	}
+	return out, nil
 }
 
 func (sqliteQuerier) CountTagsByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
