@@ -12,6 +12,7 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { RouterPage } from '@/app/router-pages'
 import type { CreatedPersonalTokenDto, PersonalTokenDto } from '@/api/dto/user'
 import { calendarLocale } from '@/lib/calendarLocale'
+import { copyText } from '@/lib/clipboard'
 import { formatDate, parseDateTime } from '@/lib/datetime'
 import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from './security'
 import { parseUtcDateTime, relativeTime } from './securityFormat'
@@ -85,8 +86,7 @@ export function PersonalTokensPage() {
 
   const copy = () => {
     if (created) {
-      void navigator.clipboard.writeText(created.token)
-      setCopied(true)
+      void copyText(created.token).then(setCopied)
     }
   }
 

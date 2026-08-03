@@ -4,6 +4,8 @@
 // properties built by the caller ever leave the browser.
 // See docs/superpowers/specs/2026-07-17-posthog-analytics-design.md.
 
+import { v4 as uuidv4 } from 'uuid'
+
 const POSTHOG_HOST = 'https://us.i.posthog.com'
 // A PostHog project API key is public by design (it can only ingest events).
 const POSTHOG_KEY = 'phc_nsMAM8nZ2N9Xh4PmCTuUpihHC2tHJnkMKKPdHxSHwDEk'
@@ -17,7 +19,10 @@ interface CapturedEvent {
   properties: Record<string, unknown>
 }
 
-const distinctId = crypto.randomUUID()
+// Not crypto.randomUUID: that one is secure-context-only, so it is missing on a
+// self-hosted instance served over plain http://<lan-ip>, and this module-level
+// call would take the whole SPA down there. uuid falls back to getRandomValues.
+const distinctId = uuidv4()
 let queue: CapturedEvent[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
 
