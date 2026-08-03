@@ -60,7 +60,7 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 		if moved != nil {
 			// Siblings are the elements already in the TARGET group, excluding the
 			// moved one -- which may be arriving from another folder.
-			siblings := groupElements(b.elements, folderID, moved.ID)
+			siblings := groupElements(b.elements, folderID, moved.ExternalID)
 			key, kerr := sortkey.Place(siblings, afterID, sortkey.GrowsDown)
 			if kerr != nil {
 				return kerr
@@ -80,13 +80,19 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 
 // groupElements returns the key-ordered siblings sharing a folder, skipping
 // unset (archived / envelope-child / non-participant) rows and the moved row.
+//
+// Siblings are keyed by EXTERNAL id, not by the budgets_elements row id, because
+// that is the id the wire carries: get-budget reports an element as its
+// envelope/category/tag id, so move-element's afterId is one of those. Keying
+// them by row id makes every anchor lookup miss, and Place then silently appends
+// -- which reads as rows jumping to the end of the group.
 func groupElements(elements []*model.BudgetElement, folderID *vo.Id, exclude vo.Id) []sortkey.Item {
 	out := make([]sortkey.Item, 0, len(elements))
 	for _, e := range elements {
-		if e.ID.Equal(exclude) || e.IsSortKeyUnset() || !inFolder(e, folderID) {
+		if e.ExternalID.Equal(exclude) || e.IsSortKeyUnset() || !inFolder(e, folderID) {
 			continue
 		}
-		out = append(out, sortkey.Item{ID: e.ID.String(), Key: e.SortKey})
+		out = append(out, sortkey.Item{ID: e.ExternalID.String(), Key: e.SortKey})
 	}
 	sort.SliceStable(out, func(i, j int) bool {
 		if out[i].Key != out[j].Key {

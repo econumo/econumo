@@ -32,6 +32,12 @@ func init() {
 					"currencyId": USD, "isArchived": 0, "categories": []string{CatSalary}}},
 			{Label: "move-element", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": CatFood, "folderId": BudgetFolder1, "afterId": nil}},
+			// Anchored on the element moved above. Elements are addressed by their
+			// EXTERNAL id on the wire, so this is what proves the anchor resolves
+			// against the same id space; with a null anchor the lookup could miss
+			// and silently append without the golden noticing.
+			{Label: "move-element-after-anchor", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": TagWork, "folderId": BudgetFolder1, "afterId": CatFood}},
 			{Label: "change-element-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "elementId": CatFood, "currencyId": USD}},
 			{Label: "delete-envelope", Method: "POST", Path: "/api/v1/budget/delete-envelope", Auth: "owner",

@@ -46,3 +46,18 @@ it('applyMove appends when the anchor is unknown, mirroring the server', () => {
 it('applyMove leaves the list alone when the moved id is absent', () => {
   expect(applyMove(items, 'ghost', null)).toBe(items)
 })
+
+// A downward drag is where inferring the moved row from the reordered list goes
+// wrong: [A,B,C] -> [B,C,A] first differs at index 0, which is B, the DISPLACED
+// neighbour, not A. The dragged id must come from the drag event instead.
+it('afterIdFromDrop reports the right anchor for a downward drag', () => {
+  const after = ['B', 'C', 'A']
+  expect(afterIdFromDrop(after, 'A')).toBe('C')
+  // and the neighbour a naive diff would have blamed is genuinely first
+  expect(afterIdFromDrop(after, 'B')).toBeNull()
+})
+
+it('afterIdFromDrop reports the right anchor for an upward drag', () => {
+  expect(afterIdFromDrop(['C', 'A', 'B'], 'C')).toBeNull()
+  expect(afterIdFromDrop(['A', 'C', 'B'], 'C')).toBe('A')
+})

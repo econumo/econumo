@@ -16,6 +16,9 @@
 == move-element POST /api/v1/budget/move-element [owner] -> 200
 {"success":true,"message":"","data":{}}
 
+== move-element-after-anchor POST /api/v1/budget/move-element [owner] -> 200
+{"success":true,"message":"","data":{}}
+
 == change-element-currency POST /api/v1/budget/change-element-currency [owner] -> 200
 {"success":true,"message":"","data":{}}
 

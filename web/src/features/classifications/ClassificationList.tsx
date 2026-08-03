@@ -201,18 +201,15 @@ export function ClassificationList<T extends ClassificationItem>({
     return items.map((item) => (subset.has(item.id) ? (queue.shift() as string) : item.id))
   }
 
-  // A drag reports WHERE the item landed, not what every index became: the
-  // server derives the sort key from the anchor.
-  const commitOrder = (orderedIds: string[], movedId?: string) => {
+  // A drag reports WHERE the dragged row landed, not what every index became:
+  // the server derives the sort key from the anchor. movedId comes from the drag
+  // event rather than from diffing the orders, because the first differing index
+  // is the displaced neighbour, not the dragged row, on any downward move.
+  const commitOrder = (orderedIds: string[], movedId: string) => {
     if (!onMove) {
       return
     }
-    const full = rebuildFullOrder(orderedIds)
-    const moved = movedId ?? full.find((id, i) => items[i]?.id !== id)
-    if (!moved) {
-      return
-    }
-    onMove({ id: moved, afterId: afterIdFromDrop(full, moved) })
+    onMove({ id: movedId, afterId: afterIdFromDrop(rebuildFullOrder(orderedIds), movedId) })
   }
 
   const orderable = onMove !== undefined && items.length > 1

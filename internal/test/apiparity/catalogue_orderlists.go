@@ -7,8 +7,11 @@ package apiparity
 func init() {
 	register(Scenario{Name: "order_lists", Calls: func() []Call {
 		return []Call{
+			// Anchored on a real sibling, not nil: a null anchor exercises the
+			// "move to front" path only, and would not catch an afterId that
+			// fails to resolve (which silently appends).
 			{Label: "move-category", Method: "POST", Path: "/api/v1/category/move-category", Auth: "owner",
-				Body: map[string]any{"id": CatSalary, "afterId": nil}},
+				Body: map[string]any{"id": CatFood, "afterId": CatSalary}},
 			{Label: "get-category-list-after", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "move-tag", Method: "POST", Path: "/api/v1/tag/move-tag", Auth: "owner",
 				Body: map[string]any{"id": TagWork, "afterId": nil}},
