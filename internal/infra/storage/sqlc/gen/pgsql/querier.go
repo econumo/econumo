@@ -21,6 +21,7 @@ type Querier interface {
 	// $1 is reused everywhere, so the generated param is a single field.
 	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
@@ -38,6 +39,7 @@ type Querier interface {
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteLabel(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
@@ -106,6 +108,15 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
+	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
+	// persisted from the start.
+	GetLabelByID(ctx context.Context, id string) (Label, error)
+	// Read-model query for the label module (PostgreSQL variant: $N placeholders).
+	// See the sqlite variant for documentation.
+	// Available labels: own + labels of users who shared an account with this user.
+	// $1 is reused for both positions so the generated param stays single.
+	GetLabelListView(ctx context.Context, userID string) ([]Label, error)
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. See the sqlite variant.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
@@ -237,6 +248,7 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -279,6 +291,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

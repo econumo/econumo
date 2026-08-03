@@ -21,6 +21,8 @@ type Querier interface {
 	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	// New-label position = count of the owner's existing labels.
+	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	// New-payee position = count of the owner's existing payees.
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	// New-tag position = count of the owner's existing tags.
@@ -42,6 +44,9 @@ type Querier interface {
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
+	// unlike tags there is no SET NULL, because the link is a join table.
+	DeleteLabel(ctx context.Context, id string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
@@ -167,6 +172,15 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the label module. The read-side query lives in
+	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
+	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
+	GetLabelByID(ctx context.Context, id string) (Label, error)
+	// Read-model query for the label module (CQRS read side).
+	// Available labels: the user's OWN labels plus the labels of every user who has
+	// shared an account WITH this user. The user id is repeated positionally, which
+	// generates a two-field Params struct.
+	GetLabelListView(ctx context.Context, arg GetLabelListViewParams) ([]Label, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
 	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
@@ -358,6 +372,7 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	// The owner's payees ordered by position; used by order-payee-list (load, apply
 	// position changes, re-save) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
@@ -413,6 +428,7 @@ type Querier interface {
 	// (identifier_uniq_currencies_rates) upsert dedupes per day.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error
