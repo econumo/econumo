@@ -302,7 +302,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		transactionRepo,
 	)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
+		NewTransactionLabelOwnership(labelRepo), txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 

@@ -128,6 +128,14 @@ func (r *Repo) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs 
 	return nil
 }
 
+// labelsByTransactionIDsChunkSize bounds each round trip's IN list well under
+// either engine's bind-param ceiling (SQLite 32766, PostgreSQL 65535): unlike
+// the account-bounded queries elsewhere in this file, the caller here is a
+// transaction count (CSV export, an unpaginated list endpoint), which is not
+// naturally small, so the batch loader chunks itself rather than trusting
+// every call site to pre-page its ids.
+const labelsByTransactionIDsChunkSize = 500
+
 // LabelsByTransactionIDs batch-loads label ids for many transactions, keyed by
 // transaction id. hydrate is per-row and takes no ctx, so labels are attached
 // after hydration by the caller; loading per row here would be an N+1 on
@@ -137,6 +145,22 @@ func (r *Repo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[str
 	if len(ids) == 0 {
 		return nil, nil
 	}
+	out := make(map[string][]string, len(ids))
+	for len(ids) > 0 {
+		n := len(ids)
+		if n > labelsByTransactionIDsChunkSize {
+			n = labelsByTransactionIDsChunkSize
+		}
+		chunk := ids[:n]
+		ids = ids[n:]
+		if err := r.labelsByTransactionIDsChunk(ctx, chunk, out); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (r *Repo) labelsByTransactionIDsChunk(ctx context.Context, ids []vo.Id, out map[string][]string) error {
 	args := make([]any, len(ids))
 	for i, id := range ids {
 		args[i] = id.String()
@@ -150,19 +174,18 @@ func (r *Repo) LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[str
 		placeholders(r.driver, 1, len(args)) + ") ORDER BY transaction_id, label_id"
 	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer rows.Close()
 
-	out := make(map[string][]string, len(ids))
 	for rows.Next() {
 		var txID, labelID string
 		if err := rows.Scan(&txID, &labelID); err != nil {
-			return nil, err
+			return err
 		}
 		out[txID] = append(out[txID], labelID)
 	}
-	return out, rows.Err()
+	return rows.Err()
 }
 
 // LinkRecurring stamps recurring_id on an existing transaction (Save never

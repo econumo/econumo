@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -332,4 +333,41 @@ func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id
 		return model.ImportNamed{}, err
 	}
 	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+}
+
+// transactionLabelByID is the minimal label-repo surface the ownership
+// adapter uses.
+type transactionLabelByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Label, error)
+}
+
+// TransactionLabelOwnership adapts the label repository to the transaction
+// feature's LabelOwnership port: a per-id GetByID is enough here since the
+// list a create/update request carries is a single transaction's
+// classification (naturally small), unlike LabelsByTransactionIDs's
+// transaction-count-bounded batch read.
+type TransactionLabelOwnership struct {
+	labels transactionLabelByID
+}
+
+// NewTransactionLabelOwnership wraps a label repository.
+func NewTransactionLabelOwnership(labels transactionLabelByID) *TransactionLabelOwnership {
+	return &TransactionLabelOwnership{labels: labels}
+}
+
+// LabelOwners resolves the owning user for every id that exists; a missing id
+// is simply absent from the returned map.
+func (l *TransactionLabelOwnership) LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error) {
+	out := make(map[string]vo.Id, len(ids))
+	for _, id := range ids {
+		lbl, err := l.labels.GetByID(ctx, id)
+		if err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				continue
+			}
+			return nil, err
+		}
+		out[id.String()] = lbl.UserID
+	}
+	return out, nil
 }

@@ -68,7 +68,7 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		txExport, txImport, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		txExport, txImport, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 

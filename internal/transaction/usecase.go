@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -20,6 +21,7 @@ type Service struct {
 	users    UserLookup
 	export   ExportLookup
 	importer Importer
+	labels   LabelOwnership
 	tx       port.TxRunner
 	ops      port.OperationGuard
 	clock    port.Clock
@@ -34,11 +36,12 @@ func NewService(
 	users UserLookup,
 	export ExportLookup,
 	importer Importer,
+	labels LabelOwnership,
 	tx port.TxRunner,
 	ops port.OperationGuard,
 	clock port.Clock,
 ) *Service {
-	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
+	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, labels: labels, tx: tx, ops: ops, clock: clock}
 }
 
 // checkWriteAccess verifies the user may add/update/delete a transaction on the
@@ -86,7 +89,20 @@ func notAvailableCode(msg string) string {
 //     account owner), so a caller-only check would reject a legitimate
 //     co-sharer's transaction; a truly foreign (unconnected) id is still
 //     rejected.
-func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.NewState) error {
+//   - when rawLabelIDs is non-nil, the ids it points to are resolved and
+//     written into st.LabelIDs for a non-transfer (a transfer never carries
+//     labels; st.LabelIDs stays whatever the caller already set — buildState
+//     never sets it, so create/update start from nil). rawLabelIDs itself
+//     being nil means "leave st.LabelIDs as the caller already set it": bulk
+//     re-classification touches only category/payee/tag and must not zero an
+//     existing label set, so it passes nil after seeding st.LabelIDs with the
+//     transaction's current labels; create/update always pass a non-nil
+//     pointer (even to an empty/nil slice) since their wire contract is a full
+//     replace. Unlike category/payee/tag, a label must belong to the ACCOUNT
+//     OWNER specifically, not the caller: reporting labels classify the
+//     owner's books, so a connected co-sharer classifies with the owner's
+//     labels exactly as they do with the owner's categories/tags/payees above.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs *[]string) error {
 	if st.AccountRecipID != nil {
 		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
 			return err
@@ -114,7 +130,54 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.Ne
 			return err
 		}
 	}
+	if !st.Type.IsTransfer() && rawLabelIDs != nil {
+		ids, lerr := s.resolveLabels(ctx, ownerID, *rawLabelIDs)
+		if lerr != nil {
+			return lerr
+		}
+		st.LabelIDs = ids
+	}
 	return nil
+}
+
+// resolveLabels parses, dedupes, and authorizes the wire labelIds for a
+// non-transfer transaction: each must parse as a valid id, exist, and be
+// owned by ownerID (the transaction's account owner) — else the frozen
+// item-not-available validation error, same as an unavailable category/
+// payee/tag. Deduped ids are sorted by string so an immediate create/update
+// response shows the same order a later read does (LabelsByTransactionIDs
+// orders by label_id for cross-engine stability; sorting here keeps the two
+// views consistent without a redundant DB round trip on the write path).
+func (s *Service) resolveLabels(ctx context.Context, ownerID vo.Id, rawLabelIDs []string) ([]vo.Id, error) {
+	if len(rawLabelIDs) == 0 {
+		return nil, nil
+	}
+	seen := make(map[string]struct{}, len(rawLabelIDs))
+	ids := make([]vo.Id, 0, len(rawLabelIDs))
+	for _, raw := range rawLabelIDs {
+		id, err := vo.ParseId(raw)
+		if err != nil {
+			return nil, err
+		}
+		key := id.String()
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		ids = append(ids, id)
+	}
+	owners, err := s.labels.LabelOwners(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		owner, ok := owners[id.String()]
+		if !ok || !owner.Equal(ownerID) {
+			return nil, &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	return ids, nil
 }
 
 // requireAvailableEntity confirms id belongs to the caller or to the account
@@ -167,24 +230,66 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 }
 
 // toResult builds the transaction result, resolving the author embed. The
-// amountRecipient falls back to amount when nil. Single-transaction callers
-// (create/update/delete) use this; the list endpoint uses buildResult with a
-// per-request author cache to avoid an N+1 (see GetTransactionList).
-func (s *Service) toResult(ctx context.Context, t *model.Transaction) (model.TransactionResult, error) {
+// amountRecipient falls back to amount when nil. labelIDs is the wire-shaped
+// label id list already resolved by the caller (create/update pass the
+// in-memory entity's own LabelIDs — set moments earlier in the same tx, so it
+// is authoritative without a re-read; delete passes ids fetched BEFORE the
+// row and its transactions_labels rows are removed, since a post-delete
+// LabelsByTransactionIDs would come back empty due to the cascade). The list
+// endpoint uses buildResult directly with a per-request author cache to avoid
+// an N+1 (see GetTransactionList).
+func (s *Service) toResult(ctx context.Context, t *model.Transaction, labelIDs []string) (model.TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserID.String())
 	if err != nil {
 		return model.TransactionResult{}, err
 	}
-	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}), nil
+	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}, labelIDs), nil
+}
+
+// labelIDStrings converts a resolved label id slice to its wire string form
+// (nil-safe: a transfer or a never-classified transaction has none).
+func labelIDStrings(ids []vo.Id) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
+}
+
+// labelIDsFromStrings parses an already-persisted label id list back into
+// vo.Id (the DB values are always well-formed, but ParseId's signature is
+// honored rather than assumed). Used to seed a preserved label set into a
+// model.NewState when a use case (bulk re-classification) must not disturb
+// the existing labels.
+func labelIDsFromStrings(ids []string) ([]vo.Id, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	out := make([]vo.Id, len(ids))
+	for i, s := range ids {
+		id, err := vo.ParseId(s)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = id
+	}
+	return out, nil
 }
 
 // buildResult assembles the wire DTO from an already-resolved author (no DB
-// access), so callers control author resolution / caching.
-func (s *Service) buildResult(t *model.Transaction, author model.UserResult) model.TransactionResult {
+// access) and an already-resolved label id list, so callers control author
+// resolution/caching and label-loading strategy (single lookup vs. batch).
+func (s *Service) buildResult(t *model.Transaction, author model.UserResult, labelIDs []string) model.TransactionResult {
 	amountRecipient := t.Amount
 	if ar := t.AmountRecipient; ar != nil {
 		amountRecipient = *ar
 	}
+	// Always a list, never null, so clients never need a nil check.
+	labelIds := []string{}
+	labelIds = append(labelIds, labelIDs...)
 	var recipID, catID, payeeID, tagID *string
 	if v := t.AccountRecipID; v != nil {
 		s := v.String()
@@ -221,6 +326,7 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		TagId:              tagID,
 		Date:               t.SpentAt.Format(datetime.Layout),
 		RecurringId:        recurringID,
+		LabelIds:           labelIds,
 	}
 }
 

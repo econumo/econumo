@@ -615,6 +615,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is ignored for a transfer (transfers never carry labels); each
+          entry is validated (parses as an id, exists, owned by the transaction's
+          account owner) by the service, not here.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:
@@ -1587,6 +1595,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is always a list, never null, so clients can iterate without a
+          nil check. A transfer always carries an empty list.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       recurringId:
@@ -1921,6 +1936,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds replaces the full label set (nil/empty clears it); ignored for a
+          transfer. See CreateTransactionRequest.LabelIds for the validation rule.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:

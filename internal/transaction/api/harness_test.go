@@ -27,6 +27,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
@@ -54,6 +55,11 @@ const (
 	folderID   = "ffffffff-0000-0000-0000-00000000f01d"
 	accountID  = "aaaa1111-0000-0000-0000-0000000000a1"
 	catID      = "cccc2222-0000-0000-0000-0000000000c1"
+
+	labelOwnerID = "33333333-3333-3333-3333-333333333333"
+	label1ID     = "dddd3333-0000-0000-0000-0000000000d1"
+	label2ID     = "dddd3333-0000-0000-0000-0000000000d2"
+	otherLabelID = "dddd3333-0000-0000-0000-0000000000d9"
 )
 
 type harness struct {
@@ -84,6 +90,11 @@ func newHarness(t *testing.T) *harness {
 	f.AccountInFolder(folderID, accountID)
 	f.AccountOption(accountID, seedUserID, 0)
 	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
+	f.Label(fixture.Label{ID: label1ID, UserID: seedUserID, Name: "Label One"})
+	f.Label(fixture.Label{ID: label2ID, UserID: seedUserID, Name: "Label Two"})
+	// A different user's label, to verify labelIds are rejected across ownership.
+	f.User(fixture.User{ID: labelOwnerID, Email: "labelowner@example.test", Name: "Label Owner", Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
+	f.Label(fixture.Label{ID: otherLabelID, UserID: labelOwnerID, Name: "Not Mine"})
 
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
@@ -111,11 +122,14 @@ func newHarness(t *testing.T) *harness {
 		txImportAccounts, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txImportCategories, txImportPayees, txImportTags, txRepo,
 	)
+	labelRepo := labelrepo.NewRepo("sqlite", txm)
 	svc := apptransaction.NewService(
 		txRepo, accSvc,
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		accSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport,
+		server.NewTransactionLabelOwnership(labelRepo),
+		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlertransaction.NewHandlers(svc)

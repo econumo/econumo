@@ -9395,6 +9395,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "description": "LabelIds is ignored for a transfer (transfers never carry labels); each\nentry is validated (parses as an id, exists, owned by the transaction's\naccount owner) by the service, not here.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "payeeId": {
                     "type": "string"
                 },
@@ -10903,6 +10910,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "description": "LabelIds is always a list, never null, so clients can iterate without a\nnil check. A transfer always carries an empty list.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "payeeId": {
                     "type": "string"
                 },
@@ -11420,6 +11434,13 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds replaces the full label set (nil/empty clears it); ignored for a\ntransfer. See CreateTransactionRequest.LabelIds for the validation rule.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "payeeId": {
                     "type": "string"

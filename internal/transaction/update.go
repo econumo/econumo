@@ -69,12 +69,15 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
 		}
-		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+		if rerr := s.checkReferences(ctx, userID, &st, &req.LabelIds); rerr != nil {
 			return rerr
 		}
 		t.Update(st, now)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
+		}
+		if lerr := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); lerr != nil {
+			return lerr
 		}
 		updated = t
 		return nil
@@ -82,7 +85,7 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 
-	item, err := s.toResult(ctx, updated)
+	item, err := s.toResult(ctx, updated, labelIDStrings(updated.LabelIDs))
 	if err != nil {
 		return nil, err
 	}

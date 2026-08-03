@@ -3,6 +3,7 @@ package repo_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -510,5 +511,50 @@ func TestTransactionRepo_LabelsByTransactionIDs_EmptyIDs(t *testing.T) {
 	got, err := repo.LabelsByTransactionIDs(context.Background(), nil)
 	if err != nil || got != nil {
 		t.Fatalf("empty ids should yield nil,nil (guards the IN() syntax error on PostgreSQL); got %v, %v", got, err)
+	}
+}
+
+// chunkTestTxID deterministically derives a valid-UUID-shaped id from an
+// index, so a large id set can be built without 500+ literals.
+func chunkTestTxID(i int) string {
+	return fmt.Sprintf("7c0c0000-0000-0000-0000-%012d", i)
+}
+
+// TestTransactionRepo_LabelsByTransactionIDs_ChunksAcrossBoundary exercises
+// the batch loader with MORE ids than labelsByTransactionIDsChunkSize (500):
+// a naive one-shot IN(...) would still work in SQLite for this count, but the
+// point is proving the multi-round-trip merge itself is correct (every id's
+// row present exactly once, none dropped or duplicated at the chunk seam) —
+// the real motivation is PostgreSQL's bind-param ceiling, which this count
+// stays safely under while still crossing the chunk boundary at least once.
+func TestTransactionRepo_LabelsByTransactionIDs_ChunksAcrossBoundary(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+
+	const n = 501
+	ids := make([]vo.Id, n)
+	for i := 0; i < n; i++ {
+		txID := chunkTestTxID(i)
+		if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+			t.Fatalf("Save %d: %v", i, err)
+		}
+		if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1)}); err != nil {
+			t.Fatalf("ReplaceLabels %d: %v", i, err)
+		}
+		ids[i] = vo.MustParseId(txID)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, ids)
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if len(got) != n {
+		t.Fatalf("got %d transactions with labels, want %d (a dropped or duplicated chunk would miscount)", len(got), n)
+	}
+	for i := 0; i < n; i++ {
+		if !equalOrdered(got[chunkTestTxID(i)], []string{label1}) {
+			t.Fatalf("tx %d labels = %v, want [%s]", i, got[chunkTestTxID(i)], label1)
+		}
 	}
 }

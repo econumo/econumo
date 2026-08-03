@@ -46,6 +46,15 @@ type AccountGrants interface {
 	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
+// LabelOwnership resolves the owning user for a set of label ids, for
+// validating a create/update request's labelIds. A missing id is simply
+// absent from the returned map rather than an error, so the caller's
+// membership check (id present AND owner == the transaction's account owner)
+// rejects both an unknown id and one owned by someone else.
+type LabelOwnership interface {
+	LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error)
+}
+
 // ExportLookup supplies the read-side data the export needs without coupling the
 // transaction service to the account/metadata repo packages: the user's
 // accessible accounts (own + shared, not deleted) and name resolution for the

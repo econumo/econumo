@@ -122,7 +122,7 @@ func newHarness(t *testing.T) *harness {
 		txRepo, accountSvc,
 		accountAccessResolver,
 		accountSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, opGuard, clk,
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, nil, txm, opGuard, clk,
 	)
 
 	recurringRepo := recurringrepo.NewRepo("sqlite", txm)
