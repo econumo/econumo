@@ -40,13 +40,12 @@ func newRepo(t *testing.T) (*categoryrepo.Repo, *categoryrepo.ReadRepo, *dbtest.
 // cat builds a category whose sort key is derived from pos, so tests keep
 // expressing intended order as a small integer while the repo orders by key.
 func cat(id, userID, name string, pos int16, typ model.CategoryType) *model.Category {
-	return &model.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos,
-		SortKey: keyAt(pos), Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	return &model.Category{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, SortKey: keyAt(pos), Type: typ, Icon: "icon", IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
 // keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
 // plus three base-62 digits.
-func keyAt(pos int16) sortkey.Key {
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
 	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	n := int(pos)
 	if n < 0 {
@@ -67,8 +66,8 @@ func TestCategoryRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Food" || got.Position != 2 || got.Type != model.TypeExpense {
-		t.Errorf("mismatch: name=%q pos=%d type=%d", got.Name, got.Position, got.Type)
+	if got.Name != "Food" || got.SortKey != keyAt(2) || got.Type != model.TypeExpense {
+		t.Errorf("mismatch: name=%q key=%q type=%d", got.Name, got.SortKey, got.Type)
 	}
 	if got.IsArchived {
 		t.Error("should not be archived")

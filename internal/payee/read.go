@@ -48,7 +48,6 @@ func toViewResult(r model.PayeeViewRow) model.PayeeResult {
 		Id:          r.ID,
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
-		Position:    int(r.Position),
 		IsArchived:  archived,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,

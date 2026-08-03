@@ -851,8 +851,8 @@ func TestRevokeAccess_RemovesInviteeRecords(t *testing.T) {
 func insertInviteeElement(t *testing.T, h *harness) {
 	t.Helper()
 	if _, err := h.db.Exec(
-		`INSERT INTO budgets_elements (id, budget_id, external_id, type, created_at, updated_at, position)
-		 VALUES ('55555555-5555-5555-5555-555555555555', ?, ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 0)`,
+		`INSERT INTO budgets_elements (id, budget_id, external_id, type, created_at, updated_at, sort_key)
+		 VALUES ('55555555-5555-5555-5555-555555555555', ?, ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'c000')`,
 		budgetID1, otherCatID,
 	); err != nil {
 		t.Fatalf("insert grandfathered element: %v", err)

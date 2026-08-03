@@ -248,7 +248,7 @@ func TestBudgetAccess_UpdateRole_OnlyBumpsOnChange(t *testing.T) {
 func TestBudgetElement_SortKeyUnset(t *testing.T) {
 	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
 		mustID(t, "22222222-2222-2222-2222-222222222222"),
-		mustID(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, 0, t0)
+		mustID(t, "33333333-3333-3333-3333-333333333333"), ElementCategory, nil, nil, t0)
 	if !e.IsSortKeyUnset() {
 		t.Fatal("a freshly built element carries no key, so it must read as unset")
 	}
@@ -262,7 +262,7 @@ func TestBudgetElement_UpdateCurrency_NilTransitions(t *testing.T) {
 	cur := mustID(t, "33333333-3333-3333-3333-333333333333")
 	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
 		mustID(t, "22222222-2222-2222-2222-222222222222"),
-		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
+		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, t0)
 	// nil -> nil: no bump.
 	e.UpdateCurrency(nil, t1)
 	if !e.UpdatedAt.Equal(t0) {
@@ -274,7 +274,7 @@ func TestBudgetElement_UpdateCurrency_NilTransitions(t *testing.T) {
 		t.Fatalf("nil->set currency failed: %v", e.CurrencyID)
 	}
 	// set -> same: no bump (reset updatedAt to detect).
-	e2 := &BudgetElement{ID: e.ID, BudgetID: e.BudgetID, ExternalID: e.ExternalID, Type: e.Type, CurrencyID: &cur, Position: 1, CreatedAt: t0, UpdatedAt: t0}
+	e2 := &BudgetElement{ID: e.ID, BudgetID: e.BudgetID, ExternalID: e.ExternalID, Type: e.Type, CurrencyID: &cur, SortKey: "c001", CreatedAt: t0, UpdatedAt: t0}
 	e2.UpdateCurrency(&cur, t1)
 	if !e2.UpdatedAt.Equal(t0) {
 		t.Fatal("set->same currency bumped updatedAt")
@@ -285,7 +285,7 @@ func TestBudgetElement_UpdateFolder_NilTransitions(t *testing.T) {
 	folder := mustID(t, "55555555-5555-5555-5555-555555555555")
 	e := NewBudgetElement(mustID(t, "11111111-1111-1111-1111-111111111111"),
 		mustID(t, "22222222-2222-2222-2222-222222222222"),
-		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, 1, t0)
+		mustID(t, "44444444-4444-4444-4444-444444444444"), ElementCategory, nil, nil, t0)
 	e.UpdateFolder(&folder, t1)
 	if e.FolderID == nil || !e.FolderID.Equal(folder) || !e.UpdatedAt.Equal(t1) {
 		t.Fatalf("move to folder failed: %v", e.FolderID)

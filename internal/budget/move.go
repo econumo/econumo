@@ -153,7 +153,7 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		}
 		// A missing element starts keyless; it is given one below, appended to the
 		// end of the no-folder group.
-		e := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, 0, now)
+		e := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, now)
 		byKey[key] = e
 		created[key] = e
 		return e, key

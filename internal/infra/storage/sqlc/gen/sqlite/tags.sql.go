@@ -16,7 +16,6 @@ const countTagsByOwner = `-- name: CountTagsByOwner :one
 SELECT COUNT(*) FROM tags WHERE user_id = ?
 `
 
-// New-tag position = count of the owner's existing tags.
 func (q *Queries) CountTagsByOwner(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countTagsByOwner, userID)
 	var count int64
@@ -39,7 +38,7 @@ func (q *Queries) DeleteTag(ctx context.Context, id string) error {
 
 const getTagByID = `-- name: GetTagByID :one
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE id = ?
 `
@@ -55,7 +54,6 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -67,14 +65,14 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 const listTagsByOwner = `-- name: ListTagsByOwner :many
 ;
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
 FROM tags
 WHERE user_id = ?
 ORDER BY sort_key, id
 `
 
-// The owner's tags ordered by position; used by order-tag-list (load, apply
-// position changes, re-save) and as the basis for the returned list.
+// The owner's tags ordered by sort key; used by move-tag (load,
+// place the moved row, save it) and as the basis for the returned list.
 func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error) {
 	rows, err := q.db.QueryContext(ctx, listTagsByOwner, userID)
 	if err != nil {
@@ -88,7 +86,6 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -110,12 +107,11 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 const upsertTag = `-- name: UpsertTag :exec
 ;
 
-INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tags (id, user_id, name, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
@@ -125,7 +121,6 @@ type UpsertTagParams struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -137,7 +132,6 @@ func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,

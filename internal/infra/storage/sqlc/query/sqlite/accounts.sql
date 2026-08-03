@@ -43,19 +43,18 @@ ON CONFLICT (id) DO UPDATE SET
     updated_at  = excluded.updated_at;
 
 -- name: GetAccountOption :one
-SELECT account_id, user_id, position, created_at, updated_at, sort_key
+SELECT account_id, user_id, created_at, updated_at, sort_key
 FROM accounts_options
 WHERE account_id = ? AND user_id = ?;
 
 -- name: ListAccountOptionsByUser :many
-SELECT account_id, user_id, position, created_at, updated_at, sort_key
+SELECT account_id, user_id, created_at, updated_at, sort_key
 FROM accounts_options
 WHERE user_id = ?;
 
 -- name: UpsertAccountOption :exec
-INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?)
+INSERT INTO accounts_options (account_id, user_id, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?)
 ON CONFLICT (account_id, user_id) DO UPDATE SET
-    position   = excluded.position,
     sort_key   = excluded.sort_key,
     updated_at = excluded.updated_at;

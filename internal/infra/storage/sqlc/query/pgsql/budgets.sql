@@ -54,19 +54,18 @@ ON CONFLICT (budget_id, user_id) DO UPDATE SET
 DELETE FROM budgets_access WHERE budget_id = $1 AND user_id = $2;
 
 -- name: ListBudgetFolders :many
-SELECT id, budget_id, name, position, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key
 FROM budgets_folders WHERE budget_id = $1 ORDER BY sort_key ASC, id ASC;
 
 -- name: GetBudgetFolder :one
-SELECT id, budget_id, name, position, created_at, updated_at, sort_key
+SELECT id, budget_id, name, created_at, updated_at, sort_key
 FROM budgets_folders WHERE id = $1;
 
 -- name: UpsertBudgetFolder :exec
-INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO budgets_folders (id, budget_id, name, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
-    position   = excluded.position,
     sort_key   = excluded.sort_key,
     updated_at = excluded.updated_at;
 
@@ -104,25 +103,24 @@ ON CONFLICT (budget_envelope_id, category_id) DO NOTHING;
 DELETE FROM budgets_envelopes_categories WHERE budget_envelope_id = $1 AND category_id = $2;
 
 -- name: ListBudgetElements :many
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = $1;
 
 -- name: GetBudgetElement :one
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE id = $1;
 
 -- name: GetBudgetElementByExternal :one
-SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = $1 AND external_id = $2;
 
 -- name: UpsertBudgetElement :exec
-INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, position, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     folder_id   = excluded.folder_id,
     type        = excluded.type,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     updated_at  = excluded.updated_at;
 

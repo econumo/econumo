@@ -9,6 +9,7 @@ import (
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -149,12 +150,12 @@ func TestBudgetRepo_FolderCRUD(t *testing.T) {
 	ctx := context.Background()
 	saveBudget(t, repo, ctx)
 	fid := vo.NewId()
-	f := &model.BudgetFolder{ID: fid, BudgetID: vo.MustParseId(budgetID), Name: "Bills", Position: 3, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	f := &model.BudgetFolder{ID: fid, BudgetID: vo.MustParseId(budgetID), Name: "Bills", SortKey: keyAt(3), CreatedAt: fixedTime, UpdatedAt: fixedTime}
 	if err := repo.SaveFolder(ctx, f); err != nil {
 		t.Fatalf("SaveFolder: %v", err)
 	}
 	got, err := repo.GetFolder(ctx, fid)
-	if err != nil || got.Name != "Bills" || got.Position != 3 {
+	if err != nil || got.Name != "Bills" || got.SortKey != keyAt(3) {
 		t.Fatalf("GetFolder mismatch: %+v err=%v", got, err)
 	}
 	if l, _ := repo.ListFolders(ctx, vo.MustParseId(budgetID)); len(l) != 1 {
@@ -221,7 +222,7 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	ccy := vo.MustParseId(usdID)
 	el := &model.BudgetElement{
 		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: externalID, Type: model.ElementCategory,
-		CurrencyID: &ccy, Position: 5, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		CurrencyID: &ccy, SortKey: keyAt(5), CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.SaveElement(ctx, el); err != nil {
 		t.Fatalf("SaveElement: %v", err)
@@ -230,8 +231,8 @@ func TestBudgetRepo_ElementCRUD(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetElement: %v", err)
 	}
-	if got.Type != model.ElementCategory || got.Position != 5 {
-		t.Errorf("element mismatch: type=%d pos=%d", got.Type, got.Position)
+	if got.Type != model.ElementCategory || got.SortKey != keyAt(5) {
+		t.Errorf("element mismatch: type=%d key=%q", got.Type, got.SortKey)
 	}
 	if got.CurrencyID == nil || got.CurrencyID.String() != usdID {
 		t.Errorf("currency mismatch: %v", got.CurrencyID)
@@ -261,7 +262,7 @@ func TestBudgetRepo_SaveLimit_Decimal(t *testing.T) {
 	eid := vo.NewId()
 	el := &model.BudgetElement{
 		ID: eid, BudgetID: vo.MustParseId(budgetID), ExternalID: vo.NewId(), Type: model.ElementCategory,
-		Position: 0, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		SortKey: keyAt(0), CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 	if err := repo.SaveElement(ctx, el); err != nil {
 		t.Fatalf("SaveElement: %v", err)
@@ -342,4 +343,16 @@ func TestBudgetRepo_GetByID_NotFound(t *testing.T) {
 	if !errors.As(err, &nf) {
 		t.Fatalf("want NotFoundError, got %v", err)
 	}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits. Tests keep expressing intended order as a small
+// integer while the repo orders by key.
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }

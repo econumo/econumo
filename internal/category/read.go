@@ -59,7 +59,6 @@ func toViewResult(r model.CategoryViewRow) model.CategoryResult {
 		Id:          r.ID,
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
-		Position:    int(r.Position),
 		Type:        typ,
 		Icon:        r.Icon,
 		IsArchived:  archived,

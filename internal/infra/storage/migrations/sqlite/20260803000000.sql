@@ -89,3 +89,14 @@ UPDATE budgets_elements SET sort_key = (
   WHERE r.id = budgets_elements.id
 );
 
+
+-- Drop the old ordering column now that every read path uses sort_key. position
+-- is not indexed anywhere, so sqlite can drop it in place with no table rebuild.
+-- One-way: there is no down migration.
+ALTER TABLE categories        DROP COLUMN position;
+ALTER TABLE tags              DROP COLUMN position;
+ALTER TABLE payees            DROP COLUMN position;
+ALTER TABLE folders           DROP COLUMN position;
+ALTER TABLE accounts_options  DROP COLUMN position;
+ALTER TABLE budgets_folders   DROP COLUMN position;
+ALTER TABLE budgets_elements  DROP COLUMN position;

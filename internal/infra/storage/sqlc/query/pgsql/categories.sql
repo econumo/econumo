@@ -1,7 +1,7 @@
 -- Write-side queries for the category module (PostgreSQL engine, $N placeholders).
 
 -- name: GetCategoryByID :one
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE id = $1;
 
@@ -9,18 +9,17 @@ WHERE id = $1;
 SELECT COUNT(*) FROM categories WHERE user_id = $1;
 
 -- name: ListCategoriesByOwner :many
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE user_id = $1
 ORDER BY sort_key, id;
 
 -- name: UpsertCategory :exec
-INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     type        = excluded.type,
     icon        = excluded.icon,

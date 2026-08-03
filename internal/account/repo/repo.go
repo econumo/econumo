@@ -153,22 +153,10 @@ func (r *Repo) SortKeysByUser(ctx context.Context, userID vo.Id) (map[string]sor
 }
 
 // SaveSortKey upserts the account's per-user ordering row.
-//
-// The upsert rewrites every column, and position is still one of them until it
-// is dropped, so the row's existing position is read back and written through.
 func (r *Repo) SaveSortKey(ctx context.Context, accountID, userID vo.Id, key sortkey.Key, now time.Time) error {
-	var position int16
-	row, err := r.q.GetAccountOption(ctx, r.db(ctx), getOptionP{AccountID: accountID.String(), UserID: userID.String()})
-	switch {
-	case err == nil:
-		position = row.Position
-	case !errors.Is(err, sql.ErrNoRows):
-		return err
-	}
 	return r.q.UpsertAccountOption(ctx, r.db(ctx), upsertOptionP{
 		AccountID: accountID.String(),
 		UserID:    userID.String(),
-		Position:  position,
 		SortKey:   string(key),
 		CreatedAt: now,
 		UpdatedAt: now,

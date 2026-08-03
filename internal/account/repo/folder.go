@@ -106,7 +106,6 @@ func (r *FolderRepo) Save(ctx context.Context, f *model.Folder) error {
 		ID:        f.ID.String(),
 		UserID:    f.UserID.String(),
 		Name:      f.Name,
-		Position:  f.Position,
 		SortKey:   string(f.SortKey),
 		IsVisible: f.IsVisible,
 		CreatedAt: f.CreatedAt,
@@ -157,7 +156,7 @@ func hydrateFolder(row folderRow) (*model.Folder, error) {
 		return nil, err
 	}
 	return &model.Folder{
-		ID: id, UserID: userID, Name: row.Name, Position: row.Position, SortKey: sortkey.Key(row.SortKey),
+		ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
 		IsVisible: row.IsVisible, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}, nil
 }

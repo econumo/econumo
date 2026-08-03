@@ -234,6 +234,6 @@ func TestGetAccountList_PendingGrant_RidesListThenShowsRealFolderOnceAccepted(t 
 	// ordering value: this is their only account, so it is 0 regardless of the
 	// sparse position the fixture seeded.
 	if item2.Position != 0 {
-		t.Fatalf("position=%d want 0 after accepting (dense index, single account)", item2.Position)
+		t.Fatalf("position=%q want 0 after accepting (dense index, single account)", item2.Position)
 	}
 }

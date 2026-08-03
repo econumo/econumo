@@ -118,7 +118,7 @@ func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.
 			}
 			key, after = next, next
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, 0, now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, now)
 		el.SetSortKey(key)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return after, serr
@@ -158,7 +158,7 @@ func (s *Service) seedTagElements(ctx context.Context, userID, budgetID vo.Id, a
 			}
 			key, after = next, next
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, 0, now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementTag, nil, nil, now)
 		el.SetSortKey(key)
 		if serr := s.elements.SaveElement(ctx, el); serr != nil {
 			return serr

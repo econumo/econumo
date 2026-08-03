@@ -7,7 +7,6 @@ type PayeeViewRow struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	IsArchived bool
 	CreatedAt  string // already formatted "2006-01-02 15:04:05" by the repo
 	UpdatedAt  string

@@ -38,7 +38,7 @@ func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixtu
 }
 
 func tag(id, userID, name string, pos int16) *model.Tag {
-	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Position: pos, SortKey: keyAt(pos),
+	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, SortKey: keyAt(pos),
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
@@ -53,8 +53,8 @@ func TestTagRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Holiday" || got.Position != 4 || got.IsArchived {
-		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
+	if got.Name != "Holiday" || got.SortKey != keyAt(4) || got.IsArchived {
+		t.Errorf("mismatch: name=%q key=%q archived=%v", got.Name, got.SortKey, got.IsArchived)
 	}
 	if !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("updatedAt mismatch: %v", got.UpdatedAt)
@@ -153,7 +153,7 @@ func TestTagReadRepo_OwnPlusShared(t *testing.T) {
 // keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
 // plus three base-62 digits. Tests keep expressing intended order as a small
 // integer while the repo orders by key.
-func keyAt(pos int16) sortkey.Key {
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
 	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	n := int(pos)
 	if n < 0 {

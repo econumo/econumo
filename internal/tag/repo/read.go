@@ -46,7 +46,6 @@ func (r *ReadRepo) TagListView(ctx context.Context, userID string) ([]model.TagV
 			ID:         t.ID,
 			UserID:     t.UserID,
 			Name:       t.Name,
-			Position:   t.Position,
 			IsArchived: t.IsArchived,
 			CreatedAt:  t.CreatedAt.Format(datetime.Layout),
 			UpdatedAt:  t.UpdatedAt.Format(datetime.Layout),

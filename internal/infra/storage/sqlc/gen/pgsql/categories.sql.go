@@ -32,7 +32,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id string) error {
 
 const getCategoryByID = `-- name: GetCategoryByID :one
 
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE id = $1
 `
@@ -45,7 +45,6 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.Type,
 		&i.Icon,
 		&i.IsArchived,
@@ -57,7 +56,7 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 }
 
 const listCategoriesByOwner = `-- name: ListCategoriesByOwner :many
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE user_id = $1
 ORDER BY sort_key, id
@@ -76,7 +75,6 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.Type,
 			&i.Icon,
 			&i.IsArchived,
@@ -112,12 +110,11 @@ func (q *Queries) ReassignCategoryTransactions(ctx context.Context, arg Reassign
 }
 
 const upsertCategory = `-- name: UpsertCategory :exec
-INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     type        = excluded.type,
     icon        = excluded.icon,
@@ -129,7 +126,6 @@ type UpsertCategoryParams struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	Type       int16
 	Icon       string
 	IsArchived bool
@@ -143,7 +139,6 @@ func (q *Queries) UpsertCategory(ctx context.Context, arg UpsertCategoryParams) 
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.Type,
 		arg.Icon,
 		arg.IsArchived,

@@ -378,7 +378,6 @@ func toFolderResult(f *model.Folder) model.AccountFolderResult {
 	return model.AccountFolderResult{
 		Id:        f.ID.String(),
 		Name:      f.Name,
-		Position:  int(f.Position),
 		IsVisible: vis,
 	}
 }

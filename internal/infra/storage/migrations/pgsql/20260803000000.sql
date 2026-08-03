@@ -83,3 +83,14 @@ UPDATE budgets_elements SET sort_key = (
   WHERE r.id = budgets_elements.id
 );
 
+
+-- Drop the old ordering column now that every read path uses sort_key. This also
+-- removes budgets_folders' CHECK (position >= 0), which sqlite never had.
+-- One-way: there is no down migration.
+ALTER TABLE categories        DROP COLUMN position;
+ALTER TABLE tags              DROP COLUMN position;
+ALTER TABLE payees            DROP COLUMN position;
+ALTER TABLE folders           DROP COLUMN position;
+ALTER TABLE accounts_options  DROP COLUMN position;
+ALTER TABLE budgets_folders   DROP COLUMN position;
+ALTER TABLE budgets_elements  DROP COLUMN position;

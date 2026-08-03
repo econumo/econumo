@@ -43,7 +43,7 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 		if kerr != nil {
 			return kerr
 		}
-		created = model.NewBudgetFolder(folderID, budgetID, req.Name, 0, now)
+		created = model.NewBudgetFolder(folderID, budgetID, req.Name, now)
 		created.SetSortKey(key)
 		return s.folders.SaveFolder(txCtx, created)
 	})

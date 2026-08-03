@@ -93,7 +93,6 @@ func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 		ID:         p.ID.String(),
 		UserID:     p.UserID.String(),
 		Name:       p.Name,
-		Position:   p.Position,
 		SortKey:    string(p.SortKey),
 		IsArchived: p.IsArchived,
 		CreatedAt:  p.CreatedAt,
@@ -114,6 +113,6 @@ func hydrate(row payeeRow) (*model.Payee, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position, SortKey: sortkey.Key(row.SortKey),
+	return &model.Payee{ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

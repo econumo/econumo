@@ -97,7 +97,6 @@ func toResult(c *model.Category) model.CategoryResult {
 		Id:          c.ID.String(),
 		OwnerUserId: c.UserID.String(),
 		Name:        c.Name,
-		Position:    int(c.Position),
 		Type:        c.Type.Alias(),
 		Icon:        c.Icon,
 		IsArchived:  archived,

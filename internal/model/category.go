@@ -64,13 +64,11 @@ func TypeFromAlias(alias string) (CategoryType, bool) {
 // logic lives on the CategoryType value object above (Alias/Int16/
 // TypeFromAlias), not on Category.
 type Category struct {
-	ID       vo.Id
-	UserID   vo.Id
-	Name     string
-	Position int16
+	ID     vo.Id
+	UserID vo.Id
+	Name   string
 	// SortKey is the fractional index key that decides this row's slot in its
-	// list. Position is retained until every read path has moved over; see
-	// docs/superpowers/specs/2026-08-02-fractional-sort-keys-design.md.
+	// list. It never leaves the server: responses carry a dense 0-based index.
 	SortKey    sortkey.Key
 	Type       CategoryType
 	Icon       string
@@ -79,15 +77,11 @@ type Category struct {
 	UpdatedAt  time.Time
 }
 
-// NewCategory constructs a freshly-created category. Position defaults to 0 and
-// is set by the service via SetPosition before the first save.
+// NewCategory constructs a freshly-created category. The sort key is assigned
+// by the service via SetSortKey before the first save.
 func NewCategory(id, userID vo.Id, name string, typ CategoryType, icon string, now time.Time) *Category {
 	return &Category{ID: id, UserID: userID, Name: name, Type: typ, Icon: icon, CreatedAt: now, UpdatedAt: now}
 }
-
-// SetPosition sets the initial position at creation. It does not bump UpdatedAt
-// — it is part of construction.
-func (c *Category) SetPosition(position int16) { c.Position = position }
 
 func (c *Category) UpdateName(name string, now time.Time) {
 	if c.Name != name {
@@ -99,13 +93,6 @@ func (c *Category) UpdateName(name string, now time.Time) {
 func (c *Category) UpdateIcon(icon string, now time.Time) {
 	if c.Icon != icon {
 		c.Icon = icon
-		c.UpdatedAt = now
-	}
-}
-
-func (c *Category) UpdatePosition(position int16, now time.Time) {
-	if c.Position != position {
-		c.Position = position
 		c.UpdatedAt = now
 	}
 }
@@ -124,8 +111,8 @@ func (c *Category) Unarchive(now time.Time) {
 	}
 }
 
-// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
-// bump UpdatedAt, because it is part of construction.
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
 func (c *Category) SetSortKey(k sortkey.Key) { c.SortKey = k }
 
 // UpdateSortKey moves the row, bumping updated_at only on a real change.

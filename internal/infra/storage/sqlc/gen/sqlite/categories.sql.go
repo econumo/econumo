@@ -14,7 +14,6 @@ const countCategoriesByOwner = `-- name: CountCategoriesByOwner :one
 SELECT COUNT(*) FROM categories WHERE user_id = ?
 `
 
-// New-category position = count of the owner's existing categories.
 func (q *Queries) CountCategoriesByOwner(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countCategoriesByOwner, userID)
 	var count int64
@@ -35,7 +34,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id string) error {
 
 const getCategoryByID = `-- name: GetCategoryByID :one
 
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE id = ?
 `
@@ -50,7 +49,6 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.Type,
 		&i.Icon,
 		&i.IsArchived,
@@ -62,14 +60,14 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 }
 
 const listCategoriesByOwner = `-- name: ListCategoriesByOwner :many
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE user_id = ?
 ORDER BY sort_key, id
 `
 
-// The owner's categories ordered by position; used by order-category-list (load,
-// apply position changes, re-save) and as the basis for the returned list.
+// The owner's categories ordered by sort key; used by move-categorie (load,
+// place the moved row, save it) and as the basis for the returned list.
 func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error) {
 	rows, err := q.db.QueryContext(ctx, listCategoriesByOwner, userID)
 	if err != nil {
@@ -83,7 +81,6 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.Type,
 			&i.Icon,
 			&i.IsArchived,
@@ -121,12 +118,11 @@ func (q *Queries) ReassignCategoryTransactions(ctx context.Context, arg Reassign
 }
 
 const upsertCategory = `-- name: UpsertCategory :exec
-INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     type        = excluded.type,
     icon        = excluded.icon,
@@ -138,7 +134,6 @@ type UpsertCategoryParams struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	Type       int16
 	Icon       string
 	IsArchived bool
@@ -152,7 +147,6 @@ func (q *Queries) UpsertCategory(ctx context.Context, arg UpsertCategoryParams) 
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.Type,
 		arg.Icon,
 		arg.IsArchived,

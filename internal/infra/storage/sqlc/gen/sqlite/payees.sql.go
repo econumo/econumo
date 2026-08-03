@@ -16,7 +16,6 @@ const countPayeesByOwner = `-- name: CountPayeesByOwner :one
 SELECT COUNT(*) FROM payees WHERE user_id = ?
 `
 
-// New-payee position = count of the owner's existing payees.
 func (q *Queries) CountPayeesByOwner(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countPayeesByOwner, userID)
 	var count int64
@@ -39,7 +38,7 @@ func (q *Queries) DeletePayee(ctx context.Context, id string) error {
 
 const getPayeeByID = `-- name: GetPayeeByID :one
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE id = ?
 `
@@ -47,7 +46,7 @@ WHERE id = ?
 // Write-side queries for the payee module. The read-side query lives in
 // payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 // tag_read.sql). The payees table has the same shape as tags (no type/icon
-// columns): a payee is a name + position + archived flag.
+// columns): a payee is a name + sort key + archived flag.
 func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 	row := q.db.QueryRowContext(ctx, getPayeeByID, id)
 	var i Payee
@@ -55,7 +54,6 @@ func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -67,14 +65,14 @@ func (q *Queries) GetPayeeByID(ctx context.Context, id string) (Payee, error) {
 const listPayeesByOwner = `-- name: ListPayeesByOwner :many
 ;
 
-SELECT id, user_id, name, position, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
 FROM payees
 WHERE user_id = ?
 ORDER BY sort_key, id
 `
 
-// The owner's payees ordered by position; used by order-payee-list (load, apply
-// position changes, re-save) and as the basis for the returned list.
+// The owner's payees ordered by sort key; used by move-payee (load,
+// place the moved row, save it) and as the basis for the returned list.
 func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error) {
 	rows, err := q.db.QueryContext(ctx, listPayeesByOwner, userID)
 	if err != nil {
@@ -88,7 +86,6 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -110,12 +107,11 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 const upsertPayee = `-- name: UpsertPayee :exec
 ;
 
-INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO payees (id, user_id, name, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
@@ -125,7 +121,6 @@ type UpsertPayeeParams struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -137,7 +132,6 @@ func (q *Queries) UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error 
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,

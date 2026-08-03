@@ -100,29 +100,20 @@ type BudgetFolder struct {
 	ID        vo.Id
 	BudgetID  vo.Id
 	Name      string
-	Position  int16
 	SortKey   sortkey.Key
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 // NewBudgetFolder creates a folder.
-func NewBudgetFolder(id, budgetID vo.Id, name string, position int16, now time.Time) *BudgetFolder {
-	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, Position: position, CreatedAt: now, UpdatedAt: now}
+func NewBudgetFolder(id, budgetID vo.Id, name string, now time.Time) *BudgetFolder {
+	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, CreatedAt: now, UpdatedAt: now}
 }
 
 // UpdateName changes the name, bumping updated_at only on change.
 func (f *BudgetFolder) UpdateName(name string, now time.Time) {
 	if f.Name != name {
 		f.Name = name
-		f.UpdatedAt = now
-	}
-}
-
-// UpdatePosition changes the position, bumping updated_at only on change.
-func (f *BudgetFolder) UpdatePosition(position int16, now time.Time) {
-	if f.Position != position {
-		f.Position = position
 		f.UpdatedAt = now
 	}
 }
@@ -176,27 +167,19 @@ type BudgetElement struct {
 	Type       ElementType
 	CurrencyID *vo.Id
 	FolderID   *vo.Id
-	Position   int16
 	SortKey    sortkey.Key
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
 // NewBudgetElement creates an element.
-func NewBudgetElement(id, budgetID, externalID vo.Id, typ ElementType, currencyID, folderID *vo.Id, position int16, now time.Time) *BudgetElement {
-	return &BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: typ, CurrencyID: currencyID, FolderID: folderID, Position: position, CreatedAt: now, UpdatedAt: now}
+func NewBudgetElement(id, budgetID, externalID vo.Id, typ ElementType, currencyID, folderID *vo.Id, now time.Time) *BudgetElement {
+	return &BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: typ, CurrencyID: currencyID, FolderID: folderID, CreatedAt: now, UpdatedAt: now}
 }
 
 // IsSortKeyUnset reports whether the element is excluded from the listing: an
 // archived entity, an envelope-child category, or a row not yet given a key.
 func (e *BudgetElement) IsSortKeyUnset() bool { return e.SortKey == "" }
-
-func (e *BudgetElement) UpdatePosition(position int16, now time.Time) {
-	if e.Position != position {
-		e.Position = position
-		e.UpdatedAt = now
-	}
-}
 
 // UpdateCurrency changes the display currency (nil clears it).
 func (e *BudgetElement) UpdateCurrency(currencyID *vo.Id, now time.Time) {
@@ -251,8 +234,8 @@ func idPtrEqual(a, b *vo.Id) bool {
 	return a.Equal(*b)
 }
 
-// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
-// bump UpdatedAt, because it is part of construction.
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
 func (f *BudgetFolder) SetSortKey(k sortkey.Key) { f.SortKey = k }
 
 // UpdateSortKey moves the row, bumping updated_at only on a real change.
@@ -263,8 +246,8 @@ func (f *BudgetFolder) UpdateSortKey(k sortkey.Key, now time.Time) {
 	}
 }
 
-// SetSortKey sets the initial sort key at creation. Like SetPosition it does not
-// bump UpdatedAt, because it is part of construction.
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
 func (e *BudgetElement) SetSortKey(k sortkey.Key) { e.SortKey = k }
 
 // UpdateSortKey moves the row, bumping updated_at only on a real change.

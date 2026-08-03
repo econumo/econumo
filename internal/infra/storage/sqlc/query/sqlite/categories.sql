@@ -3,29 +3,27 @@
 -- user_read.sql).
 
 -- name: GetCategoryByID :one
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE id = ?;
 
 -- name: CountCategoriesByOwner :one
--- New-category position = count of the owner's existing categories.
 SELECT COUNT(*) FROM categories WHERE user_id = ?;
 
 -- name: ListCategoriesByOwner :many
--- The owner's categories ordered by position; used by order-category-list (load,
--- apply position changes, re-save) and as the basis for the returned list.
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key
+-- The owner's categories ordered by sort key; used by move-categorie (load,
+-- place the moved row, save it) and as the basis for the returned list.
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE user_id = ?
 ORDER BY sort_key, id;
 
 -- name: UpsertCategory :exec
-INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
     sort_key    = excluded.sort_key,
     type        = excluded.type,
     icon        = excluded.icon,

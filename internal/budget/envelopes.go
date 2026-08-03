@@ -57,7 +57,7 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, 0, now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, now)
 		el.SetSortKey(newKey)
 		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 			return serr
@@ -112,7 +112,7 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 		return nil, accessDenied()
 	}
 	now := s.clock.Now()
-	var position int16
+	var elementKeyOfEnvelope sortkey.Key
 	var folderID *vo.Id
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
@@ -131,7 +131,7 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 			if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 				return serr
 			}
-			position = el.Position
+			elementKeyOfEnvelope = el.SortKey
 			folderID = el.FolderID
 		}
 		// Replace category assignments.
@@ -166,7 +166,10 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	if err != nil {
 		return nil, err
 	}
-	return &model.UpdateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, int(position), req.IsArchived == 1, children)}, nil
+	return &model.UpdateEnvelopeResult{Item: newEnvelopeElementResult(
+		envelopeID, req.Name, req.Icon, curID, folderID,
+		elementIndex(b.elements, folderID, elementKeyOfEnvelope), req.IsArchived == 1, children,
+	)}, nil
 }
 
 // DeleteEnvelope removes an envelope + its element (canDelete).
@@ -277,4 +280,23 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 		})
 	}
 	return out, nil
+}
+
+// elementIndex returns the dense 0-based index a key occupies among the live
+// elements of a folder, which is what the wire contract calls "position".
+// Single-item responses derive it the same way the budget structure does.
+func elementIndex(elements []*model.BudgetElement, folderID *vo.Id, key sortkey.Key) int {
+	if key == "" {
+		return 0
+	}
+	index := 0
+	for _, e := range elements {
+		if e.IsSortKeyUnset() || !inFolder(e, folderID) {
+			continue
+		}
+		if e.SortKey < key {
+			index++
+		}
+	}
+	return index
 }

@@ -48,7 +48,7 @@ func (q *Queries) DeleteFolder(ctx context.Context, id string) error {
 
 const getFolderByID = `-- name: GetFolderByID :one
 
-SELECT id, user_id, name, position, is_visible, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE id = $1
 `
@@ -62,7 +62,6 @@ func (q *Queries) GetFolderByID(ctx context.Context, id string) (Folder, error) 
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.IsVisible,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -129,7 +128,7 @@ func (q *Queries) ListFolderMembershipsByUser(ctx context.Context, userID string
 }
 
 const listFoldersByUser = `-- name: ListFoldersByUser :many
-SELECT id, user_id, name, position, is_visible, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE user_id = $1
 `
@@ -147,7 +146,6 @@ func (q *Queries) ListFoldersByUser(ctx context.Context, userID string) ([]Folde
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.IsVisible,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -190,11 +188,10 @@ func (q *Queries) RemoveAccountFromFolder(ctx context.Context, arg RemoveAccount
 }
 
 const upsertFolder = `-- name: UpsertFolder :exec
-INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at, sort_key)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO folders (id, user_id, name, is_visible, created_at, updated_at, sort_key)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
-    position   = excluded.position,
     sort_key   = excluded.sort_key,
     is_visible = excluded.is_visible,
     updated_at = excluded.updated_at
@@ -204,7 +201,6 @@ type UpsertFolderParams struct {
 	ID        string
 	UserID    string
 	Name      string
-	Position  int16
 	IsVisible bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -216,7 +212,6 @@ func (q *Queries) UpsertFolder(ctx context.Context, arg UpsertFolderParams) erro
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.IsVisible,
 		arg.CreatedAt,
 		arg.UpdatedAt,

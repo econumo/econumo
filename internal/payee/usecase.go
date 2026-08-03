@@ -125,7 +125,6 @@ func toResult(p *model.Payee) model.PayeeResult {
 		Id:          p.ID.String(),
 		OwnerUserId: p.UserID.String(),
 		Name:        p.Name,
-		Position:    int(p.Position),
 		IsArchived:  archived,
 		CreatedAt:   p.CreatedAt.Format(datetime.Layout),
 		UpdatedAt:   p.UpdatedAt.Format(datetime.Layout),
