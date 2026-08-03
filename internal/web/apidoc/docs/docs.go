@@ -97,7 +97,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.",
+                "description": "Creates an account (idempotent on the request id), optionally seeding its balance, in the given folder.",
                 "consumes": [
                     "application/json"
                 ],
@@ -107,7 +107,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Move an account",
+                "summary": "Create an account",
                 "parameters": [
                     {
                         "description": "Create account request",
@@ -332,7 +332,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Move an account",
+                "summary": "Delete an account",
                 "parameters": [
                     {
                         "description": "Delete account request",
@@ -404,7 +404,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Move an account",
+                "summary": "Get the account list",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1030,7 +1030,7 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Move an account",
+                "summary": "Update an account",
                 "parameters": [
                     {
                         "description": "Update account request",

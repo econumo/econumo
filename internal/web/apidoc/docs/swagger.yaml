@@ -1880,8 +1880,8 @@ paths:
     post:
       consumes:
       - application/json
-      description: Places one account immediately after another (afterId null = first)
-        and sets its folder; returns the full list.
+      description: Creates an account (idempotent on the request id), optionally seeding
+        its balance, in the given folder.
       parameters:
       - description: Create account request
         in: body
@@ -1919,7 +1919,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move an account
+      summary: Create an account
       tags:
       - Account
   /api/v1/account/create-folder:
@@ -2055,7 +2055,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move an account
+      summary: Delete an account
       tags:
       - Account
   /api/v1/account/get-account-list:
@@ -2084,7 +2084,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move an account
+      summary: Get the account list
       tags:
       - Account
   /api/v1/account/get-folder-list:
@@ -2477,7 +2477,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move an account
+      summary: Update an account
       tags:
       - Account
   /api/v1/account/update-folder:

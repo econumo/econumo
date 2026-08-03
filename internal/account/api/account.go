@@ -15,8 +15,8 @@ var _ = apidoc.JsonResponseError{}
 
 // CreateAccount handles POST /api/v1/account/create-account (auth).
 //
-// @Summary     Move an account
-// @Description Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.
+// @Summary     Create an account
+// @Description Creates an account (idempotent on the request id), optionally seeding its balance, in the given folder.
 // @Tags        Account
 // @Accept      json
 // @Produce     json
@@ -37,7 +37,7 @@ func (h *Handlers) CreateAccount(w http.ResponseWriter, r *http.Request) {
 
 // UpdateAccount handles POST /api/v1/account/update-account (auth).
 //
-// @Summary     Move an account
+// @Summary     Update an account
 // @Description Updates an account's name/icon/currency and reconciles its balance via a correction transaction. Requires ownership.
 // @Tags        Account
 // @Accept      json
@@ -56,7 +56,7 @@ func (h *Handlers) UpdateAccount(w http.ResponseWriter, r *http.Request) {
 
 // DeleteAccount handles POST /api/v1/account/delete-account (auth).
 //
-// @Summary     Move an account
+// @Summary     Delete an account
 // @Description Soft-deletes an account. Requires ownership.
 // @Tags        Account
 // @Accept      json
@@ -75,7 +75,7 @@ func (h *Handlers) DeleteAccount(w http.ResponseWriter, r *http.Request) {
 
 // GetAccountList handles GET /api/v1/account/get-account-list (auth).
 //
-// @Summary     Move an account
+// @Summary     Get the account list
 // @Description Returns all the user's available accounts (each with owner, currency, folder, position, balance) in reverse order.
 // @Tags        Account
 // @Produce     json
