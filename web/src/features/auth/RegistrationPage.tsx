@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
+import { isNativeApp } from '@/lib/platform'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -49,7 +50,10 @@ export function RegistrationPage() {
     const next = !selfHostedChecked
     config.selfHosted(next)
     if (next) {
-      if (!getValues('host')) {
+      // Seed the page's own origin on the web; in the native app the WebView
+      // origin (capacitor://localhost) is meaningless as a server address, so
+      // the field stays empty for the user's own URL.
+      if (!getValues('host') && !isNativeApp()) {
         setValue('host', window.location.origin)
       }
     } else {
