@@ -1,4 +1,7 @@
 import { getItem, removeItem, setItem } from './storage'
+import { isNativeApp } from './platform'
+
+const CLOUD_HOST = 'https://app.econumo.com'
 
 export interface LocaleOption {
   value: string
@@ -39,7 +42,9 @@ export function backendHost(value?: string): string {
     return `${url.protocol}//${url.host}`
   }
   if (value === undefined) {
-    const defaultHost = window.location.origin
+    // Inside the WebView the origin is capacitor://localhost — meaningless as
+    // an API host, so the app defaults to Econumo Cloud instead.
+    const defaultHost = isNativeApp() ? CLOUD_HOST : window.location.origin
     if (!selfHosted()) {
       return defaultHost
     }
@@ -121,6 +126,9 @@ export function getBillingUrl(): string {
 }
 
 export function isCustomApiAllowed(): boolean {
+  if (isNativeApp()) {
+    return true
+  }
   const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
   if (typeof allowCustomApi === 'boolean') {
     return allowCustomApi
