@@ -16,11 +16,20 @@ Release builds label the UI with the app version:
 
 ## Signing (one-time)
 
-The App target uses automatic signing with team `P9839674AJ` (set in the
-Xcode project). The only manual prerequisite on a new machine: sign into the
-Apple ID in **Xcode → Settings → Accounts** — automatic signing then creates
-the iOS development certificate and provisioning profiles on demand
-(`-allowProvisioningUpdates` does the same for command-line builds).
+The App target uses automatic signing; the Apple Developer Team ID is
+deliberately NOT committed. On a new machine:
+
+1. Sign into the Apple ID in **Xcode → Settings → Accounts** — automatic
+   signing then creates the iOS development certificate and provisioning
+   profiles on demand (`-allowProvisioningUpdates` does the same for
+   command-line builds).
+2. Put your Team ID into the git-ignored `mobile/ios/local.xcconfig`
+   (used by Debug/device builds via `debug.xcconfig`'s optional include):
+
+       DEVELOPMENT_TEAM = XXXXXXXXXX
+
+3. TestFlight archives take the team from the `APPLE_TEAM_ID` environment
+   variable instead (Release builds don't read `debug.xcconfig`).
 
 ## Install on your iPhone (cable)
 
@@ -49,7 +58,7 @@ One-time setup:
 
 Each upload:
 
-    make mobile-testflight APP_VERSION=1.0.0 BUILD=1
+    APPLE_TEAM_ID=XXXXXXXXXX make mobile-testflight APP_VERSION=1.0.0 BUILD=1
 
 This archives with the given marketing version + build number (BUILD must be
 unique per upload — bump it every time), stamps the SPA's version label to

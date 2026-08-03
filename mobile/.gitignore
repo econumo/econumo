@@ -6,3 +6,4 @@ ios/DerivedData/
 android/.gradle/
 android/app/build/
 android/build/
+ios/local.xcconfig

@@ -81,14 +81,15 @@ mobile-testflight: mobile-testflight-guard mobile-sync
 	cd mobile/ios/App && xcodebuild -project App.xcodeproj -scheme App \
 		-destination generic/platform=iOS -archivePath build/App.xcarchive \
 		MARKETING_VERSION=$(APP_VERSION) CURRENT_PROJECT_VERSION=$(BUILD) \
+		DEVELOPMENT_TEAM=$(APPLE_TEAM_ID) \
 		archive -allowProvisioningUpdates
 	cd mobile/ios/App && xcodebuild -exportArchive -archivePath build/App.xcarchive \
 		-exportOptionsPlist ExportOptions.plist -exportPath build/export \
 		-allowProvisioningUpdates
 
 mobile-testflight-guard:
-	@test -n "$(APP_VERSION)" && test -n "$(BUILD)" || \
-		{ echo "usage: make mobile-testflight APP_VERSION=1.0.0 BUILD=1"; exit 1; }
+	@test -n "$(APP_VERSION)" && test -n "$(BUILD)" && test -n "$(APPLE_TEAM_ID)" || \
+		{ echo "usage: APPLE_TEAM_ID=XXXXXXXXXX make mobile-testflight APP_VERSION=1.0.0 BUILD=1"; exit 1; }
 
 # --- Backend (Go) ---
 
