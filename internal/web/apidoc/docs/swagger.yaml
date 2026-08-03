@@ -1064,6 +1064,17 @@ definitions:
           $ref: '#/definitions/model.AccountResult'
         type: array
     type: object
+  model.MoveBudgetFolderRequest:
+    properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveBudgetFolderResult:
+    type: object
   model.MoveCategoryRequest:
     properties:
       afterId:
@@ -1132,24 +1143,6 @@ definitions:
         type: string
       value:
         type: string
-    type: object
-  model.OrderBudgetFolderListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/model.OrderFolderListItem'
-        type: array
-    type: object
-  model.OrderBudgetFolderListResult:
-    type: object
-  model.OrderFolderListItem:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
     type: object
   model.ParentElementResult:
     properties:
@@ -3227,17 +3220,17 @@ paths:
       summary: Move/reorder budget elements
       tags:
       - Budget
-  /api/v1/budget/order-folder-list:
+  /api/v1/budget/move-folder:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Order folders
+      - description: Move folder
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/model.MoveBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -3248,7 +3241,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/model.MoveBudgetFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -3268,7 +3261,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder budget folders
+      summary: Move a budget folder
       tags:
       - Budget
   /api/v1/budget/reset-budget:

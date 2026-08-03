@@ -232,24 +232,32 @@ func (r DeleteFolderRequest) Validate() error {
 // DeleteFolderResult is empty.
 type DeleteFolderResult struct{}
 
-// OrderFolderListItem is one folder reorder instruction.
-type OrderFolderListItem struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
+// MoveBudgetFolderRequest is the budget move-folder request body. AfterId is the
+// id of the folder this one should land immediately after; null means "move to
+// the front".
+type MoveBudgetFolderRequest struct {
+	BudgetId string  `json:"budgetId"`
+	Id       string  `json:"id"`
+	AfterId  *string `json:"afterId"`
 }
 
-// OrderBudgetFolderListRequest reorders folders.
-type OrderBudgetFolderListRequest struct {
-	BudgetId string                `json:"budgetId"`
-	Items    []OrderFolderListItem `json:"items"`
+func (r MoveBudgetFolderRequest) Validate() error {
+	if _, err := vo.ParseId(r.BudgetId); err != nil {
+		return ValidateBlank(map[string]string{"budgetId": ""})
+	}
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
+	}
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (r OrderBudgetFolderListRequest) Validate() error {
-	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
-}
-
-// OrderBudgetFolderListResult is empty.
-type OrderBudgetFolderListResult struct{}
+// MoveBudgetFolderResult is the budget move-folder response: {}.
+type MoveBudgetFolderResult struct{}
 
 // CreateEnvelopeRequest creates an envelope (+ its budget element).
 type CreateEnvelopeRequest struct {

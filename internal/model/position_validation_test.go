@@ -9,7 +9,7 @@ import (
 // Positions are persisted into an int16 column; a value outside its range must be
 // rejected at validation rather than wrapping silently on conversion.
 func TestOrderRequests_RejectOutOfRangePosition(t *testing.T) {
-	const overflow = 32768   // int16 max + 1
+	const overflow = 32768 // int16 max + 1
 	const ok = 100
 
 	assertRejected := func(t *testing.T, err error) {

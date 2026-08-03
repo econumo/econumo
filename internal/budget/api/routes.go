@@ -23,7 +23,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/create-folder", auth(h.CreateFolder))
 		mux.Handle("POST /api/v1/budget/update-folder", auth(h.UpdateFolder))
 		mux.Handle("POST /api/v1/budget/delete-folder", auth(h.DeleteFolder))
-		mux.Handle("POST /api/v1/budget/order-folder-list", auth(h.OrderFolderList))
+		mux.Handle("POST /api/v1/budget/move-folder", auth(h.MoveFolder))
 
 		mux.Handle("POST /api/v1/budget/create-envelope", auth(h.CreateEnvelope))
 		mux.Handle("POST /api/v1/budget/update-envelope", auth(h.UpdateEnvelope))

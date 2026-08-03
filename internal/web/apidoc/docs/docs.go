@@ -2324,7 +2324,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/budget/order-folder-list": {
+        "/api/v1/budget/move-folder": {
             "post": {
                 "security": [
                     {
@@ -2340,15 +2340,15 @@ const docTemplate = `{
                 "tags": [
                     "Budget"
                 ],
-                "summary": "Reorder budget folders",
+                "summary": "Move a budget folder",
                 "parameters": [
                     {
-                        "description": "Order folders",
+                        "description": "Move folder",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderBudgetFolderListRequest"
+                            "$ref": "#/definitions/model.MoveBudgetFolderRequest"
                         }
                     }
                 ],
@@ -2364,7 +2364,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderBudgetFolderListResult"
+                                            "$ref": "#/definitions/model.MoveBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -9596,6 +9596,23 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MoveBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveBudgetFolderResult": {
+            "type": "object"
+        },
         "model.MoveCategoryRequest": {
             "type": "object",
             "properties": {
@@ -9701,34 +9718,6 @@ const docTemplate = `{
                 },
                 "value": {
                     "type": "string"
-                }
-            }
-        },
-        "model.OrderBudgetFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OrderFolderListItem"
-                    }
-                }
-            }
-        },
-        "model.OrderBudgetFolderListResult": {
-            "type": "object"
-        },
-        "model.OrderFolderListItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
                 }
             }
         },

@@ -17,8 +17,8 @@ func init() {
 				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills"}},
 			{Label: "update-folder", Method: "POST", Path: "/api/v1/budget/update-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": newFolder, "name": "Bills 2"}},
-			{Label: "order-folder-list", Method: "POST", Path: "/api/v1/budget/order-folder-list", Auth: "owner",
-				Body: map[string]any{"budgetId": Budget, "items": []map[string]any{{"id": BudgetFolder1, "position": 0}, {"id": newFolder, "position": 1}}}},
+			{Label: "move-folder", Method: "POST", Path: "/api/v1/budget/move-folder", Auth: "owner",
+				Body: map[string]any{"budgetId": Budget, "id": BudgetFolder1, "afterId": newFolder}},
 			// Element identification (verified against internal/budget/move.go and
 			// accounts.go's ChangeElementCurrency before writing this scenario):
 			// move-element-list and change-element-currency both key elements by their

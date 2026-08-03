@@ -48,11 +48,14 @@ type structChild struct {
 // elements.
 func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
-	folders := make([]model.BudgetFolderResult, 0, len(b.folders))
-	for _, fl := range b.folders {
-		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: int(fl.Position)})
+	sorted := append([]*model.BudgetFolder(nil), b.folders...)
+	sortBudgetFolders(sorted)
+	folders := make([]model.BudgetFolderResult, 0, len(sorted))
+	for i, fl := range sorted {
+		// position on the wire is the dense 0-based index; the key that produced
+		// this order never leaves the server.
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: i})
 	}
-	sortByPositionThenID(folders, func(f model.BudgetFolderResult) int { return f.Position }, func(f model.BudgetFolderResult) string { return f.Id })
 
 	toConvert := map[string][]model.ConvertItem{}
 	categoryUsed := map[string]bool{}

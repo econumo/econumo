@@ -4,7 +4,7 @@
 == update-folder POST /api/v1/budget/update-folder [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"bf000000-0000-0000-0000-0000000000aa","name":"Bills 2","position":0}}}
 
-== order-folder-list POST /api/v1/budget/order-folder-list [owner] -> 200
+== move-folder POST /api/v1/budget/move-folder [owner] -> 200
 {"success":true,"message":"","data":{}}
 
 == create-envelope POST /api/v1/budget/create-envelope [owner] -> 200
