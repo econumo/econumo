@@ -6,12 +6,18 @@ import { backendHost } from './config'
 // bundled default by design.
 const MERGED_KEYS = ['ALLOW_REGISTRATION', 'ANALYTICS'] as const
 
-// Minimum server version the bundled SPA is developed against; older servers
-// get a warning banner (never a hard block). Documented in mobile/README.md.
+// Minimum server version the bundled app is compatible with; an older server
+// hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in
+// its config (older servers without the key simply never block the app).
+// Documented in mobile/README.md — bump together with that file.
 export const MIN_SERVER_VERSION = 'v1.3.0'
 
-export const useServerConfig = create<{ serverVersion: string | null }>(() => ({
+export const useServerConfig = create<{
+  serverVersion: string | null
+  minAppVersion: string | null
+}>(() => ({
   serverVersion: null,
+  minAppVersion: null,
 }))
 
 // The served file is executable JS (`window.econumoConfig = {...}` plus an
@@ -46,6 +52,7 @@ export async function fetchServerConfig(): Promise<void> {
     }
     useServerConfig.setState({
       serverVersion: typeof cfg.VERSION === 'string' ? cfg.VERSION : null,
+      minAppVersion: typeof cfg.MIN_APP_VERSION === 'string' ? cfg.MIN_APP_VERSION : null,
     })
   } catch {
     // Non-fatal: offline boot keeps bundled defaults and cached data.

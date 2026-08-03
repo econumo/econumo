@@ -26,6 +26,7 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/version"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
 	"github.com/econumo/econumo/web"
@@ -152,6 +153,10 @@ func New(deps Deps) http.Handler {
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL": deps.Cfg.BillingURL,
+		// The oldest mobile-app build this backend accepts; an older app
+		// hard-blocks itself against this server (the web SPA ships embedded,
+		// so it can never be stale and ignores this key).
+		"MIN_APP_VERSION": version.MinAppVersion,
 	}
 	// The running binary's version (or the ECONUMO_VERSION override), resolved by
 	// the composition root; always non-empty in production, so the UI label

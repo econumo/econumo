@@ -14,11 +14,26 @@ Release builds label the UI with the app version:
 
     ECONUMO_VERSION=v1.0.0 make mobile-sync
 
-## Minimum supported server version
+## Version compatibility handshake
 
-**v1.3.0** — mirrored by `MIN_SERVER_VERSION` in `web/src/lib/appConfig.ts`.
-Older servers show a non-blocking warning banner in the app. Bump both
-together when the bundled SPA starts depending on newer API behavior.
+The app and the server check each other in both directions; each side owns
+one hard floor:
+
+- **App-side floor:** `MIN_SERVER_VERSION` in `web/src/lib/appConfig.ts`
+  (currently **v1.3.0**, mirrored here — bump both together when the bundled
+  SPA starts depending on newer API behavior). A server older than this
+  hard-blocks the app ("update your server").
+- **Server-side floor:** `MinAppVersion` in `internal/version/version.go`,
+  served to the app as `MIN_APP_VERSION` in `econumo-config.js`. An app build
+  older than this hard-blocks itself ("update the app"). Servers predating
+  the key never block the app — the app-side floor governs them.
+- **Soft tier:** compatible-but-different versions show dismissable banners
+  instead — "update the server" when the server is older than the app,
+  "update the app" when the server is newer.
+
+Both hard cases render `AppUpdateBlock` (a full-screen gate over every
+route); the soft banners live in the authenticated layout. Version checks
+only fire on strict `vX.Y.Z` values, so `dev` builds never block.
 
 ## Plain-HTTP self-hosted servers
 

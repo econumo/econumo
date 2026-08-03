@@ -115,13 +115,30 @@ Each sits behind `isNativeApp()` at an existing choke point:
 
 The store app freezes a SPA build while users' backends vary — the first
 time frontend and backend versions can diverge (they ship atomically in the
-server binary today). Policy for v1, deliberately soft:
+server binary today).
 
 - The persisted-query-cache buster incorporates the app bundle's version, so
   an app update never restores a stale-shaped cache.
-- If the runtime config fetch reports a server version older than a
-  documented minimum (recorded in `mobile/README`), the app shows a
-  non-blocking warning banner. No hard blocks.
+
+**Two-way handshake (amended 2026-08-03):** the app and the server check each
+other in both directions, one hard floor per side:
+
+- The app carries `MIN_SERVER_VERSION` (`web/src/lib/appConfig.ts`) — the
+  oldest server it can talk to. An older server is incompatible and
+  hard-blocks the app with an "update your server" gate.
+- The server publishes `MIN_APP_VERSION` (constant
+  `version.MinAppVersion`, merged into the served `econumo-config.js`) —
+  the oldest app build it accepts. An older app hard-blocks itself with an
+  "update the app" gate. Servers predating the key never block the app;
+  the app-side floor governs them.
+- Compatible-but-different versions get soft, dismissable banners instead:
+  "update the server" when the server is older than the app, "update the
+  app" when the server is newer.
+
+The hard gate (`AppUpdateBlock`) mounts outside the router so it covers
+every route, login included. Comparisons only fire on strict `vX.Y.Z`
+values, so `dev` builds never block. Floors are documented in
+`mobile/README.md` and bumped together with their constants.
 
 ## Store packaging & review
 

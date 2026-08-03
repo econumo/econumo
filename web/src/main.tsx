@@ -9,6 +9,7 @@ import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist
 import { queryClient } from '@/app/queryClient'
 import { bootNativeApp, hideSplash } from '@/lib/appBoot'
 import { setRouter } from '@/app/routerRef'
+import { AppUpdateBlock } from '@/components/AppUpdateBlock'
 
 void bootNativeApp().then(() => {
   const router = createRouter()
@@ -21,6 +22,9 @@ void bootNativeApp().then(() => {
         onSuccess={() => refreshRestoredQueries(queryClient)}
       >
         <RouterProvider router={router} />
+        {/* Sits outside the router: the hard version gate must cover every
+            route, login included. */}
+        <AppUpdateBlock />
       </PersistQueryClientProvider>
     </StrictMode>,
   )

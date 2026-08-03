@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/version"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -218,7 +219,7 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"BILLING_URL":"https://pay.example.test/cloud/"});`
+	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"ANALYTICS":true,"BILLING_URL":"https://pay.example.test/cloud/","MIN_APP_VERSION":"` + version.MinAppVersion + `"});`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -257,8 +258,10 @@ func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
+	// Match the quoted JSON key: a bare substring check would confuse VERSION
+	// with the always-merged MIN_APP_VERSION.
 	for _, absent := range []string{"ALLOW_CUSTOM_API", "LILTAG_CONFIG_URL", "LILTAG_CACHE_TTL", "VERSION"} {
-		if strings.Contains(body, absent) {
+		if strings.Contains(body, `"`+absent+`":`) {
 			t.Fatalf("unset key %q must not be merged:\n%s", absent, body)
 		}
 	}

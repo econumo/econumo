@@ -4,6 +4,8 @@ import { ServerVersionNotice } from './ServerVersionNotice'
 import { useServerConfig } from '@/lib/appConfig'
 
 beforeEach(() => {
+  // getVersion() reads this as the app build's own version.
+  window.econumoConfig = { VERSION: 'v1.5.0' }
   vi.stubGlobal('fetch', vi.fn(async () => {
     throw new Error('offline')
   }))
@@ -11,24 +13,28 @@ beforeEach(() => {
 
 afterEach(() => {
   delete (window as { Capacitor?: unknown }).Capacitor
-  useServerConfig.setState({ serverVersion: null })
+  useServerConfig.setState({ serverVersion: null, minAppVersion: null })
   vi.unstubAllGlobals()
 })
 
-it('renders nothing on the web or when the server is current', () => {
+it('renders nothing on the web or when the server is not older than the app', () => {
   useServerConfig.setState({ serverVersion: 'v0.9.0' })
   const { container } = render(<ServerVersionNotice />)
   expect(container).toBeEmptyDOMElement()
 
   window.Capacitor = { isNativePlatform: () => true }
   useServerConfig.setState({ serverVersion: 'v99.0.0' })
-  const { container: current } = render(<ServerVersionNotice />)
-  expect(current).toBeEmptyDOMElement()
+  const { container: newer } = render(<ServerVersionNotice />)
+  expect(newer).toBeEmptyDOMElement()
+
+  useServerConfig.setState({ serverVersion: 'v1.5.0' })
+  const { container: equal } = render(<ServerVersionNotice />)
+  expect(equal).toBeEmptyDOMElement()
 })
 
-it('warns when the app runs against an outdated server', () => {
+it('nudges when the server is older than the app', () => {
   window.Capacitor = { isNativePlatform: () => true }
-  useServerConfig.setState({ serverVersion: 'v0.9.0' })
+  useServerConfig.setState({ serverVersion: 'v1.4.0' })
   render(<ServerVersionNotice />)
-  expect(screen.getByText(/v0\.9\.0/)).toBeInTheDocument()
+  expect(screen.getByText(/v1\.4\.0/)).toBeInTheDocument()
 })

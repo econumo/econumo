@@ -152,7 +152,13 @@
       "dismiss": "Dismiss"
     },
     "serverUpdate": {
-      "notice": "Your Econumo server ({version}) is older than this app supports. Please update your server."
+      "notice": "Your Econumo server ({version}) is older than this app. Update the server to get the latest features."
+    },
+    "appUpdate": {
+      "title": "Update required",
+      "notice": "A newer version of Econumo ({version}) is available on your server. Please update the app.",
+      "blockedApp": "This app is too old for your Econumo server: it requires app version {version} or newer. Please update the app to continue.",
+      "blockedServer": "This app requires Econumo server {min} or newer, but your server is {version}. Please update the server to continue."
     }
   },
   "accounts": {
