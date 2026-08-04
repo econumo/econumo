@@ -31,6 +31,11 @@ type stubImportLabelOwner struct {
 		ownerID vo.Id
 		name    string
 	}
+	// createLabelErrFor simulates the real CreateLabel port's downstream
+	// validation (internal/label's name-length rule): a name present here
+	// fails instead of resolving to nextLabelID, letting tests pin that the
+	// import row surfaces the error rather than swallowing it.
+	createLabelErrFor map[string]error
 }
 
 func (s *stubImportLabelOwner) AvailableAccounts(ctx context.Context, userID vo.Id) ([]model.ImportAccount, error) {
@@ -83,6 +88,9 @@ func (s *stubImportLabelOwner) CreateLabel(ctx context.Context, ownerID vo.Id, n
 		ownerID vo.Id
 		name    string
 	}{ownerID, name})
+	if err, ok := s.createLabelErrFor[name]; ok {
+		return vo.Id{}, err
+	}
 	return s.nextLabelID, nil
 }
 

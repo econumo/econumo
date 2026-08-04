@@ -7,12 +7,22 @@ package transaction
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// maxLabelsPerImportRow caps how many distinct labels one mapped cell may
+// resolve to. A mapped column that isn't really a label list (e.g.
+// description) would otherwise mass-create junk labels — one cell can split
+// into many values, a bigger blast radius than the single-valued
+// category/payee/tag columns. Exceeding it is a row-level error rather than a
+// silent truncation, so the mis-mapping is visible instead of hidden.
+const maxLabelsPerImportRow = 10
 
 // ImportTransactionList runs the CSV import for the user. It returns the result
 // with counts + errors; only an infrastructure error (tx failure, override
@@ -324,6 +334,12 @@ func (s *Service) importRow(
 		labelIDs = overrideLabelIDs
 	} else if req.Mapping.Labels != "" {
 		names := splitLabelCell(fieldValue(row, req.Mapping.Labels), labelsSeparator)
+		// names is already deduped (case-insensitively) by splitLabelCell, so
+		// the cap counts distinct labels, not raw split pieces - "Kid A;kid a"
+		// is one label and must not count as two against the limit.
+		if len(names) > maxLabelsPerImportRow {
+			return errs.NewValidation(fmt.Sprintf("Row has %d labels, exceeding the maximum of %d", len(names), maxLabelsPerImportRow))
+		}
 		if len(names) > 0 {
 			labelIDs = make([]vo.Id, 0, len(names))
 			for _, name := range names {
