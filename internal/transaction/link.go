@@ -21,3 +21,12 @@ func (s *Service) LinkTransactionToRecurring(ctx context.Context, userID, transa
 	}
 	return s.repo.LinkRecurring(ctx, transactionID, recurringID, s.clock.Now())
 }
+
+// ReplaceLabels rewrites transactionID's label set. Satisfies
+// recurring.TransactionCreator's ReplaceLabels port: PostRecurringTransaction
+// calls it right after creating a transaction from a template, to copy the
+// template's already-validated label ids over — no fresh ownership check here,
+// since a template's labels were validated when they were attached to it.
+func (s *Service) ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error {
+	return s.repo.ReplaceLabels(ctx, transactionID, labelIDs)
+}

@@ -301,14 +301,18 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags,
 		transactionRepo,
 	)
+	// One label-ownership adapter, reused across every feature that validates
+	// labelIds against the label repository (same pattern as userOwnerLookup
+	// above): transaction and recurring both just want "who owns this label".
+	labelOwnership := NewTransactionLabelOwnership(labelRepo)
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
-		NewTransactionLabelOwnership(labelRepo), txm, opGuard, clk,
+		labelOwnership, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
-	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, txm, opGuard, clk)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)

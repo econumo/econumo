@@ -46,10 +46,33 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		if aerr := s.checkWriteAccess(ctx, userID, rt.AccountID); aerr != nil {
 			return aerr
 		}
+		labelIDs, lerr := s.labelIDsFor(ctx, rtID)
+		if lerr != nil {
+			return lerr
+		}
+		rt.LabelIDs = labelIDs
 		created, gerr = s.creator.CreateTransactionFromRecurring(ctx, userID, createReq, rtID)
 		if gerr != nil {
 			return gerr
 		}
+		// Copy the template's labels onto the just-created transaction, inside
+		// this same tx: a failure here rolls back the create too. This is a
+		// second ReplaceLabels for the row (createTransaction already ran one
+		// with req.LabelIds, always empty here since post never sends any) —
+		// delete-then-insert makes the second call authoritative rather than
+		// additive, so the two calls settle on exactly the template's set.
+		txID, perr := vo.ParseId(created.Item.Id)
+		if perr != nil {
+			return perr
+		}
+		if rerr := s.creator.ReplaceLabels(ctx, txID, rt.LabelIDs); rerr != nil {
+			return rerr
+		}
+		wireLabels := labelIDStrings(rt.LabelIDs)
+		if wireLabels == nil {
+			wireLabels = []string{}
+		}
+		created.Item.LabelIds = wireLabels
 		rt.Advance(s.clock.Now())
 		return s.repo.Save(ctx, rt)
 	}); err != nil {

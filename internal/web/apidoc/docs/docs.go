@@ -9323,6 +9323,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "description": "LabelIds is ignored for a transfer (transfers never carry labels); each\nentry is validated (parses as an id, exists, owned by the template's\naccount owner) by the service, not here.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "nextPaymentAt": {
                     "type": "string"
                 },
@@ -10588,6 +10595,12 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "nextPaymentAt": {
                     "type": "string"
                 },
@@ -11382,6 +11395,13 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds replaces the full label set (nil/empty clears it); ignored for a\ntransfer. See CreateRecurringTransactionRequest.LabelIds for the\nvalidation rule.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "nextPaymentAt": {
                     "type": "string"

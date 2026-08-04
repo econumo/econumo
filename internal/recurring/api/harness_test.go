@@ -28,13 +28,13 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	apprecurring "github.com/econumo/econumo/internal/recurring"
 	handlerrecurring "github.com/econumo/econumo/internal/recurring/api"
 	recurringrepo "github.com/econumo/econumo/internal/recurring/repo"
 	"github.com/econumo/econumo/internal/server"
-	"github.com/econumo/econumo/internal/shared/vo"
 	apptag "github.com/econumo/econumo/internal/tag"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/authstub"
@@ -59,21 +59,16 @@ const (
 	folderID   = "ffffffff-0000-0000-0000-00000000f01d"
 	accountID  = "aaaa1111-0000-0000-0000-0000000000a1"
 	catID      = "cccc2222-0000-0000-0000-0000000000c1"
+
+	labelOwnerID = "33333333-4444-3333-4444-333333333333"
+	label1ID     = "dddd4444-0000-0000-0000-0000000000d1"
+	label2ID     = "dddd4444-0000-0000-0000-0000000000d2"
+	otherLabelID = "dddd4444-0000-0000-0000-0000000000d9"
 )
 
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
-}
-
-// noLabels stubs apptransaction.LabelOwnership: recurring templates carry no
-// labelIds field today, so resolveLabels short-circuits on the empty list and
-// this is never actually called. It exists so a future labelIds field on
-// recurring posting fails with a clear panic instead of a nil-pointer one.
-type noLabels struct{}
-
-func (noLabels) LabelOwners(context.Context, []vo.Id) (map[string]vo.Id, error) {
-	panic("harness: LabelOwnership not wired for recurring; add a real implementation before giving recurring templates labelIds")
 }
 
 func newHarness(t *testing.T) *harness {
@@ -99,6 +94,11 @@ func newHarness(t *testing.T) *harness {
 	f.AccountInFolder(folderID, accountID)
 	f.AccountOption(accountID, seedUserID, 0)
 	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
+	f.Label(fixture.Label{ID: label1ID, UserID: seedUserID, Name: "Label One"})
+	f.Label(fixture.Label{ID: label2ID, UserID: seedUserID, Name: "Label Two"})
+	// A different user's label, to verify labelIds are rejected across ownership.
+	f.User(fixture.User{ID: labelOwnerID, Email: "labelowner@example.test", Name: "Label Owner", Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
+	f.Label(fixture.Label{ID: otherLabelID, UserID: labelOwnerID, Name: "Not Mine"})
 
 	curLookup := currencyrepo.New("sqlite", txm)
 	accountSvc := appaccount.NewService(
@@ -129,15 +129,16 @@ func newHarness(t *testing.T) *harness {
 	)
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 	clk := clock.New()
+	labelOwnership := server.NewTransactionLabelOwnership(labelrepo.NewRepo("sqlite", txm))
 	transactionSvc := apptransaction.NewService(
 		txRepo, accountSvc,
 		accountAccessResolver,
 		accountSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, noLabels{}, txm, opGuard, clk,
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, labelOwnership, txm, opGuard, clk,
 	)
 
 	recurringRepo := recurringrepo.NewRepo("sqlite", txm)
-	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, txm, opGuard, clk)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
 	handlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

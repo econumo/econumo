@@ -7,14 +7,15 @@ import (
 )
 
 type recurringItem struct {
-	ID            string  `json:"id"`
-	Type          string  `json:"type"`
-	AccountID     string  `json:"accountId"`
-	Amount        string  `json:"amount"`
-	Schedule      string  `json:"schedule"`
-	NextPaymentAt string  `json:"nextPaymentAt"`
-	CategoryID    *string `json:"categoryId"`
-	Description   string  `json:"description"`
+	ID            string   `json:"id"`
+	Type          string   `json:"type"`
+	AccountID     string   `json:"accountId"`
+	Amount        string   `json:"amount"`
+	Schedule      string   `json:"schedule"`
+	NextPaymentAt string   `json:"nextPaymentAt"`
+	CategoryID    *string  `json:"categoryId"`
+	Description   string   `json:"description"`
+	LabelIds      []string `json:"labelIds"`
 }
 
 type recurringList struct {

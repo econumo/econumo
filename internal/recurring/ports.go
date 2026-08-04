@@ -27,4 +27,19 @@ type TransactionCreator interface {
 	// LinkTransactionToRecurring stamps recurringID onto an existing transaction
 	// (create-from-transaction attaches the source as the series' first instance).
 	LinkTransactionToRecurring(ctx context.Context, userID, transactionID, recurringID vo.Id) error
+
+	// ReplaceLabels rewrites a transaction's label set. PostRecurringTransaction
+	// uses it to copy a template's already-validated label ids onto the
+	// transaction it just created, inside the same tx as the create.
+	ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error
+}
+
+// LabelOwnership resolves the owning user for a set of label ids, for
+// validating a create/update template's labelIds. Mirrors
+// transaction.LabelOwnership exactly: a missing id is simply absent from the
+// returned map, so the caller's membership check (id present AND owner ==
+// the template's account owner) rejects both an unknown id and one owned by
+// someone else.
+type LabelOwnership interface {
+	LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error)
 }
