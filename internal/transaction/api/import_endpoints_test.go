@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"mime/multipart"
 	"net/http"
+	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -480,11 +482,141 @@ func TestImportLabelIdsOverrideRejectsForeignLabel(t *testing.T) {
 	}
 }
 
-// Label ownership scoping (auto-create and the labelIds belongs-to check
-// must use the resolved ACCOUNT OWNER, never the caller) is covered at the
-// unit level in internal/transaction/import_ownership_test.go, with a stub
-// Importer the test controls directly — the real production account adapter
-// only ever resolves an accountId override to the CALLER's own account (see
+// maxTestImportLabelOverride mirrors internal/transaction/import.go's
+// unexported maxLabelsPerImportRow (10) -- this test package cannot see it
+// directly, so the boundary is duplicated here; keep the two in sync.
+const maxTestImportLabelOverride = 10
+
+// TestImportLabelIdsOverrideExceedsCap_Rejected: the labelIds override
+// applies to every imported row, so it is capped at the same width as the
+// per-row mapped-cell cap; one over aborts the whole import with a dedicated
+// top-level error (not the generic "not found" one), before any row is
+// processed.
+func TestImportLabelIdsOverrideExceedsCap_Rejected(t *testing.T) {
+	h := newHarness(t)
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	ids := make([]string, maxTestImportLabelOverride+1)
+	for i := range ids {
+		ids[i] = f.Label(fixture.Label{UserID: seedUserID, Name: fixture.NewID()})
+	}
+	tok := h.token(t)
+	csv := "Account,Date,Amount\nCash,2024-03-01,-10\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"labelIds": strings.Join(ids, ",")})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 0 {
+		t.Fatalf("imported=%d want 0 (the cap aborts the whole import)", res.Imported)
+	}
+	var found bool
+	for msg := range res.Errors {
+		if strings.Contains(msg, "Too many labelIds") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("errors=%v want a top-level too-many-labelIds error", res.Errors)
+	}
+}
+
+// TestImportLabelIdsOverrideDedupesRepeatedIds: the same id repeated in the
+// override CSV counts once against the cap and attaches once per row, not
+// once per occurrence.
+func TestImportLabelIdsOverrideDedupesRepeatedIds(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount\nCash,2024-03-01,-10\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"labelIds": label1ID + "," + label1ID + "," + label1ID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || len(list.Items[0].LabelIds) != 1 {
+		t.Fatalf("labelIds = %+v, want exactly 1 (deduped)", list.Items)
+	}
+}
+
+// Label ownership scoping for the accountId OVERRIDE path (auto-create and
+// the labelIds belongs-to check must use the resolved ACCOUNT OWNER, never
+// the caller) is covered at the unit level in
+// internal/transaction/import_ownership_test.go, with a stub Importer the
+// test controls directly — the real production account adapter only ever
+// resolves an accountId override to the CALLER's own account (see
 // TransactionImportAccounts.AccountByID's "only available (own) accounts
 // qualify" comment), so there is no way to reach accountOwnerID != userID
-// through this harness's real wiring to assert it here end-to-end.
+// through THAT path in this harness's real wiring.
+//
+// The ROW-MAPPED account path is different: findOrCreateAccount resolves a
+// mapped account NAME against AvailableAccounts, which does include accepted
+// shared accounts (ListAvailableAccounts's "own OR ACCEPTED shared" query),
+// so a caller importing into a shared account by name — no accountId
+// override — really can reach a resolved account whose owner isn't the
+// caller. That combination is exercised end-to-end below.
+
+// TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner: seedUserID (a
+// user-role grantee, no accountId override) imports a row whose mapped
+// Account cell names the shared "Shared" account owned by ownerTwoID, with a
+// Labels cell. The label must be created under ownerTwoID — the account's
+// ACTUAL owner — not the caller, else ownerTwoID can never edit their own
+// transaction afterwards: resolveLabels requires a label's owner to equal
+// the account owner, so a caller-owned label makes any subsequent
+// update-transaction (even one that just echoes the current labelIds back)
+// fail with transaction.transaction.not_available. The update-transaction
+// call at the end is the actual regression guard — pre-fix it 400s.
+func TestImport_RowMappedSharedAccount_LabelsOwnedByAccountOwner(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleUser, true)
+	tok := h.token(t)
+
+	csv := "Account,Date,Amount,Labels\n" +
+		"Shared,2024-03-01,-10,New Label\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`
+	status, env := h.doImport(t, tok, csv, mapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	var labelOwner string
+	if err := h.db.QueryRow(`SELECT user_id FROM labels WHERE name = ?`, "New Label").Scan(&labelOwner); err != nil {
+		t.Fatalf("query new label: %v", err)
+	}
+	if labelOwner != ownerTwoID {
+		t.Fatalf("label owner = %q, want the shared account's owner %q (not the caller %q)", labelOwner, ownerTwoID, seedUserID)
+	}
+
+	// The account OWNER must see the imported transaction and be able to
+	// resolve its own label.
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+sharedAcctID, ownerTwoID, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 {
+		t.Fatalf("owner's list = %+v, want 1 item", list.Items)
+	}
+	item := list.Items[0]
+	if len(item.LabelIds) != 1 {
+		t.Fatalf("item labelIds = %v, want exactly 1", item.LabelIds)
+	}
+
+	// The account owner echoing the same labelIds back on an update must
+	// succeed, not 400 with transaction.transaction.not_available.
+	updateReq := map[string]any{
+		"id": item.ID, "type": "expense", "amount": "10", "accountId": sharedAcctID,
+		"date": "2024-03-01 00:00:00", "description": item.Description, "labelIds": item.LabelIds,
+	}
+	status2, env2 := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", ownerTwoID, updateReq)
+	if status2 != http.StatusOK {
+		t.Fatalf("account owner's update-transaction echoing labelIds: status=%d want 200; body=%s", status2, env2.raw)
+	}
+}

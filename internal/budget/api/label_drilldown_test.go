@@ -104,3 +104,36 @@ func TestGetTransactionListRejectsLabelIdWithCategoryId(t *testing.T) {
 		t.Fatalf("labelId+uncategorized=%d, want 400: %s", st, b.raw)
 	}
 }
+
+// TestGetTransactionListWhitespaceLabelId_TreatedAsAbsent: the mutual-
+// exclusion guard trims labelId before deciding whether it's "set", so a
+// whitespace-only value must be absent EVERYWHERE downstream too, not just at
+// the guard. Before the fix, the guard let a whitespace-only labelId through
+// untouched but the selector switch still saw the raw untrimmed value, so
+// labelId=" " alone (no other selector) reported the field-specific "labelId
+// must not be blank" error, as if a real label filter had been attempted,
+// instead of the generic "select a filter" error an omitted labelId
+// produces. This asserts both requests now yield the identical shape.
+func TestGetTransactionListWhitespaceLabelId_TreatedAsAbsent(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		t.Fatalf("create-budget=%d body=%s", st, e.raw)
+	}
+
+	base := "/api/v1/budget/get-transaction-list?budgetId=" + labelDrilldownBudgetID + "&periodStart=2024-04-01"
+
+	stAbsent, envAbsent := h.do(t, http.MethodGet, base, tok, nil)
+	stWs, envWs := h.do(t, http.MethodGet, base+"&labelId=%20", tok, nil)
+
+	if stWs != stAbsent {
+		t.Fatalf("status with whitespace labelId = %d, want the same as no filter (%d)", stWs, stAbsent)
+	}
+	if envWs.Message != envAbsent.Message {
+		t.Fatalf("message with whitespace labelId = %q, want the same as no filter %q", envWs.Message, envAbsent.Message)
+	}
+	if len(envWs.errorsMap()) != 0 {
+		t.Fatalf("errors = %v, want none -- a whitespace-only labelId must not surface as a field-specific labelId error (that would imply a real label filter was attempted)", envWs.errorsMap())
+	}
+}

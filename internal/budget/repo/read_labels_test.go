@@ -63,12 +63,20 @@ func TestCountSpendingByLabelCountsFullAmountPerLabel(t *testing.T) {
 }
 
 // A transaction outside the period, or one carrying no label at all, must not
-// contribute a row -- deleting the WHERE/JOIN would let either leak in.
+// contribute a row -- deleting the WHERE/JOIN would let either leak in. The
+// first-of-month instant is the classic sqliteDatetime trap (see
+// internal/budget/repo/read_integration_test.go's CountSpending counterpart):
+// a raw time.Time bound mis-compares against the stored 'Y-m-d H:i:s' TEXT and
+// silently drops that row, so it must be seeded here, not just mid-period.
 func TestCountSpendingByLabelExcludesOutOfPeriodAndUnlabeled(t *testing.T) {
 	read, db := newReadRepo(t)
 	ctx := context.Background()
 	f := fixture.New(t, db)
 	label := f.Label(fixture.Label{UserID: userA, Name: "Groceries"})
+
+	boundary := "78000000-0000-0000-0000-000000000005"
+	seedExpense(t, db, boundary, acctA, "", "5.00", "2026-08-01 00:00:00")
+	linkLabel(t, db, boundary, label)
 
 	inPeriod := "78000000-0000-0000-0000-000000000002"
 	seedExpense(t, db, inPeriod, acctA, "", "10.00", "2026-08-05 00:00:00")
@@ -88,13 +96,14 @@ func TestCountSpendingByLabelExcludesOutOfPeriodAndUnlabeled(t *testing.T) {
 		t.Fatalf("CountSpendingByLabel: %v", err)
 	}
 	if len(rows) != 1 {
-		t.Fatalf("want 1 row (the in-period labeled expense only), got %d: %+v", len(rows), rows)
+		t.Fatalf("want 1 row (the two in-period labeled expenses only), got %d: %+v", len(rows), rows)
 	}
 	if rows[0].LabelID != label {
 		t.Fatalf("wrong label: %q", rows[0].LabelID)
 	}
-	if vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("10").String() {
-		t.Errorf("amount mismatch: %q", rows[0].Amount)
+	// 5.00 (Aug 1 00:00:00 boundary, must be included) + 10.00 (Aug 5) = 15.00.
+	if vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("15").String() {
+		t.Errorf("amount mismatch: %q, want 15 (boundary expense excluded would leave 10)", rows[0].Amount)
 	}
 }
 

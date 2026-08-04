@@ -66,7 +66,12 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	cat := optID(req.CategoryId)
 	tag := optID(req.TagId)
 	env := optID(req.EnvelopeId)
-	lbl := optID(req.LabelId)
+	// lbl is trimmed to agree with the mutual-exclusion guard above (which
+	// compares strings.TrimSpace(*req.LabelId)): a whitespace-only labelId
+	// must be treated as absent by BOTH checks, else it slips past the guard
+	// untrimmed and falls into an earlier switch case (e.g. categoryId's),
+	// silently discarding it instead of being rejected or ignored consistently.
+	lbl := strings.TrimSpace(optID(req.LabelId))
 
 	var rows []model.BudgetTransactionRow
 	switch {

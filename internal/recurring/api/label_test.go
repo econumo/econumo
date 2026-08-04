@@ -338,3 +338,53 @@ func TestPostRecurringTwiceDoesNotDuplicateLabels(t *testing.T) {
 		t.Fatalf("transactions_labels rows for %q = %d, want 1 (no duplication from the locked replay)", res.Item.ID, count)
 	}
 }
+
+// maxTestRecurringLabels mirrors internal/recurring/usecase.go's unexported
+// maxRecurringLabels (50) -- this test package cannot see it directly, so
+// the boundary is duplicated here; keep the two in sync.
+const maxTestRecurringLabels = 50
+
+// TestCreateRecurringTransaction_TooManyLabels_Rejected: one over the cap is
+// rejected with the dedicated too-many-labels error BEFORE any per-id
+// ownership lookup runs -- none of these ids need to exist for the cap to
+// fire, since resolveLabels checks the deduped count first. The cap runs
+// ahead of LabelOwners, which is a per-id GetByID loop, so this also guards
+// against turning a bad request into thousands of sequential lookups inside
+// an open write transaction (see internal/transaction/api/label_test.go's
+// TestCreateTransaction_TooManyLabels_Rejected, the sibling this mirrors).
+func TestCreateRecurringTransaction_TooManyLabels_Rejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	ids := make([]string, maxTestRecurringLabels+1)
+	for i := range ids {
+		ids[i] = fixture.NewID()
+	}
+	const opID = "0197c400-0000-7000-8000-000000000008"
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok,
+		createRecurringReqWithLabels(opID, "expense", "12.00", ids))
+	assertValidationDenied(t, status, env, "A transaction can have at most 50 labels.")
+}
+
+// TestCreateRecurringTransaction_MaxLabels_Accepted: exactly the cap
+// succeeds, proving the check is an off-by-one-safe ">", not ">=".
+func TestCreateRecurringTransaction_MaxLabels_Accepted(t *testing.T) {
+	h := newHarness(t)
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	ids := make([]string, maxTestRecurringLabels)
+	for i := range ids {
+		ids[i] = f.Label(fixture.Label{UserID: seedUserID, Name: fixture.NewID()})
+	}
+
+	tok := h.token(t)
+	const opID = "0197c400-0000-7000-8000-000000000009"
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok,
+		createRecurringReqWithLabels(opID, "expense", "12.00", ids))
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body: %s", status, env.raw)
+	}
+	res := mustUnmarshal[recurringItemResult](t, env.Data)
+	if len(res.Item.LabelIds) != maxTestRecurringLabels {
+		t.Fatalf("labelIds count = %d, want %d", len(res.Item.LabelIds), maxTestRecurringLabels)
+	}
+}

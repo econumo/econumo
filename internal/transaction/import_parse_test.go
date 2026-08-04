@@ -1,7 +1,11 @@
 package transaction
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // TestSplitLabelCell_TrimsBlanksAndDedupesCaseInsensitively pins the
@@ -47,11 +51,74 @@ func TestSplitLabelCell_TrimsBlanksAndDedupesCaseInsensitively(t *testing.T) {
 // suppressed.
 func TestResolveOverrideLabelIDs_AllBlankPieces_TreatedAsAbsent(t *testing.T) {
 	csv := ","
-	ids, ok := resolveOverrideLabelIDs(&csv, nil)
+	ids, ok, _ := resolveOverrideLabelIDs(&csv, nil)
 	if !ok {
 		t.Fatalf("ok = false, want true (blank pieces are not a not-found error)")
 	}
 	if ids != nil {
 		t.Fatalf("ids = %#v, want nil (treated as absent, not an explicit empty override)", ids)
+	}
+}
+
+// TestResolveOverrideLabelIDs_DedupesRepeatedIds: the same id repeated in the
+// CSV must resolve to one entry, not one per occurrence — otherwise the
+// per-row ReplaceLabels write would carry duplicate ids for every imported
+// row.
+func TestResolveOverrideLabelIDs_DedupesRepeatedIds(t *testing.T) {
+	id1 := vo.NewId()
+	list := []model.ImportNamed{{ID: id1.String(), Name: "L1", OwnerID: vo.NewId().String()}}
+	csv := id1.String() + "," + id1.String() + "," + id1.String()
+	ids, ok, tooMany := resolveOverrideLabelIDs(&csv, list)
+	if !ok || tooMany {
+		t.Fatalf("ok=%v tooMany=%v, want ok=true tooMany=false", ok, tooMany)
+	}
+	if len(ids) != 1 || !ids[0].Equal(id1) {
+		t.Fatalf("ids = %#v, want exactly [%s] (deduped)", ids, id1)
+	}
+}
+
+// TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany pins
+// maxLabelsPerImportRow as the bound on the DISTINCT id count (after dedupe):
+// this override fans out to every imported row, so an unbounded value would
+// turn a single bad request into per-row work sized to whatever the caller
+// sent. tooMany must be reported so the caller sees a dedicated message
+// rather than the generic "not found" one.
+func TestResolveOverrideLabelIDs_ExceedsCap_RejectedAsTooMany(t *testing.T) {
+	list := make([]model.ImportNamed, maxLabelsPerImportRow+1)
+	ownerID := vo.NewId().String()
+	ids := make([]string, maxLabelsPerImportRow+1)
+	for i := range list {
+		id := vo.NewId()
+		list[i] = model.ImportNamed{ID: id.String(), Name: id.String(), OwnerID: ownerID}
+		ids[i] = id.String()
+	}
+	csv := strings.Join(ids, ",")
+	resolved, ok, tooMany := resolveOverrideLabelIDs(&csv, list)
+	if ok || !tooMany {
+		t.Fatalf("ok=%v tooMany=%v, want ok=false tooMany=true (%d distinct ids exceeds the cap of %d)", ok, tooMany, len(ids), maxLabelsPerImportRow)
+	}
+	if resolved != nil {
+		t.Fatalf("resolved = %#v, want nil on rejection", resolved)
+	}
+}
+
+// TestResolveOverrideLabelIDs_ExactlyAtCap_Accepted proves the check is an
+// off-by-one-safe ">", not ">=".
+func TestResolveOverrideLabelIDs_ExactlyAtCap_Accepted(t *testing.T) {
+	list := make([]model.ImportNamed, maxLabelsPerImportRow)
+	ownerID := vo.NewId().String()
+	ids := make([]string, maxLabelsPerImportRow)
+	for i := range list {
+		id := vo.NewId()
+		list[i] = model.ImportNamed{ID: id.String(), Name: id.String(), OwnerID: ownerID}
+		ids[i] = id.String()
+	}
+	csv := strings.Join(ids, ",")
+	resolved, ok, tooMany := resolveOverrideLabelIDs(&csv, list)
+	if !ok || tooMany {
+		t.Fatalf("ok=%v tooMany=%v, want ok=true tooMany=false at exactly the cap", ok, tooMany)
+	}
+	if len(resolved) != maxLabelsPerImportRow {
+		t.Fatalf("resolved count = %d, want %d", len(resolved), maxLabelsPerImportRow)
 	}
 }
