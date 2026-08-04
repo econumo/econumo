@@ -198,11 +198,14 @@ func TestLabelBlockIsEmptyListNotNull(t *testing.T) {
 
 // TestLabelBlockNeverCreatesBudgetsElementsRows is the load-bearing invariant
 // guard: labels are budget-neutral and must never become budgets_elements rows
-// (no limits, no envelope-math participation). Before this task that invariant
-// held only by the ABSENCE of any code path writing a label id into
-// budgets_elements; this test makes it a real regression check by building a
-// budget with labelled spending (so a leak would have a row to create) and then
-// asserting the table holds no row whose external_id is a label id.
+// (no limits, no envelope-math participation). Labels have no set-limit
+// endpoint of their own, so the realistic regression is set-limit accepting a
+// label id as an ordinary element's externalId (elements are looked up and, on
+// a miss, self-healed/created by external id — see getElementSelfHeal in
+// internal/budget/accounts.go). This test drives exactly that path with a
+// label id that has real period spend (so a leak would have a row to create),
+// and asserts BOTH that set-limit rejects it and that no budgets_elements row
+// for that id exists afterward.
 func TestLabelBlockNeverCreatesBudgetsElementsRows(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -221,13 +224,28 @@ func TestLabelBlockNeverCreatesBudgetsElementsRows(t *testing.T) {
 		t.Fatalf("attach label: %v", err)
 	}
 
-	// Labels have no set-limit endpoint at all, so the only way a label id
-	// could reach budgets_elements is via a code leak, not a legitimate write
-	// path.
+	// Precondition: the label genuinely has period spend and shows in the
+	// labels block (a leak-free budgets_elements table would otherwise prove
+	// nothing — the label might just be invisible altogether).
 	_, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+labelBudgetID+"&date=2024-04-15", tok, nil)
 	res := mustUnmarshal[labelBudgetView](t, b.Data)
 	if _, ok := res.findLabel(labelAID); !ok {
 		t.Fatalf("precondition: label should appear with its period spend; body: %s", b.Data)
+	}
+
+	// The write attempt: pass the label id as an ordinary element's elementId.
+	// getElementSelfHeal only ever creates rows for envelope/category/tag
+	// participant entities (internal/budget/move.go's restoreElementsOrder), so
+	// a label id must resolve to "BudgetElement not found", not silently seed a
+	// budgets_elements row.
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
+		"budgetId": labelBudgetID, "elementId": labelAID, "period": "2024-04-01", "amount": "10",
+	})
+	if st != http.StatusBadRequest {
+		t.Fatalf("set-limit with a label id as elementId = %d, want 400 (rejection); body=%s", st, env.raw)
+	}
+	if env.Message != "BudgetElement not found" {
+		t.Errorf("set-limit with a label id message=%q want %q", env.Message, "BudgetElement not found")
 	}
 
 	var count int
@@ -236,5 +254,112 @@ func TestLabelBlockNeverCreatesBudgetsElementsRows(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("a label must never create a budgets_elements row; found %d row(s) for label id %s", count, labelAID)
+	}
+}
+
+// TestLabelBlockOrderedByPosition guards the spec's "position order"
+// requirement (internal/budget/builder_structure_build.go's sortByPositionThenID
+// call for labels). f.labels is a map, so an unsorted emission would come out in
+// Go's randomized map-iteration order. The lower position is deliberately
+// assigned to the LEXICALLY HIGHER-sorting id (and vice versa) so a sort that
+// silently fell back to id order could not pass this by coincidence.
+func TestLabelBlockOrderedByPosition(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		t.Fatalf("create-budget=%d body=%s", st, e.raw)
+	}
+
+	const (
+		idHigh = "eeeeaaaa-0000-7000-8000-000000000003" // lexically highest id, position 0
+		idMid  = "eeeeaaaa-0000-7000-8000-000000000002" // position 1
+		idLow  = "eeeeaaaa-0000-7000-8000-000000000001" // lexically lowest id, position 2
+	)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Label(fixture.Label{ID: idHigh, UserID: seedUserID, Name: "High", Position: 0})
+	f.Label(fixture.Label{ID: idMid, UserID: seedUserID, Name: "Mid", Position: 1})
+	f.Label(fixture.Label{ID: idLow, UserID: seedUserID, Name: "Low", Position: 2})
+
+	// Every label needs period spend to be visible at all.
+	txHigh := f.Transaction(fixture.Transaction{ID: "ffffaaaa-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID, CategoryID: catID, Type: 0, Amount: "1.00", SpentAt: "2024-04-10 00:00:00"})
+	txMid := f.Transaction(fixture.Transaction{ID: "ffffaaaa-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID, CategoryID: catID, Type: 0, Amount: "2.00", SpentAt: "2024-04-11 00:00:00"})
+	txLow := f.Transaction(fixture.Transaction{ID: "ffffaaaa-0000-7000-8000-000000000003", UserID: seedUserID, AccountID: accountID, CategoryID: catID, Type: 0, Amount: "3.00", SpentAt: "2024-04-12 00:00:00"})
+	for txID, labelID := range map[string]string{txHigh: idHigh, txMid: idMid, txLow: idLow} {
+		if _, err := h.db.Exec(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`, txID, labelID); err != nil {
+			t.Fatalf("attach label: %v", err)
+		}
+	}
+
+	_, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+labelBudgetID+"&date=2024-04-15", tok, nil)
+	res := mustUnmarshal[labelBudgetView](t, b.Data)
+
+	if len(res.Item.Structure.Labels) != 3 {
+		t.Fatalf("want 3 labels, got %d; body: %s", len(res.Item.Structure.Labels), b.Data)
+	}
+	got := []string{res.Item.Structure.Labels[0].Id, res.Item.Structure.Labels[1].Id, res.Item.Structure.Labels[2].Id}
+	want := []string{idHigh, idMid, idLow}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("labels emitted in order %v, want %v (position order, id descending here on purpose)", got, want)
+		}
+	}
+}
+
+// TestLabelBlockIsArchivedReflectsArchivedFlag pins the isArchived int mapping
+// on LabelSpendResult: boolToInt(meta.IsArchived) could be silently inverted
+// and every other test in this file (which use non-archived labels) would stay
+// green.
+func TestLabelBlockIsArchivedReflectsArchivedFlag(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		t.Fatalf("create-budget=%d body=%s", st, e.raw)
+	}
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Label(fixture.Label{ID: labelAID, UserID: seedUserID, Name: "Archived", Archived: true})
+	f.Label(fixture.Label{ID: labelBID, UserID: seedUserID, Name: "Active"})
+
+	txArchived := f.Transaction(fixture.Transaction{
+		ID: "ffff7777-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "5.00", SpentAt: "2024-04-10 00:00:00",
+	})
+	txActive := f.Transaction(fixture.Transaction{
+		ID: "ffff7777-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "7.00", SpentAt: "2024-04-11 00:00:00",
+	})
+	if _, err := h.db.Exec(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`, txArchived, labelAID); err != nil {
+		t.Fatalf("attach archived label: %v", err)
+	}
+	if _, err := h.db.Exec(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`, txActive, labelBID); err != nil {
+		t.Fatalf("attach active label: %v", err)
+	}
+
+	_, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+labelBudgetID+"&date=2024-04-15", tok, nil)
+	res := mustUnmarshal[labelBudgetView](t, b.Data)
+
+	var foundArchived, foundActive bool
+	var gotArchived, gotActive int
+	for _, l := range res.Item.Structure.Labels {
+		switch l.Id {
+		case labelAID:
+			foundArchived, gotArchived = true, l.IsArchived
+		case labelBID:
+			foundActive, gotActive = true, l.IsArchived
+		}
+	}
+	if !foundArchived {
+		t.Fatalf("an archived label with period spend must still appear; body: %s", b.Data)
+	}
+	if !foundActive {
+		t.Fatalf("the active label must appear; body: %s", b.Data)
+	}
+	if gotArchived != 1 {
+		t.Errorf("archived label isArchived=%d want 1", gotArchived)
+	}
+	if gotActive != 0 {
+		t.Errorf("active label isArchived=%d want 0", gotActive)
 	}
 }
