@@ -1,70 +1,102 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PromptDialog } from '@/components/PromptDialog'
-import { isNotEmpty, isValidTagName } from '@/lib/validation'
-import type { TagDto } from '@/api/dto/tag'
+import { kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
 import { useUserData } from '@/features/user/queries'
-import { ClassificationList } from './ClassificationList'
-import { useTags, useCreateTag, useUpdateTag, useArchiveTag, useUnarchiveTag, useDeleteTag, useOrderTags } from './queries'
+import { ClassificationList, type ClassificationItem } from './ClassificationList'
+import { TagDialog, type TagDialogItem } from './TagDialog'
+import {
+  useTags,
+  useLabels,
+  useArchiveTag,
+  useUnarchiveTag,
+  useDeleteTag,
+  useOrderTags,
+  useArchiveLabel,
+  useUnarchiveLabel,
+  useDeleteLabel,
+  useOrderLabels,
+} from './queries'
+
+interface ClassificationRow extends ClassificationItem {
+  kind: ClassificationKind
+}
 
 export function TagsPage() {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: tags = [] } = useTags()
-  const createTag = useCreateTag()
-  const updateTag = useUpdateTag()
+  const { data: labels = [] } = useLabels()
   const archiveTag = useArchiveTag()
   const unarchiveTag = useUnarchiveTag()
   const deleteTag = useDeleteTag()
   const orderTags = useOrderTags()
+  const archiveLabel = useArchiveLabel()
+  const unarchiveLabel = useUnarchiveLabel()
+  const deleteLabel = useDeleteLabel()
+  const orderLabels = useOrderLabels()
 
-  const [dialog, setDialog] = useState<{ open: boolean; tag: TagDto | null }>({ open: false, tag: null })
-  const own = tags.filter((tg) => !user || tg.ownerUserId === user.id)
+  const [dialog, setDialog] = useState<{ open: boolean; item: TagDialogItem | null }>({ open: false, item: null })
 
-  const validate = (value: string): string | null => {
-    if (!isNotEmpty(value)) {
-      return t('classifications.tags.forms.tag.name.validation.required_field')
-    }
-    if (!isValidTagName(value)) {
-      return t('classifications.tags.forms.tag.name.validation.invalid_name')
-    }
-    return null
-  }
+  const ownTags = tags.filter((tg) => !user || tg.ownerUserId === user.id)
+  const ownLabels = labels.filter((lb) => !user || lb.ownerUserId === user.id)
+  // Tags and labels hold INDEPENDENT position sequences on the backend, so the
+  // merged row's position is a local, 0-based-per-kind index rather than the
+  // real stored value — real values would collide across kinds and corrupt
+  // ClassificationList's reorder diffing (see orderScope + onOrder below).
+  const rows: ClassificationRow[] = [
+    ...ownTags.map((tg, i) => ({ ...tg, kind: 'tag' as const, position: i })),
+    ...ownLabels.map((lb, i) => ({ ...lb, kind: 'label' as const, position: ownTags.length + i })),
+  ]
 
   return (
     <>
       <ClassificationList
         title={t('classifications.tags.pages.settings.header')}
-        info={t('classifications.tags.pages.settings.info')}
+        info={`${t('classifications.tags.pages.settings.info')} ${t('classifications.tags.pages.settings.labels_info')}`}
         createLabel={t('classifications.tags.pages.settings.create_tag')}
-        deleteTitle={t('classifications.tags.modals.delete.title')}
+        deleteTitle={(row) => (row.kind === 'tag' ? t('classifications.tags.modals.delete.title') : t('classifications.labels.modals.delete.title'))}
         archivedLabel={t('classifications.tags.pages.settings.archived_item')}
-        items={own}
+        items={rows}
         storageKey="settings.tags.activeOnly"
         analyticsType="tag"
-        onCreate={() => setDialog({ open: true, tag: null })}
-        onEdit={(tag) => setDialog({ open: true, tag })}
-        onDelete={(id) => deleteTag.mutate(id)}
-        onToggleArchive={(tag) => (tag.isArchived === 0 ? archiveTag.mutate(tag.id) : unarchiveTag.mutate(tag.id))}
-        onOrder={(changes) => orderTags.mutate(changes)}
-      />
-      <PromptDialog
-        open={dialog.open}
-        onClose={() => setDialog({ open: false, tag: null })}
-        onSubmit={(name) => {
-          if (dialog.tag) {
-            updateTag.mutate({ id: dialog.tag.id, name }, { onSuccess: () => setDialog({ open: false, tag: null }) })
+        sections={[
+          { label: t('classifications.tags.pages.settings.header'), match: (row) => row.kind === 'tag' },
+          { label: t('classifications.labels.pages.settings.header'), match: (row) => row.kind === 'label' },
+        ]}
+        showIcon
+        iconClassName={(row) => kindAccentClass(row.kind)}
+        orderScope={(row) => row.kind}
+        onCreate={() => setDialog({ open: true, item: null })}
+        onEdit={(row) => setDialog({ open: true, item: { id: row.id, name: row.name, kind: row.kind, icon: row.icon ?? '' } })}
+        onDelete={(id) => {
+          const row = rows.find((r) => r.id === id)
+          if (row?.kind === 'label') {
+            deleteLabel.mutate(id)
           } else {
-            createTag.mutate({ name, ownerUserId: user?.id }, { onSuccess: () => setDialog({ open: false, tag: null }) })
+            deleteTag.mutate(id)
           }
         }}
-        title={dialog.tag ? t('classifications.tags.modals.edit.header') : t('classifications.tags.modals.create.header')}
-        inputLabel={t('classifications.tags.forms.tag.name.label')}
-        initialValue={dialog.tag?.name ?? ''}
-        validate={validate}
-        submitLabel={dialog.tag ? t('common.button.update.label') : t('common.button.create.label')}
-        cancelLabel={t('common.button.cancel.label')}
+        onToggleArchive={(row) => {
+          const archive = row.kind === 'tag' ? archiveTag : archiveLabel
+          const unarchive = row.kind === 'tag' ? unarchiveTag : unarchiveLabel
+          const mutation = row.isArchived === 0 ? archive : unarchive
+          mutation.mutate(row.id)
+        }}
+        onOrder={(changes) => {
+          const kindOf = (id: string) => rows.find((r) => r.id === id)?.kind
+          const tagChanges = changes.filter((c) => kindOf(c.id) === 'tag')
+          const labelChanges = changes
+            .filter((c) => kindOf(c.id) === 'label')
+            .map((c) => ({ id: c.id, position: c.position - ownTags.length }))
+          if (tagChanges.length > 0) {
+            orderTags.mutate(tagChanges)
+          }
+          if (labelChanges.length > 0) {
+            orderLabels.mutate(labelChanges)
+          }
+        }}
       />
+      <TagDialog open={dialog.open} item={dialog.item} onClose={() => setDialog({ open: false, item: null })} />
     </>
   )
 }

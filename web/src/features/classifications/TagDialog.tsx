@@ -1,0 +1,138 @@
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { EntityIcon } from '@/components/EntityIcon'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { CLASSIFICATION_KINDS, DEFAULT_ICON, kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
+import { isNotEmpty, isValidLabelName, isValidTagName } from '@/lib/validation'
+import { useUserData } from '@/features/user/queries'
+import { useCreateLabel, useCreateTag, useUpdateLabel, useUpdateTag } from './queries'
+
+export interface TagDialogItem {
+  id: string
+  name: string
+  kind: ClassificationKind
+  icon: string
+}
+
+interface TagDialogProps {
+  open: boolean
+  item?: TagDialogItem | null
+  onClose: () => void
+}
+
+export function TagDialog({ open, item, onClose }: TagDialogProps) {
+  const { t } = useTranslation()
+  const { data: user } = useUserData()
+  const isNew = !item
+  const [kind, setKind] = useState<ClassificationKind>('tag')
+  const [name, setName] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const createTag = useCreateTag()
+  const createLabel = useCreateLabel()
+  const updateTag = useUpdateTag()
+  const updateLabel = useUpdateLabel()
+
+  useEffect(() => {
+    if (open) {
+      setKind(item?.kind ?? 'tag')
+      setName(item?.name ?? '')
+      setError(null)
+    }
+  }, [open, item])
+
+  const title = isNew
+    ? kind === 'tag'
+      ? t('classifications.tags.modals.create.header')
+      : t('classifications.labels.modals.create.header')
+    : item?.kind === 'tag'
+      ? t('classifications.tags.modals.edit.header')
+      : t('classifications.labels.modals.edit.header')
+
+  const validate = (value: string): string | null => {
+    if (!isNotEmpty(value)) {
+      return t('classifications.tags.forms.tag.name.validation.required_field')
+    }
+    const valid = kind === 'tag' ? isValidTagName(value) : isValidLabelName(value)
+    if (!valid) {
+      return kind === 'tag'
+        ? t('classifications.tags.forms.tag.name.validation.invalid_name')
+        : t('classifications.labels.forms.label.name.validation.invalid_name')
+    }
+    return null
+  }
+
+  const submit = () => {
+    const message = validate(name)
+    if (message) {
+      setError(message)
+      return
+    }
+    if (item) {
+      // Kind is immutable once saved, so an edit always targets the row's own kind.
+      const mutation = item.kind === 'tag' ? updateTag : updateLabel
+      mutation.mutate({ id: item.id, name }, { onSuccess: onClose })
+    } else {
+      const mutation = kind === 'tag' ? createTag : createLabel
+      mutation.mutate({ name, ownerUserId: user?.id }, { onSuccess: onClose })
+    }
+  }
+
+  return (
+    <ResponsiveDialog open={open} onOpenChange={(o) => !o && onClose()} title={title} dismissible={false}>
+      <form
+        className="flex flex-col gap-4"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault()
+          submit()
+        }}
+      >
+        <div className="flex items-center gap-3">
+          <div data-testid="kind-icon">
+            {/* create: preview-only DEFAULT_ICON, since nothing is saved yet.
+                edit: the row's own stored icon (no picker here to change it). */}
+            <EntityIcon name={isNew ? DEFAULT_ICON[kind] : (item?.icon ?? DEFAULT_ICON[kind])} className={`text-2xl ${kindAccentClass(kind)}`} />
+          </div>
+          {isNew ? (
+            <div className="flex rounded-md border p-0.5" role="radiogroup" aria-label={t('classifications.tags.forms.tag.kind.legend')}>
+              {CLASSIFICATION_KINDS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  role="radio"
+                  aria-checked={kind === option}
+                  className={`flex-1 rounded px-2 py-1.5 text-sm ${kind === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                  onClick={() => setKind(option)}
+                >
+                  {t(`classifications.tags.forms.tag.kind.${option}`)}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <CardField label={t('classifications.tags.forms.tag.name.label')} htmlFor="tag-dialog-name" error={error}>
+          <Input
+            id="tag-dialog-name"
+            className={cardFieldControlClass}
+            autoFocus
+            maxLength={64}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </CardField>
+
+        <div className={dialogActionsClass}>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('common.button.cancel.label')}
+          </Button>
+          <Button type="submit">{isNew ? t('common.button.create.label') : t('common.button.update.label')}</Button>
+        </div>
+      </form>
+    </ResponsiveDialog>
+  )
+}

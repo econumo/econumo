@@ -60,7 +60,8 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** page-level banner (e.g. a server refusal) rendered between info and the list */
   alert?: ReactNode
   createLabel: string
-  deleteTitle: string
+  /** a function is needed when one list mixes item kinds with different nouns (e.g. tag vs label) */
+  deleteTitle: string | ((item: T) => string)
   /** badge on archived rows; per-list because languages inflect it per noun */
   archivedLabel: string
   items: T[]
@@ -71,6 +72,13 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
+  /** icon tint override per item (e.g. kind accent colour); default is the plain muted icon class */
+  iconClassName?: (item: T) => string
+  /** confines drag AND the A-Z sort to reordering only within items sharing the same key — needed
+   *  when the list mixes kinds that hold INDEPENDENT backend position sequences (e.g. tags/labels);
+   *  absent preserves the historical cross-group ordering (e.g. category income+expense share one
+   *  position sequence, so they may interleave) */
+  orderScope?: (item: T) => string
   /** extra muted lines rendered under the name */
   meta?: (item: T) => ReactNode
   /** per-item switch semantics; default = the archive toggle. null = no switch on this row */
@@ -102,6 +110,8 @@ export function ClassificationList<T extends ClassificationItem>({
   analyticsType,
   sections,
   showIcon,
+  iconClassName,
+  orderScope,
   meta,
   rowSwitch,
   hasActions,
@@ -286,7 +296,7 @@ export function ClassificationList<T extends ClassificationItem>({
             <GripVertical className="size-4" />
           </button>
         ) : null}
-        {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
+        {showIcon ? <EntityIcon name={item.icon} className={`text-base ${iconClassName?.(item) ?? 'text-muted-foreground'}`} /> : null}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className={`truncate text-sm ${item.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={item.name}>
             {item.name}
@@ -485,10 +495,27 @@ export function ClassificationList<T extends ClassificationItem>({
           open={sortOpen}
           onClose={() => setSortOpen(false)}
           onPick={(direction) => {
-            const ordered = [...items].sort((a, b) =>
-              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language),
-            )
-            commitOrder(ordered.map((i) => i.id))
+            const cmp = (a: T, b: T) =>
+              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language)
+            if (orderScope) {
+              // sort each scope group independently so items in one group never
+              // displace another group's slots (their position sequences are unrelated)
+              const groups = new Map<string, T[]>()
+              for (const item of items) {
+                const key = orderScope(item)
+                const group = groups.get(key)
+                if (group) {
+                  group.push(item)
+                } else {
+                  groups.set(key, [item])
+                }
+              }
+              for (const group of groups.values()) {
+                commitOrder([...group].sort(cmp).map((i) => i.id))
+              }
+            } else {
+              commitOrder([...items].sort(cmp).map((i) => i.id))
+            }
             setSortOpen(false)
           }}
         />
@@ -503,7 +530,7 @@ export function ClassificationList<T extends ClassificationItem>({
             setDeleteTarget(null)
           }
         }}
-        title={deleteTitle}
+        title={typeof deleteTitle === 'function' ? (deleteTarget ? deleteTitle(deleteTarget) : '') : deleteTitle}
         question={deleteTarget?.name ?? ''}
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}
