@@ -371,3 +371,36 @@ func (l *TransactionLabelOwnership) LabelOwners(ctx context.Context, ids []vo.Id
 	}
 	return out, nil
 }
+
+// TransactionLabelNameLookup adapts the label repository to the transaction
+// export adapter's LabelNames port. The export caller (buildExportLabelIndex)
+// dedupes ids across the whole export before calling this once, so the
+// per-id GetByID here (the same method TransactionLabelOwnership uses) never
+// runs more than once per distinct label — not once per transaction.
+type TransactionLabelNameLookup struct {
+	labels transactionLabelByID
+}
+
+// NewTransactionLabelNameLookup wraps a label repository.
+func NewTransactionLabelNameLookup(labels transactionLabelByID) *TransactionLabelNameLookup {
+	return &TransactionLabelNameLookup{labels: labels}
+}
+
+// LabelNames resolves name + position for every id that exists; a missing id
+// (e.g. deleted between the batch read and this lookup) is simply absent from
+// the returned map. Archived labels resolve like any other — they remain
+// attachable and must still export.
+func (l *TransactionLabelNameLookup) LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error) {
+	out := make(map[string]model.ExportLabel, len(ids))
+	for _, id := range ids {
+		lbl, err := l.labels.GetByID(ctx, id)
+		if err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				continue
+			}
+			return nil, err
+		}
+		out[id.String()] = model.ExportLabel{Name: lbl.Name, Position: lbl.Position}
+	}
+	return out, nil
+}

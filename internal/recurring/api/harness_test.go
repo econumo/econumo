@@ -113,7 +113,8 @@ func newHarness(t *testing.T) *harness {
 	catRepo := categoryrepo.NewRepo("sqlite", txm)
 	tgRepo := tagrepo.NewRepo("sqlite", txm)
 	pyRepo := payeerepo.NewRepo("sqlite", txm)
-	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo))
+	labelRepo := labelrepo.NewRepo("sqlite", txm)
+	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
@@ -129,7 +130,7 @@ func newHarness(t *testing.T) *harness {
 	)
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 	clk := clock.New()
-	labelOwnership := server.NewTransactionLabelOwnership(labelrepo.NewRepo("sqlite", txm))
+	labelOwnership := server.NewTransactionLabelOwnership(labelRepo)
 	transactionSvc := apptransaction.NewService(
 		txRepo, accountSvc,
 		accountAccessResolver,

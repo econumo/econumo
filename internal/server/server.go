@@ -292,7 +292,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 
-	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
+	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo), NewTransactionLabelNameLookup(labelRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
 	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)

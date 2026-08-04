@@ -65,6 +65,13 @@ type ExportLookup interface {
 	CategoryName(ctx context.Context, id vo.Id) (string, error)
 	TagName(ctx context.Context, id vo.Id) (string, error)
 	PayeeName(ctx context.Context, id vo.Id) (string, error)
+	// LabelNames resolves name + position for a batch of label ids in one call.
+	// The exporter calls this once with every distinct label id referenced across
+	// the whole export (gathered from the repo's LabelsByTransactionIDs batch),
+	// never per transaction, so a shared account with many labeled transactions
+	// still resolves each label at most once. A missing id is simply absent from
+	// the returned map.
+	LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error)
 }
 
 // Importer is the read/write port the import orchestration drives. It abstracts

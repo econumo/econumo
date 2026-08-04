@@ -61,13 +61,14 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 		server.NewTransactionImportTags(tgSvc, tgRepo),
 		txRepo,
 	)
+	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	txExport := transactionrepo.NewExportLookup(
 		txRepo,
 		server.NewTransactionCategoryNameLookup(catRepo),
 		server.NewTransactionTagNameLookup(tgRepo),
 		server.NewTransactionPayeeNameLookup(pyRepo),
+		server.NewTransactionLabelNameLookup(labelRepo),
 	)
-	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
