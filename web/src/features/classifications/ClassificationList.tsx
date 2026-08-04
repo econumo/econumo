@@ -62,8 +62,10 @@ interface ClassificationListProps<T extends ClassificationItem> {
   createLabel: string
   /** a function is needed when one list mixes item kinds with different nouns (e.g. tag vs label) */
   deleteTitle: string | ((item: T) => string)
-  /** badge on archived rows; per-list because languages inflect it per noun */
-  archivedLabel: string
+  /** badge on archived rows; per-noun because languages inflect it per noun — a function is
+   *  needed when one list mixes item kinds whose nouns take different inflections (e.g. tag vs
+   *  label; see commit 2d150b93 for the bug this guards against) */
+  archivedLabel: string | ((item: T) => string)
   items: T[]
   /** localStorage key for the active-only filter; absent = no filter control */
   storageKey?: string
@@ -74,10 +76,13 @@ interface ClassificationListProps<T extends ClassificationItem> {
   showIcon?: boolean
   /** icon tint override per item (e.g. kind accent colour); default is the plain muted icon class */
   iconClassName?: (item: T) => string
-  /** confines drag AND the A-Z sort to reordering only within items sharing the same key — needed
-   *  when the list mixes kinds that hold INDEPENDENT backend position sequences (e.g. tags/labels);
-   *  absent preserves the historical cross-group ordering (e.g. category income+expense share one
-   *  position sequence, so they may interleave) */
+  /** confines the A-Z sort (SortDialog) to reordering only within items sharing the same key —
+   *  needed when the list mixes kinds that hold INDEPENDENT backend position sequences (e.g.
+   *  tags/labels). Drag reorder needs no such flag: it is ALREADY confined per rendered section
+   *  (one SortableList per `sections` entry), so a caller that mixes independently-positioned
+   *  kinds must also pass matching `sections` — orderScope alone does not make drag safe.
+   *  Absent preserves the historical cross-group A-Z ordering (e.g. category income+expense
+   *  share one position sequence, so they may interleave). */
   orderScope?: (item: T) => string
   /** extra muted lines rendered under the name */
   meta?: (item: T) => ReactNode
@@ -302,7 +307,9 @@ export function ClassificationList<T extends ClassificationItem>({
             {item.name}
           </span>
           {item.isArchived === 1 ? (
-            <span className="text-xs text-muted-foreground">{archivedLabel}</span>
+            <span className="text-xs text-muted-foreground">
+              {typeof archivedLabel === 'function' ? archivedLabel(item) : archivedLabel}
+            </span>
           ) : null}
           {meta?.(item)}
         </span>

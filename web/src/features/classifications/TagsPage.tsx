@@ -52,10 +52,10 @@ export function TagsPage() {
     <>
       <ClassificationList
         title={t('classifications.tags.pages.settings.header')}
-        info={`${t('classifications.tags.pages.settings.info')} ${t('classifications.tags.pages.settings.labels_info')}`}
+        info={t('classifications.tags.pages.settings.tags_and_labels_info')}
         createLabel={t('classifications.tags.pages.settings.create_tag')}
         deleteTitle={(row) => (row.kind === 'tag' ? t('classifications.tags.modals.delete.title') : t('classifications.labels.modals.delete.title'))}
-        archivedLabel={t('classifications.tags.pages.settings.archived_item')}
+        archivedLabel={(row) => (row.kind === 'tag' ? t('classifications.tags.pages.settings.archived_item') : t('classifications.labels.pages.settings.archived_item'))}
         items={rows}
         storageKey="settings.tags.activeOnly"
         analyticsType="tag"

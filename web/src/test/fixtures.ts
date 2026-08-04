@@ -60,7 +60,7 @@ export const fixturePayees = [
 ]
 
 export const fixtureTags = [
-  { id: 'tag1', ownerUserId: 'u1', name: 'vacation', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+  { id: 'tag1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
 ]
 
 // icon intentionally differs from DEFAULT_ICON.label ('label') so tests can tell

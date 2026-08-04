@@ -1,16 +1,20 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { TagsPage } from './TagsPage'
 
-// These two catalogue keys are new in this change and not yet translated
-// (that's Task 8's job) — react-i18next falls back to rendering the raw key.
-const LABELS_SECTION_HEADER = 'classifications.labels.pages.settings.header'
-const LABEL_DELETE_TITLE = 'classifications.labels.modals.delete.title'
+// Resolved through i18n.t rather than hardcoded, so these stay correct once
+// Task 8 fills in the catalogue (today they resolve to the raw key, since
+// react-i18next falls back to it — after Task 8 they resolve to the real text).
+const LABELS_SECTION_HEADER = i18n.t('classifications.labels.pages.settings.header')
+const LABEL_DELETE_TITLE = i18n.t('classifications.labels.modals.delete.title')
+const TAG_ARCHIVED = i18n.t('classifications.tags.pages.settings.archived_item')
+const LABEL_ARCHIVED = i18n.t('classifications.labels.pages.settings.archived_item')
 
 function mockViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -84,6 +88,26 @@ it('deletes a tag via delete-tag and a label via delete-label', async () => {
   expect(await screen.findByText('Delete tag?')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(calls).toEqual(['label', 'tag']))
+})
+
+it('gives archived tag and label rows their own per-kind archived wording', async () => {
+  // regression test for the bug fixed in 2d150b93: a single shared archivedLabel
+  // string mis-inflects one of the two nouns the moment they take different forms
+  server.use(
+    ...coreHandlers({
+      tags: [{ id: 'tag1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 1, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
+      labels: [{ id: 'label1', ownerUserId: 'u1', name: 'health', icon: 'sell', position: 0, isArchived: 1, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  // both rows start archived, hidden by the default active-only filter
+  await user.click(screen.getByRole('switch', { name: 'Active only' }))
+  const tagRow = (await screen.findByText('vacation')).closest('span')!.parentElement!
+  const labelRow = screen.getByText('health').closest('span')!.parentElement!
+  expect(within(tagRow).getByText(TAG_ARCHIVED)).toBeInTheDocument()
+  expect(within(labelRow).getByText(LABEL_ARCHIVED)).toBeInTheDocument()
+  expect(TAG_ARCHIVED).not.toBe(LABEL_ARCHIVED)
 })
 
 it('A-Z reorder posts each kind to its own endpoint with positions local to that kind', async () => {
