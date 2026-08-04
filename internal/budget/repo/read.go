@@ -682,6 +682,57 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 	return scanBudgetTxRows(rows)
 }
 
+// BudgetTransactionsByLabel implements ReadModel. JOIN rather than a tag_id
+// predicate: the link is many-to-many. DISTINCT is unnecessary because the
+// join is on a single label id, which can match a given transaction at most
+// once (transactions_labels has a composite PK on (transaction_id, label_id)).
+func (r *ReadRepo) BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	var sql string
+	var args []any
+	// Args are appended in the SAME order the placeholders appear in the SQL
+	// text (the label join precedes the WHERE clause): SQLite's "?" binds
+	// positionally by occurrence, so an args slice ordered any other way binds
+	// the label id where an account id is expected and vice versa.
+	if r.driver == "postgresql" {
+		labelP := "$1"
+		accIn := r.ph(2, len(accArgs))
+		next := 2 + len(accArgs)
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0"
+		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
+		args = append(args, start, end)
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0"
+		where += " AND t.spent_at >= ? AND t.spent_at < ?"
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanBudgetTxRows(rows)
+}
+
 // BudgetTransactionsUncategorized implements ReadModel.
 func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(accountIDs) == 0 {

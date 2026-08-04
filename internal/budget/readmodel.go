@@ -45,6 +45,11 @@ type ReadModel interface {
 	// [start, end) on the given accounts with no category and no tag, newest
 	// first. Backs the top-level "uncategorized" element's drill-down.
 	BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabel returns expense transactions (type=0) in
+	// [start, end) on the given accounts carrying labelID, newest first. The
+	// link is many-to-many (transactions_labels), unlike the single tag_id
+	// column BudgetTransactionsByTag compares against.
+	BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 
 	// CountSpendingByLabel: per (label, currency) spending over [start, end) for
 	// the given accounts. Deliberately separate from CountSpending: that query

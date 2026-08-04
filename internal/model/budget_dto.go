@@ -476,6 +476,7 @@ type BudgetTransactionListRequest struct {
 	CategoryId    *string `json:"categoryId"`
 	TagId         *string `json:"tagId"`
 	EnvelopeId    *string `json:"envelopeId"`
+	LabelId       *string `json:"labelId"`
 	Uncategorized bool    `json:"uncategorized,omitempty"`
 }
 

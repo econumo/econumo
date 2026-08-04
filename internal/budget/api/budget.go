@@ -121,6 +121,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    categoryId    query string false "Category id"
 // @Param    tagId         query string false "Tag id"
 // @Param    envelopeId    query string false "Envelope id"
+// @Param    labelId       query string false "Label id (reporting label)"
 // @Param    uncategorized query boolean false "Uncategorized bucket (mutually exclusive with categoryId)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
@@ -139,6 +140,7 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 		CategoryId:    optQuery(q.Get("categoryId")),
 		TagId:         optQuery(q.Get("tagId")),
 		EnvelopeId:    optQuery(q.Get("envelopeId")),
+		LabelId:       optQuery(q.Get("labelId")),
 		Uncategorized: boolQuery(q.Get("uncategorized")),
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)

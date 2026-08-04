@@ -24,13 +24,24 @@ import (
 // exclusive; so are uncategorized and envelopeId - envelopes have no
 // uncategorized bucket of their own, so uncategorized+envelopeId falls
 // through to the same CodeBudgetTransactionFilterRequired error as any other
-// unsupported combination, exactly like tagId+envelopeId. Requires read
-// access.
+// unsupported combination, exactly like tagId+envelopeId. labelId selects
+// that label's transactions (a many-to-many join, unlike tagId's column
+// compare) and combines with none of the above - unlike tagId/categoryId,
+// labels carry no narrowing semantics, so any combination is rejected
+// up front with CodeBudgetTransactionFilterRequired rather than silently
+// picking one selector. Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{
 			Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice,
 		})
+	}
+	if req.LabelId != nil && strings.TrimSpace(*req.LabelId) != "" &&
+		((req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "") ||
+			(req.TagId != nil && strings.TrimSpace(*req.TagId) != "") ||
+			(req.EnvelopeId != nil && strings.TrimSpace(*req.EnvelopeId) != "") ||
+			req.Uncategorized) {
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
@@ -55,6 +66,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	cat := optID(req.CategoryId)
 	tag := optID(req.TagId)
 	env := optID(req.EnvelopeId)
+	lbl := optID(req.LabelId)
 
 	var rows []model.BudgetTransactionRow
 	switch {
@@ -96,6 +108,12 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			return nil, cerr
 		}
 		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.includedAccountIDs, periodStart, periodEnd)
+	case lbl != "":
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}

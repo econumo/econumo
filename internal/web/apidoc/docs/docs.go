@@ -2062,6 +2062,12 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Label id (reporting label)",
+                        "name": "labelId",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "description": "Uncategorized bucket (mutually exclusive with categoryId)",
                         "name": "uncategorized",
