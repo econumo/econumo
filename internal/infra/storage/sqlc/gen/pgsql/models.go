@@ -222,6 +222,11 @@ type RecurringTransaction struct {
 	UpdatedAt          time.Time
 }
 
+type RecurringTransactionsLabel struct {
+	RecurringTransactionID string
+	LabelID                string
+}
+
 type Tag struct {
 	ID         string
 	UserID     string

@@ -41,6 +41,9 @@ type Querier interface {
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
+	// Link rows between a recurring template and its reporting labels. See the
+	// sqlite variant for documentation.
+	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
@@ -198,6 +201,7 @@ type Querier interface {
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertRecurringLabel(ctx context.Context, arg InsertRecurringLabelParams) error
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error

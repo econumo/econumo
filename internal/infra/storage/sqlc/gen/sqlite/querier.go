@@ -50,6 +50,10 @@ type Querier interface {
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	// Link rows between a recurring template and its reporting labels. Writes are
+	// delete-then-insert inside the caller's transaction, so a re-save is
+	// idempotent and never duplicates a pair.
+	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	// Transactions referencing this tag have tag_id set to NULL via the ON DELETE
 	// SET NULL FK, matching the PHP delete behaviour.
@@ -301,6 +305,7 @@ type Querier interface {
 	// Claim a request id. The PK conflict is detected by the caller via a pre-check
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertRecurringLabel(ctx context.Context, arg InsertRecurringLabelParams) error
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
