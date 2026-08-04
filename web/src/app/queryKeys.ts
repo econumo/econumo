@@ -5,6 +5,7 @@ export const queryKeys = {
   categories: ['categories'] as const,
   payees: ['payees'] as const,
   tags: ['tags'] as const,
+  labels: ['labels'] as const,
   currencies: ['currencies'] as const,
   currencyRates: ['currencyRates'] as const,
   user: ['user'] as const,

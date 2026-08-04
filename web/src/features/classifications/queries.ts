@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import * as categoryApi from '@/api/category'
+import * as labelApi from '@/api/label'
 import * as payeeApi from '@/api/payee'
 import * as tagApi from '@/api/tag'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
+import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
@@ -23,6 +25,10 @@ export function usePayees() {
 
 export function useTags() {
   return useQuery({ queryKey: queryKeys.tags, queryFn: tagApi.getTagList, staleTime: TEN_MINUTES, select: byPosition })
+}
+
+export function useLabels() {
+  return useQuery({ queryKey: queryKeys.labels, queryFn: labelApi.getLabelList, staleTime: TEN_MINUTES, select: byPosition })
 }
 
 // The Vue stores dedupe by lowercased name among the owner's items before creating.
@@ -74,8 +80,8 @@ export function useCreatePayee() {
   })
 }
 
-type EntityKind = 'categories' | 'payees' | 'tags'
-type EntityDto = CategoryDto | PayeeDto | TagDto
+type EntityKind = 'categories' | 'payees' | 'tags' | 'labels'
+type EntityDto = CategoryDto | PayeeDto | TagDto | LabelDto
 
 function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
   const queryClient = useQueryClient()
@@ -287,6 +293,80 @@ export function useCreateTag() {
       queryClient.setQueryData<TagDto[]>(queryKeys.tags, (prev) => {
         const items = prev ?? []
         return items.some((t) => t.id === item.id) ? items : [...items, item]
+      })
+    },
+  })
+}
+
+export function useUpdateLabel() {
+  const ops = useEntityCacheOps('labels', true)
+  return useMutation({
+    mutationFn: (form: { id: Id; name: string }) => labelApi.updateLabel(form),
+    onSuccess: (item, form) => {
+      ops.replaceItem(form.id, { name: item?.name ?? form.name })
+    },
+  })
+}
+
+export function useArchiveLabel() {
+  const ops = useEntityCacheOps('labels', true)
+  return useMutation({
+    mutationFn: (id: Id) => labelApi.archiveLabel(id),
+    onSuccess: (_r, id) => {
+      ops.setArchived(id, 1)
+    },
+  })
+}
+
+export function useUnarchiveLabel() {
+  const ops = useEntityCacheOps('labels', true)
+  return useMutation({
+    mutationFn: (id: Id) => labelApi.unarchiveLabel(id),
+    onSuccess: (_r, id) => {
+      ops.setArchived(id, 0)
+    },
+  })
+}
+
+export function useDeleteLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: Id) => labelApi.deleteLabel(id),
+    onSuccess: (_r, id) => {
+      queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => (prev ?? []).filter((l) => l.id !== id))
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    },
+  })
+}
+
+export function useOrderLabels() {
+  const ops = useEntityCacheOps('labels', false)
+  return useMutation({
+    mutationFn: labelApi.orderLabelList,
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+    },
+  })
+}
+
+// Tags and labels have INDEPENDENT name namespaces on the backend (see
+// internal/label vs internal/tag): a label may share a name with a tag. The
+// dedupe lookup below therefore reads ONLY the labels cache (queryKeys.labels),
+// never the tags cache, so it can never resolve a label create to a tag's id.
+export function useCreateLabel() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (form: { name: string; accountId?: Id; ownerUserId?: Id }) => {
+      const existing = findByName(queryClient.getQueryData<LabelDto[]>(queryKeys.labels), form.name, form.ownerUserId)
+      if (existing) {
+        return existing
+      }
+      return await labelApi.createLabel({ id: uuidv7(), name: form.name, accountId: form.accountId })
+    },
+    onSuccess: (item) => {
+      queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => {
+        const items = prev ?? []
+        return items.some((l) => l.id === item.id) ? items : [...items, item]
       })
     },
   })
