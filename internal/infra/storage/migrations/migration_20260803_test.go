@@ -231,3 +231,91 @@ func TestMigration20260803_EveryOrderedTableHasTheColumn(t *testing.T) {
 		}
 	}
 }
+
+// TestMigration20260803_SynthesizesMissingAccountOptions covers the legacy gap
+// the backfill alone cannot reach: an (account, user) pair with NO
+// accounts_options row at all. The old read path tolerated it as "position 0",
+// so such rows exist in the wild -- and left keyless they all compare equal,
+// pin to the front of the list, and no anchor can place an account between
+// them. The migration must synthesize rows for the account's owner and for
+// accepted sharees, with keys sorting BEFORE every backfilled 'c...' key
+// (preserving the old "position 0 -> first" placement), skipping pending
+// grants and deleted accounts.
+func TestMigration20260803_SynthesizesMissingAccountOptions(t *testing.T) {
+	db := runUpTo(t, "sortkey_synth", sortKeyVersion)
+	ctx := context.Background()
+	seedUser(t, db, "u1")
+	seedUser(t, db, "u2")
+
+	seedAccount := func(id, owner string, deleted int) {
+		t.Helper()
+		if _, err := db.ExecContext(ctx, `INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
+			VALUES (?, ?, ?, 'A', 2, 'wallet', ?, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`, id, usdSeed, owner, deleted); err != nil {
+			t.Fatalf("seed account %s: %v", id, err)
+		}
+	}
+	seedAccount("acc1", "u1", 0) // owner HAS an options row
+	seedAccount("acc2", "u1", 0) // owner has NO row -> synthesized
+	seedAccount("acc3", "u2", 0) // owner has NO row; shared to u1 accepted -> two rows synthesized
+	seedAccount("acc4", "u1", 1) // deleted -> nothing synthesized
+
+	if _, err := db.ExecContext(ctx, `INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at)
+		VALUES ('acc1', 'u1', 2, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`); err != nil {
+		t.Fatal(err)
+	}
+	// acc3 shared to u1, ACCEPTED; acc1 shared to u2, PENDING (no row expected).
+	if _, err := db.ExecContext(ctx, `INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at)
+		VALUES ('acc3', 'u1', 1, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.ExecContext(ctx, `INSERT INTO accounts_access (account_id, user_id, role, is_accepted, created_at, updated_at)
+		VALUES ('acc1', 'u2', 1, 0, '2026-01-01 00:00:00', '2026-01-01 00:00:00')`); err != nil {
+		t.Fatal(err)
+	}
+
+	runAll(t, db)
+
+	keyOf := func(account, user string) (string, bool) {
+		t.Helper()
+		var k string
+		err := db.QueryRowContext(ctx, `SELECT sort_key FROM accounts_options WHERE account_id = ? AND user_id = ?`, account, user).Scan(&k)
+		if err == sql.ErrNoRows {
+			return "", false
+		}
+		if err != nil {
+			t.Fatalf("read (%s,%s): %v", account, user, err)
+		}
+		return k, true
+	}
+
+	backfilled, ok := keyOf("acc1", "u1")
+	if !ok || backfilled == "" {
+		t.Fatalf("acc1/u1 backfilled key missing: %q ok=%v", backfilled, ok)
+	}
+	for _, pair := range []struct{ account, user string }{
+		{"acc2", "u1"}, {"acc3", "u2"}, {"acc3", "u1"},
+	} {
+		k, ok := keyOf(pair.account, pair.user)
+		if !ok {
+			t.Fatalf("(%s,%s): no synthesized options row", pair.account, pair.user)
+		}
+		if err := sortkey.Validate(sortkey.Key(k)); err != nil {
+			t.Errorf("(%s,%s) key %q not well-formed: %v", pair.account, pair.user, k, err)
+		}
+		if pair.user == "u1" && k >= backfilled {
+			t.Errorf("(%s,%s) key %q must sort before the backfilled %q (old position-0 rows displayed first)", pair.account, pair.user, k, backfilled)
+		}
+	}
+	if _, ok := keyOf("acc1", "u2"); ok {
+		t.Error("pending grant must not get a synthesized row")
+	}
+	if _, ok := keyOf("acc4", "u1"); ok {
+		t.Error("deleted account must not get a synthesized row")
+	}
+	// The two synthesized u1 rows must be distinct and ordered by account id.
+	k2, _ := keyOf("acc2", "u1")
+	k3, _ := keyOf("acc3", "u1")
+	if k2 >= k3 {
+		t.Errorf("synthesized keys not in account-id order: acc2=%q acc3=%q", k2, k3)
+	}
+}

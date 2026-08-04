@@ -66,6 +66,38 @@ UPDATE accounts_options SET sort_key = (
   WHERE r.account_id = accounts_options.account_id AND r.user_id = accounts_options.user_id
 );
 
+-- Synthesize accounts_options rows for (account, user) pairs that have none:
+-- the account's owner and accepted sharees. The old read path tolerated the
+-- missing row as "position 0", so such pairs exist in very old data and the
+-- UPDATE above had nothing to touch. Left keyless they all compare equal, pin
+-- to the front of the list, and no anchor can place an account between them.
+-- Magnitude-'b' keys (two digits) sort before every backfilled 'c...' key,
+-- preserving the old "position 0 -> first" placement; rank is per user by
+-- account id. Pending grants and deleted accounts get nothing.
+INSERT INTO accounts_options (account_id, user_id, sort_key, created_at, updated_at)
+SELECT p.account_id, p.user_id,
+       'b' || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (p.n / 62) % 62, 1)
+           || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 +  p.n       % 62, 1),
+       CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+FROM (
+  SELECT q.account_id, q.user_id,
+         (row_number() OVER (PARTITION BY q.user_id ORDER BY q.account_id) - 1)::int AS n
+  FROM (
+    SELECT a.id AS account_id, a.user_id AS user_id
+    FROM accounts a
+    WHERE a.is_deleted = false
+    UNION
+    SELECT aa.account_id, aa.user_id
+    FROM accounts_access aa
+    JOIN accounts a2 ON a2.id = aa.account_id
+    WHERE aa.is_accepted = true AND a2.is_deleted = false
+  ) q
+  WHERE NOT EXISTS (
+    SELECT 1 FROM accounts_options o
+    WHERE o.account_id = q.account_id AND o.user_id = q.user_id
+  )
+) p;
+
 UPDATE budgets_folders SET sort_key = (
   SELECT 'c'
       || substr('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz', 1 + (r.n / 3844) % 62, 1)
