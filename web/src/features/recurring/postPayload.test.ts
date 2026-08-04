@@ -9,7 +9,7 @@ const exchangeFn = (from: string, to: string, amount: string) => (from === to ? 
 
 const template = (overrides: Partial<RecurringDto> = {}): RecurringDto => ({
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
-  amount: '50.5', categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', description: 'rent',
+  amount: '50.5', categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', labelIds: ['lb1'], description: 'rent',
   schedule: 'monthly', nextPaymentAt: '2026-08-02 00:00:00', ...overrides,
 })
 
@@ -17,7 +17,7 @@ it('posts an expense with the template amount, date and classifications', () => 
   const payload = recurringPostPayload(template(), accounts, exchangeFn)
   expect(payload).toMatchObject({
     recurringId: 'r1', type: 'expense', accountId: 'a1', amount: '50.5',
-    categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', description: 'rent',
+    categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', labelIds: ['lb1'], description: 'rent',
     date: '2026-08-02 00:00:00', accountRecipientId: null, amountRecipient: null,
   })
 })
@@ -37,7 +37,7 @@ it('mirrors the amount on a same-currency transfer and drops classifications', (
   )
   expect(payload).toMatchObject({
     accountRecipientId: 'a2', amount: '50.5', amountRecipient: '50.5',
-    categoryId: null, payeeId: null, tagId: null,
+    categoryId: null, payeeId: null, tagId: null, labelIds: [],
   })
 })
 

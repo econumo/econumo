@@ -122,6 +122,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
       description: wireTx.description,
       payeeId: wireTx.payee?.id ?? null,
       tagId: wireTx.tag?.id ?? null,
+      // the budget wire carries no labels; this synthesized shape is read-only
+      // (no account => canChange is false), so nothing ever writes the set back
+      labelIds: [],
       date: wireTx.spentAt,
       category: wireTx.category ? (wireTx.category as CategoryDto) : undefined,
       payee: wireTx.payee ? (wireTx.payee as PayeeDto) : undefined,

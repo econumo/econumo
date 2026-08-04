@@ -13,6 +13,8 @@ export interface CreateRecurringDto {
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null
+  /** full replacement set, exactly as CreateTransactionDto.labelIds */
+  labelIds: Id[]
   description: string
   schedule: RecurringSchedule
   nextPaymentAt: string
@@ -25,6 +27,10 @@ export interface RecurringDto extends CreateRecurringDto {
   ownerUserId: Id
 }
 
+/** labelIds is inherited but has NO effect here: post-recurring-transaction
+ *  always copies the TEMPLATE's labels onto the created transaction and
+ *  overwrites whatever the client sent. Seed the form from the template so the
+ *  chips show what will actually be saved. */
 export interface PostRecurringPayload extends CreateTransactionDto {
   recurringId: Id
 }

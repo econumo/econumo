@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureFolders, fixturePayees, fixtureTags } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureFolders, fixtureLabels, fixturePayees, fixtureTags } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { formatDateTime } from '@/lib/datetime'
 import { useUiStore } from '@/app/uiStore'
@@ -27,6 +27,7 @@ function renderDialog() {
   queryClient.setQueryData(queryKeys.categories, fixtureCategories)
   queryClient.setQueryData(queryKeys.payees, fixturePayees)
   queryClient.setQueryData(queryKeys.tags, fixtureTags)
+  queryClient.setQueryData(queryKeys.labels, fixtureLabels)
   const router = createMemoryRouter([{ path: '/', element: <RecurringDialog /> }], { initialEntries: ['/'] })
   render(
     <QueryClientProvider client={queryClient}>
@@ -123,4 +124,51 @@ it('Repeats is the only row the add-transaction dialog does not have', async () 
   const labels = Array.from(document.querySelectorAll('form label')).map((el) => el.textContent)
   expect(labels).toContain('Repeats')
   expect(labels).not.toContain('Next payment')
+})
+
+it('editing a template round-trips its labels and toggles them independently of the tag', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/recurring/update-recurring-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...wireRecurringAsDto, amount: '50.5' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: { ...wireRecurringAsDto, labelIds: ['label1'] } })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
+
+  // update-recurring-transaction REPLACES the label set: the attached one has
+  // to come back on the wire or the save silently detaches it
+  const label = await screen.findByRole('checkbox', { name: 'health' })
+  expect(label).toHaveAttribute('aria-checked', 'true')
+  await user.click(screen.getByRole('checkbox', { name: 'vacation' }))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.labelIds).toEqual(['label1'])
+  expect(body!.tagId).toBe('tag1')
+})
+
+it('a transfer template posts an empty label set', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/recurring/update-recurring-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...wireRecurringAsDto, amount: '50.5' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openRecurringModal({ recurring: { ...wireRecurringAsDto, labelIds: ['label1'] } })
+  await screen.findByRole('heading', { name: 'Recurring transaction' })
+
+  await user.click(screen.getByRole('radio', { name: 'Transfer' }))
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/Bank/))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.labelIds).toEqual([])
 })

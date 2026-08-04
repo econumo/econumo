@@ -30,6 +30,7 @@ export function recurringAsTransaction(recurring: RecurringDto, { accounts, cate
     categoryId: recurring.categoryId,
     payeeId: recurring.payeeId,
     tagId: recurring.tagId,
+    labelIds: recurring.labelIds ?? [],
     description: recurring.description,
     // the next payment IS this row's date, which is why the recurring surfaces
     // need no separate "next payment" field

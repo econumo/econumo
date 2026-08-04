@@ -37,6 +37,9 @@ export function recurringPostPayload(
     categoryId: isTransfer ? null : recurring.categoryId,
     payeeId: isTransfer ? null : recurring.payeeId,
     tagId: isTransfer ? null : recurring.tagId,
+    // echoes the template's labels, which is exactly what the server attaches:
+    // post-recurring-transaction copies them itself and ignores this field
+    labelIds: isTransfer ? [] : (recurring.labelIds ?? []),
     description: recurring.description || '',
     date: recurring.nextPaymentAt,
   }

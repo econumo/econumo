@@ -7,6 +7,7 @@ import * as tagApi from '@/api/tag'
 import type { CategoryDto, CategoryType } from '@/api/dto/category'
 import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
+import type { RecurringDto } from '@/api/dto/recurring'
 import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
@@ -328,12 +329,24 @@ export function useUnarchiveLabel() {
   })
 }
 
+// useEntityCacheOps.remove nulls a single SCALAR id, which is the wrong shape
+// for the many-to-many labelIds: deleting a label cascades to
+// transactions_labels / recurring_transactions_labels server-side, so every
+// cached row must drop the id too. A stale id left behind would be resent by
+// the next edit (both writes REPLACE the whole set) and rejected outright as
+// an unavailable item, failing the save.
+function withoutLabel<T extends { labelIds?: Id[] }>(rows: T[] | undefined, id: Id): T[] {
+  return (rows ?? []).map((row) => (row.labelIds?.includes(id) ? { ...row, labelIds: row.labelIds.filter((l) => l !== id) } : row))
+}
+
 export function useDeleteLabel() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (id: Id) => labelApi.deleteLabel(id),
     onSuccess: (_r, id) => {
       queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => (prev ?? []).filter((l) => l.id !== id))
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => withoutLabel(prev, id))
+      queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
     },
   })
