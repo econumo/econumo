@@ -357,8 +357,13 @@ func (s *Service) importRow(
 	if err := imp.SaveTransaction(ctx, t); err != nil {
 		return err
 	}
-	if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
-		return err
+	// t is a brand-new row (NextIdentity), so ReplaceLabels's DELETE can never
+	// match; skip the round trip entirely when there is nothing to attach
+	// (the common case on an import with no labels mapping).
+	if len(t.LabelIDs) > 0 {
+		if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
+			return err
+		}
 	}
 	result.Imported++
 	return nil
@@ -472,6 +477,12 @@ func resolveOverrideLabelIDs(idsCSV *string, list []model.ImportNamed) ([]vo.Id,
 		if !found {
 			return nil, false
 		}
+	}
+	if len(ids) == 0 {
+		// Every piece was blank (e.g. idsCSV == ","): treat exactly like an
+		// absent override, not an explicit "no labels", so a mapped labels
+		// column still resolves per row instead of being silently suppressed.
+		return nil, true
 	}
 	return ids, true
 }

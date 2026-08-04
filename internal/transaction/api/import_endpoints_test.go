@@ -479,3 +479,12 @@ func TestImportLabelIdsOverrideRejectsForeignLabel(t *testing.T) {
 		t.Fatalf("errors=%v want top-level label-not-found error", res.Errors)
 	}
 }
+
+// Label ownership scoping (auto-create and the labelIds belongs-to check
+// must use the resolved ACCOUNT OWNER, never the caller) is covered at the
+// unit level in internal/transaction/import_ownership_test.go, with a stub
+// Importer the test controls directly — the real production account adapter
+// only ever resolves an accountId override to the CALLER's own account (see
+// TransactionImportAccounts.AccountByID's "only available (own) accounts
+// qualify" comment), so there is no way to reach accountOwnerID != userID
+// through this harness's real wiring to assert it here end-to-end.
