@@ -15,15 +15,12 @@ type Querier interface {
 	AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
-	// New-category position = count of the owner's existing categories.
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
 	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
-	// New-payee position = count of the owner's existing payees.
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
-	// New-tag position = count of the owner's existing tags.
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
@@ -134,7 +131,7 @@ type Querier interface {
 	// Available categories: the user's OWN categories plus the categories of every
 	// user who has shared an account WITH this user. Mirrors PHP
 	// CategoryRepository::findAvailableForUserId (self + DISTINCT owners of accounts
-	// granted to the user via accounts_access), ordered by position. The user id is
+	// granted to the user via accounts_access), ordered by sort key. The user id is
 	// repeated positionally, so sqlc generates a two-field Params struct.
 	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
 	// Look up a non-expired invite by code. The caller passes 'now' as a
@@ -163,7 +160,7 @@ type Querier interface {
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
 	// Write-side queries for folders + the accounts_folders membership join
-	// (SQLite). A folder belongs to a user, has a position and an is_visible flag,
+	// (SQLite). A folder belongs to a user, has a sort key and an is_visible flag,
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
@@ -188,7 +185,7 @@ type Querier interface {
 	// Write-side queries for the payee module. The read-side query lives in
 	// payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). The payees table has the same shape as tags (no type/icon
-	// columns): a payee is a name + position + archived flag.
+	// columns): a payee is a name + sort key + archived flag.
 	GetPayeeByID(ctx context.Context, id string) (Payee, error)
 	// Read-model query for the payee module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
@@ -196,7 +193,7 @@ type Querier interface {
 	// Available payees: the user's OWN payees plus the payees of every user who has
 	// shared an account WITH this user. Mirrors PHP
 	// PayeeRepository::findAvailableForUserId (self + DISTINCT owners of accounts
-	// granted via accounts_access), ordered by position. The user id is repeated
+	// granted via accounts_access), ordered by sort key. The user id is repeated
 	// positionally -> two-field Params struct.
 	GetPayeeListView(ctx context.Context, arg GetPayeeListViewParams) ([]Payee, error)
 	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
@@ -323,8 +320,8 @@ type Querier interface {
 	// Budgets the user owns OR has an access row for. Ordered by created_at for a
 	// stable list.
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
-	// The owner's categories ordered by position; used by order-category-list (load,
-	// apply position changes, re-save) and as the basis for the returned list.
+	// The owner's categories ordered by sort key; used by move-categorie (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
 	// Write-side queries for the currency module: the CLI admin commands
@@ -354,12 +351,12 @@ type Querier interface {
 	// All (folder_id, account_id) memberships for a user's folders. Lets the caller
 	// resolve "which folder contains account X" in one query.
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
-	// The user's folders. Ordering is applied by the caller/assembler (by position).
+	// The user's folders. Ordering is applied by the caller/assembler (by sort key).
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	// The owner's payees ordered by position; used by order-payee-list (load, apply
-	// position changes, re-save) and as the basis for the returned list.
+	// The owner's payees ordered by sort key; used by move-payee (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -367,8 +364,8 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	// The owner's tags ordered by position; used by order-tag-list (load, apply
-	// position changes, re-save) and as the basis for the returned list.
+	// The owner's tags ordered by sort key; used by move-tag (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	// Transactions on an account (as source or recipient), newest first; id is the
 	// stable tie-break so row order is deterministic across engines.

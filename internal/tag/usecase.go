@@ -125,7 +125,6 @@ func toResult(t *model.Tag) model.TagResult {
 		Id:          t.ID.String(),
 		OwnerUserId: t.UserID.String(),
 		Name:        t.Name,
-		Position:    int(t.Position),
 		IsArchived:  archived,
 		CreatedAt:   t.CreatedAt.Format(datetime.Layout),
 		UpdatedAt:   t.UpdatedAt.Format(datetime.Layout),
@@ -144,6 +143,7 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.TagRes
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return items, nil
 }
 
@@ -176,4 +176,34 @@ func newTagName(v string) (string, error) {
 			})
 	}
 	return v, nil
+}
+
+// assignPositions stamps the dense 0-based index the wire contract calls
+// "position". The stored sort key never leaves the server, so this index is what
+// clients order by; it is derived from the already-sorted list rather than read
+// from a column.
+func assignPositions(items []model.TagResult) {
+	for i := range items {
+		items[i].Position = i
+	}
+}
+
+// itemResult builds a single-item write response, stamping the dense index the
+// item occupies in the caller's available list. Single-item responses must derive
+// "position" exactly like list responses do, because the entity no longer carries
+// one -- the stored sort key never leaves the server.
+func (s *Service) itemResult(ctx context.Context, userID vo.Id, t *model.Tag) (model.TagResult, error) {
+	res := toResult(t)
+	items, err := s.listResults(ctx, userID)
+	if err != nil {
+		return model.TagResult{}, err
+	}
+	id := t.ID.String()
+	for i, it := range items {
+		if it.Id == id {
+			res.Position = i
+			break
+		}
+	}
+	return res, nil
 }

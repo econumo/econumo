@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -62,21 +63,9 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
-		// position: append after the current last, i.e. maxPos+1. When the user has
-		// no accounts_options rows yet (maxPos==0 — no own accounts, or only
-		// option-less shared ones), fall back to the count of available accounts so
-		// the new account still sorts last.
-		maxPos, perr := s.positions.MaxPosition(ctx, userID)
+		key, perr := s.nextAccountKey(ctx, userID)
 		if perr != nil {
 			return perr
-		}
-		position := maxPos + 1
-		if maxPos == 0 {
-			n, cerr := s.accounts.CountAvailable(ctx, userID)
-			if cerr != nil {
-				return cerr
-			}
-			position = int16(n)
 		}
 
 		now := s.clock.Now()
@@ -84,7 +73,7 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 		if serr := s.accounts.Save(ctx, acct); serr != nil {
 			return serr
 		}
-		if serr := s.positions.SavePosition(ctx, id, userID, position, now); serr != nil {
+		if serr := s.positions.SaveSortKey(ctx, id, userID, key, now); serr != nil {
 			return serr
 		}
 
@@ -164,6 +153,11 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 	if err != nil {
 		return nil, err
 	}
+	idx, err := s.accountIndex(ctx, userID, created.ID)
+	if err != nil {
+		return nil, err
+	}
+	item.Position = idx
 	// Fill the correction's author (the account owner = the requesting user).
 	if correction != nil {
 		owner, oerr := s.users.GetOwner(ctx, userID.String())
@@ -232,4 +226,24 @@ func correctionType(balance vo.DecimalNumber) int16 {
 		return 0 // expense
 	}
 	return 1 // income
+}
+
+// nextAccountKey returns the key that appends an account to the end of the
+// user's list. Accounts with no accounts_options row sort first (empty key), so
+// the max over the stored keys is the true tail.
+func (s *Service) nextAccountKey(ctx context.Context, userID vo.Id) (sortkey.Key, error) {
+	keys, err := s.positions.SortKeysByUser(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	last := sortkey.Key("")
+	for _, k := range keys {
+		if k > last {
+			last = k
+		}
+	}
+	if last == "" {
+		return sortkey.Seed(sortkey.GrowsUp), nil
+	}
+	return sortkey.Between(last, "")
 }

@@ -55,10 +55,10 @@ func TestTag_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestTag_SetPosition(t *testing.T) {
+func TestTag_SetSortKey(t *testing.T) {
 	tg := newTag(t)
-	tg.SetPosition(7)
-	if tg.Position != 7 {
-		t.Fatalf("position=%d want 7", tg.Position)
+	tg.SetSortKey("c007")
+	if tg.SortKey != "c007" {
+		t.Fatalf("position=%q want 7", tg.SortKey)
 	}
 }

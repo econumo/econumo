@@ -33,7 +33,12 @@ export async function deleteTag(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/tag/delete-tag'), { id })
 }
 
-export async function orderTagList(changes: { id: Id; position: number }[]): Promise<TagDto[]> {
-  const response = await api.post<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/order-tag-list'), { changes })
+export async function moveTag(id: Id, afterId: Id | null): Promise<TagDto[]> {
+  const response = await api.post<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/move-tag'), { id, afterId })
+  return response.data.data.items
+}
+
+export async function sortTagList(ids: Id[]): Promise<TagDto[]> {
+  const response = await api.post<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/sort-tag-list'), { ids })
   return response.data.data.items
 }

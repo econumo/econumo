@@ -47,11 +47,11 @@ it('set-limit posts amount null verbatim (clear) and strings otherwise', async (
   expect(bodies[1]).toEqual({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: null })
 })
 
-it('move-element-list and exclude-account post the exact wire shapes', async () => {
+it('move-element and exclude-account post the exact wire shapes', async () => {
   let moveBody: unknown
   let excludeBody: unknown
   server.use(
-    http.post('*/api/v1/budget/move-element-list', async ({ request }) => {
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
       moveBody = await request.json()
       return HttpResponse.json({ success: true, message: '', data: {} })
     }),
@@ -60,8 +60,8 @@ it('move-element-list and exclude-account post the exact wire shapes', async () 
       return HttpResponse.json({ success: true, message: '', data: { item: wireBudget.meta } })
     }),
   )
-  await budgetApi.moveElements('b1', [{ id: 'cat-food', folderId: null, position: 0 }])
-  expect(moveBody).toEqual({ budgetId: 'b1', items: [{ id: 'cat-food', folderId: null, position: 0 }] })
+  await budgetApi.moveElement('b1', 'cat-food', null, null)
+  expect(moveBody).toEqual({ budgetId: 'b1', id: 'cat-food', folderId: null, afterId: null })
   await budgetApi.excludeAccount('b1', 'a1')
   // the budget id travels under "id" on this endpoint
   expect(excludeBody).toEqual({ id: 'b1', accountId: 'a1' })

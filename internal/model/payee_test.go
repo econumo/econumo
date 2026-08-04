@@ -22,8 +22,8 @@ func TestNewPayee_Defaults(t *testing.T) {
 	if p.Name != "Amazon" {
 		t.Errorf("name=%q want Amazon", p.Name)
 	}
-	if p.Position != 0 {
-		t.Errorf("position=%d want 0", p.Position)
+	if p.SortKey != "" {
+		t.Errorf("a new entity must carry no sort key, got %q", p.SortKey)
 	}
 	if p.IsArchived {
 		t.Error("new payee must not be archived")
@@ -48,15 +48,15 @@ func TestNewPayee_Getters(t *testing.T) {
 func TestPayee_FromState_RoundTrip(t *testing.T) {
 	id := mustID(t, "11111111-1111-1111-1111-111111111111")
 	uid := mustID(t, "22222222-2222-2222-2222-222222222222")
-	p := &Payee{ID: id, UserID: uid, Name: "Costco", Position: 7, IsArchived: true, CreatedAt: tp0, UpdatedAt: tp1}
+	p := &Payee{ID: id, UserID: uid, Name: "Costco", SortKey: "c007", IsArchived: true, CreatedAt: tp0, UpdatedAt: tp1}
 	if !p.ID.Equal(id) || !p.UserID.Equal(uid) {
 		t.Fatal("ids did not round-trip")
 	}
 	if p.Name != "Costco" {
 		t.Errorf("name=%q want Costco", p.Name)
 	}
-	if p.Position != 7 {
-		t.Errorf("position=%d want 7", p.Position)
+	if p.SortKey != "c007" {
+		t.Errorf("position=%q want 7", p.SortKey)
 	}
 	if !p.IsArchived {
 		t.Error("isArchived should round-trip as true")
@@ -66,15 +66,15 @@ func TestPayee_FromState_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestPayee_SetPosition_NoBump(t *testing.T) {
+func TestPayee_SetSortKey_NoBump(t *testing.T) {
 	p := newPayee(t)
-	p.SetPosition(5)
-	if p.Position != 5 {
-		t.Errorf("position=%d want 5", p.Position)
+	p.SetSortKey("c005")
+	if p.SortKey != "c005" {
+		t.Errorf("position=%q want 5", p.SortKey)
 	}
-	// SetPosition is construction-time and must NOT bump updatedAt.
+	// SetSortKey is construction-time and must NOT bump updatedAt.
 	if !p.UpdatedAt.Equal(tp0) {
-		t.Errorf("SetPosition bumped updatedAt to %v", p.UpdatedAt)
+		t.Errorf("SetSortKey bumped updatedAt to %v", p.UpdatedAt)
 	}
 }
 
@@ -90,15 +90,15 @@ func TestPayee_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestPayee_UpdatePosition_OnlyBumpsOnChange(t *testing.T) {
+func TestPayee_UpdateSortKey_OnlyBumpsOnChange(t *testing.T) {
 	p := newPayee(t)
-	p.UpdatePosition(0, tp1) // same as default -> no-op
+	p.UpdateSortKey("", tp1) // same as default (unset) -> no-op
 	if !p.UpdatedAt.Equal(tp0) {
-		t.Fatal("same-position update bumped updatedAt")
+		t.Fatal("same-key update bumped updatedAt")
 	}
-	p.UpdatePosition(3, tp1)
-	if p.Position != 3 || !p.UpdatedAt.Equal(tp1) {
-		t.Fatalf("position change: %d / %v", p.Position, p.UpdatedAt)
+	p.UpdateSortKey("c003", tp1)
+	if p.SortKey != "c003" || !p.UpdatedAt.Equal(tp1) {
+		t.Fatalf("key change: %q / %v", p.SortKey, p.UpdatedAt)
 	}
 }
 

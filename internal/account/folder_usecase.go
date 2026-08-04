@@ -1,5 +1,5 @@
-// Folder use cases: create, update, hide, show, replace, order. Folders group a
-// user's accounts; they have a per-user position and a visibility flag.
+// Folder use cases: create, update, hide, show, replace, move. Folders group a
+// user's accounts; they have a per-user sort key and a visibility flag.
 package account
 
 import (
@@ -8,11 +8,12 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateFolder creates a folder for the user. The name must be unique among the
-// user's folders; the position is last+1. Returns {item}.
+// user's folders; the new folder appends to the end. Returns {item}.
 func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.CreateFolderRequest) (*model.CreateFolderResult, error) {
 	name, err := newFolderName(req.Name)
 	if err != nil {
@@ -30,7 +31,13 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 	}); err != nil {
 		return nil, err
 	}
-	return &model.CreateFolderResult{Item: toFolderResult(created)}, nil
+	item := toFolderResult(created)
+	idx, err := s.folderIndex(ctx, userID, created.ID)
+	if err != nil {
+		return nil, err
+	}
+	item.Position = idx
+	return &model.CreateFolderResult{Item: item}, nil
 }
 
 // createFolderTx creates a folder for the user within the caller's tx: the name
@@ -41,18 +48,19 @@ func (s *Service) createFolderTx(ctx context.Context, userID vo.Id, name string)
 	if lerr != nil {
 		return nil, lerr
 	}
-	var maxPos int16
 	for _, f := range folders {
 		if f.Name == name {
 			return nil, &errs.ValidationError{Msg: "Folder already exists.", MsgCode: errs.CodeAccountFolderAlreadyExists}
 		}
-		if f.Position > maxPos {
-			maxPos = f.Position
-		}
+	}
+	sort.SliceStable(folders, func(i, j int) bool { return folders[i].SortKey < folders[j].SortKey })
+	key, kerr := sortkey.Append(folders, accountFolderItem, sortkey.GrowsUp)
+	if kerr != nil {
+		return nil, kerr
 	}
 	now := s.clock.Now()
 	f := model.NewFolder(s.folders.NextIdentity(), userID, name, now)
-	f.SetPosition(maxPos + 1)
+	f.SetSortKey(key)
 	if serr := s.folders.Save(ctx, f); serr != nil {
 		return nil, serr
 	}
@@ -98,7 +106,13 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.Upda
 	}); err != nil {
 		return nil, err
 	}
-	return &model.UpdateFolderResult{Item: toFolderResult(updated)}, nil
+	item := toFolderResult(updated)
+	idx, err := s.folderIndex(ctx, userID, updated.ID)
+	if err != nil {
+		return nil, err
+	}
+	item.Position = idx
+	return &model.UpdateFolderResult{Item: item}, nil
 }
 
 // HideFolder marks a folder (and its accounts) hidden. Ownership required.
@@ -184,77 +198,63 @@ func (s *Service) ReplaceFolder(ctx context.Context, userID vo.Id, req model.Rep
 			}
 		}
 
-		// Delete the folder (its accounts_folders rows cascade).
-		if derr := s.folders.Delete(ctx, id); derr != nil {
-			return derr
-		}
-
-		// Re-number remaining folders 0..n by current position.
-		return s.resetFolderPositions(ctx, userID)
+		// Delete the folder (its accounts_folders rows cascade). Removing a row
+		// leaves the surviving keys untouched and still correctly ordered, so
+		// there is nothing to renumber.
+		return s.folders.Delete(ctx, id)
 	}); err != nil {
 		return nil, err
 	}
 	return &model.ReplaceFolderResult{}, nil
 }
 
-// resetFolderPositions renumbers the user's folders to 0..n-1 ordered by their
-// current position. Runs inside the caller's tx.
-func (s *Service) resetFolderPositions(ctx context.Context, userID vo.Id) error {
-	folders, err := s.folders.ListByUser(ctx, userID)
+// MoveFolder places the folder immediately after req.AfterId (nil = first) and
+// returns the full ordered list. Exactly one row is written; deleting or
+// creating a folder no longer disturbs its siblings either, which is why the
+// old renumbering helper is gone.
+func (s *Service) MoveFolder(ctx context.Context, userID vo.Id, req model.MoveAccountFolderRequest) (*model.MoveAccountFolderResult, error) {
+	id, err := vo.ParseId(req.Id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
-	now := s.clock.Now()
-	for i, f := range folders {
-		f.UpdatePosition(int16(i), now)
-		if serr := s.folders.Save(ctx, f); serr != nil {
-			return serr
-		}
-	}
-	return nil
-}
-
-// OrderFolderList applies {id, position} changes to the user's folders, saving
-// only those that actually changed, then returns the full ordered list.
-func (s *Service) OrderFolderList(ctx context.Context, userID vo.Id, req model.OrderFolderListRequest) (*model.OrderFolderListResult, error) {
-	positions := make(map[string]int16, len(req.Changes))
-	for _, c := range req.Changes {
-		fid, err := vo.ParseId(c.Id)
-		if err != nil {
-			return nil, err
-		}
-		positions[fid.String()] = int16(c.Position)
+	afterID := ""
+	if req.AfterId != nil {
+		afterID = *req.AfterId
 	}
 
 	var items []model.AccountFolderResult
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		folders, lerr := s.folders.ListByUser(ctx, userID)
+		folders, lerr := s.sortedFolders(ctx, userID)
 		if lerr != nil {
 			return lerr
 		}
-		now := s.clock.Now()
-		for _, f := range folders {
-			pos, ok := positions[f.ID.String()]
-			if !ok {
-				continue
-			}
-			before := f.Position
-			f.UpdatePosition(pos, now)
-			if f.Position != before {
-				if serr := s.folders.Save(ctx, f); serr != nil {
-					return serr
-				}
+		moved, key, ok, kerr := sortkey.MoveWithin(folders, id.String(), afterID, accountFolderItem, sortkey.GrowsUp)
+		if kerr != nil {
+			return kerr
+		}
+		if ok {
+			moved.UpdateSortKey(key, s.clock.Now())
+			if serr := s.folders.Save(ctx, moved); serr != nil {
+				return serr
 			}
 		}
-		sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
-		items = make([]model.AccountFolderResult, 0, len(folders))
-		for _, f := range folders {
-			items = append(items, toFolderResult(f))
+		refreshed, rerr := s.sortedFolders(ctx, userID)
+		if rerr != nil {
+			return rerr
+		}
+		items = make([]model.AccountFolderResult, 0, len(refreshed))
+		for i, f := range refreshed {
+			res := toFolderResult(f)
+			res.Position = i
+			items = append(items, res)
 		}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return &model.OrderFolderListResult{Items: items}, nil
+	return &model.MoveAccountFolderResult{Items: items}, nil
+}
+
+func accountFolderItem(f *model.Folder) sortkey.Item {
+	return sortkey.Item{ID: f.ID.String(), Key: f.SortKey}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -198,12 +199,21 @@ func TestAcceptAccess_PlacesIntoChosenFolder(t *testing.T) {
 		t.Errorf("IsAccepted = false, want true after accept")
 	}
 
-	var pos int
-	if err := db.Raw.QueryRow(db.Rebind(`SELECT position FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserBID).Scan(&pos); err != nil {
-		t.Fatalf("read position: %v", err)
+	// Accepting appends the account to the end of the recipient's own list, so
+	// its key must be the greatest of that user's keys.
+	var key string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT sort_key FROM accounts_options WHERE account_id = ? AND user_id = ?`), acctID, accessUserBID).Scan(&key); err != nil {
+		t.Fatalf("read sort key: %v", err)
 	}
-	if pos != 1 {
-		t.Errorf("position = %d, want 1 (max 0 + 1)", pos)
+	if err := sortkey.Validate(sortkey.Key(key)); err != nil {
+		t.Errorf("accepted account sort_key = %q: %v", key, err)
+	}
+	var maxOther string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COALESCE(MAX(sort_key), '') FROM accounts_options WHERE user_id = ? AND account_id <> ?`), accessUserBID, acctID).Scan(&maxOther); err != nil {
+		t.Fatalf("read other sort keys: %v", err)
+	}
+	if key <= maxOther {
+		t.Errorf("accepted account sort_key = %q, want greater than every other key (%q)", key, maxOther)
 	}
 
 	folderRepo := accountrepo.NewFolderRepo(db.Engine, db.TX)

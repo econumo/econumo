@@ -3,18 +3,16 @@ package budget
 import (
 	"context"
 	"fmt"
-	"math"
 	"sort"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// uncategorizedPosition sorts the presentation-only Uncategorized element last.
-// Real positions are validated to fit int16 (see validatePositionField), so
-// math.MaxInt16 is the highest value the column type allows any real element to
-// hold, and this element is never persisted so it can't itself be bumped past it.
-const uncategorizedPosition int16 = math.MaxInt16
+// The presentation-only Uncategorized element sorts last via structElement's
+// sortLast flag rather than a magic position, so it cannot collide with a real
+// element's key.
 
 // structElement is the in-progress parent element accumulated during the walk
 // before the bulkConvert resolves spent/available amounts.
@@ -27,7 +25,8 @@ type structElement struct {
 	currencyID     vo.Id
 	isArchived     bool
 	folderID       *string
-	position       int16
+	sortKey        sortkey.Key
+	sortLast       bool
 	budgeted       vo.DecimalNumber
 	budgetedBefore vo.DecimalNumber
 	children       []structChild
@@ -48,16 +47,20 @@ type structChild struct {
 // elements.
 func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
-	folders := make([]model.BudgetFolderResult, 0, len(b.folders))
-	for _, fl := range b.folders {
-		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: int(fl.Position)})
+	sorted := append([]*model.BudgetFolder(nil), b.folders...)
+	sortBudgetFolders(sorted)
+	folders := make([]model.BudgetFolderResult, 0, len(sorted))
+	for i, fl := range sorted {
+		// position on the wire is the dense 0-based index; the key that produced
+		// this order never leaves the server.
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: i})
 	}
-	sortByPositionThenID(folders, func(f model.BudgetFolderResult) int { return f.Position }, func(f model.BudgetFolderResult) string { return f.Id })
 
 	toConvert := map[string][]model.ConvertItem{}
 	categoryUsed := map[string]bool{}
 	budgetCurrencyID := b.budget.CurrencyID
 	var elements []*structElement
+	var kept []*structElement
 
 	zero := vo.NewDecimal("0")
 
@@ -81,7 +84,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		el := &structElement{
 			id: env.ID.String(), typ: model.ElementEnvelope, name: env.Name, icon: env.Icon,
 			ownerID: nil, currencyID: currencyID, isArchived: env.IsArchived,
-			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
 		for _, catID := range envelopeCats[env.ID.String()] {
 			if categoryUsed[catID] {
@@ -129,7 +132,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		el := &structElement{
 			id: tagID, typ: model.ElementTag, name: tag.Name, icon: "tag",
 			ownerID: strPtr(tag.OwnerID), currencyID: currencyID, isArchived: tag.IsArchived,
-			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
 		if es != nil {
 			for catID, cs := range es.spendingInCategories {
@@ -181,7 +184,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		el := &structElement{
 			id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
 			ownerID: strPtr(cat.OwnerID), currencyID: currencyID, isArchived: cat.IsArchived,
-			folderID: optFolder(opt), position: optPosition(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
+			folderID: optFolder(opt), sortKey: optSortKey(opt), budgeted: budgeted, budgetedBefore: budgetedBefore,
 		}
 		// a standalone category's own spending is keyed without a sub-prefix.
 		if cs != nil {
@@ -205,7 +208,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			el := &structElement{
 				id: model.UncategorizedID, typ: model.ElementCategory, name: model.UncategorizedName, icon: model.UncategorizedIcon,
 				ownerID: nil, currencyID: budgetCurrencyID, isArchived: false,
-				folderID: nil, position: uncategorizedPosition, budgeted: zero, budgetedBefore: zero,
+				folderID: nil, sortLast: true, budgeted: zero, budgetedBefore: zero,
 			}
 			// same convert-key shape as the standalone-category pass: an element's own
 			// spending is keyed without a sub-prefix.
@@ -267,15 +270,17 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 			continue
 		}
 
+		kept = append(kept, el)
 		result = append(result, model.ParentElementResult{
 			Id: el.id, Type: int(el.typ.Int16()), Name: el.name, Icon: el.icon,
 			CurrencyId: el.currencyID.String(), IsArchived: boolToInt(el.isArchived),
-			FolderId: el.folderID, Position: int(el.position),
+			FolderId: el.folderID,
 			Budgeted: el.budgeted.String(), Available: available.Sub(spent).String(),
 			Spent: spent.String(), BudgetSpent: spentBudget.String(),
 			Children: children, OwnerUserId: el.ownerID,
 		})
 	}
+	assignElementPositions(kept, result)
 	sortByPositionThenID(result, func(p model.ParentElementResult) int { return p.Position }, func(p model.ParentElementResult) string { return p.Id })
 
 	return model.StructureResult{Folders: folders, Elements: result}, nil
@@ -315,17 +320,17 @@ func (s *Service) elementOptions(b *budgetAggregate) map[string]elementOption {
 	out := map[string]elementOption{}
 	for _, e := range b.elements {
 		out[elementKey(e.ExternalID.String(), e.Type)] = elementOption{
-			currencyID: e.CurrencyID, folderID: e.FolderID, position: e.Position,
+			currencyID: e.CurrencyID, folderID: e.FolderID, sortKey: e.SortKey,
 		}
 	}
 	return out
 }
 
-// elementOption captures the per-element row (currency/folder/position).
+// elementOption captures the per-element row (currency/folder/sort key).
 type elementOption struct {
 	currencyID *vo.Id
 	folderID   *vo.Id
-	position   int16
+	sortKey    sortkey.Key
 }
 
 func optFolder(o elementOption) *string {
@@ -336,7 +341,7 @@ func optFolder(o elementOption) *string {
 	return &s
 }
 
-func optPosition(o elementOption) int16 { return o.position }
+func optSortKey(o elementOption) sortkey.Key { return o.sortKey }
 
 func orZero(d, zero vo.DecimalNumber) vo.DecimalNumber {
 	if d.String() == "" {
@@ -360,4 +365,38 @@ func (s *Service) envelopeCategories(ctx context.Context, b *budgetAggregate) (m
 		out[env.ID.String()] = strs
 	}
 	return out, nil
+}
+
+// assignElementPositions stamps each element's dense 0-based index WITHIN ITS
+// FOLDER, which is what the wire contract calls "position". kept and result are
+// parallel: kept[i] is the element result[i] was built from.
+//
+// The order comes from the sort keys, which never leave the server. The
+// presentation-only Uncategorized element carries sortLast so it always trails
+// its group without needing a sentinel key that a real element could collide
+// with.
+func assignElementPositions(kept []*structElement, result []model.ParentElementResult) {
+	order := make([]int, len(kept))
+	for i := range order {
+		order[i] = i
+	}
+	sort.SliceStable(order, func(a, b int) bool {
+		x, y := kept[order[a]], kept[order[b]]
+		if x.sortLast != y.sortLast {
+			return !x.sortLast
+		}
+		if x.sortKey != y.sortKey {
+			return x.sortKey < y.sortKey
+		}
+		return x.id < y.id
+	})
+	perFolder := map[string]int{}
+	for _, i := range order {
+		folder := ""
+		if kept[i].folderID != nil {
+			folder = *kept[i].folderID
+		}
+		result[i].Position = perFolder[folder]
+		perFolder[folder]++
+	}
 }

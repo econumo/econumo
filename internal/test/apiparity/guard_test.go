@@ -83,7 +83,10 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// the regex. Raise minRoutes as routes are added — never lower it.
 	// 102 -> 101 on 2026-07-31: set-currency-rate was deliberately removed
 	// pre-release (fixed custom rates ride create/update-currency).
-	const minRoutes = 101
+	// 101 -> 104 on 2026-08-03: sort-{category,tag,payee}-list added alongside
+	// the move-* routes (the seven order-*-list routes were swapped 1:1, so
+	// only the three bulk-sort routes are net new).
+	const minRoutes = 104
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

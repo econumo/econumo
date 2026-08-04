@@ -121,21 +121,21 @@ func (h *Handlers) GetFolderList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.svc.GetFolderList)
 }
 
-// OrderFolderList handles POST /api/v1/account/order-folder-list (auth).
+// MoveFolder handles POST /api/v1/account/move-folder (auth).
 //
-// @Summary     Reorder the folder list
-// @Description Applies position changes to the user's folders and returns the full ordered list.
+// @Summary     Move a folder
+// @Description Places one folder immediately after another (afterId null = first) and returns the full ordered list.
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     model.OrderFolderListRequest true "Order folder list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderFolderListResult}
+// @Param       request body     model.MoveAccountFolderRequest true "Move folder request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MoveAccountFolderResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
-// @Router      /api/v1/account/order-folder-list [post]
-func (h *Handlers) OrderFolderList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.OrderFolderList)
+// @Router      /api/v1/account/move-folder [post]
+func (h *Handlers) MoveFolder(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveFolder)
 }

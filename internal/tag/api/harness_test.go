@@ -217,3 +217,23 @@ func (e envelope) errorsMap() map[string][]string {
 	}
 	return m
 }
+
+// allSortKeys reads every tag's stored sort key, so a test can assert how many
+// rows a single move actually rewrote.
+func (h *harness) allSortKeys(t *testing.T) map[string]string {
+	t.Helper()
+	rows, err := h.db.Query(`SELECT id, sort_key FROM tags`)
+	if err != nil {
+		t.Fatalf("read sort keys: %v", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out[id] = key
+	}
+	return out
+}

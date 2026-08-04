@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget as wireBudget } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudget, useSetLimit, useOrderBudgetFolders, canUpdateLimits, canEditBudget } from './queries'
+import { useBudget, useSetLimit, useMoveBudgetFolder, canUpdateLimits, canEditBudget } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
 
@@ -101,8 +101,8 @@ it('order-folders patches folder positions optimistically and rolls back on erro
   } as unknown as BudgetDto
   queryClient.setQueryData(key, twoFolders)
 
-  const { result } = renderHook(() => useOrderBudgetFolders(), { wrapper })
-  result.current.mutate({ budgetId: 'b1', items: [{ id: 'bf1', position: 1 }, { id: 'bf2', position: 0 }] })
+  const { result } = renderHook(() => useMoveBudgetFolder(), { wrapper })
+  result.current.mutate({ budgetId: 'b1', id: 'bf1', afterId: 'bf2' })
   await waitFor(() => {
     const cached = queryClient.getQueryData<BudgetDto>(key)!
     expect(cached.structure.folders.find((f) => f.id === 'bf1')?.position === 1 || result.current.isError).toBe(true)

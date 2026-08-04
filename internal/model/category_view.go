@@ -9,7 +9,6 @@ type CategoryViewRow struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	Type       int16
 	Icon       string
 	IsArchived bool

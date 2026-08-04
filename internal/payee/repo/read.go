@@ -46,7 +46,6 @@ func (r *ReadRepo) PayeeListView(ctx context.Context, userID string) ([]model.Pa
 			ID:         p.ID,
 			UserID:     p.UserID,
 			Name:       p.Name,
-			Position:   p.Position,
 			IsArchived: p.IsArchived,
 			CreatedAt:  p.CreatedAt.Format(datetime.Layout),
 			UpdatedAt:  p.UpdatedAt.Format(datetime.Layout),

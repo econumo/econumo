@@ -33,6 +33,7 @@ func (s *ReadService) GetPayeeList(ctx context.Context, userID vo.Id) (*model.Ge
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return &model.GetPayeeListResult{Items: items}, nil
 }
 
@@ -47,7 +48,6 @@ func toViewResult(r model.PayeeViewRow) model.PayeeResult {
 		Id:          r.ID,
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
-		Position:    int(r.Position),
 		IsArchived:  archived,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,

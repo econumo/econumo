@@ -122,15 +122,6 @@ definitions:
       position:
         type: integer
     type: object
-  model.AccountPositionChange:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.AccountResult:
     properties:
       balance:
@@ -826,13 +817,6 @@ definitions:
       periodStart:
         type: string
     type: object
-  model.FolderPositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.GenerateInviteRequest:
     type: object
   model.GenerateInviteResult:
@@ -1052,25 +1036,101 @@ definitions:
       startedAt:
         type: string
     type: object
-  model.MoveElementListItem:
+  model.MoveAccountFolderRequest:
     properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveAccountFolderResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.MoveAccountRequest:
+    properties:
+      afterId:
+        type: string
       folderId:
         type: string
       id:
         type: string
-      position:
-        type: integer
     type: object
-  model.MoveElementListRequest:
+  model.MoveAccountResult:
     properties:
-      budgetId:
-        type: string
       items:
         items:
-          $ref: '#/definitions/model.MoveElementListItem'
+          $ref: '#/definitions/model.AccountResult'
         type: array
     type: object
-  model.MoveElementListResult:
+  model.MoveBudgetFolderRequest:
+    properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveBudgetFolderResult:
+    type: object
+  model.MoveCategoryRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveCategoryResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.MoveElementRequest:
+    properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
+      folderId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveElementResult:
+    type: object
+  model.MovePayeeRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MovePayeeResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.MoveTagRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveTagResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
     type: object
   model.OptionResult:
     properties:
@@ -1078,94 +1138,6 @@ definitions:
         type: string
       value:
         type: string
-    type: object
-  model.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.AccountPositionChange'
-        type: array
-    type: object
-  model.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountResult'
-        type: array
-    type: object
-  model.OrderBudgetFolderListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/model.OrderFolderListItem'
-        type: array
-    type: object
-  model.OrderBudgetFolderListResult:
-    type: object
-  model.OrderCategoryListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.CategoryResult'
-        type: array
-    type: object
-  model.OrderFolderListItem:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  model.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.FolderPositionChange'
-        type: array
-    type: object
-  model.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountFolderResult'
-        type: array
-    type: object
-  model.OrderPayeeListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.PayeeResult'
-        type: array
-    type: object
-  model.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.TagResult'
-        type: array
     type: object
   model.ParentElementResult:
     properties:
@@ -1230,13 +1202,6 @@ definitions:
         type: string
       name:
         type: string
-    type: object
-  model.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
     type: object
   model.PostRecurringTransactionRequest:
     properties:
@@ -1468,6 +1433,48 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.RecurringTransactionResult'
+    type: object
+  model.SortCategoryListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.SortPayeeListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.SortTagListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
     type: object
   model.StructureResult:
     properties:
@@ -2241,19 +2248,19 @@ paths:
       summary: Hide a folder
       tags:
       - Account
-  /api/v1/account/order-account-list:
+  /api/v1/account/move-account:
     post:
       consumes:
       - application/json
-      description: Repositions accounts and moves them between folders, returning
-        the full list.
+      description: Places one account immediately after another (afterId null = first)
+        and sets its folder; returns the full list.
       parameters:
-      - description: Order account list request
+      - description: Move account request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderAccountListRequest'
+          $ref: '#/definitions/model.MoveAccountRequest'
       produces:
       - application/json
       responses:
@@ -2264,7 +2271,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderAccountListResult'
+                  $ref: '#/definitions/model.MoveAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -2284,22 +2291,22 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the account list
+      summary: Move an account
       tags:
       - Account
-  /api/v1/account/order-folder-list:
+  /api/v1/account/move-folder:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's folders and returns the
-        full ordered list.
+      description: Places one folder immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order folder list request
+      - description: Move folder request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderFolderListRequest'
+          $ref: '#/definitions/model.MoveAccountFolderRequest'
       produces:
       - application/json
       responses:
@@ -2310,7 +2317,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderFolderListResult'
+                  $ref: '#/definitions/model.MoveAccountFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -2330,7 +2337,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the folder list
+      summary: Move a folder
       tags:
       - Account
   /api/v1/account/replace-folder:
@@ -3206,17 +3213,17 @@ paths:
       summary: Include an account in a budget
       tags:
       - Budget
-  /api/v1/budget/move-element-list:
+  /api/v1/budget/move-element:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Move elements
+      - description: Move element
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.MoveElementListRequest'
+          $ref: '#/definitions/model.MoveElementRequest'
       produces:
       - application/json
       responses:
@@ -3227,7 +3234,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MoveElementListResult'
+                  $ref: '#/definitions/model.MoveElementResult'
               type: object
         "400":
           description: Bad Request
@@ -3241,26 +3248,30 @@ paths:
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move/reorder budget elements
+      summary: Move a budget element
       tags:
       - Budget
-  /api/v1/budget/order-folder-list:
+  /api/v1/budget/move-folder:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Order folders
+      - description: Move folder
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/model.MoveBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -3271,7 +3282,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/model.MoveBudgetFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -3291,7 +3302,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder budget folders
+      summary: Move a budget folder
       tags:
       - Budget
   /api/v1/budget/reset-budget:
@@ -3724,19 +3735,19 @@ paths:
       summary: Get the category list
       tags:
       - Category
-  /api/v1/category/order-category-list:
+  /api/v1/category/move-category:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's categories and returns the
-        full ordered list.
+      description: Places one category immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order category list request
+      - description: Move category request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderCategoryListRequest'
+          $ref: '#/definitions/model.MoveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -3747,7 +3758,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderCategoryListResult'
+                  $ref: '#/definitions/model.MoveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -3767,7 +3778,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the category list
+      summary: Move a category
+      tags:
+      - Category
+  /api/v1/category/sort-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own categorys and returns the full ordered list.
+      parameters:
+      - description: Sort category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the category list
       tags:
       - Category
   /api/v1/category/unarchive-category:
@@ -4587,19 +4644,19 @@ paths:
       summary: Get the payee list
       tags:
       - Payee
-  /api/v1/payee/order-payee-list:
+  /api/v1/payee/move-payee:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's payees and returns the full
-        ordered list.
+      description: Places one payee immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order payee list request
+      - description: Move payee request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderPayeeListRequest'
+          $ref: '#/definitions/model.MovePayeeRequest'
       produces:
       - application/json
       responses:
@@ -4610,7 +4667,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderPayeeListResult'
+                  $ref: '#/definitions/model.MovePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -4630,7 +4687,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the payee list
+      summary: Move a payee
+      tags:
+      - Payee
+  /api/v1/payee/sort-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own payees and returns the full ordered list.
+      parameters:
+      - description: Sort payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the payee list
       tags:
       - Payee
   /api/v1/payee/unarchive-payee:
@@ -5177,19 +5280,19 @@ paths:
       summary: Get the tag list
       tags:
       - Tag
-  /api/v1/tag/order-tag-list:
+  /api/v1/tag/move-tag:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's tags and returns the full
-        ordered list.
+      description: Places one tag immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order tag list request
+      - description: Move tag request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderTagListRequest'
+          $ref: '#/definitions/model.MoveTagRequest'
       produces:
       - application/json
       responses:
@@ -5200,7 +5303,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderTagListResult'
+                  $ref: '#/definitions/model.MoveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -5220,7 +5323,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the tag list
+      summary: Move a tag
+      tags:
+      - Tag
+  /api/v1/tag/sort-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own tags and returns the full ordered list.
+      parameters:
+      - description: Sort tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the tag list
       tags:
       - Tag
   /api/v1/tag/unarchive-tag:
