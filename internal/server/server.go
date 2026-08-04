@@ -297,8 +297,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
 	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)
 	txImportPayees := NewTransactionImportPayees(payeeSvc, payeeRepo)
+	txImportLabels := NewTransactionImportLabels(labelSvc, labelRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
-		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags,
+		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags, txImportLabels,
 		transactionRepo,
 	)
 	// One label-ownership adapter, reused across every feature that validates

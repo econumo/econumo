@@ -117,9 +117,14 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	if err != nil {
 		return err
 	}
+	labels, err := imp.LabelsByOwner(ctx, accountOwnerID)
+	if err != nil {
+		return err
+	}
 	categoryByName := newNamedCache(categories)
 	payeeByName := newNamedCache(payees)
 	tagByName := newNamedCache(tags)
+	labelByName := newNamedCache(labels)
 
 	// Override date.
 	var overrideDate *time.Time
@@ -148,6 +153,15 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		addImportError(result, "Tag not found for provided tagId", 0)
 		return nil
 	}
+	overrideLabelIDs, ok := resolveOverrideLabelIDs(req.LabelIds, labels)
+	if !ok {
+		addImportError(result, "Label not found for provided labelIds", 0)
+		return nil
+	}
+	labelsSeparator := req.LabelsSeparator
+	if labelsSeparator == "" {
+		labelsSeparator = ";"
+	}
 	var overrideDescription *string
 	if req.Description != nil {
 		d := strings.TrimSpace(*req.Description)
@@ -173,8 +187,8 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	for i, row := range records {
 		rowNumber := i + 2
 		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
-			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideDescription,
-			accountByName, categoryByName, payeeByName, tagByName, result); rerr != nil {
+			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
+			accountByName, categoryByName, payeeByName, tagByName, labelByName, result); rerr != nil {
 			// Row-level error: record + skip, continue.
 			addImportError(result, rerr.Error(), rowNumber)
 			result.Skipped++
@@ -192,8 +206,9 @@ func (s *Service) importRow(
 	ctx context.Context, userID, accountOwnerID vo.Id, req model.ImportRequest, dualMode bool,
 	row map[string]string, rowNumber int,
 	overrideAccount *model.ImportAccount, overrideDate *time.Time,
-	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideDescription *string,
-	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, result *model.ImportResult,
+	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideLabelIDs []vo.Id, overrideDescription *string,
+	labelsSeparator string,
+	accountByName *nameCache, categoryByName, payeeByName, tagByName, labelByName *nameCache, result *model.ImportResult,
 ) error {
 	imp := s.importer
 
@@ -300,6 +315,34 @@ func (s *Service) importRow(
 		tagID = &id
 	}
 
+	// labels (override applies to every row; otherwise the mapped cell is
+	// split on the caller's separator, trimmed/deduped/blanks-dropped, and
+	// each piece is find-or-created — mirroring category/payee/tag above, but
+	// multi-valued).
+	var labelIDs []vo.Id
+	if overrideLabelIDs != nil {
+		labelIDs = overrideLabelIDs
+	} else if req.Mapping.Labels != "" {
+		names := splitLabelCell(fieldValue(row, req.Mapping.Labels), labelsSeparator)
+		if len(names) > 0 {
+			labelIDs = make([]vo.Id, 0, len(names))
+			for _, name := range names {
+				lb, err := s.findOrCreateNamed(ctx, name, labelByName, func(ctx context.Context) (model.ImportNamed, error) {
+					id, cerr := imp.CreateLabel(ctx, accountOwnerID, name)
+					if cerr != nil {
+						return model.ImportNamed{}, cerr
+					}
+					return model.ImportNamed{ID: id.String(), Name: name, OwnerID: accountOwnerID.String()}, nil
+				})
+				if err != nil {
+					return err
+				}
+				id, _ := vo.ParseId(lb.ID)
+				labelIDs = append(labelIDs, id)
+			}
+		}
+	}
+
 	accID, _ := vo.ParseId(account.ID)
 	typ := model.TransactionTypeExpense
 	if income {
@@ -308,10 +351,13 @@ func (s *Service) importRow(
 	now := s.clock.Now()
 	t := model.New(model.NewState{
 		ID: s.repo.NextIdentity(), UserID: userID, Type: typ, AccountID: accID,
-		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID,
+		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID, LabelIDs: labelIDs,
 		Description: description, SpentAt: date, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := imp.SaveTransaction(ctx, t); err != nil {
+		return err
+	}
+	if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
 		return err
 	}
 	result.Imported++
@@ -390,6 +436,44 @@ func resolveOverrideNamed(idPtr *string, list []model.ImportNamed) (*model.Impor
 		}
 	}
 	return nil, false
+}
+
+// resolveOverrideLabelIDs parses the comma-joined labelIds override against
+// the pre-fetched owner-scoped label list: membership in that list IS the
+// belongs-to-the-account-owner check, the same way a single tagId override is
+// authorized against the owner-scoped tags list. Returns (nil, true) when
+// idsCSV is absent/blank (a blank override is treated as absent, like every
+// other override id); (ids, true) when every piece resolves; (nil, false)
+// when any piece is not found.
+func resolveOverrideLabelIDs(idsCSV *string, list []model.ImportNamed) ([]vo.Id, bool) {
+	csv := trimPtr(idsCSV)
+	if csv == "" {
+		return nil, true
+	}
+	pieces := strings.Split(csv, ",")
+	ids := make([]vo.Id, 0, len(pieces))
+	for _, p := range pieces {
+		raw := strings.TrimSpace(p)
+		if raw == "" {
+			continue
+		}
+		found := false
+		for i := range list {
+			if list[i].ID == raw {
+				id, err := vo.ParseId(list[i].ID)
+				if err != nil {
+					return nil, false
+				}
+				ids = append(ids, id)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, false
+		}
+	}
+	return ids, true
 }
 
 // addImportError appends a row number to the errors map under message (creating

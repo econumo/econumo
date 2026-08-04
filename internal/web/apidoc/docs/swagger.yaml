@@ -5943,7 +5943,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Imports transactions from an uploaded CSV using a field mapping
-        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.
       parameters:
       - description: CSV file
         in: formData
@@ -5978,6 +5978,14 @@ paths:
       - description: Override tag id
         in: formData
         name: tagId
+        type: string
+      - description: Override label ids (comma-joined), applied to every row
+        in: formData
+        name: labelIds
+        type: string
+      - description: Separator that splits the mapped labels cell (default ;)
+        in: formData
+        name: labelsSeparator
         type: string
       produces:
       - application/json

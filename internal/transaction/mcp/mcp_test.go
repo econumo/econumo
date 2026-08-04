@@ -16,6 +16,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	applabel "github.com/econumo/econumo/internal/label"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
@@ -53,15 +54,17 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), payeerepo.NewReadRepo(db.Engine, txm), accessResolver)
+	labelRepo := labelrepo.NewRepo(db.Engine, txm)
+	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), labelrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	txImport := transactionrepo.NewImportLookup(
 		server.NewTransactionImportAccounts(accSvc, accountrepo.NewRepo(db.Engine, txm), accountrepo.NewFolderRepo(db.Engine, txm), curLookup, "USD"),
 		accessResolver,
 		server.NewTransactionImportCategories(catSvc, catRepo),
 		server.NewTransactionImportPayees(pySvc, pyRepo),
 		server.NewTransactionImportTags(tgSvc, tgRepo),
+		server.NewTransactionImportLabels(labelSvc, labelRepo),
 		txRepo,
 	)
-	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	txExport := transactionrepo.NewExportLookup(
 		txRepo,
 		server.NewTransactionCategoryNameLookup(catRepo),

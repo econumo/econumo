@@ -96,15 +96,22 @@ type Importer interface {
 	// 'wallet', balance 0) and returns its view.
 	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)
 
-	// CategoriesByOwner / PayeesByOwner / TagsByOwner return the owner's entities.
+	// CategoriesByOwner / PayeesByOwner / TagsByOwner / LabelsByOwner return the
+	// owner's entities.
 	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	// CreateCategory creates a category (income type when income==true, else
 	// expense; icon 'category'). CreatePayee/CreateTag create by name.
 	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error)
 	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 	CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
+	// CreateLabel creates a label by name and returns only its id: the import
+	// loop tracks label ids per row, never a label's other fields, so there is
+	// no need for the model.ImportNamed round trip CreateCategory/CreatePayee/
+	// CreateTag return.
+	CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error)
 
 	// SaveTransaction persists a built transaction (no idempotency id).
 	SaveTransaction(ctx context.Context, t *model.Transaction) error

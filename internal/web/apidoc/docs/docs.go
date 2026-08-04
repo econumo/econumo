@@ -6524,7 +6524,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.",
+                "description": "Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -6584,6 +6584,18 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Override tag id",
                         "name": "tagId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Override label ids (comma-joined), applied to every row",
+                        "name": "labelIds",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Separator that splits the mapped labels cell (default ;)",
+                        "name": "labelsSeparator",
                         "in": "formData"
                     }
                 ],

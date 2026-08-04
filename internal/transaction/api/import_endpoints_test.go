@@ -294,3 +294,188 @@ func TestImport_NoToken_401(t *testing.T) {
 		t.Fatalf("status=%d want 401", status)
 	}
 }
+
+// TestImportSplitsLabelsOnDefaultSemicolon: with no labelsSeparator override
+// the mapped labels cell splits on ";" — a match against the seeded "Label
+// One" resolves to its existing id, and the unmatched piece auto-creates a
+// new label owned by the importing user, exactly as the tag column does for
+// a single value.
+func TestImportSplitsLabelsOnDefaultSemicolon(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Labels\n" +
+		"Cash,2024-03-01,-42.50,Label One;New Label\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`
+	status, env := h.doImport(t, tok, csv, mapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 {
+		t.Fatalf("list has %d items, want 1", len(list.Items))
+	}
+	got := list.Items[0].LabelIds
+	if len(got) != 2 {
+		t.Fatalf("labelIds = %v, want 2 (seeded Label One + auto-created New Label)", got)
+	}
+	if got[0] != label1ID && got[1] != label1ID {
+		t.Fatalf("labelIds %v missing seeded label1ID %q", got, label1ID)
+	}
+	var newLabelCount int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM labels WHERE user_id = ? AND name = ?`, seedUserID, "New Label").Scan(&newLabelCount); err != nil {
+		t.Fatalf("query new label: %v", err)
+	}
+	if newLabelCount != 1 {
+		t.Fatalf("want exactly 1 auto-created 'New Label' for the seeded user, got %d", newLabelCount)
+	}
+}
+
+// TestImportSplitsLabelsOnCustomSeparator: a CSV from another tool may use any
+// delimiter, so the labelsSeparator form field controls the split — here "|"
+// on a cell containing two seeded label names. A hardcoded ";" implementation
+// would treat the whole cell as one unmatched name and auto-create a bogus
+// label containing a literal "|", which the assertions below catch.
+func TestImportSplitsLabelsOnCustomSeparator(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Labels\n" +
+		"Cash,2024-03-01,-10,Label One|Label Two\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"labelsSeparator": "|"})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 1 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 1/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 {
+		t.Fatalf("list has %d items, want 1", len(list.Items))
+	}
+	got := list.Items[0].LabelIds
+	wantSet := map[string]bool{label1ID: true, label2ID: true}
+	if len(got) != 2 || !wantSet[got[0]] || !wantSet[got[1]] {
+		t.Fatalf("labelIds = %v, want exactly [%s %s] (both seeded labels matched by the custom separator)", got, label1ID, label2ID)
+	}
+	var bogusCount int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM labels WHERE name LIKE '%|%'`).Scan(&bogusCount); err != nil {
+		t.Fatalf("query bogus label: %v", err)
+	}
+	if bogusCount != 0 {
+		t.Fatalf("a label containing the raw unsplit cell was created; the separator was not applied")
+	}
+}
+
+// TestImportLabelsBlankAndDuplicateHandling: an empty cell attaches no
+// labels; within a non-empty cell, blank pieces are dropped and duplicate
+// names dedupe case-insensitively (first occurrence wins) before resolution,
+// so "Kid A;kid a; ;Kid A" resolves to exactly one label.
+func TestImportLabelsBlankAndDuplicateHandling(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount,Labels\n" +
+		"Cash,2024-03-01,-10,\n" +
+		"Cash,2024-03-02,-20,Kid A;kid a; ;Kid A\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount","labels":"Labels"}`
+	status, env := h.doImport(t, tok, csv, mapping, nil)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 2 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 2/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 2 {
+		t.Fatalf("list has %d items, want 2", len(list.Items))
+	}
+	var blankRow, kidRow *txItem
+	for i := range list.Items {
+		it := &list.Items[i]
+		if len(it.Date) >= 10 && it.Date[:10] == "2024-03-01" {
+			blankRow = it
+		} else {
+			kidRow = it
+		}
+	}
+	if blankRow == nil || kidRow == nil {
+		t.Fatalf("could not locate both rows by date; items=%+v", list.Items)
+	}
+	if len(blankRow.LabelIds) != 0 {
+		t.Fatalf("blank cell labelIds = %v, want none", blankRow.LabelIds)
+	}
+	if len(kidRow.LabelIds) != 1 {
+		t.Fatalf("kidRow labelIds = %v, want exactly 1 (deduped case-insensitively)", kidRow.LabelIds)
+	}
+	var count int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM labels WHERE user_id = ? AND lower(name) = 'kid a'`, seedUserID).Scan(&count); err != nil {
+		t.Fatalf("query kid a label: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("want exactly 1 label named 'Kid A' (any case), got %d", count)
+	}
+}
+
+// TestImportLabelIdsOverrideAppliesToEveryRow: the labelIds override, when
+// present, replaces the per-row label resolution entirely and applies the
+// same set to every imported row.
+func TestImportLabelIdsOverrideAppliesToEveryRow(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount\n" +
+		"Cash,2024-03-01,-10\n" +
+		"Cash,2024-03-02,-20\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"labelIds": label1ID + "," + label2ID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 2 || res.Skipped != 0 {
+		t.Fatalf("imported=%d skipped=%d want 2/0; errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 2 {
+		t.Fatalf("list has %d items, want 2", len(list.Items))
+	}
+	for _, it := range list.Items {
+		if len(it.LabelIds) != 2 {
+			t.Fatalf("row %s labelIds = %v, want 2 (override applied to every row)", it.ID, it.LabelIds)
+		}
+	}
+}
+
+// TestImportLabelIdsOverrideRejectsForeignLabel: the labelIds override is
+// belongs-to checked against the account owner exactly like tagId — a label
+// owned by a different user aborts the whole import with the same top-level
+// error style as an unknown tagId, rather than silently skipping it.
+func TestImportLabelIdsOverrideRejectsForeignLabel(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	csv := "Account,Date,Amount\nCash,2024-03-01,-10\n"
+	mapping := `{"account":"Account","date":"Date","amount":"Amount"}`
+	status, env := h.doImport(t, tok, csv, mapping, map[string]string{"labelIds": label1ID + "," + otherLabelID})
+	if status != http.StatusOK {
+		t.Fatalf("status=%d want 200; body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[importResult](t, env.Data)
+	if res.Imported != 0 {
+		t.Fatalf("imported=%d want 0 (foreign label aborts the whole import)", res.Imported)
+	}
+	if _, ok := res.Errors["Label not found for provided labelIds"]; !ok {
+		t.Fatalf("errors=%v want top-level label-not-found error", res.Errors)
+	}
+}

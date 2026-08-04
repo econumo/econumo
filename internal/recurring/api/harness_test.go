@@ -28,6 +28,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	applabel "github.com/econumo/econumo/internal/label"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
@@ -114,6 +115,7 @@ func newHarness(t *testing.T) *harness {
 	tgRepo := tagrepo.NewRepo("sqlite", txm)
 	pyRepo := payeerepo.NewRepo("sqlite", txm)
 	labelRepo := labelrepo.NewRepo("sqlite", txm)
+	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), labelrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
@@ -124,9 +126,10 @@ func newHarness(t *testing.T) *harness {
 	txImportCategories := server.NewTransactionImportCategories(catSvc, catRepo)
 	txImportTags := server.NewTransactionImportTags(tgSvc, tgRepo)
 	txImportPayees := server.NewTransactionImportPayees(pySvc, pyRepo)
+	txImportLabels := server.NewTransactionImportLabels(labelSvc, labelRepo)
 	txImport := transactionrepo.NewImportLookup(
 		txImportAccounts, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
-		txImportCategories, txImportPayees, txImportTags, txRepo,
+		txImportCategories, txImportPayees, txImportTags, txImportLabels, txRepo,
 	)
 	opGuard := operationrepo.NewGuard("sqlite", txm)
 	clk := clock.New()

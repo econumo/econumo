@@ -335,6 +335,54 @@ func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id
 	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
 }
 
+// transactionImportLabelService is the label-service create surface the
+// importer uses.
+type transactionImportLabelService interface {
+	CreateLabel(ctx context.Context, userID vo.Id, req model.CreateLabelRequest) (*model.CreateLabelResult, error)
+}
+
+// transactionImportLabelLister is the read surface over the label repo.
+type transactionImportLabelLister interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Label, error)
+}
+
+// TransactionImportLabels adapts the label service/repo to the transaction
+// import adapter's label port.
+type TransactionImportLabels struct {
+	svc  transactionImportLabelService
+	list transactionImportLabelLister
+}
+
+// NewTransactionImportLabels wires the adapter.
+func NewTransactionImportLabels(svc transactionImportLabelService, list transactionImportLabelLister) *TransactionImportLabels {
+	return &TransactionImportLabels{svc: svc, list: list}
+}
+
+func (l *TransactionImportLabels) LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	list, err := l.list.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportNamed, len(list))
+	for i, lb := range list {
+		out[i] = model.ImportNamed{ID: lb.ID.String(), Name: lb.Name, OwnerID: lb.UserID.String()}
+	}
+	return out, nil
+}
+
+// CreateLabel returns only the new label's id: the import loop tracks label
+// ids per row, so there is no need for the full model.ImportNamed round trip
+// CreateCategory/CreatePayee/CreateTag return.
+func (l *TransactionImportLabels) CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error) {
+	res, err := l.svc.CreateLabel(ctx, ownerID, model.CreateLabelRequest{
+		Id: vo.NewId().String(), Name: name,
+	})
+	if err != nil {
+		return vo.Id{}, err
+	}
+	return vo.ParseId(res.Item.Id)
+}
+
 // transactionLabelByID is the minimal label-repo surface the ownership
 // adapter uses.
 type transactionLabelByID interface {

@@ -45,6 +45,7 @@ type ImportMapping struct {
 	Category      string
 	Payee         string
 	Tag           string
+	Labels        string
 }
 
 // ImportRequest is the decoded import request: the CSV bytes, the mapping, and
@@ -59,6 +60,11 @@ type ImportRequest struct {
 	Description *string
 	PayeeId     *string
 	TagId       *string
+	LabelIds    *string // comma-joined id list; applies to every row
+	// LabelsSeparator splits the mapped labels cell; the caller may use any
+	// delimiter (a CSV from another tool need not match the export default),
+	// so this is read from the request rather than hardcoded.
+	LabelsSeparator string
 }
 
 // ImportResult is the wire result: counts + an errors map (message ->
