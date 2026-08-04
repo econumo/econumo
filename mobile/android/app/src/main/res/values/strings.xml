@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Econumo</string>
+    <string name="title_activity_main">Econumo</string>
+    <string name="package_name">com.econumo.app</string>
+    <string name="custom_url_scheme">com.econumo.app</string>
+</resources>

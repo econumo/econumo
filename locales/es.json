@@ -150,6 +150,14 @@
     "update": {
       "notice": "Ya está disponible Econumo {version}",
       "dismiss": "Descartar"
+    },
+    "serverUpdate": {
+      "notice": "Tu servidor de Econumo ({version}) es más antiguo que esta aplicación. Actualiza el servidor para obtener las últimas funciones."
+    },
+    "appUpdate": {
+      "title": "Actualización necesaria",
+      "blockedApp": "Esta aplicación es demasiado antigua para tu servidor de Econumo: se requiere la versión {version} o posterior. Actualiza la aplicación para continuar.",
+      "blockedServer": "Esta aplicación requiere un servidor de Econumo {min} o posterior, pero tu servidor es {version}. Actualiza el servidor para continuar."
     }
   },
   "accounts": {
