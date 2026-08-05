@@ -132,6 +132,7 @@ export const fixtureWireBudget = {
         ownerUserId: 'u1', children: [],
       },
     ],
+    labels: [],
   },
 }
 

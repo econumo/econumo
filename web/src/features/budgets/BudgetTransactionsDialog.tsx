@@ -25,10 +25,13 @@ import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
-/** enough of an element (or a nested child category) to list its transactions */
+/** enough of an element (or a nested child category) to list its transactions.
+ *  'label' is a client-side discriminant only -- a label is never a real
+ *  BudgetElementType, it never appears in structure.elements or on the wire
+ *  as an element type. */
 export interface BudgetTransactionsTarget {
   id: Id
-  type: BudgetElementType
+  type: BudgetElementType | 'label'
   name: string
   icon: string
   /** null = the budget base currency */
@@ -83,6 +86,10 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
             }
           : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
+        // labelId is mutually exclusive with categoryId/tagId/envelopeId/uncategorized
+        // on the backend (400 if combined); 'label' never equals a real
+        // BudgetElementType, so this branch can never fire alongside another one
+        ...(element.type === 'label' ? { labelId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
       }
     : null

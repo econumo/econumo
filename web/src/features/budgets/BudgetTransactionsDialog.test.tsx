@@ -166,6 +166,21 @@ it('the top-level Uncategorized target requests uncategorized=1 and no categoryI
   expect(params.has('categoryId')).toBe(false)
 })
 
+it('a label target requests labelId only -- never combined with categoryId/tagId/envelopeId/uncategorized', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: 'l1', type: 'label', name: 'Kid A', icon: 'label', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('l1')
+  // the backend 400s on any combination with another filter, so a broken query
+  // string here would be a production regression, not just a UI nit
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('tagId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+  expect(params.has('uncategorized')).toBe(false)
+  expect(Array.from(params.keys()).sort()).toEqual(['budgetId', 'labelId', 'periodStart'])
+})
+
 it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categoryId", async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({

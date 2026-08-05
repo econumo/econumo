@@ -54,6 +54,20 @@ export interface BudgetFolderDto {
   position: number
 }
 
+/** a reporting label's period spend. No budgeted/available: a label never
+ *  becomes a budget element or carries a limit. Amounts across labels
+ *  deliberately overlap (one transaction can carry several) and do not sum
+ *  to total spend. */
+export interface LabelSpendDto {
+  id: Id
+  name: string
+  icon: string
+  isArchived: 0 | 1
+  /** decimal string (wire format, kept verbatim), already in the budget currency */
+  spent: string
+  ownerUserId: Id
+}
+
 // nullable by period phase: future month = all null except holdings; current month = endBalance null
 export interface BudgetBalanceDto {
   currencyId: Id
@@ -95,5 +109,5 @@ export interface BudgetDto {
   filters: { periodStart: string; periodEnd: string; excludedAccountsIds: Id[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
-  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[] }
+  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels: LabelSpendDto[] }
 }

@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { EntityIcon } from '@/components/EntityIcon'
+import { kindAccentClass } from '@/lib/classificationKind'
 import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
-import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
@@ -256,6 +259,73 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
+function LabelsSection({
+  labels,
+  currency,
+  onLabelClick,
+}: {
+  labels: LabelSpendDto[]
+  currency: CurrencyDto | undefined
+  onLabelClick?: (target: BudgetTransactionsTarget) => void
+}) {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(true)
+  const opts = cellOpts(currency)
+  const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <section className="rounded-md border p-1.5 sm:p-2" data-testid="budget-labels-section">
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="flex w-full items-center gap-1.5 px-1.5 pb-1 text-left sm:gap-2 sm:px-2"
+            aria-expanded={open}
+            title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+          >
+            {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
+            <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('budgets.page.budget.structure.labels.heading')}</span>
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          {/* labels overlap by design: one transaction can carry several, so each
+              counts its full amount -- these numbers never sum to total spend */}
+          <p className="px-1.5 pb-1.5 text-xs text-muted-foreground sm:px-2">{t('budgets.page.budget.structure.labels.overlap_note')}</p>
+          <ul>
+            {labels.map((label) => (
+              <li key={label.id} data-testid={`budget-label-${label.id}`}>
+                {onLabelClick ? (
+                  <button
+                    type="button"
+                    title={showTransactionsTitle}
+                    aria-label={`transactions ${label.name}`}
+                    className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-2.5 text-left hover:bg-accent/50 sm:gap-2 sm:px-2"
+                    onClick={() => onLabelClick({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
+                  >
+                    <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
+                    <span className="min-w-0 flex-1 truncate text-[15px]" title={label.name}>
+                      {label.name}
+                    </span>
+                    <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(label.spent, currency, opts)}</span>
+                  </button>
+                ) : (
+                  <span className="flex w-full items-center gap-1.5 px-1.5 py-2.5 sm:gap-2 sm:px-2">
+                    <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
+                    <span className="min-w-0 flex-1 truncate text-[15px]" title={label.name}>
+                      {label.name}
+                    </span>
+                    <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(label.spent, currency, opts)}</span>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
+  )
+}
+
 export function BudgetTable({ budget, buckets, renderFolderActions, renderFolderHandle, sectionWrapper, hideChildren, hideContents, ...extras }: BudgetTableProps) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
@@ -361,6 +431,10 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
           sectionNode
         )
       })}
+
+      {budget.structure.labels.length > 0 ? (
+        <LabelsSection labels={budget.structure.labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />
+      ) : null}
 
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>

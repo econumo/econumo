@@ -378,6 +378,40 @@ it('Uncategorized shows a dash for budget and available, and keeps its spent amo
   expect(within(row).getByTestId('cell-spent')).toHaveTextContent('30')
 })
 
+it('renders the labels block with per-label spend', async () => {
+  renderTable((budget) => {
+    budget.structure.labels = [{ id: 'l1', name: 'Kid A', icon: 'label', isArchived: 0, spent: '50.00', ownerUserId: 'u1' }]
+  })
+  const section = await screen.findByTestId('budget-labels-section')
+  expect(within(section).getByText('Kid A')).toBeInTheDocument()
+  await waitFor(() => expect(within(section).getByTestId('budget-label-l1')).toHaveTextContent('50.00'))
+  // the overlap disclaimer must render alongside the rows, not just the heading
+  expect(within(section).getByText(/overlap/i)).toBeInTheDocument()
+})
+
+it('omits the labels block entirely when there are no labels', async () => {
+  renderTable((budget) => {
+    budget.structure.labels = []
+  })
+  await screen.findByTestId('budget-table')
+  expect(screen.queryByTestId('budget-labels-section')).not.toBeInTheDocument()
+  expect(screen.queryByText('Labels')).not.toBeInTheDocument()
+})
+
+it('clicking a label chip reports it as a transactions target with the label discriminant', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(
+    (budget) => {
+      budget.structure.labels = [{ id: 'l1', name: 'Kid A', icon: 'label', isArchived: 0, spent: '50.00', ownerUserId: 'u1' }]
+    },
+    { onSpentClick },
+  )
+  const section = await screen.findByTestId('budget-labels-section')
+  await user.click(within(section).getByRole('button', { name: 'transactions Kid A' }))
+  expect(onSpentClick).toHaveBeenCalledWith({ id: 'l1', type: 'label', name: 'Kid A', icon: 'label', currencyId: null })
+})
+
 it('the Uncategorized section is never a drag container and its row has no handle', async () => {
   const sectionWrapper = vi.fn((_bucket, _key, node) => node)
   renderTable(pushUncategorized, {
