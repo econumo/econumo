@@ -385,8 +385,9 @@ it('renders the labels block with per-label spend', async () => {
   const section = await screen.findByTestId('budget-labels-section')
   expect(within(section).getByText('Kid A')).toBeInTheDocument()
   await waitFor(() => expect(within(section).getByTestId('budget-label-l1')).toHaveTextContent('50.00'))
-  // the overlap disclaimer must render alongside the rows, not just the heading
-  expect(within(section).getByText(/overlap/i)).toBeInTheDocument()
+  // the overlap disclaimer must render alongside the rows, not just the heading;
+  // asserted by testid (not copy) so it survives Task 8 landing real translations
+  expect(within(section).getByTestId('budget-labels-overlap-note')).toBeInTheDocument()
 })
 
 it('omits the labels block entirely when there are no labels', async () => {
@@ -395,7 +396,31 @@ it('omits the labels block entirely when there are no labels', async () => {
   })
   await screen.findByTestId('budget-table')
   expect(screen.queryByTestId('budget-labels-section')).not.toBeInTheDocument()
-  expect(screen.queryByText('Labels')).not.toBeInTheDocument()
+  // the heading itself carries its own testid, so this fails if the section
+  // ever renders headless (the untranslated catalog-key text is not a stable
+  // thing to assert against, before or after Task 8 lands real copy)
+  expect(screen.queryByTestId('budget-labels-heading')).not.toBeInTheDocument()
+})
+
+it('the labels block sits directly after Uncategorized and before Archive, never after Total', async () => {
+  renderTable((budget) => {
+    pushUncategorized(budget)
+    // a nonzero archived element, so Archive is visible and could otherwise sit
+    // between Uncategorized and the labels block
+    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: '7' })
+    budget.structure.labels = [{ id: 'l1', name: 'Kid A', icon: 'label', isArchived: 0, spent: '50.00', ownerUserId: 'u1' }]
+  })
+  const uncategorized = await screen.findByTestId('budget-folder-Uncategorized')
+  const labels = await screen.findByTestId('budget-labels-section')
+  const archive = await screen.findByTestId('budget-folder-Archived')
+  const totals = screen.getByTestId('budget-totals')
+  const isBefore = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  // Total must read as its own row, not a sum of the overlapping label amounts
+  // right above it -- so the labels block cannot be the section immediately
+  // preceding Total.
+  expect(isBefore(uncategorized, labels)).toBe(true)
+  expect(isBefore(labels, archive)).toBe(true)
+  expect(isBefore(archive, totals)).toBe(true)
 })
 
 it('clicking a label chip reports it as a transactions target with the label discriminant', async () => {

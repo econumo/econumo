@@ -259,6 +259,27 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
+/** the same [name flex-1][budgeted w-24][spent w-20/24][available w-20/24][symbol w-6]
+ *  geometry as ElementRow, so the amount lands under the Spent header and gets
+ *  a currency symbol like every neighbouring row -- a label has only one
+ *  amount, so budgeted/available render as the same empty-cell dash Uncategorized uses */
+function LabelRowContent({ label, currency, opts }: { label: LabelSpendDto; currency: CurrencyDto | undefined; opts: MoneyFormatOptions }) {
+  return (
+    <>
+      <span className="flex min-w-0 flex-1 items-center gap-2">
+        <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
+        <span className={`truncate text-[15px] ${label.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={label.name}>
+          {label.name}
+        </span>
+      </span>
+      <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block">{EMPTY_CELL}</span>
+      <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{moneyFormat(label.spent, currency, opts)}</span>
+      <span className="flex w-20 justify-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
+      <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
+    </>
+  )
+}
+
 function LabelsSection({
   labels,
   currency,
@@ -284,13 +305,17 @@ function LabelsSection({
             title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
           >
             {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{t('budgets.page.budget.structure.labels.heading')}</span>
+            <span className="min-w-0 flex-1 truncate text-sm font-medium" data-testid="budget-labels-heading">
+              {t('budgets.page.budget.structure.labels.heading')}
+            </span>
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
           {/* labels overlap by design: one transaction can carry several, so each
               counts its full amount -- these numbers never sum to total spend */}
-          <p className="px-1.5 pb-1.5 text-xs text-muted-foreground sm:px-2">{t('budgets.page.budget.structure.labels.overlap_note')}</p>
+          <p className="px-1.5 pb-1.5 text-xs text-muted-foreground sm:px-2" data-testid="budget-labels-overlap-note">
+            {t('budgets.page.budget.structure.labels.overlap_note')}
+          </p>
           <ul>
             {labels.map((label) => (
               <li key={label.id} data-testid={`budget-label-${label.id}`}>
@@ -302,19 +327,11 @@ function LabelsSection({
                     className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-2.5 text-left hover:bg-accent/50 sm:gap-2 sm:px-2"
                     onClick={() => onLabelClick({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
                   >
-                    <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
-                    <span className="min-w-0 flex-1 truncate text-[15px]" title={label.name}>
-                      {label.name}
-                    </span>
-                    <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(label.spent, currency, opts)}</span>
+                    <LabelRowContent label={label} currency={currency} opts={opts} />
                   </button>
                 ) : (
-                  <span className="flex w-full items-center gap-1.5 px-1.5 py-2.5 sm:gap-2 sm:px-2">
-                    <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
-                    <span className="min-w-0 flex-1 truncate text-[15px]" title={label.name}>
-                      {label.name}
-                    </span>
-                    <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(label.spent, currency, opts)}</span>
+                  <span className="flex w-full items-center gap-1.5 rounded-md px-1.5 py-2.5 sm:gap-2 sm:px-2">
+                    <LabelRowContent label={label} currency={currency} opts={opts} />
                   </span>
                 )}
               </li>
@@ -354,23 +371,27 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         {actionsColumn ? <ActionsSpacer /> : null}
       </div>
 
-      {sections.map((section) => {
+      {sections.flatMap((section) => {
         // archive and uncategorized are read-only: no drag handle, no folder
         // actions, never a drop container
         const isReadOnlySection = section.key === '__archive__' || section.key === '__uncategorized__'
-        if (section.bucket.elements.length === 0 && section.folderIndex === null) {
-          // both read-only sections hide when they have nothing to show; the
-          // empty Default folder survives only in edit mode (folder actions
-          // present), where it is the drop target for dragging elements out
-          if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
-            return null
-          }
-        }
         // Uncategorized is a single fixed row, not a group: it renders flat,
         // with no header, so the label appears once instead of naming both a
-        // section and the lone row inside it.
+        // section and the lone row inside it. The labels block sits right
+        // after it -- before Archive -- so it never reads as a breakdown of
+        // the Total row further down. Handled ahead of the generic
+        // empty-section skip below: the labels block must still appear here
+        // even in the (common) case where Uncategorized itself has nothing to
+        // show for the period.
         if (section.key === '__uncategorized__') {
-          return (
+          const labelsNode =
+            budget.structure.labels.length > 0
+              ? [<LabelsSection key="__labels__" labels={budget.structure.labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />]
+              : []
+          if (section.bucket.elements.length === 0) {
+            return labelsNode
+          }
+          return [
             <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
               {section.bucket.elements.map((element) => (
                 <ElementRow
@@ -385,8 +406,17 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   hideChildren={hideChildren}
                 />
               ))}
-            </section>
-          )
+            </section>,
+            ...labelsNode,
+          ]
+        }
+        if (section.bucket.elements.length === 0 && section.folderIndex === null) {
+          // both read-only sections hide when they have nothing to show; the
+          // empty Default folder survives only in edit mode (folder actions
+          // present), where it is the drop target for dragging elements out
+          if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
+            return []
+          }
         }
         const sectionNode = (
           <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
@@ -425,16 +455,14 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
             )}
           </section>
         )
-        return !isReadOnlySection && sectionWrapper ? (
-          <div key={section.key}>{sectionWrapper(section.bucket, section.key, sectionNode)}</div>
-        ) : (
-          sectionNode
-        )
+        return [
+          !isReadOnlySection && sectionWrapper ? (
+            <div key={section.key}>{sectionWrapper(section.bucket, section.key, sectionNode)}</div>
+          ) : (
+            sectionNode
+          ),
+        ]
       })}
-
-      {budget.structure.labels.length > 0 ? (
-        <LabelsSection labels={budget.structure.labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />
-      ) : null}
 
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
