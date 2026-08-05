@@ -10546,7 +10546,7 @@
                     "type": "string"
                 },
                 "labelIds": {
-                    "description": "LabelIds is a POINTER on purpose — absent and empty must differ here:\n  absent (nil)      -\u003e inherit the template's labels (what every client\n                       did before this field existed, so omitting it is\n                       byte-for-byte the old behavior)\n  present, non-empty-\u003e the posted transaction gets exactly this list\n  present, empty    -\u003e the posted transaction gets NO labels\nA bare []string could not tell \"absent\" from \"[]\" and would turn every\npre-existing client's post into a label wipe. Each entry is validated\n(parses, exists, owned by the account owner) by the transaction create\npath, not here — same rule as CreateTransactionRequest.LabelIds.",
+                    "description": "Omit the field to inherit the template's labels; send a list to give the\nposted transaction exactly those labels; send an empty list to give it\nnone. Absent and empty therefore mean different things. Each entry is\nvalidated (parses, exists, owned by the account owner) by the transaction\ncreate path, not here — same rule as CreateTransactionRequest.LabelIds.",
                     "type": "array",
                     "items": {
                         "type": "string"
