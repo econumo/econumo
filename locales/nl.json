@@ -226,6 +226,9 @@
         "tag": {
           "label": "Tag"
         },
+        "label": {
+          "label": "Label"
+        },
         "tags": {
           "label": "Tags en labels"
         },

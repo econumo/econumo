@@ -226,6 +226,9 @@
         "tag": {
           "label": "Etiqueta"
         },
+        "label": {
+          "label": "Rótulo"
+        },
         "tags": {
           "label": "Etiquetas y rótulos"
         },

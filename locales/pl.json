@@ -226,6 +226,9 @@
         "tag": {
           "label": "Tag"
         },
+        "label": {
+          "label": "Etykieta"
+        },
         "tags": {
           "label": "Tagi i etykiety"
         },

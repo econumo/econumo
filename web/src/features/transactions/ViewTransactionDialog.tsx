@@ -7,6 +7,8 @@ import { CardField } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
+import { useLabels } from '@/features/classifications/queries'
+import { kindAccentClass } from '@/lib/classificationKind'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -47,6 +49,13 @@ function canMakeRecurring(tx: ViewTransaction, onMakeRecurring?: () => void): bo
 
 export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDelete, canChange, isShared, dismissible = true, fallbackCurrency, onMakeRecurring, recurringSchedule, onOpenRecurring, footer }: ViewTransactionDialogProps) {
   const { t } = useTranslation()
+  // labels are owner-scoped like tags/categories/payees: the same globally
+  // fetched list every editor resolves against, matched here by the ids the
+  // transaction already carries (no separate owner-scoped lookup to invent).
+  const { data: labels = [] } = useLabels()
+  const attachedLabels = (tx.labelIds ?? [])
+    .map((id) => labels.find((l) => l.id === id))
+    .filter((label): label is (typeof labels)[number] => Boolean(label))
   const showMakeRecurring = canMakeRecurring(tx, onMakeRecurring)
   // Indicator only, independent of whether the template itself resolved: the
   // transaction's own recurringId is enough to state that it came from a
@@ -107,6 +116,22 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
       content: (
         <span className="flex">
           <Badge variant="secondary">{tx.tag.name}</Badge>
+        </span>
+      ),
+    })
+  }
+  if (attachedLabels.length > 0) {
+    cards.push({
+      label: t('accounts.page.preview_transaction_modal.label.label'),
+      content: (
+        <span className="flex flex-wrap gap-1.5">
+          {attachedLabels.map((label) => (
+            <Badge key={label.id} variant="secondary" className="gap-1">
+              {/* the row's STORED icon, never a kind default; only the tint encodes the kind */}
+              <EntityIcon name={label.icon} className={`text-sm ${kindAccentClass('label')}`} />
+              {label.name}
+            </Badge>
+          ))}
         </span>
       ),
     })

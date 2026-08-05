@@ -226,6 +226,9 @@
         "tag": {
           "label": "标签"
         },
+        "label": {
+          "label": "标记"
+        },
         "tags": {
           "label": "标签和标记"
         },

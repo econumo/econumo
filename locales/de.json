@@ -226,6 +226,9 @@
         "tag": {
           "label": "Budget-Tag"
         },
+        "label": {
+          "label": "Label"
+        },
         "tags": {
           "label": "Tags und Labels"
         },

@@ -195,3 +195,16 @@ it('a categoryless non-transfer transaction shows Uncategorized as the hero name
   renderView({ transaction: categorylessTx })
   expect(await screen.findByText('Uncategorized')).toBeInTheDocument()
 })
+
+it('shows a labels card with the resolved label name and heading when the transaction has labels', async () => {
+  renderView({ transaction: { ...fixtureTransaction, labelIds: ['label1'] } as ViewTransaction })
+  expect(await screen.findByText('health')).toBeInTheDocument()
+  expect(screen.getByText('Label')).toBeInTheDocument()
+})
+
+it('renders no labels card when the transaction has no labels', async () => {
+  renderView({ transaction: { ...fixtureTransaction, labelIds: [] } as ViewTransaction })
+  await screen.findByRole('button', { name: 'Edit' })
+  expect(screen.queryByText('health')).toBeNull()
+  expect(screen.queryByText('Label')).toBeNull()
+})
