@@ -27,12 +27,15 @@ export interface RecurringDto extends CreateRecurringDto {
   ownerUserId: Id
 }
 
-/** labelIds is inherited but has NO effect here: post-recurring-transaction
- *  always copies the TEMPLATE's labels onto the created transaction and
- *  overwrites whatever the client sent. Seed the form from the template so the
- *  chips show what will actually be saved. */
-export interface PostRecurringPayload extends CreateTransactionDto {
+/** labelIds is optional here, and absent differs from empty:
+ *  omitted  -> the created transaction inherits the TEMPLATE's labels
+ *  a list   -> it gets exactly that list
+ *  []       -> it gets none
+ *  So a surface that lets the user edit the chips must always send the field
+ *  (even empty), and one that does not must omit it rather than guess. */
+export interface PostRecurringPayload extends Omit<CreateTransactionDto, 'labelIds'> {
   recurringId: Id
+  labelIds?: Id[]
 }
 
 export interface PostRecurringResult {

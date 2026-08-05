@@ -388,3 +388,170 @@ func TestCreateRecurringTransaction_MaxLabels_Accepted(t *testing.T) {
 		t.Fatalf("labelIds count = %d, want %d", len(res.Item.LabelIds), maxTestRecurringLabels)
 	}
 }
+
+// postLabelsFixture creates a template carrying label1+label2 and returns its
+// id, for the three post-time labelIds cases below.
+func postLabelsFixture(t *testing.T, h *harness, tok, opID string) string {
+	t.Helper()
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok,
+		createRecurringReqWithLabels(opID, "expense", "42.50", []string{label1ID, label2ID}))
+	if status != http.StatusOK {
+		t.Fatalf("create status=%d body=%s", status, env.raw)
+	}
+	return mustUnmarshal[recurringItemResult](t, env.Data).Item.ID
+}
+
+func postBody(rtID, opID string) map[string]any {
+	return map[string]any{
+		"recurringId": rtID, "id": opID, "type": "expense", "amount": "42.50",
+		"accountId": accountID, "categoryId": catID, "date": "2026-08-31 00:00:00", "description": "rent",
+	}
+}
+
+// persistedTxLabels reads the labels actually stored for a transaction, so
+// these tests prove the join-table write rather than a well-formed response.
+func persistedTxLabels(t *testing.T, h *harness, tok, txID string) []string {
+	t.Helper()
+	_, env := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list", tok, nil)
+	list := mustUnmarshal[struct {
+		Items []transactionItemWithLabels `json:"items"`
+	}](t, env.Data)
+	for _, it := range list.Items {
+		if it.ID == txID {
+			return it.LabelIds
+		}
+	}
+	t.Fatalf("transaction %q not found in get-transaction-list", txID)
+	return nil
+}
+
+// templateLabels reads a template's own labels, to prove a post-time override
+// changes only the created transaction and never the template itself.
+func templateLabels(t *testing.T, h *harness, tok, rtID string) []string {
+	t.Helper()
+	_, env := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	for _, it := range mustUnmarshal[recurringList](t, env.Data).Items {
+		if it.ID == rtID {
+			return it.LabelIds
+		}
+	}
+	t.Fatalf("template %q not found in get-recurring-transaction-list", rtID)
+	return nil
+}
+
+// TestPostRecurring_AbsentLabelIds_InheritsTemplate: omitting labelIds keeps
+// the pre-existing contract — the template's labels are copied on. This is
+// the case every client written before the field existed relies on, so it
+// must stay byte-for-byte what TestPostRecurringCopiesLabels already asserts;
+// this one states the ABSENT half of the three-case rule explicitly.
+func TestPostRecurring_AbsentLabelIds_InheritsTemplate(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-00000000000b")
+
+	body := postBody(rtID, "0197c500-0000-7000-8000-000000000010")
+	if _, ok := body["labelIds"]; ok {
+		t.Fatal("this case is about labelIds being ABSENT from the body")
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("post status=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item transactionItemWithLabels `json:"item"`
+	}](t, env.Data)
+	want := []string{label1ID, label2ID}
+	if len(res.Item.LabelIds) != 2 || res.Item.LabelIds[0] != want[0] || res.Item.LabelIds[1] != want[1] {
+		t.Fatalf("post response labelIds = %v, want %v (inherited)", res.Item.LabelIds, want)
+	}
+	if got := persistedTxLabels(t, h, tok, res.Item.ID); len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("persisted labelIds = %v, want %v", got, want)
+	}
+}
+
+// TestPostRecurring_ExplicitLabelIds_ReplacesTemplateSet: an explicit list is
+// the caller's own set — the user toggled the chips at post time — and the
+// template's labels are NOT copied over it. The template itself is unchanged.
+func TestPostRecurring_ExplicitLabelIds_ReplacesTemplateSet(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-00000000000c")
+
+	body := postBody(rtID, "0197c500-0000-7000-8000-000000000011")
+	body["labelIds"] = []string{label2ID}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("post status=%d body=%s", status, env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item transactionItemWithLabels `json:"item"`
+	}](t, env.Data)
+	if len(res.Item.LabelIds) != 1 || res.Item.LabelIds[0] != label2ID {
+		t.Fatalf("post response labelIds = %v, want [%s] (the request's own set)", res.Item.LabelIds, label2ID)
+	}
+	if got := persistedTxLabels(t, h, tok, res.Item.ID); len(got) != 1 || got[0] != label2ID {
+		t.Fatalf("persisted labelIds = %v, want [%s]", got, label2ID)
+	}
+	if got := templateLabels(t, h, tok, rtID); len(got) != 2 {
+		t.Fatalf("template labelIds = %v, want both still attached (a post never edits the template)", got)
+	}
+}
+
+// TestPostRecurring_ExplicitEmptyLabelIds_PostsWithNone: the sharp edge —
+// "labelIds": [] means NO labels, not "inherit". Getting this wrong turns
+// every deliberate clear back into a copy of the template's set (the mirror
+// image of the MCP update_transaction bug that UpdateTransactionPreservingLabels
+// exists to undo).
+func TestPostRecurring_ExplicitEmptyLabelIds_PostsWithNone(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-00000000000d")
+
+	body := postBody(rtID, "0197c500-0000-7000-8000-000000000012")
+	body["labelIds"] = []string{}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("post status=%d body=%s", status, env.raw)
+	}
+	if !strings.Contains(string(env.raw), `"labelIds":[]`) {
+		t.Fatalf("raw post response labelIds not empty; body: %s", env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item transactionItemWithLabels `json:"item"`
+	}](t, env.Data)
+	if len(res.Item.LabelIds) != 0 {
+		t.Fatalf("post response labelIds = %v, want [] (explicit empty is not inherit)", res.Item.LabelIds)
+	}
+	if got := persistedTxLabels(t, h, tok, res.Item.ID); len(got) != 0 {
+		t.Fatalf("persisted labelIds = %v, want none", got)
+	}
+	if got := templateLabels(t, h, tok, rtID); len(got) != 2 {
+		t.Fatalf("template labelIds = %v, want both still attached", got)
+	}
+}
+
+// TestPostRecurring_ExplicitForeignLabel_Rejected: the explicit list goes
+// through the transaction create path's own ownership check rather than a
+// second copy of that logic, so another user's label is refused here exactly
+// as it is on create-transaction.
+func TestPostRecurring_ExplicitForeignLabel_Rejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-00000000000e")
+
+	body := postBody(rtID, "0197c500-0000-7000-8000-000000000013")
+	body["labelIds"] = []string{otherLabelID}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+
+	// the refusal rolls the whole post back: the schedule must not advance
+	if got := templateLabels(t, h, tok, rtID); len(got) != 2 {
+		t.Fatalf("template labelIds = %v, want untouched after a rejected post", got)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	for _, it := range mustUnmarshal[recurringList](t, listEnv.Data).Items {
+		if it.ID == rtID && it.NextPaymentAt != "2026-08-31 00:00:00" {
+			t.Fatalf("nextPaymentAt = %q after a rejected post, want unchanged", it.NextPaymentAt)
+		}
+	}
+}

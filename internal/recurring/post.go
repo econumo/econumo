@@ -31,6 +31,12 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		PayeeId:            req.PayeeId,
 		TagId:              req.TagId,
 	}
+	// An explicit list (empty included) is the caller's own set and goes through
+	// the create path's normal validation/ownership checks; omitting the field
+	// leaves this empty and the template's labels are copied on afterwards.
+	if req.LabelIds != nil {
+		createReq.LabelIds = *req.LabelIds
+	}
 	if verr := createReq.Validate(); verr != nil {
 		return nil, verr
 	}
@@ -46,33 +52,36 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		if aerr := s.checkWriteAccess(ctx, userID, rt.AccountID); aerr != nil {
 			return aerr
 		}
-		labelIDs, lerr := s.labelIDsFor(ctx, rtID)
-		if lerr != nil {
-			return lerr
-		}
-		rt.LabelIDs = labelIDs
 		created, gerr = s.creator.CreateTransactionFromRecurring(ctx, userID, createReq, rtID)
 		if gerr != nil {
 			return gerr
 		}
-		// Copy the template's labels onto the just-created transaction, inside
-		// this same tx: a failure here rolls back the create too. This is a
-		// second ReplaceLabels for the row (createTransaction already ran one
-		// with req.LabelIds, always empty here since post never sends any) —
-		// delete-then-insert makes the second call authoritative rather than
-		// additive, so the two calls settle on exactly the template's set.
-		txID, perr := vo.ParseId(created.Item.Id)
-		if perr != nil {
-			return perr
+		if req.LabelIds == nil {
+			// Inherit: copy the template's labels onto the just-created
+			// transaction, inside this same tx so a failure rolls back the
+			// create too. This is a second ReplaceLabels for the row (the
+			// create already ran one with an empty set) — delete-then-insert
+			// makes the second call authoritative rather than additive, so the
+			// two settle on exactly the template's set. With an explicit list
+			// the create already applied and validated it, so nothing to do.
+			labelIDs, lerr := s.labelIDsFor(ctx, rtID)
+			if lerr != nil {
+				return lerr
+			}
+			rt.LabelIDs = labelIDs
+			txID, perr := vo.ParseId(created.Item.Id)
+			if perr != nil {
+				return perr
+			}
+			if rerr := s.creator.ReplaceLabels(ctx, txID, rt.LabelIDs); rerr != nil {
+				return rerr
+			}
+			wireLabels := labelIDStrings(rt.LabelIDs)
+			if wireLabels == nil {
+				wireLabels = []string{}
+			}
+			created.Item.LabelIds = wireLabels
 		}
-		if rerr := s.creator.ReplaceLabels(ctx, txID, rt.LabelIDs); rerr != nil {
-			return rerr
-		}
-		wireLabels := labelIDStrings(rt.LabelIDs)
-		if wireLabels == nil {
-			wireLabels = []string{}
-		}
-		created.Item.LabelIds = wireLabels
 		rt.Advance(s.clock.Now())
 		return s.repo.Save(ctx, rt)
 	}); err != nil {

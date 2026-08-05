@@ -17,9 +17,17 @@ it('posts an expense with the template amount, date and classifications', () => 
   const payload = recurringPostPayload(template(), accounts, exchangeFn)
   expect(payload).toMatchObject({
     recurringId: 'r1', type: 'expense', accountId: 'a1', amount: '50.5',
-    categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', labelIds: ['lb1'], description: 'rent',
+    categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', description: 'rent',
     date: '2026-08-02 00:00:00', accountRecipientId: null, amountRecipient: null,
   })
+})
+
+it('omits labelIds so the server inherits the template\'s labels', () => {
+  // absent != empty on this endpoint: [] would post a transaction with NO
+  // labels, and this path has no chip row for the user to have cleared
+  const payload = recurringPostPayload(template(), accounts, exchangeFn)
+  expect('labelIds' in payload).toBe(false)
+  expect('labelIds' in recurringPostPayload(template({ type: 'transfer', accountRecipientId: 'a2' }), accounts, exchangeFn)).toBe(false)
 })
 
 it('mints a fresh transaction id rather than reusing the template id', () => {
@@ -37,7 +45,7 @@ it('mirrors the amount on a same-currency transfer and drops classifications', (
   )
   expect(payload).toMatchObject({
     accountRecipientId: 'a2', amount: '50.5', amountRecipient: '50.5',
-    categoryId: null, payeeId: null, tagId: null, labelIds: [],
+    categoryId: null, payeeId: null, tagId: null,
   })
 })
 

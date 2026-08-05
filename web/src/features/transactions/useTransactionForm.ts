@@ -50,8 +50,8 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       categoryId: rt.categoryId,
       payeeId: rt.payeeId,
       tagId: rt.tagId,
-      // posting copies the template's labels server-side; seeding them here
-      // makes the chips show what the posted transaction will carry
+      // the post dialog sends its own labelIds, so the chips start as the
+      // template's set and any toggle the user makes lands on the transaction
       labelIds: rt.labelIds ?? [],
       description: rt.description,
       date: rt.nextPaymentAt,

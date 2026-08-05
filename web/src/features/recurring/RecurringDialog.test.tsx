@@ -109,12 +109,12 @@ it('tags render as the transaction dialog pill row, toggling the template tag', 
   renderDialog()
   useUiStore.getState().openRecurringModal({ recurring: wireRecurringAsDto })
   // a pill (role=checkbox), not an option in a select
-  const pill = await screen.findByRole('checkbox', { name: 'vacation' })
+  const pill = await screen.findByRole('checkbox', { name: /^vacation\b/ })
   expect(pill).toHaveAttribute('aria-checked', 'false')
   await user.click(pill)
-  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toHaveAttribute('aria-checked', 'true')
+  expect(await screen.findByRole('checkbox', { name: /^vacation\b/ })).toHaveAttribute('aria-checked', 'true')
   await user.click(pill)
-  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toHaveAttribute('aria-checked', 'false')
+  expect(await screen.findByRole('checkbox', { name: /^vacation\b/ })).toHaveAttribute('aria-checked', 'false')
 })
 
 it('Repeats is the only row the add-transaction dialog does not have', async () => {
@@ -141,9 +141,9 @@ it('editing a template round-trips its labels and toggles them independently of 
 
   // update-recurring-transaction REPLACES the label set: the attached one has
   // to come back on the wire or the save silently detaches it
-  const label = await screen.findByRole('checkbox', { name: 'health' })
+  const label = await screen.findByRole('checkbox', { name: /^health\b/ })
   expect(label).toHaveAttribute('aria-checked', 'true')
-  await user.click(screen.getByRole('checkbox', { name: 'vacation' }))
+  await user.click(screen.getByRole('checkbox', { name: /^vacation\b/ }))
   await user.click(screen.getByRole('button', { name: 'Update' }))
 
   await waitFor(() => expect(body).toBeDefined())

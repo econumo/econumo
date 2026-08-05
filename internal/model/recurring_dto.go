@@ -136,6 +136,17 @@ type PostRecurringTransactionRequest struct {
 	TagId              *string        `json:"tagId"`
 	Description        *string        `json:"description"`
 	Date               string         `json:"date"`
+	// LabelIds is a POINTER on purpose — absent and empty must differ here:
+	//   absent (nil)      -> inherit the template's labels (what every client
+	//                        did before this field existed, so omitting it is
+	//                        byte-for-byte the old behavior)
+	//   present, non-empty-> the posted transaction gets exactly this list
+	//   present, empty    -> the posted transaction gets NO labels
+	// A bare []string could not tell "absent" from "[]" and would turn every
+	// pre-existing client's post into a label wipe. Each entry is validated
+	// (parses, exists, owned by the account owner) by the transaction create
+	// path, not here — same rule as CreateTransactionRequest.LabelIds.
+	LabelIds *[]string `json:"labelIds"`
 }
 
 // Validate enforces NotBlank on recurringId/id/type/amount/accountId/date.

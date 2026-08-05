@@ -52,8 +52,11 @@ const captureUpdate = () => {
   return seen
 }
 
+// The accessible name is "<name> <kind word>" (the kind word is untranslated
+// until Task 8 lands the catalogue entries), so match on the leading name and
+// pick the kind from data-kind.
 const chip = (name: string, kind: 'tag' | 'label') => {
-  const found = screen.getAllByRole('checkbox', { name }).find((el) => el.getAttribute('data-kind') === kind)
+  const found = screen.getAllByRole('checkbox', { name: new RegExp('^' + name + '\\b') }).find((el) => el.getAttribute('data-kind') === kind)
   if (!found) {
     throw new Error(`no ${kind} chip named ${name}`)
   }
@@ -123,7 +126,7 @@ it('tag chips are keyboard-reachable and toggle with Enter and Space', async () 
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
 
-  const chip = await screen.findByRole('checkbox', { name: 'vacation' })
+  const chip = await screen.findByRole('checkbox', { name: /^vacation\b/ })
   screen.getByRole('combobox', { name: 'Recipient' }).focus()
   await user.tab()
   expect(chip).toHaveFocus()
@@ -210,11 +213,11 @@ it('tags show on expense but not income; income payee label is Sender', async ()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
-  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toBeInTheDocument()
+  expect(await screen.findByRole('checkbox', { name: /^vacation\b/ })).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Recipient' })).toBeInTheDocument()
 
   await user.click(screen.getByRole('radio', { name: 'Income' }))
-  expect(screen.queryByRole('checkbox', { name: 'vacation' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: /^vacation\b/ })).not.toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Sender' })).toBeInTheDocument()
 })
 
@@ -530,7 +533,7 @@ it('keeps an attached archived label on the row, hides an unattached one', async
   // archived but attached: it must stay visible AND survive the save, since
   // hiding it would silently detach it on the next write
   await waitFor(() => expect(chip('retired', 'label')).toHaveAttribute('aria-checked', 'true'))
-  expect(screen.queryByRole('checkbox', { name: 'unused' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: /^unused\b/ })).not.toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(seen.body).toBeDefined())
@@ -586,4 +589,41 @@ it('the inline create dialog picks the label kind and attaches the new label', a
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(seen.body).toBeDefined())
   expect(seen.body!.labelIds).toEqual(['label-new'])
+})
+
+
+it('posting a template sends the chips the user actually left checked', async () => {
+  // post-recurring-transaction inherits the template's labels when labelIds is
+  // ABSENT, so the dialog must always send the field — otherwise a toggle made
+  // here is silently overwritten by the template's set server-side
+  const wireRecurringWithLabels: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: ['label1'],
+    description: 'rent', schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+  }
+  server.use(...coreHandlers({ labels: [...fixtureLabels, wireLabel()] }))
+  let postBody: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      postBody = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ id: 't-posted', labelIds: ['label2'] }), accounts: fixtureAccounts, nextPaymentAt: '2026-08-05 00:00:00' },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ postRecurring: wireRecurringWithLabels })
+
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  // the chips start as the template's set
+  await waitFor(() => expect(chip('health', 'label')).toHaveAttribute('aria-checked', 'true'))
+  await user.click(chip('health', 'label'))
+  await user.click(chip('travel', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(postBody).toBeDefined())
+  expect(postBody!.recurringId).toBe('r1')
+  expect(postBody!.labelIds).toEqual(['label2'])
 })
