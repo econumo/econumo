@@ -10,6 +10,9 @@
 == archive-label POST /api/v1/label/archive-label [owner] -> 200
 {"success":true,"message":"","data":{}}
 
+== read-while-archived GET /api/v1/label/get-label-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"30000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Personal","icon":"label","position":0,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"30000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Work","icon":"label","position":1,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Business2","icon":"label","position":2,"isArchived":1,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
 == unarchive-label POST /api/v1/label/unarchive-label [owner] -> 200
 {"success":true,"message":"","data":{}}
 

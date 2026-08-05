@@ -127,6 +127,9 @@ func init() {
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "update-label", Method: "POST", Path: "/api/v1/label/update-label", Auth: "owner", Body: map[string]any{"id": &labelID, "name": "Business2"}},
 			{Label: "archive-label", Method: "POST", Path: "/api/v1/label/archive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			// pins isArchived:1 on the wire — without this read no REST golden
+			// ever renders an archived label
+			{Label: "read-while-archived", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "unarchive-label", Method: "POST", Path: "/api/v1/label/unarchive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
 			{Label: "delete-label", Method: "POST", Path: "/api/v1/label/delete-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
 			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},

@@ -242,3 +242,40 @@ func TestDeleteTransaction_ReturnsLabelsFromBeforeDelete(t *testing.T) {
 		t.Fatalf("deleted item labelIds = %v, want [%s] (from before delete)", res.Item.LabelIds, label1ID)
 	}
 }
+
+// TestUpdateTransaction_LabelIds_Absent_AlsoClears: the documented contract is
+// that update-transaction is a full-state replace where OMITTING labelIds
+// clears exactly like an explicit []. The clears test above sends the explicit
+// form; this one sends a body with no labelIds key at all, so the absent-field
+// decode path (nil slice) is pinned too.
+func TestUpdateTransaction_LabelIds_Absent_AlsoClears(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
+		createReqWithLabels(txID1, "expense", "12.00", []string{label1ID, label2ID}))
+	created := mustUnmarshal[writeResult](t, cEnv.Data)
+	if len(created.Item.LabelIds) != 2 {
+		t.Fatalf("labelIds before clearing = %v, want 2", created.Item.LabelIds)
+	}
+
+	body := map[string]any{
+		"id": created.Item.ID, "type": "expense", "amount": "12.00", "accountId": accountID, "categoryId": catID,
+		"date": "2024-03-01 10:00:00", "description": "groceries",
+	}
+	if _, ok := body["labelIds"]; ok {
+		t.Fatal("this case is about labelIds being ABSENT from the body")
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("update=%d want 200; body: %s", status, env.raw)
+	}
+	if !strings.Contains(string(env.raw), `"labelIds":[]`) {
+		t.Fatalf("raw body labelIds not an empty array; body: %s", env.raw)
+	}
+
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/transaction/get-transaction-list?accountId="+accountID, tok, nil)
+	list := mustUnmarshal[listResult](t, listEnv.Data)
+	if len(list.Items) != 1 || len(list.Items[0].LabelIds) != 0 {
+		t.Fatalf("persisted list labelIds = %+v, want one item with none", list.Items)
+	}
+}
