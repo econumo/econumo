@@ -95,7 +95,7 @@ func notAvailableCode(msg string) string {
 //     This is always a FULL REPLACE, same as categoryId/payeeId/tagId above:
 //     an empty/nil rawLabelIDs means "no labels", full stop. A caller that
 //     must leave existing labels untouched (there is exactly one: MCP's
-//     update_transaction, which has no label_ids argument yet — see
+//     update_transaction when its optional label_ids argument is omitted — see
 //     Service.updateTransaction's preserveLabels parameter) is responsible for
 //     seeding rawLabelIDs with the transaction's CURRENT persisted labels
 //     itself before calling in; checkReferences has no "leave alone" mode of

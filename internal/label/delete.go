@@ -10,9 +10,11 @@ import (
 
 // DeleteLabel deletes the label. The user must own it; a foreign-owned label
 // is reported as not-found (matching the repo above) so the response can't
-// probe which label ids exist. transactions_labels rows referencing it go with
-// it via the ON DELETE CASCADE FK. Delete is unconditional — there is no
-// mode/replaceId.
+// probe which label ids exist. transactions_labels AND
+// recurring_transactions_labels rows referencing it go with it via their
+// ON DELETE CASCADE FKs — recurring templates silently lose the label, so
+// future postings of those templates no longer carry it. Delete is
+// unconditional — there is no mode/replaceId.
 func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.DeleteLabelRequest) (*model.DeleteLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

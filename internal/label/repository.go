@@ -21,8 +21,9 @@ type Repository interface {
 
 	Save(ctx context.Context, l *model.Label) error
 
-	// Delete removes a label; its transactions_labels rows go with it via the
-	// ON DELETE CASCADE FK.
+	// Delete removes a label; its transactions_labels and
+	// recurring_transactions_labels rows go with it via the ON DELETE CASCADE
+	// FKs.
 	Delete(ctx context.Context, id vo.Id) error
 }
 
