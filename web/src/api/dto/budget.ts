@@ -109,5 +109,7 @@ export interface BudgetDto {
   filters: { periodStart: string; periodEnd: string; excludedAccountsIds: Id[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
-  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels: LabelSpendDto[] }
+  /** labels is optional on the wire: servers older than the labels release —
+   *  still accepted by the app's compat floor — omit it. */
+  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
 }

@@ -105,6 +105,12 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).map((t) => (t[txField] === id ? { ...t, [txField]: null } : t)),
       )
+      // The delete cascades ON DELETE SET NULL onto recurring templates too;
+      // a stale id left in this cache would ride the next template edit (a
+      // full-state replace) and be rejected as an unavailable item.
+      queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
+        (prev ?? []).map((r) => (r[txField] === id ? { ...r, [txField]: null } : r)),
+      )
       if (touchesBudget) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       }
@@ -424,10 +430,14 @@ export function useDeleteLabel() {
 
 export function useMoveLabel() {
   const ops = useEntityCacheOps('labels', false)
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => labelApi.moveLabel(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
+      // Unlike tags (whose budget order lives on the elements), the budget's
+      // labels block renders in label sort order, so a reorder changes it.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       trackEvent(METRICS.LABEL_ORDER_LIST)
     },
   })
@@ -438,6 +448,7 @@ export function useMoveLabel() {
 // move can express. The cache is reordered up front so the list flips instantly.
 export function useSortLabels() {
   const ops = useEntityCacheOps('labels', false)
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (orderedIds: Id[]) => labelApi.sortLabelList(orderedIds),
     onMutate: (orderedIds) => {
@@ -445,6 +456,9 @@ export function useSortLabels() {
     },
     onSuccess: (items) => {
       ops.replaceAll(items)
+      // Same rule as useMoveLabel: the budget's labels block follows label
+      // sort order, so a reorder changes it.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       trackEvent(METRICS.LABEL_ORDER_LIST)
     },
   })

@@ -96,7 +96,14 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     [labels, targetUserId],
   )
 
-  const existingLabelNames = useMemo(() => ownerLabels.map((label) => label.name), [ownerLabels])
+  // The "new labels" count matches names against ALL of the owner's labels,
+  // archived included: the import resolves names server-side with no archived
+  // filter, so a CSV naming an archived label attaches it rather than
+  // creating a new one. ownerLabels stays archived-free for the visible list.
+  const existingLabelNames = useMemo(
+    () => labels.filter((label) => label.ownerUserId === targetUserId).map((label) => label.name),
+    [labels, targetUserId],
+  )
   // narrow deps: only the pieces countNewLabels actually reads, so typing in
   // the description/date inputs doesn't rescan every row on a 10 MB import;
   // a broad `[selection]` dep would invalidate on every unrelated keystroke,

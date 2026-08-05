@@ -384,9 +384,10 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         // even in the (common) case where Uncategorized itself has nothing to
         // show for the period.
         if (section.key === '__uncategorized__') {
+          const labels = budget.structure.labels ?? []
           const labelsNode =
-            budget.structure.labels.length > 0
-              ? [<LabelsSection key="__labels__" labels={budget.structure.labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />]
+            labels.length > 0
+              ? [<LabelsSection key="__labels__" labels={labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />]
               : []
           if (section.bucket.elements.length === 0) {
             return labelsNode
