@@ -8,6 +8,7 @@ package api_test
 // creating transactions.
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -53,7 +54,7 @@ func (h *harness) shareAccount(t *testing.T, role int, grant bool) {
 
 // sharedCreateReq builds a create-transaction request targeting the shared account.
 func sharedCreateReq(id, amount string) map[string]any {
-	return map[string]any{"id": id, "type": "expense", "amount": amount, "accountId": sharedAcctID, "categoryId": catID, "date": "2024-03-01 10:00:00", "description": "shared"}
+	return map[string]any{"id": id, "type": "expense", "amount": amount, "accountId": sharedAcctID, "categoryId": ownerCatID, "date": "2024-03-01 10:00:00", "description": "shared"}
 }
 
 // shareAccountPending seeds a second user who owns sharedAcctID and grants the
@@ -231,7 +232,7 @@ func TestUpdateTransaction_SharedAccount_UserRole_Succeeds(t *testing.T) {
 	_, cEnv := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, sharedCreateReq(txID1, "10"))
 	created := mustUnmarshal[writeResult](t, cEnv.Data)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
-		"id": created.Item.ID, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": catID,
+		"id": created.Item.ID, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": ownerCatID,
 		"date": "2024-03-02 10:00:00", "description": "edited",
 	})
 	if status != http.StatusOK {
@@ -249,7 +250,7 @@ func TestUpdateTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	// Access is checked on the target account before the transaction is loaded,
 	// so a guest is rejected regardless of the (nonexistent) transaction id.
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", tok, map[string]any{
-		"id": txID1, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": catID,
+		"id": txID1, "type": "income", "amount": "20", "accountId": sharedAcctID, "categoryId": ownerCatID,
 		"date": "2024-03-02 10:00:00", "description": "edited",
 	})
 	assertValidationDenied(t, status, env, "This account is not available for this operation.")
@@ -278,4 +279,42 @@ func TestDeleteTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 	tok := h.token(t)
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/delete-transaction", tok, map[string]any{"id": seededTx})
 	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+}
+
+// TestCreateTransaction_SharedAccount_CallerOwnEntities_Rejected: on a shared
+// account every classification must belong to the ACCOUNT OWNER — the caller's
+// own category/payee/tag/label is rejected exactly like an unconnected
+// stranger's id, even though the caller could use it freely on their own
+// account. This is the regression guard for the owner-only reference rule: a
+// caller-or-owner check would pass every case below.
+func TestCreateTransaction_SharedAccount_CallerOwnEntities_Rejected(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, roleUser, true)
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	callerTagID := f.Tag(fixture.Tag{UserID: seedUserID, Name: "My Tag"})
+	callerPayeeID := f.Payee(fixture.Payee{UserID: seedUserID, Name: "My Payee"})
+	tok := h.token(t)
+
+	cases := []struct {
+		name  string
+		field string
+		value any
+	}{
+		{"category", "categoryId", catID},
+		{"payee", "payeeId", callerPayeeID},
+		{"tag", "tagId", callerTagID},
+		{"label", "labelIds", []string{label1ID}},
+	}
+	for i, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{
+				"id": fmt.Sprintf("0197cc00-0000-7000-8000-00000000000%d", i), "type": "expense", "amount": "10",
+				"accountId": sharedAcctID, "date": "2024-03-01 10:00:00", "description": "own entity",
+				tc.field: tc.value,
+			}
+			status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok, body)
+			assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+		})
+	}
 }

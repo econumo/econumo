@@ -257,7 +257,10 @@ func init() {
 	// account SHARED with the caller (the owner holds a user-role grant on the
 	// guest-owned SharedAccount). Exercises the shared-account write-access path
 	// through the real server.BuildAPI on both engines — the regression where the
-	// Go port had reduced the check to owner-only and returned a 400 here.
+	// Go port had reduced the check to owner-only and returned a 400 here. The
+	// create carries no category: references must belong to the ACCOUNT OWNER
+	// (the guest), and the fixture's categories are all the caller's — sending
+	// one is the err: step below.
 	register(Scenario{Name: "transaction_write_read_shared", Calls: func() []Call {
 		const newTxn = "d0000000-0000-0000-0000-0000000000fe"
 		var txnID string
@@ -265,8 +268,15 @@ func init() {
 			{Label: "create-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{
 					"id": newTxn, "accountId": SharedAccount, "type": "expense",
-					"amount": "7.25", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+					"amount": "7.25", "date": "2024-04-03 10:00:00",
 				}, CaptureIDInto: &txnID},
+			// the caller's own category is NOT attachable on a shared account —
+			// classifications belong to the account owner's books
+			{Label: "err:own-category-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": "d0000000-0000-0000-0000-0000000000fd", "accountId": SharedAccount, "type": "expense",
+					"amount": "1.00", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+				}},
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "account-list-after-create", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "delete-on-shared", Method: "POST", Path: "/api/v1/transaction/delete-transaction", Auth: "owner", Body: map[string]any{"id": &txnID}},

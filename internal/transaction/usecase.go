@@ -83,12 +83,12 @@ func notAvailableCode(msg string) string {
 //   - a transfer's recipient account needs the SAME write access as the source,
 //     else a caller could inject a leg into a stranger's account (its balance is
 //     SUM(amount_recipient) over that account id);
-//   - an optional category/payee/tag must belong to the CALLER or to the OWNER
-//     of the account the transaction is on. On a shared account the SPA
-//     categorizes with the account owner's entities (its picker filters to the
-//     account owner), so a caller-only check would reject a legitimate
-//     co-sharer's transaction; a truly foreign (unconnected) id is still
-//     rejected.
+//   - an optional category/payee/tag must belong to the OWNER of the account
+//     the transaction is on — every classification describes the owner's
+//     books, so on a shared account a co-sharer classifies with the owner's
+//     entities, never their own (the SPA's picker filters to the account
+//     owner). A caller-only check would be equally wrong in the other
+//     direction: it would reject those legitimate owner-entity references.
 //   - rawLabelIDs is resolved and written into st.LabelIDs for a non-transfer
 //     (a transfer never carries labels, so its rawLabelIDs is ignored and
 //     st.LabelIDs stays nil, matching buildState which never sets it either).
@@ -101,18 +101,17 @@ func notAvailableCode(msg string) string {
 //     itself before calling in; checkReferences has no "leave alone" mode of
 //     its own; a bulk re-classification simply never has anything to seed
 //     with here, since BulkUpdateTransactions never calls ReplaceLabels and
-//     never persists st.LabelIDs regardless of what this sets it to. Unlike
-//     category/payee/tag, a label must belong to the ACCOUNT OWNER
-//     specifically, not the caller: reporting labels classify the owner's
-//     books, so a connected co-sharer classifies with the owner's labels
-//     exactly as they do with the owner's categories/tags/payees above.
+//     never persists st.LabelIDs regardless of what this sets it to. Labels
+//     follow the same ACCOUNT-OWNER-only rule as category/payee/tag above: a
+//     connected co-sharer classifies with the owner's labels exactly as they
+//     do with the owner's categories/tags/payees.
 func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs []string) error {
 	if st.AccountRecipID != nil {
 		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
 			return err
 		}
 	}
-	// The account owner (== userID for an own account) whose entities are also
+	// The account owner (== userID for an own account) whose entities are the
 	// acceptable references. Write access to st.AccountID is already verified by
 	// the caller, so the lookup resolves.
 	ownerID, err := s.accounts.AccountOwner(ctx, st.AccountID)
@@ -120,17 +119,17 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.N
 		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 	}
 	if st.CategoryID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
 			return err
 		}
 	}
 	if st.PayeeID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
 			return err
 		}
 	}
 	if st.TagID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.TagID, s.importer.TagsByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.TagID, s.importer.TagsByOwner); err != nil {
 			return err
 		}
 	}
@@ -196,21 +195,18 @@ func (s *Service) resolveLabels(ctx context.Context, ownerID vo.Id, rawLabelIDs 
 	return ids, nil
 }
 
-// requireAvailableEntity confirms id belongs to the caller or to the account
-// owner (each list is owner-scoped, so membership IS the ownership check). A
-// foreign or unknown id yields the frozen item-not-available validation error.
-func (s *Service) requireAvailableEntity(ctx context.Context, callerID, accountOwnerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
-	if ok, err := ownsEntity(ctx, callerID, id, list); err != nil {
+// requireAvailableEntity confirms id belongs to the ACCOUNT OWNER (the list is
+// owner-scoped, so membership IS the ownership check) — the caller's own
+// entities do NOT qualify on a shared account: every classification describes
+// the owner's books (same rule as labels), and the SPA's pickers filter to the
+// account owner, so nothing legitimate ever sent a caller-owned id. On an own
+// account owner == caller. A foreign or unknown id yields the frozen
+// item-not-available validation error.
+func (s *Service) requireAvailableEntity(ctx context.Context, accountOwnerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
+	if ok, err := ownsEntity(ctx, accountOwnerID, id, list); err != nil {
 		return err
 	} else if ok {
 		return nil
-	}
-	if !accountOwnerID.Equal(callerID) {
-		if ok, err := ownsEntity(ctx, accountOwnerID, id, list); err != nil {
-			return err
-		} else if ok {
-			return nil
-		}
 	}
 	return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
 }
