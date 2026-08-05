@@ -91,7 +91,7 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_label_archived",
-			Description: "Hide an unused label (archive) or restore it (unarchive); there is no delete. Use list_labels to find its id."},
+			Description: "Hide an unused label (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_labels to find its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_label_archived")
 				userID, err := webmcp.UserID(ctx)

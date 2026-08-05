@@ -91,7 +91,7 @@ func Register(read *apptag.ReadService, write *apptag.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_tag_archived",
-			Description: "Hide an unused tag (archive) or restore it (unarchive); there is no delete. Use list_tags to find its id."},
+			Description: "Hide an unused tag (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_tags to find its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_tag_archived")
 				userID, err := webmcp.UserID(ctx)
