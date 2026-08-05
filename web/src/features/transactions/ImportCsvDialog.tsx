@@ -97,7 +97,16 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   )
 
   const existingLabelNames = useMemo(() => ownerLabels.map((label) => label.name), [ownerLabels])
-  const newLabelCount = analysis ? countNewLabels(analysis, selection, existingLabelNames) : 0
+  // narrow deps: only the pieces countNewLabels actually reads, so typing in
+  // the description/date inputs doesn't rescan every row on a 10 MB import;
+  // a broad `[selection]` dep would invalidate on every unrelated keystroke,
+  // same as no memo at all
+  const newLabelCount = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => (analysis ? countNewLabels(analysis, selection, existingLabelNames) : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [analysis, selection.modes.labels, selection.columns.labels, selection.labelsSeparator, existingLabelNames],
+  )
 
   const fieldLabels: Record<FieldKey, string> = {
     account: t('transactions.import_csv.fields.account'),

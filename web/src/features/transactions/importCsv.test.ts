@@ -123,17 +123,26 @@ it('counts how many NEW labels the import will create, case-insensitively dedupe
   const sel = validBase()
   sel.modes.labels = 'csv_column'
   sel.columns.labels = 'Labels'
+  // row 2's "kid a" differs in case from both row 1's "Kid A" and the
+  // existing "Kid A" below — this is what actually exercises lowercasing on
+  // both sides of the comparison, not just "some filtering happens"
   const analysis = {
     header: ['Account', 'Date', 'Amount', 'Labels'],
     rows: [
       ['Cash', '2026-01-02', '10', 'Kid A;Kid B'],
-      ['Cash', '2026-01-03', '20', 'Kid A'],
+      ['Cash', '2026-01-03', '20', 'kid a'],
     ],
     samples: {},
   }
+  // "kid a" case-folds against the existing "Kid A" -> only "Kid B" is new.
+  // Verified by mutation: stripping both .toLowerCase() calls in
+  // countNewLabels turns this 1 into 2 ("kid a" no longer matches the
+  // differently-cased existing entry, so it counts as new too).
   expect(countNewLabels(analysis, sel, ['Kid A'])).toBe(1)
-  // deleting the case-insensitive dedupe would count "Kid A" and "kid a" as
-  // two different new labels
+  // With no existing labels, "Kid A" (row 1) and "kid a" (row 2) still
+  // case-fold together into one name, leaving 2 distinct new names ("kid a"
+  // and "Kid B"). Verified by the same mutation: it turns this 2 into 3
+  // ("Kid A" and "kid a" stop collapsing into one name).
   expect(countNewLabels(analysis, sel, [])).toBe(2)
   // an unmapped labels column contributes nothing to the preview
   const unmapped = validBase()
