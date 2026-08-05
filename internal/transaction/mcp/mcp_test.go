@@ -624,11 +624,13 @@ func TestListTransactionsFilters_InvalidCombos(t *testing.T) {
 }
 
 // TestUpdateTransactionTool_PreservesExistingLabels pins the critical fix:
-// MCP's update_transaction has no label_ids argument, so it must leave a
-// transaction's existing labels untouched rather than reading its own
-// missing argument as "clear every label". Regression guard for
-// UpdateTransactionPreservingLabels — routing this tool through plain
-// UpdateTransaction (full replace) would silently delete the label.
+// omitting update_transaction's label_ids argument must leave a transaction's
+// existing labels untouched rather than reading the omission as "clear every
+// label". Regression guard for UpdateTransactionPreservingLabels — routing an
+// omitted label_ids through plain UpdateTransaction (full replace) would
+// silently delete the label. Companion cases below (LabelIdsReplacesFullSet,
+// LabelIdsEmptyListClears) pin the other two branches of the same argument so
+// none of the three can collapse into another undetected.
 func TestUpdateTransactionTool_PreservesExistingLabels(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
@@ -672,6 +674,132 @@ func TestUpdateTransactionTool_PreservesExistingLabels(t *testing.T) {
 		t.Fatalf("persisted labels after MCP update = %v, want [%s] (must survive)", got[txID], labelID)
 	}
 	// The response DTO must also report the surviving label, not an empty list.
+	labelIds, _ := item["labelIds"].([]any)
+	if len(labelIds) != 1 || labelIds[0] != labelID {
+		t.Fatalf("response labelIds = %v, want [%s]", item["labelIds"], labelID)
+	}
+}
+
+// TestUpdateTransactionTool_LabelIdsReplacesFullSet pins the second branch: a
+// caller who SUPPLIES label_ids gets exactly that set, not a union with (or a
+// preservation of) whatever the transaction already had. A regression that
+// collapsed "supplied" into "omitted" (always preserving) would leave the
+// old label in place here and fail.
+func TestUpdateTransactionTool_LabelIdsReplacesFullSet(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	oldLabelID := f.Label(fixture.Label{UserID: userID, Name: "Old"})
+	newLabelID := f.Label(fixture.Label{UserID: userID, Name: "New"})
+	txID := f.Transaction(fixture.Transaction{
+		UserID: userID, AccountID: accountID, Type: 0, Amount: "10.00",
+	})
+	txRepo := transactionrepo.NewRepo(db.Engine, db.TX)
+	if err := txRepo.ReplaceLabels(context.Background(), vo.MustParseId(txID), []vo.Id{vo.MustParseId(oldLabelID)}); err != nil {
+		t.Fatalf("seed ReplaceLabels: %v", err)
+	}
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "update_transaction",
+		Arguments: map[string]any{
+			"id": txID, "type": "expense", "amount": "10.00", "account_id": accountID,
+			"date": "2024-03-01", "label_ids": []string{newLabelID},
+		},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("update_transaction: err=%v res=%#v", err, res)
+	}
+	item := structured(t, res)["item"].(map[string]any)
+
+	got, lerr := txRepo.LabelsByTransactionIDs(context.Background(), []vo.Id{vo.MustParseId(txID)})
+	if lerr != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", lerr)
+	}
+	if len(got[txID]) != 1 || got[txID][0] != newLabelID {
+		t.Fatalf("persisted labels after MCP update = %v, want [%s] (replaced, old must be gone)", got[txID], newLabelID)
+	}
+	labelIds, _ := item["labelIds"].([]any)
+	if len(labelIds) != 1 || labelIds[0] != newLabelID {
+		t.Fatalf("response labelIds = %v, want [%s]", item["labelIds"], newLabelID)
+	}
+}
+
+// TestUpdateTransactionTool_LabelIdsEmptyListClears pins the third branch: an
+// EXPLICIT empty label_ids list clears every label, distinguishing it from
+// omission (which preserves). A regression that treated an empty slice the
+// same as a nil/omitted one would leave the label in place here and fail.
+func TestUpdateTransactionTool_LabelIdsEmptyListClears(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	labelID := f.Label(fixture.Label{UserID: userID})
+	txID := f.Transaction(fixture.Transaction{
+		UserID: userID, AccountID: accountID, Type: 0, Amount: "10.00",
+	})
+	txRepo := transactionrepo.NewRepo(db.Engine, db.TX)
+	if err := txRepo.ReplaceLabels(context.Background(), vo.MustParseId(txID), []vo.Id{vo.MustParseId(labelID)}); err != nil {
+		t.Fatalf("seed ReplaceLabels: %v", err)
+	}
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "update_transaction",
+		Arguments: map[string]any{
+			"id": txID, "type": "expense", "amount": "10.00", "account_id": accountID,
+			"date": "2024-03-01", "label_ids": []string{},
+		},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("update_transaction: err=%v res=%#v", err, res)
+	}
+	item := structured(t, res)["item"].(map[string]any)
+
+	got, lerr := txRepo.LabelsByTransactionIDs(context.Background(), []vo.Id{vo.MustParseId(txID)})
+	if lerr != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", lerr)
+	}
+	if len(got[txID]) != 0 {
+		t.Fatalf("persisted labels after MCP update = %v, want none (explicit empty list must clear)", got[txID])
+	}
+	labelIds, _ := item["labelIds"].([]any)
+	if len(labelIds) != 0 {
+		t.Fatalf("response labelIds = %v, want []", item["labelIds"])
+	}
+}
+
+// TestCreateTransactionTool_LabelIds pins create_transaction's label_ids
+// argument: a caller-supplied list is attached to the new transaction.
+func TestCreateTransactionTool_LabelIds(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
+	labelID := f.Label(fixture.Label{UserID: userID})
+
+	svc := newTransactionService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name: "create_transaction",
+		Arguments: map[string]any{
+			"type": "expense", "amount": "10.00", "account_id": accountID,
+			"date": "2024-03-01", "label_ids": []string{labelID},
+		},
+	})
+	if err != nil || res.IsError {
+		t.Fatalf("create_transaction: err=%v res=%#v", err, res)
+	}
+	item := structured(t, res)["item"].(map[string]any)
 	labelIds, _ := item["labelIds"].([]any)
 	if len(labelIds) != 1 || labelIds[0] != labelID {
 		t.Fatalf("response labelIds = %v, want [%s]", item["labelIds"], labelID)

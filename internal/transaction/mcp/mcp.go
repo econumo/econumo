@@ -47,6 +47,11 @@ type txFields struct {
 	Description        string `json:"description,omitempty"`
 	PayeeID            string `json:"payee_id,omitempty" jsonschema:"payee id (UUID)"`
 	TagID              string `json:"tag_id,omitempty" jsonschema:"tag id (UUID)"`
+	// LabelIDs is a pointer so the handler can tell "omitted" (nil: on
+	// update_transaction, leave the transaction's existing labels untouched;
+	// on create_transaction, no labels) apart from an explicitly empty list
+	// (non-nil, len 0: replace with / create with no labels).
+	LabelIDs *[]string `json:"label_ids,omitempty" jsonschema:"label ids (UUID) from list_labels, replacing the full set; ignored for a transfer. On update_transaction, omitting this field leaves the transaction's existing labels untouched; send an empty list to clear them all."`
 }
 
 type createInput struct{ txFields }
@@ -131,6 +136,10 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					return nil, model.CreateTransactionResult{}, err
 				}
 				typ, amount, accountID, date, categoryID, accountRecipientID, amountRecipient, description, payeeID, tagID := in.toRequestFields()
+				var labelIDs []string
+				if in.LabelIDs != nil {
+					labelIDs = *in.LabelIDs
+				}
 				res, err := svc.CreateTransaction(ctx, userID, model.CreateTransactionRequest{
 					Id:                 vo.NewId().String(), // operation id, minted server-side for MCP
 					Type:               typ,
@@ -143,6 +152,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					Description:        description,
 					PayeeId:            payeeID,
 					TagId:              tagID,
+					LabelIds:           labelIDs,
 				})
 				if err != nil {
 					return nil, model.CreateTransactionResult{}, webmcp.MapErr(ctx, err)
@@ -151,7 +161,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_transaction",
-			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Any labels already on the transaction are left untouched as long as type stays expense/income (there is no label_ids argument yet); switching type to transfer clears them, since a transfer cannot carry labels."},
+			Description: "Update an existing transaction; send the full new field set (type, amount, account_id, date, ...). Omitting label_ids leaves the transaction's existing labels untouched; sending a list (including an empty one) replaces the full label set. Switching type to transfer always clears labels, since a transfer cannot carry them."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateInput) (*sdk.CallToolResult, model.UpdateTransactionResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_transaction")
 				userID, err := webmcp.UserID(ctx)
@@ -159,11 +169,7 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					return nil, model.UpdateTransactionResult{}, err
 				}
 				typ, amount, accountID, date, categoryID, accountRecipientID, amountRecipient, description, payeeID, tagID := in.toRequestFields()
-				// UpdateTransactionPreservingLabels, not UpdateTransaction: this
-				// tool has no label_ids argument, so req.LabelIds below is always
-				// unset — the plain full-replace path would read that as "clear
-				// every label" and silently delete them.
-				res, err := svc.UpdateTransactionPreservingLabels(ctx, userID, model.UpdateTransactionRequest{
+				updateReq := model.UpdateTransactionRequest{
 					Id:                 in.ID,
 					Type:               typ,
 					Amount:             amount,
@@ -175,7 +181,17 @@ func Register(svc *apptransaction.Service) webmcp.Register {
 					Description:        description,
 					PayeeId:            payeeID,
 					TagId:              tagID,
-				})
+				}
+				var res *model.UpdateTransactionResult
+				if in.LabelIDs == nil {
+					// label_ids omitted: preserve the transaction's existing labels
+					// rather than reading the zero value as "clear every label" (the
+					// bug this argument exists to prevent).
+					res, err = svc.UpdateTransactionPreservingLabels(ctx, userID, updateReq)
+				} else {
+					updateReq.LabelIds = *in.LabelIDs
+					res, err = svc.UpdateTransaction(ctx, userID, updateReq)
+				}
 				if err != nil {
 					return nil, model.UpdateTransactionResult{}, webmcp.MapErr(ctx, err)
 				}

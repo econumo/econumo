@@ -46,6 +46,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	applabel "github.com/econumo/econumo/internal/label"
 	handlerlabel "github.com/econumo/econumo/internal/label/api"
+	labelmcp "github.com/econumo/econumo/internal/label/mcp"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
@@ -358,6 +359,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		usermcp.Register(userReadSvc),
 		connectionmcp.Register(connectionSvc),
 		transactionmcp.Register(transactionSvc),
+		labelmcp.Register(labelReadSvc, labelSvc),
 	)
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn),

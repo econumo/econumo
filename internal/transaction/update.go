@@ -30,12 +30,12 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 
 // UpdateTransactionPreservingLabels is UpdateTransaction except the
 // transaction's existing labels are left exactly as they are, instead of
-// being replaced by req.LabelIds. Used exclusively by the MCP
-// update_transaction tool: MCP has no label_ids argument (a later plan owns
-// adding one), so req.LabelIds is always its zero value — routing that
-// through the normal full-replace path would silently delete every label a
-// transaction had. A future MCP label_ids argument should switch MCP back to
-// plain UpdateTransaction once it can supply a real value.
+// being replaced by req.LabelIds. Used by the MCP update_transaction tool
+// only when the caller omits its label_ids argument: routing an omitted
+// value through the normal full-replace path would read the JSON zero value
+// as "clear every label" and silently delete them. When the caller supplies
+// label_ids (including an explicit empty list), MCP calls plain
+// UpdateTransaction instead.
 func (s *Service) UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	return s.updateTransaction(ctx, userID, req, true)
 }

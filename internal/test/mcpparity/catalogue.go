@@ -213,6 +213,43 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"bulk_update_transactions","arguments":{"ids":["{{tx2_id}}"],"category_id":"` + apiparity.CatFood + `"}}}`},
 	}})
 
+	// label_write mirrors reference_tools_write's pattern for the label
+	// domain: REST-seed one label (capturing its server-minted id), then drive
+	// create_label/update_label/set_label_archived/list_labels purely via MCP,
+	// ending with one domain-error path (create_label with a too-short name).
+	register(Scenario{Name: "label_write", Steps: []Step{
+		{Label: "seed-label", Method: "POST", Path: "/api/v1/label/create-label", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000d1", "name": "MCP Write Label"}},
+		{Label: "create-label", RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_label","arguments":{"name":"MCP New Label"}}}`},
+		{Label: "update-label", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_label","arguments":{"id":"%s","name":"MCP Label Renamed"}}}`},
+		{Label: "set-label-archived", RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"set_label_archived","arguments":{"id":"%s","archived":true}}}`},
+		{Label: "list-labels", RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"list_labels","arguments":{}}}`},
+		{Label: "create-label-short-name", RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"create_label","arguments":{"name":"ab"}}}`},
+	}})
+
+	// transaction_labels drives create_transaction/update_transaction's
+	// label_ids argument end to end through the real production handler
+	// (unlike internal/transaction/mcp/mcp_test.go, which wires the service
+	// directly): create with a label attached, then the three update branches
+	// this argument exists to distinguish — omit (preserve), supply a
+	// different set (replace), supply an explicit empty list (clear).
+	register(Scenario{Name: "transaction_labels", Steps: []Step{
+		{Label: "seed-account", CaptureAs: "account_id", CaptureID: true, Method: "POST", Path: "/api/v1/account/create-account",
+			Body: map[string]any{"id": "a0000000-0000-0000-0000-0000000000c5", "name": "MCP Label Wallet", "icon": "wallet", "currencyId": apiparity.USD, "folderId": apiparity.OwnerFolder}},
+		{Label: "seed-label-1", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "label1_id", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000d2", "name": "MCP Txn Label 1"}},
+		{Label: "seed-label-2", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "label2_id", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000d3", "name": "MCP Txn Label 2"}},
+		{Label: "create-transaction-with-label", CaptureAs: "tx_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_transaction","arguments":{"type":"expense","amount":"12.50","account_id":"{{account_id}}","date":"2024-04-02","category_id":"` + apiparity.CatFood + `","label_ids":["{{label1_id}}"]}}}`},
+		{Label: "update-omit-label-ids-preserves",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `"}}}`},
+		{Label: "update-supplied-label-ids-replaces",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `","label_ids":["{{label2_id}}"]}}}`},
+		{Label: "update-empty-label-ids-clears",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `","label_ids":[]}}}`},
+	}})
+
 	register(Scenario{Name: "prompts", Steps: []Step{
 		{Label: "get-log-expense", RPC: `{"jsonrpc":"2.0","id":1,"method":"prompts/get","params":{"name":"log-expense","arguments":{"description":"27.50 groceries at Lidl yesterday"}}}`},
 		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},
