@@ -804,4 +804,14 @@ func TestCreateTransactionTool_LabelIds(t *testing.T) {
 	if len(labelIds) != 1 || labelIds[0] != labelID {
 		t.Fatalf("response labelIds = %v, want [%s]", item["labelIds"], labelID)
 	}
+
+	txID, _ := item["id"].(string)
+	txRepo := transactionrepo.NewRepo(db.Engine, db.TX)
+	got, lerr := txRepo.LabelsByTransactionIDs(context.Background(), []vo.Id{vo.MustParseId(txID)})
+	if lerr != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", lerr)
+	}
+	if len(got[txID]) != 1 || got[txID][0] != labelID {
+		t.Fatalf("persisted labels after MCP create = %v, want [%s]", got[txID], labelID)
+	}
 }

@@ -202,7 +202,6 @@ func TestLabelTools_FullFlow(t *testing.T) {
 		t.Fatalf("archive: expected isArchived 1, got: %#v", archived["isArchived"])
 	}
 
-	// Toggle back: unarchive.
 	unarchiveRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "set_label_archived",
 		Arguments: map[string]any{"id": id, "archived": false},

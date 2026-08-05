@@ -47,18 +47,23 @@ type txFields struct {
 	Description        string `json:"description,omitempty"`
 	PayeeID            string `json:"payee_id,omitempty" jsonschema:"payee id (UUID)"`
 	TagID              string `json:"tag_id,omitempty" jsonschema:"tag id (UUID)"`
-	// LabelIDs is a pointer so the handler can tell "omitted" (nil: on
-	// update_transaction, leave the transaction's existing labels untouched;
-	// on create_transaction, no labels) apart from an explicitly empty list
-	// (non-nil, len 0: replace with / create with no labels).
-	LabelIDs *[]string `json:"label_ids,omitempty" jsonschema:"label ids (UUID) from list_labels, replacing the full set; ignored for a transfer. On update_transaction, omitting this field leaves the transaction's existing labels untouched; send an empty list to clear them all."`
 }
 
-type createInput struct{ txFields }
+// LabelIDs is a pointer so each handler can tell "omitted" apart from an
+// explicitly empty list; the two input types below give it a tailored
+// jsonschema description per tool rather than sharing one that only fits one
+// of them. An explicit JSON null decodes to the same nil pointer as omitting
+// the field entirely, so the two are indistinguishable to the handler and
+// documented as equivalent in both descriptions below.
+type createInput struct {
+	txFields
+	LabelIDs *[]string `json:"label_ids,omitempty" jsonschema:"label ids (UUID) from list_labels to attach; ignored for a transfer. Omitting this field, or sending it explicitly as null, creates the transaction with no labels -- the same as sending an empty list."`
+}
 
 type updateInput struct {
 	ID string `json:"id" jsonschema:"transaction id (UUID)"`
 	txFields
+	LabelIDs *[]string `json:"label_ids,omitempty" jsonschema:"label ids (UUID) from list_labels, replacing the full set; ignored for a transfer. Omitting this field, or sending it explicitly as null, leaves the transaction's existing labels untouched (both mean no change here, unlike create_transaction where null/omitted means no labels); send an empty list to clear them all."`
 }
 
 type deleteInput struct {
