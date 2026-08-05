@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,6 +8,36 @@ import i18n from '@/app/i18n'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { TagsPage } from './TagsPage'
+
+// jsdom cannot drive real dnd-kit pointer drags (no layout), so this stands in
+// for the drop: it renders the real row (via renderItem, exercising the real
+// ClassificationList wiring) plus a "drag to front" trigger that fires the
+// exact onReorder(orderedIds, movedId) shape a completed drag-to-front would
+// report, driving the real anchorFor/commitOrder path in ClassificationList.
+vi.mock('@/components/SortableList', () => ({
+  SortableList: <T extends { id: string }>({
+    items,
+    onReorder,
+    renderItem,
+  }: {
+    items: T[]
+    onReorder: (orderedIds: string[], movedId: string) => void
+    renderItem: (item: T, handle: { attributes: Record<string, never>; listeners: undefined }) => ReactNode
+  }) => (
+    <ul>
+      {items.map((item) => (
+        <li key={item.id}>
+          {renderItem(item, { attributes: {}, listeners: undefined })}
+          <button
+            type="button"
+            aria-label={`drag-to-front ${item.id}`}
+            onClick={() => onReorder([item.id, ...items.filter((i) => i.id !== item.id).map((i) => i.id)], item.id)}
+          />
+        </li>
+      ))}
+    </ul>
+  ),
+}))
 
 // Resolved through i18n.t rather than hardcoded, so these stay correct once
 // Task 8 fills in the catalogue (today they resolve to the raw key, since
@@ -158,4 +189,35 @@ it('A-Z reorder posts each kind to its own endpoint, naming only that kind\'s id
   // other kind would be silently skipped by the receiving endpoint
   expect(tagBody).toEqual({ ids: ['tag-a', 'tag-z'] })
   expect(labelBody).toEqual({ ids: ['label-a', 'label-z'] })
+})
+
+it('dragging a label to the front of its own section anchors on null, never on a tag id', async () => {
+  // Tags render before Labels, so a label dragged to the top of the Labels
+  // section still has a tag as its immediate predecessor in the merged list.
+  // A correctly scoped anchor must drop that predecessor and report null;
+  // anchoring on the raw merged-list predecessor would hand move-label a tag
+  // id the label endpoint does not own, which sortkey.Place silently appends
+  // on instead of erroring.
+  let moveLabelBody: unknown
+  server.use(
+    ...coreHandlers({
+      tags: [{ id: 'tag1', ownerUserId: 'u1', name: 'commute', icon: 'tag', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
+      labels: [
+        { id: 'label1', ownerUserId: 'u1', name: 'health', icon: 'sell', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+        { id: 'label2', ownerUserId: 'u1', name: 'work', icon: 'label', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+      ],
+    }),
+    http.post('*/api/v1/label/move-label', async ({ request }) => {
+      moveLabelBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('work')
+
+  await user.click(screen.getByRole('button', { name: 'drag-to-front label2' }))
+
+  await waitFor(() => expect(moveLabelBody).toBeDefined())
+  expect(moveLabelBody).toEqual({ id: 'label2', afterId: null })
 })
