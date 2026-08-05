@@ -223,8 +223,11 @@
         "payee": {
           "label": "Odbiorca"
         },
+        "tag": {
+          "label": "Tag"
+        },
         "tags": {
-          "label": "Tagi"
+          "label": "Tagi i etykiety"
         },
         "author": {
           "label": "Autor"
@@ -403,7 +406,7 @@
         "button": "Zmień separator etykiet",
         "title": "Separator etykiet",
         "tab": "Tabulator",
-        "newline": "Nowy wiersz",
+        "newline": "Nowa linia",
         "custom_label": "Własny separator"
       },
       "new_labels_count": "Ten import utworzy {count} nową etykietę | Ten import utworzy {count} nowe etykiety | Ten import utworzy {count} nowych etykiet"
@@ -944,7 +947,7 @@
           },
           "labels": {
             "heading": "Etykiety",
-            "overlap_note": "Transakcja może mieć kilka etykiet, dlatego te sumy nakładają się na siebie i nie sumują się do łącznych wydatków."
+            "overlap_note": "Jedna transakcja może mieć kilka etykiet, a jej kwota liczy się przy każdej z nich — dlatego te sumy nakładają się i nie składają się na sumę wydatków."
           },
           "total": {
             "name": "Razem",
@@ -1037,7 +1040,7 @@
           "menu_item": "Tagi",
           "header": "Tagi",
           "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
-          "tags_and_labels_info": "Tagi grupują wydatki w budżecie — oznacz na przykład jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Etykiety służą wyłącznie do raportów: transakcja może mieć ich kilka i nigdy nie wpływają na budżet.",
+          "tags_and_labels_info": "Tagi grupują wydatki w budżecie — oznacz na przykład jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Etykiety służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
           "create_tag": "Utwórz tag",
           "archived_item": "W archiwum"
         }
@@ -1057,7 +1060,7 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Rodzaj: tag budżetowy albo etykieta raportowa",
+            "legend": "Rodzaj: tag budżetowy albo etykieta do raportów",
             "tag": "Tag",
             "label": "Etykieta"
           },

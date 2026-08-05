@@ -223,8 +223,11 @@
         "payee": {
           "label": "Begunstigde"
         },
+        "tag": {
+          "label": "Tag"
+        },
         "tags": {
-          "label": "Tags"
+          "label": "Tags en labels"
         },
         "author": {
           "label": "Auteur"
@@ -1057,7 +1060,7 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Soort: budgettag of rapportagelabel",
+            "legend": "Soort: tag voor het budget of label voor rapportage",
             "tag": "Tag",
             "label": "Label"
           },

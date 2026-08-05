@@ -223,8 +223,11 @@
         "payee": {
           "label": "Beneficiário"
         },
+        "tag": {
+          "label": "Etiqueta"
+        },
         "tags": {
-          "label": "Etiquetas"
+          "label": "Etiquetas e rótulos"
         },
         "author": {
           "label": "Autor"
@@ -406,7 +409,7 @@
         "newline": "Nova linha",
         "custom_label": "Separador personalizado"
       },
-      "new_labels_count": "Esta importação vai criar {count} novo rótulo | Esta importação vai criar {count} novos rótulos"
+      "new_labels_count": "Esta importação irá criar {count} novo rótulo | Esta importação irá criar {count} novos rótulos"
     },
     "import_result": {
       "success_title": "Importação concluída",

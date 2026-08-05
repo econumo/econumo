@@ -223,8 +223,11 @@
         "payee": {
           "label": "Beneficiario"
         },
-        "tags": {
+        "tag": {
           "label": "Tag"
+        },
+        "tags": {
+          "label": "Tag ed etichette"
         },
         "author": {
           "label": "Autore"
@@ -944,7 +947,7 @@
           },
           "labels": {
             "heading": "Etichette",
-            "overlap_note": "Una transazione può avere più etichette, quindi questi totali si sovrappongono e non corrispondono alla somma delle tue spese."
+            "overlap_note": "Una transazione può avere più etichette, quindi questi totali si sovrappongono e la loro somma non corrisponde al totale delle tue spese."
           },
           "total": {
             "name": "Totale",
@@ -1037,7 +1040,7 @@
           "menu_item": "Tag",
           "header": "Tag",
           "info": "I tag raggruppano automaticamente le spese all'interno del budget — comodi per i viaggi, per esempio: contrassegna con un unico tag tutte le spese del viaggio e ottieni il dettaglio delle spese direttamente nel budget.",
-          "tags_and_labels_info": "I tag raggruppano le spese all'interno del budget: contrassegna per esempio tutte le spese di un viaggio con un unico tag e ottieni il dettaglio direttamente nel budget. Le etichette servono solo per i report: una transazione può averne più di una e non influiscono mai sul budget.",
+          "tags_and_labels_info": "I tag raggruppano le spese all'interno del budget — contrassegna per esempio tutte le spese di un viaggio con un unico tag e ottieni il dettaglio direttamente nel budget. Le etichette servono solo per i report: una transazione può averne più di una e non influiscono mai sul budget.",
           "create_tag": "Crea tag",
           "archived_item": "Archiviato"
         }

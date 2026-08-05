@@ -223,8 +223,11 @@
         "payee": {
           "label": "Payee"
         },
+        "tag": {
+          "label": "Tag"
+        },
         "tags": {
-          "label": "Tags"
+          "label": "Tags and labels"
         },
         "author": {
           "label": "Author"

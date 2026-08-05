@@ -223,8 +223,11 @@
         "payee": {
           "label": "Beneficiario"
         },
+        "tag": {
+          "label": "Etiqueta"
+        },
         "tags": {
-          "label": "Etiquetas"
+          "label": "Etiquetas y rótulos"
         },
         "author": {
           "label": "Autor"
@@ -944,7 +947,7 @@
           },
           "labels": {
             "heading": "Rótulos",
-            "overlap_note": "Una transacción puede llevar varios rótulos, por lo que estos totales se solapan y no suman tus gastos totales."
+            "overlap_note": "Una transacción puede tener varios rótulos, por lo que estos totales se solapan y su suma no equivale a tus gastos totales."
           },
           "total": {
             "name": "Total",
@@ -1037,7 +1040,7 @@
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
           "info": "Las etiquetas agrupan automáticamente los gastos dentro de tu presupuesto. Son prácticas, por ejemplo, para los viajes: marca todos los gastos del viaje con una misma etiqueta y verás el desglose directamente en el presupuesto.",
-          "tags_and_labels_info": "Las etiquetas agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una misma etiqueta y verás el desglose directamente en el presupuesto. Los rótulos sirven solo para los informes: una transacción puede llevar varios y nunca afectan al presupuesto.",
+          "tags_and_labels_info": "Las etiquetas agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una misma etiqueta y verás el desglose directamente en el presupuesto. Los rótulos sirven solo para informes: una transacción puede tener varios y nunca afectan a tu presupuesto.",
           "create_tag": "Crear etiqueta",
           "archived_item": "Archivada"
         }
@@ -1057,7 +1060,7 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Tipo: etiqueta de presupuesto o rótulo de informes",
+            "legend": "Clase: etiqueta de presupuesto o rótulo de informes",
             "tag": "Etiqueta",
             "label": "Rótulo"
           },

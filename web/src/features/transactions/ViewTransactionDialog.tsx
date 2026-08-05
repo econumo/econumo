@@ -101,7 +101,9 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   }
   if (tx.tag) {
     cards.push({
-      label: t('accounts.page.preview_transaction_modal.tags.label'),
+      // singular tag heading: this read-only view renders the tag only, unlike the
+      // editors' chip row, which the plural tags-and-labels heading now names
+      label: t('accounts.page.preview_transaction_modal.tag.label'),
       content: (
         <span className="flex">
           <Badge variant="secondary">{tx.tag.name}</Badge>

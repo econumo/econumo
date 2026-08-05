@@ -223,8 +223,11 @@
         "payee": {
           "label": "Bénéficiaire"
         },
+        "tag": {
+          "label": "Tag"
+        },
         "tags": {
-          "label": "Tags"
+          "label": "Tags et étiquettes"
         },
         "author": {
           "label": "Auteur"
@@ -397,16 +400,16 @@
         "description_placeholder": "Saisissez une description pour toutes les transactions",
         "payee": "Bénéficiaire",
         "tag": "Tag",
-        "labels": "Labels"
+        "labels": "Étiquettes"
       },
       "labels_separator": {
-        "button": "Modifier le séparateur de labels",
-        "title": "Séparateur de labels",
+        "button": "Modifier le séparateur d’étiquettes",
+        "title": "Séparateur d’étiquettes",
         "tab": "Tabulation",
         "newline": "Saut de ligne",
         "custom_label": "Séparateur personnalisé"
       },
-      "new_labels_count": "Cet import créera {count} nouveau label | Cet import créera {count} nouveaux labels"
+      "new_labels_count": "Cet import créera {count} nouvelle étiquette | Cet import créera {count} nouvelles étiquettes"
     },
     "import_result": {
       "success_title": "Import terminé",
@@ -943,8 +946,8 @@
             }
           },
           "labels": {
-            "heading": "Labels",
-            "overlap_note": "Une transaction peut porter plusieurs labels : ces totaux se recoupent et ne s'additionnent pas pour donner vos dépenses totales."
+            "heading": "Étiquettes",
+            "overlap_note": "Une transaction peut porter plusieurs étiquettes : ces totaux se recoupent et leur somme ne correspond pas à vos dépenses totales."
           },
           "total": {
             "name": "Total",
@@ -991,7 +994,7 @@
           "menu_item": "Catégories",
           "header": "Catégories",
           "info": "Les catégories regroupent vos dépenses et vos revenus. Archivez celles que vous n’utilisez plus — leur historique est conservé.",
-          "archived_item": "Archivées",
+          "archived_item": "Archivée",
           "create_category": "Créer une catégorie"
         }
       },
@@ -1037,9 +1040,9 @@
           "menu_item": "Tags",
           "header": "Tags",
           "info": "Les tags regroupent automatiquement les dépenses au sein de votre budget — pratique pour les voyages, par exemple : marquez chaque dépense du voyage avec un même tag et obtenez la répartition des dépenses directement dans le budget.",
-          "tags_and_labels_info": "Les tags regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d'un voyage avec un même tag et obtenez la répartition directement dans le budget. Les labels servent uniquement au reporting : une transaction peut en porter plusieurs et ils n'ont aucun effet sur votre budget.",
+          "tags_and_labels_info": "Les tags regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d’un voyage avec un même tag et obtenez la répartition directement dans le budget. Les étiquettes servent uniquement aux rapports : une transaction peut en porter plusieurs et elles n’ont aucun effet sur votre budget.",
           "create_tag": "Créer un tag",
-          "archived_item": "Archivés"
+          "archived_item": "Archivé"
         }
       },
       "modals": {
@@ -1057,9 +1060,9 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Type : tag budgétaire ou label de reporting",
+            "legend": "Type : tag budgétaire ou étiquette pour les rapports",
             "tag": "Tag",
-            "label": "Label"
+            "label": "Étiquette"
           },
           "name": {
             "label": "Nom",
@@ -1074,26 +1077,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Labels",
-          "archived_item": "Archivés"
+          "header": "Étiquettes",
+          "archived_item": "Archivée"
         }
       },
       "modals": {
         "edit": {
-          "header": "Modifier le label"
+          "header": "Modifier l’étiquette"
         },
         "create": {
-          "header": "Nouveau label"
+          "header": "Nouvelle étiquette"
         },
         "delete": {
-          "title": "Supprimer le label ?"
+          "title": "Supprimer l’étiquette ?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "Le nom du label doit contenir de 3 à 64 caractères"
+              "invalid_name": "Le nom de l’étiquette doit contenir de 3 à 64 caractères"
             }
           }
         }
@@ -1106,7 +1109,7 @@
           "header": "Bénéficiaires",
           "info": "Les bénéficiaires montrent où va votre argent. Archivez ceux dont vous n’avez plus besoin.",
           "create_payee": "Créer un bénéficiaire",
-          "archived_item": "Archivés"
+          "archived_item": "Archivé"
         }
       },
       "modals": {
@@ -1366,9 +1369,9 @@
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
     "label": {
-      "name_length": "Le nom du label doit contenir de {min} à {max} caractères.",
-      "already_exists": "Ce label existe déjà.",
-      "list_empty": "La liste des labels est vide."
+      "name_length": "Le nom de l’étiquette doit contenir de {min} à {max} caractères.",
+      "already_exists": "Cette étiquette existe déjà.",
+      "list_empty": "La liste des étiquettes est vide."
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
@@ -1390,7 +1393,7 @@
       "account_not_available": "Ce compte n’est pas disponible pour cette opération.",
       "item_not_available": "Cette transaction n’est pas disponible pour cette opération.",
       "invalid_import_file": "Veuillez importer un fichier CSV valide.",
-      "too_many_labels": "Une transaction peut avoir au maximum 50 labels."
+      "too_many_labels": "Une transaction peut avoir au maximum 50 étiquettes."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

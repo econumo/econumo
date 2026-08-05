@@ -223,8 +223,11 @@
         "payee": {
           "label": "Zahlungsempfänger"
         },
+        "tag": {
+          "label": "Budget-Tag"
+        },
         "tags": {
-          "label": "Tags"
+          "label": "Tags und Labels"
         },
         "author": {
           "label": "Autor"
@@ -396,7 +399,7 @@
         "description": "Beschreibung",
         "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
         "payee": "Zahlungsempfänger",
-        "tag": "Tag",
+        "tag": "Budget-Tag",
         "labels": "Labels"
       },
       "labels_separator": {
@@ -944,7 +947,7 @@
           },
           "labels": {
             "heading": "Labels",
-            "overlap_note": "Eine Transaktion kann mehrere Labels tragen, daher überschneiden sich diese Summen und ergeben zusammen nicht Ihre Gesamtausgaben."
+            "overlap_note": "Eine Transaktion kann mehrere Labels haben — derselbe Betrag zählt dann bei jedem Label mit. Diese Summen überschneiden sich daher und ergeben nicht Ihre Gesamtausgaben."
           },
           "total": {
             "name": "Gesamt",
@@ -1057,7 +1060,7 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Art: Tag fürs Budget oder Label für Auswertungen",
+            "legend": "Art: Budget-Tag oder Label für Auswertungen",
             "tag": "Budget-Tag",
             "label": "Label"
           },
