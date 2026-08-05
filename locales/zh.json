@@ -368,18 +368,6 @@
         "to": {
           "label": "转入账户"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "新建标签",
-          "name": {
-            "label": "新建标签",
-            "placeholder": "输入标签名称",
-            "validation": {
-              "required_field": "必填项"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "说明",
         "description_placeholder": "为所有交易填写统一说明",
         "payee": "收款人",
-        "tag": "标签"
-      }
+        "tag": "标签",
+        "labels": "标记"
+      },
+      "labels_separator": {
+        "button": "修改标记分隔符",
+        "title": "标记分隔符",
+        "tab": "制表符",
+        "newline": "换行",
+        "custom_label": "自定义分隔符"
+      },
+      "new_labels_count": "本次导入将创建 {count} 个新标记"
     },
     "import_result": {
       "success_title": "导入完成",
@@ -945,6 +942,10 @@
               "show_transactions": "显示交易"
             }
           },
+          "labels": {
+            "heading": "标记",
+            "overlap_note": "一笔交易可以有多个标记，因此这些金额会重复计算，加总后并不等于你的总支出。"
+          },
           "total": {
             "name": "合计",
             "expenses": "支出合计"
@@ -1036,6 +1037,7 @@
           "menu_item": "标签",
           "header": "标签",
           "info": "标签会在预算内自动归集支出——例如出行时很实用：为旅途中的每笔支出打上同一个标签，即可直接在预算中看到支出明细。",
+          "tags_and_labels_info": "标签会在预算内自动归集支出——例如为一次旅行的每笔支出打上同一个标签，即可直接在预算中看到明细。标记只用于报表：一笔交易可以有多个标记，且不会影响预算。",
           "create_tag": "创建标签",
           "archived_item": "已归档"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "类型：预算标签或报表标记",
+            "tag": "标签",
+            "label": "标记"
+          },
           "name": {
             "label": "名称",
             "validation": {
               "required_field": "必填项",
               "invalid_name": "标签名称需为 3-64 个字符"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "标记",
+          "archived_item": "已归档"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "编辑标记"
+        },
+        "create": {
+          "header": "新建标记"
+        },
+        "delete": {
+          "title": "删除标记？"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "标记名称需为 3-64 个字符"
             }
           }
         }

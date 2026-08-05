@@ -368,18 +368,6 @@
         "to": {
           "label": "An"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Neues Tag",
-          "name": {
-            "label": "Neues Tag",
-            "placeholder": "Tag-Namen eingeben",
-            "validation": {
-              "required_field": "Pflichtfeld"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Beschreibung",
         "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
         "payee": "Zahlungsempfänger",
-        "tag": "Tag"
-      }
+        "tag": "Tag",
+        "labels": "Labels"
+      },
+      "labels_separator": {
+        "button": "Trennzeichen für Labels ändern",
+        "title": "Trennzeichen für Labels",
+        "tab": "Tabulator",
+        "newline": "Zeilenumbruch",
+        "custom_label": "Eigenes Trennzeichen"
+      },
+      "new_labels_count": "Dieser Import erstellt {count} neues Label | Dieser Import erstellt {count} neue Labels"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",
@@ -945,6 +942,10 @@
               "show_transactions": "Transaktionen anzeigen"
             }
           },
+          "labels": {
+            "heading": "Labels",
+            "overlap_note": "Eine Transaktion kann mehrere Labels tragen, daher überschneiden sich diese Summen und ergeben zusammen nicht Ihre Gesamtausgaben."
+          },
           "total": {
             "name": "Gesamt",
             "expenses": "Gesamtausgaben"
@@ -1036,6 +1037,7 @@
           "menu_item": "Tags",
           "header": "Tags",
           "info": "Tags gruppieren Ausgaben in Ihrem Budget automatisch — praktisch zum Beispiel für Reisen: Markieren Sie jede Reiseausgabe mit einem Tag und erhalten Sie eine Aufschlüsselung Ihrer Ausgaben direkt im Budget.",
+          "tags_and_labels_info": "Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem Tag und sehen Sie die Aufschlüsselung direkt im Budget. Labels dienen nur der Auswertung: Eine Transaktion kann mehrere davon tragen, und sie wirken sich nie auf Ihr Budget aus.",
           "create_tag": "Tag erstellen",
           "archived_item": "Archiviert"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Art: Tag fürs Budget oder Label für Auswertungen",
+            "tag": "Budget-Tag",
+            "label": "Label"
+          },
           "name": {
             "label": "Name",
             "validation": {
               "required_field": "Pflichtfeld",
               "invalid_name": "Der Tag-Name muss 3-64 Zeichen lang sein"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Labels",
+          "archived_item": "Archiviert"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Label bearbeiten"
+        },
+        "create": {
+          "header": "Neues Label"
+        },
+        "delete": {
+          "title": "Label löschen?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "Der Label-Name muss 3-64 Zeichen lang sein"
             }
           }
         }

@@ -13,8 +13,10 @@ import { TagsPage } from './TagsPage'
 // react-i18next falls back to it — after Task 8 they resolve to the real text).
 const LABELS_SECTION_HEADER = i18n.t('classifications.labels.pages.settings.header')
 const LABEL_DELETE_TITLE = i18n.t('classifications.labels.modals.delete.title')
-const TAG_ARCHIVED = i18n.t('classifications.tags.pages.settings.archived_item')
-const LABEL_ARCHIVED = i18n.t('classifications.labels.pages.settings.archived_item')
+const TAG_ARCHIVED_KEY = 'classifications.tags.pages.settings.archived_item'
+const LABEL_ARCHIVED_KEY = 'classifications.labels.pages.settings.archived_item'
+const TAG_ARCHIVED = i18n.t(TAG_ARCHIVED_KEY)
+const LABEL_ARCHIVED = i18n.t(LABEL_ARCHIVED_KEY)
 
 function mockViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -93,6 +95,13 @@ it('deletes a tag via delete-tag and a label via delete-label', async () => {
 it('gives archived tag and label rows their own per-kind archived wording', async () => {
   // regression test for the bug fixed in 2d150b93: a single shared archivedLabel
   // string mis-inflects one of the two nouns the moment they take different forms
+  // (es "Archivada"/"Archivado", it "Archiviato"/"Archiviata"). English spells both
+  // "Archived", so asserting on the catalogue text alone could not tell which key a
+  // row resolved; the two keys therefore get distinct sentinels for this test only.
+  const TAG_SENTINEL = 'archived-tag-sentinel'
+  const LABEL_SENTINEL = 'archived-label-sentinel'
+  i18n.addResource('en', 'translation', TAG_ARCHIVED_KEY, TAG_SENTINEL)
+  i18n.addResource('en', 'translation', LABEL_ARCHIVED_KEY, LABEL_SENTINEL)
   server.use(
     ...coreHandlers({
       tags: [{ id: 'tag1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 1, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }],
@@ -100,14 +109,18 @@ it('gives archived tag and label rows their own per-kind archived wording', asyn
     }),
   )
   const user = userEvent.setup()
-  renderPage()
-  // both rows start archived, hidden by the default active-only filter
-  await user.click(screen.getByRole('switch', { name: 'Active only' }))
-  const tagRow = (await screen.findByText('vacation')).closest('span')!.parentElement!
-  const labelRow = screen.getByText('health').closest('span')!.parentElement!
-  expect(within(tagRow).getByText(TAG_ARCHIVED)).toBeInTheDocument()
-  expect(within(labelRow).getByText(LABEL_ARCHIVED)).toBeInTheDocument()
-  expect(TAG_ARCHIVED).not.toBe(LABEL_ARCHIVED)
+  try {
+    renderPage()
+    // both rows start archived, hidden by the default active-only filter
+    await user.click(screen.getByRole('switch', { name: 'Active only' }))
+    const tagRow = (await screen.findByText('vacation')).closest('span')!.parentElement!
+    const labelRow = screen.getByText('health').closest('span')!.parentElement!
+    expect(within(tagRow).getByText(TAG_SENTINEL)).toBeInTheDocument()
+    expect(within(labelRow).getByText(LABEL_SENTINEL)).toBeInTheDocument()
+  } finally {
+    i18n.addResource('en', 'translation', TAG_ARCHIVED_KEY, TAG_ARCHIVED)
+    i18n.addResource('en', 'translation', LABEL_ARCHIVED_KEY, LABEL_ARCHIVED)
+  }
 })
 
 it('A-Z reorder posts each kind to its own endpoint with positions local to that kind', async () => {

@@ -368,18 +368,6 @@
         "to": {
           "label": "Vers"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nouveau tag",
-          "name": {
-            "label": "Nouveau tag",
-            "placeholder": "Saisissez le nom du tag",
-            "validation": {
-              "required_field": "Champ obligatoire"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Description",
         "description_placeholder": "Saisissez une description pour toutes les transactions",
         "payee": "Bénéficiaire",
-        "tag": "Tag"
-      }
+        "tag": "Tag",
+        "labels": "Labels"
+      },
+      "labels_separator": {
+        "button": "Modifier le séparateur de labels",
+        "title": "Séparateur de labels",
+        "tab": "Tabulation",
+        "newline": "Saut de ligne",
+        "custom_label": "Séparateur personnalisé"
+      },
+      "new_labels_count": "Cet import créera {count} nouveau label | Cet import créera {count} nouveaux labels"
     },
     "import_result": {
       "success_title": "Import terminé",
@@ -945,6 +942,10 @@
               "show_transactions": "Afficher les transactions"
             }
           },
+          "labels": {
+            "heading": "Labels",
+            "overlap_note": "Une transaction peut porter plusieurs labels : ces totaux se recoupent et ne s'additionnent pas pour donner vos dépenses totales."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total des dépenses"
@@ -1036,6 +1037,7 @@
           "menu_item": "Tags",
           "header": "Tags",
           "info": "Les tags regroupent automatiquement les dépenses au sein de votre budget — pratique pour les voyages, par exemple : marquez chaque dépense du voyage avec un même tag et obtenez la répartition des dépenses directement dans le budget.",
+          "tags_and_labels_info": "Les tags regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d'un voyage avec un même tag et obtenez la répartition directement dans le budget. Les labels servent uniquement au reporting : une transaction peut en porter plusieurs et ils n'ont aucun effet sur votre budget.",
           "create_tag": "Créer un tag",
           "archived_item": "Archivés"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Type : tag budgétaire ou label de reporting",
+            "tag": "Tag",
+            "label": "Label"
+          },
           "name": {
             "label": "Nom",
             "validation": {
               "required_field": "Champ obligatoire",
               "invalid_name": "Le nom du tag doit contenir de 3 à 64 caractères"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Labels",
+          "archived_item": "Archivés"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Modifier le label"
+        },
+        "create": {
+          "header": "Nouveau label"
+        },
+        "delete": {
+          "title": "Supprimer le label ?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "Le nom du label doit contenir de 3 à 64 caractères"
             }
           }
         }

@@ -368,18 +368,6 @@
         "to": {
           "label": "Naar"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nieuwe tag",
-          "name": {
-            "label": "Nieuwe tag",
-            "placeholder": "Voer een tagnaam in",
-            "validation": {
-              "required_field": "Verplicht veld"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Omschrijving",
         "description_placeholder": "Voer een omschrijving in voor alle transacties",
         "payee": "Begunstigde",
-        "tag": "Tag"
-      }
+        "tag": "Tag",
+        "labels": "Labels"
+      },
+      "labels_separator": {
+        "button": "Scheidingsteken voor labels wijzigen",
+        "title": "Scheidingsteken voor labels",
+        "tab": "Tab",
+        "newline": "Nieuwe regel",
+        "custom_label": "Eigen scheidingsteken"
+      },
+      "new_labels_count": "Deze import maakt {count} nieuw label aan | Deze import maakt {count} nieuwe labels aan"
     },
     "import_result": {
       "success_title": "Import voltooid",
@@ -945,6 +942,10 @@
               "show_transactions": "Transacties tonen"
             }
           },
+          "labels": {
+            "heading": "Labels",
+            "overlap_note": "Een transactie kan meerdere labels hebben, dus deze totalen overlappen elkaar en tellen niet op tot uw totale uitgaven."
+          },
           "total": {
             "name": "Totaal",
             "expenses": "Totale uitgaven"
@@ -1036,6 +1037,7 @@
           "menu_item": "Tags",
           "header": "Tags",
           "info": "Tags groeperen uitgaven automatisch binnen uw budget — handig voor bijvoorbeeld reizen: markeer alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget.",
+          "tags_and_labels_info": "Tags groeperen uitgaven binnen uw budget — markeer bijvoorbeeld alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget. Labels zijn alleen voor rapportage: een transactie kan er meerdere hebben en ze hebben nooit invloed op uw budget.",
           "create_tag": "Tag aanmaken",
           "archived_item": "Gearchiveerd"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Soort: budgettag of rapportagelabel",
+            "tag": "Tag",
+            "label": "Label"
+          },
           "name": {
             "label": "Naam",
             "validation": {
               "required_field": "Verplicht veld",
               "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Labels",
+          "archived_item": "Gearchiveerd"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Label bewerken"
+        },
+        "create": {
+          "header": "Nieuw label"
+        },
+        "delete": {
+          "title": "Label verwijderen?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "Labelnaam moet 3-64 tekens bevatten"
             }
           }
         }

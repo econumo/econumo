@@ -368,18 +368,6 @@
         "to": {
           "label": "Destino"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nueva etiqueta",
-          "name": {
-            "label": "Nueva etiqueta",
-            "placeholder": "Introduce el nombre de la etiqueta",
-            "validation": {
-              "required_field": "Campo obligatorio"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Descripción",
         "description_placeholder": "Escribe una descripción para todas las transacciones",
         "payee": "Beneficiario",
-        "tag": "Etiqueta"
-      }
+        "tag": "Etiqueta",
+        "labels": "Rótulos"
+      },
+      "labels_separator": {
+        "button": "Cambiar el separador de rótulos",
+        "title": "Separador de rótulos",
+        "tab": "Tabulación",
+        "newline": "Salto de línea",
+        "custom_label": "Separador personalizado"
+      },
+      "new_labels_count": "Esta importación creará {count} rótulo nuevo | Esta importación creará {count} rótulos nuevos"
     },
     "import_result": {
       "success_title": "Importación completada",
@@ -945,6 +942,10 @@
               "show_transactions": "Mostrar las transacciones"
             }
           },
+          "labels": {
+            "heading": "Rótulos",
+            "overlap_note": "Una transacción puede llevar varios rótulos, por lo que estos totales se solapan y no suman tus gastos totales."
+          },
           "total": {
             "name": "Total",
             "expenses": "Gastos totales"
@@ -1036,6 +1037,7 @@
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
           "info": "Las etiquetas agrupan automáticamente los gastos dentro de tu presupuesto. Son prácticas, por ejemplo, para los viajes: marca todos los gastos del viaje con una misma etiqueta y verás el desglose directamente en el presupuesto.",
+          "tags_and_labels_info": "Las etiquetas agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una misma etiqueta y verás el desglose directamente en el presupuesto. Los rótulos sirven solo para los informes: una transacción puede llevar varios y nunca afectan al presupuesto.",
           "create_tag": "Crear etiqueta",
           "archived_item": "Archivada"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Tipo: etiqueta de presupuesto o rótulo de informes",
+            "tag": "Etiqueta",
+            "label": "Rótulo"
+          },
           "name": {
             "label": "Nombre",
             "validation": {
               "required_field": "Campo obligatorio",
               "invalid_name": "El nombre de la etiqueta debe tener entre 3 y 64 caracteres"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Rótulos",
+          "archived_item": "Archivado"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Editar el rótulo"
+        },
+        "create": {
+          "header": "Nuevo rótulo"
+        },
+        "delete": {
+          "title": "¿Eliminar el rótulo?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "El nombre del rótulo debe tener entre 3 y 64 caracteres"
             }
           }
         }

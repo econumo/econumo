@@ -368,18 +368,6 @@
         "to": {
           "label": "Na konto"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nowy tag",
-          "name": {
-            "label": "Nowy tag",
-            "placeholder": "Wpisz nazwę tagu",
-            "validation": {
-              "required_field": "Pole wymagane"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Opis",
         "description_placeholder": "Wpisz opis dla wszystkich transakcji",
         "payee": "Odbiorca",
-        "tag": "Tag"
-      }
+        "tag": "Tag",
+        "labels": "Etykiety"
+      },
+      "labels_separator": {
+        "button": "Zmień separator etykiet",
+        "title": "Separator etykiet",
+        "tab": "Tabulator",
+        "newline": "Nowy wiersz",
+        "custom_label": "Własny separator"
+      },
+      "new_labels_count": "Ten import utworzy {count} nową etykietę | Ten import utworzy {count} nowe etykiety | Ten import utworzy {count} nowych etykiet"
     },
     "import_result": {
       "success_title": "Import zakończony",
@@ -945,6 +942,10 @@
               "show_transactions": "Pokaż transakcje"
             }
           },
+          "labels": {
+            "heading": "Etykiety",
+            "overlap_note": "Transakcja może mieć kilka etykiet, dlatego te sumy nakładają się na siebie i nie sumują się do łącznych wydatków."
+          },
           "total": {
             "name": "Razem",
             "expenses": "Suma wydatków"
@@ -1036,6 +1037,7 @@
           "menu_item": "Tagi",
           "header": "Tagi",
           "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
+          "tags_and_labels_info": "Tagi grupują wydatki w budżecie — oznacz na przykład jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Etykiety służą wyłącznie do raportów: transakcja może mieć ich kilka i nigdy nie wpływają na budżet.",
           "create_tag": "Utwórz tag",
           "archived_item": "W archiwum"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Rodzaj: tag budżetowy albo etykieta raportowa",
+            "tag": "Tag",
+            "label": "Etykieta"
+          },
           "name": {
             "label": "Nazwa",
             "validation": {
               "required_field": "Pole wymagane",
               "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Etykiety",
+          "archived_item": "W archiwum"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edytuj etykietę"
+        },
+        "create": {
+          "header": "Nowa etykieta"
+        },
+        "delete": {
+          "title": "Usunąć etykietę?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "Nazwa etykiety musi mieć od 3 do 64 znaków"
             }
           }
         }

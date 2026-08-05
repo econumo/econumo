@@ -368,18 +368,6 @@
         "to": {
           "label": "To"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "New tag",
-          "name": {
-            "label": "New tag",
-            "placeholder": "Enter tag name",
-            "validation": {
-              "required_field": "Required field"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +396,17 @@
         "description": "Description",
         "description_placeholder": "Enter description for all transactions",
         "payee": "Payee",
-        "tag": "Tag"
-      }
+        "tag": "Tag",
+        "labels": "Labels"
+      },
+      "labels_separator": {
+        "button": "Change the label separator",
+        "title": "Label separator",
+        "tab": "Tab",
+        "newline": "New line",
+        "custom_label": "Custom separator"
+      },
+      "new_labels_count": "This import will create {count} new label | This import will create {count} new labels"
     },
     "import_result": {
       "success_title": "Import complete",
@@ -945,6 +942,10 @@
               "show_transactions": "Show transactions"
             }
           },
+          "labels": {
+            "heading": "Labels",
+            "overlap_note": "A transaction can carry several labels, so these totals overlap and do not add up to your total spending."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total expenses"
@@ -1036,6 +1037,7 @@
           "menu_item": "Tags",
           "header": "Tags",
           "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
+          "tags_and_labels_info": "Tags group spending inside your budget — mark every trip expense with one tag, for example, and see the breakdown right in the budget. Labels are for reporting only: a transaction can carry several of them, and they never affect your budget.",
           "create_tag": "Create tag",
           "archived_item": "Archived"
         }
@@ -1054,11 +1056,44 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "legend": "Kind: budgeting tag or reporting label",
+            "tag": "Tag",
+            "label": "Label"
+          },
           "name": {
             "label": "Name",
             "validation": {
               "required_field": "Required field",
               "invalid_name": "Tag name must be 3-64 characters"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "header": "Labels",
+          "archived_item": "Archived"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edit label"
+        },
+        "create": {
+          "header": "New label"
+        },
+        "delete": {
+          "title": "Delete label?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
+              "invalid_name": "Label name must be 3-64 characters"
             }
           }
         }
