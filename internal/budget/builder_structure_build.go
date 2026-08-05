@@ -172,6 +172,12 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	// Labels convert into the BUDGET currency only: a label has no per-element
 	// currency option because it has no element.
 	for labelID, spends := range labelSpending {
+		// Spend can reference a label outside f.labels (e.g. a since-revoked
+		// collaborator's label still attached to transactions on included
+		// accounts); the emit loop below drops it, so skip the conversion too.
+		if _, ok := f.labels[labelID]; !ok {
+			continue
+		}
 		for _, a := range spends {
 			key := fmt.Sprintf("label-spent_%s", labelID)
 			toConvert[key] = append(toConvert[key], convItem(a, budgetCurrencyID))

@@ -496,10 +496,10 @@ func (r *ReadRepo) LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[str
 	}
 	ids := idArgs(userIDs)
 	in := r.ph(1, len(ids))
-	// ORDER BY pins row order across engines (SQLite would otherwise satisfy
-	// this from the user_id index while PostgreSQL seq-scans in insertion
-	// order); the labels block renders in list order, so the sort key leads.
-	sql := "SELECT id, user_id, name, icon, sort_key, is_archived FROM labels WHERE user_id IN (" + in + ") ORDER BY user_id, sort_key, id"
+	// No ORDER BY: the result is a map, so row order is discarded here — the
+	// labels block's rendering order comes from the builder's
+	// sortBySortKeyThenID pass over this metadata.
+	sql := "SELECT id, user_id, name, icon, sort_key, is_archived FROM labels WHERE user_id IN (" + in + ")"
 	rows, err := r.db(ctx).QueryContext(ctx, sql, ids...)
 	if err != nil {
 		return nil, err
