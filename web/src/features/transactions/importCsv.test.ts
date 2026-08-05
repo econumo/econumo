@@ -1,4 +1,4 @@
-import { analyzeCsv, autoDetect, buildImportPayload, defaultSelection, FIELD_KEYS, runImport, selectionValid } from './importCsv'
+import { analyzeCsv, autoDetect, buildImportPayload, countNewLabels, defaultSelection, FIELD_KEYS, runImport, selectionValid } from './importCsv'
 import type { ImportSelection } from './importCsv'
 
 const LABELS = {
@@ -11,6 +11,7 @@ const LABELS = {
   description: 'Description',
   payee: 'Payee',
   tag: 'Tag',
+  labels: 'Labels',
 }
 
 it('analyzeCsv collects first non-empty samples, truncated at 25 chars', () => {
@@ -73,7 +74,7 @@ it('selectionValid enforces account, date, and amount per mode', () => {
   expect(selectionValid(dual)).toBe(true)
 })
 
-it('buildImportPayload always emits all 9 mapping keys and only truthy fixed fields', () => {
+it('buildImportPayload always emits all 10 mapping keys and only truthy fixed fields', () => {
   const sel = validBase()
   sel.modes.category = 'existing'
   sel.fixed.categoryId = 'cat-1'
@@ -82,10 +83,61 @@ it('buildImportPayload always emits all 9 mapping keys and only truthy fixed fie
   sel.columns.payee = 'Payee'
   const { mapping, fields } = buildImportPayload(sel)
   expect(Object.keys(mapping).sort()).toEqual([...FIELD_KEYS].sort())
-  expect(mapping).toMatchObject({ account: 'Account', date: 'Date', amount: 'Amount', payee: 'Payee', category: null, description: null, tag: null })
+  expect(mapping).toMatchObject({ account: 'Account', date: 'Date', amount: 'Amount', payee: 'Payee', category: null, description: null, tag: null, labels: null })
   expect(mapping.amountInflow).toBeNull()
   expect(mapping.amountOutflow).toBeNull()
-  expect(fields).toEqual({ categoryId: 'cat-1', description: 'bulk import' })
+  expect(fields).toEqual({ categoryId: 'cat-1', description: 'bulk import', labelsSeparator: ';' })
+})
+
+it('includes labels in the mapping payload', () => {
+  const mapped = validBase()
+  mapped.modes.labels = 'csv_column'
+  mapped.columns.labels = 'Labels'
+  expect(buildImportPayload(mapped).mapping.labels).toBe('Labels')
+
+  const unmapped = validBase()
+  unmapped.modes.labels = 'csv_column'
+  unmapped.columns.labels = null
+  expect(buildImportPayload(unmapped).mapping.labels).toBeNull()
+})
+
+it('sends the chosen separator, defaulting to ";"', () => {
+  const sel = validBase()
+  expect(buildImportPayload(sel).fields.labelsSeparator).toBe(';')
+
+  sel.labelsSeparator = '|'
+  expect(buildImportPayload(sel).fields.labelsSeparator).toBe('|')
+})
+
+it('sends the labelIds override in existing mode, comma-joined', () => {
+  const sel = validBase()
+  sel.modes.labels = 'existing'
+  sel.fixed.labelIds = ['label-1', 'label-2']
+  expect(buildImportPayload(sel).fields.labelIds).toBe('label-1,label-2')
+
+  sel.fixed.labelIds = []
+  expect(buildImportPayload(sel).fields.labelIds).toBeUndefined()
+})
+
+it('counts how many NEW labels the import will create, case-insensitively deduped against existing labels', () => {
+  const sel = validBase()
+  sel.modes.labels = 'csv_column'
+  sel.columns.labels = 'Labels'
+  const analysis = {
+    header: ['Account', 'Date', 'Amount', 'Labels'],
+    rows: [
+      ['Cash', '2026-01-02', '10', 'Kid A;Kid B'],
+      ['Cash', '2026-01-03', '20', 'Kid A'],
+    ],
+    samples: {},
+  }
+  expect(countNewLabels(analysis, sel, ['Kid A'])).toBe(1)
+  // deleting the case-insensitive dedupe would count "Kid A" and "kid a" as
+  // two different new labels
+  expect(countNewLabels(analysis, sel, [])).toBe(2)
+  // an unmapped labels column contributes nothing to the preview
+  const unmapped = validBase()
+  expect(countNewLabels(analysis, unmapped, [])).toBe(0)
 })
 
 it('buildImportPayload in dual mode nulls the single amount column', () => {

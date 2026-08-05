@@ -3,8 +3,21 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureUsd } from '@/test/fixtures'
+import { importTransactionList } from '@/api/transaction'
 import { ImportCsvDialog } from './ImportCsvDialog'
+
+// msw's Request#formData()/#text() never resolves in this jsdom + axios
+// fetch-adapter combo when the body is a FormData carrying a File (the axios
+// promise itself resolves fine — that half was fixed by the fetch adapter in
+// test/setup.ts — but msw's own server-side body read hangs). Tests that need
+// to inspect the (mapping, fields) the dialog builds spy on the API function
+// call args instead of reading the wire body; the default implementation
+// still calls through to axios/msw so network-round-trip tests are unaffected.
+vi.mock('@/api/transaction', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/api/transaction')>()
+  return { ...actual, importTransactionList: vi.fn(actual.importTransactionList) }
+})
 
 const CSV = 'Account,Date,Amount,Category,Description\nCash,2026-01-02,-5.5,Food,coffee\nBank,2026-01-03,100,Salary,pay\n'
 
@@ -102,4 +115,117 @@ it('happy path: import posts once, invalidates queries, and reports the result',
   await waitFor(() => expect(onComplete).toHaveBeenCalledWith({ imported: 2, failed: 0, errors: [] }))
   expect(posts).toBe(1)
   expect(invalidateSpy).toHaveBeenCalled()
+})
+
+function captureImportRequest(imported = 1) {
+  const mock = vi.mocked(importTransactionList)
+  mock.mockReset()
+  mock.mockResolvedValue({ imported, skipped: 0, errors: {} })
+  return {
+    mapping: () => (mock.mock.calls[0]?.[1] as Record<string, string | null> | undefined) ?? null,
+    fields: () => (mock.mock.calls[0]?.[2] as Record<string, string> | undefined) ?? {},
+  }
+}
+
+it('unmapped labels column defaults labelsSeparator to ";" and sends mapping.labels as null', async () => {
+  const captured = captureImportRequest()
+  renderDialog()
+  const user = await uploadCsv()
+  await screen.findByText(/Map the columns/)
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(captured.mapping()).not.toBeNull())
+  expect(captured.mapping()!.labels).toBeNull()
+  expect(captured.fields().labelsSeparator).toBe(';')
+})
+
+it('mapping the labels column previews the new-label count and sends the chosen separator', async () => {
+  const captured = captureImportRequest()
+  renderDialog()
+  const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A;Kid B\nBank,2026-01-03,100,Kid A\n')
+  await screen.findByText(/Map the columns/)
+
+  const labelsColumnSelect = screen.getByRole('combobox', { name: /labels/i }) as HTMLSelectElement
+  await user.selectOptions(labelsColumnSelect, '')
+  // unmapped -> countNewLabels short-circuits to 0 -> no preview
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+
+  await user.selectOptions(labelsColumnSelect, 'Labels')
+  // "Kid A" and "Kid B" are both new (the fixture owner only has "health") ->
+  // countNewLabels returns 2, which is what flips the preview on
+  await screen.findByRole('status')
+
+  const separatorButton = screen.getByRole('button', { name: /separator/i })
+  await user.click(separatorButton)
+  await user.click(screen.getByRole('button', { name: '|' }))
+  await user.click(screen.getByRole('button', { name: /save/i }))
+
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(captured.mapping()).not.toBeNull())
+  expect(captured.mapping()!.labels).toBe('Labels')
+  expect(captured.fields().labelsSeparator).toBe('|')
+})
+
+it('a custom separator overrides the presets', async () => {
+  const captured = captureImportRequest()
+  renderDialog()
+  const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A#Kid B\n')
+  await screen.findByText(/Map the columns/)
+  await user.selectOptions(screen.getByRole('combobox', { name: /labels/i }), 'Labels')
+  await user.click(screen.getByRole('button', { name: /separator/i }))
+  await user.type(screen.getByRole('textbox', { name: /custom/i }), '#')
+  await user.click(screen.getByRole('button', { name: /save/i }))
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(captured.fields().labelsSeparator).toBe('#'))
+})
+
+it('existing-mode label picker is owner-scoped, excludes archived labels, and sends labelIds comma-joined', async () => {
+  const captured = captureImportRequest()
+  renderDialog()
+  const user = await uploadCsv()
+  await screen.findByText(/Map the columns/)
+
+  await user.click(screen.getByRole('button', { name: /toggle.*labels.*mode/i }))
+  // "health" (u1, unarchived) is the only fixture label -> the only chip offered
+  const chip = await screen.findByRole('checkbox', { name: 'health' })
+  expect(chip).toHaveAttribute('aria-checked', 'false')
+  await user.click(chip)
+  expect(chip).toHaveAttribute('aria-checked', 'true')
+
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  await waitFor(() => expect(captured.fields().labelIds).toBe('label1'))
+})
+
+it('switching the target account owner clears a fixed label pick, so it never leaks to the new owner (Vue parity with category/payee/tag)', async () => {
+  const otherOwner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+  const sharedAccount = {
+    id: 'a-shared', owner: otherOwner, folderId: null, name: 'Shared', position: 4,
+    currency: fixtureUsd, balance: '50', type: 1 as const, icon: 'group',
+    sharedAccess: [{ user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'admin' as const, isAccepted: 1 as const }],
+  }
+  const otherLabel = { id: 'label2', ownerUserId: 'u2', name: 'shared-label', icon: 'sell', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' }
+  server.use(...coreHandlers({ accounts: [...fixtureAccounts, sharedAccount], labels: [...fixtureLabels, otherLabel] }))
+
+  const captured = captureImportRequest()
+  renderDialog()
+  const user = await uploadCsv()
+  await screen.findByText(/Map the columns/)
+
+  await user.click(screen.getByRole('button', { name: /toggle.*labels.*mode/i }))
+  const healthChip = await screen.findByRole('checkbox', { name: 'health' })
+  await user.click(healthChip)
+  expect(healthChip).toHaveAttribute('aria-checked', 'true')
+
+  await user.click(screen.getByRole('button', { name: 'toggle Account mode' }))
+  await user.selectOptions(screen.getByLabelText('Account'), 'a-shared')
+
+  // the picker now only offers the new owner's labels, and the stale pick
+  // from the previous owner is gone rather than silently carried over
+  await waitFor(() => expect(screen.queryByRole('checkbox', { name: 'health' })).not.toBeInTheDocument())
+  expect(await screen.findByRole('checkbox', { name: 'shared-label' })).toHaveAttribute('aria-checked', 'false')
+
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+  // without the clearing effect, buildImportPayload would still send the
+  // previous owner's "label1" here even though it is invisible to u2
+  await waitFor(() => expect(captured.mapping()).not.toBeNull())
+  expect(captured.fields().labelIds).toBeUndefined()
 })
