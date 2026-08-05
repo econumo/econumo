@@ -1045,6 +1045,7 @@
           "info": "Las etiquetas agrupan automáticamente los gastos dentro de tu presupuesto. Son prácticas, por ejemplo, para los viajes: marca todos los gastos del viaje con una misma etiqueta y verás el desglose directamente en el presupuesto.",
           "tags_and_labels_info": "Las etiquetas agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una misma etiqueta y verás el desglose directamente en el presupuesto. Los rótulos sirven solo para informes: una transacción puede tener varios y nunca afectan a tu presupuesto.",
           "create_tag": "Crear etiqueta",
+          "create_tag_or_label": "Crear etiqueta o rótulo",
           "archived_item": "Archivada"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Etiqueta",
             "label": "Rótulo"
           },
+          "add_button": "Añadir etiqueta o rótulo",
           "name": {
             "label": "Nombre",
             "validation": {

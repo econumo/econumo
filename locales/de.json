@@ -1045,6 +1045,7 @@
           "info": "Tags gruppieren Ausgaben in Ihrem Budget automatisch — praktisch zum Beispiel für Reisen: Markieren Sie jede Reiseausgabe mit einem Tag und erhalten Sie eine Aufschlüsselung Ihrer Ausgaben direkt im Budget.",
           "tags_and_labels_info": "Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem Tag und sehen Sie die Aufschlüsselung direkt im Budget. Labels dienen nur der Auswertung: Eine Transaktion kann mehrere davon tragen, und sie wirken sich nie auf Ihr Budget aus.",
           "create_tag": "Tag erstellen",
+          "create_tag_or_label": "Budget-Tag oder Label erstellen",
           "archived_item": "Archiviert"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Budget-Tag",
             "label": "Label"
           },
+          "add_button": "Budget-Tag oder Label hinzufügen",
           "name": {
             "label": "Name",
             "validation": {

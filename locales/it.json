@@ -1045,6 +1045,7 @@
           "info": "I tag raggruppano automaticamente le spese all'interno del budget — comodi per i viaggi, per esempio: contrassegna con un unico tag tutte le spese del viaggio e ottieni il dettaglio delle spese direttamente nel budget.",
           "tags_and_labels_info": "I tag raggruppano le spese all'interno del budget — contrassegna per esempio tutte le spese di un viaggio con un unico tag e ottieni il dettaglio direttamente nel budget. Le etichette servono solo per i report: una transazione può averne più di una e non influiscono mai sul budget.",
           "create_tag": "Crea tag",
+          "create_tag_or_label": "Crea tag o etichetta",
           "archived_item": "Archiviato"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Tag",
             "label": "Etichetta"
           },
+          "add_button": "Aggiungi tag o etichetta",
           "name": {
             "label": "Nome",
             "validation": {

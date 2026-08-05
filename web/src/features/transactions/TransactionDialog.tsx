@@ -421,7 +421,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 {canEditData ? (
                   <button
                     type="button"
-                    aria-label="add tag"
+                    aria-label={t('classifications.tags.forms.tag.add_button')}
                     title={t('common.button.add.label')}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setAddTagOpen(true)}

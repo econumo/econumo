@@ -1045,6 +1045,7 @@
           "info": "Tags groeperen uitgaven automatisch binnen uw budget — handig voor bijvoorbeeld reizen: markeer alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget.",
           "tags_and_labels_info": "Tags groeperen uitgaven binnen uw budget — markeer bijvoorbeeld alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget. Labels zijn alleen voor rapportage: een transactie kan er meerdere hebben en ze hebben nooit invloed op uw budget.",
           "create_tag": "Tag aanmaken",
+          "create_tag_or_label": "Tag of label aanmaken",
           "archived_item": "Gearchiveerd"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Tag",
             "label": "Label"
           },
+          "add_button": "Tag of label toevoegen",
           "name": {
             "label": "Naam",
             "validation": {

@@ -1045,6 +1045,7 @@
           "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
           "tags_and_labels_info": "Tags group spending inside your budget — mark every trip expense with one tag, for example, and see the breakdown right in the budget. Labels are for reporting only: a transaction can carry several of them, and they never affect your budget.",
           "create_tag": "Create tag",
+          "create_tag_or_label": "Create tag or label",
           "archived_item": "Archived"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Tag",
             "label": "Label"
           },
+          "add_button": "Add tag or label",
           "name": {
             "label": "Name",
             "validation": {

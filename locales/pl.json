@@ -1045,6 +1045,7 @@
           "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
           "tags_and_labels_info": "Tagi grupują wydatki w budżecie — oznacz na przykład jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Etykiety służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
           "create_tag": "Utwórz tag",
+          "create_tag_or_label": "Utwórz tag lub etykietę",
           "archived_item": "W archiwum"
         }
       },
@@ -1067,6 +1068,7 @@
             "tag": "Tag",
             "label": "Etykieta"
           },
+          "add_button": "Dodaj tag lub etykietę",
           "name": {
             "label": "Nazwa",
             "validation": {
