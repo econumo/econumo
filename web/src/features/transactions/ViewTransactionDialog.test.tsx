@@ -200,6 +200,9 @@ it('shows a labels card with the resolved label name and heading when the transa
   renderView({ transaction: { ...fixtureTransaction, labelIds: ['label1'] } as ViewTransaction })
   expect(await screen.findByText('health')).toBeInTheDocument()
   expect(screen.getByText('Label')).toBeInTheDocument()
+  // the fixture's icon differs from DEFAULT_ICON.label on purpose, so this goes red
+  // if the card ever renders the kind default instead of the row's stored icon
+  expect(screen.getByText('sell')).toBeInTheDocument()
 })
 
 it('renders no labels card when the transaction has no labels', async () => {
