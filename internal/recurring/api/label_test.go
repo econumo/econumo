@@ -555,3 +555,70 @@ func TestPostRecurring_ExplicitForeignLabel_Rejected(t *testing.T) {
 		}
 	}
 }
+
+// TestPostRecurring_TransferOverride_InheritedLabelsIgnored: post lets the
+// caller override the template's type, so a labeled expense template can be
+// posted as a transfer. The inherited labels ride the create request and the
+// create path drops them for a transfer — "a transfer always carries an empty
+// list" holds even on the inherit path, in the response and in
+// transactions_labels.
+func TestPostRecurring_TransferOverride_InheritedLabelsIgnored(t *testing.T) {
+	h := newHarness(t)
+	h.seedSecondAccount(t)
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-00000000000f")
+
+	body := map[string]any{
+		"recurringId": rtID, "id": "0197c500-0000-7000-8000-000000000014", "type": "transfer",
+		"amount": "42.50", "accountId": accountID, "accountRecipientId": recurringAcct2ID,
+		"date": "2026-08-31 00:00:00",
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	if status != http.StatusOK {
+		t.Fatalf("post status=%d body=%s", status, env.raw)
+	}
+	if !strings.Contains(string(env.raw), `"labelIds":[]`) {
+		t.Fatalf("raw post response labelIds not empty for a transfer; body: %s", env.raw)
+	}
+	res := mustUnmarshal[struct {
+		Item transactionItemWithLabels `json:"item"`
+	}](t, env.Data)
+	if len(res.Item.LabelIds) != 0 {
+		t.Fatalf("transfer post labelIds = %v, want [] (inherited labels must not attach)", res.Item.LabelIds)
+	}
+	if got := persistedTxLabels(t, h, tok, res.Item.ID); len(got) != 0 {
+		t.Fatalf("persisted labelIds = %v, want none on a transfer", got)
+	}
+}
+
+// TestPostRecurring_CrossOwnerAccount_InheritedLabelsRejected: post also lets
+// the caller override the template's account, so inherit is not allowed to be
+// a validation bypass — the template's labels go through the create path's
+// owner check against the POSTED account's owner, and a cross-owner post is
+// refused exactly as an explicit list would be, instead of silently attaching
+// one owner's labels to another owner's books.
+func TestPostRecurring_CrossOwnerAccount_InheritedLabelsRejected(t *testing.T) {
+	h := newHarness(t)
+	h.shareAccount(t, 1, true) // role user: write access on the other owner's account
+	tok := h.token(t)
+	rtID := postLabelsFixture(t, h, tok, "0197c400-0000-7000-8000-000000000010")
+
+	body := postBody(rtID, "0197c500-0000-7000-8000-000000000015")
+	body["accountId"] = recSharedAcctID
+	if _, ok := body["labelIds"]; ok {
+		t.Fatal("this case is about labelIds being ABSENT from the body")
+	}
+	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/post-recurring-transaction", tok, body)
+	assertValidationDenied(t, status, env, "This transaction is not available for this operation.")
+
+	// the refusal rolls the whole post back: the schedule must not advance
+	if got := templateLabels(t, h, tok, rtID); len(got) != 2 {
+		t.Fatalf("template labelIds = %v, want untouched after a rejected post", got)
+	}
+	_, listEnv := h.do(t, http.MethodGet, "/api/v1/recurring/get-recurring-transaction-list", tok, nil)
+	for _, it := range mustUnmarshal[recurringList](t, listEnv.Data).Items {
+		if it.ID == rtID && it.NextPaymentAt != "2026-08-31 00:00:00" {
+			t.Fatalf("nextPaymentAt = %q after a rejected post, want unchanged", it.NextPaymentAt)
+		}
+	}
+}
