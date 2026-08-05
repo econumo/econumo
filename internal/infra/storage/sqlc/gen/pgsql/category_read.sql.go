@@ -11,7 +11,7 @@ import (
 
 const getCategoryListView = `-- name: GetCategoryListView :many
 
-SELECT c.id, c.user_id, c.name, c.position, c.type, c.icon, c.is_archived, c.created_at, c.updated_at
+SELECT c.id, c.user_id, c.name, c.type, c.icon, c.is_archived, c.created_at, c.updated_at, c.sort_key
 FROM categories c
 WHERE c.user_id = $1
    OR c.user_id IN (
@@ -20,7 +20,7 @@ WHERE c.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
-ORDER BY c.position, c.id
+ORDER BY c.sort_key, c.id
 `
 
 // Read-model queries for the category module (PostgreSQL engine, $N placeholders).
@@ -40,12 +40,12 @@ func (q *Queries) GetCategoryListView(ctx context.Context, userID string) ([]Cat
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.Type,
 			&i.Icon,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}

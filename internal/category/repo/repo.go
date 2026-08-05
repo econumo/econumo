@@ -13,6 +13,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -28,7 +29,6 @@ type (
 type querier interface {
 	GetCategoryByID(ctx context.Context, db backend.DBTX, id string) (categoryRow, error)
 	ListCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]categoryRow, error)
-	CountCategoriesByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
@@ -94,21 +94,13 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category
 	return out, nil
 }
 
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountCategoriesByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
-}
-
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, c *model.Category) error {
 	return r.q.UpsertCategory(ctx, r.db(ctx), upsertParams{
 		ID:         c.ID.String(),
 		UserID:     c.UserID.String(),
 		Name:       c.Name,
-		Position:   c.Position,
+		SortKey:    string(c.SortKey),
 		Type:       c.Type.Int16(),
 		Icon:       c.Icon,
 		IsArchived: c.IsArchived,
@@ -174,7 +166,7 @@ func hydrate(row categoryRow) (*model.Category, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Category{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Category{ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
 		Type: model.CategoryType(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

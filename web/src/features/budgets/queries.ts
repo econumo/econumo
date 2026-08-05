@@ -7,6 +7,8 @@ import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { compareNames } from '@/lib/collate'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { applyMove } from '@/lib/ordering'
+import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -216,30 +218,27 @@ export function useDeleteBudgetFolder() {
   })
 }
 
-export function useOrderBudgetFolders() {
+export function useMoveBudgetFolder() {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   return useMutation({
-    mutationFn: ({ budgetId, items }: { budgetId: Id; items: { id: Id; position: number }[] }) =>
-      budgetApi.orderBudgetFolders(budgetId, items),
+    mutationFn: ({ budgetId, id, afterId }: { budgetId: Id; id: Id; afterId: Id | null }) =>
+      budgetApi.moveBudgetFolder(budgetId, id, afterId),
     // optimistic folder positions with rollback — a dropped folder must land
     // instantly, not after the server round-trip
-    onMutate: async ({ budgetId, items }) => {
+    onMutate: async ({ budgetId, id, afterId }) => {
       const key = [...queryKeys.budget, budgetId, selectedDate]
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<BudgetDto | null>(key)
-      const positions = new Map(items.map((i) => [i.id, i.position]))
       queryClient.setQueryData<BudgetDto | null>(key, (prev) => {
         if (!prev) {
           return prev
         }
+        const ordered = [...prev.structure.folders].sort((a, b) => a.position - b.position)
         return {
           ...prev,
-          structure: {
-            ...prev.structure,
-            folders: prev.structure.folders.map((f) => (positions.has(f.id) ? { ...f, position: positions.get(f.id)! } : f)),
-          },
+          structure: { ...prev.structure, folders: applyMove(ordered, id, afterId) },
         }
       })
       return { previous, key }
@@ -256,11 +255,11 @@ export function useOrderBudgetFolders() {
   })
 }
 
-export function useMoveElements() {
+export function useMoveElement() {
   const invalidate = useInvalidateBudget()
   return useMutation({
-    mutationFn: ({ budgetId, items }: { budgetId: Id; items: { id: Id; folderId: Id | null; position: number }[] }) =>
-      budgetApi.moveElements(budgetId, items),
+    mutationFn: ({ budgetId, item }: { budgetId: Id; item: ElementMoveItem }) =>
+      budgetApi.moveElement(budgetId, item.id, item.folderId, item.afterId),
     onSuccess: () => {
       invalidate()
       trackEvent(METRICS.BUDGET_CHANGE_ORDER_ELEMENT)

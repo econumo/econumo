@@ -7,12 +7,11 @@ package sqlitegen
 
 import (
 	"context"
-	"time"
 )
 
 const getTagListView = `-- name: GetTagListView :many
 
-SELECT t.id, t.user_id, t.name, t.icon, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.is_archived, t.created_at, t.updated_at, t.sort_key, t.icon
 FROM tags t
 WHERE t.user_id = ?
    OR t.user_id IN (
@@ -21,23 +20,12 @@ WHERE t.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ? AND aa.is_accepted = 1
    )
-ORDER BY t.position, t.id
+ORDER BY t.sort_key, t.id
 `
 
 type GetTagListViewParams struct {
 	UserID   string
 	UserID_2 string
-}
-
-type GetTagListViewRow struct {
-	ID         string
-	UserID     string
-	Name       string
-	Icon       string
-	Position   int16
-	IsArchived bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
 }
 
 // Read-model query for the tag module (CQRS read side). Tailored to the
@@ -47,24 +35,24 @@ type GetTagListViewRow struct {
 // an account WITH this user. Mirrors PHP TagRepository::findAvailableForUserId
 // (self + DISTINCT owners of accounts granted via accounts_access), ordered by
 // position. The user id is repeated positionally -> two-field Params struct.
-func (q *Queries) GetTagListView(ctx context.Context, arg GetTagListViewParams) ([]GetTagListViewRow, error) {
+func (q *Queries) GetTagListView(ctx context.Context, arg GetTagListViewParams) ([]Tag, error) {
 	rows, err := q.db.QueryContext(ctx, getTagListView, arg.UserID, arg.UserID_2)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetTagListViewRow{}
+	items := []Tag{}
 	for rows.Next() {
-		var i GetTagListViewRow
+		var i Tag
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Icon,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
+			&i.Icon,
 		); err != nil {
 			return nil, err
 		}

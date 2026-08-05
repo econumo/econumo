@@ -1,5 +1,4 @@
 import type { AccountDto } from '@/api/dto/account'
-import type { AccountPositionChange } from '@/api/account'
 
 export interface FolderBucket {
   folderId: string | null
@@ -52,20 +51,26 @@ export function moveAccount(buckets: FolderBucket[], activeId: string, overId: s
   return next
 }
 
-// Flat global position sequence (folder by folder) + folderId reassignment —
-// only entries whose position or folder changed are reported (Vue semantics).
-export function buildAccountChanges(accounts: AccountDto[], buckets: FolderBucket[]): AccountPositionChange[] {
-  const byId = new Map(accounts.map((a) => [a.id, a]))
-  const changes: AccountPositionChange[] = []
-  let position = 0
+// Describe a drag as the relative move the server expects: which account moved,
+// which folder it landed in, and which account it now sits after (null = first).
+// The bucket layout is the source of truth for all three.
+export function accountMoveFrom(buckets: FolderBucket[], movedId: string): AccountMove | null {
   for (const bucket of buckets) {
-    for (const id of bucket.accountIds) {
-      const account = byId.get(id)
-      if (account && (account.position !== position || (account.folderId ?? null) !== bucket.folderId)) {
-        changes.push({ id, folderId: bucket.folderId, position })
-      }
-      position++
+    const index = bucket.accountIds.indexOf(movedId)
+    if (index === -1) {
+      continue
+    }
+    return {
+      id: movedId,
+      folderId: bucket.folderId,
+      afterId: index > 0 ? bucket.accountIds[index - 1] : null,
     }
   }
-  return changes
+  return null
+}
+
+export interface AccountMove {
+  id: string
+  folderId: string | null
+  afterId: string | null
 }

@@ -146,6 +146,11 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 	if err != nil {
 		return nil, err
 	}
+	idx, err := s.accountIndex(ctx, userID, updated.ID)
+	if err != nil {
+		return nil, err
+	}
+	item.Position = idx
 	// Fill the correction's author (the account owner = the requesting user).
 	if correction != nil {
 		owner, oerr := s.users.GetOwner(ctx, userID.String())

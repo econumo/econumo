@@ -1,11 +1,8 @@
-package model_test
+package model
 
 import (
 	"testing"
 	"time"
-
-	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 var (
@@ -13,32 +10,31 @@ var (
 	tt1 = time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
 )
 
-func newTag() *model.Tag {
-	return model.NewTag(
-		vo.MustParseId("11111111-1111-1111-1111-111111111111"),
-		vo.MustParseId("22222222-2222-2222-2222-222222222222"), "Travel", tt0)
+func newTag(t *testing.T) *Tag {
+	return NewTag(
+		mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "Travel", tt0)
 }
 
 func TestNewTag_NotArchived(t *testing.T) {
-	tg := newTag()
+	tg := newTag(t)
 	if tg.IsArchived || tg.Name != "Travel" {
 		t.Fatalf("new tag: archived=%v name=%q", tg.IsArchived, tg.Name)
 	}
 }
 
-func TestNewTagSeedsDefaultIcon(t *testing.T) {
-	now := time.Now()
-	tag := model.NewTag(vo.NewId(), vo.NewId(), "Travel", now)
-	if tag.Icon != model.DefaultTagIcon {
-		t.Fatalf("icon = %q, want %q", tag.Icon, model.DefaultTagIcon)
+func TestNewTag_SeedsDefaultIcon(t *testing.T) {
+	tg := newTag(t)
+	if tg.Icon != DefaultTagIcon {
+		t.Fatalf("icon = %q, want %q", tg.Icon, DefaultTagIcon)
 	}
-	if model.DefaultTagIcon != "tag" {
-		t.Fatalf("DefaultTagIcon = %q, want \"tag\"", model.DefaultTagIcon)
+	if DefaultTagIcon != "tag" {
+		t.Fatalf("DefaultTagIcon = %q, want \"tag\"", DefaultTagIcon)
 	}
 }
 
 func TestTag_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
-	tg := newTag()
+	tg := newTag(t)
 	tg.Unarchive(tt1) // no-op
 	if !tg.UpdatedAt.Equal(tt0) {
 		t.Fatal("no-op unarchive bumped updatedAt")
@@ -58,7 +54,7 @@ func TestTag_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
 }
 
 func TestTag_UpdateName_OnlyBumpsOnChange(t *testing.T) {
-	tg := newTag()
+	tg := newTag(t)
 	tg.UpdateName("Travel", tt1)
 	if !tg.UpdatedAt.Equal(tt0) {
 		t.Fatal("same-name update bumped updatedAt")
@@ -69,10 +65,10 @@ func TestTag_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestTag_SetPosition(t *testing.T) {
-	tg := newTag()
-	tg.SetPosition(7)
-	if tg.Position != 7 {
-		t.Fatalf("position=%d want 7", tg.Position)
+func TestTag_SetSortKey(t *testing.T) {
+	tg := newTag(t)
+	tg.SetSortKey("c007")
+	if tg.SortKey != "c007" {
+		t.Fatalf("position=%q want 7", tg.SortKey)
 	}
 }

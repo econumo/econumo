@@ -88,21 +88,21 @@ func (h *Handlers) GetAccountList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.svc.GetAccountList)
 }
 
-// OrderAccountList handles POST /api/v1/account/order-account-list (auth).
+// MoveAccount handles POST /api/v1/account/move-account (auth).
 //
-// @Summary     Reorder the account list
-// @Description Repositions accounts and moves them between folders, returning the full list.
+// @Summary     Move an account
+// @Description Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.
 // @Tags        Account
 // @Accept      json
 // @Produce     json
-// @Param       request body     model.OrderAccountListRequest true "Order account list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderAccountListResult}
+// @Param       request body     model.MoveAccountRequest true "Move account request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MoveAccountResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
-// @Router      /api/v1/account/order-account-list [post]
-func (h *Handlers) OrderAccountList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.OrderAccountList)
+// @Router      /api/v1/account/move-account [post]
+func (h *Handlers) MoveAccount(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveAccount)
 }

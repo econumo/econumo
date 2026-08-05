@@ -116,7 +116,7 @@ func TestCountSpendingByLabelReturnsNilForNoAccounts(t *testing.T) {
 }
 
 // LabelsForUsers must return every label owned by the given users, keyed by
-// id, with position carried through (Task 2 renders the block in position
+// id, with the sort key carried through (the labels block renders in list
 // order) -- and must not leak a label owned by someone else.
 func TestLabelsForUsers(t *testing.T) {
 	read, db := newReadRepo(t)
@@ -140,11 +140,11 @@ func TestLabelsForUsers(t *testing.T) {
 	}
 
 	m := got[first]
-	if m.Name != "First" || m.Icon != "star" || m.Position != 1 || m.IsArchived || m.OwnerID != userA {
+	if m.Name != "First" || m.Icon != "star" || m.SortKey != labelKeyAt(1) || m.IsArchived || m.OwnerID != userA {
 		t.Errorf("first label mismatch: %+v", m)
 	}
 	m2 := got[second]
-	if m2.Name != "Second" || m2.Icon != "flag" || m2.Position != 0 || !m2.IsArchived {
+	if m2.Name != "Second" || m2.Icon != "flag" || m2.SortKey != labelKeyAt(0) || !m2.IsArchived {
 		t.Errorf("second (archived) label mismatch: %+v", m2)
 	}
 
@@ -152,4 +152,11 @@ func TestLabelsForUsers(t *testing.T) {
 	if err != nil || none != nil {
 		t.Fatalf("empty user id set should be nil,nil; got %v, %v", none, err)
 	}
+}
+
+// labelKeyAt mirrors the fixture builder's Position -> sort-key sugar, so the
+// assertions above can still express intended order as a small integer.
+func labelKeyAt(pos int) string {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	return "c" + string(alphabet[(pos/3844)%62]) + string(alphabet[(pos/62)%62]) + string(alphabet[pos%62])
 }

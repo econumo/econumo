@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -71,13 +72,17 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 
-		count, cerr := s.repo.CountByOwner(ctx, ownerID)
+		cats, cerr := s.repo.ListByOwner(ctx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
+		key, kerr := sortkey.Append(cats, categoryItem, sortkey.GrowsUp)
+		if kerr != nil {
+			return kerr
+		}
 		now := s.clock.Now()
 		c := model.NewCategory(id, ownerID, name, typ, icon, now)
-		c.SetPosition(int16(count))
+		c.SetSortKey(key)
 		if serr := s.repo.Save(ctx, c); serr != nil {
 			return serr
 		}
@@ -90,5 +95,9 @@ func (s *Service) CreateCategory(ctx context.Context, userID vo.Id, req model.Cr
 		return nil, err
 	}
 
-	return &model.CreateCategoryResult{Item: toResult(created)}, nil
+	item, err := s.itemResult(ctx, ownerID, created)
+	if err != nil {
+		return nil, err
+	}
+	return &model.CreateCategoryResult{Item: item}, nil
 }

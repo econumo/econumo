@@ -1,21 +1,34 @@
 package apiparity
 
-// order_lists exercises the order-{category,tag,payee,label}-list routes: a
-// position-swap write per module, plus a closing read that must reflect the
-// new order (catching an engine difference in the ORDER BY/position update
-// that a write-only assertion would miss).
+// order_lists exercises the move-{category,tag,payee,label} routes: one relative
+// move per module, plus a closing read that must reflect the new order (catching
+// an engine difference in the ORDER BY or the key write that a write-only
+// assertion would miss). The scenario name is kept so its golden file stays put.
 func init() {
 	register(Scenario{Name: "order_lists", Calls: func() []Call {
 		return []Call{
-			{Label: "order-category-list", Method: "POST", Path: "/api/v1/category/order-category-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": CatFood, "position": 1}, {"id": CatSalary, "position": 0}}}},
+			// Anchored on a real sibling, not nil: a null anchor exercises the
+			// "move to front" path only, and would not catch an afterId that
+			// fails to resolve (which silently appends).
+			{Label: "move-category", Method: "POST", Path: "/api/v1/category/move-category", Auth: "owner",
+				Body: map[string]any{"id": CatFood, "afterId": CatSalary}},
 			{Label: "get-category-list-after", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner", Body: map[string]any{}},
-			{Label: "order-tag-list", Method: "POST", Path: "/api/v1/tag/order-tag-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": TagWork, "position": 0}}}},
-			{Label: "order-payee-list", Method: "POST", Path: "/api/v1/payee/order-payee-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": PayeeShop, "position": 0}}}},
-			{Label: "order-label-list", Method: "POST", Path: "/api/v1/label/order-label-list", Auth: "owner",
-				Body: map[string]any{"changes": []map[string]any{{"id": LabelWork, "position": 0}}}},
+			{Label: "move-tag", Method: "POST", Path: "/api/v1/tag/move-tag", Auth: "owner",
+				Body: map[string]any{"id": TagWork, "afterId": nil}},
+			{Label: "move-payee", Method: "POST", Path: "/api/v1/payee/move-payee", Auth: "owner",
+				Body: map[string]any{"id": PayeeShop, "afterId": nil}},
+			{Label: "move-label", Method: "POST", Path: "/api/v1/label/move-label", Auth: "owner",
+				Body: map[string]any{"id": LabelWork, "afterId": nil}},
+			// The bulk counterpart: a whole-list reorder, which no single
+			// relative move can express (the A-Z action in settings).
+			{Label: "sort-category-list", Method: "POST", Path: "/api/v1/category/sort-category-list", Auth: "owner",
+				Body: map[string]any{"ids": []string{CatFood, CatSalary}}},
+			{Label: "sort-tag-list", Method: "POST", Path: "/api/v1/tag/sort-tag-list", Auth: "owner",
+				Body: map[string]any{"ids": []string{TagWork}}},
+			{Label: "sort-payee-list", Method: "POST", Path: "/api/v1/payee/sort-payee-list", Auth: "owner",
+				Body: map[string]any{"ids": []string{PayeeShop}}},
+			{Label: "sort-label-list", Method: "POST", Path: "/api/v1/label/sort-label-list", Auth: "owner",
+				Body: map[string]any{"ids": []string{LabelWork}}},
 		}
 	}})
 }

@@ -433,34 +433,75 @@ func TestDeleteFolder_Removes(t *testing.T) {
 	}
 }
 
-func TestOrderFolderList_AppliesPositions(t *testing.T) {
+func TestMoveFolder_ReordersAndWritesOneRow(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
+	// Budget folders PREPEND on create, so Bravo starts ahead of Alpha.
 	for _, f := range []struct{ id, name string }{{bFolderID1, "Alpha"}, {bFolderID2, "Bravo"}} {
 		if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": f.id, "name": f.name}); st != 200 {
 			t.Fatalf("create-folder %s=%d", f.name, st)
 		}
 	}
-	// Force folder1->position 5, folder2->position 9.
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/order-folder-list", tok, map[string]any{
-		"budgetId": budgetID1,
-		"items": []map[string]any{
-			{"id": bFolderID1, "position": 5},
-			{"id": bFolderID2, "position": 9},
-		},
+	before := budgetFolderKeys(t, h)
+
+	// Move Alpha to the front, ahead of Bravo.
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": bFolderID1, "afterId": nil,
 	})
 	if status != http.StatusOK {
-		t.Fatalf("order-folder-list=%d body=%s", status, env.raw)
+		t.Fatalf("move-folder=%d body=%s", status, env.raw)
 	}
-	var p1, p2 int
-	h.db.QueryRow(`SELECT position FROM budgets_folders WHERE id=?`, bFolderID1).Scan(&p1)
-	h.db.QueryRow(`SELECT position FROM budgets_folders WHERE id=?`, bFolderID2).Scan(&p2)
-	if p1 != 5 || p2 != 9 {
-		t.Fatalf("folder positions=%d,%d want 5,9", p1, p2)
+
+	after := budgetFolderKeys(t, h)
+	if after[bFolderID1] >= after[bFolderID2] {
+		t.Fatalf("Alpha key %q should sort before Bravo %q", after[bFolderID1], after[bFolderID2])
+	}
+	changed := 0
+	for id, k := range after {
+		if before[id] != k {
+			changed++
+		}
+	}
+	if changed != 1 {
+		t.Fatalf("%d folders changed sort_key, want exactly 1", changed)
 	}
 }
 
+func TestMoveFolder_NonMember_403(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	seedBudget(t, h, tok)
+	if st, _ := h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{"budgetId": budgetID1, "id": bFolderID1, "name": "Alpha"}); st != 200 {
+		t.Fatal("create-folder")
+	}
+	other := h.seedSecondUser(t)
+	status, _ := h.do(t, http.MethodPost, "/api/v1/budget/move-folder", other, map[string]any{
+		"budgetId": budgetID1, "id": bFolderID1, "afterId": nil,
+	})
+	if status != http.StatusForbidden {
+		t.Fatalf("status=%d want 403", status)
+	}
+}
+
+// budgetFolderKeys reads every budget folder's stored key.
+func budgetFolderKeys(t *testing.T, h *harness) map[string]string {
+	t.Helper()
+	rows, err := h.db.Query(`SELECT id, sort_key FROM budgets_folders`)
+	if err != nil {
+		t.Fatalf("read folder keys: %v", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out[id] = key
+	}
+	return out
+}
 func TestCreateFolder_NonMember_403(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -810,8 +851,8 @@ func TestRevokeAccess_RemovesInviteeRecords(t *testing.T) {
 func insertInviteeElement(t *testing.T, h *harness) {
 	t.Helper()
 	if _, err := h.db.Exec(
-		`INSERT INTO budgets_elements (id, budget_id, external_id, type, created_at, updated_at, position)
-		 VALUES ('55555555-5555-5555-5555-555555555555', ?, ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 0)`,
+		`INSERT INTO budgets_elements (id, budget_id, external_id, type, created_at, updated_at, sort_key)
+		 VALUES ('55555555-5555-5555-5555-555555555555', ?, ?, 1, '2026-01-01 00:00:00', '2026-01-01 00:00:00', 'c000')`,
 		budgetID1, otherCatID,
 	); err != nil {
 		t.Fatalf("insert grandfathered element: %v", err)

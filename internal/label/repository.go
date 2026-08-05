@@ -16,12 +16,8 @@ type Repository interface {
 
 	GetByID(ctx context.Context, id vo.Id) (*model.Label, error)
 
-	// ListByOwner returns the owner's labels ordered by position.
+	// ListByOwner returns the owner's labels ordered by sort key.
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Label, error)
-
-	// CountByOwner returns the number of labels the owner has (used to seed a
-	// new label's position).
-	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
 
 	Save(ctx context.Context, l *model.Label) error
 

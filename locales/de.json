@@ -150,6 +150,14 @@
     "update": {
       "notice": "Econumo {version} ist verfügbar",
       "dismiss": "Ausblenden"
+    },
+    "serverUpdate": {
+      "notice": "Dein Econumo-Server ({version}) ist älter als diese App. Aktualisiere den Server, um die neuesten Funktionen zu erhalten."
+    },
+    "appUpdate": {
+      "title": "Aktualisierung erforderlich",
+      "blockedApp": "Diese App ist zu alt für deinen Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisiere die App, um fortzufahren.",
+      "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, dein Server ist {version}. Bitte aktualisiere den Server, um fortzufahren."
     }
   },
   "accounts": {

@@ -135,11 +135,11 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		if serr := s.access.Save(txCtx, grant); serr != nil {
 			return serr
 		}
-		max, perr := s.positions.MaxPosition(txCtx, userID)
+		key, perr := s.nextAccountKey(txCtx, userID)
 		if perr != nil {
 			return perr
 		}
-		if perr := s.positions.SavePosition(txCtx, accountID, userID, max+1, now); perr != nil {
+		if perr := s.positions.SaveSortKey(txCtx, accountID, userID, key, now); perr != nil {
 			return perr
 		}
 		return s.memberships.AddAccount(txCtx, folderID, accountID)

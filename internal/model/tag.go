@@ -8,6 +8,7 @@ package model
 import (
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -21,36 +22,27 @@ const DefaultTagIcon = "tag"
 // bump UpdatedAt only on a real change. Fields are exported for direct read
 // access; all writes after construction go through the mutators.
 type Tag struct {
-	ID         vo.Id
-	UserID     vo.Id
-	Name       string
-	Icon       string
-	Position   int16
+	ID     vo.Id
+	UserID vo.Id
+	Name   string
+	Icon   string
+	// SortKey is the fractional index key that decides this row's slot in its
+	// list. It never leaves the server: responses carry a dense 0-based index.
+	SortKey    sortkey.Key
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
-// NewTag constructs a freshly-created tag. Position defaults to 0 and is set by
-// the service via SetPosition before the first save.
+// NewTag constructs a freshly-created tag. The sort key is assigned by
+// the service via SetSortKey before the first save.
 func NewTag(id, userID vo.Id, name string, now time.Time) *Tag {
 	return &Tag{ID: id, UserID: userID, Name: name, Icon: DefaultTagIcon, CreatedAt: now, UpdatedAt: now}
 }
 
-// SetPosition sets the initial position at creation. It does not bump UpdatedAt
-// — it is part of construction.
-func (t *Tag) SetPosition(position int16) { t.Position = position }
-
 func (t *Tag) UpdateName(name string, now time.Time) {
 	if t.Name != name {
 		t.Name = name
-		t.UpdatedAt = now
-	}
-}
-
-func (t *Tag) UpdatePosition(position int16, now time.Time) {
-	if t.Position != position {
-		t.Position = position
 		t.UpdatedAt = now
 	}
 }
@@ -65,6 +57,18 @@ func (t *Tag) Archive(now time.Time) {
 func (t *Tag) Unarchive(now time.Time) {
 	if t.IsArchived {
 		t.IsArchived = false
+		t.UpdatedAt = now
+	}
+}
+
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
+func (t *Tag) SetSortKey(k sortkey.Key) { t.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (t *Tag) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if t.SortKey != k {
+		t.SortKey = k
 		t.UpdatedAt = now
 	}
 }

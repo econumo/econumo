@@ -5,6 +5,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -55,13 +56,17 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req model.CreateT
 			return uerr
 		}
 
-		count, cerr := s.repo.CountByOwner(ctx, ownerID)
+		rows, cerr := s.repo.ListByOwner(ctx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
+		key, kerr := sortkey.Append(rows, tagItem, sortkey.GrowsUp)
+		if kerr != nil {
+			return kerr
+		}
 		now := s.clock.Now()
 		t := model.NewTag(id, ownerID, name, now)
-		t.SetPosition(int16(count))
+		t.SetSortKey(key)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}
@@ -74,5 +79,9 @@ func (s *Service) CreateTag(ctx context.Context, userID vo.Id, req model.CreateT
 		return nil, err
 	}
 
-	return &model.CreateTagResult{Item: toResult(created)}, nil
+	item, err := s.itemResult(ctx, ownerID, created)
+	if err != nil {
+		return nil, err
+	}
+	return &model.CreateTagResult{Item: item}, nil
 }

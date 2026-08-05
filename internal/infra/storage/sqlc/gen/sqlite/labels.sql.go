@@ -16,7 +16,6 @@ const countLabelsByOwner = `-- name: CountLabelsByOwner :one
 SELECT COUNT(*) FROM labels WHERE user_id = ?
 `
 
-// New-label position = count of the owner's existing labels.
 func (q *Queries) CountLabelsByOwner(ctx context.Context, userID string) (int64, error) {
 	row := q.db.QueryRowContext(ctx, countLabelsByOwner, userID)
 	var count int64
@@ -39,7 +38,7 @@ func (q *Queries) DeleteLabel(ctx context.Context, id string) error {
 
 const getLabelByID = `-- name: GetLabelByID :one
 
-SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, icon, sort_key, is_archived, created_at, updated_at
 FROM labels
 WHERE id = ?
 `
@@ -55,7 +54,7 @@ func (q *Queries) GetLabelByID(ctx context.Context, id string) (Label, error) {
 		&i.UserID,
 		&i.Name,
 		&i.Icon,
-		&i.Position,
+		&i.SortKey,
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -66,12 +65,14 @@ func (q *Queries) GetLabelByID(ctx context.Context, id string) (Label, error) {
 const listLabelsByOwner = `-- name: ListLabelsByOwner :many
 ;
 
-SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, icon, sort_key, is_archived, created_at, updated_at
 FROM labels
 WHERE user_id = ?
-ORDER BY position, id
+ORDER BY sort_key, id
 `
 
+// The owner's labels ordered by sort key; used by move-label (load, place the
+// moved row, save it) and as the basis for the returned list.
 func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error) {
 	rows, err := q.db.QueryContext(ctx, listLabelsByOwner, userID)
 	if err != nil {
@@ -86,7 +87,7 @@ func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label
 			&i.UserID,
 			&i.Name,
 			&i.Icon,
-			&i.Position,
+			&i.SortKey,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
@@ -107,13 +108,13 @@ func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label
 const upsertLabel = `-- name: UpsertLabel :exec
 ;
 
-INSERT INTO labels (id, user_id, name, icon, position, is_archived, created_at, updated_at)
+INSERT INTO labels (id, user_id, name, icon, sort_key, is_archived, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     icon        = excluded.icon,
-    position    = excluded.position,
+    sort_key    = excluded.sort_key,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
@@ -123,7 +124,7 @@ type UpsertLabelParams struct {
 	UserID     string
 	Name       string
 	Icon       string
-	Position   int16
+	SortKey    string
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
@@ -135,7 +136,7 @@ func (q *Queries) UpsertLabel(ctx context.Context, arg UpsertLabelParams) error 
 		arg.UserID,
 		arg.Name,
 		arg.Icon,
-		arg.Position,
+		arg.SortKey,
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,

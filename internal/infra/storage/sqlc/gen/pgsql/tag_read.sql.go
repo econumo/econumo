@@ -7,12 +7,11 @@ package pgsqlgen
 
 import (
 	"context"
-	"time"
 )
 
 const getTagListView = `-- name: GetTagListView :many
 
-SELECT t.id, t.user_id, t.name, t.icon, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.is_archived, t.created_at, t.updated_at, t.sort_key, t.icon
 FROM tags t
 WHERE t.user_id = $1
    OR t.user_id IN (
@@ -21,42 +20,31 @@ WHERE t.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
-ORDER BY t.position, t.id
+ORDER BY t.sort_key, t.id
 `
-
-type GetTagListViewRow struct {
-	ID         string
-	UserID     string
-	Name       string
-	Icon       string
-	Position   int16
-	IsArchived bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
-}
 
 // Read-model query for the tag module (PostgreSQL variant: $N placeholders).
 // See the sqlite variant for documentation.
 // Available tags: own + tags of users who shared an account with this user.
 // $1 is reused for both positions so the generated param stays single.
-func (q *Queries) GetTagListView(ctx context.Context, userID string) ([]GetTagListViewRow, error) {
+func (q *Queries) GetTagListView(ctx context.Context, userID string) ([]Tag, error) {
 	rows, err := q.db.QueryContext(ctx, getTagListView, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetTagListViewRow{}
+	items := []Tag{}
 	for rows.Next() {
-		var i GetTagListViewRow
+		var i Tag
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Icon,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
+			&i.Icon,
 		); err != nil {
 			return nil, err
 		}

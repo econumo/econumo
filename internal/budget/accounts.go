@@ -192,7 +192,7 @@ func (s *Service) getElementSelfHeal(ctx context.Context, budgetID, externalID v
 	if err == nil || !errors.As(err, &nf) {
 		return el, err
 	}
-	if rerr := s.restoreElementsOrder(ctx, budgetID, now); rerr != nil {
+	if rerr := s.syncElements(ctx, budgetID, now); rerr != nil {
 		return nil, rerr
 	}
 	return s.elements.GetElementByExternal(ctx, budgetID, externalID)

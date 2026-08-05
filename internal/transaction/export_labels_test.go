@@ -9,10 +9,10 @@ import (
 )
 
 // TestExportJoinsLabelNamesWithSemicolon locks the labels cell's join order:
-// it follows label POSITION, not the id order LabelsByTransactionIDs returns
+// it follows the owner's LIST ORDER, not the id order LabelsByTransactionIDs returns
 // (ascending label_id, a determinism guarantee, not a display order) and not
 // name order either. The two label ids below are listed in ASCENDING id order
-// (matching what the repo would hand back) but their positions are reversed
+// (matching what the repo would hand back) but their sort keys are reversed
 // relative to that, so a cell that merely echoed the input order — or sorted
 // by id or name — would emit "Kid B;Kid A" instead of the expected
 // "Kid A;Kid B".
@@ -25,12 +25,12 @@ func TestExportJoinsLabelNamesWithSemicolon(t *testing.T) {
 	idx := exportLabelIndex{
 		byTx: map[string][]string{txID: {idLower, idHigher}},
 		byID: map[string]model.ExportLabel{
-			idLower:  {Name: "Kid B", Position: 1},
-			idHigher: {Name: "Kid A", Position: 0},
+			idLower:  {Name: "Kid B", SortKey: "a1"},
+			idHigher: {Name: "Kid A", SortKey: "a0"},
 		},
 	}
 	if got := idx.cell(txID); got != "Kid A;Kid B" {
-		t.Fatalf("cell = %q, want %q (position order, not id order)", got, "Kid A;Kid B")
+		t.Fatalf("cell = %q, want %q (list order, not id order)", got, "Kid A;Kid B")
 	}
 }
 
@@ -39,8 +39,8 @@ func TestExportJoinsLabelNamesWithSemicolon(t *testing.T) {
 // after. A name starting with "=" only defuses if the guard runs per-name —
 // sanitizing the already-joined string only inspects byte 0 of the whole
 // cell, so a leading "=" on any name after the first would slip through
-// unescaped. "Safe" (position 0) does not trigger the guard on its own, so
-// this case can only pass if "=cmd" (position 1) is individually defused.
+// unescaped. "Safe" (first) does not trigger the guard on its own, so
+// this case can only pass if "=cmd" (second) is individually defused.
 func TestExportSanitizesEachLabelNameBeforeJoining(t *testing.T) {
 	const (
 		txID    = "aaaa0000-0000-0000-0000-000000000002"
@@ -51,8 +51,8 @@ func TestExportSanitizesEachLabelNameBeforeJoining(t *testing.T) {
 	idx := exportLabelIndex{
 		byTx: map[string][]string{txID: {safeID, evilID}},
 		byID: map[string]model.ExportLabel{
-			safeID: {Name: "Safe", Position: 0},
-			evilID: {Name: "=cmd", Position: 1},
+			safeID: {Name: "Safe", SortKey: "a0"},
+			evilID: {Name: "=cmd", SortKey: "a1"},
 		},
 	}
 	if got := idx.cell(txID); got != wantCol {
@@ -95,7 +95,7 @@ func TestExportWritesEmptyLabelsForTransferRecipientRow(t *testing.T) {
 
 	labels := exportLabelIndex{
 		byTx: map[string][]string{txID.String(): {labelID}},
-		byID: map[string]model.ExportLabel{labelID: {Name: "Kid A", Position: 0}},
+		byID: map[string]model.ExportLabel{labelID: {Name: "Kid A", SortKey: "a0"}},
 	}
 
 	svc := &Service{}

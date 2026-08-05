@@ -32,7 +32,7 @@ func (q *Queries) DeleteCategory(ctx context.Context, id string) error {
 
 const getCategoryByID = `-- name: GetCategoryByID :one
 
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE id = $1
 `
@@ -45,21 +45,21 @@ func (q *Queries) GetCategoryByID(ctx context.Context, id string) (Category, err
 		&i.ID,
 		&i.UserID,
 		&i.Name,
-		&i.Position,
 		&i.Type,
 		&i.Icon,
 		&i.IsArchived,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.SortKey,
 	)
 	return i, err
 }
 
 const listCategoriesByOwner = `-- name: ListCategoriesByOwner :many
-SELECT id, user_id, name, position, type, icon, is_archived, created_at, updated_at
+SELECT id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key
 FROM categories
 WHERE user_id = $1
-ORDER BY position, id
+ORDER BY sort_key, id
 `
 
 func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error) {
@@ -75,12 +75,12 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.Type,
 			&i.Icon,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}
@@ -110,12 +110,12 @@ func (q *Queries) ReassignCategoryTransactions(ctx context.Context, arg Reassign
 }
 
 const upsertCategory = `-- name: UpsertCategory :exec
-INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at)
+INSERT INTO categories (id, user_id, name, type, icon, is_archived, created_at, updated_at, sort_key)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
-    position    = excluded.position,
+    sort_key    = excluded.sort_key,
     type        = excluded.type,
     icon        = excluded.icon,
     is_archived = excluded.is_archived,
@@ -126,12 +126,12 @@ type UpsertCategoryParams struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	Type       int16
 	Icon       string
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 func (q *Queries) UpsertCategory(ctx context.Context, arg UpsertCategoryParams) error {
@@ -139,12 +139,12 @@ func (q *Queries) UpsertCategory(ctx context.Context, arg UpsertCategoryParams) 
 		arg.ID,
 		arg.UserID,
 		arg.Name,
-		arg.Position,
 		arg.Type,
 		arg.Icon,
 		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,
+		arg.SortKey,
 	)
 	return err
 }

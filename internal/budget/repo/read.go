@@ -498,8 +498,8 @@ func (r *ReadRepo) LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[str
 	in := r.ph(1, len(ids))
 	// ORDER BY pins row order across engines (SQLite would otherwise satisfy
 	// this from the user_id index while PostgreSQL seq-scans in insertion
-	// order); Task 2 renders the block in position order, so position leads.
-	sql := "SELECT id, user_id, name, icon, position, is_archived FROM labels WHERE user_id IN (" + in + ") ORDER BY user_id, position, id"
+	// order); the labels block renders in list order, so the sort key leads.
+	sql := "SELECT id, user_id, name, icon, sort_key, is_archived FROM labels WHERE user_id IN (" + in + ") ORDER BY user_id, sort_key, id"
 	rows, err := r.db(ctx).QueryContext(ctx, sql, ids...)
 	if err != nil {
 		return nil, err
@@ -508,7 +508,7 @@ func (r *ReadRepo) LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[str
 	out := map[string]model.LabelMeta{}
 	for rows.Next() {
 		var m model.LabelMeta
-		if err := rows.Scan(&m.ID, &m.OwnerID, &m.Name, &m.Icon, &m.Position, &m.IsArchived); err != nil {
+		if err := rows.Scan(&m.ID, &m.OwnerID, &m.Name, &m.Icon, &m.SortKey, &m.IsArchived); err != nil {
 			return nil, err
 		}
 		out[m.ID] = m

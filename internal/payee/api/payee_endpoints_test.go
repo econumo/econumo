@@ -268,51 +268,6 @@ func TestArchivePayee_ThenListShowsArchived(t *testing.T) {
 	}
 }
 
-func TestOrderPayeeList_Reorders(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	id1 := createPayee(t, h, token, payeeID1, "First")  // pos 0
-	id2 := createPayee(t, h, token, payeeID2, "Second") // pos 1
-	id3 := createPayee(t, h, token, payeeID3, "Third")  // pos 2
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/payee/order-payee-list", token, map[string]any{
-		"changes": []map[string]any{
-			{"id": id3, "position": 0},
-			{"id": id1, "position": 2},
-		},
-	})
-	if status != http.StatusOK {
-		t.Fatalf("order status = %d, want 200; body: %s", status, env.raw)
-	}
-	res := mustUnmarshal[itemsWrapper](t, env.Data)
-	if len(res.Items) != 3 {
-		t.Fatalf("returned %d items, want 3", len(res.Items))
-	}
-	pos := map[string]int{}
-	for _, it := range res.Items {
-		pos[it.ID] = it.Position
-	}
-	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
-		t.Fatalf("positions = %v, want id3=0 id2=1 id1=2", pos)
-	}
-	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
-	}
-}
-
-func TestOrderPayeeList_Empty_400(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/payee/order-payee-list", token, map[string]any{
-		"changes": []map[string]any{},
-	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400 (empty changes); body: %s", status, env.raw)
-	}
-}
-
 func TestGetPayeeList_OrderedByPosition(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

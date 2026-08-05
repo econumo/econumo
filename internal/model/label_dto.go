@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // LabelResult is one label in the API. isArchived is an int 0/1 (NOT bool) and
@@ -114,27 +115,54 @@ func (r DeleteLabelRequest) Validate() error {
 
 type DeleteLabelResult struct{}
 
-type OrderLabelListRequest struct {
-	Changes []PositionChange `json:"changes"`
+// MoveLabelRequest is the move-label request body. AfterId is the id of the
+// sibling this label should land immediately after; null means "move to the
+// front". An AfterId that is not one of the caller's own labels appends to the
+// end rather than erroring, matching move-tag.
+type MoveLabelRequest struct {
+	Id      string  `json:"id"`
+	AfterId *string `json:"afterId"`
 }
 
-// Validate enforces a non-empty changes list (an empty list is rejected with
-// "Labels list is empty").
-func (r OrderLabelListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Labels list is empty", MsgCode: errs.CodeLabelListEmpty}
+func (r MoveLabelRequest) Validate() error {
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
 	}
-	var fields []errs.FieldError
-	for _, c := range r.Changes {
-		fields = append(fields, validatePositionField("position", c.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-type OrderLabelListResult struct {
+// MoveLabelResult is the move-label response: {items: [...]}.
+type MoveLabelResult struct {
+	Items []LabelResult `json:"items"`
+}
+
+// SortLabelListRequest is the sort-label-list request body: the caller's
+// desired order as a full list of ids. A drag is one MoveLabel; sorting the
+// whole list (alphabetically, say) is this, because no single relative move can
+// express an n-item reorder.
+type SortLabelListRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r SortLabelListRequest) Validate() error {
+	if len(r.Ids) == 0 {
+		return &errs.ValidationError{Msg: "Ids list is empty", MsgCode: errs.CodeIsBlank}
+	}
+	for _, id := range r.Ids {
+		if _, err := vo.ParseId(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SortLabelListResult is the sort-label-list response: {items: [...]}.
+type SortLabelListResult struct {
 	Items []LabelResult `json:"items"`
 }
 

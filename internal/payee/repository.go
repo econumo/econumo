@@ -19,10 +19,6 @@ type Repository interface {
 	// ListByOwner returns the owner's payees ordered by position.
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, error)
 
-	// CountByOwner returns the number of payees the owner has (used to seed a new
-	// payee's position).
-	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
-
 	Save(ctx context.Context, p *model.Payee) error
 
 	// Delete removes a payee. Transactions referencing it have payee_id set to

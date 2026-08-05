@@ -263,52 +263,7 @@ func TestArchiveLabel_ThenListShowsArchived(t *testing.T) {
 	}
 }
 
-func TestOrderLabelList_Reorders(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	id1 := createLabel(t, h, token, labelID1, "#first")  // pos 0
-	id2 := createLabel(t, h, token, labelID2, "#second") // pos 1
-	id3 := createLabel(t, h, token, labelID3, "#third")  // pos 2
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/label/order-label-list", token, map[string]any{
-		"changes": []map[string]any{
-			{"id": id3, "position": 0},
-			{"id": id1, "position": 2},
-		},
-	})
-	if status != http.StatusOK {
-		t.Fatalf("order status = %d, want 200; body: %s", status, env.raw)
-	}
-	res := mustUnmarshal[itemsWrapper](t, env.Data)
-	if len(res.Items) != 3 {
-		t.Fatalf("returned %d items, want 3", len(res.Items))
-	}
-	pos := map[string]int{}
-	for _, it := range res.Items {
-		pos[it.ID] = it.Position
-	}
-	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
-		t.Fatalf("positions = %v, want id3=%s=0 id2=%s=1 id1=%s=2", pos, id3, id2, id1)
-	}
-	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
-	}
-}
-
-func TestOrderLabelList_Empty_400(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/label/order-label-list", token, map[string]any{
-		"changes": []map[string]any{},
-	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400 (empty changes); body: %s", status, env.raw)
-	}
-}
-
-func TestGetLabelList_OrderedByPosition(t *testing.T) {
+func TestGetLabelList_OrderedBySortKey(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
@@ -325,7 +280,7 @@ func TestGetLabelList_OrderedByPosition(t *testing.T) {
 		t.Fatalf("returned %d items, want 3", len(res.Items))
 	}
 	if res.Items[0].ID != labelID2 || res.Items[1].ID != labelID3 || res.Items[2].ID != labelID1 {
-		t.Fatalf("order = [%s,%s,%s], want [%s,%s,%s] (by position)",
+		t.Fatalf("order = [%s,%s,%s], want [%s,%s,%s] (by sort key)",
 			res.Items[0].ID, res.Items[1].ID, res.Items[2].ID, labelID2, labelID3, labelID1)
 	}
 	if res.Items[1].IsArchived != 1 {

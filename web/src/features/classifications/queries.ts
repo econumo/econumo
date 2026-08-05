@@ -110,6 +110,21 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
       }
     },
     replaceAll: (items: EntityDto[]) => queryClient.setQueryData(key, items),
+    // Reorder the cached list to an explicit id order and re-stamp dense
+    // positions, so a bulk sort shows instantly instead of after the round trip.
+    // Ids the cache does not know are ignored; rows the order omits keep their
+    // slot at the end, matching how the server skips ids the caller does not own.
+    reorder: (orderedIds: Id[]) => {
+      queryClient.setQueryData<EntityDto[]>(key, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        const byId = new Map(prev.map((i) => [i.id, i]))
+        const ordered = orderedIds.map((id) => byId.get(id)).filter((i): i is EntityDto => i !== undefined)
+        const seen = new Set(ordered.map((i) => i.id))
+        return [...ordered, ...prev.filter((i) => !seen.has(i.id))].map((i, position) => ({ ...i, position }))
+      })
+    },
   }
 }
 
@@ -157,10 +172,10 @@ export function useDeleteCategory() {
   })
 }
 
-export function useOrderCategories() {
+export function useMoveCategory() {
   const ops = useEntityCacheOps('categories', false)
   return useMutation({
-    mutationFn: categoryApi.orderCategoryList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => categoryApi.moveCategory(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.CATEGORY_ORDER_LIST)
@@ -212,10 +227,10 @@ export function useDeletePayee() {
   })
 }
 
-export function useOrderPayees() {
+export function useMovePayee() {
   const ops = useEntityCacheOps('payees', false)
   return useMutation({
-    mutationFn: payeeApi.orderPayeeList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => payeeApi.movePayee(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.PAYEE_ORDER_LIST)
@@ -267,10 +282,10 @@ export function useDeleteTag() {
   })
 }
 
-export function useOrderTags() {
+export function useMoveTag() {
   const ops = useEntityCacheOps('tags', false)
   return useMutation({
-    mutationFn: tagApi.orderTagList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => tagApi.moveTag(id, afterId),
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.TAG_ORDER_LIST)
@@ -295,6 +310,57 @@ export function useCreateTag() {
         const items = prev ?? []
         return items.some((t) => t.id === item.id) ? items : [...items, item]
       })
+    },
+  })
+}
+
+// useSortCategories applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
+export function useSortCategories() {
+  const ops = useEntityCacheOps('categories', false)
+  return useMutation({
+    mutationFn: (orderedIds: Id[]) => categoryApi.sortCategoryList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.CATEGORY_ORDER_LIST)
+    },
+  })
+}
+
+// useSortPayees applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
+export function useSortPayees() {
+  const ops = useEntityCacheOps('payees', false)
+  return useMutation({
+    mutationFn: (orderedIds: Id[]) => payeeApi.sortPayeeList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.PAYEE_ORDER_LIST)
+    },
+  })
+}
+
+// useSortTags applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
+export function useSortTags() {
+  const ops = useEntityCacheOps('tags', false)
+  return useMutation({
+    mutationFn: (orderedIds: Id[]) => tagApi.sortTagList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
+    },
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.TAG_ORDER_LIST)
     },
   })
 }
@@ -356,10 +422,27 @@ export function useDeleteLabel() {
   })
 }
 
-export function useOrderLabels() {
+export function useMoveLabel() {
   const ops = useEntityCacheOps('labels', false)
   return useMutation({
-    mutationFn: labelApi.orderLabelList,
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => labelApi.moveLabel(id, afterId),
+    onSuccess: (items) => {
+      ops.replaceAll(items)
+      trackEvent(METRICS.LABEL_ORDER_LIST)
+    },
+  })
+}
+
+// useSortLabels applies an explicit order in ONE request. A drag is a relative
+// move; sorting the whole list changes every row's neighbour, which no single
+// move can express. The cache is reordered up front so the list flips instantly.
+export function useSortLabels() {
+  const ops = useEntityCacheOps('labels', false)
+  return useMutation({
+    mutationFn: (orderedIds: Id[]) => labelApi.sortLabelList(orderedIds),
+    onMutate: (orderedIds) => {
+      ops.reorder(orderedIds)
+    },
     onSuccess: (items) => {
       ops.replaceAll(items)
       trackEvent(METRICS.LABEL_ORDER_LIST)

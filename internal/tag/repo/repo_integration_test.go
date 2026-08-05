@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -37,7 +38,7 @@ func newRepo(t *testing.T) (*tagrepo.Repo, *tagrepo.ReadRepo, *dbtest.DB, *fixtu
 }
 
 func tag(id, userID, name string, pos int16) *model.Tag {
-	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Icon: "icon", Position: pos,
+	return &model.Tag{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, SortKey: keyAt(pos),
 		IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
@@ -52,11 +53,8 @@ func TestTagRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Holiday" || got.Position != 4 || got.IsArchived {
-		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
-	}
-	if got.Icon != "icon" {
-		t.Errorf("icon mismatch: %q", got.Icon)
+	if got.Name != "Holiday" || got.SortKey != keyAt(4) || got.IsArchived {
+		t.Errorf("mismatch: name=%q key=%q archived=%v", got.Name, got.SortKey, got.IsArchived)
 	}
 	if !got.UpdatedAt.Equal(fixedTime) {
 		t.Errorf("updatedAt mismatch: %v", got.UpdatedAt)
@@ -73,7 +71,7 @@ func TestTagRepo_GetByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestTagRepo_ListAndCountByOwner(t *testing.T) {
+func TestTagRepo_ListByOwner(t *testing.T) {
 	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
@@ -91,10 +89,6 @@ func TestTagRepo_ListAndCountByOwner(t *testing.T) {
 	}
 	if list[0].ID.String() != tagA2 || list[1].ID.String() != tagA1 {
 		t.Errorf("order by position wrong: %s, %s", list[0].ID, list[1].ID)
-	}
-	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
-	if err != nil || n != 2 {
-		t.Errorf("CountByOwner = %d, %v; want 2", n, err)
 	}
 }
 
@@ -140,9 +134,6 @@ func TestTagReadRepo_OwnPlusShared(t *testing.T) {
 	if len(own) != 1 || own[0].ID != tagA1 {
 		t.Fatalf("want only own A1, got %+v", own)
 	}
-	if own[0].Icon != "icon" {
-		t.Errorf("icon mismatch: %q", own[0].Icon)
-	}
 	if own[0].CreatedAt != "2024-04-01 12:00:00" {
 		t.Errorf("datetime format wrong: %q", own[0].CreatedAt)
 	}
@@ -157,4 +148,16 @@ func TestTagReadRepo_OwnPlusShared(t *testing.T) {
 	if len(shared) != 2 {
 		t.Fatalf("want own + shared (2), got %d", len(shared))
 	}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits. Tests keep expressing intended order as a small
+// integer while the repo orders by key.
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }

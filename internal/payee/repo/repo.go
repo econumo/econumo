@@ -14,6 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	dompayee "github.com/econumo/econumo/internal/payee"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -25,7 +26,6 @@ type (
 type querier interface {
 	GetPayeeByID(ctx context.Context, db backend.DBTX, id string) (payeeRow, error)
 	ListPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]payeeRow, error)
-	CountPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertPayee(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
 }
@@ -87,21 +87,13 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Payee, e
 	return out, nil
 }
 
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountPayeesByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
-}
-
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 	return r.q.UpsertPayee(ctx, r.db(ctx), upsertParams{
 		ID:         p.ID.String(),
 		UserID:     p.UserID.String(),
 		Name:       p.Name,
-		Position:   p.Position,
+		SortKey:    string(p.SortKey),
 		IsArchived: p.IsArchived,
 		CreatedAt:  p.CreatedAt,
 		UpdatedAt:  p.UpdatedAt,
@@ -121,6 +113,6 @@ func hydrate(row payeeRow) (*model.Payee, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Payee{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Payee{ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

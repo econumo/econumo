@@ -9,6 +9,7 @@ import (
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -38,7 +39,7 @@ func newRepo(t *testing.T) (*labelrepo.Repo, *labelrepo.ReadRepo, *dbtest.DB, *f
 
 func label(id, userID, name string, pos int16) *model.Label {
 	return &model.Label{ID: vo.MustParseId(id), UserID: vo.MustParseId(userID), Name: name, Icon: "kid",
-		Position: pos, IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+		SortKey: keyAt(pos), IsArchived: false, CreatedAt: fixedTime, UpdatedAt: fixedTime}
 }
 
 func TestLabelRepo_SaveGetRoundTrip(t *testing.T) {
@@ -52,8 +53,8 @@ func TestLabelRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Kid A" || got.Position != 4 || got.IsArchived {
-		t.Errorf("mismatch: name=%q pos=%d archived=%v", got.Name, got.Position, got.IsArchived)
+	if got.Name != "Kid A" || got.SortKey != keyAt(4) || got.IsArchived {
+		t.Errorf("mismatch: name=%q key=%q archived=%v", got.Name, got.SortKey, got.IsArchived)
 	}
 	// A value different from model.DefaultLabelIcon ("label"), so a Save that
 	// silently dropped Icon and let the column default fill it in would still
@@ -86,7 +87,7 @@ func TestLabelRepo_Save_UpdatesOnConflict(t *testing.T) {
 	updated := created.Add(24 * time.Hour)
 	l2 := &model.Label{
 		ID: vo.MustParseId(labelA1), UserID: vo.MustParseId(userB), Name: "Renamed",
-		Icon: "pet", Position: 7, IsArchived: true, CreatedAt: updated, UpdatedAt: updated,
+		Icon: "pet", SortKey: keyAt(7), IsArchived: true, CreatedAt: updated, UpdatedAt: updated,
 	}
 	if err := repo.Save(ctx, l2); err != nil {
 		t.Fatalf("conflicting Save: %v", err)
@@ -105,8 +106,8 @@ func TestLabelRepo_Save_UpdatesOnConflict(t *testing.T) {
 	if got.Icon != "pet" {
 		t.Errorf("icon not updated: got %q", got.Icon)
 	}
-	if got.Position != 7 {
-		t.Errorf("position not updated: got %d", got.Position)
+	if got.SortKey != keyAt(7) {
+		t.Errorf("sort_key not updated: got %q", got.SortKey)
 	}
 	if !got.IsArchived {
 		t.Error("is_archived not updated: got false")
@@ -131,7 +132,7 @@ func TestLabelRepo_GetByID_NotFound(t *testing.T) {
 	}
 }
 
-func TestLabelRepo_ListAndCountByOwner(t *testing.T) {
+func TestLabelRepo_ListByOwner(t *testing.T) {
 	repo, _, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
@@ -148,11 +149,7 @@ func TestLabelRepo_ListAndCountByOwner(t *testing.T) {
 		t.Fatalf("want 2, got %d", len(list))
 	}
 	if list[0].ID.String() != labelA2 || list[1].ID.String() != labelA1 {
-		t.Errorf("order by position wrong: %s, %s", list[0].ID, list[1].ID)
-	}
-	n, err := repo.CountByOwner(ctx, vo.MustParseId(userA))
-	if err != nil || n != 2 {
-		t.Errorf("CountByOwner = %d, %v; want 2", n, err)
+		t.Errorf("order by sort key wrong: %s, %s", list[0].ID, list[1].ID)
 	}
 }
 
@@ -280,10 +277,10 @@ func TestLabelReadRepo_ArchivedStillVisible(t *testing.T) {
 	}
 }
 
-// TestLabelReadRepo_OrderedByPosition pins down GetLabelListView's
-// "ORDER BY position, id": TestLabelReadRepo_OwnPlusShared only ever lists one
+// TestLabelReadRepo_OrderedBySortKey pins down GetLabelListView's
+// "ORDER BY sort_key, id": TestLabelReadRepo_OwnPlusShared only ever lists one
 // own label, so it can't catch an order regression.
-func TestLabelReadRepo_OrderedByPosition(t *testing.T) {
+func TestLabelReadRepo_OrderedBySortKey(t *testing.T) {
 	repo, read, _, f := newRepo(t)
 	ctx := context.Background()
 	seedUser(t, f, userA)
@@ -295,6 +292,18 @@ func TestLabelReadRepo_OrderedByPosition(t *testing.T) {
 		t.Fatalf("LabelListView: %v", err)
 	}
 	if len(rows) != 2 || rows[0].ID != labelA2 || rows[1].ID != labelA1 {
-		t.Fatalf("want position order [A2, A1], got %+v", rows)
+		t.Fatalf("want sort-key order [A2, A1], got %+v", rows)
 	}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits. Tests keep expressing intended order as a small
+// integer while the repo orders by key.
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }

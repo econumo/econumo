@@ -47,7 +47,6 @@ func (r *ReadRepo) LabelListView(ctx context.Context, userID string) ([]model.La
 			UserID:     l.UserID,
 			Name:       l.Name,
 			Icon:       l.Icon,
-			Position:   l.Position,
 			IsArchived: l.IsArchived,
 			CreatedAt:  l.CreatedAt.Format(datetime.Layout),
 			UpdatedAt:  l.UpdatedAt.Format(datetime.Layout),

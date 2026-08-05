@@ -4,7 +4,7 @@
 -- have a persisted icon.
 
 -- name: GetTagByID :one
-SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
 FROM tags
 WHERE id = $1
 ;
@@ -14,20 +14,20 @@ SELECT COUNT(*) FROM tags WHERE user_id = $1
 ;
 
 -- name: ListTagsByOwner :many
-SELECT id, user_id, name, icon, position, is_archived, created_at, updated_at
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
 FROM tags
 WHERE user_id = $1
-ORDER BY position, id
+ORDER BY sort_key, id
 ;
 
 -- name: UpsertTag :exec
-INSERT INTO tags (id, user_id, name, icon, position, is_archived, created_at, updated_at)
+INSERT INTO tags (id, user_id, name, is_archived, created_at, updated_at, sort_key, icon)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
+    sort_key    = excluded.sort_key,
     icon        = excluded.icon,
-    position    = excluded.position,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 ;

@@ -6,6 +6,7 @@ import { backendHost, locale } from '@/lib/config'
 import i18n from '@/app/i18n'
 import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/app/queryKeys'
+import { navigateTo } from '@/app/routerRef'
 
 export const api = axios.create()
 
@@ -28,7 +29,7 @@ api.interceptors.response.use(
     const url: string = error.config?.url ?? ''
     if (status === 401 && !url.includes('/api/v1/user/login-user')) {
       removeToken()
-      window.location.assign('/login?reason=expired')
+      navigateTo('/login?reason=expired')
     }
     if (status === 402) {
       // The 402 envelope message is deliberately product-neutral and carries

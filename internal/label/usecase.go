@@ -22,8 +22,8 @@ type Service struct {
 }
 
 // NewService wires the label service. read is the own+shared label view (the
-// same ReadModel get-label-list uses); order-label-list returns that full
-// available list. access resolves shared-account ownership for
+// same ReadModel get-label-list uses); move-label and sort-label-list return
+// that full available list. access resolves shared-account ownership for
 // create-label-for-account. ops backs create-label's request-id idempotency.
 func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess) *Service {
 	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
@@ -128,7 +128,6 @@ func toResult(l *model.Label) model.LabelResult {
 		OwnerUserId: l.UserID.String(),
 		Name:        l.Name,
 		Icon:        l.Icon,
-		Position:    int(l.Position),
 		IsArchived:  archived,
 		CreatedAt:   l.CreatedAt.Format(datetime.Layout),
 		UpdatedAt:   l.UpdatedAt.Format(datetime.Layout),
@@ -136,8 +135,9 @@ func toResult(l *model.Label) model.LabelResult {
 }
 
 // listResults returns the user's AVAILABLE labels (own + shared via account
-// access), ordered by position, in the wire shape — used by order-label-list.
-// It reads through the same own+shared view as get-label-list, not owner-only.
+// access), in list order, in the wire shape — used by move-label and
+// sort-label-list. It reads through the same own+shared view as get-label-list,
+// not owner-only.
 func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.LabelResult, error) {
 	rows, err := s.read.LabelListView(ctx, userID.String())
 	if err != nil {
@@ -147,7 +147,38 @@ func (s *Service) listResults(ctx context.Context, userID vo.Id) ([]model.LabelR
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return items, nil
+}
+
+// assignPositions stamps the dense 0-based index the wire contract calls
+// "position". The stored sort key never leaves the server, so this index is what
+// clients order by; it is derived from the already-sorted list rather than read
+// from a column.
+func assignPositions(items []model.LabelResult) {
+	for i := range items {
+		items[i].Position = i
+	}
+}
+
+// itemResult builds a single-item write response, stamping the dense index the
+// item occupies in the caller's available list. Single-item responses must derive
+// "position" exactly like list responses do, because the entity no longer carries
+// one -- the stored sort key never leaves the server.
+func (s *Service) itemResult(ctx context.Context, userID vo.Id, l *model.Label) (model.LabelResult, error) {
+	res := toResult(l)
+	items, err := s.listResults(ctx, userID)
+	if err != nil {
+		return model.LabelResult{}, err
+	}
+	id := l.ID.String()
+	for i, it := range items {
+		if it.Id == id {
+			res.Position = i
+			break
+		}
+	}
+	return res, nil
 }
 
 // ensureNameUnique enforces the per-owner name-uniqueness rule. exceptID, when

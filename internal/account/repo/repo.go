@@ -20,6 +20,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -138,40 +139,25 @@ func (r *Repo) Save(ctx context.Context, a *model.Account) error {
 	})
 }
 
-// GetPosition returns the account's per-user position (accounts_options).
-func (r *Repo) GetPosition(ctx context.Context, accountID, userID vo.Id) (int16, bool, error) {
-	row, err := r.q.GetAccountOption(ctx, r.db(ctx), getOptionP{AccountID: accountID.String(), UserID: userID.String()})
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return 0, false, nil
-		}
-		return 0, false, err
-	}
-	return row.Position, true, nil
-}
-
-// MaxPosition returns the highest accounts_options.position for the user (0 if
-// none).
-func (r *Repo) MaxPosition(ctx context.Context, userID vo.Id) (int16, error) {
+// SortKeysByUser returns every account's per-user sort key for the user.
+func (r *Repo) SortKeysByUser(ctx context.Context, userID vo.Id) (map[string]sortkey.Key, error) {
 	rows, err := r.q.ListAccountOptionsByUser(ctx, r.db(ctx), userID.String())
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	var max int16
-	for _, row := range rows {
-		if row.Position > max {
-			max = row.Position
-		}
+	out := make(map[string]sortkey.Key, len(rows))
+	for _, o := range rows {
+		out[o.AccountID] = sortkey.Key(o.SortKey)
 	}
-	return max, nil
+	return out, nil
 }
 
-// SavePosition upserts an accounts_options row.
-func (r *Repo) SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error {
+// SaveSortKey upserts the account's per-user ordering row.
+func (r *Repo) SaveSortKey(ctx context.Context, accountID, userID vo.Id, key sortkey.Key, now time.Time) error {
 	return r.q.UpsertAccountOption(ctx, r.db(ctx), upsertOptionP{
 		AccountID: accountID.String(),
 		UserID:    userID.String(),
-		Position:  position,
+		SortKey:   string(key),
 		CreatedAt: now,
 		UpdatedAt: now,
 	})

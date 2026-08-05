@@ -228,3 +228,15 @@ func sortByPositionThenID[T any](items []T, pos func(T) int, id func(T) string) 
 		return id(items[i]) < id(items[j])
 	})
 }
+
+// sortBySortKeyThenID is sortByPositionThenID for a list ordered by fractional
+// sort key rather than a dense index. The id tiebreak matters more here: rows
+// backfilled from the old integer positions can share a key.
+func sortBySortKeyThenID[T any](items []T, key func(T) string, id func(T) string) {
+	sort.Slice(items, func(i, j int) bool {
+		if ki, kj := key(items[i]), key(items[j]); ki != kj {
+			return ki < kj
+		}
+		return id(items[i]) < id(items[j])
+	})
+}

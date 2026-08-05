@@ -75,11 +75,13 @@ type LabelSpendingRow struct {
 
 // LabelMeta is a label's display metadata for the budget view.
 type LabelMeta struct {
-	ID         string
-	OwnerID    string
-	Name       string
-	Icon       string
-	Position   int16
+	ID      string
+	OwnerID string
+	Name    string
+	Icon    string
+	// SortKey decides the label block's order; it never leaves the server (the
+	// labels block carries no position field at all).
+	SortKey    string
 	IsArchived bool
 }
 

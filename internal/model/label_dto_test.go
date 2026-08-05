@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 func TestCreateLabelRequestValidate(t *testing.T) {
@@ -18,8 +19,23 @@ func TestCreateLabelRequestValidate(t *testing.T) {
 	}
 }
 
-func TestOrderLabelListRequestRejectsEmpty(t *testing.T) {
-	if err := (model.OrderLabelListRequest{}).Validate(); err == nil {
-		t.Fatal("empty changes list must fail validation")
+func TestSortLabelListRequestRejectsEmpty(t *testing.T) {
+	if err := (model.SortLabelListRequest{}).Validate(); err == nil {
+		t.Fatal("empty ids list must fail validation")
+	}
+}
+
+func TestMoveLabelRequestValidate(t *testing.T) {
+	id := vo.NewId().String()
+	if err := (model.MoveLabelRequest{Id: "not-a-uuid"}).Validate(); err == nil {
+		t.Fatal("malformed id must fail validation")
+	}
+	bad := "not-a-uuid"
+	if err := (model.MoveLabelRequest{Id: id, AfterId: &bad}).Validate(); err == nil {
+		t.Fatal("malformed afterId must fail validation")
+	}
+	// A null afterId is the "move to front" anchor, not a missing field.
+	if err := (model.MoveLabelRequest{Id: id}).Validate(); err != nil {
+		t.Fatalf("null afterId rejected: %v", err)
 	}
 }

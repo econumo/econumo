@@ -233,42 +233,6 @@ func TestArchiveCategory_ThenListShowsArchived(t *testing.T) {
 	}
 }
 
-func TestOrderCategoryList_Reorders(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	id1 := createCategory(t, h, token, catID1, "First", "expense")  // pos 0
-	id2 := createCategory(t, h, token, catID2, "Second", "expense") // pos 1
-	id3 := createCategory(t, h, token, catID3, "Third", "expense")  // pos 2
-
-	// Reverse the order: id3 -> 0, id1 -> 2.
-	status, env := h.do(t, http.MethodPost, "/api/v1/category/order-category-list", token, map[string]any{
-		"changes": []map[string]any{
-			{"id": id3, "position": 0},
-			{"id": id1, "position": 2},
-		},
-	})
-	if status != http.StatusOK {
-		t.Fatalf("order status = %d, want 200; body: %s", status, env.raw)
-	}
-	res := mustUnmarshal[itemsWrapper](t, env.Data)
-	if len(res.Items) != 3 {
-		t.Fatalf("returned %d items, want 3", len(res.Items))
-	}
-	// Items must come back ordered by position: id3(0), id2(1), id1(2).
-	pos := map[string]int{}
-	for _, it := range res.Items {
-		pos[it.ID] = it.Position
-	}
-	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
-		t.Fatalf("positions = %v, want id3=0 id2=1 id1=2", pos)
-	}
-	// And the returned slice itself must be position-ordered.
-	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
-	}
-}
-
 func TestGetCategoryList_OrderedByPosition(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)

@@ -14,7 +14,7 @@ import { SortDialog } from '@/components/SortDialog'
 import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import { fuzzyMatch } from '@/lib/fuzzy'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { getChangedPositions } from '@/lib/ordering'
+import { afterIdFromDrop, afterIdInScope } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
@@ -76,13 +76,12 @@ interface ClassificationListProps<T extends ClassificationItem> {
   showIcon?: boolean
   /** icon tint override per item (e.g. kind accent colour); default is the plain muted icon class */
   iconClassName?: (item: T) => string
-  /** confines the A-Z sort (SortDialog) to reordering only within items sharing the same key —
-   *  needed when the list mixes kinds that hold INDEPENDENT backend position sequences (e.g.
-   *  tags/labels). Drag reorder needs no such flag: it is ALREADY confined per rendered section
-   *  (one SortableList per `sections` entry), so a caller that mixes independently-positioned
-   *  kinds must also pass matching `sections` — orderScope alone does not make drag safe.
-   *  Absent preserves the historical cross-group A-Z ordering (e.g. category income+expense
-   *  share one position sequence, so they may interleave). */
+  /** confines reordering to items sharing the same key — needed when the list mixes kinds that
+   *  hold INDEPENDENT backend sort-key sequences (e.g. tags/labels), because a drag anchor or an
+   *  A-Z order that crossed kinds would name a row the receiving endpoint does not own, and the
+   *  server silently appends rather than erroring on such an anchor. onMove is therefore anchored
+   *  within the moved row's scope, and onSort fires ONCE PER SCOPE.
+   *  Absent = one scope for the whole list (e.g. category income+expense share one sequence). */
   orderScope?: (item: T) => string
   /** extra muted lines rendered under the name */
   meta?: (item: T) => ReactNode
@@ -99,7 +98,10 @@ interface ClassificationListProps<T extends ClassificationItem> {
   onDelete: (id: string) => void
   onToggleArchive?: (item: T) => void
   /** absent = the list is not orderable: no drag grips, no reorder button */
-  onOrder?: (changes: { id: string; position: number }[]) => void
+  onMove?: (move: { id: string; afterId: string | null }) => void
+  // Sorting A-Z reorders the WHOLE list, which no single relative move can
+  // express, so it is a separate callback that replays the target order.
+  onSort?: (orderedIds: string[]) => void
 }
 
 export function ClassificationList<T extends ClassificationItem>({
@@ -126,7 +128,8 @@ export function ClassificationList<T extends ClassificationItem>({
   onEdit,
   onDelete,
   onToggleArchive,
-  onOrder,
+  onMove,
+  onSort,
 }: ClassificationListProps<T>) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
@@ -205,24 +208,35 @@ export function ClassificationList<T extends ClassificationItem>({
 
   // A drag reorders only the rows on screen (a section, possibly with the
   // archived ones filtered out); rebuild the full id order so every other
-  // item keeps its slot before diffing positions.
+  // item keeps its slot before reading off the anchor.
   const rebuildFullOrder = (subsetIds: string[]): string[] => {
     const subset = new Set(subsetIds)
     const queue = [...subsetIds]
     return items.map((item) => (subset.has(item.id) ? (queue.shift() as string) : item.id))
   }
 
-  const commitOrder = (orderedIds: string[]) => {
-    if (!onOrder) {
-      return
+  // Without orderScope every row shares one sequence and the anchor is simply
+  // the preceding id; with it, rows of another kind must not become the anchor.
+  const anchorFor = (fullOrder: string[], movedId: string): string | null => {
+    if (!orderScope) {
+      return afterIdFromDrop(fullOrder, movedId)
     }
-    const changes = getChangedPositions(items, rebuildFullOrder(orderedIds))
-    if (changes.length > 0) {
-      onOrder(changes)
-    }
+    const scopeOf = new Map(items.map((item) => [item.id, orderScope(item)]))
+    return afterIdInScope(fullOrder, movedId, (id) => scopeOf.get(id))
   }
 
-  const orderable = onOrder !== undefined && items.length > 1
+  // A drag reports WHERE the dragged row landed, not what every index became:
+  // the server derives the sort key from the anchor. movedId comes from the drag
+  // event rather than from diffing the orders, because the first differing index
+  // is the displaced neighbour, not the dragged row, on any downward move.
+  const commitOrder = (orderedIds: string[], movedId: string) => {
+    if (!onMove) {
+      return
+    }
+    onMove({ id: movedId, afterId: anchorFor(rebuildFullOrder(orderedIds), movedId) })
+  }
+
+  const orderable = onMove !== undefined && items.length > 1
   const reorderButton = (
     <Button
       type="button"
@@ -430,7 +444,7 @@ export function ClassificationList<T extends ClassificationItem>({
                   {section.action ?? null}
                 </div>
               ) : null}
-              {onOrder ? (
+              {onMove ? (
                 // reordering a fuzzy-filtered subset is disorienting — handles return when the query clears
                 <SortableList items={sectionItems} onReorder={commitOrder} renderItem={(item, handle) => renderRow(item, searching ? undefined : handle)} />
               ) : (
@@ -497,31 +511,27 @@ export function ClassificationList<T extends ClassificationItem>({
         </div>
       </ResponsiveDialog>
 
-      {onOrder ? (
+      {onMove ? (
         <SortDialog
           open={sortOpen}
           onClose={() => setSortOpen(false)}
           onPick={(direction) => {
             const cmp = (a: T, b: T) =>
               direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language)
-            if (orderScope) {
-              // sort each scope group independently so items in one group never
-              // displace another group's slots (their position sequences are unrelated)
-              const groups = new Map<string, T[]>()
-              for (const item of items) {
-                const key = orderScope(item)
-                const group = groups.get(key)
-                if (group) {
-                  group.push(item)
-                } else {
-                  groups.set(key, [item])
-                }
+            // One request per scope: each kind owns its own sort-key sequence, so a
+            // single merged order would name another kind's rows and be skipped there.
+            const groups = new Map<string, T[]>()
+            for (const item of items) {
+              const key = orderScope?.(item) ?? ''
+              const group = groups.get(key)
+              if (group) {
+                group.push(item)
+              } else {
+                groups.set(key, [item])
               }
-              for (const group of groups.values()) {
-                commitOrder([...group].sort(cmp).map((i) => i.id))
-              }
-            } else {
-              commitOrder([...items].sort(cmp).map((i) => i.id))
+            }
+            for (const group of groups.values()) {
+              onSort?.([...group].sort(cmp).map((i) => i.id))
             }
             setSortOpen(false)
           }}

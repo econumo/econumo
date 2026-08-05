@@ -94,9 +94,9 @@ func TestArchiveAndUnarchiveLabel(t *testing.T) {
 	if _, err := svc.ArchiveLabel(ctx, owner, model.ArchiveLabelRequest{Id: a.Id}); err != nil {
 		t.Fatalf("ArchiveLabel: %v", err)
 	}
-	list, err := svc.OrderLabelList(ctx, owner, model.OrderLabelListRequest{Changes: []model.PositionChange{{Id: a.Id, Position: 0}}})
+	list, err := svc.MoveLabel(ctx, owner, model.MoveLabelRequest{Id: a.Id})
 	if err != nil {
-		t.Fatalf("OrderLabelList: %v", err)
+		t.Fatalf("MoveLabel: %v", err)
 	}
 	if len(list.Items) != 1 || list.Items[0].IsArchived != 1 {
 		t.Fatalf("after archive, want IsArchived=1, got %+v", list.Items)
@@ -105,9 +105,9 @@ func TestArchiveAndUnarchiveLabel(t *testing.T) {
 	if _, err := svc.UnarchiveLabel(ctx, owner, model.UnarchiveLabelRequest{Id: a.Id}); err != nil {
 		t.Fatalf("UnarchiveLabel: %v", err)
 	}
-	list, err = svc.OrderLabelList(ctx, owner, model.OrderLabelListRequest{Changes: []model.PositionChange{{Id: a.Id, Position: 0}}})
+	list, err = svc.MoveLabel(ctx, owner, model.MoveLabelRequest{Id: a.Id})
 	if err != nil {
-		t.Fatalf("OrderLabelList: %v", err)
+		t.Fatalf("MoveLabel: %v", err)
 	}
 	if len(list.Items) != 1 || list.Items[0].IsArchived != 0 {
 		t.Fatalf("after unarchive, want IsArchived=0, got %+v", list.Items)
@@ -160,7 +160,7 @@ func TestDeleteLabel_RemovesRowAndMasksForeignOwnership(t *testing.T) {
 	}
 }
 
-func TestOrderLabelList_OwnerOnlyWritesButReturnsSharedToo(t *testing.T) {
+func TestSortLabelList_OwnerOnlyWritesButReturnsSharedToo(t *testing.T) {
 	db := dbtest.New(t)
 	f := labelFixture(t, db)
 	svc := newLabelSvc(t, db)
@@ -177,15 +177,13 @@ func TestOrderLabelList_OwnerOnlyWritesButReturnsSharedToo(t *testing.T) {
 	acctID := f.Account(fixture.Account{UserID: labelOtherID, Name: "Other's account"})
 	f.AccountAccess(acctID, labelOwnerID, int(model.RoleUser))
 
-	// Reorder: swap a and b's positions. Also try to move the shared label -
-	// that write must be silently ignored (owner-only writes).
-	res, err := svc.OrderLabelList(ctx, owner, model.OrderLabelListRequest{Changes: []model.PositionChange{
-		{Id: a.Id, Position: 1},
-		{Id: b.Id, Position: 0},
-		{Id: sharedLabel.Id, Position: 99},
+	// Reorder: put b before a. The shared label is named too - that write must
+	// be silently ignored (owner-only writes).
+	res, err := svc.SortLabelList(ctx, owner, model.SortLabelListRequest{Ids: []string{
+		sharedLabel.Id, b.Id, a.Id,
 	}})
 	if err != nil {
-		t.Fatalf("OrderLabelList: %v", err)
+		t.Fatalf("SortLabelList: %v", err)
 	}
 
 	byID := map[string]model.LabelResult{}
@@ -195,13 +193,13 @@ func TestOrderLabelList_OwnerOnlyWritesButReturnsSharedToo(t *testing.T) {
 	if len(byID) != 3 {
 		t.Fatalf("want 3 available labels (own 2 + shared 1), got %d: %+v", len(byID), res.Items)
 	}
-	if byID[a.Id].Position != 1 {
-		t.Errorf("a.Position = %d, want 1", byID[a.Id].Position)
+	// The owner's own two labels must now read b before a. The shared label is
+	// interleaved by its own (untouched) key, so only the relative order of the
+	// owned pair is asserted.
+	if byID[b.Id].Position >= byID[a.Id].Position {
+		t.Errorf("b at %d, a at %d - want b before a", byID[b.Id].Position, byID[a.Id].Position)
 	}
-	if byID[b.Id].Position != 0 {
-		t.Errorf("b.Position = %d, want 0", byID[b.Id].Position)
-	}
-	if byID[sharedLabel.Id].Position == 99 {
-		t.Errorf("shared label's position was rewritten by a non-owner order call, want it untouched (not 99)")
+	if byID[sharedLabel.Id].Id == "" {
+		t.Error("shared label missing from the response list")
 	}
 }

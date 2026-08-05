@@ -230,7 +230,10 @@ func TestGetAccountList_PendingGrant_RidesListThenShowsRealFolderOnceAccepted(t 
 	if item2.FolderId == nil || *item2.FolderId != granteeFolderID {
 		t.Fatalf("folderId=%v want %q after accepting", item2.FolderId, granteeFolderID)
 	}
-	if item2.Position != 3 {
-		t.Fatalf("position=%d want 3 after accepting", item2.Position)
+	// position is the dense 0-based index in the grantee's list, not the stored
+	// ordering value: this is their only account, so it is 0 regardless of the
+	// sparse position the fixture seeded.
+	if item2.Position != 0 {
+		t.Fatalf("position=%q want 0 after accepting (dense index, single account)", item2.Position)
 	}
 }

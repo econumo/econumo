@@ -94,8 +94,8 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 // LabelsByTransactionIDs (already chunked) for the label ids attached to each
 // transaction, then ONE LabelNames call over every distinct id it returned.
 // LabelsByTransactionIDs orders ids by label_id (a determinism guarantee, not
-// a display order), so the per-transaction cell is re-sorted by position once
-// the names come back.
+// a display order), so the per-transaction cell is re-sorted into list order
+// once the sort keys come back.
 func (s *Service) buildExportLabelIndex(ctx context.Context, txs []*model.Transaction) (exportLabelIndex, error) {
 	txIDs := make([]vo.Id, len(txs))
 	for i, t := range txs {
@@ -133,7 +133,7 @@ type exportLabelIndex struct {
 	byID map[string]model.ExportLabel
 }
 
-// cell returns the ";"-joined, position-ordered, per-name-sanitized labels
+// cell returns the ";"-joined, list-ordered, per-name-sanitized labels
 // cell for a transaction id ("" when it has none). Each name is sanitized
 // BEFORE the join: sanitizing the already-joined string would let a leading
 // "=" on a later name through, defeating the formula-injection guard.
@@ -148,7 +148,7 @@ func (idx exportLabelIndex) cell(transactionID string) string {
 			labels = append(labels, lbl)
 		}
 	}
-	sort.SliceStable(labels, func(i, j int) bool { return labels[i].Position < labels[j].Position })
+	sort.SliceStable(labels, func(i, j int) bool { return labels[i].SortKey < labels[j].SortKey })
 	parts := make([]string, len(labels))
 	for i, lbl := range labels {
 		parts[i] = sanitizeExportValue(lbl.Name)

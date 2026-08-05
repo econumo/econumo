@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // TagResult is one tag in the API. isArchived is an int 0/1 (NOT bool);
@@ -115,27 +116,55 @@ func (r DeleteTagRequest) Validate() error {
 
 type DeleteTagResult struct{}
 
-type OrderTagListRequest struct {
-	Changes []PositionChange `json:"changes"`
+// MoveTagRequest is the move-tag request body. AfterId is the id of the
+// sibling this tag should land immediately after; null means "move to the
+// front". An AfterId that is not one of the caller's own tags appends to the end
+// rather than erroring, matching the silent-skip behaviour of the
+// absolute-position endpoint this replaces.
+type MoveTagRequest struct {
+	Id      string  `json:"id"`
+	AfterId *string `json:"afterId"`
 }
 
-// Validate enforces a non-empty changes list (an empty list is rejected with
-// "Tags list is empty").
-func (r OrderTagListRequest) Validate() error {
-	if len(r.Changes) == 0 {
-		return &errs.ValidationError{Msg: "Tags list is empty", MsgCode: errs.CodeTagListEmpty}
+func (r MoveTagRequest) Validate() error {
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
 	}
-	var fields []errs.FieldError
-	for _, c := range r.Changes {
-		fields = append(fields, validatePositionField("position", c.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-type OrderTagListResult struct {
+// SortTagListRequest is the sort-tag-list request body: the caller's desired
+// order as a full list of ids. A drag is one MoveTag; sorting the whole list
+// (alphabetically, say) is this, because no single relative move can express an
+// n-item reorder.
+type SortTagListRequest struct {
+	Ids []string `json:"ids"`
+}
+
+func (r SortTagListRequest) Validate() error {
+	if len(r.Ids) == 0 {
+		return &errs.ValidationError{Msg: "Ids list is empty", MsgCode: errs.CodeIsBlank}
+	}
+	for _, id := range r.Ids {
+		if _, err := vo.ParseId(id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// SortTagListResult is the sort-tag-list response: {items: [...]}.
+type SortTagListResult struct {
+	Items []TagResult `json:"items"`
+}
+
+// MoveTagResult is the move-tag response: {items: [...]}.
+type MoveTagResult struct {
 	Items []TagResult `json:"items"`
 }
 

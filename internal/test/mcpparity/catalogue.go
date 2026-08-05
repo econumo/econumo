@@ -138,7 +138,7 @@ func init() {
 		{Label: "create-envelope", CaptureAs: "element_id", MCPCapturePath: []string{"item", "id"},
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
 		{Label: "move-element",
-			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","items":[{"element_id":"{{element_id}}","folder_id":"{{folder_id}}","position":0}]}}}`},
+			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","folder_id":"{{folder_id}}"}}}`},
 		{Label: "update-envelope",
 			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
 		{Label: "set-limit",

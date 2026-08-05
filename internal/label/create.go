@@ -5,13 +5,14 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // CreateLabel is idempotent on the request id: inside the tx we Claim the id in
 // operation_requests_ids; a second request with the same id finds the row
-// already present and is rejected ("Operation is locked"). The new label's
-// position is count(user's existing labels).
+// already present and is rejected ("Operation is locked"). The new label lands
+// at the end of the owner's list.
 func (s *Service) CreateLabel(ctx context.Context, userID vo.Id, req model.CreateLabelRequest) (*model.CreateLabelResult, error) {
 	// The request id is the OPERATION id (idempotency key), not the entity id;
 	// the entity gets a fresh UUIDv7.
@@ -56,13 +57,17 @@ func (s *Service) CreateLabel(ctx context.Context, userID vo.Id, req model.Creat
 			return uerr
 		}
 
-		count, cerr := s.repo.CountByOwner(ctx, ownerID)
+		rows, cerr := s.repo.ListByOwner(ctx, ownerID)
 		if cerr != nil {
 			return cerr
 		}
+		key, kerr := sortkey.Append(rows, labelItem, sortkey.GrowsUp)
+		if kerr != nil {
+			return kerr
+		}
 		now := s.clock.Now()
 		l := model.NewLabel(id, ownerID, name, now)
-		l.SetPosition(int16(count))
+		l.SetSortKey(key)
 		if serr := s.repo.Save(ctx, l); serr != nil {
 			return serr
 		}
@@ -75,5 +80,9 @@ func (s *Service) CreateLabel(ctx context.Context, userID vo.Id, req model.Creat
 		return nil, err
 	}
 
-	return &model.CreateLabelResult{Item: toResult(created)}, nil
+	item, err := s.itemResult(ctx, ownerID, created)
+	if err != nil {
+		return nil, err
+	}
+	return &model.CreateLabelResult{Item: item}, nil
 }

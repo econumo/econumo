@@ -11,11 +11,12 @@ type ExportAccount struct {
 	CurrencyCode string
 }
 
-// ExportLabel is a label's name and position, resolved for the CSV export's
-// labels column (position, not id, determines the export's join order).
+// ExportLabel is a label's name and sort key, resolved for the CSV export's
+// labels column (list order, not id order, determines the export's join
+// order). The key is an internal ordering token: only Name reaches the file.
 type ExportLabel struct {
-	Name     string
-	Position int16
+	Name    string
+	SortKey string
 }
 
 // ImportAccount / ImportNamed are the lightweight entity views the CSV

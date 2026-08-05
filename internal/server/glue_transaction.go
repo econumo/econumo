@@ -434,7 +434,7 @@ func NewTransactionLabelNameLookup(labels transactionLabelByID) *TransactionLabe
 	return &TransactionLabelNameLookup{labels: labels}
 }
 
-// LabelNames resolves name + position for every id that exists; a missing id
+// LabelNames resolves name + sort key for every id that exists; a missing id
 // (e.g. deleted between the batch read and this lookup) is simply absent from
 // the returned map. Archived labels resolve like any other — they remain
 // attachable and must still export.
@@ -448,7 +448,7 @@ func (l *TransactionLabelNameLookup) LabelNames(ctx context.Context, ids []vo.Id
 			}
 			return nil, err
 		}
-		out[id.String()] = model.ExportLabel{Name: lbl.Name, Position: lbl.Position}
+		out[id.String()] = model.ExportLabel{Name: lbl.Name, SortKey: string(lbl.SortKey)}
 	}
 	return out, nil
 }

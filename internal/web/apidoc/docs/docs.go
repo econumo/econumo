@@ -638,14 +638,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/account/order-account-list": {
+        "/api/v1/account/move-account": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Repositions accounts and moves them between folders, returning the full list.",
+                "description": "Places one account immediately after another (afterId null = first) and sets its folder; returns the full list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -655,15 +655,15 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Reorder the account list",
+                "summary": "Move an account",
                 "parameters": [
                     {
-                        "description": "Order account list request",
+                        "description": "Move account request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderAccountListRequest"
+                            "$ref": "#/definitions/model.MoveAccountRequest"
                         }
                     }
                 ],
@@ -679,7 +679,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderAccountListResult"
+                                            "$ref": "#/definitions/model.MoveAccountResult"
                                         }
                                     }
                                 }
@@ -713,14 +713,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/account/order-folder-list": {
+        "/api/v1/account/move-folder": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's folders and returns the full ordered list.",
+                "description": "Places one folder immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -730,15 +730,15 @@ const docTemplate = `{
                 "tags": [
                     "Account"
                 ],
-                "summary": "Reorder the folder list",
+                "summary": "Move a folder",
                 "parameters": [
                     {
-                        "description": "Order folder list request",
+                        "description": "Move folder request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderFolderListRequest"
+                            "$ref": "#/definitions/model.MoveAccountFolderRequest"
                         }
                     }
                 ],
@@ -754,7 +754,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderFolderListResult"
+                                            "$ref": "#/definitions/model.MoveAccountFolderResult"
                                         }
                                     }
                                 }
@@ -2256,7 +2256,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/budget/move-element-list": {
+        "/api/v1/budget/move-element": {
             "post": {
                 "security": [
                     {
@@ -2272,15 +2272,15 @@ const docTemplate = `{
                 "tags": [
                     "Budget"
                 ],
-                "summary": "Move/reorder budget elements",
+                "summary": "Move a budget element",
                 "parameters": [
                     {
-                        "description": "Move elements",
+                        "description": "Move element",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.MoveElementListRequest"
+                            "$ref": "#/definitions/model.MoveElementRequest"
                         }
                     }
                 ],
@@ -2296,7 +2296,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.MoveElementListResult"
+                                            "$ref": "#/definitions/model.MoveElementResult"
                                         }
                                     }
                                 }
@@ -2321,6 +2321,12 @@ const docTemplate = `{
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
                     "500": {
                         "description": "Internal Server Error",
                         "schema": {
@@ -2330,7 +2336,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/budget/order-folder-list": {
+        "/api/v1/budget/move-folder": {
             "post": {
                 "security": [
                     {
@@ -2346,15 +2352,15 @@ const docTemplate = `{
                 "tags": [
                     "Budget"
                 ],
-                "summary": "Reorder budget folders",
+                "summary": "Move a budget folder",
                 "parameters": [
                     {
-                        "description": "Order folders",
+                        "description": "Move folder",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderBudgetFolderListRequest"
+                            "$ref": "#/definitions/model.MoveBudgetFolderRequest"
                         }
                     }
                 ],
@@ -2370,7 +2376,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderBudgetFolderListResult"
+                                            "$ref": "#/definitions/model.MoveBudgetFolderResult"
                                         }
                                     }
                                 }
@@ -3122,14 +3128,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/category/order-category-list": {
+        "/api/v1/category/move-category": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's categories and returns the full ordered list.",
+                "description": "Places one category immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -3139,15 +3145,15 @@ const docTemplate = `{
                 "tags": [
                     "Category"
                 ],
-                "summary": "Reorder the category list",
+                "summary": "Move a category",
                 "parameters": [
                     {
-                        "description": "Order category list request",
+                        "description": "Move category request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderCategoryListRequest"
+                            "$ref": "#/definitions/model.MoveCategoryRequest"
                         }
                     }
                 ],
@@ -3163,7 +3169,82 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderCategoryListResult"
+                                            "$ref": "#/definitions/model.MoveCategoryResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/category/sort-category-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Applies an explicit order (a full list of ids) to the caller's own categorys and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Category"
+                ],
+                "summary": "Sort the category list",
+                "parameters": [
+                    {
+                        "description": "Sort category list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortCategoryListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortCategoryListResult"
                                         }
                                     }
                                 }
@@ -4509,7 +4590,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Returns all the authenticated user's available labels (own + shared via account access, archived and not) ordered by position.",
+                "description": "Returns all the authenticated user's available labels (own + shared via account access, archived and not) in list order.",
                 "produces": [
                     "application/json"
                 ],
@@ -4551,14 +4632,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/label/order-label-list": {
+        "/api/v1/label/move-label": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the caller's own labels and returns the full available list (own + shared).",
+                "description": "Places one label immediately after another (afterId null = first) and returns the full available list (own + shared).",
                 "consumes": [
                     "application/json"
                 ],
@@ -4568,15 +4649,15 @@ const docTemplate = `{
                 "tags": [
                     "Label"
                 ],
-                "summary": "Reorder the label list",
+                "summary": "Move a label",
                 "parameters": [
                     {
-                        "description": "Order label list request",
+                        "description": "Move label request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderLabelListRequest"
+                            "$ref": "#/definitions/model.MoveLabelRequest"
                         }
                     }
                 ],
@@ -4592,7 +4673,82 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderLabelListResult"
+                                            "$ref": "#/definitions/model.MoveLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/sort-label-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Applies an explicit order (a full list of ids) to the caller's own labels and returns the full available list (own + shared).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Sort the label list",
+                "parameters": [
+                    {
+                        "description": "Sort label list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortLabelListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortLabelListResult"
                                         }
                                     }
                                 }
@@ -5050,14 +5206,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/payee/order-payee-list": {
+        "/api/v1/payee/move-payee": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's payees and returns the full ordered list.",
+                "description": "Places one payee immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -5067,15 +5223,15 @@ const docTemplate = `{
                 "tags": [
                     "Payee"
                 ],
-                "summary": "Reorder the payee list",
+                "summary": "Move a payee",
                 "parameters": [
                     {
-                        "description": "Order payee list request",
+                        "description": "Move payee request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderPayeeListRequest"
+                            "$ref": "#/definitions/model.MovePayeeRequest"
                         }
                     }
                 ],
@@ -5091,7 +5247,82 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderPayeeListResult"
+                                            "$ref": "#/definitions/model.MovePayeeResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/payee/sort-payee-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Applies an explicit order (a full list of ids) to the caller's own payees and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Payee"
+                ],
+                "summary": "Sort the payee list",
+                "parameters": [
+                    {
+                        "description": "Sort payee list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortPayeeListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortPayeeListResult"
                                         }
                                     }
                                 }
@@ -6022,14 +6253,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/tag/order-tag-list": {
+        "/api/v1/tag/move-tag": {
             "post": {
                 "security": [
                     {
                         "Bearer": []
                     }
                 ],
-                "description": "Applies position changes to the user's tags and returns the full ordered list.",
+                "description": "Places one tag immediately after another (afterId null = first) and returns the full ordered list.",
                 "consumes": [
                     "application/json"
                 ],
@@ -6039,15 +6270,15 @@ const docTemplate = `{
                 "tags": [
                     "Tag"
                 ],
-                "summary": "Reorder the tag list",
+                "summary": "Move a tag",
                 "parameters": [
                     {
-                        "description": "Order tag list request",
+                        "description": "Move tag request",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/model.OrderTagListRequest"
+                            "$ref": "#/definitions/model.MoveTagRequest"
                         }
                     }
                 ],
@@ -6063,7 +6294,82 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.OrderTagListResult"
+                                            "$ref": "#/definitions/model.MoveTagResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/tag/sort-tag-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Applies an explicit order (a full list of ids) to the caller's own tags and returns the full ordered list.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tag"
+                ],
+                "summary": "Sort the tag list",
+                "parameters": [
+                    {
+                        "description": "Sort tag list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortTagListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortTagListResult"
                                         }
                                     }
                                 }
@@ -8656,20 +8962,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.AccountPositionChange": {
-            "type": "object",
-            "properties": {
-                "folderId": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
         "model.AccountResult": {
             "type": "object",
             "properties": {
@@ -9798,17 +10090,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.FolderPositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
         "model.GenerateInviteRequest": {
             "type": "object"
         },
@@ -10215,132 +10496,18 @@ const docTemplate = `{
                 }
             }
         },
-        "model.MoveElementListItem": {
+        "model.MoveAccountFolderRequest": {
             "type": "object",
             "properties": {
-                "folderId": {
+                "afterId": {
                     "type": "string"
                 },
                 "id": {
                     "type": "string"
-                },
-                "position": {
-                    "type": "integer"
                 }
             }
         },
-        "model.MoveElementListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.MoveElementListItem"
-                    }
-                }
-            }
-        },
-        "model.MoveElementListResult": {
-            "type": "object"
-        },
-        "model.OptionResult": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.OrderAccountListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AccountPositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderAccountListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.AccountResult"
-                    }
-                }
-            }
-        },
-        "model.OrderBudgetFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "budgetId": {
-                    "type": "string"
-                },
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.OrderFolderListItem"
-                    }
-                }
-            }
-        },
-        "model.OrderBudgetFolderListResult": {
-            "type": "object"
-        },
-        "model.OrderCategoryListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderCategoryListResult": {
-            "type": "object",
-            "properties": {
-                "items": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.CategoryResult"
-                    }
-                }
-            }
-        },
-        "model.OrderFolderListItem": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
-                }
-            }
-        },
-        "model.OrderFolderListRequest": {
-            "type": "object",
-            "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.FolderPositionChange"
-                    }
-                }
-            }
-        },
-        "model.OrderFolderListResult": {
+        "model.MoveAccountFolderResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -10351,18 +10518,102 @@ const docTemplate = `{
                 }
             }
         },
-        "model.OrderLabelListRequest": {
+        "model.MoveAccountRequest": {
             "type": "object",
             "properties": {
-                "changes": {
+                "afterId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveAccountResult": {
+            "type": "object",
+            "properties": {
+                "items": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.PositionChange"
+                        "$ref": "#/definitions/model.AccountResult"
                     }
                 }
             }
         },
-        "model.OrderLabelListResult": {
+        "model.MoveBudgetFolderRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveBudgetFolderResult": {
+            "type": "object"
+        },
+        "model.MoveCategoryRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveCategoryResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
+        "model.MoveElementRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "budgetId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveElementResult": {
+            "type": "object"
+        },
+        "model.MoveLabelRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveLabelResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -10373,18 +10624,18 @@ const docTemplate = `{
                 }
             }
         },
-        "model.OrderPayeeListRequest": {
+        "model.MovePayeeRequest": {
             "type": "object",
             "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },
-        "model.OrderPayeeListResult": {
+        "model.MovePayeeResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -10395,18 +10646,18 @@ const docTemplate = `{
                 }
             }
         },
-        "model.OrderTagListRequest": {
+        "model.MoveTagRequest": {
             "type": "object",
             "properties": {
-                "changes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.PositionChange"
-                    }
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
                 }
             }
         },
-        "model.OrderTagListResult": {
+        "model.MoveTagResult": {
             "type": "object",
             "properties": {
                 "items": {
@@ -10414,6 +10665,17 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.TagResult"
                     }
+                }
+            }
+        },
+        "model.OptionResult": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
             }
         },
@@ -10511,17 +10773,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                }
-            }
-        },
-        "model.PositionChange": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "position": {
-                    "type": "integer"
                 }
             }
         },
@@ -10892,6 +11143,94 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.RecurringTransactionResult"
+                }
+            }
+        },
+        "model.SortCategoryListRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.SortCategoryListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.CategoryResult"
+                    }
+                }
+            }
+        },
+        "model.SortLabelListRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.SortLabelListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelResult"
+                    }
+                }
+            }
+        },
+        "model.SortPayeeListRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.SortPayeeListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PayeeResult"
+                    }
+                }
+            }
+        },
+        "model.SortTagListRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.SortTagListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.TagResult"
+                    }
                 }
             }
         },

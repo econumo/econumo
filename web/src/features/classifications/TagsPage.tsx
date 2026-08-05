@@ -10,11 +10,13 @@ import {
   useArchiveTag,
   useUnarchiveTag,
   useDeleteTag,
-  useOrderTags,
+  useMoveTag,
+  useSortTags,
   useArchiveLabel,
   useUnarchiveLabel,
   useDeleteLabel,
-  useOrderLabels,
+  useMoveLabel,
+  useSortLabels,
 } from './queries'
 
 interface ClassificationRow extends ClassificationItem {
@@ -29,24 +31,29 @@ export function TagsPage() {
   const archiveTag = useArchiveTag()
   const unarchiveTag = useUnarchiveTag()
   const deleteTag = useDeleteTag()
-  const orderTags = useOrderTags()
+  const moveTag = useMoveTag()
+  const sortTags = useSortTags()
   const archiveLabel = useArchiveLabel()
   const unarchiveLabel = useUnarchiveLabel()
   const deleteLabel = useDeleteLabel()
-  const orderLabels = useOrderLabels()
+  const moveLabel = useMoveLabel()
+  const sortLabels = useSortLabels()
 
   const [dialog, setDialog] = useState<{ open: boolean; item: TagDialogItem | null }>({ open: false, item: null })
 
   const ownTags = tags.filter((tg) => !user || tg.ownerUserId === user.id)
   const ownLabels = labels.filter((lb) => !user || lb.ownerUserId === user.id)
-  // Tags and labels hold INDEPENDENT position sequences on the backend, so the
-  // merged row's position is a local, 0-based-per-kind index rather than the
-  // real stored value — real values would collide across kinds and corrupt
-  // ClassificationList's reorder diffing (see orderScope + onOrder below).
+  // Tags and labels hold INDEPENDENT sort-key sequences on the backend, and each
+  // list's wire "position" is a dense 0-based index within its OWN list — so both
+  // kinds start at 0. Restamping the merged rows keeps them monotonic, which is
+  // what the list's ordering helpers read; orderScope below keeps every reorder
+  // request confined to one kind.
   const rows: ClassificationRow[] = [
     ...ownTags.map((tg, i) => ({ ...tg, kind: 'tag' as const, position: i })),
     ...ownLabels.map((lb, i) => ({ ...lb, kind: 'label' as const, position: ownTags.length + i })),
   ]
+
+  const kindOf = (id: string) => rows.find((row) => row.id === id)?.kind
 
   return (
     <>
@@ -69,8 +76,7 @@ export function TagsPage() {
         onCreate={() => setDialog({ open: true, item: null })}
         onEdit={(row) => setDialog({ open: true, item: { id: row.id, name: row.name, kind: row.kind, icon: row.icon ?? '' } })}
         onDelete={(id) => {
-          const row = rows.find((r) => r.id === id)
-          if (row?.kind === 'label') {
+          if (kindOf(id) === 'label') {
             deleteLabel.mutate(id)
           } else {
             deleteTag.mutate(id)
@@ -82,19 +88,11 @@ export function TagsPage() {
           const mutation = row.isArchived === 0 ? archive : unarchive
           mutation.mutate(row.id)
         }}
-        onOrder={(changes) => {
-          const kindOf = (id: string) => rows.find((r) => r.id === id)?.kind
-          const tagChanges = changes.filter((c) => kindOf(c.id) === 'tag')
-          const labelChanges = changes
-            .filter((c) => kindOf(c.id) === 'label')
-            .map((c) => ({ id: c.id, position: c.position - ownTags.length }))
-          if (tagChanges.length > 0) {
-            orderTags.mutate(tagChanges)
-          }
-          if (labelChanges.length > 0) {
-            orderLabels.mutate(labelChanges)
-          }
-        }}
+        // orderScope guarantees the anchor shares the moved row's kind, and that
+        // onSort fires once per kind, so each request only ever names ids the
+        // receiving endpoint owns.
+        onMove={(move) => (kindOf(move.id) === 'label' ? moveLabel.mutate(move) : moveTag.mutate(move))}
+        onSort={(ids) => (ids.length > 0 && kindOf(ids[0]) === 'label' ? sortLabels.mutate(ids) : sortTags.mutate(ids))}
       />
       <TagDialog open={dialog.open} item={dialog.item} onClose={() => setDialog({ open: false, item: null })} />
     </>

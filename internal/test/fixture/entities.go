@@ -220,11 +220,15 @@ func (b *Builder) Rate(r Rate) string {
 
 // Folder describes a folders row.
 type Folder struct {
-	ID       string
-	UserID   string
-	Name     string // default "Main"
+	ID     string
+	UserID string
+	Name   string // default "Main"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
 	Position int
-	Hidden   bool // default visible
+
+	SortKey string
+	Hidden  bool // default visible
 }
 
 func (b *Builder) Folder(f Folder) string {
@@ -237,9 +241,13 @@ func (b *Builder) Folder(f Folder) string {
 	if f.Hidden {
 		visible = "FALSE"
 	}
+	if f.SortKey == "" {
+		f.SortKey = sortKeyAt(f.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at) VALUES (?, ?, ?, ?, `+visible+`, ?, ?)`,
-		id, f.UserID, f.Name, f.Position, now, now)
+	b.insert(`INSERT INTO folders (id, user_id, name, sort_key, is_visible, created_at, updated_at) VALUES (?, ?, ?, ?, `+visible+`, ?, ?)`,
+		id, f.UserID, f.Name, f.SortKey, now, now)
 	return id
 }
 
@@ -289,8 +297,8 @@ func (b *Builder) AccountInFolder(folderID, accountID string) {
 func (b *Builder) AccountOption(accountID, userID string, position int) {
 	b.t.Helper()
 	now := b.now()
-	b.insert(`INSERT INTO accounts_options (account_id, user_id, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
-		accountID, userID, position, now, now)
+	b.insert(`INSERT INTO accounts_options (account_id, user_id, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+		accountID, userID, sortKeyAt(position), now, now)
 }
 
 // AccountAccess grants a user ACCEPTED access to an account (accounts_access).
@@ -313,10 +321,14 @@ func (b *Builder) AccountAccessPending(accountID, userID string, role int) {
 
 // Category describes a categories row.
 type Category struct {
-	ID       string
-	UserID   string
-	Name     string // default "Category"
+	ID     string
+	UserID string
+	Name   string // default "Category"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
 	Position int
+
+	SortKey  string
 	Type     int    // 0 expense, 1 income
 	Icon     string // default "i"
 	Archived bool
@@ -335,18 +347,26 @@ func (b *Builder) Category(c Category) string {
 	if c.Archived {
 		arch = "TRUE"
 	}
+	if c.SortKey == "" {
+		c.SortKey = sortKeyAt(c.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO categories (id, user_id, name, position, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, c.UserID, c.Name, c.Position, c.Type, c.Icon, now, now)
+	b.insert(`INSERT INTO categories (id, user_id, name, sort_key, type, icon, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, c.UserID, c.Name, c.SortKey, c.Type, c.Icon, now, now)
 	return id
 }
 
 // Tag describes a tags row.
 type Tag struct {
-	ID       string
-	UserID   string
-	Name     string // default "Tag"
+	ID     string
+	UserID string
+	Name   string // default "Tag"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
 	Position int
+
+	SortKey  string
 	Archived bool
 }
 
@@ -360,19 +380,27 @@ func (b *Builder) Tag(tg Tag) string {
 	if tg.Archived {
 		arch = "TRUE"
 	}
+	if tg.SortKey == "" {
+		tg.SortKey = sortKeyAt(tg.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO tags (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, tg.UserID, tg.Name, tg.Position, now, now)
+	b.insert(`INSERT INTO tags (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, tg.UserID, tg.Name, tg.SortKey, now, now)
 	return id
 }
 
 // Label describes a labels row.
 type Label struct {
-	ID       string
-	UserID   string
-	Name     string // default "Label"
-	Icon     string // default "label"
+	ID     string
+	UserID string
+	Name   string // default "Label"
+	Icon   string // default "label"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself does not exist.
 	Position int
+
+	SortKey  string
 	Archived bool
 }
 
@@ -389,18 +417,25 @@ func (b *Builder) Label(l Label) string {
 	if l.Archived {
 		arch = "TRUE"
 	}
+	if l.SortKey == "" {
+		l.SortKey = sortKeyAt(l.Position)
+	}
 	now := b.now()
-	b.insert(`INSERT INTO labels (id, user_id, name, icon, position, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, l.UserID, l.Name, l.Icon, l.Position, now, now)
+	b.insert(`INSERT INTO labels (id, user_id, name, icon, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, l.UserID, l.Name, l.Icon, l.SortKey, now, now)
 	return id
 }
 
 // Payee describes a payees row.
 type Payee struct {
-	ID       string
-	UserID   string
-	Name     string // default "Payee"
+	ID     string
+	UserID string
+	Name   string // default "Payee"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
 	Position int
+
+	SortKey  string
 	Archived bool
 }
 
@@ -414,9 +449,13 @@ func (b *Builder) Payee(p Payee) string {
 	if p.Archived {
 		arch = "TRUE"
 	}
+	if p.SortKey == "" {
+		p.SortKey = sortKeyAt(p.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO payees (id, user_id, name, position, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
-		id, p.UserID, p.Name, p.Position, now, now)
+	b.insert(`INSERT INTO payees (id, user_id, name, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, p.UserID, p.Name, p.SortKey, now, now)
 	return id
 }
 
@@ -499,15 +538,23 @@ type BudgetElement struct {
 	CurrencyID string // nullable; empty -> NULL (only envelope elements carry one)
 	ExternalID string
 	Type       int
-	Position   int
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
+	Position int
+
+	SortKey string
 }
 
 func (b *Builder) BudgetElement(e BudgetElement) string {
 	b.t.Helper()
 	id := b.orNewID(e.ID)
+	if e.SortKey == "" {
+		e.SortKey = sortKeyAt(e.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.Position, now, now)
+	b.insert(`INSERT INTO budgets_elements (id, budget_id, currency_id, external_id, type, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, e.BudgetID, nullable(e.CurrencyID), e.ExternalID, e.Type, e.SortKey, now, now)
 	return id
 }
 
@@ -537,7 +584,11 @@ type BudgetFolder struct {
 	ID       string
 	BudgetID string
 	Name     string // default "Folder"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself is gone.
 	Position int
+
+	SortKey string
 }
 
 func (b *Builder) BudgetFolder(f BudgetFolder) string {
@@ -546,9 +597,13 @@ func (b *Builder) BudgetFolder(f BudgetFolder) string {
 	if f.Name == "" {
 		f.Name = "Folder"
 	}
+	if f.SortKey == "" {
+		f.SortKey = sortKeyAt(f.Position)
+	}
+
 	now := b.now()
-	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, position, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
-		id, f.BudgetID, f.Name, f.Position, now, now)
+	b.insert(`INSERT INTO budgets_folders (id, budget_id, name, sort_key, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+		id, f.BudgetID, f.Name, f.SortKey, now, now)
 	return id
 }
 
@@ -621,4 +676,19 @@ func nullable(s string) any {
 		return nil
 	}
 	return s
+}
+
+// sortKeyAt encodes a fixture's Position as a sort key using the same scheme as
+// the 20260803000000 backfill: the 'c' magnitude head plus three base-62 digits.
+// Deriving the key from Position keeps every seeded row's intended order intact
+// once the read paths sort by sort_key instead.
+func sortKeyAt(position int) string {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	if position < 0 {
+		position = 0
+	}
+	return "c" +
+		string(alphabet[(position/3844)%62]) +
+		string(alphabet[(position/62)%62]) +
+		string(alphabet[position%62])
 }

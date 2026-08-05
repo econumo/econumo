@@ -8,7 +8,7 @@ import type { LabelDto } from '@/api/dto/label'
 import type { TagDto } from '@/api/dto/tag'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
-import { useArchiveLabel, useCreateLabel, useDeleteLabel, useLabels, useOrderLabels, useUnarchiveLabel, useUpdateLabel } from './queries'
+import { useArchiveLabel, useCreateLabel, useDeleteLabel, useLabels, useMoveLabel, useSortLabels, useUnarchiveLabel, useUpdateLabel } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
@@ -129,11 +129,20 @@ it('fires appLabelUnarchive when a label is unarchived', async () => {
   expect(firedEvents('appLabelUnarchive')).toHaveLength(1)
 })
 
-it('fires appLabelOrderList when labels are reordered', async () => {
-  server.use(http.post('*/api/v1/label/order-label-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+it('fires appLabelOrderList when a label is moved', async () => {
+  server.use(http.post('*/api/v1/label/move-label', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
   const { wrapper } = makeWrapper()
-  const { result } = renderHook(() => useOrderLabels(), { wrapper })
-  result.current.mutate([{ id: 'l1', position: 0 }, { id: 'l2', position: 1 }])
+  const { result } = renderHook(() => useMoveLabel(), { wrapper })
+  result.current.mutate({ id: 'l2', afterId: 'l1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(firedEvents('appLabelOrderList')).toHaveLength(1)
+})
+
+it('fires appLabelOrderList when the whole label list is sorted', async () => {
+  server.use(http.post('*/api/v1/label/sort-label-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useSortLabels(), { wrapper })
+  result.current.mutate(['l1', 'l2'])
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(firedEvents('appLabelOrderList')).toHaveLength(1)
 })

@@ -33,7 +33,12 @@ export async function deleteLabel(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/label/delete-label'), { id })
 }
 
-export async function orderLabelList(changes: { id: Id; position: number }[]): Promise<LabelDto[]> {
-  const response = await api.post<Envelope<{ items: LabelDto[] }>>(apiUrl('/api/v1/label/order-label-list'), { changes })
+export async function moveLabel(id: Id, afterId: Id | null): Promise<LabelDto[]> {
+  const response = await api.post<Envelope<{ items: LabelDto[] }>>(apiUrl('/api/v1/label/move-label'), { id, afterId })
+  return response.data.data.items
+}
+
+export async function sortLabelList(ids: Id[]): Promise<LabelDto[]> {
+  const response = await api.post<Envelope<{ items: LabelDto[] }>>(apiUrl('/api/v1/label/sort-label-list'), { ids })
   return response.data.data.items
 }

@@ -24,7 +24,11 @@ func (s *Service) UpdateLabel(ctx context.Context, userID vo.Id, req model.Updat
 	if err != nil {
 		return nil, err
 	}
-	return &model.UpdateLabelResult{Item: toResult(l)}, nil
+	item, err := s.itemResult(ctx, userID, l)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateLabelResult{Item: item}, nil
 }
 
 // mutateWithUnique is the update variant of mutate: it additionally enforces

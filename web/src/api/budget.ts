@@ -99,12 +99,12 @@ export async function deleteBudgetFolder(budgetId: Id, id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/delete-folder'), { budgetId, id })
 }
 
-export async function orderBudgetFolders(budgetId: Id, items: { id: Id; position: number }[]): Promise<void> {
-  await api.post(apiUrl('/api/v1/budget/order-folder-list'), { budgetId, items })
+export async function moveBudgetFolder(budgetId: Id, id: Id, afterId: Id | null): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/move-folder'), { budgetId, id, afterId })
 }
 
-export async function moveElements(budgetId: Id, items: { id: Id; folderId: Id | null; position: number }[]): Promise<void> {
-  await api.post(apiUrl('/api/v1/budget/move-element-list'), { budgetId, items })
+export async function moveElement(budgetId: Id, id: Id, folderId: Id | null, afterId: Id | null): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/move-element'), { budgetId, id, folderId, afterId })
 }
 
 export async function changeElementCurrency(form: { budgetId: Id; elementId: Id; currencyId: Id }): Promise<void> {

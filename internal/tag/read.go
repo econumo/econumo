@@ -32,6 +32,7 @@ func (s *ReadService) GetTagList(ctx context.Context, userID vo.Id) (*model.GetT
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return &model.GetTagListResult{Items: items}, nil
 }
 
@@ -47,7 +48,6 @@ func toViewResult(r model.TagViewRow) model.TagResult {
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
 		Icon:        r.Icon,
-		Position:    int(r.Position),
 		IsArchived:  archived,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,

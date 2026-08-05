@@ -123,7 +123,7 @@ it('gives archived tag and label rows their own per-kind archived wording', asyn
   }
 })
 
-it('A-Z reorder posts each kind to its own endpoint with positions local to that kind', async () => {
+it('A-Z reorder posts each kind to its own endpoint, naming only that kind\'s ids', async () => {
   let tagBody: unknown
   let labelBody: unknown
   server.use(
@@ -137,11 +137,11 @@ it('A-Z reorder posts each kind to its own endpoint with positions local to that
         { id: 'label-a', ownerUserId: 'u1', name: 'aaa-label', icon: 'label', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
       ],
     }),
-    http.post('*/api/v1/tag/order-tag-list', async ({ request }) => {
+    http.post('*/api/v1/tag/sort-tag-list', async ({ request }) => {
       tagBody = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
-    http.post('*/api/v1/label/order-label-list', async ({ request }) => {
+    http.post('*/api/v1/label/sort-label-list', async ({ request }) => {
       labelBody = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
@@ -153,8 +153,9 @@ it('A-Z reorder posts each kind to its own endpoint with positions local to that
   await user.click(await screen.findByRole('button', { name: 'Alphabetically (A-Z)' }))
   await waitFor(() => expect(tagBody).toBeDefined())
   await waitFor(() => expect(labelBody).toBeDefined())
-  // both kinds sort aaa* before zzz*; positions are 0-based WITHIN each kind,
-  // not offset by the other kind's row count in the merged list
-  expect(tagBody).toEqual({ changes: [{ id: 'tag-a', position: 0 }, { id: 'tag-z', position: 1 }] })
-  expect(labelBody).toEqual({ changes: [{ id: 'label-a', position: 0 }, { id: 'label-z', position: 1 }] })
+  // both kinds sort aaa* before zzz*, and each request names ONLY its own kind's
+  // ids: the two lists hold independent sort-key sequences, so an id from the
+  // other kind would be silently skipped by the receiving endpoint
+  expect(tagBody).toEqual({ ids: ['tag-a', 'tag-z'] })
+  expect(labelBody).toEqual({ ids: ['label-a', 'label-z'] })
 })

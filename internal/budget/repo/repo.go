@@ -15,6 +15,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -168,8 +169,7 @@ func (r *Repo) GetFolder(ctx context.Context, id vo.Id) (*model.BudgetFolder, er
 
 func (r *Repo) SaveFolder(ctx context.Context, f *model.BudgetFolder) error {
 	return r.q.UpsertBudgetFolder(ctx, r.db(ctx), upFolderP{
-		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name,
-		Position: f.Position, CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
+		ID: f.ID.String(), BudgetID: f.BudgetID.String(), Name: f.Name, SortKey: string(f.SortKey), CreatedAt: f.CreatedAt, UpdatedAt: f.UpdatedAt,
 	})
 }
 
@@ -264,7 +264,7 @@ func (r *Repo) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	return r.q.UpsertBudgetElement(ctx, r.db(ctx), upElementP{
 		ID: e.ID.String(), BudgetID: e.BudgetID.String(), CurrencyID: idPtr(e.CurrencyID),
 		FolderID: idPtr(e.FolderID), ExternalID: e.ExternalID.String(), Type: e.Type.Int16(),
-		CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt, Position: e.Position,
+		CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt, SortKey: string(e.SortKey),
 	})
 }
 
@@ -350,7 +350,7 @@ func hydrateFolder(row folderRow) (*model.BudgetFolder, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetFolder{ID: id, BudgetID: budgetID, Name: row.Name, SortKey: sortkey.Key(row.SortKey), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateEnvelope(row envelopeRow) (*model.BudgetEnvelope, error) {
@@ -386,7 +386,7 @@ func hydrateElement(row elementRow) (*model.BudgetElement, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: model.ElementType(row.Type), CurrencyID: currencyID, FolderID: folderID, Position: row.Position, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: model.ElementType(row.Type), CurrencyID: currencyID, FolderID: folderID, SortKey: sortkey.Key(row.SortKey), CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateLimit(row limitRow) (*model.BudgetElementLimit, error) {

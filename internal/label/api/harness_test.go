@@ -133,6 +133,26 @@ func (h *harness) seedLabel(t *testing.T, id, ownerID, name string, position int
 	})
 }
 
+// allSortKeys reads every label's stored sort key, so a test can assert how
+// many rows a single move actually rewrote.
+func (h *harness) allSortKeys(t *testing.T) map[string]string {
+	t.Helper()
+	rows, err := h.db.Query(`SELECT id, sort_key FROM labels`)
+	if err != nil {
+		t.Fatalf("read sort keys: %v", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out[id] = key
+	}
+	return out
+}
+
 func (h *harness) do(t *testing.T, method, path, token string, body any) (int, envelope) {
 	t.Helper()
 	var rdr io.Reader

@@ -105,37 +105,6 @@ func TestGetFolderList_OrderedByPosition(t *testing.T) {
 	}
 }
 
-func TestOrderFolderList_Reorders(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t)
-
-	_, bEnv := h.do(t, http.MethodPost, "/api/v1/account/create-folder", tok, map[string]any{"name": "Bills"})
-	bID := mustUnmarshal[folderItemWrapper](t, bEnv.Data).Item.ID
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/account/order-folder-list", tok, map[string]any{
-		"changes": []map[string]any{
-			{"id": bID, "position": 0},
-			{"id": seedFolderID, "position": 1},
-		},
-	})
-	if status != http.StatusOK {
-		t.Fatalf("order = %d, want 200; body: %s", status, env.raw)
-	}
-	res := mustUnmarshal[folderItemsWrapper](t, env.Data)
-	if res.Items[0].ID != bID || res.Items[1].ID != seedFolderID {
-		t.Fatalf("order = [%s,%s], want [Bills, Main]", res.Items[0].ID, res.Items[1].ID)
-	}
-}
-
-func TestOrderFolderList_Empty_400(t *testing.T) {
-	h := newHarness(t)
-	tok := h.token(t)
-	status, _ := h.do(t, http.MethodPost, "/api/v1/account/order-folder-list", tok, map[string]any{"changes": []map[string]any{}})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400", status)
-	}
-}
-
 func TestReplaceFolder_MovesAccountsAndDeletes(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)

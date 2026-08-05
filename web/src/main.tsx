@@ -7,15 +7,26 @@ import './index.css'
 import { createRouter } from '@/app/routes'
 import { createPersistOptions, refreshRestoredQueries } from '@/lib/queryPersist'
 import { queryClient } from '@/app/queryClient'
+import { bootNativeApp, hideSplash } from '@/lib/appBoot'
+import { setRouter } from '@/app/routerRef'
+import { AppUpdateBlock } from '@/components/AppUpdateBlock'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={createPersistOptions()}
-      onSuccess={() => refreshRestoredQueries(queryClient)}
-    >
-      <RouterProvider router={createRouter()} />
-    </PersistQueryClientProvider>
-  </StrictMode>,
-)
+void bootNativeApp().then(() => {
+  const router = createRouter()
+  setRouter(router)
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <PersistQueryClientProvider
+        client={queryClient}
+        persistOptions={createPersistOptions()}
+        onSuccess={() => refreshRestoredQueries(queryClient)}
+      >
+        <RouterProvider router={router} />
+        {/* Sits outside the router: the hard version gate must cover every
+            route, login included. */}
+        <AppUpdateBlock />
+      </PersistQueryClientProvider>
+    </StrictMode>,
+  )
+  hideSplash()
+})

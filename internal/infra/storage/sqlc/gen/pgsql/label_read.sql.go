@@ -11,7 +11,7 @@ import (
 
 const getLabelListView = `-- name: GetLabelListView :many
 
-SELECT l.id, l.user_id, l.name, l.icon, l.position, l.is_archived, l.created_at, l.updated_at
+SELECT l.id, l.user_id, l.name, l.icon, l.sort_key, l.is_archived, l.created_at, l.updated_at
 FROM labels l
 WHERE l.user_id = $1
    OR l.user_id IN (
@@ -20,7 +20,7 @@ WHERE l.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
-ORDER BY l.position, l.id
+ORDER BY l.sort_key, l.id
 `
 
 // Read-model query for the label module (PostgreSQL variant: $N placeholders).
@@ -41,7 +41,7 @@ func (q *Queries) GetLabelListView(ctx context.Context, userID string) ([]Label,
 			&i.UserID,
 			&i.Name,
 			&i.Icon,
-			&i.Position,
+			&i.SortKey,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,

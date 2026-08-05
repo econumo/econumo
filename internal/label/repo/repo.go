@@ -14,6 +14,7 @@ import (
 	domlabel "github.com/econumo/econumo/internal/label"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -29,7 +30,6 @@ type (
 type querier interface {
 	GetLabelByID(ctx context.Context, db backend.DBTX, id string) (labelRow, error)
 	ListLabelsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]labelRow, error)
-	CountLabelsByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertLabel(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteLabel(ctx context.Context, db backend.DBTX, id string) error
 }
@@ -91,14 +91,6 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Label, e
 	return out, nil
 }
 
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountLabelsByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
-}
-
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, l *model.Label) error {
 	return r.q.UpsertLabel(ctx, r.db(ctx), upsertParams{
@@ -106,7 +98,7 @@ func (r *Repo) Save(ctx context.Context, l *model.Label) error {
 		UserID:     l.UserID.String(),
 		Name:       l.Name,
 		Icon:       l.Icon,
-		Position:   l.Position,
+		SortKey:    string(l.SortKey),
 		IsArchived: l.IsArchived,
 		CreatedAt:  l.CreatedAt,
 		UpdatedAt:  l.UpdatedAt,
@@ -126,6 +118,6 @@ func hydrate(row labelRow) (*model.Label, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Label{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, Position: row.Position,
+	return &model.Label{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

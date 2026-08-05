@@ -148,12 +148,12 @@ type Querier interface {
 	// See the sqlite variant for documentation; the SQL is identical apart from the
 	// placeholder syntax. Unlike categories, a tag has no type column, but it does
 	// have a persisted icon.
-	GetTagByID(ctx context.Context, id string) (GetTagByIDRow, error)
+	GetTagByID(ctx context.Context, id string) (Tag, error)
 	// Read-model query for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation.
 	// Available tags: own + tags of users who shared an account with this user.
 	// $1 is reused for both positions so the generated param stays single.
-	GetTagListView(ctx context.Context, userID string) ([]GetTagListViewRow, error)
+	GetTagListView(ctx context.Context, userID string) ([]Tag, error)
 	// Write + read queries for the transaction module (PostgreSQL: $N placeholders).
 	// See the sqlite variant for documentation.
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
@@ -256,6 +256,8 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// The owner's labels ordered by sort key; used by move-label (load, place the
+	// moved row, save it) and as the basis for the returned list.
 	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
@@ -264,7 +266,7 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	ListTagsByOwner(ctx context.Context, userID string) ([]ListTagsByOwnerRow, error)
+	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error

@@ -16,7 +16,7 @@ func NewReadService(read ReadModel) *ReadService {
 }
 
 // GetLabelList returns all the user's available labels (own + shared via
-// account access, archived and not) ordered by position, in the wire shape.
+// account access, archived and not) in list order, in the wire shape.
 func (s *ReadService) GetLabelList(ctx context.Context, userID vo.Id) (*model.GetLabelListResult, error) {
 	rows, err := s.read.LabelListView(ctx, userID.String())
 	if err != nil {
@@ -26,6 +26,7 @@ func (s *ReadService) GetLabelList(ctx context.Context, userID vo.Id) (*model.Ge
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return &model.GetLabelListResult{Items: items}, nil
 }
 
@@ -41,7 +42,6 @@ func toViewResult(r model.LabelViewRow) model.LabelResult {
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
 		Icon:        r.Icon,
-		Position:    int(r.Position),
 		IsArchived:  archived,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,

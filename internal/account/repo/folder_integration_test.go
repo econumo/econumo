@@ -8,6 +8,7 @@ import (
 	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -27,8 +28,7 @@ func newFolderRepo(t *testing.T) (*accountrepo.FolderRepo, *dbtest.DB, *fixture.
 // newTestFolder builds a visible fixedTime-stamped folder for userA.
 func newTestFolder(id vo.Id, name string, position int16) *model.Folder {
 	return &model.Folder{
-		ID: id, UserID: vo.MustParseId(userA), Name: name, Position: position,
-		IsVisible: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+		ID: id, UserID: vo.MustParseId(userA), Name: name, SortKey: keyAt(position), IsVisible: true, CreatedAt: fixedTime, UpdatedAt: fixedTime,
 	}
 }
 
@@ -46,8 +46,8 @@ func TestFolderRepo_SaveGetRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetByID: %v", err)
 	}
-	if got.Name != "Main" || got.Position != 5 || !got.IsVisible {
-		t.Errorf("fields mismatch: name=%q pos=%d visible=%v", got.Name, got.Position, got.IsVisible)
+	if got.Name != "Main" || got.SortKey != keyAt(5) || !got.IsVisible {
+		t.Errorf("fields mismatch: name=%q key=%q visible=%v", got.Name, got.SortKey, got.IsVisible)
 	}
 	if got.UserID.String() != userA {
 		t.Errorf("user mismatch: %s", got.UserID)
@@ -157,4 +157,16 @@ func TestFolderRepo_Membership(t *testing.T) {
 	if len(ids) != 1 || ids[0] != acctBank {
 		t.Errorf("want only bank after remove, got %v", ids)
 	}
+}
+
+// keyAt mirrors the 20260803000000 backfill encoding: the 'c' magnitude head
+// plus three base-62 digits. Tests keep expressing intended order as a small
+// integer while the repo orders by key.
+func keyAt[T ~int | ~int16](pos T) sortkey.Key {
+	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+	n := int(pos)
+	if n < 0 {
+		n = 0
+	}
+	return sortkey.Key("c" + string(alphabet[(n/3844)%62]) + string(alphabet[(n/62)%62]) + string(alphabet[n%62]))
 }
