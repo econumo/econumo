@@ -305,6 +305,7 @@ export function useUpdateLabel() {
     mutationFn: (form: { id: Id; name: string }) => labelApi.updateLabel(form),
     onSuccess: (item, form) => {
       ops.replaceItem(form.id, { name: item?.name ?? form.name })
+      trackEvent(METRICS.LABEL_UPDATE)
     },
   })
 }
@@ -315,6 +316,7 @@ export function useArchiveLabel() {
     mutationFn: (id: Id) => labelApi.archiveLabel(id),
     onSuccess: (_r, id) => {
       ops.setArchived(id, 1)
+      trackEvent(METRICS.LABEL_ARCHIVE)
     },
   })
 }
@@ -325,6 +327,7 @@ export function useUnarchiveLabel() {
     mutationFn: (id: Id) => labelApi.unarchiveLabel(id),
     onSuccess: (_r, id) => {
       ops.setArchived(id, 0)
+      trackEvent(METRICS.LABEL_UNARCHIVE)
     },
   })
 }
@@ -348,6 +351,7 @@ export function useDeleteLabel() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => withoutLabel(prev, id))
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      trackEvent(METRICS.LABEL_DELETE)
     },
   })
 }
@@ -358,6 +362,7 @@ export function useOrderLabels() {
     mutationFn: labelApi.orderLabelList,
     onSuccess: (items) => {
       ops.replaceAll(items)
+      trackEvent(METRICS.LABEL_ORDER_LIST)
     },
   })
 }
@@ -374,7 +379,9 @@ export function useCreateLabel() {
       if (existing) {
         return existing
       }
-      return await labelApi.createLabel({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      const item = await labelApi.createLabel({ id: uuidv7(), name: form.name, accountId: form.accountId })
+      trackEvent(METRICS.LABEL_CREATE)
+      return item
     },
     onSuccess: (item) => {
       queryClient.setQueryData<LabelDto[]>(queryKeys.labels, (prev) => {

@@ -8,7 +8,7 @@ import type { LabelDto } from '@/api/dto/label'
 import type { TagDto } from '@/api/dto/tag'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
-import { useCreateLabel, useDeleteLabel, useLabels } from './queries'
+import { useArchiveLabel, useCreateLabel, useDeleteLabel, useLabels, useOrderLabels, useUnarchiveLabel, useUpdateLabel } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
@@ -18,9 +18,14 @@ function makeWrapper() {
   return { queryClient, wrapper }
 }
 
+function firedEvents(name: string) {
+  return window.dataLayer.filter((e) => (e as { event?: string }).event === name)
+}
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  window.dataLayer = []
 })
 
 it('useLabels returns the labels from the API', async () => {
@@ -80,6 +85,57 @@ it('useCreateLabel does not dedupe against an existing tag of the same name', as
 
   expect(apiCalled).toBe(true)
   expect(result.current.data?.id).toBe('l-new')
+  expect(firedEvents('appLabelCreate')).toHaveLength(1)
+})
+
+it('useCreateLabel does not fire the analytics event on a deduped create', async () => {
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData<LabelDto[]>(queryKeys.labels, [
+    { id: 'l1', ownerUserId: 'u1', name: 'Travel', icon: 'label', position: 0, isArchived: 0, createdAt: '', updatedAt: '' },
+  ])
+
+  const { result } = renderHook(() => useCreateLabel(), { wrapper })
+  result.current.mutate({ name: 'Travel', ownerUserId: 'u1' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(result.current.data?.id).toBe('l1')
+  expect(firedEvents('appLabelCreate')).toHaveLength(0)
+})
+
+it('fires appLabelUpdate when a label is updated', async () => {
+  server.use(http.post('*/api/v1/label/update-label', () => HttpResponse.json({ success: true, message: '', data: { item: null } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateLabel(), { wrapper })
+  result.current.mutate({ id: 'l1', name: 'Renamed' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(firedEvents('appLabelUpdate')).toHaveLength(1)
+})
+
+it('fires appLabelArchive when a label is archived', async () => {
+  server.use(http.post('*/api/v1/label/archive-label', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useArchiveLabel(), { wrapper })
+  result.current.mutate('l1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(firedEvents('appLabelArchive')).toHaveLength(1)
+})
+
+it('fires appLabelUnarchive when a label is unarchived', async () => {
+  server.use(http.post('*/api/v1/label/unarchive-label', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUnarchiveLabel(), { wrapper })
+  result.current.mutate('l1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(firedEvents('appLabelUnarchive')).toHaveLength(1)
+})
+
+it('fires appLabelOrderList when labels are reordered', async () => {
+  server.use(http.post('*/api/v1/label/order-label-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useOrderLabels(), { wrapper })
+  result.current.mutate([{ id: 'l1', position: 0 }, { id: 'l2', position: 1 }])
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(firedEvents('appLabelOrderList')).toHaveLength(1)
 })
 
 
@@ -105,4 +161,5 @@ it('deleting a label strips its id from cached transactions and templates', asyn
   const transactions = queryClient.getQueryData<TransactionDto[]>(queryKeys.transactions)!
   expect(transactions.map((tx) => tx.labelIds)).toEqual([['l2'], ['l2']])
   expect(queryClient.getQueryData<RecurringDto[]>(queryKeys.recurring)![0].labelIds).toEqual([])
+  expect(firedEvents('appLabelDelete')).toHaveLength(1)
 })
