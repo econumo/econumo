@@ -114,8 +114,24 @@ list, and most sharply in CSV import's name matching, where it is genuinely
 ambiguous which one a cell means.
 
 **Creating or renaming a tag of either kind fails if any tag of either kind
-already has that name for the owner**, compared case-insensitively — the same
-comparison the existing per-kind check uses. The error is the existing
+already has that name for the owner**, compared **case-insensitively**.
+
+Note this is *not* what the existing per-kind check does: `ensureNameUnique` in
+both `internal/tag/usecase.go` and `internal/label/usecase.go` compares exactly
+(`t.Name == name`), so today "Trip" and "trip" coexist within a kind. **Both the
+same-kind and the cross-kind comparison move to case-insensitive**
+(`strings.EqualFold`), so the rule is one sentence a user can hold: one name,
+one tag, regardless of case or purpose. This aligns with CSV import, which
+already matches names case-insensitively — today a CSV cell `trip` matching an
+existing `Trip` reuses it, while the create endpoint would have allowed a
+duplicate.
+
+The same-kind change is a **behavior change for existing data**: a user who
+already has "Trip" and "trip" as separate tags keeps both (nothing is migrated
+or merged), but renaming either onto a case-variant collision now fails. This is
+acceptable — the pair was always confusing — and needs its own test.
+
+The error is the existing
 `errors.tag.already_exists` ("Tag already exists"), so
 `errors.label.already_exists` becomes unused and is **removed**, along with its
 code in `internal/shared/errs/codes.go` and its entry in all 12 catalogues (the
