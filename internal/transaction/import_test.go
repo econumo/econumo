@@ -204,3 +204,66 @@ func TestImportReportsInvalidLabelNameAsRowError(t *testing.T) {
 		t.Fatalf("name-length error rows = %v, want [2]; errors=%v", rows, res.Errors)
 	}
 }
+
+// TestImportReportsCrossKindLabelCollisionAsRowError pins that a CSV labels
+// cell naming an existing BUDGET tag fails that row rather than silently
+// creating a same-named reporting label - tags and labels share one
+// per-owner name namespace (case-insensitively), so the row-level error the
+// real CreateLabel returns (errs.CodeTagAlreadyExists, mirroring
+// internal/label's ensureNameUnique) must propagate exactly like the
+// name-length failure above, not abort the whole import or slip through.
+func TestImportReportsCrossKindLabelCollisionAsRowError(t *testing.T) {
+	userID := vo.NewId()
+	acctID := vo.NewId()
+	existingLabel := model.ImportNamed{ID: vo.NewId().String(), Name: "Other Label", OwnerID: userID.String()}
+	imp := &stubImportLabelOwner{
+		account: &model.ImportAccount{ID: acctID.String(), Name: "Checking", OwnerID: userID.String()},
+		labelsByOwner: map[string][]model.ImportNamed{
+			userID.String(): {existingLabel},
+		},
+		nextLabelID: vo.NewId(),
+		// "trip" (lower-case, exercising the case-insensitive rule) collides
+		// with the "Trip" BUDGET TAG the owner already holds.
+		createLabelErrFor: map[string]error{
+			"trip": &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists},
+		},
+	}
+	svc := &Service{importer: imp, repo: &stubImportRepo{}, tx: passthroughTx{}, clock: fixedClock{now: time.Now()}}
+
+	acctIDStr := acctID.String()
+	dateStr := "2024-03-01"
+	csv := "Amount,Labels\n-10,trip\n-20,Other Label\n"
+	req := model.ImportRequest{
+		File:      []byte(csv),
+		Mapping:   model.ImportMapping{Amount: "Amount", Labels: "Labels"},
+		AccountId: &acctIDStr,
+		Date:      &dateStr,
+	}
+
+	res, err := svc.ImportTransactionList(context.Background(), userID, req)
+	if err != nil {
+		t.Fatalf("ImportTransactionList: %v", err)
+	}
+	if res.Imported != 1 || res.Skipped != 1 {
+		t.Fatalf("imported=%d skipped=%d, want 1/1 (row 1 rejected, row 2 still imported); errors=%v", res.Imported, res.Skipped, res.Errors)
+	}
+	// The name belongs to a budget tag; both kinds share one namespace, so the
+	// row must fail rather than quietly creating a same-named reporting label.
+	if len(res.Errors) == 0 {
+		t.Fatal("want a row error for the cross-kind name collision, got none")
+	}
+	var rows []int
+	for msg, r := range res.Errors {
+		if strings.Contains(msg, "Tag already exists") {
+			rows = r
+		}
+	}
+	if len(rows) != 1 || rows[0] != 2 {
+		t.Fatalf("cross-kind collision error rows = %v, want [2] (the first data row); errors=%v", rows, res.Errors)
+	}
+	// No partial write: the owner's label list is exactly what it was before
+	// the import, so the failed CreateLabel call left nothing behind.
+	if got := imp.labelsByOwner[userID.String()]; len(got) != 1 || got[0] != existingLabel {
+		t.Fatalf("owner's label list = %v, want unchanged [%v]", got, existingLabel)
+	}
+}
