@@ -62,7 +62,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
         <div className="flex items-center gap-3">
           {/* nothing is saved yet, so the preview is the kind's default icon */}
           <EntityIcon name={DEFAULT_ICON[kind]} className={`text-2xl ${kindAccentClass(kind)}`} />
-          <div className="flex rounded-md border p-0.5" role="radiogroup" aria-label={t('classifications.tags.forms.tag.kind.legend')}>
+          <div className="flex rounded-md border p-0.5" role="radiogroup">
             {CLASSIFICATION_KINDS.map((option) => (
               <button
                 key={option}

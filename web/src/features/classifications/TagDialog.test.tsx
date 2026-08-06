@@ -34,7 +34,7 @@ it('previews the kind icon and swaps it live with the radio', async () => {
   const user = userEvent.setup()
   renderDialog()
   expect(screen.getByTestId('kind-icon')).toHaveTextContent('tag')
-  await user.click(screen.getByRole('radio', { name: /label/i }))
+  await user.click(screen.getByRole('radio', { name: /Tag transactions for reporting/ }))
   expect(screen.getByTestId('kind-icon')).toHaveTextContent('label')
 })
 
@@ -56,7 +56,7 @@ it('creates a label when the label kind is selected', async () => {
   )
   const user = userEvent.setup()
   const { onClose } = renderDialog()
-  await user.click(screen.getByRole('radio', { name: /label/i }))
+  await user.click(screen.getByRole('radio', { name: /Tag transactions for reporting/ }))
   await user.type(screen.getByLabelText('Name'), 'Health')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(labelBody).toBeDefined())
@@ -102,6 +102,20 @@ it('edit previews the row\'s own stored icon, not the kind default', async () =>
   // default instead of reading the stored icon, this would show 'label'.
   renderDialog({ item: { id: 'label1', name: 'health', kind: 'label', icon: 'sell' } })
   expect(await screen.findByTestId('kind-icon')).toHaveTextContent('sell')
+})
+
+it('offers both purposes with their explanations when creating', () => {
+  renderDialog({ item: null })
+  expect(screen.getByRole('radio', { name: /Budget money for this tag/ })).toBeInTheDocument()
+  expect(screen.getByText(/One per transaction/)).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /Tag transactions for reporting/ })).toBeInTheDocument()
+  expect(screen.getByText(/Several per transaction/)).toBeInTheDocument()
+})
+
+it('locks the purpose when editing', () => {
+  renderDialog({ item: { id: 'x', name: 'Trip', kind: 'tag', icon: 'tag' } })
+  expect(screen.queryByRole('radiogroup')).not.toBeInTheDocument()
+  expect(screen.getByTestId('kind-locked-note')).toBeInTheDocument()
 })
 
 it('editing a label posts to update-label, not update-tag', async () => {

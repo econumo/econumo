@@ -91,28 +91,38 @@ export function TagDialog({ open, item, onClose }: TagDialogProps) {
           submit()
         }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3">
           <div data-testid="kind-icon">
             {/* create: preview-only DEFAULT_ICON, since nothing is saved yet.
                 edit: the row's own stored icon (no picker here to change it). */}
             <EntityIcon name={isNew ? DEFAULT_ICON[kind] : (item?.icon ?? DEFAULT_ICON[kind])} className={`text-2xl ${kindAccentClass(kind)}`} />
           </div>
           {isNew ? (
-            <div className="flex rounded-md border p-0.5" role="radiogroup" aria-label={t('classifications.tags.forms.tag.kind.legend')}>
+            <div className="flex flex-col gap-1.5" role="radiogroup">
               {CLASSIFICATION_KINDS.map((option) => (
                 <button
                   key={option}
                   type="button"
                   role="radio"
                   aria-checked={kind === option}
-                  className={`flex-1 rounded px-2 py-1.5 text-sm ${kind === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+                  aria-label={t(`classifications.tags.forms.tag.kind.${option}_option`)}
+                  className={`rounded-md border px-3 py-2 text-left ${kind === option ? 'border-primary bg-accent' : 'hover:bg-accent/50'}`}
                   onClick={() => setKind(option)}
                 >
-                  {t(`classifications.tags.forms.tag.kind.${option}`)}
+                  <span className="block text-sm font-medium">
+                    {t(`classifications.tags.forms.tag.kind.${option}_option`)}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {t(`classifications.tags.forms.tag.kind.${option}_hint`)}
+                  </span>
                 </button>
               ))}
             </div>
-          ) : null}
+          ) : (
+            <p className="text-xs text-muted-foreground" data-testid="kind-locked-note">
+              {t('classifications.tags.forms.tag.kind.locked_note')}
+            </p>
+          )}
         </div>
 
         <CardField label={t('classifications.tags.forms.tag.name.label')} htmlFor="tag-dialog-name" error={error}>
