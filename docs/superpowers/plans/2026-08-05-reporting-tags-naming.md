@@ -13,9 +13,9 @@
 ## Global Constraints
 
 - **Backend naming is frozen.** Do NOT rename the `labels` table, `internal/label/`, `LabelSpendResult`, `labelIds`, `labelsSeparator`, or any MCP/analytics key. Only user-facing strings change.
-- **Copy rule:** the word "label"/"Label" must not appear in any user-facing catalogue *value* in any of the 12 languages. Catalogue *keys* under `classifications.labels.*` stay.
+- **Copy rule:** the word "label"/"Label" must not appear in any user-facing catalogue *value* in any of the 11 languages. Catalogue *keys* under `classifications.labels.*` stay.
 - **Qualifiers, not a second noun:** "Budget tags" / "Reporting tags" (en); «Теги для бюджета» / «Теги для отчётов» (ru). Never «метки».
-- **12 languages, always together:** `locales/{de,en,es,fr,it,nl,pl,pt,ru,uk,zh}.json` — that is 11 files plus the `en` reference; every key added or removed must land in all of them or `i18ntest` fails.
+- **11 languages, always together:** `locales/{de,en,es,fr,it,nl,pl,pt,ru,uk,zh}.json` — `en` is the reference catalogue among them; every key added or removed must land in all of them or `i18ntest` fails.
 - **Golden files are never hand-edited.** Regenerate with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/` (or `./internal/test/mcpparity/`) and inspect the diff.
 - **Wire contract additions only.** `LabelSpendResult.children` is additive; no existing JSON field changes name or type.
 - **Test floor:** `make go-test` enforces `GO_COVER_MIN` (default 80). Do not lower it.
@@ -48,7 +48,7 @@
 - `web/src/api/dto/budget.ts` — `LabelSpendDto.children`.
 
 **Catalogues (Task 11)**
-- `locales/*.json` × 12.
+- `locales/*.json` × 11.
 
 ---
 
@@ -344,11 +344,11 @@ EOF
 
 ### Task 3: Collapse the duplicate-name error onto one code
 
-With one namespace there is one error. `CodeLabelAlreadyExists` and its 12 catalogue entries go.
+With one namespace there is one error. `CodeLabelAlreadyExists` and its 11 catalogue entries go.
 
 **Files:**
 - Modify: `internal/shared/errs/codes.go`, `internal/label/usecase.go`
-- Modify: `locales/*.json` × 12 (remove `errors.label.already_exists`)
+- Modify: `locales/*.json` × 11 (remove `errors.label.already_exists`)
 - Test: `internal/label/create_test.go`, `internal/test/i18ntest/`
 
 **Interfaces:**
@@ -365,7 +365,7 @@ return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAl
 
 - [ ] **Step 2: Remove the dead code and catalogue entries**
 
-Delete `CodeLabelAlreadyExists` from `internal/shared/errs/codes.go` (both the constant and its `AllCodes` entry). Remove `errors.label.already_exists` from all 12 `locales/*.json`.
+Delete `CodeLabelAlreadyExists` from `internal/shared/errs/codes.go` (both the constant and its `AllCodes` entry). Remove `errors.label.already_exists` from all 11 `locales/*.json`.
 
 - [ ] **Step 3: Update the label tests**
 
@@ -377,7 +377,7 @@ In `internal/label/create_test.go`, every assertion expecting `CodeLabelAlreadyE
 go test ./internal/label/ ./internal/test/i18ntest/ ./internal/shared/errs/ -v
 ```
 
-Expected: PASS. `i18ntest`'s two-way `errs.AllCodes` ↔ `errors.*` coverage proves the code and all 12 catalogue entries were removed together.
+Expected: PASS. `i18ntest`'s two-way `errs.AllCodes` ↔ `errors.*` coverage proves the code and all 11 catalogue entries were removed together.
 
 - [ ] **Step 5: Regenerate affected goldens and inspect**
 
@@ -1001,7 +1001,7 @@ EOF
 
 ---
 
-### Task 11: Catalogue rewrite across 12 languages
+### Task 11: Catalogue rewrite across 11 languages
 
 **Files:**
 - Modify: `locales/{de,en,es,fr,it,nl,pl,pt,ru,uk,zh}.json`
@@ -1049,7 +1049,7 @@ Translate the same set for the remaining nine languages, following each catalogu
 
 - [ ] **Step 2: Rewrite every remaining "label" value**
 
-Per the spec's wording table, update in all 12 languages:
+Per the spec's wording table, update in all 11 languages:
 
 - `budgets.page.budget.structure.labels.heading` → "Reporting tags"
 - `budgets.page.budget.structure.labels.overlap_note` → "…several reporting tags…"
@@ -1092,7 +1092,7 @@ go test ./internal/test/i18ntest/ -v
 cd web && pnpm test && pnpm lint
 ```
 
-Expected: PASS — key parity across 12 languages, placeholder-set parity, `t()`-call coverage, and the Task 8/9 suites now green.
+Expected: PASS — key parity across 11 languages, placeholder-set parity, `t()`-call coverage, and the Task 8/9 suites now green.
 
 - [ ] **Step 5: Commit**
 

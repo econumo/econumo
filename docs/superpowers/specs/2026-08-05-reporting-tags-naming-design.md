@@ -33,7 +33,7 @@ creation:
 - **reporting** — several per transaction, budget-neutral, surfaces spend for
   "where did the money go" questions (today's label).
 
-The word "label" disappears from every user-facing surface in all 12 languages.
+The word "label" disappears from every user-facing surface in all 11 languages.
 Backend naming stays exactly as it is — `labels` table, `internal/label/`,
 `labelIds` on the wire — so this costs no schema or contract work. The
 divergence between backend and UI naming is deliberate and worth stating: the
@@ -91,7 +91,7 @@ icon/color picker can reintroduce variation without re-threading every consumer.
 | Errors (`errors.label.*`) | "Label already exists" | "Tag already exists" |
 
 Russian follows the same shape — «Теги для бюджета» / «Теги для отчётов», never
-«метки» — and so do the other ten catalogues. This is a values-only change per
+«метки» — and so do the remaining catalogues. This is a values-only change per
 language; the key structure barely moves.
 
 ### Catalogue key handling
@@ -100,7 +100,7 @@ language; the key structure barely moves.
   `classifications.tags.pages.settings.info` becomes the new two-purpose info
   text, and `.create_tag` becomes the plain "Create tag" button.
 - `tags_and_labels_info` and `create_tag_or_label` are then unused and are
-  **removed** (all 12 languages).
+  **removed** (all 11 languages).
 - The `classifications.labels.*` subtree **keeps its keys** — the code paths
   still reference them for section captions, delete dialogs, and validation —
   but its **values** change to the qualified wording.
@@ -134,7 +134,7 @@ acceptable — the pair was always confusing — and needs its own test.
 The error is the existing
 `errors.tag.already_exists` ("Tag already exists"), so
 `errors.label.already_exists` becomes unused and is **removed**, along with its
-code in `internal/shared/errs/codes.go` and its entry in all 12 catalogues (the
+code in `internal/shared/errs/codes.go` and its entry in all 11 catalogues (the
 `i18ntest` two-way coverage guard enforces that all three move together).
 
 **Mechanically**, this is a cross-feature lookup and follows the dependency rule
@@ -276,7 +276,7 @@ behavior changed. `enginecompare` must stay byte-identical across engines.
 ## Decisions log
 
 - **Vocabulary:** one user-facing noun, "tag". "Label" is removed from the UI in
-  all 12 languages; backend naming (`labels`, `internal/label/`, `labelIds`) is
+  all 11 languages; backend naming (`labels`, `internal/label/`, `labelIds`) is
   deliberately left alone.
 - **Distinguishing the kinds:** qualifiers ("budget tag" / "reporting tag"), not
   a second noun.
