@@ -287,20 +287,19 @@ function LabelRow({
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
   const Chevron = unfolded ? ChevronDown : ChevronRight
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: string, testId: string) =>
+  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     onLabelClick ? (
       <button
         type="button"
         title={showTransactionsTitle}
         aria-label={`transactions ${target.name}`}
         className="w-20 text-center text-[15px] tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:w-24"
-        data-testid={testId}
         onClick={() => onLabelClick(target)}
       >
         {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
-      <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24" data-testid={testId}>
+      <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
         {moneyFormat(spent, currency, opts)}
       </span>
     )
@@ -349,7 +348,7 @@ function LabelRow({
         )}
         <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block">{EMPTY_CELL}</span>
         <span className="flex justify-end">
-          {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent, 'label-spent')}
+          {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent)}
         </span>
         <span className="flex w-20 justify-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
         <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
@@ -382,7 +381,6 @@ function LabelRow({
                       parent: { id: label.id, type: 'label' },
                     },
                     child.spent,
-                    'label-child-spent',
                   )}
                 </span>
                 <span className="w-20 sm:w-24" />
