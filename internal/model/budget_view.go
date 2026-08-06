@@ -62,13 +62,15 @@ type BudgetTransactionRow struct {
 	TagID       *string
 }
 
-// LabelSpendingRow is one (label, currency) spending total in a period.
-// Unlike SpendingRow this is NOT grouped alongside category/tag: a
+// LabelSpendingRow is one (label, category, currency) spending total in a
+// period. Unlike SpendingRow this is NOT grouped alongside a tag: a
 // transaction with N labels contributes N rows, each carrying the FULL
 // amount, so these totals deliberately overlap and must never feed envelope
-// math (see CountSpendingByLabel).
+// math (see CountSpendingByLabel). CategoryID is nil when the transaction has
+// no category.
 type LabelSpendingRow struct {
 	LabelID    string
+	CategoryID *string
 	CurrencyID string
 	Amount     string
 }

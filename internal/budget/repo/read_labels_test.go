@@ -107,6 +107,69 @@ func TestCountSpendingByLabelExcludesOutOfPeriodAndUnlabeled(t *testing.T) {
 	}
 }
 
+// A label spanning two categories, plus a transaction with no category at
+// all, must come back as three separate rows -- one per category (including
+// the nil-category bucket) -- not summed into a single per-label total. This
+// is the data the budget folder's second level (spend by category) needs.
+func TestCountSpendingByLabelGroupsByCategory(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	label := f.Label(fixture.Label{UserID: userA, Name: "Shared"})
+
+	catA := "c0000000-0000-0000-0000-0000000000a1"
+	catB := "c0000000-0000-0000-0000-0000000000b1"
+	seedCategory(t, db, catA, userA)
+	seedCategory(t, db, catB, userA)
+
+	tx1 := "78000000-0000-0000-0000-000000000011"
+	seedExpense(t, db, tx1, acctA, catA, "20.00", "2026-08-10 00:00:00")
+	linkLabel(t, db, tx1, label)
+
+	tx2 := "78000000-0000-0000-0000-000000000012"
+	seedExpense(t, db, tx2, acctA, catB, "30.00", "2026-08-11 00:00:00")
+	linkLabel(t, db, tx2, label)
+
+	tx3 := "78000000-0000-0000-0000-000000000013"
+	seedExpense(t, db, tx3, acctA, "", "40.00", "2026-08-12 00:00:00")
+	linkLabel(t, db, tx3, label)
+
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.CountSpendingByLabel(ctx, []vo.Id{vo.MustParseId(acctA)}, start, end)
+	if err != nil {
+		t.Fatalf("CountSpendingByLabel: %v", err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("got %d rows, want one per category (incl. nil): %+v", len(rows), rows)
+	}
+
+	byCategory := map[string]string{}
+	var nilCategoryCount int
+	for _, r := range rows {
+		if r.LabelID != label {
+			t.Fatalf("unexpected label id %q: %+v", r.LabelID, rows)
+		}
+		if r.CategoryID == nil {
+			nilCategoryCount++
+			if vo.NewDecimal(r.Amount).String() != vo.NewDecimal("40").String() {
+				t.Errorf("nil-category amount = %s, want 40", r.Amount)
+			}
+			continue
+		}
+		byCategory[*r.CategoryID] = r.Amount
+	}
+	if nilCategoryCount != 1 {
+		t.Fatalf("want exactly 1 nil-category row, got %d: %+v", nilCategoryCount, rows)
+	}
+	if vo.NewDecimal(byCategory[catA]).String() != vo.NewDecimal("20").String() {
+		t.Errorf("category A amount = %s, want 20", byCategory[catA])
+	}
+	if vo.NewDecimal(byCategory[catB]).String() != vo.NewDecimal("30").String() {
+		t.Errorf("category B amount = %s, want 30", byCategory[catB])
+	}
+}
+
 func TestCountSpendingByLabelReturnsNilForNoAccounts(t *testing.T) {
 	read, _ := newReadRepo(t)
 	rows, err := read.CountSpendingByLabel(context.Background(), nil, time.Now(), time.Now().AddDate(0, 1, 0))

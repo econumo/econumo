@@ -424,12 +424,12 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 		return nil, nil
 	}
 	accArgs := idArgs(accountIDs)
-	const sel = "SELECT SUM(t.amount) as amount, tl.label_id, a.currency_id " +
+	const sel = "SELECT SUM(t.amount) as amount, tl.label_id, t.category_id, a.currency_id " +
 		"FROM transactions t " +
 		"JOIN transactions_labels tl ON tl.transaction_id = t.id " +
 		"LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (%s) " +
 		"WHERE t.type = 0 AND t.spent_at >= %s AND t.spent_at < %s " +
-		"GROUP BY tl.label_id, a.currency_id ORDER BY tl.label_id, a.currency_id"
+		"GROUP BY tl.label_id, t.category_id, a.currency_id ORDER BY tl.label_id, t.category_id, a.currency_id"
 	var sql string
 	var args []any
 	if r.driver == "postgresql" {
@@ -454,6 +454,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 	var out []model.LabelSpendingRow
 	for rows.Next() {
 		var labelID string
+		var categoryID *string
 		var currencyID *string
 		// SQLite's SUM(amount) is a float; scan it as float and format with
 		// 'f',8 (round to 8 decimals) instead of the driver's full-precision
@@ -462,7 +463,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 		a := "0"
 		if r.driver == "postgresql" {
 			var amount *string
-			if err := rows.Scan(&amount, &labelID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &labelID, &categoryID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -473,7 +474,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 			}
 		} else {
 			var amount *float64
-			if err := rows.Scan(&amount, &labelID, &currencyID); err != nil {
+			if err := rows.Scan(&amount, &labelID, &categoryID, &currencyID); err != nil {
 				return nil, err
 			}
 			if currencyID == nil {
@@ -483,7 +484,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 				a = strconv.FormatFloat(*amount, 'f', 8, 64)
 			}
 		}
-		out = append(out, model.LabelSpendingRow{LabelID: labelID, CurrencyID: *currencyID, Amount: a})
+		out = append(out, model.LabelSpendingRow{LabelID: labelID, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
 	}
 	return out, rows.Err()
 }
