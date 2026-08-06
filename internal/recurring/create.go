@@ -41,9 +41,23 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 			return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 		}
 		st.CreatedAt = now
+		if !st.Type.IsTransfer() {
+			ownerID, operr := s.accounts.AccountOwner(ctx, st.AccountID)
+			if operr != nil {
+				return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
+			}
+			ids, lerr := s.resolveLabels(ctx, ownerID, req.LabelIds)
+			if lerr != nil {
+				return lerr
+			}
+			st.LabelIDs = ids
+		}
 		created = model.NewRecurringTransaction(st)
 		if serr := s.repo.Save(ctx, created); serr != nil {
 			return serr
+		}
+		if lerr := s.repo.ReplaceLabels(ctx, created.ID, created.LabelIDs); lerr != nil {
+			return lerr
 		}
 		// created FROM an existing transaction: attach the source as the series'
 		// first instance, atomically with the template itself
@@ -56,7 +70,7 @@ func (s *Service) CreateRecurringTransaction(ctx context.Context, userID vo.Id, 
 	}); err != nil {
 		return nil, err
 	}
-	return &model.CreateRecurringTransactionResult{Item: toResult(created)}, nil
+	return &model.CreateRecurringTransactionResult{Item: toResult(created, labelIDStrings(created.LabelIDs))}, nil
 }
 
 // buildState parses and validates the shared create/update payload into a

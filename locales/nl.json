@@ -231,6 +231,12 @@
         "payee": {
           "label": "Begunstigde"
         },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Rapportagetag"
+        },
         "tags": {
           "label": "Tags"
         },
@@ -376,18 +382,6 @@
         "to": {
           "label": "Naar"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nieuwe tag",
-          "name": {
-            "label": "Nieuwe tag",
-            "placeholder": "Voer een tagnaam in",
-            "validation": {
-              "required_field": "Verplicht veld"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -416,8 +410,17 @@
         "description": "Omschrijving",
         "description_placeholder": "Voer een omschrijving in voor alle transacties",
         "payee": "Begunstigde",
-        "tag": "Tag"
-      }
+        "tag": "Budgettag",
+        "labels": "Rapportagetags"
+      },
+      "labels_separator": {
+        "button": "Scheidingsteken voor tags wijzigen",
+        "title": "Scheidingsteken voor tags",
+        "tab": "Tab",
+        "newline": "Nieuwe regel",
+        "custom_label": "Eigen scheidingsteken"
+      },
+      "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
     "import_result": {
       "success_title": "Import voltooid",
@@ -953,6 +956,10 @@
               "show_transactions": "Transacties tonen"
             }
           },
+          "labels": {
+            "heading": "Rapportagetags",
+            "overlap_note": "Een transactie kan meerdere rapportagetags hebben, dus deze totalen overlappen elkaar en tellen niet op tot uw totale uitgaven."
+          },
           "total": {
             "name": "Totaal",
             "expenses": "Totale uitgaven"
@@ -1043,7 +1050,9 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags groeperen uitgaven automatisch binnen uw budget — handig voor bijvoorbeeld reizen: markeer alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget.",
+          "info": "Budgettags groeperen uitgaven binnen uw budget — markeer bijvoorbeeld alle uitgaven van een reis met er één en zie de uitsplitsing direct in het budget. Rapportagetags zijn alleen voor rapportage: een transactie kan er meerdere hebben en ze hebben nooit invloed op uw budget.",
+          "section_budget": "Budgettags",
+          "section_reporting": "Rapportagetags",
           "create_tag": "Tag aanmaken",
           "archived_item": "Gearchiveerd"
         }
@@ -1062,10 +1071,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Budgettag",
+            "label": "Rapportagetag",
+            "tag_option": "Budget plannen voor deze tag",
+            "tag_hint": "Stel een limiet in en volg die in uw budget. Eén per transactie.",
+            "label_option": "Transacties markeren voor rapportage",
+            "label_hint": "Zie waar uw geld naartoe ging zonder invloed op uw budget. Meerdere per transactie.",
+            "locked_note": "Het doel van een tag kan na het aanmaken niet meer worden gewijzigd."
+          },
+          "add_button": "Tag toevoegen",
           "name": {
             "label": "Naam",
             "validation": {
               "required_field": "Verplicht veld",
+              "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Gearchiveerd"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Tag bewerken"
+        },
+        "create": {
+          "header": "Nieuwe tag"
+        },
+        "delete": {
+          "title": "Tag verwijderen?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
             }
           }
@@ -1338,6 +1384,10 @@
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
+    "label": {
+      "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
+      "list_empty": "De lijst met tags is leeg."
+    },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
@@ -1357,7 +1407,8 @@
     "transaction": {
       "account_not_available": "Deze rekening is niet beschikbaar voor deze bewerking.",
       "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
-      "invalid_import_file": "Upload een geldig CSV-bestand."
+      "invalid_import_file": "Upload een geldig CSV-bestand.",
+      "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

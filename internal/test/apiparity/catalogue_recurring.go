@@ -74,4 +74,42 @@ func init() {
 			{Label: "transaction-list-after-post", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner"},
 		}
 	}})
+
+	// post-time labelIds has THREE cases, and the wire has to keep them apart:
+	// absent inherits the template's labels, an explicit list replaces them,
+	// and an explicit EMPTY list means none (not "inherit"). All three post
+	// the same template, so the goldens also show the template's own labels
+	// surviving every override.
+	register(Scenario{Name: "recurring_post_labels", Calls: func() []Call {
+		const opCreate = "e0000000-0000-0000-0000-0000000000d1"
+		const opInherit = "e0000000-0000-0000-0000-0000000000d2"
+		const opOverride = "e0000000-0000-0000-0000-0000000000d3"
+		const opClear = "e0000000-0000-0000-0000-0000000000d4"
+		var rtID string
+		post := func(label, opID string, body map[string]any) Call {
+			full := map[string]any{
+				"recurringId": &rtID, "id": opID, "type": "expense", "amount": "50.00",
+				"accountId": OwnerAccount, "categoryId": CatFood,
+				"date": "2026-08-31 00:00:00", "description": "rent",
+			}
+			for k, v := range body {
+				full[k] = v
+			}
+			return Call{Label: label, Method: "POST", Path: "/api/v1/recurring/post-recurring-transaction", Auth: "owner", Body: full}
+		}
+		return []Call{
+			{Label: "create-recurring-with-labels", Method: "POST", Path: "/api/v1/recurring/create-recurring-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": opCreate, "type": "expense", "amount": "50.00",
+					"accountId": OwnerAccount, "categoryId": CatFood,
+					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"description": "rent", "labelIds": []string{LabelPersonal, LabelWork},
+				}, CaptureIDInto: &rtID},
+			post("post-inherits-template-labels", opInherit, nil),
+			post("post-overrides-labels", opOverride, map[string]any{"labelIds": []string{LabelWork}}),
+			post("post-clears-labels", opClear, map[string]any{"labelIds": []string{}}),
+			{Label: "recurring-list-after-posts", Method: "GET", Path: "/api/v1/recurring/get-recurring-transaction-list", Auth: "owner"},
+			{Label: "transaction-list-after-posts", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
 }

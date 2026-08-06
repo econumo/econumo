@@ -91,7 +91,7 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_payee_archived",
-			Description: "Hide an unused payee (archive) or restore it (unarchive); there is no delete. Use list_payees to find its id."},
+			Description: "Hide an unused payee (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_payees to find its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_payee_archived")
 				userID, err := webmcp.UserID(ctx)

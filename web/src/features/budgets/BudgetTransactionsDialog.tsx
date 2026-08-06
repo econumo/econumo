@@ -25,16 +25,19 @@ import { elementDisplayName } from './budgetMath'
 import { useBudgetTransactions } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
-/** enough of an element (or a nested child category) to list its transactions */
+/** enough of an element (or a nested child category) to list its transactions.
+ *  'label' is a client-side discriminant only -- a label is never a real
+ *  BudgetElementType, it never appears in structure.elements or on the wire
+ *  as an element type. */
 export interface BudgetTransactionsTarget {
   id: Id
-  type: BudgetElementType
+  type: BudgetElementType | 'label'
   name: string
   icon: string
   /** null = the budget base currency */
   currencyId: Id | null
   /** set on a nested child row: the row it is listed under */
-  parent?: { id: Id; type: BudgetElementType }
+  parent?: { id: Id; type: BudgetElementType | 'label' }
 }
 
 interface BudgetTransactionsDialogProps {
@@ -64,6 +67,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   // which returns the complement of what the row shows.
   const isUncategorized = element?.id === UNCATEGORIZED_ID
   const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
+  // a category listed under a reporting label narrows the same way; labelId is
+  // the one filter the backend accepts alongside categoryId/uncategorized
+  const parentLabelId = element?.parent?.type === 'label' ? element.parent.id : undefined
   const params = element
     ? {
         budgetId: budget.meta.id,
@@ -80,9 +86,14 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
           ? {
               ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }),
               ...(parentTagId ? { tagId: parentTagId } : {}),
+              ...(parentLabelId ? { labelId: parentLabelId } : {}),
             }
           : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
+        // labelId is mutually exclusive with categoryId/tagId/envelopeId/uncategorized
+        // on the backend (400 if combined); 'label' never equals a real
+        // BudgetElementType, so this branch can never fire alongside another one
+        ...(element.type === 'label' ? { labelId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
       }
     : null
@@ -122,6 +133,13 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
       description: wireTx.description,
       payeeId: wireTx.payee?.id ?? null,
       tagId: wireTx.tag?.id ?? null,
+      // BudgetTransactionDto (budget/get-transaction-list, including the
+      // label drill-down itself) carries no label ids -- the backend row
+      // (model.BudgetTransactionRow) only ever joins category/payee/tag.
+      // There is nothing to populate here even for a row reached by clicking
+      // a label; this synthesized shape is read-only anyway (no account =>
+      // canChange is false), so nothing ever writes the set back.
+      labelIds: [],
       date: wireTx.spentAt,
       category: wireTx.category ? (wireTx.category as CategoryDto) : undefined,
       payee: wireTx.payee ? (wireTx.payee as PayeeDto) : undefined,

@@ -22,6 +22,33 @@ func init() {
 		}
 	}})
 
+	// transaction_labels covers a POPULATED labelIds (not just the ubiquitous
+	// "[]" every other scenario shows): the create request lists LabelPersonal
+	// before LabelWork (its id sorts AFTER LabelWork's), so a correct response
+	// and a subsequent list read must both come back [LabelWork, LabelPersonal]
+	// — exactly the cross-engine ORDER BY property enginecompare exists to
+	// catch (Task 9 shipped a real divergence in this exact area).
+	register(Scenario{Name: "transaction_labels", Calls: func() []Call {
+		const newTxn = "d0000000-0000-0000-0000-0000000000fd"
+		var txnID string
+		return []Call{
+			{Label: "create-with-labels", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": newTxn, "accountId": OwnerAccount, "type": "expense",
+					"amount": "5.00", "categoryId": CatFood, "date": "2024-04-04 10:00:00",
+					"labelIds": []string{LabelPersonal, LabelWork},
+				}, CaptureIDInto: &txnID},
+			{Label: "read-after-create", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+			{Label: "update-clears-labels", Method: "POST", Path: "/api/v1/transaction/update-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": &txnID, "accountId": OwnerAccount, "type": "expense",
+					"amount": "5.00", "categoryId": CatFood, "date": "2024-04-04 10:00:00",
+					"labelIds": []string{},
+				}},
+			{Label: "read-after-clear", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
+
 	register(Scenario{Name: "transaction_import", Calls: func() []Call {
 		body, ctype := buildImportBody()
 		return []Call{

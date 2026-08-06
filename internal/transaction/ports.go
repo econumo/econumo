@@ -46,6 +46,15 @@ type AccountGrants interface {
 	HasWriteGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
 
+// LabelOwnership resolves the owning user for a set of label ids, for
+// validating a create/update request's labelIds. A missing id is simply
+// absent from the returned map rather than an error, so the caller's
+// membership check (id present AND owner == the transaction's account owner)
+// rejects both an unknown id and one owned by someone else.
+type LabelOwnership interface {
+	LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error)
+}
+
 // ExportLookup supplies the read-side data the export needs without coupling the
 // transaction service to the account/metadata repo packages: the user's
 // accessible accounts (own + shared, not deleted) and name resolution for the
@@ -56,6 +65,13 @@ type ExportLookup interface {
 	CategoryName(ctx context.Context, id vo.Id) (string, error)
 	TagName(ctx context.Context, id vo.Id) (string, error)
 	PayeeName(ctx context.Context, id vo.Id) (string, error)
+	// LabelNames resolves name + position for a batch of label ids in one call.
+	// The exporter calls this once with every distinct label id referenced across
+	// the whole export (gathered from the repo's LabelsByTransactionIDs batch),
+	// never per transaction, so a shared account with many labeled transactions
+	// still resolves each label at most once. A missing id is simply absent from
+	// the returned map.
+	LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error)
 }
 
 // Importer is the read/write port the import orchestration drives. It abstracts
@@ -80,15 +96,22 @@ type Importer interface {
 	// 'wallet', balance 0) and returns its view.
 	CreateAccount(ctx context.Context, userID vo.Id, name string) (model.ImportAccount, error)
 
-	// CategoriesByOwner / PayeesByOwner / TagsByOwner return the owner's entities.
+	// CategoriesByOwner / PayeesByOwner / TagsByOwner / LabelsByOwner return the
+	// owner's entities.
 	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
 	// CreateCategory creates a category (income type when income==true, else
 	// expense; icon 'category'). CreatePayee/CreateTag create by name.
 	CreateCategory(ctx context.Context, ownerID vo.Id, name string, income bool) (model.ImportNamed, error)
 	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 	CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
+	// CreateLabel creates a label by name and returns only its id: the import
+	// loop tracks label ids per row, never a label's other fields, so there is
+	// no need for the model.ImportNamed round trip CreateCategory/CreatePayee/
+	// CreateTag return.
+	CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error)
 
 	// SaveTransaction persists a built transaction (no idempotency id).
 	SaveTransaction(ctx context.Context, t *model.Transaction) error

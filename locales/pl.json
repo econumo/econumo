@@ -231,6 +231,12 @@
         "payee": {
           "label": "Odbiorca"
         },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Tag raportowy"
+        },
         "tags": {
           "label": "Tagi"
         },
@@ -376,18 +382,6 @@
         "to": {
           "label": "Na konto"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nowy tag",
-          "name": {
-            "label": "Nowy tag",
-            "placeholder": "Wpisz nazwę tagu",
-            "validation": {
-              "required_field": "Pole wymagane"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -416,8 +410,17 @@
         "description": "Opis",
         "description_placeholder": "Wpisz opis dla wszystkich transakcji",
         "payee": "Odbiorca",
-        "tag": "Tag"
-      }
+        "tag": "Tag budżetowy",
+        "labels": "Tagi raportowe"
+      },
+      "labels_separator": {
+        "button": "Zmień separator tagów",
+        "title": "Separator tagów",
+        "tab": "Tabulator",
+        "newline": "Nowa linia",
+        "custom_label": "Własny separator"
+      },
+      "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
     "import_result": {
       "success_title": "Import zakończony",
@@ -953,6 +956,10 @@
               "show_transactions": "Pokaż transakcje"
             }
           },
+          "labels": {
+            "heading": "Tagi raportowe",
+            "overlap_note": "Jedna transakcja może mieć kilka tagów raportowych, a jej kwota liczy się przy każdym z nich — dlatego te sumy nakładają się i nie składają się na sumę wydatków."
+          },
           "total": {
             "name": "Razem",
             "expenses": "Suma wydatków"
@@ -1043,7 +1050,9 @@
         "settings": {
           "menu_item": "Tagi",
           "header": "Tagi",
-          "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
+          "info": "Tagi budżetowe grupują wydatki w budżecie — oznacz na przykład jednym z nich wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Tagi raportowe służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
+          "section_budget": "Tagi budżetowe",
+          "section_reporting": "Tagi raportowe",
           "create_tag": "Utwórz tag",
           "archived_item": "W archiwum"
         }
@@ -1062,10 +1071,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Tag budżetowy",
+            "label": "Tag raportowy",
+            "tag_option": "Planuj budżet dla tego tagu",
+            "tag_hint": "Ustaw limit i śledź go w budżecie. Jeden na transakcję.",
+            "label_option": "Oznaczaj transakcje na potrzeby raportów",
+            "label_hint": "Sprawdzaj, na co poszły pieniądze, bez wpływu na budżet. Kilka na transakcję.",
+            "locked_note": "Przeznaczenia tagu nie można zmienić po jego utworzeniu."
+          },
+          "add_button": "Dodaj tag",
           "name": {
             "label": "Nazwa",
             "validation": {
               "required_field": "Pole wymagane",
+              "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "W archiwum"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edytuj tag"
+        },
+        "create": {
+          "header": "Nowy tag"
+        },
+        "delete": {
+          "title": "Usunąć tag?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
             }
           }
@@ -1338,6 +1384,10 @@
       "base_immutable": "Waluty bazowej nie można zmienić.",
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
+    "label": {
+      "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "list_empty": "Lista tagów jest pusta."
+    },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
@@ -1357,7 +1407,8 @@
     "transaction": {
       "account_not_available": "To konto jest niedostępne dla tej operacji.",
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
-      "invalid_import_file": "Prześlij prawidłowy plik CSV."
+      "invalid_import_file": "Prześlij prawidłowy plik CSV.",
+      "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

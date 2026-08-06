@@ -3,6 +3,7 @@ package repo_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -15,12 +16,15 @@ import (
 )
 
 const (
-	usdID = "dffc2a06-6f29-4704-8575-31709adee926"
-	userA = "11111111-1111-1111-1111-111111111111"
-	userB = "22222222-2222-2222-2222-222222222222"
-	acct1 = "aaaa1111-0000-0000-0000-0000000000a1"
-	acct2 = "aaaa1111-0000-0000-0000-0000000000a2"
-	acctB = "bbbb1111-0000-0000-0000-0000000000b1"
+	usdID  = "dffc2a06-6f29-4704-8575-31709adee926"
+	userA  = "11111111-1111-1111-1111-111111111111"
+	userB  = "22222222-2222-2222-2222-222222222222"
+	acct1  = "aaaa1111-0000-0000-0000-0000000000a1"
+	acct2  = "aaaa1111-0000-0000-0000-0000000000a2"
+	acctB  = "bbbb1111-0000-0000-0000-0000000000b1"
+	label1 = "1ab00000-0000-0000-0000-0000000000a1"
+	label2 = "1ab00000-0000-0000-0000-0000000000a2"
+	label3 = "1ab00000-0000-0000-0000-0000000000a3"
 )
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
@@ -42,6 +46,11 @@ func seedUser(t *testing.T, db *dbtest.DB, id string) {
 func seedAccount(t *testing.T, db *dbtest.DB, id, userID string) {
 	t.Helper()
 	fixture.New(t, db).Account(fixture.Account{ID: id, CurrencyID: usdID, UserID: userID, Name: "A", Icon: "x"})
+}
+
+func seedLabel(t *testing.T, db *dbtest.DB, id, userID string) {
+	t.Helper()
+	fixture.New(t, db).Label(fixture.Label{ID: id, UserID: userID})
 }
 
 func deref(s *string) string {
@@ -350,6 +359,202 @@ func TestTransactionRepo_ListExportAccountsForUser_OwnPlusShared(t *testing.T) {
 	for _, r := range rows {
 		if r.CurrencyCode != "USD" {
 			t.Errorf("currency code mismatch: %q", r.CurrencyCode)
+		}
+	}
+}
+
+// equalOrdered compares two string slices element-by-element, INCLUDING
+// order: LabelsByTransactionIDs's query carries an explicit
+// "ORDER BY transaction_id, label_id" precisely so the label order per
+// transaction is byte-identical across engines (SQLite's PK-index scan vs.
+// PostgreSQL's insertion-order seq-scan on a small table would otherwise
+// diverge -- see ListByAccountIDs above for the same hazard). Tests that only
+// check set membership would not catch a dropped ORDER BY, so this helper
+// (unlike a set-comparison) is order-sensitive by construction.
+func equalOrdered(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func TestTransactionRepo_ReplaceLabels_RoundTrip(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	seedLabel(t, db, label2, userA)
+	txID := "7c000000-0000-0000-0000-000000000020"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	// Inserted in DESCENDING label id order: if LabelsByTransactionIDs merely
+	// reflected insertion/scan order instead of "ORDER BY ... label_id", this
+	// would come back [label2, label1] and the ordered assertion below would
+	// catch it.
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label2), vo.MustParseId(label1)}); err != nil {
+		t.Fatalf("ReplaceLabels: %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !equalOrdered(got[txID], []string{label1, label2}) {
+		t.Fatalf("labels = %v, want [%s %s] in ascending label_id order", got[txID], label1, label2)
+	}
+}
+
+// TestTransactionRepo_ReplaceLabels_Idempotent exercises the delete-then-insert
+// contract directly: calling ReplaceLabels twice with the SAME set must not
+// error (would fail on a naive INSERT without delete-first) and must not
+// duplicate the pair (would inflate the label count on a second call).
+func TestTransactionRepo_ReplaceLabels_Idempotent(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	txID := "7c000000-0000-0000-0000-000000000021"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	ids := []vo.Id{vo.MustParseId(label1)}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), ids); err != nil {
+		t.Fatalf("ReplaceLabels (1st): %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), ids); err != nil {
+		t.Fatalf("ReplaceLabels (2nd, re-save): %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !equalOrdered(got[txID], []string{label1}) {
+		t.Fatalf("labels = %v, want exactly one [%s] (no duplication)", got[txID], label1)
+	}
+}
+
+func TestTransactionRepo_ReplaceLabels_ClearsOnEmpty(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	txID := "7c000000-0000-0000-0000-000000000022"
+	if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1)}); err != nil {
+		t.Fatalf("ReplaceLabels (set): %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), nil); err != nil {
+		t.Fatalf("ReplaceLabels (clear): %v", err)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(txID)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if len(got[txID]) != 0 {
+		t.Fatalf("labels after clear = %v, want none", got[txID])
+	}
+}
+
+func TestTransactionRepo_LabelsByTransactionIDs_MultipleTransactions(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+	seedLabel(t, db, label2, userA)
+	seedLabel(t, db, label3, userA)
+	tx1 := "7c000000-0000-0000-0000-000000000023"
+	tx2 := "7c000000-0000-0000-0000-000000000024"
+	tx3 := "7c000000-0000-0000-0000-000000000025"
+	for _, id := range []string{tx1, tx2, tx3} {
+		if err := repo.Save(ctx, expense(id, acct1, "1.00", fixedTime)); err != nil {
+			t.Fatalf("Save %s: %v", id, err)
+		}
+	}
+	// tx1 inserted in DESCENDING label id order, same rationale as
+	// TestTransactionRepo_ReplaceLabels_RoundTrip: the ordered assertion below
+	// only passes if the query orders by label_id rather than reflecting
+	// insertion/scan order.
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx1), []vo.Id{vo.MustParseId(label2), vo.MustParseId(label1)}); err != nil {
+		t.Fatalf("ReplaceLabels tx1: %v", err)
+	}
+	if err := repo.ReplaceLabels(ctx, vo.MustParseId(tx2), []vo.Id{vo.MustParseId(label3)}); err != nil {
+		t.Fatalf("ReplaceLabels tx2: %v", err)
+	}
+	// tx3 gets no labels at all -- must be absent from the result map, not a
+	// present-but-empty entry (the caller ranges over the map).
+
+	got, err := repo.LabelsByTransactionIDs(ctx, []vo.Id{vo.MustParseId(tx1), vo.MustParseId(tx2), vo.MustParseId(tx3)})
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if !equalOrdered(got[tx1], []string{label1, label2}) {
+		t.Fatalf("tx1 labels = %v, want [%s %s] in ascending label_id order", got[tx1], label1, label2)
+	}
+	if !equalOrdered(got[tx2], []string{label3}) {
+		t.Fatalf("tx2 labels = %v, want [%s]", got[tx2], label3)
+	}
+	if _, ok := got[tx3]; ok {
+		t.Fatalf("tx3 should have no entry, got %v", got[tx3])
+	}
+}
+
+func TestTransactionRepo_LabelsByTransactionIDs_EmptyIDs(t *testing.T) {
+	repo, _ := setup(t)
+	got, err := repo.LabelsByTransactionIDs(context.Background(), nil)
+	if err != nil || got != nil {
+		t.Fatalf("empty ids should yield nil,nil (guards the IN() syntax error on PostgreSQL); got %v, %v", got, err)
+	}
+}
+
+// chunkTestTxID deterministically derives a valid-UUID-shaped id from an
+// index, so a large id set can be built without 500+ literals.
+func chunkTestTxID(i int) string {
+	return fmt.Sprintf("7c0c0000-0000-0000-0000-%012d", i)
+}
+
+// TestTransactionRepo_LabelsByTransactionIDs_ChunksAcrossBoundary exercises
+// the batch loader with MORE ids than labelsByTransactionIDsChunkSize (500):
+// a naive one-shot IN(...) would still work in SQLite for this count, but the
+// point is proving the multi-round-trip merge itself is correct (every id's
+// row present exactly once, none dropped or duplicated at the chunk seam) —
+// the real motivation is PostgreSQL's bind-param ceiling, which this count
+// stays safely under while still crossing the chunk boundary at least once.
+func TestTransactionRepo_LabelsByTransactionIDs_ChunksAcrossBoundary(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	seedLabel(t, db, label1, userA)
+
+	const n = 501
+	ids := make([]vo.Id, n)
+	for i := 0; i < n; i++ {
+		txID := chunkTestTxID(i)
+		if err := repo.Save(ctx, expense(txID, acct1, "1.00", fixedTime)); err != nil {
+			t.Fatalf("Save %d: %v", i, err)
+		}
+		if err := repo.ReplaceLabels(ctx, vo.MustParseId(txID), []vo.Id{vo.MustParseId(label1)}); err != nil {
+			t.Fatalf("ReplaceLabels %d: %v", i, err)
+		}
+		ids[i] = vo.MustParseId(txID)
+	}
+
+	got, err := repo.LabelsByTransactionIDs(ctx, ids)
+	if err != nil {
+		t.Fatalf("LabelsByTransactionIDs: %v", err)
+	}
+	if len(got) != n {
+		t.Fatalf("got %d transactions with labels, want %d (a dropped or duplicated chunk would miscount)", len(got), n)
+	}
+	for i := 0; i < n; i++ {
+		if !equalOrdered(got[chunkTestTxID(i)], []string{label1}) {
+			t.Fatalf("tx %d labels = %v, want [%s]", i, got[chunkTestTxID(i)], label1)
 		}
 	}
 }

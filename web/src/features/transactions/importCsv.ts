@@ -4,7 +4,7 @@ import type { ImportResultDto } from '@/api/transaction'
 
 export const CHUNK_SIZE = 500
 
-export const FIELD_KEYS = ['account', 'date', 'amount', 'amountInflow', 'amountOutflow', 'category', 'description', 'payee', 'tag'] as const
+export const FIELD_KEYS = ['account', 'date', 'amount', 'amountInflow', 'amountOutflow', 'category', 'description', 'payee', 'tag', 'labels'] as const
 export type FieldKey = (typeof FIELD_KEYS)[number]
 
 export interface CsvAnalysis {
@@ -41,6 +41,7 @@ export interface FieldModes {
   description: 'csv_column' | 'manual'
   payee: 'csv_column' | 'existing'
   tag: 'csv_column' | 'existing'
+  labels: 'csv_column' | 'existing'
 }
 
 export interface ImportSelection {
@@ -54,15 +55,39 @@ export interface ImportSelection {
     description: string
     payeeId: string | null
     tagId: string | null
+    labelIds: string[]
   }
+  /** splits the mapped labels cell; the backend defaults to ";" when absent,
+   *  but the field is always sent explicitly (buildImportPayload). */
+  labelsSeparator: string
 }
 
 export function defaultSelection(): ImportSelection {
   return {
-    modes: { account: 'csv_column', date: 'csv_column', category: 'csv_column', description: 'csv_column', payee: 'csv_column', tag: 'csv_column' },
+    modes: {
+      account: 'csv_column',
+      date: 'csv_column',
+      category: 'csv_column',
+      description: 'csv_column',
+      payee: 'csv_column',
+      tag: 'csv_column',
+      labels: 'csv_column',
+    },
     amountMode: 'single',
-    columns: { account: null, date: null, amount: null, amountInflow: null, amountOutflow: null, category: null, description: null, payee: null, tag: null },
-    fixed: { accountId: null, date: '', categoryId: null, description: '', payeeId: null, tagId: null },
+    columns: {
+      account: null,
+      date: null,
+      amount: null,
+      amountInflow: null,
+      amountOutflow: null,
+      category: null,
+      description: null,
+      payee: null,
+      tag: null,
+      labels: null,
+    },
+    fixed: { accountId: null, date: '', categoryId: null, description: '', payeeId: null, tagId: null, labelIds: [] },
+    labelsSeparator: ';',
   }
 }
 
@@ -118,7 +143,7 @@ export function selectionValid(sel: ImportSelection): boolean {
   return accountOk && dateOk && amountOk
 }
 
-// mapping always carries all 9 keys (column name or null); fixed/manual values
+// mapping always carries all 10 keys (column name or null); fixed/manual values
 // travel as separate multipart fields instead
 export function buildImportPayload(sel: ImportSelection): { mapping: Record<FieldKey, string | null>; fields: Record<string, string> } {
   const mapping: Record<FieldKey, string | null> = { ...defaultSelection().columns }
@@ -131,15 +156,38 @@ export function buildImportPayload(sel: ImportSelection): { mapping: Record<Fiel
   mapping.description = sel.modes.description === 'csv_column' ? sel.columns.description : null
   mapping.payee = sel.modes.payee === 'csv_column' ? sel.columns.payee : null
   mapping.tag = sel.modes.tag === 'csv_column' ? sel.columns.tag : null
+  mapping.labels = sel.modes.labels === 'csv_column' ? sel.columns.labels : null
 
-  const fields: Record<string, string> = {}
+  const fields: Record<string, string> = { labelsSeparator: sel.labelsSeparator || ';' }
   if (sel.modes.account === 'existing' && sel.fixed.accountId) fields.accountId = sel.fixed.accountId
   if (sel.modes.date === 'manual' && sel.fixed.date.trim()) fields.date = sel.fixed.date.trim()
   if (sel.modes.category === 'existing' && sel.fixed.categoryId) fields.categoryId = sel.fixed.categoryId
   if (sel.modes.description === 'manual' && sel.fixed.description.trim()) fields.description = sel.fixed.description.trim()
   if (sel.modes.payee === 'existing' && sel.fixed.payeeId) fields.payeeId = sel.fixed.payeeId
   if (sel.modes.tag === 'existing' && sel.fixed.tagId) fields.tagId = sel.fixed.tagId
+  if (sel.modes.labels === 'existing' && sel.fixed.labelIds.length > 0) fields.labelIds = sel.fixed.labelIds.join(',')
   return { mapping, fields }
+}
+
+// Client-side preview count: the distinct label names the mapped column would
+// create (case-insensitive), minus the names that already exist for the
+// target owner. Only meaningful in csv_column mode with a mapped column.
+export function countNewLabels(analysis: CsvAnalysis, sel: ImportSelection, existingLabelNames: string[]): number {
+  if (sel.modes.labels !== 'csv_column' || !sel.columns.labels) return 0
+  const columnIndex = analysis.header.indexOf(sel.columns.labels)
+  if (columnIndex === -1) return 0
+  const existing = new Set(existingLabelNames.map((name) => name.toLowerCase()))
+  const separator = sel.labelsSeparator || ';'
+  const found = new Set<string>()
+  for (const row of analysis.rows) {
+    const cell = (row[columnIndex] ?? '').trim()
+    if (!cell) continue
+    for (const raw of cell.split(separator)) {
+      const name = raw.trim().toLowerCase()
+      if (name && !existing.has(name)) found.add(name)
+    }
+  }
+  return found.size
 }
 
 export interface AggregatedImportResult {

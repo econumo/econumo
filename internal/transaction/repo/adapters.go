@@ -1,13 +1,14 @@
 // ExportLookup bridges the transaction service's ExportLookup port to the
 // transaction repo + metadata repos (export). Kept in infra so app/transaction
 // depends only on its own small interfaces. The UserLookup, AccountResolver,
-// AccountGrants, VisibleAccounts, category-name-lookup, tag-name-lookup, and
-// payee-name-lookup counterparts live in internal/server or are wired directly
-// from concretes that already satisfy the transaction ports structurally: they
-// need the account/category/tag/payee features' types, which an infra package
-// must not import — CategoryName/TagName/PayeeName delegate to
-// categoryNameLookup/tagNameLookup/payeeNameLookup, ports expressed purely in
-// primitives, so this file itself never imports category, tag, or payee.
+// AccountGrants, VisibleAccounts, category-name-lookup, tag-name-lookup,
+// payee-name-lookup, and label-name-lookup counterparts live in internal/server
+// or are wired directly from concretes that already satisfy the transaction
+// ports structurally: they need the account/category/tag/payee/label features'
+// types, which an infra package must not import — CategoryName/TagName/
+// PayeeName/LabelNames delegate to categoryNameLookup/tagNameLookup/
+// payeeNameLookup/labelNameLookup, ports expressed purely in primitives, so
+// this file itself never imports category, tag, payee, or label.
 package repo
 
 import (
@@ -38,6 +39,9 @@ type tagNameLookup interface {
 type payeeNameLookup interface {
 	PayeeName(ctx context.Context, id vo.Id) (string, error)
 }
+type labelNameLookup interface {
+	LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error)
+}
 
 // ExportLookup adapts the transaction + metadata repos to
 // app/transaction.ExportLookup. Name lookups return "" when the entity cannot be
@@ -47,16 +51,18 @@ type ExportLookup struct {
 	categories categoryNameLookup
 	tags       tagNameLookup
 	payees     payeeNameLookup
+	labels     labelNameLookup
 }
 
 var _ apptransaction.ExportLookup = (*ExportLookup)(nil)
 
 // NewExportLookup wires the export lookup over the transaction repo, the
 // category name lookup (server.TransactionCategoryNameLookup), the tag name
-// lookup (server.TransactionTagNameLookup), and the payee name lookup
-// (server.TransactionPayeeNameLookup).
-func NewExportLookup(accounts exportAccountLister, categories categoryNameLookup, tags tagNameLookup, payees payeeNameLookup) *ExportLookup {
-	return &ExportLookup{accounts: accounts, categories: categories, tags: tags, payees: payees}
+// lookup (server.TransactionTagNameLookup), the payee name lookup
+// (server.TransactionPayeeNameLookup), and the label name lookup
+// (server.TransactionLabelNameLookup).
+func NewExportLookup(accounts exportAccountLister, categories categoryNameLookup, tags tagNameLookup, payees payeeNameLookup, labels labelNameLookup) *ExportLookup {
+	return &ExportLookup{accounts: accounts, categories: categories, tags: tags, payees: payees, labels: labels}
 }
 
 // ExportAccounts returns the user's accessible accounts (own + shared, not
@@ -86,4 +92,9 @@ func (l *ExportLookup) TagName(ctx context.Context, id vo.Id) (string, error) {
 // PayeeName resolves a payee's name ("" if not found).
 func (l *ExportLookup) PayeeName(ctx context.Context, id vo.Id) (string, error) {
 	return l.payees.PayeeName(ctx, id)
+}
+
+// LabelNames resolves name + position for a batch of label ids.
+func (l *ExportLookup) LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error) {
+	return l.labels.LabelNames(ctx, ids)
 }

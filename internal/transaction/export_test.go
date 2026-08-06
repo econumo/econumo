@@ -1,6 +1,20 @@
 package transaction
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+// TestExportHeaderPutsLabelsAfterTag pins the export column order: "labels"
+// sits immediately after "tag", shifting payee/amount/date each one column to
+// the right of their pre-labels position.
+func TestExportHeaderPutsLabelsAfterTag(t *testing.T) {
+	want := []string{"transaction_id", "account_name", "account_currency",
+		"category", "description", "tag", "labels", "payee", "amount", "date"}
+	if !reflect.DeepEqual(exportHeaders, want) {
+		t.Fatalf("exportHeaders = %v, want %v", exportHeaders, want)
+	}
+}
 
 // TestSanitizeExportValue_DefusesFormulaInjection locks the CSV formula-injection
 // defense: a free-text export cell a spreadsheet would evaluate as a formula

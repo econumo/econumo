@@ -98,6 +98,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         categoryId: rt.categoryId,
         payeeId: rt.payeeId,
         tagId: rt.tagId,
+        labelIds: rt.labelIds ?? [],
         description: rt.description,
         date: rt.nextPaymentAt,
         account: accounts?.find((a) => a.id === rt.accountId),

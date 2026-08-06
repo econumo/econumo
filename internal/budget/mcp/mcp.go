@@ -56,7 +56,7 @@ type updateEnvelopeInput struct {
 	Icon        string   `json:"icon" jsonschema:"icon name"`
 	CurrencyID  string   `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
 	CategoryIDs []string `json:"category_ids,omitempty" jsonschema:"category ids (UUID) grouped under this envelope, from list_categories; replaces the full set"`
-	Archived    bool     `json:"archived" jsonschema:"true to archive the envelope (there is no delete), false to unarchive"`
+	Archived    bool     `json:"archived" jsonschema:"true to archive the envelope (MCP has no delete; the app does), false to unarchive"`
 }
 
 type setLimitInput struct {
@@ -270,7 +270,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_envelope",
-			Description: "Update an envelope's name/icon/currency/categories, or archive/unarchive it (there is no delete). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."},
+			Description: "Update an envelope's name/icon/currency/categories, or archive/unarchive it (MCP has no delete; the app does). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateEnvelopeInput) (*sdk.CallToolResult, model.UpdateEnvelopeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_envelope")
 				userID, err := webmcp.UserID(ctx)

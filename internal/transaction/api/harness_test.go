@@ -27,6 +27,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	applabel "github.com/econumo/econumo/internal/label"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
@@ -54,6 +56,11 @@ const (
 	folderID   = "ffffffff-0000-0000-0000-00000000f01d"
 	accountID  = "aaaa1111-0000-0000-0000-0000000000a1"
 	catID      = "cccc2222-0000-0000-0000-0000000000c1"
+
+	labelOwnerID = "33333333-3333-3333-3333-333333333333"
+	label1ID     = "dddd3333-0000-0000-0000-0000000000d1"
+	label2ID     = "dddd3333-0000-0000-0000-0000000000d2"
+	otherLabelID = "dddd3333-0000-0000-0000-0000000000d9"
 )
 
 type harness struct {
@@ -70,6 +77,13 @@ func newHarness(t *testing.T) *harness {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
+	// Production (internal/infra/storage/sqlite) and dbtest both turn this on;
+	// without it, ON DELETE CASCADE (e.g. transactions_labels on a transaction
+	// delete) silently never fires, so writes here could pass while the
+	// equivalent production behavior would differ.
+	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
+		t.Fatalf("pragma foreign_keys: %v", err)
+	}
 	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -84,6 +98,11 @@ func newHarness(t *testing.T) *harness {
 	f.AccountInFolder(folderID, accountID)
 	f.AccountOption(accountID, seedUserID, 0)
 	f.Category(fixture.Category{ID: catID, UserID: seedUserID, Name: "Food", Type: 0, Icon: "local_offer"})
+	f.Label(fixture.Label{ID: label1ID, UserID: seedUserID, Name: "Label One"})
+	f.Label(fixture.Label{ID: label2ID, UserID: seedUserID, Name: "Label Two"})
+	// A different user's label, to verify labelIds are rejected across ownership.
+	f.User(fixture.User{ID: labelOwnerID, Email: "labelowner@example.test", Name: "Label Owner", Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
+	f.Label(fixture.Label{ID: otherLabelID, UserID: labelOwnerID, Name: "Not Mine"})
 
 	curLookup := currencyrepo.New("sqlite", txm)
 	accSvc := appaccount.NewService(
@@ -97,7 +116,9 @@ func newHarness(t *testing.T) *harness {
 	catRepo := categoryrepo.NewRepo("sqlite", txm)
 	tgRepo := tagrepo.NewRepo("sqlite", txm)
 	pyRepo := payeerepo.NewRepo("sqlite", txm)
-	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo))
+	labelRepo := labelrepo.NewRepo("sqlite", txm)
+	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), labelrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
+	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
@@ -107,15 +128,18 @@ func newHarness(t *testing.T) *harness {
 	txImportCategories := server.NewTransactionImportCategories(catSvc, catRepo)
 	txImportTags := server.NewTransactionImportTags(tgSvc, tgRepo)
 	txImportPayees := server.NewTransactionImportPayees(pySvc, pyRepo)
+	txImportLabels := server.NewTransactionImportLabels(labelSvc, labelRepo)
 	txImport := transactionrepo.NewImportLookup(
 		txImportAccounts, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
-		txImportCategories, txImportPayees, txImportTags, txRepo,
+		txImportCategories, txImportPayees, txImportTags, txImportLabels, txRepo,
 	)
 	svc := apptransaction.NewService(
 		txRepo, accSvc,
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		accSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport,
+		server.NewTransactionLabelOwnership(labelRepo),
+		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	handlers := handlertransaction.NewHandlers(svc)

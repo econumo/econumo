@@ -26,3 +26,11 @@ func (pgsqlQuerier) UpsertRecurringTransaction(ctx context.Context, db backend.D
 func (pgsqlQuerier) DeleteRecurringTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteRecurringTransaction(ctx, id)
 }
+
+func (pgsqlQuerier) DeleteRecurringLabels(ctx context.Context, db backend.DBTX, recurringTransactionID string) error {
+	return pgsqlgen.New(db).DeleteRecurringLabels(ctx, recurringTransactionID)
+}
+
+func (pgsqlQuerier) InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
+	return pgsqlgen.New(db).InsertRecurringLabel(ctx, pgsqlgen.InsertRecurringLabelParams(p))
+}

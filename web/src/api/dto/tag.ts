@@ -4,6 +4,7 @@ export interface TagDto {
   id: Id
   ownerUserId: Id
   name: string
+  icon: string
   position: number
   isArchived: 0 | 1
   createdAt: string

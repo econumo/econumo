@@ -15,6 +15,7 @@ type TagResult struct {
 	Id          string `json:"id"`
 	OwnerUserId string `json:"ownerUserId"`
 	Name        string `json:"name"`
+	Icon        string `json:"icon"`
 	Position    int    `json:"position"`
 	IsArchived  int    `json:"isArchived"`
 	CreatedAt   string `json:"createdAt"`

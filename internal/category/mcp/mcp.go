@@ -104,7 +104,7 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_category_archived",
-			Description: "Hide an unused category (archive) or restore it (unarchive); there is no delete. Use list_categories to find its id."},
+			Description: "Hide an unused category (archive) or restore it (unarchive); MCP has no delete (the app does). Use list_categories to find its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setArchivedInput) (*sdk.CallToolResult, archivedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_category_archived")
 				userID, err := webmcp.UserID(ctx)

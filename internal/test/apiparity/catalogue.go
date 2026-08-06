@@ -41,6 +41,12 @@ func init() {
 		}
 	}})
 
+	register(Scenario{Name: "label_reads", Calls: func() []Call {
+		return []Call{
+			{Label: "get-label-list", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
 	register(Scenario{Name: "payee_reads", Calls: func() []Call {
 		return []Call{
 			{Label: "get-payee-list", Method: "GET", Path: "/api/v1/payee/get-payee-list", Auth: "owner", Body: map[string]any{}},
@@ -110,6 +116,23 @@ func init() {
 			{Label: "unarchive-tag", Method: "POST", Path: "/api/v1/tag/unarchive-tag", Auth: "owner", Body: map[string]any{"id": &tagID}},
 			{Label: "delete-tag", Method: "POST", Path: "/api/v1/tag/delete-tag", Auth: "owner", Body: map[string]any{"id": &tagID}},
 			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/tag/get-tag-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
+	register(Scenario{Name: "label_write_read", Calls: func() []Call {
+		const newLabel = "30000000-0000-0000-0000-0000000000ff"
+		var labelID string
+		return []Call{
+			{Label: "create-label", Method: "POST", Path: "/api/v1/label/create-label", Auth: "owner", Body: map[string]any{"id": newLabel, "name": "Business"}, CaptureIDInto: &labelID},
+			{Label: "read-after-create", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "update-label", Method: "POST", Path: "/api/v1/label/update-label", Auth: "owner", Body: map[string]any{"id": &labelID, "name": "Business2"}},
+			{Label: "archive-label", Method: "POST", Path: "/api/v1/label/archive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			// pins isArchived:1 on the wire — without this read no REST golden
+			// ever renders an archived label
+			{Label: "read-while-archived", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+			{Label: "unarchive-label", Method: "POST", Path: "/api/v1/label/unarchive-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			{Label: "delete-label", Method: "POST", Path: "/api/v1/label/delete-label", Auth: "owner", Body: map[string]any{"id": &labelID}},
+			{Label: "read-after-delete", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
 		}
 	}})
 
@@ -234,7 +257,10 @@ func init() {
 	// account SHARED with the caller (the owner holds a user-role grant on the
 	// guest-owned SharedAccount). Exercises the shared-account write-access path
 	// through the real server.BuildAPI on both engines — the regression where the
-	// Go port had reduced the check to owner-only and returned a 400 here.
+	// Go port had reduced the check to owner-only and returned a 400 here. The
+	// create carries no category: references must belong to the ACCOUNT OWNER
+	// (the guest), and the fixture's categories are all the caller's — sending
+	// one is the err: step below.
 	register(Scenario{Name: "transaction_write_read_shared", Calls: func() []Call {
 		const newTxn = "d0000000-0000-0000-0000-0000000000fe"
 		var txnID string
@@ -242,8 +268,15 @@ func init() {
 			{Label: "create-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{
 					"id": newTxn, "accountId": SharedAccount, "type": "expense",
-					"amount": "7.25", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+					"amount": "7.25", "date": "2024-04-03 10:00:00",
 				}, CaptureIDInto: &txnID},
+			// the caller's own category is NOT attachable on a shared account —
+			// classifications belong to the account owner's books
+			{Label: "err:own-category-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": "d0000000-0000-0000-0000-0000000000fd", "accountId": SharedAccount, "type": "expense",
+					"amount": "1.00", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+				}},
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "account-list-after-create", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "delete-on-shared", Method: "POST", Path: "/api/v1/transaction/delete-transaction", Auth: "owner", Body: map[string]any{"id": &txnID}},

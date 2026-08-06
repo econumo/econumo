@@ -2,6 +2,7 @@ package tag
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -13,12 +14,32 @@ import (
 
 // Service is the tag write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
-	repo   Repository
-	tx     port.TxRunner
-	ops    port.OperationGuard
-	clock  port.Clock
-	read   ReadModel
-	access AccountAccess
+	repo       Repository
+	tx         port.TxRunner
+	ops        port.OperationGuard
+	clock      port.Clock
+	read       ReadModel
+	access     AccountAccess
+	labelNames LabelNames
+}
+
+// SetLabelNames installs the shared-namespace peer. The tag and label services
+// depend on each other, so neither constructor can take the other; this breaks
+// the cycle and is called once at composition time (server.BuildAPI).
+func (s *Service) SetLabelNames(n LabelNames) { s.labelNames = n }
+
+// NamesByOwner satisfies the label feature's TagNames port (wired by server
+// glue) so the other kind can enforce the shared name namespace.
+func (s *Service) NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, error) {
+	tags, err := s.repo.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(tags))
+	for _, t := range tags {
+		names = append(names, t.Name)
+	}
+	return names, nil
 }
 
 // NewService wires the tag service. read is the own+shared tag view (the same
@@ -52,7 +73,9 @@ func (s *Service) resolveAccountOwner(ctx context.Context, userID, accountID vo.
 
 // mutate loads the tag, checks ownership, applies fn inside a transaction, and
 // saves. It returns the mutated (in-memory) aggregate so the caller can build
-// its result without a second read. Ownership failure -> AccessDenied (403).
+// its result without a second read. Ownership failure is masked as a not-found
+// (400), matching the repo lookup above, so a caller cannot probe which tag
+// ids exist by distinguishing "not yours" from "doesn't exist".
 func (s *Service) mutate(ctx context.Context, id, userID vo.Id, fn func(t *model.Tag, now time.Time)) (*model.Tag, error) {
 	var loaded *model.Tag
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
@@ -125,6 +148,7 @@ func toResult(t *model.Tag) model.TagResult {
 		Id:          t.ID.String(),
 		OwnerUserId: t.UserID.String(),
 		Name:        t.Name,
+		Icon:        t.Icon,
 		IsArchived:  archived,
 		CreatedAt:   t.CreatedAt.Format(datetime.Layout),
 		UpdatedAt:   t.UpdatedAt.Format(datetime.Layout),
@@ -156,7 +180,24 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		return err
 	}
 	for _, t := range tags {
-		if t.Name == name && !t.ID.Equal(exceptID) {
+		// Case-insensitive: one name means one tag regardless of case, matching
+		// how CSV import already resolves names.
+		if strings.EqualFold(t.Name, name) && !t.ID.Equal(exceptID) {
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
+		}
+	}
+	// The other classification kind shares this namespace. exceptID needs no
+	// counterpart here: ids are unique across both tables, so a rename can never
+	// collide with itself.
+	if s.labelNames == nil {
+		return nil
+	}
+	names, err := s.labelNames.NamesByOwner(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, n := range names {
+		if strings.EqualFold(n, name) {
 			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}

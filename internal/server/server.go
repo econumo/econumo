@@ -45,6 +45,10 @@ import (
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	applabel "github.com/econumo/econumo/internal/label"
+	handlerlabel "github.com/econumo/econumo/internal/label/api"
+	labelmcp "github.com/econumo/econumo/internal/label/mcp"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
@@ -202,6 +206,15 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
 
+	labelRepo := labelrepo.NewRepo(cfg.DatabaseDriver, txm)
+	labelReadRepo := labelrepo.NewReadRepo(cfg.DatabaseDriver, txm)
+	labelSvc := applabel.NewService(labelRepo, txm, opGuard, clk, labelReadRepo, accountAccessResolver)
+	labelReadSvc := applabel.NewReadService(labelReadRepo)
+	labelHandlers := handlerlabel.NewHandlers(labelSvc, labelReadSvc)
+
+	// Both classification kinds share one user-facing name namespace.
+	WireClassificationNames(tagSvc, labelSvc)
+
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)
@@ -284,22 +297,28 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 
-	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo))
+	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo), NewTransactionLabelNameLookup(labelRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)
 	txImportTags := NewTransactionImportTags(tagSvc, tagRepo)
 	txImportPayees := NewTransactionImportPayees(payeeSvc, payeeRepo)
+	txImportLabels := NewTransactionImportLabels(labelSvc, labelRepo)
 	txImportLookup := transactionrepo.NewImportLookup(
-		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags,
+		txImportAccounts, accountAccessResolver, txImportCategories, txImportPayees, txImportTags, txImportLabels,
 		transactionRepo,
 	)
+	// One label-ownership adapter, reused across every feature that validates
+	// labelIds against the label repository (same pattern as userOwnerLookup
+	// above): transaction and recurring both just want "who owns this label".
+	labelOwnership := NewTransactionLabelOwnership(labelRepo)
 	transactionSvc := apptransaction.NewService(
-		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup, txm, opGuard, clk,
+		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
+		labelOwnership, txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
-	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, txm, opGuard, clk)
+	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
 
 	connectionHandlers := handlerconnection.NewHandlers(connectionSvc)
@@ -310,6 +329,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handleruser.RegisterAPI(userHandlers, authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
+		handlerlabel.RegisterAPI(labelHandlers, authn),
 		handlerpayee.RegisterAPI(payeeHandlers, authn),
 		handlercurrency.RegisterAPI(currencyHandlers, authn),
 		handleraccount.RegisterAPI(accountHandlers, authn),
@@ -343,6 +363,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		usermcp.Register(userReadSvc),
 		connectionmcp.Register(connectionSvc),
 		transactionmcp.Register(transactionSvc),
+		labelmcp.Register(labelReadSvc, labelSvc),
 	)
 	mcpHandler := middleware.Chain(
 		middleware.Auth(authn),

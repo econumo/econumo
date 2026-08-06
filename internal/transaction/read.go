@@ -89,6 +89,18 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	// owner, plus a few connected users on shared accounts), and each GetOwner is
 	// a DB round-trip (user row + options). Without this cache that is an N+1 that
 	// dominates the endpoint's latency.
+	txIDs := make([]vo.Id, len(txs))
+	for i, t := range txs {
+		txIDs[i] = t.ID
+	}
+	// One batch call regardless of list size: LabelsByTransactionIDs chunks its
+	// own IN lists, so this endpoint (unpaginated, can return thousands of rows)
+	// never needs to page ids itself.
+	labelsByTx, err := s.repo.LabelsByTransactionIDs(ctx, txIDs)
+	if err != nil {
+		return nil, err
+	}
+
 	authors := make(map[string]model.UserResult)
 	items := make([]model.TransactionResult, 0, len(txs))
 	for _, t := range txs {
@@ -102,7 +114,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			author = model.UserResult{Id: av.ID, Avatar: av.Avatar, Name: av.Name}
 			authors[uid] = author
 		}
-		items = append(items, s.buildResult(t, author))
+		items = append(items, s.buildResult(t, author, labelsByTx[t.ID.String()]))
 	}
 	return &model.GetTransactionListResult{Items: items}, nil
 }

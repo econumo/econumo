@@ -47,6 +47,7 @@ func toViewResult(r model.TagViewRow) model.TagResult {
 		Id:          r.ID,
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
+		Icon:        r.Icon,
 		IsArchived:  archived,
 		CreatedAt:   r.CreatedAt,
 		UpdatedAt:   r.UpdatedAt,

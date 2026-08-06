@@ -15,6 +15,11 @@ export interface CreateTransactionDto {
   description: string
   payeeId: Id | null
   tagId: Id | null
+  /** FULL REPLACEMENT set on every write: the server overwrites the stored
+   *  labels with exactly these ids, so an edit that omits an attached id
+   *  detaches it. Required (never optional) so no write path can forget it.
+   *  Always [] for a transfer — transfers carry no classification. */
+  labelIds: Id[]
   date: string
 }
 

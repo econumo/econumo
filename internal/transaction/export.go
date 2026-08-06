@@ -3,6 +3,7 @@ package transaction
 import (
 	"context"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/econumo/econumo/internal/model"
@@ -19,6 +20,7 @@ var exportHeaders = []string{
 	"category",
 	"description",
 	"tag",
+	"labels",
 	"payee",
 	"amount",
 	"date",
@@ -73,14 +75,85 @@ func (s *Service) ExportTransactionList(ctx context.Context, userID vo.Id, accou
 	// Category/tag/payee names repeat heavily across an export (a few dozen
 	// distinct ids over thousands of rows); resolve each name once per request.
 	names := newExportNameCache()
+	labels, err := s.buildExportLabelIndex(ctx, txs)
+	if err != nil {
+		return nil, err
+	}
 	for _, t := range txs {
-		built, berr := s.buildExportRows(ctx, t, selectedByID, allAccountsByID, names)
+		built, berr := s.buildExportRows(ctx, t, selectedByID, allAccountsByID, names, labels)
 		if berr != nil {
 			return nil, berr
 		}
 		rows = append(rows, built...)
 	}
 	return rows, nil
+}
+
+// buildExportLabelIndex resolves every transaction's labels cell in two
+// batched round trips regardless of transaction count: the repo's
+// LabelsByTransactionIDs (already chunked) for the label ids attached to each
+// transaction, then ONE LabelNames call over every distinct id it returned.
+// LabelsByTransactionIDs orders ids by label_id (a determinism guarantee, not
+// a display order), so the per-transaction cell is re-sorted into list order
+// once the sort keys come back.
+func (s *Service) buildExportLabelIndex(ctx context.Context, txs []*model.Transaction) (exportLabelIndex, error) {
+	txIDs := make([]vo.Id, len(txs))
+	for i, t := range txs {
+		txIDs[i] = t.ID
+	}
+	byTx, err := s.repo.LabelsByTransactionIDs(ctx, txIDs)
+	if err != nil {
+		return exportLabelIndex{}, err
+	}
+	distinct := make(map[string]struct{})
+	for _, ids := range byTx {
+		for _, id := range ids {
+			distinct[id] = struct{}{}
+		}
+	}
+	ids := make([]vo.Id, 0, len(distinct))
+	for idStr := range distinct {
+		id, perr := vo.ParseId(idStr)
+		if perr != nil {
+			return exportLabelIndex{}, perr
+		}
+		ids = append(ids, id)
+	}
+	byID, err := s.export.LabelNames(ctx, ids)
+	if err != nil {
+		return exportLabelIndex{}, err
+	}
+	return exportLabelIndex{byTx: byTx, byID: byID}, nil
+}
+
+// exportLabelIndex answers a transaction id's labels cell from the two
+// batched lookups buildExportLabelIndex performs once for the whole export.
+type exportLabelIndex struct {
+	byTx map[string][]string
+	byID map[string]model.ExportLabel
+}
+
+// cell returns the ";"-joined, list-ordered, per-name-sanitized labels
+// cell for a transaction id ("" when it has none). Each name is sanitized
+// BEFORE the join: sanitizing the already-joined string would let a leading
+// "=" on a later name through, defeating the formula-injection guard.
+func (idx exportLabelIndex) cell(transactionID string) string {
+	ids := idx.byTx[transactionID]
+	if len(ids) == 0 {
+		return ""
+	}
+	labels := make([]model.ExportLabel, 0, len(ids))
+	for _, id := range ids {
+		if lbl, ok := idx.byID[id]; ok {
+			labels = append(labels, lbl)
+		}
+	}
+	sort.SliceStable(labels, func(i, j int) bool { return labels[i].SortKey < labels[j].SortKey })
+	parts := make([]string, len(labels))
+	for i, lbl := range labels {
+		parts[i] = sanitizeExportValue(lbl.Name)
+	}
+	return strings.Join(parts, ";")
 }
 
 // exportNameCache memoizes category/tag/payee name lookups for one export so a
@@ -110,7 +183,7 @@ func cachedName(ctx context.Context, cache map[string]string, id vo.Id, fetch fu
 // buildExportRows emits the 0, 1, or 2 CSV rows for one transaction: a row on
 // the source account if it is selected, plus a second row on the recipient
 // account if this is a transfer whose recipient is selected.
-func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, selectedByID, allAccountsByID map[string]model.ExportAccount, names *exportNameCache) ([][]string, error) {
+func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, selectedByID, allAccountsByID map[string]model.ExportAccount, names *exportNameCache, labels exportLabelIndex) ([][]string, error) {
 	var rows [][]string
 	accountID := t.AccountID.String()
 
@@ -134,7 +207,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, sel
 		rows = append(rows, s.buildExportRow(
 			t, src,
 			formatAmount(t.Amount, t.Type.IsExpense() || t.Type.IsTransfer()),
-			category, tag, payee, description,
+			category, tag, labels.cell(t.ID.String()), payee, description,
 		))
 	}
 
@@ -156,7 +229,7 @@ func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, sel
 				}
 				description := applyTransferNote(transferNote, t.Description)
 				rows = append(rows, s.buildExportRow(
-					t, recip, formatAmount(amt, false), "", "", "", description,
+					t, recip, formatAmount(amt, false), "", "", "", "", description,
 				))
 			}
 		}
@@ -166,8 +239,11 @@ func (s *Service) buildExportRows(ctx context.Context, t *model.Transaction, sel
 }
 
 // buildExportRow assembles one CSV row in the fixed column order: id,
-// account_name, account_currency, category, description, tag, payee, amount, date.
-func (s *Service) buildExportRow(t *model.Transaction, account model.ExportAccount, amount, category, tag, payee, description string) []string {
+// account_name, account_currency, category, description, tag, labels, payee,
+// amount, date. labels arrives pre-sanitized per-name and already joined (see
+// exportLabelIndex.cell), so it is written as-is here, unlike the other
+// free-text cells which are sanitized on the way in.
+func (s *Service) buildExportRow(t *model.Transaction, account model.ExportAccount, amount, category, tag, labels, payee, description string) []string {
 	return []string{
 		t.ID.String(),
 		sanitizeExportValue(account.Name),
@@ -175,6 +251,7 @@ func (s *Service) buildExportRow(t *model.Transaction, account model.ExportAccou
 		sanitizeExportValue(category),
 		sanitizeExportValue(description),
 		sanitizeExportValue(tag),
+		labels,
 		sanitizeExportValue(payee),
 		amount,
 		t.SpentAt.Format(datetime.Layout),

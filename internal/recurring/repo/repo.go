@@ -17,14 +17,17 @@ import (
 )
 
 type (
-	rtRow        = sqlitegen.RecurringTransaction
-	upsertParams = sqlitegen.UpsertRecurringTransactionParams
+	rtRow             = sqlitegen.RecurringTransaction
+	upsertParams      = sqlitegen.UpsertRecurringTransactionParams
+	insertLabelParams = sqlitegen.InsertRecurringLabelParams
 )
 
 type querier interface {
 	GetRecurringTransactionByID(ctx context.Context, db backend.DBTX, id string) (rtRow, error)
 	UpsertRecurringTransaction(ctx context.Context, db backend.DBTX, arg upsertParams) error
 	DeleteRecurringTransaction(ctx context.Context, db backend.DBTX, id string) error
+	DeleteRecurringLabels(ctx context.Context, db backend.DBTX, recurringTransactionID string) error
+	InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error
 }
 
 type Repo struct {
@@ -82,6 +85,79 @@ func (r *Repo) Save(ctx context.Context, rt *model.RecurringTransaction) error {
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteRecurringTransaction(ctx, r.db(ctx), id.String())
+}
+
+// ReplaceLabels rewrites a template's label links. The caller runs this
+// inside the same tx as Save, so the delete-then-insert is atomic and a
+// re-save is idempotent (never duplicates a pair).
+func (r *Repo) ReplaceLabels(ctx context.Context, recurringID vo.Id, labelIDs []vo.Id) error {
+	db := r.db(ctx)
+	if err := r.q.DeleteRecurringLabels(ctx, db, recurringID.String()); err != nil {
+		return err
+	}
+	for _, id := range labelIDs {
+		if err := r.q.InsertRecurringLabel(ctx, db, insertLabelParams{
+			RecurringTransactionID: recurringID.String(),
+			LabelID:                id.String(),
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// labelsByRecurringIDsChunkSize mirrors labelsByTransactionIDsChunkSize in the
+// transaction repo, bounding each round trip's IN list well under either
+// engine's bind-param ceiling.
+const labelsByRecurringIDsChunkSize = 500
+
+// LabelsByRecurringIDs batch-loads label ids for many templates, keyed by
+// template id. An empty ids is a no-op on SQLite but a syntax error on
+// PostgreSQL ("IN ()"), so it short-circuits before building the query.
+func (r *Repo) LabelsByRecurringIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	out := make(map[string][]string, len(ids))
+	for len(ids) > 0 {
+		n := len(ids)
+		if n > labelsByRecurringIDsChunkSize {
+			n = labelsByRecurringIDsChunkSize
+		}
+		chunk := ids[:n]
+		ids = ids[n:]
+		if err := r.labelsByRecurringIDsChunk(ctx, chunk, out); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (r *Repo) labelsByRecurringIDsChunk(ctx context.Context, ids []vo.Id, out map[string][]string) error {
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id.String()
+	}
+	// ORDER BY pins row order across engines: without it, SQLite satisfies the
+	// query from the (recurring_transaction_id, label_id) PK index (label_id
+	// order) while PostgreSQL seq-scans a small table in insertion order, so the
+	// label slice per template would diverge between engines.
+	query := "SELECT recurring_transaction_id, label_id FROM recurring_transactions_labels WHERE recurring_transaction_id IN (" +
+		placeholders(r.driver, 1, len(args)) + ") ORDER BY recurring_transaction_id, label_id"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var rtID, labelID string
+		if err := rows.Scan(&rtID, &labelID); err != nil {
+			return err
+		}
+		out[rtID] = append(out[rtID], labelID)
+	}
+	return rows.Err()
 }
 
 // Variadic IN list, so this is hand-built SQL like the transaction repo's

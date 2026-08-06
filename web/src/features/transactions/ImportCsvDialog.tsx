@@ -1,20 +1,29 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowLeftRight, Split } from 'lucide-react'
+import { ArrowLeftRight, Split, SlidersHorizontal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { importTransactionList } from '@/api/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { pluralPick } from '@/lib/plural'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useUserData } from '@/features/user/queries'
 import type { AggregatedImportResult, CsvAnalysis, FieldKey, ImportSelection } from './importCsv'
-import { analyzeCsv, autoDetect, CHUNK_SIZE, defaultSelection, runImport, selectionValid } from './importCsv'
+import { analyzeCsv, autoDetect, CHUNK_SIZE, countNewLabels, defaultSelection, runImport, selectionValid } from './importCsv'
 
 const MAX_FILE_SIZE = 10485760
+
+const SEPARATOR_PRESETS: { value: string; display: string }[] = [
+  { value: ';', display: ';' },
+  { value: ',', display: ',' },
+  { value: '|', display: '|' },
+]
+const PRESET_SEPARATOR_VALUES = [';', ',', '|', '\t', '\n']
 
 interface ImportCsvDialogProps {
   open: boolean
@@ -23,19 +32,21 @@ interface ImportCsvDialogProps {
 }
 
 export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const queryClient = useQueryClient()
   const { data: user } = useUserData()
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
   const { data: tags = [] } = useTags()
+  const { data: labels = [] } = useLabels()
 
   const [file, setFile] = useState<File | null>(null)
   const [analysis, setAnalysis] = useState<CsvAnalysis | null>(null)
   const [selection, setSelection] = useState<ImportSelection>(defaultSelection)
   const [submitting, setSubmitting] = useState(false)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [separatorDialogOpen, setSeparatorDialogOpen] = useState(false)
 
   const reset = () => {
     setFile(null)
@@ -43,6 +54,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     setSelection(defaultSelection())
     setSubmitting(false)
     setProgress(null)
+    setSeparatorDialogOpen(false)
   }
 
   useEffect(() => {
@@ -73,13 +85,39 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
   // switching the target account owner invalidates fixed entity picks (Vue parity)
   useEffect(() => {
     setSelection((prev) =>
-      prev.fixed.categoryId || prev.fixed.payeeId || prev.fixed.tagId
-        ? { ...prev, fixed: { ...prev.fixed, categoryId: null, payeeId: null, tagId: null } }
+      prev.fixed.categoryId || prev.fixed.payeeId || prev.fixed.tagId || prev.fixed.labelIds.length > 0
+        ? { ...prev, fixed: { ...prev.fixed, categoryId: null, payeeId: null, tagId: null, labelIds: [] } }
         : prev,
     )
   }, [targetUserId])
 
-  const labels: Record<FieldKey, string> = {
+  const ownerLabels = useMemo(
+    () => labels.filter((label) => label.ownerUserId === targetUserId && label.isArchived === 0),
+    [labels, targetUserId],
+  )
+
+  // The "new labels" count matches names against ALL of the owner's classifications,
+  // archived included: the import resolves names server-side with no archived
+  // filter, so a CSV naming an archived one attaches it rather than creating a
+  // new one. ownerLabels stays archived-free for the visible list.
+  // Both kinds share one name namespace, so a name a BUDGET tag already holds is
+  // not new either — the server would reject the create rather than add it.
+  const existingLabelNames = useMemo(
+    () => [...labels, ...tags].filter((item) => item.ownerUserId === targetUserId).map((item) => item.name),
+    [labels, tags, targetUserId],
+  )
+  // narrow deps: only the pieces countNewLabels actually reads, so typing in
+  // the description/date inputs doesn't rescan every row on a 10 MB import;
+  // a broad `[selection]` dep would invalidate on every unrelated keystroke,
+  // same as no memo at all
+  const newLabelCount = useMemo(
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => (analysis ? countNewLabels(analysis, selection, existingLabelNames) : 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [analysis, selection.modes.labels, selection.columns.labels, selection.labelsSeparator, existingLabelNames],
+  )
+
+  const fieldLabels: Record<FieldKey, string> = {
     account: t('transactions.import_csv.fields.account'),
     date: t('transactions.import_csv.fields.date'),
     amount: t('transactions.import_csv.fields.amount'),
@@ -89,6 +127,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     description: t('transactions.import_csv.fields.description'),
     payee: t('transactions.import_csv.fields.payee'),
     tag: t('transactions.import_csv.fields.tag'),
+    labels: t('transactions.import_csv.fields.labels'),
   }
 
   const handleFile = async (picked: File | undefined) => {
@@ -99,7 +138,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     }
     const text = await picked.text()
     const parsed = analyzeCsv(text)
-    const detected = autoDetect(parsed.header, labels)
+    const detected = autoDetect(parsed.header, fieldLabels)
     setFile(picked)
     setAnalysis(parsed)
     setSelection({ ...defaultSelection(), columns: detected.columns, amountMode: detected.amountMode })
@@ -117,7 +156,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
 
   const columnSelect = (field: FieldKey, value: string | null) => (
     <select
-      aria-label={labels[field]}
+      aria-label={fieldLabels[field]}
       className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
       value={value ?? ''}
       onChange={(e) => patchColumns({ [field]: e.target.value === '' ? null : e.target.value } as Partial<ImportSelection['columns']>)}
@@ -158,12 +197,60 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
       type="button"
       variant="ghost"
       size="icon"
-      aria-label={`toggle ${labels[field as FieldKey]} mode`}
+      aria-label={`toggle ${fieldLabels[field as FieldKey]} mode`}
       title={selection.modes[field] === 'csv_column' ? t('transactions.import_csv.switch_to_manual') : t('transactions.import_csv.switch_to_csv')}
       onClick={() => toggleMode(field, next)}
     >
       <ArrowLeftRight className="size-4" />
     </Button>
+  )
+
+  const toggleLabelId = (id: string) =>
+    patchFixed({ labelIds: selection.fixed.labelIds.includes(id) ? selection.fixed.labelIds.filter((x) => x !== id) : [...selection.fixed.labelIds, id] })
+
+  const labelMultiSelect = (
+    <div className="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border p-1.5" role="group" aria-label={fieldLabels.labels}>
+      {ownerLabels.length === 0 ? <span className="px-1 text-xs text-muted-foreground">{t('transactions.import_csv.none')}</span> : null}
+      {ownerLabels.map((label) => {
+        const checked = selection.fixed.labelIds.includes(label.id)
+        return (
+          <Badge
+            key={label.id}
+            role="checkbox"
+            aria-checked={checked}
+            aria-label={label.name}
+            tabIndex={0}
+            variant={checked ? 'default' : 'secondary'}
+            className="cursor-pointer"
+            onClick={() => toggleLabelId(label.id)}
+            onKeyDown={(e) => {
+              if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
+                e.preventDefault()
+                toggleLabelId(label.id)
+              }
+            }}
+          >
+            {label.name}
+          </Badge>
+        )
+      })}
+    </div>
+  )
+
+  const labelsSeparatorControl = (
+    <div className="flex items-center gap-2">
+      <div className="min-w-0 flex-1">{columnSelect('labels', selection.columns.labels)}</div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        aria-label={t('transactions.import_csv.labels_separator.button')}
+        title={t('transactions.import_csv.labels_separator.button')}
+        onClick={() => setSeparatorDialogOpen(true)}
+      >
+        <SlidersHorizontal className="size-4" />
+      </Button>
+    </div>
   )
 
   const fieldRow = (label: string, required: boolean, control: React.ReactNode, toggle?: React.ReactNode) => (
@@ -215,13 +302,13 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             <p className="text-xs text-muted-foreground">{t('transactions.import_csv.mapping.description')}</p>
 
             {fieldRow(
-              labels.account,
+              fieldLabels.account,
               true,
               selection.modes.account === 'csv_column' ? (
                 columnSelect('account', selection.columns.account)
               ) : (
                 <select
-                  aria-label={labels.account}
+                  aria-label={fieldLabels.account}
                   className="h-9 w-full rounded-md border bg-transparent px-2 text-sm"
                   value={selection.fixed.accountId ?? ''}
                   onChange={(e) => patchFixed({ accountId: e.target.value === '' ? null : e.target.value })}
@@ -238,13 +325,13 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             )}
 
             {fieldRow(
-              labels.date,
+              fieldLabels.date,
               true,
               selection.modes.date === 'csv_column' ? (
                 columnSelect('date', selection.columns.date)
               ) : (
                 <Input
-                  aria-label={labels.date}
+                  aria-label={fieldLabels.date}
                   placeholder="YYYY-MM-DD"
                   value={selection.fixed.date}
                   onChange={(e) => patchFixed({ date: e.target.value })}
@@ -255,7 +342,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
 
             {selection.amountMode === 'single' ? (
               fieldRow(
-                labels.amount,
+                fieldLabels.amount,
                 true,
                 columnSelect('amount', selection.columns.amount),
                 <Button
@@ -272,7 +359,7 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             ) : (
               <>
                 {fieldRow(
-                  labels.amountInflow,
+                  fieldLabels.amountInflow,
                   true,
                   columnSelect('amountInflow', selection.columns.amountInflow),
                   <Button
@@ -286,27 +373,27 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
                     <Split className="size-4" />
                   </Button>,
                 )}
-                {fieldRow(labels.amountOutflow, true, columnSelect('amountOutflow', selection.columns.amountOutflow))}
+                {fieldRow(fieldLabels.amountOutflow, true, columnSelect('amountOutflow', selection.columns.amountOutflow))}
               </>
             )}
 
             {fieldRow(
-              labels.category,
+              fieldLabels.category,
               false,
               selection.modes.category === 'csv_column'
                 ? columnSelect('category', selection.columns.category)
-                : entitySelect('categoryId', labels.category, categories),
+                : entitySelect('categoryId', fieldLabels.category, categories),
               modeToggle('category', 'existing'),
             )}
 
             {fieldRow(
-              labels.description,
+              fieldLabels.description,
               false,
               selection.modes.description === 'csv_column' ? (
                 columnSelect('description', selection.columns.description)
               ) : (
                 <Input
-                  aria-label={labels.description}
+                  aria-label={fieldLabels.description}
                   placeholder={t('transactions.import_csv.fields.description_placeholder')}
                   value={selection.fixed.description}
                   onChange={(e) => patchFixed({ description: e.target.value })}
@@ -316,22 +403,35 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
             )}
 
             {fieldRow(
-              labels.payee,
+              fieldLabels.payee,
               false,
               selection.modes.payee === 'csv_column'
                 ? columnSelect('payee', selection.columns.payee)
-                : entitySelect('payeeId', labels.payee, payees),
+                : entitySelect('payeeId', fieldLabels.payee, payees),
               modeToggle('payee', 'existing'),
             )}
 
             {fieldRow(
-              labels.tag,
+              fieldLabels.tag,
               false,
               selection.modes.tag === 'csv_column'
                 ? columnSelect('tag', selection.columns.tag)
-                : entitySelect('tagId', labels.tag, tags),
+                : entitySelect('tagId', fieldLabels.tag, tags),
               modeToggle('tag', 'existing'),
             )}
+
+            {fieldRow(
+              fieldLabels.labels,
+              false,
+              selection.modes.labels === 'csv_column' ? labelsSeparatorControl : labelMultiSelect,
+              modeToggle('labels', 'existing'),
+            )}
+
+            {newLabelCount > 0 ? (
+              <p role="status" className="text-xs text-muted-foreground">
+                {pluralPick(t('transactions.import_csv.new_labels_count'), newLabelCount, i18n.language)}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -348,6 +448,50 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
           </Button>
         </div>
       </div>
+
+      <ResponsiveDialog
+        open={separatorDialogOpen}
+        onOpenChange={(o) => !o && setSeparatorDialogOpen(false)}
+        title={t('transactions.import_csv.labels_separator.title')}
+      >
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap gap-2" role="radiogroup" aria-label={t('transactions.import_csv.labels_separator.title')}>
+            {SEPARATOR_PRESETS.map((preset) => (
+              <Button
+                key={preset.value}
+                type="button"
+                variant={selection.labelsSeparator === preset.value ? 'default' : 'secondary'}
+                onClick={() => setSelection((prev) => ({ ...prev, labelsSeparator: preset.value }))}
+              >
+                {preset.display}
+              </Button>
+            ))}
+            <Button
+              type="button"
+              variant={selection.labelsSeparator === '\t' ? 'default' : 'secondary'}
+              onClick={() => setSelection((prev) => ({ ...prev, labelsSeparator: '\t' }))}
+            >
+              {t('transactions.import_csv.labels_separator.tab')}
+            </Button>
+            <Button
+              type="button"
+              variant={selection.labelsSeparator === '\n' ? 'default' : 'secondary'}
+              onClick={() => setSelection((prev) => ({ ...prev, labelsSeparator: '\n' }))}
+            >
+              {t('transactions.import_csv.labels_separator.newline')}
+            </Button>
+          </div>
+          <Input
+            aria-label={t('transactions.import_csv.labels_separator.custom_label')}
+            placeholder={t('transactions.import_csv.labels_separator.custom_label')}
+            value={PRESET_SEPARATOR_VALUES.includes(selection.labelsSeparator) ? '' : selection.labelsSeparator}
+            onChange={(e) => setSelection((prev) => ({ ...prev, labelsSeparator: e.target.value }))}
+          />
+          <Button type="button" className="h-11" onClick={() => setSeparatorDialogOpen(false)}>
+            {t('common.button.save.label')}
+          </Button>
+        </div>
+      </ResponsiveDialog>
     </ResponsiveDialog>
   )
 }

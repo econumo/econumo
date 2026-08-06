@@ -21,8 +21,26 @@ func parseSpentAt(v string) (time.Time, error) {
 }
 
 // UpdateTransaction applies a full update to the transaction (access required on
-// the target account) and returns it plus the refreshed account list.
+// the target account) and returns it plus the refreshed account list. This is
+// the REST contract: req.LabelIds fully replaces the label set, same as
+// categoryId/payeeId/tagId (omitting it clears).
 func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return s.updateTransaction(ctx, userID, req, false)
+}
+
+// UpdateTransactionPreservingLabels is UpdateTransaction except the
+// transaction's existing labels are left exactly as they are, instead of
+// being replaced by req.LabelIds. Used by the MCP update_transaction tool
+// only when the caller omits its label_ids argument: routing an omitted
+// value through the normal full-replace path would read the JSON zero value
+// as "clear every label" and silently delete them. When the caller supplies
+// label_ids (including an explicit empty list), MCP calls plain
+// UpdateTransaction instead.
+func (s *Service) UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return s.updateTransaction(ctx, userID, req, true)
+}
+
+func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest, preserveLabels bool) (*model.UpdateTransactionResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {
 		return nil, err
@@ -59,6 +77,21 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		if aerr := s.checkWriteAccess(ctx, userID, t.AccountID, "transaction.transaction.not_available"); aerr != nil {
 			return aerr
 		}
+		labelIDs := req.LabelIds
+		if preserveLabels {
+			// Seed with what's ACTUALLY persisted (not req.LabelIds, which the
+			// preserving caller never populates), so checkReferences's full
+			// replace below ends up replacing the label set with itself — a
+			// true no-op — rather than clearing it. One lookup, scoped to this
+			// transaction; unlike the (reverted) bulk-update attempt at this
+			// same pattern, the result is genuinely used by the Save+
+			// ReplaceLabels calls that follow.
+			existing, lerr := s.repo.LabelsByTransactionIDs(ctx, []vo.Id{id})
+			if lerr != nil {
+				return lerr
+			}
+			labelIDs = existing[id.String()]
+		}
 		now := s.clock.Now()
 		st, berr := buildState(id, userID, typ, accountID, req.Amount.String(),
 			req.AmountRecipient.StrPtr(), req.AccountRecipientId, req.CategoryId, req.PayeeId, req.TagId,
@@ -69,12 +102,15 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		if nerr := s.normalizeTransferAmounts(ctx, &st); nerr != nil {
 			return nerr
 		}
-		if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+		if rerr := s.checkReferences(ctx, userID, &st, labelIDs); rerr != nil {
 			return rerr
 		}
 		t.Update(st, now)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
+		}
+		if lerr := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); lerr != nil {
+			return lerr
 		}
 		updated = t
 		return nil
@@ -82,7 +118,7 @@ func (s *Service) UpdateTransaction(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 
-	item, err := s.toResult(ctx, updated)
+	item, err := s.toResult(ctx, updated, labelIDStrings(updated.LabelIDs))
 	if err != nil {
 		return nil, err
 	}

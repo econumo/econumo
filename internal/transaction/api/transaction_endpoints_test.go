@@ -20,6 +20,7 @@ type txItem struct {
 	PayeeID            *string                           `json:"payeeId"`
 	TagID              *string                           `json:"tagId"`
 	Date               string                            `json:"date"`
+	LabelIds           []string                          `json:"labelIds"`
 }
 
 type writeResult struct {

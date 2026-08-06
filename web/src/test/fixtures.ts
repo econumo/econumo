@@ -60,7 +60,13 @@ export const fixturePayees = [
 ]
 
 export const fixtureTags = [
-  { id: 'tag1', ownerUserId: 'u1', name: 'vacation', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+  { id: 'tag1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+]
+
+// icon intentionally differs from DEFAULT_ICON.label ('label') so tests can tell
+// a saved row's STORED icon apart from the create dialog's preview-only default.
+export const fixtureLabels = [
+  { id: 'label1', ownerUserId: 'u1', name: 'health', icon: 'sell', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
 ]
 
 export const fixtureTransactions = [
@@ -126,6 +132,7 @@ export const fixtureWireBudget = {
         ownerUserId: 'u1', children: [],
       },
     ],
+    labels: [],
   },
 }
 
@@ -143,6 +150,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     categories: fixtureCategories,
     payees: fixturePayees,
     tags: fixtureTags,
+    labels: fixtureLabels,
     currencies: [fixtureUsd, fixtureEur],
     rates: fixtureRates,
     budgets: fixtureBudgets,
@@ -159,6 +167,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/category/get-category-list', () => envelope({ items: data.categories })),
     http.get('*/api/v1/payee/get-payee-list', () => envelope({ items: data.payees })),
     http.get('*/api/v1/tag/get-tag-list', () => envelope({ items: data.tags })),
+    http.get('*/api/v1/label/get-label-list', () => envelope({ items: data.labels })),
     http.get('*/api/v1/currency/get-currency-list', () => envelope({ items: data.currencies })),
     http.get('*/api/v1/currency/get-currency-rate-list', () => envelope({ items: data.rates })),
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),

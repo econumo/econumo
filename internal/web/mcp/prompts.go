@@ -169,7 +169,7 @@ tell me to create a new budget with the budget-setup prompt instead.
    and from what to what — and WAIT for my approval.
 6. On my approval, apply it: move_element for the moves, set_limit for limits
    (omit the amount to clear one). To retire an envelope, archive it via
-   update_envelope (there is no delete). NOTE: update_envelope replaces the
+   update_envelope (MCP has no delete). NOTE: update_envelope replaces the
    envelope's FULL category set, so include the existing category_ids alongside
    any new ones or you will silently unlink them.
 7. Call get_budget again and report what changed, with the new base-vs-additional

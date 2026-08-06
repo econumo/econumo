@@ -2,6 +2,7 @@ package transaction
 
 import (
 	"context"
+	"sort"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -20,6 +21,7 @@ type Service struct {
 	users    UserLookup
 	export   ExportLookup
 	importer Importer
+	labels   LabelOwnership
 	tx       port.TxRunner
 	ops      port.OperationGuard
 	clock    port.Clock
@@ -34,11 +36,12 @@ func NewService(
 	users UserLookup,
 	export ExportLookup,
 	importer Importer,
+	labels LabelOwnership,
 	tx port.TxRunner,
 	ops port.OperationGuard,
 	clock port.Clock,
 ) *Service {
-	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, tx: tx, ops: ops, clock: clock}
+	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, labels: labels, tx: tx, ops: ops, clock: clock}
 }
 
 // checkWriteAccess verifies the user may add/update/delete a transaction on the
@@ -80,19 +83,35 @@ func notAvailableCode(msg string) string {
 //   - a transfer's recipient account needs the SAME write access as the source,
 //     else a caller could inject a leg into a stranger's account (its balance is
 //     SUM(amount_recipient) over that account id);
-//   - an optional category/payee/tag must belong to the CALLER or to the OWNER
-//     of the account the transaction is on. On a shared account the SPA
-//     categorizes with the account owner's entities (its picker filters to the
-//     account owner), so a caller-only check would reject a legitimate
-//     co-sharer's transaction; a truly foreign (unconnected) id is still
-//     rejected.
-func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.NewState) error {
+//   - an optional category/payee/tag must belong to the OWNER of the account
+//     the transaction is on — every classification describes the owner's
+//     books, so on a shared account a co-sharer classifies with the owner's
+//     entities, never their own (the SPA's picker filters to the account
+//     owner). A caller-only check would be equally wrong in the other
+//     direction: it would reject those legitimate owner-entity references.
+//   - rawLabelIDs is resolved and written into st.LabelIDs for a non-transfer
+//     (a transfer never carries labels, so its rawLabelIDs is ignored and
+//     st.LabelIDs stays nil, matching buildState which never sets it either).
+//     This is always a FULL REPLACE, same as categoryId/payeeId/tagId above:
+//     an empty/nil rawLabelIDs means "no labels", full stop. A caller that
+//     must leave existing labels untouched (there is exactly one: MCP's
+//     update_transaction when its optional label_ids argument is omitted — see
+//     Service.updateTransaction's preserveLabels parameter) is responsible for
+//     seeding rawLabelIDs with the transaction's CURRENT persisted labels
+//     itself before calling in; checkReferences has no "leave alone" mode of
+//     its own; a bulk re-classification simply never has anything to seed
+//     with here, since BulkUpdateTransactions never calls ReplaceLabels and
+//     never persists st.LabelIDs regardless of what this sets it to. Labels
+//     follow the same ACCOUNT-OWNER-only rule as category/payee/tag above: a
+//     connected co-sharer classifies with the owner's labels exactly as they
+//     do with the owner's categories/tags/payees.
+func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st *model.NewState, rawLabelIDs []string) error {
 	if st.AccountRecipID != nil {
 		if err := s.checkWriteAccess(ctx, userID, *st.AccountRecipID, "account.account.not_available"); err != nil {
 			return err
 		}
 	}
-	// The account owner (== userID for an own account) whose entities are also
+	// The account owner (== userID for an own account) whose entities are the
 	// acceptable references. Write access to st.AccountID is already verified by
 	// the caller, so the lookup resolves.
 	ownerID, err := s.accounts.AccountOwner(ctx, st.AccountID)
@@ -100,38 +119,94 @@ func (s *Service) checkReferences(ctx context.Context, userID vo.Id, st model.Ne
 		return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
 	}
 	if st.CategoryID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.CategoryID, s.importer.CategoriesByOwner); err != nil {
 			return err
 		}
 	}
 	if st.PayeeID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.PayeeID, s.importer.PayeesByOwner); err != nil {
 			return err
 		}
 	}
 	if st.TagID != nil {
-		if err := s.requireAvailableEntity(ctx, userID, ownerID, *st.TagID, s.importer.TagsByOwner); err != nil {
+		if err := s.requireAvailableEntity(ctx, ownerID, *st.TagID, s.importer.TagsByOwner); err != nil {
 			return err
 		}
+	}
+	if !st.Type.IsTransfer() {
+		ids, lerr := s.resolveLabels(ctx, ownerID, rawLabelIDs)
+		if lerr != nil {
+			return lerr
+		}
+		st.LabelIDs = ids
 	}
 	return nil
 }
 
-// requireAvailableEntity confirms id belongs to the caller or to the account
-// owner (each list is owner-scoped, so membership IS the ownership check). A
-// foreign or unknown id yields the frozen item-not-available validation error.
-func (s *Service) requireAvailableEntity(ctx context.Context, callerID, accountOwnerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
-	if ok, err := ownsEntity(ctx, callerID, id, list); err != nil {
+// maxTransactionLabels caps the deduped labelIds a single transaction may
+// carry: resolveLabels issues one LabelOwners lookup per unique id and the
+// follow-up ReplaceLabels one INSERT per id, both inside the open write
+// transaction (BulkUpdateTransactions caps its own id list at 100 for the
+// identical reason — see maxBulkUpdateIds in bulk.go). 50 is far past any
+// real classification (reporting labels tag a transaction along a handful of
+// axes, not hundreds) while keeping the per-request statement count small.
+const maxTransactionLabels = 50
+
+// resolveLabels parses, dedupes, and authorizes the wire labelIds for a
+// non-transfer transaction: each must parse as a valid id, exist, and be
+// owned by ownerID (the transaction's account owner) — else the frozen
+// item-not-available validation error, same as an unavailable category/
+// payee/tag. Deduped ids are sorted by string so an immediate create/update
+// response shows the same order a later read does (LabelsByTransactionIDs
+// orders by label_id for cross-engine stability; sorting here keeps the two
+// views consistent without a redundant DB round trip on the write path).
+func (s *Service) resolveLabels(ctx context.Context, ownerID vo.Id, rawLabelIDs []string) ([]vo.Id, error) {
+	if len(rawLabelIDs) == 0 {
+		return nil, nil
+	}
+	seen := make(map[string]struct{}, len(rawLabelIDs))
+	ids := make([]vo.Id, 0, len(rawLabelIDs))
+	for _, raw := range rawLabelIDs {
+		id, err := vo.ParseId(raw)
+		if err != nil {
+			return nil, err
+		}
+		key := id.String()
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		ids = append(ids, id)
+	}
+	if len(ids) > maxTransactionLabels {
+		return nil, &errs.ValidationError{Msg: "A transaction can have at most 50 labels.", MsgCode: errs.CodeTransactionTooManyLabels}
+	}
+	owners, err := s.labels.LabelOwners(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		owner, ok := owners[id.String()]
+		if !ok || !owner.Equal(ownerID) {
+			return nil, &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
+		}
+	}
+	sort.Slice(ids, func(i, j int) bool { return ids[i].String() < ids[j].String() })
+	return ids, nil
+}
+
+// requireAvailableEntity confirms id belongs to the ACCOUNT OWNER (the list is
+// owner-scoped, so membership IS the ownership check) — the caller's own
+// entities do NOT qualify on a shared account: every classification describes
+// the owner's books (same rule as labels), and the SPA's pickers filter to the
+// account owner, so nothing legitimate ever sent a caller-owned id. On an own
+// account owner == caller. A foreign or unknown id yields the frozen
+// item-not-available validation error.
+func (s *Service) requireAvailableEntity(ctx context.Context, accountOwnerID, id vo.Id, list func(context.Context, vo.Id) ([]model.ImportNamed, error)) error {
+	if ok, err := ownsEntity(ctx, accountOwnerID, id, list); err != nil {
 		return err
 	} else if ok {
 		return nil
-	}
-	if !accountOwnerID.Equal(callerID) {
-		if ok, err := ownsEntity(ctx, accountOwnerID, id, list); err != nil {
-			return err
-		} else if ok {
-			return nil
-		}
 	}
 	return &errs.ValidationError{Msg: "transaction.transaction.not_available", MsgCode: errs.CodeTransactionItemNotAvailable}
 }
@@ -167,24 +242,46 @@ func (s *Service) checkViewAccess(ctx context.Context, userID, accountID vo.Id) 
 }
 
 // toResult builds the transaction result, resolving the author embed. The
-// amountRecipient falls back to amount when nil. Single-transaction callers
-// (create/update/delete) use this; the list endpoint uses buildResult with a
-// per-request author cache to avoid an N+1 (see GetTransactionList).
-func (s *Service) toResult(ctx context.Context, t *model.Transaction) (model.TransactionResult, error) {
+// amountRecipient falls back to amount when nil. labelIDs is the wire-shaped
+// label id list already resolved by the caller (create/update pass the
+// in-memory entity's own LabelIDs — set moments earlier in the same tx, so it
+// is authoritative without a re-read; delete passes ids fetched BEFORE the
+// row and its transactions_labels rows are removed, since a post-delete
+// LabelsByTransactionIDs would come back empty due to the cascade). The list
+// endpoint uses buildResult directly with a per-request author cache to avoid
+// an N+1 (see GetTransactionList).
+func (s *Service) toResult(ctx context.Context, t *model.Transaction, labelIDs []string) (model.TransactionResult, error) {
 	author, err := s.users.GetOwner(ctx, t.UserID.String())
 	if err != nil {
 		return model.TransactionResult{}, err
 	}
-	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}), nil
+	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}, labelIDs), nil
+}
+
+// labelIDStrings converts a resolved label id slice to its wire string form
+// (nil-safe: a transfer or a never-classified transaction has none).
+func labelIDStrings(ids []vo.Id) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+	return out
 }
 
 // buildResult assembles the wire DTO from an already-resolved author (no DB
-// access), so callers control author resolution / caching.
-func (s *Service) buildResult(t *model.Transaction, author model.UserResult) model.TransactionResult {
+// access) and an already-resolved label id list, so callers control author
+// resolution/caching and label-loading strategy (single lookup vs. batch).
+func (s *Service) buildResult(t *model.Transaction, author model.UserResult, labelIDs []string) model.TransactionResult {
 	amountRecipient := t.Amount
 	if ar := t.AmountRecipient; ar != nil {
 		amountRecipient = *ar
 	}
+	// Always a list, never null, so clients never need a nil check.
+	labelIds := []string{}
+	labelIds = append(labelIds, labelIDs...)
 	var recipID, catID, payeeID, tagID *string
 	if v := t.AccountRecipID; v != nil {
 		s := v.String()
@@ -221,6 +318,7 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult) mod
 		TagId:              tagID,
 		Date:               t.SpentAt.Format(datetime.Layout),
 		RecurringId:        recurringID,
+		LabelIds:           labelIds,
 	}
 }
 

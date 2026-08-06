@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
+import type { BudgetElementDto } from '@/api/dto/budget'
 import { BudgetTable } from './BudgetTable'
 import type { ElementRowExtras } from './BudgetTable'
 import type { FolderBucket } from './budgetMath'
@@ -19,6 +20,7 @@ const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionD
 type TableExtras = ElementRowExtras & {
   hideChildren?: boolean
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
+  renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
 }
 
 function renderTable(mutate?: (budget: BudgetDto) => void, extras: TableExtras = {}) {
@@ -376,6 +378,173 @@ it('Uncategorized shows a dash for budget and available, and keeps its spent amo
   // the dash replaces the value, so no stray zero/negative amount survives
   expect(within(row).getByTestId('cell-available')).not.toHaveTextContent('30')
   expect(within(row).getByTestId('cell-spent')).toHaveTextContent('30')
+})
+
+const kidA = {
+  id: 'label-kid-a',
+  name: 'kid-A',
+  icon: 'label',
+  isArchived: 0 as const,
+  spent: '50.00',
+  ownerUserId: 'u1',
+  children: [
+    { id: 'cat-groceries', type: 1 as const, name: 'Groceries', icon: 'local_grocery_store', isArchived: 0 as const, spent: '30.00', budgetSpent: '30.00', ownerUserId: 'u1' },
+    { id: UNCATEGORIZED_ID, type: 1 as const, name: 'wire-name-ignored', icon: 'question_mark', isArchived: 0 as const, spent: '20.00', budgetSpent: '20.00', ownerUserId: 'u1' },
+  ],
+}
+
+function withLabels(budget: BudgetDto) {
+  budget.structure.labels = [kidA]
+}
+
+async function openFolder(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByTestId('budget-labels-heading'))
+}
+
+it('renders the labels folder collapsed by default, hiding the tags and the note', async () => {
+  renderTable(withLabels)
+  const section = await screen.findByTestId('budget-labels-section')
+  expect(within(section).getByTestId('budget-labels-heading')).toBeInTheDocument()
+  expect(screen.queryByText('kid-A')).not.toBeInTheDocument()
+  // the caveat travels with the numbers, so it stays hidden while they are
+  expect(screen.queryByTestId('budget-labels-overlap-note')).not.toBeInTheDocument()
+})
+
+it('expanding the folder reveals the tags and the overlap note, tags still collapsed', async () => {
+  const user = userEvent.setup()
+  renderTable(withLabels)
+  await openFolder(user)
+  const section = await screen.findByTestId('budget-labels-section')
+  expect(within(section).getByText('kid-A')).toBeInTheDocument()
+  await waitFor(() => expect(within(section).getByTestId('budget-label-label-kid-a')).toHaveTextContent('50.00'))
+  expect(within(section).getByTestId('budget-labels-overlap-note')).toBeInTheDocument()
+  expect(screen.queryByText('Groceries')).not.toBeInTheDocument()
+})
+
+it("expanding a tag reveals that tag's category breakdown", async () => {
+  const user = userEvent.setup()
+  renderTable(withLabels)
+  await openFolder(user)
+  await user.click(screen.getByText('kid-A'))
+  expect(await screen.findByTestId('label-child-cat-groceries')).toBeInTheDocument()
+  expect(screen.getByText('Groceries')).toBeInTheDocument()
+  // the uncategorized bucket renders under its translated name, like elsewhere
+  expect(within(screen.getByTestId(`label-child-${UNCATEGORIZED_ID}`)).getByText('Uncategorized')).toBeInTheDocument()
+  expect(screen.queryByText('wire-name-ignored')).not.toBeInTheDocument()
+})
+
+it('both fold levels persist in the budget period store', async () => {
+  const user = userEvent.setup()
+  renderTable(withLabels)
+  await openFolder(user)
+  await user.click(screen.getByText('kid-A'))
+  const unfolded = useBudgetPeriodStore.getState().unfoldedElements
+  expect(unfolded['__reporting_tags__']).toBe(true)
+  expect(unfolded['label-kid-a']).toBe(true)
+})
+
+it('a reporting tag with no children renders but is not expandable', async () => {
+  const user = userEvent.setup()
+  renderTable((budget) => {
+    budget.structure.labels = [{ ...kidA, children: [] }]
+  })
+  await openFolder(user)
+  const row = await screen.findByTestId('budget-label-label-kid-a')
+  expect(within(row).getByText('kid-A')).toBeInTheDocument()
+  // the only button on the row is the spend drill-down, never a fold toggle
+  expect(within(row).queryByRole('button', { name: /collapse|expand/i })).not.toBeInTheDocument()
+})
+
+it('the reporting tags folder is never part of the edit-structure surface', async () => {
+  const user = userEvent.setup()
+  const sectionWrapper = vi.fn((_bucket, _key, node) => node)
+  renderTable(withLabels, {
+    sectionWrapper,
+    renderFolderActions: () => <button type="button" aria-label="folder actions" />,
+    renderActions: (element: BudgetElementDto) => <button type="button" aria-label={`element actions ${element.name}`} />,
+    renderRowWrapper: (element: BudgetElementDto, _bucket: FolderBucket, row: ReactNode) => (
+      <div key={element.id} data-testid={`wrapped-${element.id}`}>
+        {row}
+      </div>
+    ),
+  })
+  await openFolder(user)
+  const section = await screen.findByTestId('budget-labels-section')
+  // an ephemeral folder: not renameable/movable/deletable, never a drop target
+  expect(sectionWrapper.mock.calls.map((c) => c[1])).not.toContain('__reporting_tags__')
+  expect(within(section).queryByRole('button', { name: 'folder actions' })).not.toBeInTheDocument()
+  expect(within(section).queryByRole('button', { name: /^element actions /i })).not.toBeInTheDocument()
+  expect(screen.queryByTestId('wrapped-label-kid-a')).not.toBeInTheDocument()
+})
+
+it('omits the labels block entirely when there are no labels', async () => {
+  renderTable((budget) => {
+    budget.structure.labels = []
+  })
+  await screen.findByTestId('budget-table')
+  expect(screen.queryByTestId('budget-labels-section')).not.toBeInTheDocument()
+  // the heading itself carries its own testid, so this fails if the section
+  // ever renders headless (the untranslated catalog-key text is not a stable
+  // thing to assert against, before or after Task 8 lands real copy)
+  expect(screen.queryByTestId('budget-labels-heading')).not.toBeInTheDocument()
+})
+
+it('the labels block sits directly after Uncategorized and before Archive, never after Total', async () => {
+  renderTable((budget) => {
+    pushUncategorized(budget)
+    // a nonzero archived element, so Archive is visible and could otherwise sit
+    // between Uncategorized and the labels block
+    budget.structure.elements.push({ ...budget.structure.elements[2], id: 'tag-carry', name: 'aaa-carry', available: '7' })
+    withLabels(budget)
+  })
+  const uncategorized = await screen.findByTestId('budget-folder-Uncategorized')
+  const labels = await screen.findByTestId('budget-labels-section')
+  const archive = await screen.findByTestId('budget-folder-Archived')
+  const totals = screen.getByTestId('budget-totals')
+  const isBefore = (a: Element, b: Element) => !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  // Total must read as its own row, not a sum of the overlapping label amounts
+  // right above it -- so the labels block cannot be the section immediately
+  // preceding Total.
+  expect(isBefore(uncategorized, labels)).toBe(true)
+  expect(isBefore(labels, archive)).toBe(true)
+  expect(isBefore(archive, totals)).toBe(true)
+})
+
+it('clicking a label spend reports it as a transactions target with the label discriminant', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(withLabels, { onSpentClick })
+  await openFolder(user)
+  const section = await screen.findByTestId('budget-labels-section')
+  await user.click(within(section).getByRole('button', { name: 'transactions kid-A' }))
+  expect(onSpentClick).toHaveBeenCalledWith({ id: 'label-kid-a', type: 'label', name: 'kid-A', icon: 'label', currencyId: null })
+})
+
+it('clicking a category child under a tag reports tag and category together', async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(withLabels, { onSpentClick })
+  await openFolder(user)
+  await user.click(screen.getByText('kid-A'))
+  await user.click(await screen.findByRole('button', { name: 'transactions Groceries' }))
+  // without the parent the dialog would send categoryId alone, which is the
+  // whole category rather than its slice under this reporting tag
+  expect(onSpentClick).toHaveBeenCalledWith({
+    id: 'cat-groceries', type: 1, name: 'Groceries', icon: 'local_grocery_store', currencyId: null,
+    parent: { id: 'label-kid-a', type: 'label' },
+  })
+})
+
+it("clicking a tag's uncategorized child reports the label parent too", async () => {
+  const user = userEvent.setup()
+  const onSpentClick = vi.fn()
+  renderTable(withLabels, { onSpentClick })
+  await openFolder(user)
+  await user.click(screen.getByText('kid-A'))
+  await user.click(await screen.findByRole('button', { name: 'transactions Uncategorized' }))
+  expect(onSpentClick).toHaveBeenCalledWith(
+    expect.objectContaining({ id: UNCATEGORIZED_ID, parent: { id: 'label-kid-a', type: 'label' } }),
+  )
 })
 
 it('the Uncategorized section is never a drag container and its row has no handle', async () => {

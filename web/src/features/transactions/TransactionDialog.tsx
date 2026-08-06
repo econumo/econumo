@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { ArrowUpDown, ChevronLeft, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'react-router'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Label } from '@/components/ui/label'
@@ -15,18 +14,38 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { calendarLocale } from '@/lib/calendarLocale'
 import { formatDate, parseDateTime, formatDateTime, dayKey } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidDecimalNumber, isValidFormula, isValidNumber, isValidCategoryName, isValidPayeeName } from '@/lib/validation'
 import { tryNormalize } from '@/lib/decimal'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags, useCreateCategory, useCreatePayee, useCreateTag } from '@/features/classifications/queries'
+import {
+  useCategories,
+  useLabels,
+  usePayees,
+  useTags,
+  useCreateCategory,
+  useCreateLabel,
+  useCreatePayee,
+  useCreateTag,
+} from '@/features/classifications/queries'
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
 import { usePostRecurring } from '@/features/recurring/queries'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
-import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount } from './useTransactionForm'
+import {
+  useTransactionForm,
+  buildPayload,
+  accountOptions,
+  categoryOptions,
+  canChangeAccountData,
+  classificationChips,
+  evaluatedAmount,
+  toggleClassification,
+} from './useTransactionForm'
+import { ClassificationChips } from './ClassificationChips'
 import { EntitySelect } from './EntitySelect'
 import { SelectCard } from './SelectCard'
 import { AddTagDialog } from './AddTagDialog'
@@ -42,6 +61,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const { data: categories = [] } = useCategories()
   const { data: payees = [] } = usePayees()
   const { data: tags = [] } = useTags()
+  const { data: labels = [] } = useLabels()
   const { data: user } = useUserData()
   const exchangeFn = useExchange()
   const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
@@ -52,6 +72,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
   const createTag = useCreateTag()
+  const createLabel = useCreateLabel()
 
   const { form, patch, setType, account, accountRecipient, recomputeRecipientAmount, swapAccounts } = useTransactionForm(
     params,
@@ -60,6 +81,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   )
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [addTagOpen, setAddTagOpen] = useState(false)
+  const [addTagError, setAddTagError] = useState<string | null>(null)
   const [dateOpen, setDateOpen] = useState(false)
 
   const isTransfer = form.type === 'transfer'
@@ -81,9 +103,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
-  const selectedTag = tags.find((tag) => tag.id === form.tagId)
-  const visibleTags = tags.filter((tag) => tag.isArchived === 0 && (!ownerId || tag.ownerUserId === ownerId))
-  const tagRow = selectedTag && !visibleTags.some((tg) => tg.id === selectedTag.id) ? [...visibleTags, selectedTag] : visibleTags
+  const chips = classificationChips(tags, labels, form, ownerId)
 
   const setAmount = (amount: string) => {
     if (isTransfer) {
@@ -399,35 +419,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           {isExpense ? (
             <CardField label={t('accounts.page.preview_transaction_modal.tags.label')}>
               <div className="flex items-center gap-2">
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 py-0.5">
-                  {tagRow.map((tag) => {
-                    const toggleTag = () => patch({ tagId: form.tagId === tag.id ? null : tag.id })
-                    return (
-                      <Badge
-                        key={tag.id}
-                        role="checkbox"
-                        aria-checked={form.tagId === tag.id}
-                        aria-label={tag.name}
-                        tabIndex={0}
-                        variant={form.tagId === tag.id ? 'default' : 'secondary'}
-                        className="cursor-pointer"
-                        onClick={toggleTag}
-                        onKeyDown={(e) => {
-                          if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
-                            e.preventDefault()
-                            toggleTag()
-                          }
-                        }}
-                      >
-                        {tag.name}
-                      </Badge>
-                    )
-                  })}
-                </div>
+                <ClassificationChips chips={chips} onToggle={(chip) => patch(toggleClassification(form, chip.kind, chip.id))} />
                 {canEditData ? (
                   <button
                     type="button"
-                    aria-label="add tag"
+                    aria-label={t('classifications.tags.forms.tag.add_button')}
                     title={t('common.button.add.label')}
                     className="shrink-0 text-muted-foreground hover:text-foreground"
                     onClick={() => setAddTagOpen(true)}
@@ -455,16 +451,25 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       <AddTagDialog
         open={addTagOpen}
         onClose={() => setAddTagOpen(false)}
-        onSubmit={(name) => {
-          createTag.mutate(
-            { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId },
-            {
-              onSuccess: (item) => {
-                patch({ tagId: item.id })
-                setAddTagOpen(false)
-              },
-            },
-          )
+        error={addTagError}
+        onSubmit={(kind, name) => {
+          setAddTagError(null)
+          const input = { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId }
+          const attach = (item: { id: string }) => {
+            // the create hooks resolve an existing name to that row instead of
+            // creating a duplicate, so the id may already be attached
+            patch(kind === 'tag' ? { tagId: item.id } : { labelIds: form.labelIds.includes(item.id) ? form.labelIds : [...form.labelIds, item.id] })
+            setAddTagOpen(false)
+          }
+          // both kinds share one name namespace, so the server rejects a name the
+          // OTHER kind already holds; the dedupe in the create hooks only sees
+          // its own kind's cache, so this form cannot predict the rejection
+          const onError = (err: unknown) => setAddTagError(apiErrorMessage(err))
+          if (kind === 'tag') {
+            createTag.mutate(input, { onSuccess: attach, onError })
+          } else {
+            createLabel.mutate(input, { onSuccess: attach, onError })
+          }
         }}
       />
     </ResponsiveDialog>
