@@ -249,3 +249,13 @@ it('switching the target account owner clears a fixed label pick, so it never le
   await waitFor(() => expect(captured.mapping()).not.toBeNull())
   expect(captured.fields().labelIds).toBeUndefined()
 })
+
+it('the new-tag count skips names an existing BUDGET tag already holds', async () => {
+  renderDialog()
+  // "vacation" is a budget tag (fixtureTags), "health" a reporting tag
+  // (fixtureLabels); both kinds share one namespace, so only "fresh" is new
+  const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,vacation;health;fresh\n')
+  await screen.findByText(/Map the columns/)
+  await user.selectOptions(screen.getByRole('combobox', { name: /reporting tags/i }), 'Labels')
+  expect(await screen.findByRole('status')).toHaveTextContent('This import will create 1 new tag')
+})

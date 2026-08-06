@@ -96,13 +96,15 @@ export function ImportCsvDialog({ open, onClose, onComplete }: ImportCsvDialogPr
     [labels, targetUserId],
   )
 
-  // The "new labels" count matches names against ALL of the owner's labels,
+  // The "new labels" count matches names against ALL of the owner's classifications,
   // archived included: the import resolves names server-side with no archived
-  // filter, so a CSV naming an archived label attaches it rather than
-  // creating a new one. ownerLabels stays archived-free for the visible list.
+  // filter, so a CSV naming an archived one attaches it rather than creating a
+  // new one. ownerLabels stays archived-free for the visible list.
+  // Both kinds share one name namespace, so a name a BUDGET tag already holds is
+  // not new either — the server would reject the create rather than add it.
   const existingLabelNames = useMemo(
-    () => labels.filter((label) => label.ownerUserId === targetUserId).map((label) => label.name),
-    [labels, targetUserId],
+    () => [...labels, ...tags].filter((item) => item.ownerUserId === targetUserId).map((item) => item.name),
+    [labels, tags, targetUserId],
   )
   // narrow deps: only the pieces countNewLabels actually reads, so typing in
   // the description/date inputs doesn't rescan every row on a 10 MB import;
