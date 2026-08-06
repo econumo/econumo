@@ -6,6 +6,7 @@ import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { CLASSIFICATION_KINDS, DEFAULT_ICON, kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidLabelName, isValidTagName } from '@/lib/validation'
 import { useUserData } from '@/features/user/queries'
 import { useCreateLabel, useCreateTag, useUpdateLabel, useUpdateTag } from './queries'
@@ -71,13 +72,16 @@ export function TagDialog({ open, item, onClose }: TagDialogProps) {
       setError(message)
       return
     }
+    // Both kinds share one name namespace, so the server rejects a name the OTHER
+    // kind already holds — a rejection the client cannot predict from this form.
+    const onError = (err: unknown) => setError(apiErrorMessage(err))
     if (item) {
       // Kind is immutable once saved, so an edit always targets the row's own kind.
       const mutation = item.kind === 'tag' ? updateTag : updateLabel
-      mutation.mutate({ id: item.id, name }, { onSuccess: onClose })
+      mutation.mutate({ id: item.id, name }, { onSuccess: onClose, onError })
     } else {
       const mutation = kind === 'tag' ? createTag : createLabel
-      mutation.mutate({ name, ownerUserId: user?.id }, { onSuccess: onClose })
+      mutation.mutate({ name, ownerUserId: user?.id }, { onSuccess: onClose, onError })
     }
   }
 

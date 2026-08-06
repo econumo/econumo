@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
+import type { BudgetElementDto } from '@/api/dto/budget'
 import { BudgetTable } from './BudgetTable'
 import type { ElementRowExtras } from './BudgetTable'
 import type { FolderBucket } from './budgetMath'
@@ -19,6 +20,7 @@ const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionD
 type TableExtras = ElementRowExtras & {
   hideChildren?: boolean
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
+  renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
 }
 
 function renderTable(mutate?: (budget: BudgetDto) => void, extras: TableExtras = {}) {
@@ -459,13 +461,13 @@ it('the reporting tags folder is never part of the edit-structure surface', asyn
   renderTable(withLabels, {
     sectionWrapper,
     renderFolderActions: () => <button type="button" aria-label="folder actions" />,
-    renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
-    renderRowWrapper: (element, _bucket, row) => (
+    renderActions: (element: BudgetElementDto) => <button type="button" aria-label={`element actions ${element.name}`} />,
+    renderRowWrapper: (element: BudgetElementDto, _bucket: FolderBucket, row: ReactNode) => (
       <div key={element.id} data-testid={`wrapped-${element.id}`}>
         {row}
       </div>
     ),
-  } as never)
+  })
   await openFolder(user)
   const section = await screen.findByTestId('budget-labels-section')
   // an ephemeral folder: not renameable/movable/deletable, never a drop target

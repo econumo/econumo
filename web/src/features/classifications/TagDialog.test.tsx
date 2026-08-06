@@ -141,3 +141,17 @@ it('editing a label posts to update-label, not update-tag', async () => {
   expect(tagCalled).toBe(false)
   await waitFor(() => expect(onClose).toHaveBeenCalled())
 })
+
+it('surfaces a server rejection instead of silently staying open', async () => {
+  const user = userEvent.setup()
+  server.use(
+    http.post('*/api/v1/tag/create-tag', () =>
+      HttpResponse.json({ success: false, message: 'Tag already exists.', code: 400, errors: {} }, { status: 400 }),
+    ),
+  )
+  const { onClose } = renderDialog()
+  await user.type(screen.getByLabelText(/name/i), 'Italy 2026')
+  await user.click(screen.getByRole('button', { name: /create/i }))
+  expect(await screen.findByText('Tag already exists.')).toBeInTheDocument()
+  expect(onClose).not.toHaveBeenCalled()
+})
