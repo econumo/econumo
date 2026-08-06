@@ -2,6 +2,7 @@ package label
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -190,7 +191,9 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		return err
 	}
 	for _, l := range labels {
-		if l.Name == name && !l.ID.Equal(exceptID) {
+		// Case-insensitive: one name means one label regardless of case, matching
+		// how CSV import already resolves names.
+		if strings.EqualFold(l.Name, name) && !l.ID.Equal(exceptID) {
 			return &errs.ValidationError{Msg: "Label already exists.", MsgCode: errs.CodeLabelAlreadyExists}
 		}
 	}

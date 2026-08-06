@@ -2,6 +2,7 @@ package tag
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -159,7 +160,9 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		return err
 	}
 	for _, t := range tags {
-		if t.Name == name && !t.ID.Equal(exceptID) {
+		// Case-insensitive: one name means one tag regardless of case, matching
+		// how CSV import already resolves names.
+		if strings.EqualFold(t.Name, name) && !t.ID.Equal(exceptID) {
 			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}

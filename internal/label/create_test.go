@@ -2,6 +2,7 @@ package label_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 
@@ -176,5 +177,31 @@ func TestCreateLabelNameLengthBoundaries(t *testing.T) {
 		} else if err != nil {
 			t.Errorf("name %q (%d runes): want no error, got %v", c.name, len([]rune(c.name)), err)
 		}
+	}
+}
+
+func TestCreateLabelRejectsCaseVariantName(t *testing.T) {
+	db := dbtest.New(t)
+	labelFixture(t, db)
+	svc := newLabelSvc(t, db)
+	ctx := context.Background()
+	owner := vo.MustParseId(labelOwnerID)
+
+	_, err := svc.CreateLabel(ctx, owner, model.CreateLabelRequest{
+		Id: vo.NewId().String(), Name: "Trip",
+	})
+	if err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+
+	_, err = svc.CreateLabel(ctx, owner, model.CreateLabelRequest{
+		Id: vo.NewId().String(), Name: "trip",
+	})
+	if err == nil {
+		t.Fatal("want case-variant name rejected, got nil error")
+	}
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeLabelAlreadyExists {
+		t.Fatalf("want CodeLabelAlreadyExists, got %#v", err)
 	}
 }
