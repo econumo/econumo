@@ -127,7 +127,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         <span className="flex flex-wrap gap-1.5">
           {attachedLabels.map((label) => (
             <Badge key={label.id} variant="secondary" className="gap-1">
-              {/* the row's STORED icon, never a kind default; only the tint encodes the kind */}
+              {/* the row's STORED icon, never a kind default: a user-picked icon must survive */}
               <EntityIcon name={label.icon} className={`text-sm ${kindAccentClass('label')}`} />
               {label.name}
             </Badge>

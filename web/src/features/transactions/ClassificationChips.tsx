@@ -9,13 +9,12 @@ interface ClassificationChipsProps {
   onToggle: (chip: ClassificationChip) => void
 }
 
-/** One flat row of tag and label chips. Tags and labels are independent
- *  namespaces, so a name may appear twice; data-kind tells the two apart. */
+/** One flat row of budget-tag and reporting-tag chips. */
 export function ClassificationChips({ chips, onToggle }: ClassificationChipsProps) {
   const { t } = useTranslation()
-  // The kind rides in the accessible name because a tag and a label may share
-  // one name and data-kind is invisible to assistive tech; the visible name
-  // leads, so the accessible name still contains the visible label.
+  // The kind rides in the accessible name because nothing else conveys it to
+  // assistive tech: data-kind is invisible and the icon is decorative. The
+  // visible name leads, so the accessible name still contains it.
   const kindWord = (kind: ClassificationKind) =>
     kind === 'tag' ? t('classifications.tags.forms.tag.kind.tag') : t('classifications.tags.forms.tag.kind.label')
   return (
@@ -39,7 +38,8 @@ export function ClassificationChips({ chips, onToggle }: ClassificationChipsProp
           }}
         >
           {/* the row's STORED icon, never a kind default: a user-picked icon
-              must survive; only the tint encodes the kind */}
+              must survive. Both kinds share one accent, so the icon alone
+              distinguishes them (seeded per kind at create). */}
           <EntityIcon name={chip.icon} className={`text-sm ${chip.checked ? '' : kindAccentClass(chip.kind)}`} />
           {chip.name}
         </Badge>
