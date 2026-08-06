@@ -14,6 +14,7 @@ import { calendarLocale } from '@/lib/calendarLocale'
 import { dayKey, formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { tryNormalize } from '@/lib/decimal'
+import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidFormula } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
 import type { OpenRecurringParams } from '@/app/uiStore'
@@ -59,6 +60,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [dateOpen, setDateOpen] = useState(false)
   const [addTagOpen, setAddTagOpen] = useState(false)
+  const [addTagError, setAddTagError] = useState<string | null>(null)
 
   const isTransfer = form.type === 'transfer'
   const isExpense = form.type === 'expense'
@@ -326,7 +328,9 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
       <AddTagDialog
         open={addTagOpen}
         onClose={() => setAddTagOpen(false)}
+        error={addTagError}
         onSubmit={(kind, name) => {
+          setAddTagError(null)
           const input = { name, accountId: form.accountId ?? undefined, ownerUserId: ownerId }
           const attach = (item: { id: string }) => {
             // the create hooks resolve an existing name to that row instead of
@@ -334,10 +338,14 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
             patch(kind === 'tag' ? { tagId: item.id } : { labelIds: form.labelIds.includes(item.id) ? form.labelIds : [...form.labelIds, item.id] })
             setAddTagOpen(false)
           }
+          // both kinds share one name namespace, so the server rejects a name the
+          // OTHER kind already holds; the dedupe in the create hooks only sees
+          // its own kind's cache, so this form cannot predict the rejection
+          const onError = (err: unknown) => setAddTagError(apiErrorMessage(err))
           if (kind === 'tag') {
-            createTag.mutate(input, { onSuccess: attach })
+            createTag.mutate(input, { onSuccess: attach, onError })
           } else {
-            createLabel.mutate(input, { onSuccess: attach })
+            createLabel.mutate(input, { onSuccess: attach, onError })
           }
         }}
       />

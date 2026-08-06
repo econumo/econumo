@@ -591,6 +591,32 @@ it('the inline create dialog picks the label kind and attaches the new label', a
   expect(seen.body!.labelIds).toEqual(['label-new'])
 })
 
+it('a rejected inline create shows the server message and keeps the dialog open', async () => {
+  // both kinds share one name namespace, so creating a reporting tag named
+  // after an existing budget tag is rejected by the server, not by this form
+  server.use(
+    http.post('*/api/v1/label/create-label', () =>
+      HttpResponse.json(
+        { success: false, message: 'Name is already taken', code: 400, errors: {} },
+        { status: 400 },
+      ),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(await screen.findByRole('button', { name: 'Add tag' }))
+  await user.click(await screen.findByRole('radio', { name: 'Reporting tag' }))
+  await user.type(screen.getByLabelText('Name'), 'vacation')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  expect(await screen.findByText('Name is already taken')).toBeInTheDocument()
+  // the dialog stays open on the still-typed name so the user can correct it
+  expect(screen.getByLabelText('Name')).toHaveValue('vacation')
+})
+
 
 it('posting a template sends the chips the user actually left checked', async () => {
   // post-recurring-transaction inherits the template's labels when labelIds is

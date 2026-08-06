@@ -12,39 +12,44 @@ interface AddTagDialogProps {
   open: boolean
   onClose: () => void
   onSubmit: (kind: ClassificationKind, name: string) => void
+  /** server rejection from the parent's create mutation, e.g. the name the
+   *  other kind already holds — unpredictable from this form's own validation */
+  error?: string | null
 }
 
-export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
+export function AddTagDialog({ open, onClose, onSubmit, error: serverError = null }: AddTagDialogProps) {
   const { t } = useTranslation()
   const [kind, setKind] = useState<ClassificationKind>('tag')
   const [name, setName] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [localError, setLocalError] = useState<string | null>(null)
+  // client-side validation short-circuits before the request, so it wins; the
+  // parent clears its own error when a new submit starts
+  const error = localError ?? serverError
 
   useEffect(() => {
     if (open) {
       setKind('tag')
       setName('')
-      setError(null)
+      setLocalError(null)
     }
   }, [open])
 
   const submit = () => {
     if (!isNotEmpty(name)) {
-      setError(t('classifications.tags.forms.tag.name.validation.required_field'))
+      setLocalError(t('classifications.tags.forms.tag.name.validation.required_field'))
       return
     }
     const valid = kind === 'tag' ? isValidTagName(name) : isValidLabelName(name)
     if (!valid) {
-      setError(
+      setLocalError(
         kind === 'tag'
           ? t('classifications.tags.forms.tag.name.validation.invalid_name')
           : t('classifications.labels.forms.label.name.validation.invalid_name'),
       )
       return
     }
+    setLocalError(null)
     onSubmit(kind, name)
-    setName('')
-    setError(null)
   }
 
   const title = kind === 'tag' ? t('classifications.tags.modals.create.header') : t('classifications.labels.modals.create.header')
@@ -69,6 +74,7 @@ export function AddTagDialog({ open, onClose, onSubmit }: AddTagDialogProps) {
                 type="button"
                 role="radio"
                 aria-checked={kind === option}
+                aria-label={t(`classifications.tags.forms.tag.kind.${option}`)}
                 className={`flex-1 rounded px-2 py-1.5 text-sm ${kind === option ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-accent'}`}
                 onClick={() => setKind(option)}
               >
