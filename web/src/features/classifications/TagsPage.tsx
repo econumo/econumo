@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
+import { type ClassificationKind } from '@/lib/classificationKind'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList, type ClassificationItem } from './ClassificationList'
 import { TagDialog, type TagDialogItem } from './TagDialog'
@@ -71,7 +71,6 @@ export function TagsPage() {
           { label: t('classifications.tags.pages.settings.section_reporting'), match: (row) => row.kind === 'label' },
         ]}
         showIcon
-        iconClassName={(row) => kindAccentClass(row.kind)}
         orderScope={(row) => row.kind}
         onCreate={() => setDialog({ open: true, item: null })}
         onEdit={(row) => setDialog({ open: true, item: { id: row.id, name: row.name, kind: row.kind, icon: row.icon ?? '' } })}

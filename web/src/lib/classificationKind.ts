@@ -1,4 +1,6 @@
-export const CLASSIFICATION_KINDS = ['tag', 'label'] as const
+// Reporting leads: it is the kind most users want (many per transaction, no
+// budget maths), so it is offered first and selected by default.
+export const CLASSIFICATION_KINDS = ['label', 'tag'] as const
 export type ClassificationKind = (typeof CLASSIFICATION_KINDS)[number]
 
 /** Seeded server-side at create (model.DefaultTagIcon / model.DefaultLabelIcon);
@@ -7,10 +9,4 @@ export type ClassificationKind = (typeof CLASSIFICATION_KINDS)[number]
 export const DEFAULT_ICON: Record<ClassificationKind, string> = {
   tag: 'tag',
   label: 'label',
-}
-
-/** Kept as a function (not a constant) so a future icon/colour picker can
- *  reintroduce per-row variation without re-threading every call site. */
-export function kindAccentClass(_kind: ClassificationKind): string {
-  return 'text-sky-600 dark:text-sky-400'
 }

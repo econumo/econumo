@@ -8,7 +8,6 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { useLabels } from '@/features/classifications/queries'
-import { kindAccentClass } from '@/lib/classificationKind'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -128,7 +127,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
           {attachedLabels.map((label) => (
             <Badge key={label.id} variant="secondary" className="gap-1">
               {/* the row's STORED icon, never a kind default: a user-picked icon must survive */}
-              <EntityIcon name={label.icon} className={`text-sm ${kindAccentClass('label')}`} />
+              <EntityIcon name={label.icon} className="text-sm text-muted-foreground" />
               {label.name}
             </Badge>
           ))}

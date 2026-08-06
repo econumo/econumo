@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next'
 import { Badge } from '@/components/ui/badge'
 import { EntityIcon } from '@/components/EntityIcon'
-import { kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
+import { type ClassificationKind } from '@/lib/classificationKind'
 import type { ClassificationChip } from './useTransactionForm'
 
 interface ClassificationChipsProps {
@@ -38,9 +38,9 @@ export function ClassificationChips({ chips, onToggle }: ClassificationChipsProp
           }}
         >
           {/* the row's STORED icon, never a kind default: a user-picked icon
-              must survive. Both kinds share one accent, so the icon alone
-              distinguishes them (seeded per kind at create). */}
-          <EntityIcon name={chip.icon} className={`text-sm ${chip.checked ? '' : kindAccentClass(chip.kind)}`} />
+              must survive. The icon alone distinguishes the kinds (seeded per
+              kind at create); a checked chip inherits the badge's own colour. */}
+          <EntityIcon name={chip.icon} className={`text-sm ${chip.checked ? '' : 'text-muted-foreground'}`} />
           {chip.name}
         </Badge>
       ))}
