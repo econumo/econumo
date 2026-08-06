@@ -577,8 +577,8 @@ it('the inline create dialog picks the label kind and attaches the new label', a
 
   await screen.findByRole('heading', { name: 'Edit transaction' })
   // the button only appears once the user query resolves (canChangeAccountData)
-  await user.click(await screen.findByRole('button', { name: 'Add tag or label' }))
-  await user.click(await screen.findByRole('radio', { name: /label/i }))
+  await user.click(await screen.findByRole('button', { name: 'Add tag' }))
+  await user.click(await screen.findByRole('radio', { name: 'Reporting tag' }))
   await user.type(screen.getByLabelText('Name'), 'Books')
   await user.click(screen.getByRole('button', { name: 'Add' }))
 

@@ -157,7 +157,7 @@ it('mapping the labels column previews the new-label count and sends the chosen 
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A;Kid B\nBank,2026-01-03,100,Kid A\n')
   await screen.findByText(/Map the columns/)
 
-  const labelsColumnSelect = screen.getByRole('combobox', { name: /labels/i }) as HTMLSelectElement
+  const labelsColumnSelect = screen.getByRole('combobox', { name: /reporting tags/i }) as HTMLSelectElement
   await user.selectOptions(labelsColumnSelect, '')
   // unmapped -> countNewLabels short-circuits to 0 -> no preview
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
@@ -183,7 +183,7 @@ it('a custom separator overrides the presets', async () => {
   renderDialog()
   const user = await uploadCsv('Account,Date,Amount,Labels\nCash,2026-01-02,-5.5,Kid A#Kid B\n')
   await screen.findByText(/Map the columns/)
-  await user.selectOptions(screen.getByRole('combobox', { name: /labels/i }), 'Labels')
+  await user.selectOptions(screen.getByRole('combobox', { name: /reporting tags/i }), 'Labels')
   await user.click(screen.getByRole('button', { name: /separator/i }))
   await user.type(screen.getByRole('textbox', { name: /custom/i }), '#')
   await user.click(screen.getByRole('button', { name: /save/i }))
@@ -203,7 +203,7 @@ it('existing-mode label picker is owner-scoped, excludes archived labels, and se
   const user = await uploadCsv()
   await screen.findByText(/Map the columns/)
 
-  await user.click(screen.getByRole('button', { name: /toggle.*labels.*mode/i }))
+  await user.click(screen.getByRole('button', { name: /toggle.*reporting tags.*mode/i }))
   // "health" (u1, unarchived) is offered; "retired" (u1, archived) is not
   const chip = await screen.findByRole('checkbox', { name: 'health' })
   expect(screen.queryByRole('checkbox', { name: 'retired' })).not.toBeInTheDocument()
@@ -230,7 +230,7 @@ it('switching the target account owner clears a fixed label pick, so it never le
   const user = await uploadCsv()
   await screen.findByText(/Map the columns/)
 
-  await user.click(screen.getByRole('button', { name: /toggle.*labels.*mode/i }))
+  await user.click(screen.getByRole('button', { name: /toggle.*reporting tags.*mode/i }))
   const healthChip = await screen.findByRole('checkbox', { name: 'health' })
   await user.click(healthChip)
   expect(healthChip).toHaveAttribute('aria-checked', 'true')

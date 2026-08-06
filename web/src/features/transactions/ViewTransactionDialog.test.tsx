@@ -199,7 +199,7 @@ it('a categoryless non-transfer transaction shows Uncategorized as the hero name
 it('shows a labels card with the resolved label name and heading when the transaction has labels', async () => {
   renderView({ transaction: { ...fixtureTransaction, labelIds: ['label1'] } as ViewTransaction })
   expect(await screen.findByText('health')).toBeInTheDocument()
-  expect(screen.getByText('Label')).toBeInTheDocument()
+  expect(screen.getByText('Reporting tag')).toBeInTheDocument()
   // the fixture's icon differs from DEFAULT_ICON.label on purpose, so this goes red
   // if the card ever renders the kind default instead of the row's stored icon
   expect(screen.getByText('sell')).toBeInTheDocument()
