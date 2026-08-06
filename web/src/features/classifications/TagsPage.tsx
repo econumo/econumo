@@ -59,16 +59,16 @@ export function TagsPage() {
     <>
       <ClassificationList
         title={t('classifications.tags.pages.settings.header')}
-        info={t('classifications.tags.pages.settings.tags_and_labels_info')}
-        createLabel={t('classifications.tags.pages.settings.create_tag_or_label')}
+        info={t('classifications.tags.pages.settings.info')}
+        createLabel={t('classifications.tags.pages.settings.create_tag')}
         deleteTitle={(row) => (row.kind === 'tag' ? t('classifications.tags.modals.delete.title') : t('classifications.labels.modals.delete.title'))}
         archivedLabel={(row) => (row.kind === 'tag' ? t('classifications.tags.pages.settings.archived_item') : t('classifications.labels.pages.settings.archived_item'))}
         items={rows}
         storageKey="settings.tags.activeOnly"
         analyticsType="tag"
         sections={[
-          { label: t('classifications.tags.pages.settings.header'), match: (row) => row.kind === 'tag' },
-          { label: t('classifications.labels.pages.settings.header'), match: (row) => row.kind === 'label' },
+          { label: t('classifications.tags.pages.settings.section_budget'), match: (row) => row.kind === 'tag' },
+          { label: t('classifications.tags.pages.settings.section_reporting'), match: (row) => row.kind === 'label' },
         ]}
         showIcon
         iconClassName={(row) => kindAccentClass(row.kind)}

@@ -42,7 +42,6 @@ vi.mock('@/components/SortableList', () => ({
 // Resolved through i18n.t rather than hardcoded, so these stay correct once
 // Task 8 fills in the catalogue (today they resolve to the raw key, since
 // react-i18next falls back to it — after Task 8 they resolve to the real text).
-const LABELS_SECTION_HEADER = i18n.t('classifications.labels.pages.settings.header')
 const LABEL_DELETE_TITLE = i18n.t('classifications.labels.modals.delete.title')
 const TAG_ARCHIVED_KEY = 'classifications.tags.pages.settings.archived_item'
 const LABEL_ARCHIVED_KEY = 'classifications.labels.pages.settings.archived_item'
@@ -82,9 +81,10 @@ it('lists tags and labels under separate section captions, each with its stored 
   renderPage()
   expect(await screen.findByText('vacation')).toBeInTheDocument()
   expect(screen.getByText('health')).toBeInTheDocument()
-  // 'Tags' appears twice: the page title (h1) and the section caption above the tag row
-  expect(screen.getAllByText('Tags')).toHaveLength(2)
-  expect(screen.getByText(LABELS_SECTION_HEADER)).toBeInTheDocument()
+  // the page title is 'Tags'; the two sections qualify the purposes
+  expect(screen.getAllByText('Tags')).toHaveLength(1)
+  expect(screen.getByText('Budget tags')).toBeInTheDocument()
+  expect(screen.getByText('Reporting tags')).toBeInTheDocument()
   // the row icon is the row's OWN stored value, not a kind-derived constant
   expect(screen.getByText('flight')).toBeInTheDocument()
   expect(screen.getByText('sell')).toBeInTheDocument()
