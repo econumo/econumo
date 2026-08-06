@@ -420,7 +420,7 @@
         "newline": "Zeilenumbruch",
         "custom_label": "Eigenes Trennzeichen"
       },
-      "new_labels_count": "Dieser Import erstellt {count} neuen Tag | Dieser Import erstellt {count} neue Tags"
+      "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",
@@ -1050,7 +1050,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budget-Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem und sehen Sie die Aufschlüsselung direkt im Budget. Auswertungs-Tags dienen nur der Auswertung: Eine Transaktion kann mehrere tragen, und sie wirken sich nie auf Ihr Budget aus.",
+          "info": "Budget-Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem davon und sehen Sie die Aufschlüsselung direkt im Budget. Auswertungs-Tags dienen nur der Auswertung: Eine Transaktion kann mehrere tragen, und sie wirken sich nie auf Ihr Budget aus.",
           "section_budget": "Budget-Tags",
           "section_reporting": "Auswertungs-Tags",
           "create_tag": "Tag erstellen",
@@ -1074,8 +1074,8 @@
           "kind": {
             "tag": "Budget-Tag",
             "label": "Auswertungs-Tag",
-            "tag_option": "Budget für diesen Tag planen",
-            "tag_hint": "Legen Sie ein Limit fest und verfolgen Sie es im Budget. Einer pro Transaktion.",
+            "tag_option": "Budget für dieses Tag planen",
+            "tag_hint": "Legen Sie ein Limit fest und verfolgen Sie es im Budget. Eines pro Transaktion.",
             "label_option": "Transaktionen für Auswertungen markieren",
             "label_hint": "Sehen Sie, wohin das Geld floss, ohne Ihr Budget zu beeinflussen. Mehrere pro Transaktion.",
             "locked_note": "Der Zweck eines Tags lässt sich nach dem Erstellen nicht mehr ändern."
@@ -1103,7 +1103,7 @@
           "header": "Tag bearbeiten"
         },
         "create": {
-          "header": "Neuer Tag"
+          "header": "Neues Tag"
         },
         "delete": {
           "title": "Tag löschen?"
