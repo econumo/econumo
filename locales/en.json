@@ -235,10 +235,10 @@
           "label": "Tag"
         },
         "label": {
-          "label": "Label"
+          "label": "Reporting tag"
         },
         "tags": {
-          "label": "Tags and labels"
+          "label": "Tags"
         },
         "author": {
           "label": "Author"
@@ -410,17 +410,17 @@
         "description": "Description",
         "description_placeholder": "Enter description for all transactions",
         "payee": "Payee",
-        "tag": "Tag",
-        "labels": "Labels"
+        "tag": "Budget tag",
+        "labels": "Reporting tags"
       },
       "labels_separator": {
-        "button": "Change the label separator",
-        "title": "Label separator",
+        "button": "Change the tag separator",
+        "title": "Tag separator",
         "tab": "Tab",
         "newline": "New line",
         "custom_label": "Custom separator"
       },
-      "new_labels_count": "This import will create {count} new label | This import will create {count} new labels"
+      "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
     "import_result": {
       "success_title": "Import complete",
@@ -957,8 +957,8 @@
             }
           },
           "labels": {
-            "heading": "Labels",
-            "overlap_note": "A transaction can carry several labels, so these totals overlap and do not add up to your total spending."
+            "heading": "Reporting tags",
+            "overlap_note": "A transaction can carry several reporting tags, so these totals overlap and do not add up to your total spending."
           },
           "total": {
             "name": "Total",
@@ -1050,10 +1050,10 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
-          "tags_and_labels_info": "Tags group spending inside your budget — mark every trip expense with one tag, for example, and see the breakdown right in the budget. Labels are for reporting only: a transaction can carry several of them, and they never affect your budget.",
+          "info": "Budget tags group spending inside your budget — mark every trip expense with one, for example, and see the breakdown right in the budget. Reporting tags are for reporting only: a transaction can carry several, and they never affect your budget.",
+          "section_budget": "Budget tags",
+          "section_reporting": "Reporting tags",
           "create_tag": "Create tag",
-          "create_tag_or_label": "Create tag or label",
           "archived_item": "Archived"
         }
       },
@@ -1072,11 +1072,15 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Kind: budgeting tag or reporting label",
-            "tag": "Tag",
-            "label": "Label"
+            "tag": "Budget tag",
+            "label": "Reporting tag",
+            "tag_option": "Budget money for this tag",
+            "tag_hint": "Set a limit and track it in your budget. One per transaction.",
+            "label_option": "Label transactions for reporting",
+            "label_hint": "See where money went without affecting your budget. Several per transaction.",
+            "locked_note": "A tag's purpose can't be changed after it's created."
           },
-          "add_button": "Add tag or label",
+          "add_button": "Add tag",
           "name": {
             "label": "Name",
             "validation": {
@@ -1090,26 +1094,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Labels",
+          "header": "Reporting tags",
           "archived_item": "Archived"
         }
       },
       "modals": {
         "edit": {
-          "header": "Edit label"
+          "header": "Edit tag"
         },
         "create": {
-          "header": "New label"
+          "header": "New tag"
         },
         "delete": {
-          "title": "Delete label?"
+          "title": "Delete tag?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "Label name must be 3-64 characters"
+              "invalid_name": "Tag name must be 3-64 characters"
             }
           }
         }
@@ -1382,8 +1386,8 @@
       "cannot_be_hidden": "This currency cannot be hidden"
     },
     "label": {
-      "name_length": "Label name must be {min}-{max} characters",
-      "list_empty": "Labels list is empty"
+      "name_length": "Tag name must be {min}-{max} characters",
+      "list_empty": "Tags list is empty"
     },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
@@ -1405,7 +1409,7 @@
       "account_not_available": "This account is not available for this operation.",
       "item_not_available": "This transaction is not available for this operation.",
       "invalid_import_file": "Please upload a valid CSV file",
-      "too_many_labels": "A transaction can have at most 50 labels."
+      "too_many_labels": "A transaction can have at most 50 reporting tags."
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",

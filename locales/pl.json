@@ -235,10 +235,10 @@
           "label": "Tag"
         },
         "label": {
-          "label": "Etykieta"
+          "label": "Tag raportowy"
         },
         "tags": {
-          "label": "Tagi i etykiety"
+          "label": "Tagi"
         },
         "author": {
           "label": "Autor"
@@ -410,17 +410,17 @@
         "description": "Opis",
         "description_placeholder": "Wpisz opis dla wszystkich transakcji",
         "payee": "Odbiorca",
-        "tag": "Tag",
-        "labels": "Etykiety"
+        "tag": "Tag budżetowy",
+        "labels": "Tagi raportowe"
       },
       "labels_separator": {
-        "button": "Zmień separator etykiet",
-        "title": "Separator etykiet",
+        "button": "Zmień separator tagów",
+        "title": "Separator tagów",
         "tab": "Tabulator",
         "newline": "Nowa linia",
         "custom_label": "Własny separator"
       },
-      "new_labels_count": "Ten import utworzy {count} nową etykietę | Ten import utworzy {count} nowe etykiety | Ten import utworzy {count} nowych etykiet"
+      "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
     "import_result": {
       "success_title": "Import zakończony",
@@ -957,8 +957,8 @@
             }
           },
           "labels": {
-            "heading": "Etykiety",
-            "overlap_note": "Jedna transakcja może mieć kilka etykiet, a jej kwota liczy się przy każdej z nich — dlatego te sumy nakładają się i nie składają się na sumę wydatków."
+            "heading": "Tagi raportowe",
+            "overlap_note": "Jedna transakcja może mieć kilka tagów raportowych, a jej kwota liczy się przy każdym z nich — dlatego te sumy nakładają się i nie składają się na sumę wydatków."
           },
           "total": {
             "name": "Razem",
@@ -1050,10 +1050,10 @@
         "settings": {
           "menu_item": "Tagi",
           "header": "Tagi",
-          "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
-          "tags_and_labels_info": "Tagi grupują wydatki w budżecie — oznacz na przykład jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Etykiety służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
+          "info": "Tagi budżetowe grupują wydatki w budżecie — oznacz na przykład jednym z nich wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Tagi raportowe służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
+          "section_budget": "Tagi budżetowe",
+          "section_reporting": "Tagi raportowe",
           "create_tag": "Utwórz tag",
-          "create_tag_or_label": "Utwórz tag lub etykietę",
           "archived_item": "W archiwum"
         }
       },
@@ -1072,11 +1072,15 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Rodzaj: tag budżetowy albo etykieta do raportów",
-            "tag": "Tag",
-            "label": "Etykieta"
+            "tag": "Tag budżetowy",
+            "label": "Tag raportowy",
+            "tag_option": "Planuj budżet dla tego tagu",
+            "tag_hint": "Ustaw limit i śledź go w budżecie. Jeden na transakcję.",
+            "label_option": "Oznaczaj transakcje na potrzeby raportów",
+            "label_hint": "Sprawdzaj, na co poszły pieniądze, bez wpływu na budżet. Kilka na transakcję.",
+            "locked_note": "Przeznaczenia tagu nie można zmienić po jego utworzeniu."
           },
-          "add_button": "Dodaj tag lub etykietę",
+          "add_button": "Dodaj tag",
           "name": {
             "label": "Nazwa",
             "validation": {
@@ -1090,26 +1094,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Etykiety",
+          "header": "Tagi raportowe",
           "archived_item": "W archiwum"
         }
       },
       "modals": {
         "edit": {
-          "header": "Edytuj etykietę"
+          "header": "Edytuj tag"
         },
         "create": {
-          "header": "Nowa etykieta"
+          "header": "Nowy tag"
         },
         "delete": {
-          "title": "Usunąć etykietę?"
+          "title": "Usunąć tag?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "Nazwa etykiety musi mieć od 3 do 64 znaków"
+              "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
             }
           }
         }
@@ -1382,8 +1386,8 @@
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
     "label": {
-      "name_length": "Nazwa etykiety musi mieć od {min} do {max} znaków.",
-      "list_empty": "Lista etykiet jest pusta."
+      "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "list_empty": "Lista tagów jest pusta."
     },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
@@ -1405,7 +1409,7 @@
       "account_not_available": "To konto jest niedostępne dla tej operacji.",
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
       "invalid_import_file": "Prześlij prawidłowy plik CSV.",
-      "too_many_labels": "Transakcja może mieć maksymalnie 50 etykiet."
+      "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

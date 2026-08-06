@@ -235,10 +235,10 @@
           "label": "Tag"
         },
         "label": {
-          "label": "Étiquette"
+          "label": "Tag de rapport"
         },
         "tags": {
-          "label": "Tags et étiquettes"
+          "label": "Tags"
         },
         "author": {
           "label": "Auteur"
@@ -410,17 +410,17 @@
         "description": "Description",
         "description_placeholder": "Saisissez une description pour toutes les transactions",
         "payee": "Bénéficiaire",
-        "tag": "Tag",
-        "labels": "Étiquettes"
+        "tag": "Tag budgétaire",
+        "labels": "Tags de rapport"
       },
       "labels_separator": {
-        "button": "Modifier le séparateur d’étiquettes",
-        "title": "Séparateur d’étiquettes",
+        "button": "Modifier le séparateur de tags",
+        "title": "Séparateur de tags",
         "tab": "Tabulation",
         "newline": "Saut de ligne",
         "custom_label": "Séparateur personnalisé"
       },
-      "new_labels_count": "Cet import créera {count} nouvelle étiquette | Cet import créera {count} nouvelles étiquettes"
+      "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
     },
     "import_result": {
       "success_title": "Import terminé",
@@ -957,8 +957,8 @@
             }
           },
           "labels": {
-            "heading": "Étiquettes",
-            "overlap_note": "Une transaction peut porter plusieurs étiquettes : ces totaux se recoupent et leur somme ne correspond pas à vos dépenses totales."
+            "heading": "Tags de rapport",
+            "overlap_note": "Une transaction peut porter plusieurs tags de rapport : ces totaux se recoupent et leur somme ne correspond pas à vos dépenses totales."
           },
           "total": {
             "name": "Total",
@@ -1050,10 +1050,10 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Les tags regroupent automatiquement les dépenses au sein de votre budget — pratique pour les voyages, par exemple : marquez chaque dépense du voyage avec un même tag et obtenez la répartition des dépenses directement dans le budget.",
-          "tags_and_labels_info": "Les tags regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d’un voyage avec un même tag et obtenez la répartition directement dans le budget. Les étiquettes servent uniquement aux rapports : une transaction peut en porter plusieurs et elles n’ont aucun effet sur votre budget.",
+          "info": "Les tags budgétaires regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d’un voyage avec l’un d’eux et obtenez la répartition directement dans le budget. Les tags de rapport servent uniquement aux rapports : une transaction peut en porter plusieurs et ils n’ont aucun effet sur votre budget.",
+          "section_budget": "Tags budgétaires",
+          "section_reporting": "Tags de rapport",
           "create_tag": "Créer un tag",
-          "create_tag_or_label": "Créer un tag ou une étiquette",
           "archived_item": "Archivé"
         }
       },
@@ -1072,11 +1072,15 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Type : tag budgétaire ou étiquette pour les rapports",
-            "tag": "Tag",
-            "label": "Étiquette"
+            "tag": "Tag budgétaire",
+            "label": "Tag de rapport",
+            "tag_option": "Prévoir un budget pour ce tag",
+            "tag_hint": "Fixez une limite et suivez-la dans votre budget. Un seul par transaction.",
+            "label_option": "Marquer les transactions pour les rapports",
+            "label_hint": "Voyez où est parti l’argent sans influer sur votre budget. Plusieurs par transaction.",
+            "locked_note": "La vocation d’un tag ne peut plus être modifiée après sa création."
           },
-          "add_button": "Ajouter un tag ou une étiquette",
+          "add_button": "Ajouter un tag",
           "name": {
             "label": "Nom",
             "validation": {
@@ -1090,26 +1094,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Étiquettes",
+          "header": "Tags de rapport",
           "archived_item": "Archivée"
         }
       },
       "modals": {
         "edit": {
-          "header": "Modifier l’étiquette"
+          "header": "Modifier le tag"
         },
         "create": {
-          "header": "Nouvelle étiquette"
+          "header": "Nouveau tag"
         },
         "delete": {
-          "title": "Supprimer l’étiquette ?"
+          "title": "Supprimer le tag ?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "Le nom de l’étiquette doit contenir de 3 à 64 caractères"
+              "invalid_name": "Le nom du tag doit contenir de 3 à 64 caractères"
             }
           }
         }
@@ -1382,8 +1386,8 @@
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
     "label": {
-      "name_length": "Le nom de l’étiquette doit contenir de {min} à {max} caractères.",
-      "list_empty": "La liste des étiquettes est vide."
+      "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
+      "list_empty": "La liste des tags est vide."
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
@@ -1405,7 +1409,7 @@
       "account_not_available": "Ce compte n’est pas disponible pour cette opération.",
       "item_not_available": "Cette transaction n’est pas disponible pour cette opération.",
       "invalid_import_file": "Veuillez importer un fichier CSV valide.",
-      "too_many_labels": "Une transaction peut avoir au maximum 50 étiquettes."
+      "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

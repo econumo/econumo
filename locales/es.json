@@ -235,10 +235,10 @@
           "label": "Etiqueta"
         },
         "label": {
-          "label": "Rótulo"
+          "label": "Etiqueta de informes"
         },
         "tags": {
-          "label": "Etiquetas y rótulos"
+          "label": "Etiquetas"
         },
         "author": {
           "label": "Autor"
@@ -410,17 +410,17 @@
         "description": "Descripción",
         "description_placeholder": "Escribe una descripción para todas las transacciones",
         "payee": "Beneficiario",
-        "tag": "Etiqueta",
-        "labels": "Rótulos"
+        "tag": "Etiqueta de presupuesto",
+        "labels": "Etiquetas de informes"
       },
       "labels_separator": {
-        "button": "Cambiar el separador de rótulos",
-        "title": "Separador de rótulos",
+        "button": "Cambiar el separador de etiquetas",
+        "title": "Separador de etiquetas",
         "tab": "Tabulación",
         "newline": "Salto de línea",
         "custom_label": "Separador personalizado"
       },
-      "new_labels_count": "Esta importación creará {count} rótulo nuevo | Esta importación creará {count} rótulos nuevos"
+      "new_labels_count": "Esta importación creará {count} etiqueta nueva | Esta importación creará {count} etiquetas nuevas"
     },
     "import_result": {
       "success_title": "Importación completada",
@@ -957,8 +957,8 @@
             }
           },
           "labels": {
-            "heading": "Rótulos",
-            "overlap_note": "Una transacción puede tener varios rótulos, por lo que estos totales se solapan y su suma no equivale a tus gastos totales."
+            "heading": "Etiquetas de informes",
+            "overlap_note": "Una transacción puede tener varias etiquetas de informes, por lo que estos totales se solapan y su suma no equivale a tus gastos totales."
           },
           "total": {
             "name": "Total",
@@ -1050,10 +1050,10 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "Las etiquetas agrupan automáticamente los gastos dentro de tu presupuesto. Son prácticas, por ejemplo, para los viajes: marca todos los gastos del viaje con una misma etiqueta y verás el desglose directamente en el presupuesto.",
-          "tags_and_labels_info": "Las etiquetas agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una misma etiqueta y verás el desglose directamente en el presupuesto. Los rótulos sirven solo para informes: una transacción puede tener varios y nunca afectan a tu presupuesto.",
+          "info": "Las etiquetas de presupuesto agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una y verás el desglose directamente en el presupuesto. Las etiquetas de informes sirven solo para informes: una transacción puede tener varias y nunca afectan a tu presupuesto.",
+          "section_budget": "Etiquetas de presupuesto",
+          "section_reporting": "Etiquetas de informes",
           "create_tag": "Crear etiqueta",
-          "create_tag_or_label": "Crear etiqueta o rótulo",
           "archived_item": "Archivada"
         }
       },
@@ -1072,11 +1072,15 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Clase: etiqueta de presupuesto o rótulo de informes",
-            "tag": "Etiqueta",
-            "label": "Rótulo"
+            "tag": "Etiqueta de presupuesto",
+            "label": "Etiqueta de informes",
+            "tag_option": "Presupuestar dinero para esta etiqueta",
+            "tag_hint": "Fija un límite y contrólalo en tu presupuesto. Una por transacción.",
+            "label_option": "Marcar transacciones para los informes",
+            "label_hint": "Consulta adónde fue el dinero sin afectar a tu presupuesto. Varias por transacción.",
+            "locked_note": "La finalidad de una etiqueta no se puede cambiar después de crearla."
           },
-          "add_button": "Añadir etiqueta o rótulo",
+          "add_button": "Añadir etiqueta",
           "name": {
             "label": "Nombre",
             "validation": {
@@ -1090,26 +1094,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Rótulos",
+          "header": "Etiquetas de informes",
           "archived_item": "Archivado"
         }
       },
       "modals": {
         "edit": {
-          "header": "Editar el rótulo"
+          "header": "Editar la etiqueta"
         },
         "create": {
-          "header": "Nuevo rótulo"
+          "header": "Nueva etiqueta"
         },
         "delete": {
-          "title": "¿Eliminar el rótulo?"
+          "title": "¿Eliminar la etiqueta?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "El nombre del rótulo debe tener entre 3 y 64 caracteres"
+              "invalid_name": "El nombre de la etiqueta debe tener entre 3 y 64 caracteres"
             }
           }
         }
@@ -1382,8 +1386,8 @@
       "cannot_be_hidden": "Esta moneda no se puede ocultar."
     },
     "label": {
-      "name_length": "El nombre del rótulo debe tener entre {min} y {max} caracteres.",
-      "list_empty": "La lista de rótulos está vacía."
+      "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
+      "list_empty": "La lista de etiquetas está vacía."
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
@@ -1405,7 +1409,7 @@
       "account_not_available": "Esta cuenta no está disponible para esta operación.",
       "item_not_available": "Esta transacción no está disponible para esta operación.",
       "invalid_import_file": "Sube un archivo CSV válido.",
-      "too_many_labels": "Una transacción puede tener como máximo 50 rótulos."
+      "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes."
     },
     "user": {
       "report_period_invalid": "El periodo del informe es incorrecto.",

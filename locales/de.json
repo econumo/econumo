@@ -235,10 +235,10 @@
           "label": "Budget-Tag"
         },
         "label": {
-          "label": "Label"
+          "label": "Auswertungs-Tag"
         },
         "tags": {
-          "label": "Tags und Labels"
+          "label": "Tags"
         },
         "author": {
           "label": "Autor"
@@ -411,16 +411,16 @@
         "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
         "payee": "Zahlungsempfänger",
         "tag": "Budget-Tag",
-        "labels": "Labels"
+        "labels": "Auswertungs-Tags"
       },
       "labels_separator": {
-        "button": "Trennzeichen für Labels ändern",
-        "title": "Trennzeichen für Labels",
+        "button": "Trennzeichen für Tags ändern",
+        "title": "Trennzeichen für Tags",
         "tab": "Tabulator",
         "newline": "Zeilenumbruch",
         "custom_label": "Eigenes Trennzeichen"
       },
-      "new_labels_count": "Dieser Import erstellt {count} neues Label | Dieser Import erstellt {count} neue Labels"
+      "new_labels_count": "Dieser Import erstellt {count} neuen Tag | Dieser Import erstellt {count} neue Tags"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",
@@ -957,8 +957,8 @@
             }
           },
           "labels": {
-            "heading": "Labels",
-            "overlap_note": "Eine Transaktion kann mehrere Labels haben — derselbe Betrag zählt dann bei jedem Label mit. Diese Summen überschneiden sich daher und ergeben nicht Ihre Gesamtausgaben."
+            "heading": "Auswertungs-Tags",
+            "overlap_note": "Eine Transaktion kann mehrere Auswertungs-Tags haben — derselbe Betrag zählt dann bei jedem Tag mit. Diese Summen überschneiden sich daher und ergeben nicht Ihre Gesamtausgaben."
           },
           "total": {
             "name": "Gesamt",
@@ -1050,10 +1050,10 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags gruppieren Ausgaben in Ihrem Budget automatisch — praktisch zum Beispiel für Reisen: Markieren Sie jede Reiseausgabe mit einem Tag und erhalten Sie eine Aufschlüsselung Ihrer Ausgaben direkt im Budget.",
-          "tags_and_labels_info": "Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem Tag und sehen Sie die Aufschlüsselung direkt im Budget. Labels dienen nur der Auswertung: Eine Transaktion kann mehrere davon tragen, und sie wirken sich nie auf Ihr Budget aus.",
+          "info": "Budget-Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem und sehen Sie die Aufschlüsselung direkt im Budget. Auswertungs-Tags dienen nur der Auswertung: Eine Transaktion kann mehrere tragen, und sie wirken sich nie auf Ihr Budget aus.",
+          "section_budget": "Budget-Tags",
+          "section_reporting": "Auswertungs-Tags",
           "create_tag": "Tag erstellen",
-          "create_tag_or_label": "Budget-Tag oder Label erstellen",
           "archived_item": "Archiviert"
         }
       },
@@ -1072,11 +1072,15 @@
       "forms": {
         "tag": {
           "kind": {
-            "legend": "Art: Budget-Tag oder Label für Auswertungen",
             "tag": "Budget-Tag",
-            "label": "Label"
+            "label": "Auswertungs-Tag",
+            "tag_option": "Budget für diesen Tag planen",
+            "tag_hint": "Legen Sie ein Limit fest und verfolgen Sie es im Budget. Einer pro Transaktion.",
+            "label_option": "Transaktionen für Auswertungen markieren",
+            "label_hint": "Sehen Sie, wohin das Geld floss, ohne Ihr Budget zu beeinflussen. Mehrere pro Transaktion.",
+            "locked_note": "Der Zweck eines Tags lässt sich nach dem Erstellen nicht mehr ändern."
           },
-          "add_button": "Budget-Tag oder Label hinzufügen",
+          "add_button": "Tag hinzufügen",
           "name": {
             "label": "Name",
             "validation": {
@@ -1090,26 +1094,26 @@
     "labels": {
       "pages": {
         "settings": {
-          "header": "Labels",
+          "header": "Auswertungs-Tags",
           "archived_item": "Archiviert"
         }
       },
       "modals": {
         "edit": {
-          "header": "Label bearbeiten"
+          "header": "Tag bearbeiten"
         },
         "create": {
-          "header": "Neues Label"
+          "header": "Neuer Tag"
         },
         "delete": {
-          "title": "Label löschen?"
+          "title": "Tag löschen?"
         }
       },
       "forms": {
         "label": {
           "name": {
             "validation": {
-              "invalid_name": "Der Label-Name muss 3-64 Zeichen lang sein"
+              "invalid_name": "Der Tag-Name muss 3-64 Zeichen lang sein"
             }
           }
         }
@@ -1382,8 +1386,8 @@
       "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
     },
     "label": {
-      "name_length": "Der Label-Name muss {min}-{max} Zeichen lang sein",
-      "list_empty": "Die Label-Liste ist leer"
+      "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
+      "list_empty": "Die Tag-Liste ist leer"
     },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
@@ -1405,7 +1409,7 @@
       "account_not_available": "Dieses Konto ist für diesen Vorgang nicht verfügbar.",
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
-      "too_many_labels": "Eine Transaktion kann höchstens 50 Labels haben."
+      "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",
