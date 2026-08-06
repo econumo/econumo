@@ -196,7 +196,7 @@ func TestCreateTransaction_TooManyLabels_Rejected(t *testing.T) {
 	}
 	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
 		createReqWithLabels(txID1, "expense", "12.00", ids))
-	assertValidationDenied(t, status, env, "A transaction can have at most 50 labels.")
+	assertValidationDenied(t, status, env, "A transaction can have at most 50 reporting tags.")
 }
 
 // TestCreateTransaction_MaxLabels_Accepted: exactly the cap succeeds, proving
