@@ -734,6 +734,108 @@ func (r *ReadRepo) BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id,
 	return scanBudgetTxRows(rows)
 }
 
+// BudgetTransactionsByLabelAndCategory implements ReadModel. Same join shape
+// as BudgetTransactionsByLabel, plus a category predicate; the category id is
+// bound after the accounts, so it shifts the two date placeholders by one.
+func (r *ReadRepo) BudgetTransactionsByLabelAndCategory(ctx context.Context, labelID, categoryID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	var sql string
+	var args []any
+	// Args are appended in the SAME order the placeholders appear in the SQL
+	// text (the label join precedes the WHERE clause): SQLite's "?" binds
+	// positionally by occurrence, so an args slice ordered any other way binds
+	// the label id where an account id is expected and vice versa.
+	if r.driver == "postgresql" {
+		labelP := "$1"
+		accIn := r.ph(2, len(accArgs))
+		next := 2 + len(accArgs)
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0"
+		where += " AND t.category_id = $" + itoa(next)
+		args = append(args, categoryID.String())
+		next++
+		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
+		args = append(args, start, end)
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		args = append(args, categoryID.String())
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND t.category_id = ?"
+		where += " AND t.spent_at >= ? AND t.spent_at < ?"
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanBudgetTxRows(rows)
+}
+
+// BudgetTransactionsByLabelUncategorized implements ReadModel. Same join shape
+// as BudgetTransactionsByLabel; the "category_id IS NULL" fragment binds no
+// argument, so the date placeholders keep their unshifted positions.
+func (r *ReadRepo) BudgetTransactionsByLabelUncategorized(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	var sql string
+	var args []any
+	// See BudgetTransactionsByLabel: args follow placeholder ORDER in the SQL
+	// text, and the label join precedes the WHERE clause.
+	if r.driver == "postgresql" {
+		labelP := "$1"
+		accIn := r.ph(2, len(accArgs))
+		next := 2 + len(accArgs)
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND t.category_id IS NULL"
+		where += " AND t.spent_at >= $" + itoa(next) + " AND t.spent_at < $" + itoa(next+1)
+		args = append(args, start, end)
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = " + labelP +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		args = append(args, labelID.String())
+		args = append(args, accArgs...)
+		where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND t.category_id IS NULL"
+		where += " AND t.spent_at >= ? AND t.spent_at < ?"
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+		sql = "SELECT " + budgetTxCols +
+			" FROM transactions t" +
+			" JOIN transactions_labels tl ON tl.transaction_id = t.id AND tl.label_id = ?" +
+			" LEFT JOIN accounts a ON t.account_id = a.id" +
+			" WHERE " + where + " ORDER BY t.spent_at DESC"
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanBudgetTxRows(rows)
+}
+
 // BudgetTransactionsUncategorized implements ReadModel.
 func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
 	if len(accountIDs) == 0 {

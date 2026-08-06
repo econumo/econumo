@@ -24,12 +24,14 @@ import (
 // exclusive; so are uncategorized and envelopeId - envelopes have no
 // uncategorized bucket of their own, so uncategorized+envelopeId falls
 // through to the same CodeBudgetTransactionFilterRequired error as any other
-// unsupported combination, exactly like tagId+envelopeId. labelId selects
-// that label's transactions (a many-to-many join, unlike tagId's column
-// compare) and combines with none of the above - unlike tagId/categoryId,
-// labels carry no narrowing semantics, so any combination is rejected
-// up front with CodeBudgetTransactionFilterRequired rather than silently
-// picking one selector. Requires read access.
+// unsupported combination, exactly like tagId+envelopeId. labelId selects that
+// label's transactions (a many-to-many join, unlike tagId's column compare),
+// narrowed by categoryId or uncategorized when either is set - the reporting-tag
+// folder's child rows drill down to exactly that pair. Pairing labelId with
+// another SELECTOR (tagId or envelopeId) stays rejected up front with
+// CodeBudgetTransactionFilterRequired: which of the two narrows would be
+// ambiguous, and silently picking one would return the wrong set.
+// Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{
@@ -37,10 +39,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 		})
 	}
 	if req.LabelId != nil && strings.TrimSpace(*req.LabelId) != "" &&
-		((req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "") ||
-			(req.TagId != nil && strings.TrimSpace(*req.TagId) != "") ||
-			(req.EnvelopeId != nil && strings.TrimSpace(*req.EnvelopeId) != "") ||
-			req.Uncategorized) {
+		((req.TagId != nil && strings.TrimSpace(*req.TagId) != "") ||
+			(req.EnvelopeId != nil && strings.TrimSpace(*req.EnvelopeId) != "")) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	budgetID, err := vo.ParseId(req.BudgetId)
@@ -75,6 +75,31 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 
 	var rows []model.BudgetTransactionRow
 	switch {
+	// The label cases lead the switch, narrowest first: Go takes the FIRST
+	// matching case, and both the uncategorized and the categoryId case below
+	// would otherwise match a label request and silently drop the label.
+	case lbl != "" && cat != "":
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		categoryID, perr := vo.ParseId(cat)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.includedAccountIDs, periodStart, periodEnd)
+	case lbl != "" && req.Uncategorized:
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
+	case lbl != "":
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag == "" && env == "":
 		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.includedAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag != "" && env == "":
@@ -113,12 +138,6 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			return nil, cerr
 		}
 		rows, err = s.read.BudgetTransactionsByCategories(ctx, catIDs, f.includedAccountIDs, periodStart, periodEnd)
-	case lbl != "":
-		labelID, perr := vo.ParseId(lbl)
-		if perr != nil {
-			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
-		}
-		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
 	default:
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}

@@ -76,8 +76,10 @@ func TestGetTransactionListByLabel(t *testing.T) {
 	}
 }
 
-// labelId is mutually exclusive with the other selectors, like tagId/envelopeId.
-func TestGetTransactionListRejectsLabelIdWithCategoryId(t *testing.T) {
+// labelId still refuses to pair with another SELECTOR (a budgeting tag or an
+// envelope): which of the two narrows would be ambiguous. Only categoryId and
+// uncategorized narrow a label, and those are covered separately below.
+func TestGetTransactionListRejectsLabelIdWithTagOrEnvelope(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
@@ -89,19 +91,93 @@ func TestGetTransactionListRejectsLabelIdWithCategoryId(t *testing.T) {
 
 	base := "/api/v1/budget/get-transaction-list?budgetId=" + labelDrilldownBudgetID + "&periodStart=2024-04-01"
 
-	st, b := h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&categoryId="+catID, tok, nil)
-	if st != http.StatusBadRequest {
-		t.Fatalf("labelId+categoryId=%d, want 400: %s", st, b.raw)
-	}
-
-	st, b = h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&tagId="+tagID, tok, nil)
+	st, b := h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&tagId="+tagID, tok, nil)
 	if st != http.StatusBadRequest {
 		t.Fatalf("labelId+tagId=%d, want 400: %s", st, b.raw)
 	}
 
-	st, b = h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&uncategorized=1", tok, nil)
+	envID := "bbbb6666-0000-7000-8000-00000000000e"
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": labelDrilldownBudgetID, "id": envID, "name": "Env", "icon": "wallet", "currencyId": usdID,
+	}); st != http.StatusOK {
+		t.Fatalf("create-envelope=%d body=%s", st, e.raw)
+	}
+	st, b = h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&envelopeId="+envID, tok, nil)
 	if st != http.StatusBadRequest {
-		t.Fatalf("labelId+uncategorized=%d, want 400: %s", st, b.raw)
+		t.Fatalf("labelId+envelopeId=%d, want 400: %s", st, b.raw)
+	}
+}
+
+// Clicking a category row inside an expanded reporting-tag folder must list
+// exactly the transactions in BOTH that label and that category -- not the
+// label's whole set (which would mean the category was silently dropped) and
+// not the category's whole set (which would mean the label was).
+func TestGetTransactionListByLabelAndCategory(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		t.Fatalf("create-budget=%d body=%s", st, e.raw)
+	}
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Label(fixture.Label{ID: labelDrillWorkID, UserID: seedUserID, Name: "Work"})
+	otherCat := "cccc6666-0000-7000-8000-000000000001"
+	f.Category(fixture.Category{ID: otherCat, UserID: seedUserID, Name: "Other", Icon: "x"})
+
+	attach := func(txID, labelID string) {
+		t.Helper()
+		if _, err := h.db.Exec(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`, txID, labelID); err != nil {
+			t.Fatalf("attach label: %v", err)
+		}
+	}
+
+	// In the label AND in catID: the only row the drill-down may return.
+	wantID := f.Transaction(fixture.Transaction{
+		ID: "ffff6666-0000-7000-8000-000000000011", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "50.00", SpentAt: "2024-04-10 00:00:00",
+	})
+	attach(wantID, labelDrillWorkID)
+
+	// Same label, different category.
+	otherCatTx := f.Transaction(fixture.Transaction{
+		ID: "ffff6666-0000-7000-8000-000000000012", UserID: seedUserID, AccountID: accountID,
+		CategoryID: otherCat, Type: 0, Amount: "7.00", SpentAt: "2024-04-11 00:00:00",
+	})
+	attach(otherCatTx, labelDrillWorkID)
+
+	// Same category, no label at all.
+	f.Transaction(fixture.Transaction{
+		ID: "ffff6666-0000-7000-8000-000000000013", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "3.00", SpentAt: "2024-04-12 00:00:00",
+	})
+
+	// Same label, no category: must not leak into the category-narrowed list.
+	uncatTx := f.Transaction(fixture.Transaction{
+		ID: "ffff6666-0000-7000-8000-000000000014", UserID: seedUserID, AccountID: accountID,
+		Type: 0, Amount: "11.00", SpentAt: "2024-04-13 00:00:00",
+	})
+	attach(uncatTx, labelDrillWorkID)
+
+	base := "/api/v1/budget/get-transaction-list?budgetId=" + labelDrilldownBudgetID + "&periodStart=2024-04-01"
+
+	st, b := h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&categoryId="+catID, tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("labelId+categoryId=%d body=%s", st, b.raw)
+	}
+	got := mustUnmarshal[txListView](t, b.Data)
+	if len(got.Items) != 1 || got.Items[0].Id != wantID {
+		t.Fatalf("labelId+categoryId must return only %q, got %d items: %s", wantID, len(got.Items), b.Data)
+	}
+
+	// The uncategorized child of the same folder: the label's category-less rows.
+	st, b = h.do(t, http.MethodGet, base+"&labelId="+labelDrillWorkID+"&uncategorized=1", tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("labelId+uncategorized=%d body=%s", st, b.raw)
+	}
+	got = mustUnmarshal[txListView](t, b.Data)
+	if len(got.Items) != 1 || got.Items[0].Id != uncatTx {
+		t.Fatalf("labelId+uncategorized must return only %q, got %d items: %s", uncatTx, len(got.Items), b.Data)
 	}
 }
 

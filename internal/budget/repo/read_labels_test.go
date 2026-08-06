@@ -223,3 +223,74 @@ func labelKeyAt(pos int) string {
 	const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
 	return "c" + string(alphabet[(pos/3844)%62]) + string(alphabet[(pos/62)%62]) + string(alphabet[pos%62])
 }
+
+// The two narrowed label drill-down queries back the folder's per-category
+// rows. Each must apply BOTH predicates: a row in the right category but under
+// a different label, and a row under the right label in a different category,
+// are equally wrong answers -- and the placeholder arithmetic differs per
+// engine, so this runs on whichever engine dbtest selects.
+func TestBudgetTransactionsByLabelNarrowedByCategory(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	label := f.Label(fixture.Label{UserID: userA, Name: "Work"})
+	other := f.Label(fixture.Label{UserID: userA, Name: "Home"})
+
+	catA := "c0000000-0000-0000-0000-0000000000c7"
+	catB := "c0000000-0000-0000-0000-0000000000c8"
+	seedCategory(t, db, catA, userA)
+	seedCategory(t, db, catB, userA)
+
+	want := "78000000-0000-0000-0000-000000000021"
+	seedExpense(t, db, want, acctA, catA, "20.00", "2026-08-01 00:00:00")
+	linkLabel(t, db, want, label)
+
+	wrongCat := "78000000-0000-0000-0000-000000000022"
+	seedExpense(t, db, wrongCat, acctA, catB, "30.00", "2026-08-10 00:00:00")
+	linkLabel(t, db, wrongCat, label)
+
+	wrongLabel := "78000000-0000-0000-0000-000000000023"
+	seedExpense(t, db, wrongLabel, acctA, catA, "40.00", "2026-08-11 00:00:00")
+	linkLabel(t, db, wrongLabel, other)
+
+	wantUncat := "78000000-0000-0000-0000-000000000024"
+	seedExpense(t, db, wantUncat, acctA, "", "50.00", "2026-08-12 00:00:00")
+	linkLabel(t, db, wantUncat, label)
+
+	otherUncat := "78000000-0000-0000-0000-000000000025"
+	seedExpense(t, db, otherUncat, acctA, "", "60.00", "2026-08-13 00:00:00")
+	linkLabel(t, db, otherUncat, other)
+
+	// Out of period on the wanted pair: the bounds must still apply.
+	outOfPeriod := "78000000-0000-0000-0000-000000000026"
+	seedExpense(t, db, outOfPeriod, acctA, catA, "70.00", "2026-09-01 00:00:00")
+	linkLabel(t, db, outOfPeriod, label)
+
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	end := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	accIDs := []vo.Id{vo.MustParseId(acctA)}
+
+	rows, err := read.BudgetTransactionsByLabelAndCategory(ctx, vo.MustParseId(label), vo.MustParseId(catA), accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByLabelAndCategory: %v", err)
+	}
+	if len(rows) != 1 || rows[0].ID != want {
+		t.Fatalf("want only %q (the first-of-month row), got %+v", want, rows)
+	}
+
+	uncat, err := read.BudgetTransactionsByLabelUncategorized(ctx, vo.MustParseId(label), accIDs, start, end)
+	if err != nil {
+		t.Fatalf("BudgetTransactionsByLabelUncategorized: %v", err)
+	}
+	if len(uncat) != 1 || uncat[0].ID != wantUncat {
+		t.Fatalf("want only %q, got %+v", wantUncat, uncat)
+	}
+
+	// An empty account set short-circuits, like every sibling query.
+	if none, err := read.BudgetTransactionsByLabelAndCategory(ctx, vo.MustParseId(label), vo.MustParseId(catA), nil, start, end); err != nil || none != nil {
+		t.Fatalf("no accounts: rows=%v err=%v, want nil/nil", none, err)
+	}
+	if none, err := read.BudgetTransactionsByLabelUncategorized(ctx, vo.MustParseId(label), nil, start, end); err != nil || none != nil {
+		t.Fatalf("no accounts: rows=%v err=%v, want nil/nil", none, err)
+	}
+}

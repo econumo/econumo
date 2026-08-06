@@ -50,6 +50,13 @@ type ReadModel interface {
 	// link is many-to-many (transactions_labels), unlike the single tag_id
 	// column BudgetTransactionsByTag compares against.
 	BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabelAndCategory narrows BudgetTransactionsByLabel to
+	// one category. Backs the per-category child rows of an expanded reporting-
+	// tag folder.
+	BudgetTransactionsByLabelAndCategory(ctx context.Context, labelID, categoryID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabelUncategorized narrows BudgetTransactionsByLabel
+	// to category_id IS NULL - that folder's uncategorized child row.
+	BudgetTransactionsByLabelUncategorized(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 
 	// CountSpendingByLabel: per (label, currency) spending over [start, end) for
 	// the given accounts. Deliberately separate from CountSpending: that query
