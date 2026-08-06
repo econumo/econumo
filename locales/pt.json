@@ -963,6 +963,9 @@
             "heading": "Etiquetas de relatório",
             "info": "As etiquetas de relatório mostram para onde vai o seu dinheiro. Marque pessoas, animais ou lugares — um filho, um cão, uma segunda casa — e veja quanto cada um lhe custa. Uma transação pode levar várias, por isso estes totais sobrepõem-se de propósito e não somam a sua despesa total."
           },
+          "uncategorized": {
+            "info": "Despesas ainda sem categoria. Atribua uma categoria a estas transações e passarão para o orçamento acima, onde poderá planeá-las."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total de despesas"

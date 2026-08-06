@@ -573,3 +573,12 @@ it('the Uncategorized section is never a drag container and its row has no handl
   expect(screen.getByTestId('wrapped-env-1')).toBeInTheDocument()
   expect(sectionWrapper.mock.calls.map((c) => c[1])).not.toContain('__uncategorized__')
 })
+
+it('explains the uncategorized bucket behind its own info button', async () => {
+  const user = userEvent.setup()
+  renderTable(pushUncategorized)
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  expect(screen.queryByTestId('budget-uncategorized-info-note')).not.toBeInTheDocument()
+  await user.click(within(row).getByRole('button', { name: 'About' }))
+  expect(await screen.findByTestId('budget-uncategorized-info-note')).toBeInTheDocument()
+})

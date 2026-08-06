@@ -80,6 +80,29 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
 }
 
 
+/* An explanation available on demand. Kept out of any collapsible trigger:
+   explaining a block must never fold it. */
+function InfoNote({ text, testId }: { text: string; testId: string }) {
+  const { t } = useTranslation()
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="shrink-0 text-muted-foreground hover:text-foreground"
+          aria-label={t('common.button.info.label')}
+          title={t('common.button.info.label')}
+        >
+          <Info className="size-3.5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 text-xs text-muted-foreground" data-testid={testId}>
+        {text}
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 /* edit mode appends a w-8 actions button to element rows; every row without
    one must pad the slot or its amount columns drift out of alignment */
 function ActionsSpacer() {
@@ -167,6 +190,7 @@ function ElementRow({
       <span className="truncate text-[15px]" title={displayName}>
         {displayName}
       </span>
+      {isUncategorized ? <InfoNote text={t('budgets.page.budget.structure.uncategorized.info')} testId="budget-uncategorized-info-note" /> : null}
     </>
   )
 
@@ -425,22 +449,7 @@ function ReportingTagsFolder({
               </span>
             </button>
           </CollapsibleTrigger>
-          {/* outside the trigger: explaining the block must not fold it */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button
-                type="button"
-                className="shrink-0 text-muted-foreground hover:text-foreground"
-                aria-label={t('common.button.info.label')}
-                title={t('common.button.info.label')}
-              >
-                <Info className="size-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-72 text-xs text-muted-foreground" data-testid="budget-labels-info-note">
-              {t('budgets.page.budget.structure.labels.info')}
-            </PopoverContent>
-          </Popover>
+          <InfoNote text={t('budgets.page.budget.structure.labels.info')} testId="budget-labels-info-note" />
         </div>
         <CollapsibleContent>
           <ul>

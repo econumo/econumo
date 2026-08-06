@@ -963,6 +963,9 @@
             "heading": "Tags de rapport",
             "info": "Les tags de rapport montrent où va votre argent. Marquez des personnes, des animaux ou des lieux — un enfant, un chien, une résidence secondaire — et voyez ce que chacun vous coûte. Une transaction peut en porter plusieurs : ces totaux se recoupent volontairement et ne forment pas votre dépense totale."
           },
+          "uncategorized": {
+            "info": "Dépenses sans catégorie pour l'instant. Attribuez une catégorie à ces transactions et elles rejoindront le budget ci-dessus, où vous pourrez les planifier."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total des dépenses"

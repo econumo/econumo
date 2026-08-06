@@ -963,6 +963,9 @@
             "heading": "Etiquetas de informes",
             "info": "Las etiquetas de informes muestran adónde va tu dinero. Marca personas, mascotas o lugares — un hijo, un perro, una segunda vivienda — y comprueba cuánto te cuesta cada uno. Una transacción puede llevar varias, así que estos totales se solapan a propósito y no suman tu gasto total."
           },
+          "uncategorized": {
+            "info": "Gastos que aún no tienen categoría. Asigna una categoría a estas transacciones y pasarán al presupuesto de arriba, donde podrás planificarlos."
+          },
           "total": {
             "name": "Total",
             "expenses": "Gastos totales"

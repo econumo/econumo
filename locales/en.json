@@ -963,6 +963,9 @@
             "heading": "Reporting tags",
             "info": "Reporting tags show where your money goes. Mark people, pets or places — a kid, a dog, a second home — and see how much each one costs you. A transaction can carry several, so these totals overlap on purpose and do not add up to your total spending."
           },
+          "uncategorized": {
+            "info": "Spending with no category yet. Assign a category to these transactions and they move into the budget above, where you can plan for them."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total expenses"

@@ -963,6 +963,9 @@
             "heading": "Auswertungs-Tags",
             "info": "Auswertungs-Tags zeigen, wohin Ihr Geld fließt. Markieren Sie Personen, Haustiere oder Orte — ein Kind, einen Hund, ein Ferienhaus — und sehen Sie, was jedes davon kostet. Eine Transaktion kann mehrere tragen, daher überschneiden sich diese Summen bewusst und ergeben nicht Ihre Gesamtausgaben."
           },
+          "uncategorized": {
+            "info": "Ausgaben ohne Kategorie. Weisen Sie diesen Transaktionen eine Kategorie zu, dann wandern sie in das Budget darüber und lassen sich einplanen."
+          },
           "total": {
             "name": "Gesamt",
             "expenses": "Gesamtausgaben"

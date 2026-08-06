@@ -963,6 +963,9 @@
             "heading": "Tagi raportowe",
             "info": "Tagi raportowe pokazują, dokąd trafiają pieniądze. Oznaczaj osoby, zwierzęta lub miejsca — dziecko, psa, drugi dom — i sprawdzaj, ile kosztuje każde z nich. Transakcja może mieć ich kilka, więc te sumy celowo się nakładają i nie składają się na całkowity wydatek."
           },
+          "uncategorized": {
+            "info": "Wydatki bez kategorii. Przypisz tym transakcjom kategorię, a trafią do budżetu powyżej, gdzie można je zaplanować."
+          },
           "total": {
             "name": "Razem",
             "expenses": "Suma wydatków"

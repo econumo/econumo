@@ -963,6 +963,9 @@
             "heading": "Rapportagetags",
             "info": "Rapportagetags laten zien waar uw geld heen gaat. Markeer personen, huisdieren of plaatsen — een kind, een hond, een tweede woning — en zie wat elk u kost. Een transactie kan er meerdere dragen, dus deze totalen overlappen met opzet en vormen niet uw totale uitgaven."
           },
+          "uncategorized": {
+            "info": "Uitgaven zonder categorie. Wijs deze transacties een categorie toe, dan verhuizen ze naar het budget hierboven, waar u ze kunt inplannen."
+          },
           "total": {
             "name": "Totaal",
             "expenses": "Totale uitgaven"

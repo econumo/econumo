@@ -963,6 +963,9 @@
             "heading": "Tag per i report",
             "info": "I tag di reportistica mostrano dove finiscono i tuoi soldi. Contrassegna persone, animali o luoghi — un figlio, un cane, una seconda casa — e scopri quanto ti costa ciascuno. Una transazione può portarne diversi, quindi questi totali si sovrappongono di proposito e non formano la spesa complessiva."
           },
+          "uncategorized": {
+            "info": "Spese ancora senza categoria. Assegna una categoria a queste transazioni e passeranno nel budget qui sopra, dove potrai pianificarle."
+          },
           "total": {
             "name": "Totale",
             "expenses": "Totale delle uscite"
