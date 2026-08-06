@@ -130,8 +130,8 @@ func TestCreateLabel_ShortName_400(t *testing.T) {
 	if !ok || len(msgs) == 0 {
 		t.Fatalf("expected a name field error; body: %s", env.raw)
 	}
-	if msgs[0] != "Label name must be 3-64 characters" {
-		t.Fatalf("name error = %q, want exact 'Label name must be 3-64 characters'", msgs[0])
+	if msgs[0] != "Tag name must be 3-64 characters" {
+		t.Fatalf("name error = %q, want exact 'Tag name must be 3-64 characters'", msgs[0])
 	}
 }
 

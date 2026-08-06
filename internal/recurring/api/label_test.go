@@ -362,7 +362,7 @@ func TestCreateRecurringTransaction_TooManyLabels_Rejected(t *testing.T) {
 	const opID = "0197c400-0000-7000-8000-000000000008"
 	status, env := h.do(t, http.MethodPost, "/api/v1/recurring/create-recurring-transaction", tok,
 		createRecurringReqWithLabels(opID, "expense", "12.00", ids))
-	assertValidationDenied(t, status, env, "A transaction can have at most 50 labels.")
+	assertValidationDenied(t, status, env, "A transaction can have at most 50 reporting tags.")
 }
 
 // TestCreateRecurringTransaction_MaxLabels_Accepted: exactly the cap
