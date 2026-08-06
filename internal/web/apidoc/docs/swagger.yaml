@@ -1072,6 +1072,10 @@ definitions:
     type: object
   model.LabelSpendResult:
     properties:
+      children:
+        items:
+          $ref: '#/definitions/model.ChildElementResult'
+        type: array
       icon:
         type: string
       id:

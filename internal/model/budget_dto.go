@@ -96,13 +96,17 @@ type ParentElementResult struct {
 // no budgeted/available fields on purpose: a label carries no limit and takes no
 // part in envelope math, so only its period spend is meaningful. Amounts across
 // labels deliberately overlap and do not sum to total spend.
+//
+// Children break THIS label's own spend down by category and do sum to Spent;
+// the overlap is between labels, not within one.
 type LabelSpendResult struct {
-	Id          string `json:"id"`
-	Name        string `json:"name"`
-	Icon        string `json:"icon"`
-	IsArchived  int    `json:"isArchived"`
-	Spent       string `json:"spent"`
-	OwnerUserId string `json:"ownerUserId"`
+	Id          string               `json:"id"`
+	Name        string               `json:"name"`
+	Icon        string               `json:"icon"`
+	IsArchived  int                  `json:"isArchived"`
+	Spent       string               `json:"spent"`
+	OwnerUserId string               `json:"ownerUserId"`
+	Children    []ChildElementResult `json:"children"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels.

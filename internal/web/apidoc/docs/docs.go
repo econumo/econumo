@@ -10420,6 +10420,12 @@ const docTemplate = `{
         "model.LabelSpendResult": {
             "type": "object",
             "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChildElementResult"
+                    }
+                },
                 "icon": {
                     "type": "string"
                 },

@@ -171,16 +171,22 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 	}
 	// Labels convert into the BUDGET currency only: a label has no per-element
 	// currency option because it has no element.
-	for labelID, spends := range labelSpending {
+	for labelID, byCategory := range labelSpending {
 		// Spend can reference a label outside f.labels (e.g. a since-revoked
 		// collaborator's label still attached to transactions on included
 		// accounts); the emit loop below drops it, so skip the conversion too.
 		if _, ok := f.labels[labelID]; !ok {
 			continue
 		}
-		for _, a := range spends {
-			key := fmt.Sprintf("label-spent_%s", labelID)
-			toConvert[key] = append(toConvert[key], convItem(a, budgetCurrencyID))
+		for catID, spends := range byCategory {
+			for _, a := range spends {
+				key := fmt.Sprintf("label-spent_%s", labelID)
+				toConvert[key] = append(toConvert[key], convItem(a, budgetCurrencyID))
+				// Per-category key mirrors the element path's parent/child shape, so a
+				// child's amount converts on the same terms as its parent's share of it.
+				subKey := fmt.Sprintf("label-spent_%s_%s", labelID, catID)
+				toConvert[subKey] = append(toConvert[subKey], convItem(a, budgetCurrencyID))
+			}
 		}
 	}
 
@@ -312,10 +318,43 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		if spent.IsZero() {
 			continue
 		}
+		// A label's children partition ITS OWN total; the overlap is across
+		// labels, never within one. Non-nil empty slice so the wire carries []
+		// rather than null when every child was filtered out.
+		children := []model.ChildElementResult{}
+		for catID := range labelSpending[labelID] {
+			subSpent := get(fmt.Sprintf("label-spent_%s_%s", labelID, catID))
+			if subSpent.IsZero() {
+				continue
+			}
+			var name, icon, ownerID string
+			var isArchived bool
+			if catID == model.UncategorizedID {
+				// Not a real category, so it can't be looked up in f.categories -
+				// without this branch the spend would be dropped and the children
+				// would no longer sum to the label's total.
+				name, icon = model.UncategorizedName, model.UncategorizedIcon
+			} else {
+				cat, ok := f.categories[catID]
+				if !ok {
+					continue
+				}
+				name, icon, ownerID, isArchived = cat.Name, cat.Icon, cat.OwnerID, cat.IsArchived
+			}
+			children = append(children, model.ChildElementResult{
+				Id: catID, Type: int(model.ElementCategory.Int16()), Name: name, Icon: icon,
+				IsArchived: boolToInt(isArchived), Spent: subSpent.String(), BudgetSpent: subSpent.String(),
+				OwnerUserId: ownerID,
+			})
+		}
+		// Children carry no position and come from a map walk, so order by id for
+		// a deterministic response, as the element path does.
+		sort.Slice(children, func(i, j int) bool { return children[i].Id < children[j].Id })
+
 		labels = append(labels, model.LabelSpendResult{
 			Id: labelID, Name: meta.Name, Icon: meta.Icon,
 			IsArchived: boolToInt(meta.IsArchived), Spent: spent.String(),
-			OwnerUserId: meta.OwnerID,
+			OwnerUserId: meta.OwnerID, Children: children,
 		})
 	}
 	sortBySortKeyThenID(labels,
