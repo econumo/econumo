@@ -1076,7 +1076,7 @@
             "label": "Reporting tag",
             "tag_option": "Budget money for this tag",
             "tag_hint": "Set a limit and track it in your budget. One per transaction.",
-            "label_option": "Label transactions for reporting",
+            "label_option": "Tag transactions for reporting",
             "label_hint": "See where money went without affecting your budget. Several per transaction.",
             "locked_note": "A tag's purpose can't be changed after it's created."
           },
