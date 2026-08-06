@@ -66,6 +66,10 @@ export interface LabelSpendDto {
   /** decimal string (wire format, kept verbatim), already in the budget currency */
   spent: string
   ownerUserId: Id
+  /** per-category breakdown of this label's spend; unlike the labels
+   *  themselves these DO sum to the label's own total. Optional on the wire:
+   *  servers older than this release omit it. */
+  children?: BudgetChildElementDto[]
 }
 
 // nullable by period phase: future month = all null except holdings; current month = endBalance null

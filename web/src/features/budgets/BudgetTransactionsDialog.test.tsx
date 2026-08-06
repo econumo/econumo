@@ -181,6 +181,44 @@ it('a label target requests labelId only -- never combined with categoryId/tagId
   expect(Array.from(params.keys()).sort()).toEqual(['budgetId', 'labelId', 'periodStart'])
 })
 
+it("a label's category child requests labelId and categoryId together", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: 'cat-groceries',
+    type: BudgetElementType.CATEGORY,
+    name: 'Groceries',
+    icon: 'local_grocery_store',
+    currencyId: null,
+    parent: { id: 'label-kid-a', type: 'label' },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('label-kid-a')
+  expect(params.get('categoryId')).toBe('cat-groceries')
+  // labelId still 400s alongside tagId/envelopeId, so only the category pairs with it
+  expect(params.has('tagId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+  expect(params.has('uncategorized')).toBe(false)
+})
+
+it("a label's uncategorized child requests labelId and uncategorized=1, and no categoryId", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: UNCATEGORIZED_ID,
+    type: BudgetElementType.CATEGORY,
+    name: 'Uncategorized',
+    icon: 'question_mark',
+    currencyId: null,
+    parent: { id: 'label-kid-a', type: 'label' },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('label-kid-a')
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('tagId')).toBe(false)
+})
+
 it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categoryId", async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({

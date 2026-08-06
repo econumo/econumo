@@ -37,7 +37,7 @@ export interface BudgetTransactionsTarget {
   /** null = the budget base currency */
   currencyId: Id | null
   /** set on a nested child row: the row it is listed under */
-  parent?: { id: Id; type: BudgetElementType }
+  parent?: { id: Id; type: BudgetElementType | 'label' }
 }
 
 interface BudgetTransactionsDialogProps {
@@ -67,6 +67,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
   // which returns the complement of what the row shows.
   const isUncategorized = element?.id === UNCATEGORIZED_ID
   const parentTagId = element?.parent?.type === BudgetElementType.TAG ? element.parent.id : undefined
+  // a category listed under a reporting label narrows the same way; labelId is
+  // the one filter the backend accepts alongside categoryId/uncategorized
+  const parentLabelId = element?.parent?.type === 'label' ? element.parent.id : undefined
   const params = element
     ? {
         budgetId: budget.meta.id,
@@ -83,6 +86,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
           ? {
               ...(isUncategorized ? { uncategorized: true } : { categoryId: element.id }),
               ...(parentTagId ? { tagId: parentTagId } : {}),
+              ...(parentLabelId ? { labelId: parentLabelId } : {}),
             }
           : {}),
         ...(element.type === BudgetElementType.TAG ? { tagId: element.id } : {}),
