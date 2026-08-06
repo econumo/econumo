@@ -67,6 +67,9 @@
       "view": {
         "label": "View"
       },
+      "info": {
+        "label": "About"
+      },
       "up": {
         "label": "Move up"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Reporting tags",
-            "overlap_note": "A transaction can carry several reporting tags, so these totals overlap and do not add up to your total spending."
+            "info": "Reporting tags show where your money goes. Mark people, pets or places — a kid, a dog, a second home — and see how much each one costs you. A transaction can carry several, so these totals overlap on purpose and do not add up to your total spending."
           },
           "total": {
             "name": "Total",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budget tags group spending inside your budget — mark every trip expense with one, for example, and see the breakdown right in the budget. Reporting tags are for reporting only: a transaction can carry several, and they never affect your budget.",
+          "info": "Budget tags help you budget a project or an event — a vacation, a wedding, a home renovation. A transaction carries only one budget tag, so every expense is attributed to that one thing. Reporting tags show where your money goes: mark people, pets or places and see how much each one costs you. A transaction can carry several, because they only ever report.",
           "section_budget": "Budget tags",
           "section_reporting": "Reporting tags",
           "create_tag": "Create tag",

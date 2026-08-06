@@ -67,6 +67,9 @@
       "view": {
         "label": "Voir"
       },
+      "info": {
+        "label": "À propos"
+      },
       "up": {
         "label": "Monter"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Tags de rapport",
-            "overlap_note": "Une transaction peut porter plusieurs tags de rapport : ces totaux se recoupent et leur somme ne correspond pas à vos dépenses totales."
+            "info": "Les tags de rapport montrent où va votre argent. Marquez des personnes, des animaux ou des lieux — un enfant, un chien, une résidence secondaire — et voyez ce que chacun vous coûte. Une transaction peut en porter plusieurs : ces totaux se recoupent volontairement et ne forment pas votre dépense totale."
           },
           "total": {
             "name": "Total",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Les tags budgétaires regroupent les dépenses au sein de votre budget — marquez par exemple chaque dépense d’un voyage avec l’un d’eux et obtenez la répartition directement dans le budget. Les tags de rapport servent uniquement aux rapports : une transaction peut en porter plusieurs et ils n’ont aucun effet sur votre budget.",
+          "info": "Les tags budgétaires vous aident à budgéter un projet ou un événement — des vacances, un mariage, des travaux. Une transaction ne porte qu'un seul tag budgétaire, si bien que chaque dépense est attribuée à une seule chose. Les tags de rapport montrent où va votre argent : marquez des personnes, des animaux ou des lieux et voyez ce que chacun vous coûte. Une transaction peut en porter plusieurs, puisqu'ils servent uniquement aux rapports.",
           "section_budget": "Tags budgétaires",
           "section_reporting": "Tags de rapport",
           "create_tag": "Créer un tag",

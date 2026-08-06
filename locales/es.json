@@ -67,6 +67,9 @@
       "view": {
         "label": "Ver"
       },
+      "info": {
+        "label": "Información"
+      },
       "up": {
         "label": "Mover arriba"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Etiquetas de informes",
-            "overlap_note": "Una transacción puede tener varias etiquetas de informes, por lo que estos totales se solapan y su suma no equivale a tus gastos totales."
+            "info": "Las etiquetas de informes muestran adónde va tu dinero. Marca personas, mascotas o lugares — un hijo, un perro, una segunda vivienda — y comprueba cuánto te cuesta cada uno. Una transacción puede llevar varias, así que estos totales se solapan a propósito y no suman tu gasto total."
           },
           "total": {
             "name": "Total",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "Las etiquetas de presupuesto agrupan los gastos dentro de tu presupuesto: marca, por ejemplo, todos los gastos de un viaje con una y verás el desglose directamente en el presupuesto. Las etiquetas de informes sirven solo para informes: una transacción puede tener varias y nunca afectan a tu presupuesto.",
+          "info": "Las etiquetas de presupuesto te ayudan a presupuestar un proyecto o un evento: unas vacaciones, una boda, una reforma. Una transacción lleva una sola etiqueta de presupuesto, así que cada gasto se atribuye a una única cosa. Las etiquetas de informes muestran adónde va tu dinero: marca personas, mascotas o lugares y comprueba cuánto te cuesta cada uno. Una transacción puede llevar varias, porque solo sirven para informar.",
           "section_budget": "Etiquetas de presupuesto",
           "section_reporting": "Etiquetas de informes",
           "create_tag": "Crear etiqueta",

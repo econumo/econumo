@@ -67,6 +67,9 @@
       "view": {
         "label": "Anzeigen"
       },
+      "info": {
+        "label": "Info"
+      },
       "up": {
         "label": "Nach oben verschieben"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Auswertungs-Tags",
-            "overlap_note": "Eine Transaktion kann mehrere Auswertungs-Tags haben — derselbe Betrag zählt dann bei jedem Tag mit. Diese Summen überschneiden sich daher und ergeben nicht Ihre Gesamtausgaben."
+            "info": "Auswertungs-Tags zeigen, wohin Ihr Geld fließt. Markieren Sie Personen, Haustiere oder Orte — ein Kind, einen Hund, ein Ferienhaus — und sehen Sie, was jedes davon kostet. Eine Transaktion kann mehrere tragen, daher überschneiden sich diese Summen bewusst und ergeben nicht Ihre Gesamtausgaben."
           },
           "total": {
             "name": "Gesamt",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budget-Tags gruppieren Ausgaben in Ihrem Budget — markieren Sie zum Beispiel jede Reiseausgabe mit einem davon und sehen Sie die Aufschlüsselung direkt im Budget. Auswertungs-Tags dienen nur der Auswertung: Eine Transaktion kann mehrere tragen, und sie wirken sich nie auf Ihr Budget aus.",
+          "info": "Budget-Tags helfen Ihnen, ein Projekt oder ein Ereignis zu budgetieren — einen Urlaub, eine Hochzeit, eine Renovierung. Eine Transaktion trägt nur ein Budget-Tag, sodass jede Ausgabe genau einer Sache zugeordnet wird. Auswertungs-Tags zeigen, wohin Ihr Geld fließt: Markieren Sie Personen, Haustiere oder Orte und sehen Sie, was jedes davon kostet. Eine Transaktion kann mehrere tragen, denn sie dienen nur der Auswertung.",
           "section_budget": "Budget-Tags",
           "section_reporting": "Auswertungs-Tags",
           "create_tag": "Tag erstellen",

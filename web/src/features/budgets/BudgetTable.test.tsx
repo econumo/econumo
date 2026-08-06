@@ -401,24 +401,33 @@ async function openFolder(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByTestId('budget-labels-heading'))
 }
 
-it('renders the labels folder collapsed by default, hiding the tags and the note', async () => {
+it('renders the labels folder collapsed by default, hiding the tags', async () => {
   renderTable(withLabels)
   const section = await screen.findByTestId('budget-labels-section')
   expect(within(section).getByTestId('budget-labels-heading')).toBeInTheDocument()
   expect(screen.queryByText('kid-A')).not.toBeInTheDocument()
-  // the caveat travels with the numbers, so it stays hidden while they are
-  expect(screen.queryByTestId('budget-labels-overlap-note')).not.toBeInTheDocument()
 })
 
-it('expanding the folder reveals the tags and the overlap note, tags still collapsed', async () => {
+it('expanding the folder reveals the tags, tags still collapsed', async () => {
   const user = userEvent.setup()
   renderTable(withLabels)
   await openFolder(user)
   const section = await screen.findByTestId('budget-labels-section')
   expect(within(section).getByText('kid-A')).toBeInTheDocument()
   await waitFor(() => expect(within(section).getByTestId('budget-label-label-kid-a')).toHaveTextContent('50.00'))
-  expect(within(section).getByTestId('budget-labels-overlap-note')).toBeInTheDocument()
   expect(screen.queryByText('Groceries')).not.toBeInTheDocument()
+})
+
+it('explains reporting tags behind an info button, without toggling the fold', async () => {
+  const user = userEvent.setup()
+  renderTable(withLabels)
+  const info = await screen.findByRole('button', { name: 'About' })
+  // the description is on demand, not a standing caveat above the numbers
+  expect(screen.queryByTestId('budget-labels-info-note')).not.toBeInTheDocument()
+  await user.click(info)
+  expect(await screen.findByTestId('budget-labels-info-note')).toBeInTheDocument()
+  // the info button sits outside the collapsible trigger, so the fold stays shut
+  expect(screen.queryByText('kid-A')).not.toBeInTheDocument()
 })
 
 it("expanding a tag reveals that tag's category breakdown", async () => {

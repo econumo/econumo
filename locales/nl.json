@@ -67,6 +67,9 @@
       "view": {
         "label": "Bekijken"
       },
+      "info": {
+        "label": "Info"
+      },
       "up": {
         "label": "Omhoog verplaatsen"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Rapportagetags",
-            "overlap_note": "Een transactie kan meerdere rapportagetags hebben, dus deze totalen overlappen elkaar en tellen niet op tot uw totale uitgaven."
+            "info": "Rapportagetags laten zien waar uw geld heen gaat. Markeer personen, huisdieren of plaatsen — een kind, een hond, een tweede woning — en zie wat elk u kost. Een transactie kan er meerdere dragen, dus deze totalen overlappen met opzet en vormen niet uw totale uitgaven."
           },
           "total": {
             "name": "Totaal",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budgettags groeperen uitgaven binnen uw budget — markeer bijvoorbeeld alle uitgaven van een reis met er één en zie de uitsplitsing direct in het budget. Rapportagetags zijn alleen voor rapportage: een transactie kan er meerdere hebben en ze hebben nooit invloed op uw budget.",
+          "info": "Budgettags helpen u een project of gebeurtenis te budgetteren — een vakantie, een bruiloft, een verbouwing. Een transactie draagt maar één budgettag, zodat elke uitgave aan precies één ding wordt toegerekend. Rapportagetags laten zien waar uw geld heen gaat: markeer personen, huisdieren of plaatsen en zie wat elk u kost. Een transactie kan er meerdere dragen, omdat ze alleen rapporteren.",
           "section_budget": "Budgettags",
           "section_reporting": "Rapportagetags",
           "create_tag": "Tag aanmaken",

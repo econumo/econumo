@@ -67,6 +67,9 @@
       "view": {
         "label": "Visualizza"
       },
+      "info": {
+        "label": "Informazioni"
+      },
       "up": {
         "label": "Sposta su"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Tag per i report",
-            "overlap_note": "Una transazione può avere più tag per i report, quindi questi totali si sovrappongono e la loro somma non corrisponde al totale delle tue spese."
+            "info": "I tag di reportistica mostrano dove finiscono i tuoi soldi. Contrassegna persone, animali o luoghi — un figlio, un cane, una seconda casa — e scopri quanto ti costa ciascuno. Una transazione può portarne diversi, quindi questi totali si sovrappongono di proposito e non formano la spesa complessiva."
           },
           "total": {
             "name": "Totale",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tag",
           "header": "Tag",
-          "info": "I tag di budget raggruppano le spese all'interno del budget — contrassegna per esempio tutte le spese di un viaggio con uno di essi e ottieni il dettaglio direttamente nel budget. I tag per i report servono solo per i report: una transazione può averne più di uno e non influiscono mai sul budget.",
+          "info": "I tag di budget ti aiutano a preventivare un progetto o un evento: una vacanza, un matrimonio, una ristrutturazione. Una transazione porta un solo tag di budget, così ogni spesa è attribuita a una cosa sola. I tag di reportistica mostrano dove finiscono i tuoi soldi: contrassegna persone, animali o luoghi e scopri quanto ti costa ciascuno. Una transazione può portarne diversi, perché servono solo a fare report.",
           "section_budget": "Tag di budget",
           "section_reporting": "Tag per i report",
           "create_tag": "Crea tag",

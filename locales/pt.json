@@ -67,6 +67,9 @@
       "view": {
         "label": "Ver"
       },
+      "info": {
+        "label": "Informação"
+      },
       "up": {
         "label": "Mover para cima"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Etiquetas de relatório",
-            "overlap_note": "Uma transação pode ter várias etiquetas de relatório, por isso estes totais sobrepõem-se e não somam o total das suas despesas."
+            "info": "As etiquetas de relatório mostram para onde vai o seu dinheiro. Marque pessoas, animais ou lugares — um filho, um cão, uma segunda casa — e veja quanto cada um lhe custa. Uma transação pode levar várias, por isso estes totais sobrepõem-se de propósito e não somam a sua despesa total."
           },
           "total": {
             "name": "Total",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "As etiquetas de orçamento agrupam as despesas dentro do orçamento — marque, por exemplo, todas as despesas de uma viagem com uma delas e veja a repartição diretamente no orçamento. As etiquetas de relatório servem apenas para relatórios: uma transação pode ter várias e nunca afetam o orçamento.",
+          "info": "As etiquetas de orçamento ajudam a orçamentar um projeto ou evento — umas férias, um casamento, uma renovação. Uma transação leva apenas uma etiqueta de orçamento, por isso cada despesa é atribuída a uma única coisa. As etiquetas de relatório mostram para onde vai o seu dinheiro: marque pessoas, animais ou lugares e veja quanto cada um lhe custa. Uma transação pode levar várias, pois servem apenas para relatórios.",
           "section_budget": "Etiquetas de orçamento",
           "section_reporting": "Etiquetas de relatório",
           "create_tag": "Criar etiqueta",

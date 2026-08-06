@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronRight, Info } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EntityIcon } from '@/components/EntityIcon'
-import { kindAccentClass } from '@/lib/classificationKind'
 import { cmp } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
@@ -318,11 +318,11 @@ function LabelRow({
           <Chevron className="size-4.5 shrink-0 text-muted-foreground sm:hidden" />
           {/* wrapper span: .material-icon's own display beats the `hidden` utility */}
           <span className="hidden sm:block">
-            <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
+            <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
           </span>
         </>
       ) : (
-        <EntityIcon name={label.icon} className={`text-lg ${kindAccentClass('label')}`} />
+        <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
       )}
       <span className={`truncate text-[15px] ${label.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={label.name}>
         {label.name}
@@ -411,27 +411,38 @@ function ReportingTagsFolder({
   return (
     <Collapsible open={open} onOpenChange={() => toggleElement(REPORTING_TAGS_FOLD_ID)}>
       <section className="rounded-md border p-1.5 sm:p-2" data-testid="budget-labels-section">
-        <CollapsibleTrigger asChild>
-          <button
-            type="button"
-            className="flex w-full items-center gap-1.5 px-1.5 pb-1 text-left sm:gap-2 sm:px-2"
-            aria-expanded={open}
-            title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
-          >
-            {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
-            <span className="min-w-0 flex-1 truncate text-sm font-medium" data-testid="budget-labels-heading">
-              {t('budgets.page.budget.structure.labels.heading')}
-            </span>
-          </button>
-        </CollapsibleTrigger>
+        <div className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left sm:gap-2"
+              aria-expanded={open}
+              title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
+            >
+              {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
+              <span className="min-w-0 flex-1 truncate text-sm font-medium" data-testid="budget-labels-heading">
+                {t('budgets.page.budget.structure.labels.heading')}
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          {/* outside the trigger: explaining the block must not fold it */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label={t('common.button.info.label')}
+                title={t('common.button.info.label')}
+              >
+                <Info className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 text-xs text-muted-foreground" data-testid="budget-labels-info-note">
+              {t('budgets.page.budget.structure.labels.info')}
+            </PopoverContent>
+          </Popover>
+        </div>
         <CollapsibleContent>
-          {/* labels overlap by design: one transaction can carry several, so each
-              counts its full amount -- these numbers never sum to total spend.
-              The caveat lives inside the fold so it appears with the numbers it
-              qualifies, never as a standalone claim on a collapsed folder. */}
-          <p className="px-1.5 pb-1.5 text-xs text-muted-foreground sm:px-2" data-testid="budget-labels-overlap-note">
-            {t('budgets.page.budget.structure.labels.overlap_note')}
-          </p>
           <ul>
             {labels.map((label) => (
               <LabelRow key={label.id} label={label} currency={currency} opts={opts} onLabelClick={onLabelClick} />

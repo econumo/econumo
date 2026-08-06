@@ -67,6 +67,9 @@
       "view": {
         "label": "Podgląd"
       },
+      "info": {
+        "label": "Informacje"
+      },
       "up": {
         "label": "Przenieś w górę"
       },
@@ -958,7 +961,7 @@
           },
           "labels": {
             "heading": "Tagi raportowe",
-            "overlap_note": "Jedna transakcja może mieć kilka tagów raportowych, a jej kwota liczy się przy każdym z nich — dlatego te sumy nakładają się i nie składają się na sumę wydatków."
+            "info": "Tagi raportowe pokazują, dokąd trafiają pieniądze. Oznaczaj osoby, zwierzęta lub miejsca — dziecko, psa, drugi dom — i sprawdzaj, ile kosztuje każde z nich. Transakcja może mieć ich kilka, więc te sumy celowo się nakładają i nie składają się na całkowity wydatek."
           },
           "total": {
             "name": "Razem",
@@ -1050,7 +1053,7 @@
         "settings": {
           "menu_item": "Tagi",
           "header": "Tagi",
-          "info": "Tagi budżetowe grupują wydatki w budżecie — oznacz na przykład jednym z nich wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie. Tagi raportowe służą wyłącznie do raportów: transakcja może mieć ich kilka, a one nigdy nie wpływają na budżet.",
+          "info": "Tagi budżetowe pomagają zaplanować budżet projektu lub wydarzenia — wakacji, wesela, remontu. Transakcja ma tylko jeden tag budżetowy, więc każdy wydatek przypisany jest do jednej rzeczy. Tagi raportowe pokazują, dokąd trafiają pieniądze: oznaczaj osoby, zwierzęta lub miejsca i sprawdzaj, ile kosztuje każde z nich. Transakcja może mieć ich kilka, bo służą wyłącznie do raportowania.",
           "section_budget": "Tagi budżetowe",
           "section_reporting": "Tagi raportowe",
           "create_tag": "Utwórz tag",
