@@ -6,6 +6,6 @@ it('maps each kind to its default Material ligature', () => {
   expect(DEFAULT_ICON.label).toBe('label')
 })
 
-it('gives the two kinds visually distinct accents', () => {
-  expect(kindAccentClass('tag')).not.toBe(kindAccentClass('label'))
+it('uses one accent colour for both kinds', () => {
+  expect(kindAccentClass('tag')).toBe(kindAccentClass('label'))
 })

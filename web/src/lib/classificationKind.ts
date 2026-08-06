@@ -9,8 +9,8 @@ export const DEFAULT_ICON: Record<ClassificationKind, string> = {
   label: 'label',
 }
 
-/** Colour encodes the KIND (budgeting vs reporting), not identity, so it is a
- *  constant rather than a stored field. */
-export function kindAccentClass(kind: ClassificationKind): string {
-  return kind === 'tag' ? 'text-sky-600 dark:text-sky-400' : 'text-violet-600 dark:text-violet-400'
+/** Kept as a function (not a constant) so a future icon/colour picker can
+ *  reintroduce per-row variation without re-threading every call site. */
+export function kindAccentClass(_kind: ClassificationKind): string {
+  return 'text-sky-600 dark:text-sky-400'
 }

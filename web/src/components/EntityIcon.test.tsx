@@ -13,7 +13,7 @@ it('falls back to question_mark for missing names', () => {
 })
 
 it('passes an accent colour class through to the glyph', () => {
-  const { container } = render(<EntityIcon name="label" className="text-violet-600 dark:text-violet-400" />)
+  const { container } = render(<EntityIcon name="label" className="text-sky-600 dark:text-sky-400" />)
   const span = container.querySelector('span.material-icon')!
-  expect(span).toHaveClass('text-violet-600', 'dark:text-violet-400')
+  expect(span).toHaveClass('text-sky-600', 'dark:text-sky-400')
 })
