@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
-import { CLASSIFICATION_KINDS, DEFAULT_ICON, kindAccentClass, type ClassificationKind } from '@/lib/classificationKind'
+import { CLASSIFICATION_KINDS, DEFAULT_ICON, type ClassificationKind } from '@/lib/classificationKind'
 import { apiErrorMessage } from '@/lib/apiError'
 import { isNotEmpty, isValidLabelName, isValidTagName } from '@/lib/validation'
 import { useUserData } from '@/features/user/queries'
@@ -22,13 +22,22 @@ interface TagDialogProps {
   open: boolean
   item?: TagDialogItem | null
   onClose: () => void
+  /** creating in the context of a shared account: the server owns the new row
+   *  to that account's OWNER, not to the caller */
+  accountId?: string
+  /** the resolved account owner, when it differs from the signed-in user — the
+   *  create hooks dedupe by name WITHIN one owner's rows */
+  ownerUserId?: string
+  /** creating on behalf of a caller who will attach the row to something (a
+   *  transaction, a recurring template) rather than just adding it to a list */
+  onCreated?: (kind: ClassificationKind, item: { id: string }) => void
 }
 
-export function TagDialog({ open, item, onClose }: TagDialogProps) {
+export function TagDialog({ open, item, onClose, accountId, ownerUserId, onCreated }: TagDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const isNew = !item
-  const [kind, setKind] = useState<ClassificationKind>('tag')
+  const [kind, setKind] = useState<ClassificationKind>(CLASSIFICATION_KINDS[0])
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
@@ -39,7 +48,7 @@ export function TagDialog({ open, item, onClose }: TagDialogProps) {
 
   useEffect(() => {
     if (open) {
-      setKind(item?.kind ?? 'tag')
+      setKind(item?.kind ?? CLASSIFICATION_KINDS[0])
       setName(item?.name ?? '')
       setError(null)
     }
@@ -81,7 +90,11 @@ export function TagDialog({ open, item, onClose }: TagDialogProps) {
       mutation.mutate({ id: item.id, name }, { onSuccess: onClose, onError })
     } else {
       const mutation = kind === 'tag' ? createTag : createLabel
-      mutation.mutate({ name, ownerUserId: user?.id }, { onSuccess: onClose, onError })
+      const onSuccess = (created: { id: string }) => {
+        onCreated?.(kind, created)
+        onClose()
+      }
+      mutation.mutate({ name, accountId, ownerUserId: ownerUserId ?? user?.id }, { onSuccess, onError })
     }
   }
 
@@ -99,7 +112,7 @@ export function TagDialog({ open, item, onClose }: TagDialogProps) {
           <div data-testid="kind-icon">
             {/* create: preview-only DEFAULT_ICON, since nothing is saved yet.
                 edit: the row's own stored icon (no picker here to change it). */}
-            <EntityIcon name={isNew ? DEFAULT_ICON[kind] : (item?.icon ?? DEFAULT_ICON[kind])} className={`text-2xl ${kindAccentClass(kind)}`} />
+            <EntityIcon name={isNew ? DEFAULT_ICON[kind] : (item?.icon ?? DEFAULT_ICON[kind])} className="text-2xl text-muted-foreground" />
           </div>
           {isNew ? (
             <div className="flex flex-col gap-1.5" role="radiogroup">

@@ -33,9 +33,9 @@ beforeEach(() => {
 it('previews the kind icon and swaps it live with the radio', async () => {
   const user = userEvent.setup()
   renderDialog()
-  expect(screen.getByTestId('kind-icon')).toHaveTextContent('tag')
-  await user.click(screen.getByRole('radio', { name: /Tag transactions for reporting/ }))
   expect(screen.getByTestId('kind-icon')).toHaveTextContent('label')
+  await user.click(screen.getByRole('radio', { name: /Budget money for this tag/ }))
+  expect(screen.getByTestId('kind-icon')).toHaveTextContent('tag')
 })
 
 it('creates a label when the label kind is selected', async () => {
@@ -65,19 +65,19 @@ it('creates a label when the label kind is selected', async () => {
   await waitFor(() => expect(onClose).toHaveBeenCalled())
 })
 
-it('creates a tag by default when the kind is left untouched', async () => {
-  let tagBody: Record<string, unknown> | undefined
-  let labelCalled = false
+it('creates a reporting tag by default when the kind is left untouched', async () => {
+  let labelBody: Record<string, unknown> | undefined
+  let tagCalled = false
   server.use(
-    http.post('*/api/v1/tag/create-tag', async ({ request }) => {
-      tagBody = (await request.json()) as Record<string, unknown>
+    http.post('*/api/v1/label/create-label', async ({ request }) => {
+      labelBody = (await request.json()) as Record<string, unknown>
       return HttpResponse.json({
         success: true, message: '',
-        data: { item: { id: 'tag-new', ownerUserId: 'u1', name: 'Vacation', icon: 'tag', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } },
+        data: { item: { id: 'label-new', ownerUserId: 'u1', name: 'Vacation', icon: 'label', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' } },
       })
     }),
-    http.post('*/api/v1/label/create-label', () => {
-      labelCalled = true
+    http.post('*/api/v1/tag/create-tag', () => {
+      tagCalled = true
       return HttpResponse.json({ success: true, message: '', data: { item: {} } })
     }),
   )
@@ -85,9 +85,9 @@ it('creates a tag by default when the kind is left untouched', async () => {
   renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   await user.click(screen.getByRole('button', { name: 'Create' }))
-  await waitFor(() => expect(tagBody).toBeDefined())
-  expect(tagBody!.name).toBe('Vacation')
-  expect(labelCalled).toBe(false)
+  await waitFor(() => expect(labelBody).toBeDefined())
+  expect(labelBody!.name).toBe('Vacation')
+  expect(tagCalled).toBe(false)
 })
 
 it('hides the kind radio when editing an existing row', async () => {
@@ -145,7 +145,8 @@ it('editing a label posts to update-label, not update-tag', async () => {
 it('surfaces a server rejection instead of silently staying open', async () => {
   const user = userEvent.setup()
   server.use(
-    http.post('*/api/v1/tag/create-tag', () =>
+    // the default kind is reporting, so the default create posts here
+    http.post('*/api/v1/label/create-label', () =>
       HttpResponse.json({ success: false, message: 'Tag already exists.', code: 400, errors: {} }, { status: 400 }),
     ),
   )
