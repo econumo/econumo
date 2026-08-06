@@ -415,12 +415,12 @@ function ReportingTagsFolder({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-left sm:gap-2"
+              className="flex min-w-0 items-center gap-1.5 text-left sm:gap-2"
               aria-expanded={open}
               title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
             >
               {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
-              <span className="min-w-0 flex-1 truncate text-sm font-medium" data-testid="budget-labels-heading">
+              <span className="min-w-0 truncate text-sm font-medium" data-testid="budget-labels-heading">
                 {t('budgets.page.budget.structure.labels.heading')}
               </span>
             </button>
