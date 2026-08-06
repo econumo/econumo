@@ -1383,7 +1383,6 @@
     },
     "label": {
       "name_length": "Der Label-Name muss {min}-{max} Zeichen lang sein",
-      "already_exists": "Das Label existiert bereits.",
       "list_empty": "Die Label-Liste ist leer"
     },
     "payee": {

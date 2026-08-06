@@ -65,8 +65,8 @@ func TestClassificationNamesAreOneNamespace(t *testing.T) {
 	if err == nil {
 		t.Fatal("want the label create blocked by the existing tag name, got nil error")
 	}
-	if ve, ok := errs.AsValidation(err); !ok || ve.MsgCode != errs.CodeLabelAlreadyExists {
-		t.Fatalf("want CodeLabelAlreadyExists, got %#v", err)
+	if ve, ok := errs.AsValidation(err); !ok || ve.MsgCode != errs.CodeTagAlreadyExists {
+		t.Fatalf("want CodeTagAlreadyExists, got %#v", err)
 	}
 
 	// And the reverse: a label name blocks a tag of the same name.

@@ -146,8 +146,8 @@ func TestCreateLabel_DuplicateName_400(t *testing.T) {
 	if status != http.StatusBadRequest {
 		t.Fatalf("duplicate-name create status = %d, want 400; body: %s", status, env.raw)
 	}
-	if env.Message != "Label already exists." {
-		t.Fatalf("message = %q, want %q; body: %s", env.Message, "Label already exists.", env.raw)
+	if env.Message != "Tag already exists." {
+		t.Fatalf("message = %q, want %q; body: %s", env.Message, "Tag already exists.", env.raw)
 	}
 }
 

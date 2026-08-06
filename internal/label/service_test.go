@@ -51,8 +51,8 @@ func TestUpdateLabel_RenamesAndEnforcesUniqueness(t *testing.T) {
 	if err == nil {
 		t.Fatal("want duplicate-name error, got nil")
 	}
-	if ve, ok := errs.AsValidation(err); !ok || ve.Msg != "Label already exists." {
-		t.Errorf("want 'Label already exists.', got %v (%T)", err, err)
+	if ve, ok := errs.AsValidation(err); !ok || ve.Msg != "Tag already exists." {
+		t.Errorf("want 'Tag already exists.', got %v (%T)", err, err)
 	}
 }
 

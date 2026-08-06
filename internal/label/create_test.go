@@ -90,8 +90,8 @@ func TestCreateLabelRejectsDuplicateNamePerOwner(t *testing.T) {
 	if !ok {
 		t.Fatalf("want *ValidationError, got %v (%T)", err, err)
 	}
-	if ve.Msg != "Label already exists." || ve.MsgCode != errs.CodeLabelAlreadyExists {
-		t.Errorf("want %q/%q, got %q/%q", "Label already exists.", errs.CodeLabelAlreadyExists, ve.Msg, ve.MsgCode)
+	if ve.Msg != "Tag already exists." || ve.MsgCode != errs.CodeTagAlreadyExists {
+		t.Errorf("want %q/%q, got %q/%q", "Tag already exists.", errs.CodeTagAlreadyExists, ve.Msg, ve.MsgCode)
 	}
 
 	// A different owner may reuse the same name (per-owner uniqueness only).
@@ -202,8 +202,8 @@ func TestCreateLabelRejectsNameTakenByTag(t *testing.T) {
 		t.Fatal("want name-taken-by-tag rejected, got nil error")
 	}
 	var ve *errs.ValidationError
-	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeLabelAlreadyExists {
-		t.Fatalf("want CodeLabelAlreadyExists, got %#v", err)
+	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeTagAlreadyExists {
+		t.Fatalf("want CodeTagAlreadyExists, got %#v", err)
 	}
 }
 
@@ -228,7 +228,7 @@ func TestCreateLabelRejectsCaseVariantName(t *testing.T) {
 		t.Fatal("want case-variant name rejected, got nil error")
 	}
 	var ve *errs.ValidationError
-	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeLabelAlreadyExists {
-		t.Fatalf("want CodeLabelAlreadyExists, got %#v", err)
+	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeTagAlreadyExists {
+		t.Fatalf("want CodeTagAlreadyExists, got %#v", err)
 	}
 }

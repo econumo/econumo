@@ -1383,7 +1383,6 @@
     },
     "label": {
       "name_length": "Label name must be {min}-{max} characters",
-      "already_exists": "Label already exists.",
       "list_empty": "Labels list is empty"
     },
     "payee": {

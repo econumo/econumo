@@ -1383,7 +1383,6 @@
     },
     "label": {
       "name_length": "Labelnaam moet {min}-{max} tekens bevatten.",
-      "already_exists": "Dit label bestaat al.",
       "list_empty": "De lijst met labels is leeg."
     },
     "payee": {

@@ -1383,7 +1383,6 @@
     },
     "label": {
       "name_length": "Le nom de l’étiquette doit contenir de {min} à {max} caractères.",
-      "already_exists": "Cette étiquette existe déjà.",
       "list_empty": "La liste des étiquettes est vide."
     },
     "payee": {

@@ -61,9 +61,8 @@ const (
 	CodeTagAlreadyExists = "tag.already_exists"
 	CodeTagListEmpty     = "tag.list_empty"
 
-	CodeLabelNameLength    = "label.name_length"
-	CodeLabelAlreadyExists = "label.already_exists"
-	CodeLabelListEmpty     = "label.list_empty"
+	CodeLabelNameLength = "label.name_length"
+	CodeLabelListEmpty  = "label.list_empty"
 
 	CodeCurrencyAlreadyExists       = "currency.already_exists"
 	CodeCurrencyNameLength          = "currency.name_length"
@@ -152,7 +151,6 @@ var AllCodes = []string{
 	CodeTagListEmpty,
 
 	CodeLabelNameLength,
-	CodeLabelAlreadyExists,
 	CodeLabelListEmpty,
 
 	CodeCurrencyAlreadyExists,

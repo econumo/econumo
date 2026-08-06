@@ -204,7 +204,8 @@ func (s *Service) itemResult(ctx context.Context, userID vo.Id, l *model.Label) 
 
 // ensureNameUnique enforces the per-owner name-uniqueness rule. exceptID, when
 // non-empty, is excluded from the comparison (for updates of the label itself).
-// The duplicate error message is exactly "Label already exists." (wire-compat).
+// Both kinds share one name namespace, so the duplicate error is the tag
+// code/message ("Tag already exists.") regardless of which kind holds the name.
 func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name string, exceptID vo.Id) error {
 	labels, err := s.repo.ListByOwner(ctx, userID)
 	if err != nil {
@@ -214,7 +215,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		// Case-insensitive: one name means one label regardless of case, matching
 		// how CSV import already resolves names.
 		if strings.EqualFold(l.Name, name) && !l.ID.Equal(exceptID) {
-			return &errs.ValidationError{Msg: "Label already exists.", MsgCode: errs.CodeLabelAlreadyExists}
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}
 	// The other classification kind shares this namespace. exceptID needs no
@@ -229,7 +230,7 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 	}
 	for _, n := range names {
 		if strings.EqualFold(n, name) {
-			return &errs.ValidationError{Msg: "Label already exists.", MsgCode: errs.CodeLabelAlreadyExists}
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}
 	return nil

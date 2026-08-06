@@ -1383,7 +1383,6 @@
     },
     "label": {
       "name_length": "El nombre del rótulo debe tener entre {min} y {max} caracteres.",
-      "already_exists": "El rótulo ya existe.",
       "list_empty": "La lista de rótulos está vacía."
     },
     "payee": {
