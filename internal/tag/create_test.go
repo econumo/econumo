@@ -38,6 +38,33 @@ func tagFixture(t *testing.T, db *dbtest.DB) *fixture.Builder {
 	return f
 }
 
+// stubLabelNames stands in for the label feature's names port.
+type stubLabelNames struct{ names []string }
+
+func (s stubLabelNames) NamesByOwner(context.Context, vo.Id) ([]string, error) {
+	return s.names, nil
+}
+
+func TestCreateTagRejectsNameTakenByLabel(t *testing.T) {
+	db := dbtest.New(t)
+	tagFixture(t, db)
+	svc := newTagSvc(t, db)
+	svc.SetLabelNames(stubLabelNames{names: []string{"Trip"}})
+	ctx := context.Background()
+	owner := vo.MustParseId(tagOwnerID)
+
+	_, err := svc.CreateTag(ctx, owner, model.CreateTagRequest{
+		Id: vo.NewId().String(), Name: "trip",
+	})
+	if err == nil {
+		t.Fatal("want name-taken-by-label rejected, got nil error")
+	}
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeTagAlreadyExists {
+		t.Fatalf("want CodeTagAlreadyExists, got %#v", err)
+	}
+}
+
 func TestCreateTagRejectsCaseVariantName(t *testing.T) {
 	db := dbtest.New(t)
 	tagFixture(t, db)

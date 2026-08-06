@@ -212,6 +212,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	labelReadSvc := applabel.NewReadService(labelReadRepo)
 	labelHandlers := handlerlabel.NewHandlers(labelSvc, labelReadSvc)
 
+	// Both classification kinds share one user-facing name namespace.
+	WireClassificationNames(tagSvc, labelSvc)
+
 	payeeRepo := payeerepo.NewRepo(cfg.DatabaseDriver, txm)
 	payeeReadRepo := payeerepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	payeeSvc := apppayee.NewService(payeeRepo, txm, opGuard, clk, payeeReadRepo, accountAccessResolver)

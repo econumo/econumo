@@ -14,12 +14,32 @@ import (
 
 // Service is the label write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
-	repo   Repository
-	tx     port.TxRunner
-	ops    port.OperationGuard
-	clock  port.Clock
-	read   ReadModel
-	access AccountAccess
+	repo     Repository
+	tx       port.TxRunner
+	ops      port.OperationGuard
+	clock    port.Clock
+	read     ReadModel
+	access   AccountAccess
+	tagNames TagNames
+}
+
+// SetTagNames installs the shared-namespace peer. The label and tag services
+// depend on each other, so neither constructor can take the other; this breaks
+// the cycle and is called once at composition time (server.BuildAPI).
+func (s *Service) SetTagNames(n TagNames) { s.tagNames = n }
+
+// NamesByOwner satisfies the tag feature's LabelNames port (wired by server
+// glue) so the other kind can enforce the shared name namespace.
+func (s *Service) NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, error) {
+	labels, err := s.repo.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(labels))
+	for _, l := range labels {
+		names = append(names, l.Name)
+	}
+	return names, nil
 }
 
 // NewService wires the label service. read is the own+shared label view (the
@@ -194,6 +214,21 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		// Case-insensitive: one name means one label regardless of case, matching
 		// how CSV import already resolves names.
 		if strings.EqualFold(l.Name, name) && !l.ID.Equal(exceptID) {
+			return &errs.ValidationError{Msg: "Label already exists.", MsgCode: errs.CodeLabelAlreadyExists}
+		}
+	}
+	// The other classification kind shares this namespace. exceptID needs no
+	// counterpart here: ids are unique across both tables, so a rename can never
+	// collide with itself.
+	if s.tagNames == nil {
+		return nil
+	}
+	names, err := s.tagNames.NamesByOwner(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, n := range names {
+		if strings.EqualFold(n, name) {
 			return &errs.ValidationError{Msg: "Label already exists.", MsgCode: errs.CodeLabelAlreadyExists}
 		}
 	}

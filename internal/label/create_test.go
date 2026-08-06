@@ -180,6 +180,33 @@ func TestCreateLabelNameLengthBoundaries(t *testing.T) {
 	}
 }
 
+// stubTagNames stands in for the tag feature's names port.
+type stubTagNames struct{ names []string }
+
+func (s stubTagNames) NamesByOwner(context.Context, vo.Id) ([]string, error) {
+	return s.names, nil
+}
+
+func TestCreateLabelRejectsNameTakenByTag(t *testing.T) {
+	db := dbtest.New(t)
+	labelFixture(t, db)
+	svc := newLabelSvc(t, db)
+	svc.SetTagNames(stubTagNames{names: []string{"Trip"}})
+	ctx := context.Background()
+	owner := vo.MustParseId(labelOwnerID)
+
+	_, err := svc.CreateLabel(ctx, owner, model.CreateLabelRequest{
+		Id: vo.NewId().String(), Name: "trip",
+	})
+	if err == nil {
+		t.Fatal("want name-taken-by-tag rejected, got nil error")
+	}
+	var ve *errs.ValidationError
+	if !errors.As(err, &ve) || ve.MsgCode != errs.CodeLabelAlreadyExists {
+		t.Fatalf("want CodeLabelAlreadyExists, got %#v", err)
+	}
+}
+
 func TestCreateLabelRejectsCaseVariantName(t *testing.T) {
 	db := dbtest.New(t)
 	labelFixture(t, db)

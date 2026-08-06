@@ -14,12 +14,32 @@ import (
 
 // Service is the tag write-side use-case orchestrator; it owns the tx boundary.
 type Service struct {
-	repo   Repository
-	tx     port.TxRunner
-	ops    port.OperationGuard
-	clock  port.Clock
-	read   ReadModel
-	access AccountAccess
+	repo       Repository
+	tx         port.TxRunner
+	ops        port.OperationGuard
+	clock      port.Clock
+	read       ReadModel
+	access     AccountAccess
+	labelNames LabelNames
+}
+
+// SetLabelNames installs the shared-namespace peer. The tag and label services
+// depend on each other, so neither constructor can take the other; this breaks
+// the cycle and is called once at composition time (server.BuildAPI).
+func (s *Service) SetLabelNames(n LabelNames) { s.labelNames = n }
+
+// NamesByOwner satisfies the label feature's TagNames port (wired by server
+// glue) so the other kind can enforce the shared name namespace.
+func (s *Service) NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, error) {
+	tags, err := s.repo.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	names := make([]string, 0, len(tags))
+	for _, t := range tags {
+		names = append(names, t.Name)
+	}
+	return names, nil
 }
 
 // NewService wires the tag service. read is the own+shared tag view (the same
@@ -163,6 +183,21 @@ func (s *Service) ensureNameUnique(ctx context.Context, userID vo.Id, name strin
 		// Case-insensitive: one name means one tag regardless of case, matching
 		// how CSV import already resolves names.
 		if strings.EqualFold(t.Name, name) && !t.ID.Equal(exceptID) {
+			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
+		}
+	}
+	// The other classification kind shares this namespace. exceptID needs no
+	// counterpart here: ids are unique across both tables, so a rename can never
+	// collide with itself.
+	if s.labelNames == nil {
+		return nil
+	}
+	names, err := s.labelNames.NamesByOwner(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, n := range names {
+		if strings.EqualFold(n, name) {
 			return &errs.ValidationError{Msg: "Tag already exists.", MsgCode: errs.CodeTagAlreadyExists}
 		}
 	}
