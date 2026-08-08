@@ -106,6 +106,62 @@ export const evaluatedAmount = (raw: string): string => {
   return normalize(evaluateFormula(sanitized + '='))
 }
 
+interface OwnedRow {
+  id: Id
+  ownerUserId: Id
+}
+
+interface ClassificationLists {
+  categories: OwnedRow[]
+  payees: OwnedRow[]
+  tags: OwnedRow[]
+  labels: OwnedRow[]
+}
+
+interface ClassificationSelection {
+  categoryId: Id | null
+  payeeId: Id | null
+  tagId: Id | null
+  labelIds: Id[]
+}
+
+/**
+ * Drop classifications the ACCOUNT OWNER does not own.
+ *
+ * The server accepts only the owner's category/payee/tag/labels on a shared
+ * account. Rows written under an older, laxer rule can name the CALLER's own
+ * instead, and those transactions then fail every save with
+ * "This transaction is not available for this operation." Clearing them here
+ * lets the edit go through: an unowned category falls back to uncategorized
+ * (null), the rest simply unselect.
+ *
+ * An id absent from its list is KEPT, not dropped — the lists arrive from
+ * async queries, and treating "not loaded yet" as "foreign" would wipe a
+ * perfectly good selection on a slow connection.
+ */
+export function scrubForeignClassifications(
+  selection: ClassificationSelection,
+  lists: ClassificationLists,
+  ownerUserId: Id | undefined,
+): ClassificationSelection {
+  if (!ownerUserId) {
+    return selection
+  }
+  const keep = (rows: OwnedRow[], id: Id | null) => {
+    if (!id) {
+      return null
+    }
+    const row = rows.find((r) => r.id === id)
+    return !row || row.ownerUserId === ownerUserId ? id : null
+  }
+  return {
+    categoryId: keep(lists.categories, selection.categoryId),
+    payeeId: keep(lists.payees, selection.payeeId),
+    tagId: keep(lists.tags, selection.tagId),
+    labelIds: selection.labelIds.filter((id) => keep(lists.labels, id) !== null),
+  }
+}
+
 export function buildPayload(form: TransactionFormState): CreateTransactionDto {
   const isTransfer = form.type === 'transfer'
   const amount = evaluatedAmount(form.amount)
@@ -167,14 +223,17 @@ interface ClassificationRow {
 
 // Offered rows are the account OWNER's live ones (labels/tags belong to the
 // owner, not the caller — the server rejects anything else on a shared
-// account). Rows already attached to the transaction are appended even when
-// archived or foreign: dropping a chip would drop the id from the form, and
-// the write replaces the whole set, so a save would silently detach it.
+// account). An attached row is appended even when ARCHIVED, since dropping the
+// chip would drop its id from the form and the write replaces the whole set.
+// An attached row owned by someone ELSE is deliberately NOT appended: rows
+// written under an older, laxer server rule can name the caller's own
+// classifications, and keeping them would fail every save.
 function kindChips(rows: ClassificationRow[], kind: ClassificationKind, attached: Id[], ownerUserId: Id | undefined): ClassificationChip[] {
-  const offered = rows.filter((row) => row.isArchived === 0 && (!ownerUserId || row.ownerUserId === ownerUserId))
+  const ownedByAccount = (row: ClassificationRow) => !ownerUserId || row.ownerUserId === ownerUserId
+  const offered = rows.filter((row) => row.isArchived === 0 && ownedByAccount(row))
   const extras = attached
     .map((id) => rows.find((row) => row.id === id))
-    .filter((row): row is ClassificationRow => !!row && !offered.some((shown) => shown.id === row.id))
+    .filter((row): row is ClassificationRow => !!row && ownedByAccount(row) && !offered.some((shown) => shown.id === row.id))
   return [...offered, ...extras].map((row) => ({
     kind,
     id: row.id,

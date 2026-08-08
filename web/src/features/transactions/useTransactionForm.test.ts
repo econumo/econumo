@@ -6,6 +6,7 @@ import {
   categoryOptions,
   canChangeAccountData,
   classificationChips,
+  scrubForeignClassifications,
   toggleClassification,
   toggleLabel,
   toggleTag,
@@ -221,4 +222,68 @@ it('canChangeAccountData: owner or shared admin only', () => {
   expect(canChangeAccountData(account({ owner: other }), 'u1')).toBe(false)
   expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'admin', isAccepted: 1 }] }), 'u1')).toBe(true)
   expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'user', isAccepted: 1 }] }), 'u1')).toBe(false)
+})
+
+describe('foreign classifications on a shared account', () => {
+  const tag = (over: Partial<TagDto>): TagDto => ({
+    id: 'tg1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 0, createdAt: '', updatedAt: '', ...over,
+  })
+  const label = (over: Partial<LabelDto>): LabelDto => ({
+    id: 'lb1', ownerUserId: 'u1', name: 'health', icon: 'sell', position: 0, isArchived: 0, createdAt: '', updatedAt: '', ...over,
+  })
+
+  // The server accepts only the ACCOUNT OWNER's classifications. Rows stored
+  // under an older, laxer rule can name the caller's own — keeping them checked
+  // makes every save fail, so they are dropped from the selection instead.
+  it('drops an attached tag or label owned by someone other than the account owner', () => {
+    const tags = [tag({}), tag({ id: 'tg-mine', ownerUserId: 'u2', name: 'my tag' })]
+    const labels = [label({}), label({ id: 'lb-mine', ownerUserId: 'u2', name: 'my label' })]
+    const chips = classificationChips(tags, labels, { tagId: 'tg-mine', labelIds: ['lb-mine'] }, 'u1')
+    expect(chips.map((c) => c.id)).toEqual(['tg1', 'lb1'])
+    expect(chips.some((c) => c.checked)).toBe(false)
+  })
+
+  it('still keeps an attached archived row that the OWNER owns', () => {
+    // archived is not foreign: the server accepts it, so dropping it would
+    // silently detach a still-valid classification
+    const tags = [tag({}), tag({ id: 'tg-old', name: 'old', isArchived: 1 })]
+    const chips = classificationChips(tags, [], { tagId: 'tg-old', labelIds: [] }, 'u1')
+    expect(chips.filter((c) => c.checked).map((c) => c.id)).toEqual(['tg-old'])
+  })
+})
+
+describe('scrubForeignClassifications', () => {
+  const owned = { ownerUserId: 'u1' }
+  const mine = { ownerUserId: 'u2' }
+  const lists = {
+    categories: [{ id: 'cat-owner', ...owned }, { id: 'cat-mine', ...mine }],
+    payees: [{ id: 'pay-owner', ...owned }, { id: 'pay-mine', ...mine }],
+    tags: [{ id: 'tg-owner', ...owned }, { id: 'tg-mine', ...mine }],
+    labels: [{ id: 'lb-owner', ...owned }, { id: 'lb-mine', ...mine }],
+  } as never
+
+  it('clears every reference the account owner does not own', () => {
+    const out = scrubForeignClassifications(
+      { categoryId: 'cat-mine', payeeId: 'pay-mine', tagId: 'tg-mine', labelIds: ['lb-mine', 'lb-owner'] },
+      lists,
+      'u1',
+    )
+    // an unowned category falls back to uncategorized (null), the rest unselect
+    expect(out).toEqual({ categoryId: null, payeeId: null, tagId: null, labelIds: ['lb-owner'] })
+  })
+
+  it('leaves the owner\'s own references untouched', () => {
+    const selection = { categoryId: 'cat-owner', payeeId: 'pay-owner', tagId: 'tg-owner', labelIds: ['lb-owner'] }
+    expect(scrubForeignClassifications(selection, lists, 'u1')).toEqual(selection)
+  })
+
+  it('keeps an id the lists have not loaded yet, so a slow query cannot wipe the form', () => {
+    const selection = { categoryId: 'cat-owner', payeeId: null, tagId: null, labelIds: ['lb-owner'] }
+    expect(scrubForeignClassifications(selection, { categories: [], payees: [], tags: [], labels: [] } as never, 'u1')).toEqual(selection)
+  })
+
+  it('is a no-op without a resolved account owner', () => {
+    const selection = { categoryId: 'cat-mine', payeeId: null, tagId: null, labelIds: [] }
+    expect(scrubForeignClassifications(selection, lists, undefined)).toEqual(selection)
+  })
 })

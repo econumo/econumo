@@ -35,6 +35,7 @@ import { useCreateTransaction, useUpdateTransaction } from './queries'
 import {
   useTransactionForm,
   buildPayload,
+  scrubForeignClassifications,
   accountOptions,
   categoryOptions,
   canChangeAccountData,
@@ -93,6 +94,25 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // A transaction stored under an older, laxer server rule can reference the
+  // CALLER's classifications instead of the account owner's; the server now
+  // rejects those, so every save would fail. Clear them once the lists load so
+  // the form shows — and submits — only what the owner actually owns.
+  useEffect(() => {
+    if (!ownerId) {
+      return
+    }
+    const scrubbed = scrubForeignClassifications(form, { categories, payees, tags, labels }, ownerId)
+    if (
+      scrubbed.categoryId !== form.categoryId ||
+      scrubbed.payeeId !== form.payeeId ||
+      scrubbed.tagId !== form.tagId ||
+      scrubbed.labelIds.length !== form.labelIds.length
+    ) {
+      patch(scrubbed)
+    }
+  }, [ownerId, categories, payees, tags, labels, form, patch])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
   const currentCategories = categoryOptions(categories, form.type, ownerId)
