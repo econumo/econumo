@@ -94,3 +94,32 @@ it('renders the icon after the name, and the name still truncates', () => {
   // DOCUMENT_POSITION_FOLLOWING: the icon comes after the name in document order
   expect(name.compareDocumentPosition(icon!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
+
+it('shows reporting tags beside the budget tag', () => {
+  const row = renderRow({
+    tag: { id: 'tg1', name: 'Italy 2026', icon: 'tag' },
+    labels: [
+      { id: 'lb1', name: 'Kitty', icon: 'label' },
+      { id: 'lb2', name: 'Doggo', icon: 'label' },
+    ],
+  } as Partial<ViewTransaction>)
+  expect(row).toHaveTextContent('Italy 2026')
+  expect(row).toHaveTextContent('Kitty')
+  expect(row).toHaveTextContent('Doggo')
+})
+
+it('shows reporting tags even when the transaction has no budget tag', () => {
+  const row = renderRow({ labels: [{ id: 'lb1', name: 'Kitty', icon: 'label' }] } as Partial<ViewTransaction>)
+  expect(row).toHaveTextContent('Kitty')
+})
+
+it('never promotes a reporting tag to the row title', () => {
+  // the title chain is category -> description -> budget tag -> payee; a
+  // reporting tag stays a badge, so a title-less row reads "Uncategorized"
+  const row = renderRow({
+    category: undefined,
+    labels: [{ id: 'lb1', name: 'Kitty', icon: 'label' }],
+  } as Partial<ViewTransaction>)
+  expect(row).toHaveTextContent('Uncategorized')
+  expect(row.textContent?.match(/Kitty/g) ?? []).toHaveLength(1)
+})

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { recurringAsTransaction } from './asTransaction'
 
 export interface ViewRecurringDialogProps {
@@ -45,8 +45,9 @@ export function ViewRecurringDialog({
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: labels } = useLabels()
 
-  const asTransaction = recurringAsTransaction(recurring, { accounts, categories, payees, tags })
+  const asTransaction = recurringAsTransaction(recurring, { accounts, categories, payees, tags, labels })
 
   return (
     <ViewTransactionDialog

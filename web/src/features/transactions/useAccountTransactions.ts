@@ -3,13 +3,14 @@ import type { AccountDto } from '@/api/dto/account'
 import type { CategoryDto } from '@/api/dto/category'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { RecurringDto } from '@/api/dto/recurring'
+import type { LabelDto } from '@/api/dto/label'
 import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useRecurring } from '@/features/recurring/queries'
 import { useTransactions } from './queries'
 
@@ -20,6 +21,8 @@ export interface ViewTransaction extends Omit<TransactionDto, 'author'> {
   category?: CategoryDto
   payee?: PayeeDto
   tag?: TagDto
+  /** resolved from labelIds, in the owner's label order */
+  labels?: LabelDto[]
   isInFuture: boolean
   /** set on virtual rows synthesized from a recurring template's next payment */
   recurring?: RecurringDto
@@ -59,12 +62,23 @@ function haystack(tx: ViewTransaction): string {
     .toLowerCase()
 }
 
+/* Ordered by the owner's label list, not by the transaction's id order, so the
+   badges read the same everywhere. An id with no match (revoked share, deleted
+   row) is skipped rather than rendered blank. */
+function resolveLabels(ids: Id[] | undefined | null, labels: LabelDto[] | undefined): LabelDto[] {
+  if (!ids?.length || !labels?.length) {
+    return []
+  }
+  return labels.filter((l) => ids.includes(l.id))
+}
+
 export function useAccountTransactions(accountId: Id | undefined, search: string): DailyListEntry[] {
   const { data: transactions } = useTransactions()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: labels } = useLabels()
   const { data: recurring } = useRecurring()
 
   return useMemo(() => {
@@ -80,6 +94,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         category: tx.categoryId ? categories?.find((c) => c.id === tx.categoryId) : undefined,
         payee: tx.payeeId ? payees?.find((p) => p.id === tx.payeeId) : undefined,
         tag: tx.tagId ? tags?.find((tg) => tg.id === tx.tagId) : undefined,
+        labels: resolveLabels(tx.labelIds, labels),
         isInFuture: isFuture(tx.date),
       }))
 
@@ -106,6 +121,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         category: rt.categoryId ? categories?.find((c) => c.id === rt.categoryId) : undefined,
         payee: rt.payeeId ? payees?.find((p) => p.id === rt.payeeId) : undefined,
         tag: rt.tagId ? tags?.find((tg) => tg.id === rt.tagId) : undefined,
+        labels: resolveLabels(rt.labelIds, labels),
         isInFuture: isFuture(rt.nextPaymentAt),
         // not posted yet, so there is no originating template on the row itself;
         // `recurring` below is what marks this as a synthesized preview
@@ -132,7 +148,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
       entries.push({ kind: 'transaction', transaction: tx })
     }
     return entries
-  }, [transactions, accounts, categories, payees, tags, recurring, accountId, search])
+  }, [transactions, accounts, categories, payees, tags, labels, recurring, accountId, search])
 }
 
 export interface TitleInfo {

@@ -1,6 +1,5 @@
 import { Repeat } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Badge } from '@/components/ui/badge'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
 import { moneyFormat } from '@/lib/money'
@@ -89,16 +88,27 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
         {title.source !== 'description' && tx.description ? (
           <span className="break-words text-sm text-muted-foreground">{tx.description}</span>
         ) : null}
-        {title.source !== 'tag' && tx.tag ? (
-          <span className="flex">
-            <Badge variant="secondary" className="max-w-full" title={tx.tag.name}>
-              <span className="truncate">{tx.tag.name}</span>
-            </Badge>
-          </span>
-        ) : null}
         {title.source !== 'payee' && tx.payee ? (
           <span className="truncate text-[13px] text-muted-foreground" title={tx.payee.name}>
             {tx.payee.name}
+          </span>
+        ) : null}
+        {(title.source !== 'tag' && tx.tag) || tx.labels?.length ? (
+          // one wrapping line of icon+name pairs; the icon alone tells the two
+          // kinds apart, so the row stays as quiet as the payee line above it
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-muted-foreground">
+            {title.source !== 'tag' && tx.tag ? (
+              <span className="flex min-w-0 items-center gap-1" title={tx.tag.name}>
+                <EntityIcon name={tx.tag.icon || 'tag'} className="shrink-0 text-sm" />
+                <span className="truncate">{tx.tag.name}</span>
+              </span>
+            ) : null}
+            {tx.labels?.map((label) => (
+              <span key={label.id} className="flex min-w-0 items-center gap-1" title={label.name}>
+                <EntityIcon name={label.icon || 'label'} className="shrink-0 text-sm" />
+                <span className="truncate">{label.name}</span>
+              </span>
+            ))}
           </span>
         ) : null}
       </span>
