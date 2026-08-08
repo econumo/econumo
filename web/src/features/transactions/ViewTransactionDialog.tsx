@@ -107,26 +107,22 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
         : t('accounts.page.preview_transaction_modal.sender.label')
     cards.push({ label: payeeLabel, content: <span className="text-sm">{tx.payee.name}</span> })
   }
-  if (tx.tag) {
+  if (tx.tag || attachedLabels.length > 0) {
     cards.push({
-      // singular tag heading: this read-only view renders the tag only, unlike the
-      // editors' chip row, which the plural tags-and-labels heading now names
-      label: t('accounts.page.preview_transaction_modal.tag.label'),
-      content: (
-        <span className="flex">
-          <Badge variant="secondary">{tx.tag.name}</Badge>
-        </span>
-      ),
-    })
-  }
-  if (attachedLabels.length > 0) {
-    cards.push({
-      label: t('accounts.page.preview_transaction_modal.label.label'),
+      // one card for both kinds: they are one concept to the user, and the
+      // stored icon is what tells a budget tag from a reporting one
+      label: t('accounts.page.preview_transaction_modal.tags.label'),
       content: (
         <span className="flex flex-wrap gap-1.5">
+          {tx.tag ? (
+            <Badge variant="secondary" className="gap-1">
+              {/* the row's STORED icon, never a kind default: a user-picked icon must survive */}
+              <EntityIcon name={tx.tag.icon || 'tag'} className="text-sm text-muted-foreground" />
+              {tx.tag.name}
+            </Badge>
+          ) : null}
           {attachedLabels.map((label) => (
             <Badge key={label.id} variant="secondary" className="gap-1">
-              {/* the row's STORED icon, never a kind default: a user-picked icon must survive */}
               <EntityIcon name={label.icon} className="text-sm text-muted-foreground" />
               {label.name}
             </Badge>

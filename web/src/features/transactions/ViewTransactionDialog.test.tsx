@@ -196,13 +196,34 @@ it('a categoryless non-transfer transaction shows Uncategorized as the hero name
   expect(await screen.findByText('Uncategorized')).toBeInTheDocument()
 })
 
-it('shows a labels card with the resolved label name and heading when the transaction has labels', async () => {
+it('shows reporting tags under one Tags card, with the stored icon', async () => {
   renderView({ transaction: { ...fixtureTransaction, labelIds: ['label1'] } as ViewTransaction })
   expect(await screen.findByText('health')).toBeInTheDocument()
-  expect(screen.getByText('Reporting tag')).toBeInTheDocument()
+  expect(screen.getByText('Tags')).toBeInTheDocument()
+  // neither kind gets its own heading any more
+  expect(screen.queryByText('Reporting tag')).toBeNull()
   // the fixture's icon differs from DEFAULT_ICON.label on purpose, so this goes red
   // if the card ever renders the kind default instead of the row's stored icon
   expect(screen.getByText('sell')).toBeInTheDocument()
+})
+
+it('puts a budget tag and reporting tags on the same line', async () => {
+  renderView({
+    // the dialog reads the resolved tag object, not tagId
+    transaction: {
+      ...fixtureTransaction,
+      tagId: 'tag1',
+      tag: { id: 'tag1', name: 'vacation', icon: 'tag' },
+      labelIds: ['label1'],
+    } as unknown as ViewTransaction,
+  })
+  await screen.findByText('Tags')
+  // one shared heading, both kinds under it, and no per-kind headings left.
+  // labels resolve from an async query, so await that one.
+  expect(screen.getByText('vacation')).toBeInTheDocument()
+  expect(await screen.findByText('health')).toBeInTheDocument()
+  expect(screen.queryByText('Tag')).toBeNull()
+  expect(screen.queryByText('Reporting tag')).toBeNull()
 })
 
 it('renders no labels card when the transaction has no labels', async () => {
