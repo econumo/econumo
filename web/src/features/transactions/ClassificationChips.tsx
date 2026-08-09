@@ -28,7 +28,17 @@ export function ClassificationChips({ chips, onToggle }: ClassificationChipsProp
           data-kind={chip.kind}
           tabIndex={0}
           variant={chip.checked ? 'default' : 'secondary'}
-          className="cursor-pointer gap-1"
+          /* Both kinds read as selected the same way — a tint plus a border,
+             never a solid block that competes with the dialog's own actions.
+             The budget tag carries the stronger tint: there is only ever one
+             per transaction, while the reporting tags pile up. */
+          className={`cursor-pointer gap-1 ${
+            chip.checked
+              ? chip.kind === 'tag'
+                ? 'border border-primary/60 bg-primary/25 text-foreground'
+                : 'border border-primary/40 bg-primary/10 text-foreground'
+              : ''
+          }`}
           onClick={() => onToggle(chip)}
           onKeyDown={(e) => {
             if (!e.repeat && (e.key === 'Enter' || e.key === ' ')) {
@@ -39,8 +49,9 @@ export function ClassificationChips({ chips, onToggle }: ClassificationChipsProp
         >
           {/* the row's STORED icon, never a kind default: a user-picked icon
               must survive. The icon alone distinguishes the kinds (seeded per
-              kind at create); a checked chip inherits the badge's own colour. */}
-          <EntityIcon name={chip.icon} className={`text-sm ${chip.checked ? '' : 'text-muted-foreground'}`} />
+              kind at create), and every chip now sits on a light background,
+              so it keeps the muted tone whether checked or not. */}
+          <EntityIcon name={chip.icon} className="text-sm text-muted-foreground" />
           {chip.name}
         </Badge>
       ))}
