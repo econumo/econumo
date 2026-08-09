@@ -1,4 +1,4 @@
-import { initialFormState, buildPayload, evaluatedAmount, accountOptions, categoryOptions, canChangeAccountData } from './useTransactionForm'
+import { initialFormState, buildPayload, evaluatedAmount, accountOptions, categoryOptions, canChangeAccountData, scrubForeignClassifications } from './useTransactionForm'
 import type { AccountDto } from '@/api/dto/account'
 import type { TransactionDto } from '@/api/dto/transaction'
 
@@ -105,4 +105,39 @@ it('canChangeAccountData: owner or shared admin only', () => {
   expect(canChangeAccountData(account({ owner: other }), 'u1')).toBe(false)
   expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'admin', isAccepted: 1 }] }), 'u1')).toBe(true)
   expect(canChangeAccountData(account({ owner: other, sharedAccess: [{ user: owner, role: 'user', isAccepted: 1 }] }), 'u1')).toBe(false)
+})
+
+describe('scrubForeignClassifications', () => {
+  const ownedByAccount = { ownerUserId: 'u1' }
+  const ownedByCaller = { ownerUserId: 'u2' }
+  const lists = {
+    categories: [{ id: 'cat-owner', ...ownedByAccount }, { id: 'cat-mine', ...ownedByCaller }],
+    payees: [{ id: 'pay-owner', ...ownedByAccount }, { id: 'pay-mine', ...ownedByCaller }],
+    tags: [{ id: 'tg-owner', ...ownedByAccount }, { id: 'tg-mine', ...ownedByCaller }],
+  } as never
+
+  it('clears every reference the account owner does not own', () => {
+    const out = scrubForeignClassifications(
+      { categoryId: 'cat-mine', payeeId: 'pay-mine', tagId: 'tg-mine' },
+      lists,
+      'u1',
+    )
+    // an unowned category falls back to uncategorized (null), the rest unselect
+    expect(out).toEqual({ categoryId: null, payeeId: null, tagId: null })
+  })
+
+  it('leaves the account owner\'s own references untouched', () => {
+    const selection = { categoryId: 'cat-owner', payeeId: 'pay-owner', tagId: 'tg-owner' }
+    expect(scrubForeignClassifications(selection, lists, 'u1')).toEqual(selection)
+  })
+
+  it('keeps an id the lists have not loaded yet, so a slow query cannot wipe the form', () => {
+    const selection = { categoryId: 'cat-owner', payeeId: null, tagId: null }
+    expect(scrubForeignClassifications(selection, { categories: [], payees: [], tags: [] } as never, 'u1')).toEqual(selection)
+  })
+
+  it('is a no-op without a resolved account owner', () => {
+    const selection = { categoryId: 'cat-mine', payeeId: null, tagId: null }
+    expect(scrubForeignClassifications(selection, lists, undefined)).toEqual(selection)
+  })
 })
