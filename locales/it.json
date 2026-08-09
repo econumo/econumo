@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Tag per i report",
-            "info": "I tag di reportistica mostrano dove finiscono i tuoi soldi. Contrassegna persone, animali o luoghi — un figlio, un cane, una seconda casa — e scopri quanto ti costa ciascuno. Una transazione può portarne diversi, quindi questi totali si sovrappongono di proposito e non formano la spesa complessiva."
+            "info": "I tag di reportistica mostrano in cosa finiscono i tuoi soldi. Contrassegna persone, animali o luoghi — un figlio, un cane, una seconda casa — e scopri quanto spendi. Una transazione può avere diversi tag di reportistica."
           },
           "uncategorized": {
             "info": "Spese ancora senza categoria. Assegna una categoria a queste transazioni e passeranno nel budget qui sopra, dove potrai pianificarle."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tag",
           "header": "Tag",
-          "info": "I tag di budget ti aiutano a preventivare un progetto o un evento: una vacanza, un matrimonio, una ristrutturazione. Una transazione porta un solo tag di budget, così ogni spesa è attribuita a una cosa sola. I tag di reportistica mostrano dove finiscono i tuoi soldi: contrassegna persone, animali o luoghi e scopri quanto ti costa ciascuno. Una transazione può portarne diversi, perché servono solo a fare report.",
+          "info": "I tag di budget ti aiutano a pianificare un progetto o un evento: una vacanza, un matrimonio, una ristrutturazione. Una transazione può avere un solo tag di questo tipo, così puoi pianificarne la spesa complessiva. I tag di reportistica mostrano dove finiscono i tuoi soldi: contrassegna persone, animali o luoghi. Una transazione può averne diversi — non partecipano al budget.",
           "section_budget": "Tag di budget",
           "section_reporting": "Tag per i report",
           "create_tag": "Crea tag",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Tag di budget",
             "label": "Tag per i report",
-            "tag_option": "Pianifica il budget per questo tag",
-            "tag_hint": "Imposta un limite e tienilo sotto controllo nel budget. Uno per transazione.",
-            "label_option": "Contrassegna le transazioni per i report",
-            "label_hint": "Scopri dove sono finiti i soldi senza influire sul budget. Più di uno per transazione.",
+            "tag_option": "Tag di budget",
+            "tag_hint": "Pianifica un progetto o un evento. Un solo tag per transazione.",
+            "label_option": "Tag di reportistica",
+            "label_hint": "Analizza in cosa sono finiti i soldi. Sono ammessi più tag per transazione.",
             "locked_note": "Lo scopo di un tag non può essere modificato dopo la creazione."
           },
           "add_button": "Aggiungi tag",

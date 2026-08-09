@@ -34,7 +34,7 @@ it('previews the kind icon and swaps it live with the radio', async () => {
   const user = userEvent.setup()
   renderDialog()
   expect(screen.getByTestId('kind-icon')).toHaveTextContent('label')
-  await user.click(screen.getByRole('radio', { name: /Budget money for this tag/ }))
+  await user.click(screen.getByRole('radio', { name: /Budget tag/ }))
   expect(screen.getByTestId('kind-icon')).toHaveTextContent('tag')
 })
 
@@ -56,7 +56,7 @@ it('creates a label when the label kind is selected', async () => {
   )
   const user = userEvent.setup()
   const { onClose } = renderDialog()
-  await user.click(screen.getByRole('radio', { name: /Tag transactions for reporting/ }))
+  await user.click(screen.getByRole('radio', { name: /Reporting tag/ }))
   await user.type(screen.getByLabelText('Name'), 'Health')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(labelBody).toBeDefined())
@@ -106,10 +106,10 @@ it('edit previews the row\'s own stored icon, not the kind default', async () =>
 
 it('offers both purposes with their explanations when creating', () => {
   renderDialog({ item: null })
-  expect(screen.getByRole('radio', { name: /Budget money for this tag/ })).toBeInTheDocument()
-  expect(screen.getByText(/One per transaction/)).toBeInTheDocument()
-  expect(screen.getByRole('radio', { name: /Tag transactions for reporting/ })).toBeInTheDocument()
-  expect(screen.getByText(/Several per transaction/)).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /Budget tag/ })).toBeInTheDocument()
+  expect(screen.getByText(/Only one tag per transaction/)).toBeInTheDocument()
+  expect(screen.getByRole('radio', { name: /Reporting tag/ })).toBeInTheDocument()
+  expect(screen.getByText(/Several tags per transaction/)).toBeInTheDocument()
 })
 
 it('locks the purpose when editing', () => {

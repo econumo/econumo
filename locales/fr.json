@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Tags de rapport",
-            "info": "Les tags de rapport montrent où va votre argent. Marquez des personnes, des animaux ou des lieux — un enfant, un chien, une résidence secondaire — et voyez ce que chacun vous coûte. Une transaction peut en porter plusieurs : ces totaux se recoupent volontairement et ne forment pas votre dépense totale."
+            "info": "Les tags de rapport montrent à quoi sert votre argent. Marquez des personnes, des animaux ou des lieux — un enfant, un chien, une résidence secondaire — et voyez combien vous dépensez. Une transaction peut porter plusieurs tags de rapport."
           },
           "uncategorized": {
             "info": "Dépenses sans catégorie pour l'instant. Attribuez une catégorie à ces transactions et elles rejoindront le budget ci-dessus, où vous pourrez les planifier."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Les tags budgétaires vous aident à budgéter un projet ou un événement — des vacances, un mariage, des travaux. Une transaction ne porte qu'un seul tag budgétaire, si bien que chaque dépense est attribuée à une seule chose. Les tags de rapport montrent où va votre argent : marquez des personnes, des animaux ou des lieux et voyez ce que chacun vous coûte. Une transaction peut en porter plusieurs, puisqu'ils servent uniquement aux rapports.",
+          "info": "Les tags budgétaires vous aident à planifier un projet ou un événement — des vacances, un mariage, des travaux. Une transaction ne peut en porter qu’un seul, ce qui permet de planifier sa dépense totale. Les tags de rapport montrent où va votre argent : marquez des personnes, des animaux ou des lieux. Une transaction peut en porter plusieurs — ils n’interviennent pas dans le budget.",
           "section_budget": "Tags budgétaires",
           "section_reporting": "Tags de rapport",
           "create_tag": "Créer un tag",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Tag budgétaire",
             "label": "Tag de rapport",
-            "tag_option": "Prévoir un budget pour ce tag",
-            "tag_hint": "Fixez une limite et suivez-la dans votre budget. Un seul par transaction.",
-            "label_option": "Marquer les transactions pour les rapports",
-            "label_hint": "Voyez où est parti l’argent sans influer sur votre budget. Plusieurs par transaction.",
+            "tag_option": "Tag budgétaire",
+            "tag_hint": "Planifiez un projet ou un événement. Un seul tag par transaction.",
+            "label_option": "Tag de rapport",
+            "label_hint": "Analysez à quoi l’argent a servi. Plusieurs tags par transaction sont autorisés.",
             "locked_note": "La vocation d’un tag ne peut plus être modifiée après sa création."
           },
           "add_button": "Ajouter un tag",

@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Tagi raportowe",
-            "info": "Tagi raportowe pokazują, dokąd trafiają pieniądze. Oznaczaj osoby, zwierzęta lub miejsca — dziecko, psa, drugi dom — i sprawdzaj, ile kosztuje każde z nich. Transakcja może mieć ich kilka, więc te sumy celowo się nakładają i nie składają się na całkowity wydatek."
+            "info": "Tagi raportowe pokazują, na co idą pieniądze. Oznaczaj osoby, zwierzęta lub miejsca — dziecko, psa, drugi dom — i sprawdzaj, ile wydajesz. Transakcja może mieć kilka tagów raportowych."
           },
           "uncategorized": {
             "info": "Wydatki bez kategorii. Przypisz tym transakcjom kategorię, a trafią do budżetu powyżej, gdzie można je zaplanować."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tagi",
           "header": "Tagi",
-          "info": "Tagi budżetowe pomagają zaplanować budżet projektu lub wydarzenia — wakacji, wesela, remontu. Transakcja ma tylko jeden tag budżetowy, więc każdy wydatek przypisany jest do jednej rzeczy. Tagi raportowe pokazują, dokąd trafiają pieniądze: oznaczaj osoby, zwierzęta lub miejsca i sprawdzaj, ile kosztuje każde z nich. Transakcja może mieć ich kilka, bo służą wyłącznie do raportowania.",
+          "info": "Tagi budżetowe pomagają zaplanować projekt lub wydarzenie — wakacje, wesele, remont. Transakcja może mieć tylko jeden taki tag, dzięki czemu można zaplanować jej łączny wydatek. Tagi raportowe pokazują, dokąd trafiają pieniądze: oznaczaj osoby, zwierzęta lub miejsca. Takich tagów transakcja może mieć kilka — nie biorą udziału w budżetowaniu.",
           "section_budget": "Tagi budżetowe",
           "section_reporting": "Tagi raportowe",
           "create_tag": "Utwórz tag",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Tag budżetowy",
             "label": "Tag raportowy",
-            "tag_option": "Planuj budżet dla tego tagu",
-            "tag_hint": "Ustaw limit i śledź go w budżecie. Jeden na transakcję.",
-            "label_option": "Oznaczaj transakcje na potrzeby raportów",
-            "label_hint": "Sprawdzaj, na co poszły pieniądze, bez wpływu na budżet. Kilka na transakcję.",
+            "tag_option": "Tag budżetowy",
+            "tag_hint": "Zaplanuj projekt lub wydarzenie. Tylko jeden tag na transakcję.",
+            "label_option": "Tag raportowy",
+            "label_hint": "Analizuj, na co poszły pieniądze. Dozwolonych jest kilka tagów na transakcję.",
             "locked_note": "Przeznaczenia tagu nie można zmienić po jego utworzeniu."
           },
           "add_button": "Dodaj tag",

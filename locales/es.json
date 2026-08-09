@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Etiquetas de informes",
-            "info": "Las etiquetas de informes muestran adónde va tu dinero. Marca personas, mascotas o lugares — un hijo, un perro, una segunda vivienda — y comprueba cuánto te cuesta cada uno. Una transacción puede llevar varias, así que estos totales se solapan a propósito y no suman tu gasto total."
+            "info": "Las etiquetas de informes muestran en qué se va tu dinero. Marca personas, mascotas o lugares — un hijo, un perro, una segunda vivienda — y comprueba cuánto gastas. Una transacción puede llevar varias etiquetas de informes."
           },
           "uncategorized": {
             "info": "Gastos que aún no tienen categoría. Asigna una categoría a estas transacciones y pasarán al presupuesto de arriba, donde podrás planificarlos."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "Las etiquetas de presupuesto te ayudan a presupuestar un proyecto o un evento: unas vacaciones, una boda, una reforma. Una transacción lleva una sola etiqueta de presupuesto, así que cada gasto se atribuye a una única cosa. Las etiquetas de informes muestran adónde va tu dinero: marca personas, mascotas o lugares y comprueba cuánto te cuesta cada uno. Una transacción puede llevar varias, porque solo sirven para informar.",
+          "info": "Las etiquetas de presupuesto te ayudan a planificar un proyecto o evento: unas vacaciones, una boda, una reforma. Una transacción solo puede llevar una de ellas, para poder planificar su gasto total. Las etiquetas de informes muestran adónde va tu dinero: marca personas, mascotas o lugares. Una transacción puede llevar varias — no intervienen en el presupuesto.",
           "section_budget": "Etiquetas de presupuesto",
           "section_reporting": "Etiquetas de informes",
           "create_tag": "Crear etiqueta",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Etiqueta de presupuesto",
             "label": "Etiqueta de informes",
-            "tag_option": "Presupuestar dinero para esta etiqueta",
-            "tag_hint": "Fija un límite y contrólalo en tu presupuesto. Una por transacción.",
-            "label_option": "Marcar transacciones para los informes",
-            "label_hint": "Consulta adónde fue el dinero sin afectar a tu presupuesto. Varias por transacción.",
+            "tag_option": "Etiqueta de presupuesto",
+            "tag_hint": "Planifica un proyecto o evento. Solo una etiqueta por transacción.",
+            "label_option": "Etiqueta de informes",
+            "label_hint": "Analiza en qué se fue el dinero. Se permiten varias etiquetas por transacción.",
             "locked_note": "La finalidad de una etiqueta no se puede cambiar después de crearla."
           },
           "add_button": "Añadir etiqueta",

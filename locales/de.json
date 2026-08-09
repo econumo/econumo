@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Auswertungs-Tags",
-            "info": "Auswertungs-Tags zeigen, wohin Ihr Geld fließt. Markieren Sie Personen, Haustiere oder Orte — ein Kind, einen Hund, ein Ferienhaus — und sehen Sie, was jedes davon kostet. Eine Transaktion kann mehrere tragen, daher überschneiden sich diese Summen bewusst und ergeben nicht Ihre Gesamtausgaben."
+            "info": "Auswertungs-Tags zeigen, wofür Ihr Geld ausgegeben wird. Markieren Sie Personen, Haustiere oder Orte — ein Kind, einen Hund, ein Ferienhaus — und sehen Sie, wie viel Sie ausgeben. Eine Transaktion kann mehrere Auswertungs-Tags tragen."
           },
           "uncategorized": {
             "info": "Ausgaben ohne Kategorie. Weisen Sie diesen Transaktionen eine Kategorie zu, dann wandern sie in das Budget darüber und lassen sich einplanen."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budget-Tags helfen Ihnen, ein Projekt oder ein Ereignis zu budgetieren — einen Urlaub, eine Hochzeit, eine Renovierung. Eine Transaktion trägt nur ein Budget-Tag, sodass jede Ausgabe genau einer Sache zugeordnet wird. Auswertungs-Tags zeigen, wohin Ihr Geld fließt: Markieren Sie Personen, Haustiere oder Orte und sehen Sie, was jedes davon kostet. Eine Transaktion kann mehrere tragen, denn sie dienen nur der Auswertung.",
+          "info": "Budget-Tags helfen Ihnen, ein Projekt oder Ereignis zu planen — einen Urlaub, eine Hochzeit, eine Renovierung. Eine Transaktion kann nur ein solches Tag tragen, sodass sich ihre Gesamtausgaben planen lassen. Auswertungs-Tags zeigen, wohin Ihr Geld fließt: Markieren Sie Personen, Haustiere oder Orte. Davon kann eine Transaktion mehrere tragen — sie sind an der Budgetierung nicht beteiligt.",
           "section_budget": "Budget-Tags",
           "section_reporting": "Auswertungs-Tags",
           "create_tag": "Tag erstellen",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Budget-Tag",
             "label": "Auswertungs-Tag",
-            "tag_option": "Budget für dieses Tag planen",
-            "tag_hint": "Legen Sie ein Limit fest und verfolgen Sie es im Budget. Eines pro Transaktion.",
-            "label_option": "Transaktionen für Auswertungen markieren",
-            "label_hint": "Sehen Sie, wohin das Geld floss, ohne Ihr Budget zu beeinflussen. Mehrere pro Transaktion.",
+            "tag_option": "Budget-Tag",
+            "tag_hint": "Planen Sie ein Projekt oder Ereignis. Nur ein Tag pro Transaktion.",
+            "label_option": "Auswertungs-Tag",
+            "label_hint": "Analysieren Sie, wofür das Geld ausgegeben wurde. Mehrere Tags pro Transaktion möglich.",
             "locked_note": "Der Zweck eines Tags lässt sich nach dem Erstellen nicht mehr ändern."
           },
           "add_button": "Tag hinzufügen",

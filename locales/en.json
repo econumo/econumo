@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Reporting tags",
-            "info": "Reporting tags show where your money goes. Mark people, pets or places — a kid, a dog, a second home — and see how much each one costs you. A transaction can carry several, so these totals overlap on purpose and do not add up to your total spending."
+            "info": "Reporting tags show what your money goes on. Mark people, pets or places — a kid, a dog, a second home — and see how much you spend. A transaction can carry several reporting tags."
           },
           "uncategorized": {
             "info": "Spending with no category yet. Assign a category to these transactions and they move into the budget above, where you can plan for them."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budget tags help you budget a project or an event — a vacation, a wedding, a home renovation. A transaction carries only one budget tag, so every expense is attributed to that one thing. Reporting tags show where your money goes: mark people, pets or places and see how much each one costs you. A transaction can carry several, because they only ever report.",
+          "info": "Budget tags help you plan a project or event — a vacation, a wedding, a home renovation. A transaction can take only one such tag, so you can plan its total spending. Reporting tags show where your money goes: mark people, pets or places. A transaction can carry several of them — they take no part in budgeting.",
           "section_budget": "Budget tags",
           "section_reporting": "Reporting tags",
           "create_tag": "Create tag",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Budget tag",
             "label": "Reporting tag",
-            "tag_option": "Budget money for this tag",
-            "tag_hint": "Set a limit and track it in your budget. One per transaction.",
-            "label_option": "Tag transactions for reporting",
-            "label_hint": "See where money went without affecting your budget. Several per transaction.",
+            "tag_option": "Budget tag",
+            "tag_hint": "Plan a project or event. Only one tag per transaction.",
+            "label_option": "Reporting tag",
+            "label_hint": "Analyse what the money went on. Several tags per transaction allowed.",
             "locked_note": "A tag's purpose can't be changed after it's created."
           },
           "add_button": "Add tag",

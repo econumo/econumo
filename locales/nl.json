@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Rapportagetags",
-            "info": "Rapportagetags laten zien waar uw geld heen gaat. Markeer personen, huisdieren of plaatsen — een kind, een hond, een tweede woning — en zie wat elk u kost. Een transactie kan er meerdere dragen, dus deze totalen overlappen met opzet en vormen niet uw totale uitgaven."
+            "info": "Rapportagetags laten zien waaraan uw geld wordt besteed. Markeer personen, huisdieren of plaatsen — een kind, een hond, een tweede woning — en zie hoeveel u uitgeeft. Een transactie kan meerdere rapportagetags dragen."
           },
           "uncategorized": {
             "info": "Uitgaven zonder categorie. Wijs deze transacties een categorie toe, dan verhuizen ze naar het budget hierboven, waar u ze kunt inplannen."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Budgettags helpen u een project of gebeurtenis te budgetteren — een vakantie, een bruiloft, een verbouwing. Een transactie draagt maar één budgettag, zodat elke uitgave aan precies één ding wordt toegerekend. Rapportagetags laten zien waar uw geld heen gaat: markeer personen, huisdieren of plaatsen en zie wat elk u kost. Een transactie kan er meerdere dragen, omdat ze alleen rapporteren.",
+          "info": "Budgettags helpen u een project of gebeurtenis te plannen — een vakantie, een bruiloft, een verbouwing. Een transactie kan er maar één dragen, zodat u de totale uitgave kunt plannen. Rapportagetags laten zien waar uw geld heen gaat: markeer personen, huisdieren of plaatsen. Daarvan kan een transactie er meerdere dragen — ze spelen geen rol in de budgettering.",
           "section_budget": "Budgettags",
           "section_reporting": "Rapportagetags",
           "create_tag": "Tag aanmaken",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Budgettag",
             "label": "Rapportagetag",
-            "tag_option": "Budget plannen voor deze tag",
-            "tag_hint": "Stel een limiet in en volg die in uw budget. Eén per transactie.",
-            "label_option": "Transacties markeren voor rapportage",
-            "label_hint": "Zie waar uw geld naartoe ging zonder invloed op uw budget. Meerdere per transactie.",
+            "tag_option": "Budgettag",
+            "tag_hint": "Plan een project of gebeurtenis. Slechts één tag per transactie.",
+            "label_option": "Rapportagetag",
+            "label_hint": "Analyseer waaraan het geld is besteed. Meerdere tags per transactie toegestaan.",
             "locked_note": "Het doel van een tag kan na het aanmaken niet meer worden gewijzigd."
           },
           "add_button": "Tag toevoegen",

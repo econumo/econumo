@@ -961,7 +961,7 @@
           },
           "labels": {
             "heading": "Etiquetas de relatório",
-            "info": "As etiquetas de relatório mostram para onde vai o seu dinheiro. Marque pessoas, animais ou lugares — um filho, um cão, uma segunda casa — e veja quanto cada um lhe custa. Uma transação pode levar várias, por isso estes totais sobrepõem-se de propósito e não somam a sua despesa total."
+            "info": "As etiquetas de relatório mostram em que é gasto o seu dinheiro. Marque pessoas, animais ou lugares — um filho, um cão, uma segunda casa — e veja quanto gasta. Uma transação pode ter várias etiquetas de relatório."
           },
           "uncategorized": {
             "info": "Despesas ainda sem categoria. Atribua uma categoria a estas transações e passarão para o orçamento acima, onde poderá planeá-las."
@@ -1056,7 +1056,7 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "As etiquetas de orçamento ajudam a orçamentar um projeto ou evento — umas férias, um casamento, uma renovação. Uma transação leva apenas uma etiqueta de orçamento, por isso cada despesa é atribuída a uma única coisa. As etiquetas de relatório mostram para onde vai o seu dinheiro: marque pessoas, animais ou lugares e veja quanto cada um lhe custa. Uma transação pode levar várias, pois servem apenas para relatórios.",
+          "info": "As etiquetas de orçamento ajudam a planear um projeto ou evento — umas férias, um casamento, uma renovação. Uma transação só pode ter uma destas, para que possa planear a sua despesa total. As etiquetas de relatório mostram para onde vai o seu dinheiro: marque pessoas, animais ou lugares. Destas, uma transação pode ter várias — não participam no orçamento.",
           "section_budget": "Etiquetas de orçamento",
           "section_reporting": "Etiquetas de relatório",
           "create_tag": "Criar etiqueta",
@@ -1080,10 +1080,10 @@
           "kind": {
             "tag": "Etiqueta de orçamento",
             "label": "Etiqueta de relatório",
-            "tag_option": "Planear orçamento para esta etiqueta",
-            "tag_hint": "Defina um limite e acompanhe-o no orçamento. Uma por transação.",
-            "label_option": "Marcar transações para relatórios",
-            "label_hint": "Veja para onde foi o dinheiro sem afetar o orçamento. Várias por transação.",
+            "tag_option": "Etiqueta de orçamento",
+            "tag_hint": "Planeie um projeto ou evento. Apenas uma etiqueta por transação.",
+            "label_option": "Etiqueta de relatório",
+            "label_hint": "Analise em que foi gasto o dinheiro. São permitidas várias etiquetas por transação.",
             "locked_note": "A finalidade de uma etiqueta não pode ser alterada depois de criada."
           },
           "add_button": "Adicionar etiqueta",
