@@ -19,14 +19,9 @@ const byName = (name: string) => screen.getByRole('checkbox', { name: new RegExp
 // actions.
 const solidFill = (cls: string) => cls.split(/\s+/).includes('bg-primary')
 
-it('gives a selected budget tag the same tint treatment, at full strength', () => {
+it('gives a selected budget tag the solid fill', () => {
   renderChips([chip({ checked: true })])
-  const budget = byName('Italy 2026').className
-  // same shape as a reporting chip — tint + border, not a solid block — but a
-  // stronger tint, since one budget tag per transaction can carry the weight
-  expect(solidFill(budget)).toBe(false)
-  expect(budget).toContain('border-primary')
-  expect(budget).toContain('bg-primary/25')
+  expect(solidFill(byName('Italy 2026').className)).toBe(true)
 })
 
 it('keeps a selected reporting tag quieter than a selected budget tag', () => {
@@ -34,12 +29,11 @@ it('keeps a selected reporting tag quieter than a selected budget tag', () => {
     chip({ checked: true }),
     chip({ kind: 'label', id: 'lb1', name: 'Doggo', icon: 'label', checked: true }),
   ])
-  const budget = byName('Italy 2026').className
   const reporting = byName('Doggo').className
+  // solid for the budget tag beside it, a quiet tint for this one
+  expect(solidFill(byName('Italy 2026').className)).toBe(true)
   expect(solidFill(reporting)).toBe(false)
-  // still visibly selected, just quieter than the budget tag beside it
   expect(reporting).toContain('bg-primary/10')
-  expect(budget).toContain('bg-primary/25')
 })
 
 it('leaves an unselected chip of either kind alone', () => {
