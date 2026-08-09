@@ -104,6 +104,8 @@ export interface BudgetTransactionDto {
   category: { id: Id; name: string; icon: string } | null
   payee: { id: Id; name: string } | null
   tag: { id: Id; name: string } | null
+  /** reporting labels attached to the row; [] when none */
+  labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
 }

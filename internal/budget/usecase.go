@@ -42,7 +42,13 @@ type Service struct {
 	// only read within a single request — acceptable for owner ids which are
 	// immutable).
 	accountOwners map[string]string
+	txLabels      TransactionLabels
 }
+
+// SetTransactionLabels wires the reporting-label lookup. It is a setter rather
+// than a constructor parameter because the transaction repo that backs it is
+// built after the budget service at composition time; called once, in BuildAPI.
+func (s *Service) SetTransactionLabels(l TransactionLabels) { s.txLabels = l }
 
 func NewService(
 	repo Repository,

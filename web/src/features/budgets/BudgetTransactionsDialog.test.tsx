@@ -235,3 +235,25 @@ it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categ
   expect(params.get('tagId')).toBe('tag-x')
   expect(params.has('categoryId')).toBe(false)
 })
+
+it("a partner's row previews with its reporting tags", async () => {
+  // not in the caller's own transaction list, so the preview is SYNTHESIZED
+  // from the budget wire — which now carries labelIds
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { items: [{
+          id: 'tx-foreign', author: fixtureOwner, currencyId: 'cur-usd', amount: '5',
+          description: 'partner spend', category: null, payee: null, tag: null,
+          labelIds: ['label1'], spentAt: '2026-07-02 10:00:00',
+        }] },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await user.click(await screen.findByRole('button', { name: /partner spend/ }))
+  // 'health' is the fixture label behind label1
+  expect(await screen.findByText('health')).toBeInTheDocument()
+})

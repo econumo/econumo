@@ -297,6 +297,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	transactionRepo := transactionrepo.NewRepo(cfg.DatabaseDriver, txm)
 
+	// The budget's transaction rows join category/payee/tag only; reporting
+	// labels are many-per-transaction and come from this batch lookup. Wired
+	// here because transactionRepo is built after the budget service.
+	budgetSvc.SetTransactionLabels(transactionRepo)
+
 	txExportLookup := transactionrepo.NewExportLookup(transactionRepo, NewTransactionCategoryNameLookup(categoryRepo), NewTransactionTagNameLookup(tagRepo), NewTransactionPayeeNameLookup(payeeRepo), NewTransactionLabelNameLookup(labelRepo))
 	txImportAccounts := NewTransactionImportAccounts(accountSvc, accountRepo, folderRepo, currencyLookup, cfg.CurrencyBase)
 	txImportCategories := NewTransactionImportCategories(categorySvc, categoryRepo)

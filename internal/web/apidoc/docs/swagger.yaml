@@ -228,6 +228,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          Reporting labels attached to the row. Always non-nil ([] when none) so a
+          client can render it without a null check, matching labelIds on the
+          transaction feature's own wire.
+        items:
+          type: string
+        type: array
       payee:
         $ref: '#/definitions/model.TxPayeeResult'
       spentAt:

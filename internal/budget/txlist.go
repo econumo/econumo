@@ -162,6 +162,26 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 	// tags map may be needed beyond the expense-only category filter; reuse f.tags.
 	authorCache := map[string]model.UserResult{}
 
+	// One batch lookup for the whole page: labels are many-per-transaction, so
+	// they cannot ride the row query without fanning each transaction into N
+	// rows (the same reason the budget's label spend has its own query).
+	labelsByTx := map[string][]string{}
+	if s.txLabels != nil && len(rows) > 0 {
+		txIDs := make([]vo.Id, 0, len(rows))
+		for _, row := range rows {
+			id, perr := vo.ParseId(row.ID)
+			if perr != nil {
+				continue
+			}
+			txIDs = append(txIDs, id)
+		}
+		found, lerr := s.txLabels.LabelsByTransactionIDs(ctx, txIDs)
+		if lerr != nil {
+			return nil, lerr
+		}
+		labelsByTx = found
+	}
+
 	items := make([]model.BudgetTransactionResult, 0, len(rows))
 	for _, row := range rows {
 		author, ok := authorCache[row.UserID]
@@ -173,12 +193,17 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 			author = model.UserResult{Id: o.ID, Avatar: o.Avatar, Name: o.Name}
 			authorCache[row.UserID] = author
 		}
+		labelIDs := labelsByTx[row.ID]
+		if labelIDs == nil {
+			labelIDs = []string{}
+		}
 		item := model.BudgetTransactionResult{
 			Id:          row.ID,
 			Author:      author,
 			CurrencyId:  row.CurrencyID,
 			Amount:      vo.NewDecimal(row.Amount).String(),
 			Description: row.Description,
+			LabelIds:    labelIDs,
 			SpentAt:     normalizeSpentAt(row.SpentAt),
 		}
 		if row.CategoryID != nil {

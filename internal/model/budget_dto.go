@@ -516,7 +516,11 @@ type BudgetTransactionResult struct {
 	Category    *TxCategoryResult `json:"category"`
 	Payee       *TxPayeeResult    `json:"payee"`
 	Tag         *TxTagResult      `json:"tag"`
-	SpentAt     string            `json:"spentAt"`
+	// Reporting labels attached to the row. Always non-nil ([] when none) so a
+	// client can render it without a null check, matching labelIds on the
+	// transaction feature's own wire.
+	LabelIds []string `json:"labelIds"`
+	SpentAt  string   `json:"spentAt"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.

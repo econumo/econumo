@@ -9125,6 +9125,13 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "description": "Reporting labels attached to the row. Always non-nil ([] when none) so a\nclient can render it without a null check, matching labelIds on the\ntransaction feature's own wire.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "payee": {
                     "$ref": "#/definitions/model.TxPayeeResult"
                 },

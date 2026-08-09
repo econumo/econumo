@@ -133,13 +133,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
       description: wireTx.description,
       payeeId: wireTx.payee?.id ?? null,
       tagId: wireTx.tag?.id ?? null,
-      // BudgetTransactionDto (budget/get-transaction-list, including the
-      // label drill-down itself) carries no label ids -- the backend row
-      // (model.BudgetTransactionRow) only ever joins category/payee/tag.
-      // There is nothing to populate here even for a row reached by clicking
-      // a label; this synthesized shape is read-only anyway (no account =>
-      // canChange is false), so nothing ever writes the set back.
-      labelIds: [],
+      // the budget wire carries the row's reporting labels; the preview
+      // resolves them itself from the owner's label list
+      labelIds: wireTx.labelIds ?? [],
       date: wireTx.spentAt,
       category: wireTx.category ? (wireTx.category as CategoryDto) : undefined,
       payee: wireTx.payee ? (wireTx.payee as PayeeDto) : undefined,
