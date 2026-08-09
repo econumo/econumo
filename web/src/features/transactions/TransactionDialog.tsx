@@ -26,7 +26,7 @@ import { useExchange } from '@/features/currencies/useExchange'
 import { usePostRecurring } from '@/features/recurring/queries'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
-import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount } from './useTransactionForm'
+import { useTransactionForm, buildPayload, accountOptions, categoryOptions, canChangeAccountData, evaluatedAmount, scrubForeignClassifications } from './useTransactionForm'
 import { EntitySelect } from './EntitySelect'
 import { SelectCard } from './SelectCard'
 import { AddTagDialog } from './AddTagDialog'
@@ -79,6 +79,20 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }, [])
 
   const selectableAccounts = accountOptions(accounts, folders, form.isNew)
+  // A transaction stored under an older, laxer server rule can reference the
+  // CALLER's classifications instead of the account owner's; the server now
+  // rejects those, so every save would fail. Clear them once the lists load so
+  // the form shows — and submits — only what the owner actually owns.
+  useEffect(() => {
+    if (!ownerId) {
+      return
+    }
+    const scrubbed = scrubForeignClassifications(form, { categories, payees, tags }, ownerId)
+    if (scrubbed.categoryId !== form.categoryId || scrubbed.payeeId !== form.payeeId || scrubbed.tagId !== form.tagId) {
+      patch(scrubbed)
+    }
+  }, [ownerId, categories, payees, tags, form, patch])
+
   const currentCategories = categoryOptions(categories, form.type, ownerId)
   const currentPayees = payees.filter((p) => p.isArchived === 0 && (!ownerId || p.ownerUserId === ownerId))
   const selectedTag = tags.find((tag) => tag.id === form.tagId)

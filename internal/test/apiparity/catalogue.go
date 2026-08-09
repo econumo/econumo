@@ -242,8 +242,15 @@ func init() {
 			{Label: "create-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{
 					"id": newTxn, "accountId": SharedAccount, "type": "expense",
-					"amount": "7.25", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+					"amount": "7.25", "date": "2024-04-03 10:00:00",
 				}, CaptureIDInto: &txnID},
+			// the caller's own category is NOT attachable on a shared account —
+			// classifications belong to the account owner's books
+			{Label: "err:own-category-on-shared", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": "d0000000-0000-0000-0000-0000000000fd", "accountId": SharedAccount, "type": "expense",
+					"amount": "1.00", "categoryId": CatFood, "date": "2024-04-03 10:00:00",
+				}},
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "account-list-after-create", Method: "GET", Path: "/api/v1/account/get-account-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "delete-on-shared", Method: "POST", Path: "/api/v1/transaction/delete-transaction", Auth: "owner", Body: map[string]any{"id": &txnID}},

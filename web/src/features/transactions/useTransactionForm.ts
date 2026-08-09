@@ -97,6 +97,58 @@ export const evaluatedAmount = (raw: string): string => {
   return normalize(evaluateFormula(sanitized + '='))
 }
 
+interface OwnedRow {
+  id: Id
+  ownerUserId: Id
+}
+
+interface ClassificationLists {
+  categories: OwnedRow[]
+  payees: OwnedRow[]
+  tags: OwnedRow[]
+}
+
+interface ClassificationSelection {
+  categoryId: Id | null
+  payeeId: Id | null
+  tagId: Id | null
+}
+
+/**
+ * Drop classifications the ACCOUNT OWNER does not own.
+ *
+ * The server accepts only the owner's category/payee/tag on a shared account.
+ * Rows written under an older, laxer rule can name the CALLER's own instead,
+ * and those transactions then fail every save with "This transaction is not
+ * available for this operation." Clearing them here lets the edit go through:
+ * an unowned category falls back to uncategorized (null), the rest unselect.
+ *
+ * An id absent from its list is KEPT, not dropped — the lists arrive from async
+ * queries, and treating "not loaded yet" as "foreign" would wipe a perfectly
+ * good selection on a slow connection.
+ */
+export function scrubForeignClassifications(
+  selection: ClassificationSelection,
+  lists: ClassificationLists,
+  ownerUserId: Id | undefined,
+): ClassificationSelection {
+  if (!ownerUserId) {
+    return selection
+  }
+  const keep = (rows: OwnedRow[], id: Id | null) => {
+    if (!id) {
+      return null
+    }
+    const row = rows.find((r) => r.id === id)
+    return !row || row.ownerUserId === ownerUserId ? id : null
+  }
+  return {
+    categoryId: keep(lists.categories, selection.categoryId),
+    payeeId: keep(lists.payees, selection.payeeId),
+    tagId: keep(lists.tags, selection.tagId),
+  }
+}
+
 export function buildPayload(form: TransactionFormState): CreateTransactionDto {
   const isTransfer = form.type === 'transfer'
   const amount = evaluatedAmount(form.amount)
