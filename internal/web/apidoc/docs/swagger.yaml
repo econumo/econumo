@@ -154,6 +154,13 @@ definitions:
     type: object
   model.ArchiveCategoryResult:
     type: object
+  model.ArchiveLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveLabelResult:
+    type: object
   model.ArchivePayeeRequest:
     properties:
       id:
@@ -221,6 +228,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          Reporting labels attached to the row. Always non-nil ([] when none) so a
+          client can render it without a null check, matching labelIds on the
+          transaction feature's own wire.
+        items:
+          type: string
+        type: array
       payee:
         $ref: '#/definitions/model.TxPayeeResult'
       spentAt:
@@ -483,6 +498,20 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreateLabelRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateLabelResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.LabelResult'
+    type: object
   model.CreatePayeeRequest:
     properties:
       accountId:
@@ -531,6 +560,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is ignored for a transfer (transfers never carry labels); each
+          entry is validated (parses as an id, exists, owned by the template's
+          account owner) by the service, not here.
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       payeeId:
@@ -585,6 +622,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is ignored for a transfer (transfers never carry labels); each
+          entry is validated (parses as an id, exists, owned by the transaction's
+          account owner) by the service, not here.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:
@@ -759,6 +804,13 @@ definitions:
     type: object
   model.DeleteInviteResult:
     type: object
+  model.DeleteLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteLabelResult:
+    type: object
   model.DeletePayeeRequest:
     properties:
       id:
@@ -885,6 +937,13 @@ definitions:
           $ref: '#/definitions/model.AccountFolderResult'
         type: array
     type: object
+  model.GetLabelListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
+        type: array
+    type: object
   model.GetOptionListResult:
     properties:
       items:
@@ -1000,6 +1059,44 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.LabelResult:
+    properties:
+      createdAt:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.LabelSpendResult:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.ChildElementResult'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       password:
@@ -1103,6 +1200,20 @@ definitions:
         type: string
     type: object
   model.MoveElementResult:
+    type: object
+  model.MoveLabelRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveLabelResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
+        type: array
     type: object
   model.MovePayeeRequest:
     properties:
@@ -1221,6 +1332,16 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          Omit the field to inherit the template's labels; send a list to give the
+          posted transaction exactly those labels; send an empty list to give it
+          none. Absent and empty therefore mean different things. Each entry is
+          validated (parses, exists, owned by the account owner) by the transaction
+          create path, not here — same rule as CreateTransactionRequest.LabelIds.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       recurringId:
@@ -1257,6 +1378,10 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       ownerUserId:
@@ -1448,6 +1573,20 @@ definitions:
           $ref: '#/definitions/model.CategoryResult'
         type: array
     type: object
+  model.SortLabelListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortLabelListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
+        type: array
+    type: object
   model.SortPayeeListRequest:
     properties:
       ids:
@@ -1486,10 +1625,16 @@ definitions:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
         type: array
+      labels:
+        items:
+          $ref: '#/definitions/model.LabelSpendResult'
+        type: array
     type: object
   model.TagResult:
     properties:
       createdAt:
+        type: string
+      icon:
         type: string
       id:
         type: string
@@ -1524,6 +1669,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is always a list, never null, so clients can iterate without a
+          nil check. A transfer always carries an empty list.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       recurringId:
@@ -1565,6 +1717,13 @@ definitions:
         type: string
     type: object
   model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchiveLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveLabelResult:
     type: object
   model.UnarchivePayeeRequest:
     properties:
@@ -1731,6 +1890,18 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.UpdateLabelRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateLabelResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.LabelResult'
+    type: object
   model.UpdateLanguageRequest:
     properties:
       language:
@@ -1783,6 +1954,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds replaces the full label set (nil/empty clears it); ignored for a
+          transfer. See CreateRecurringTransactionRequest.LabelIds for the
+          validation rule.
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       payeeId:
@@ -1839,6 +2018,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds replaces the full label set (nil/empty clears it); ignored for a
+          transfer. See CreateTransactionRequest.LabelIds for the validation rule.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:
@@ -3095,6 +3281,10 @@ paths:
       - description: Envelope id
         in: query
         name: envelopeId
+        type: string
+      - description: Label id (reporting label)
+        in: query
+        name: labelId
         type: string
       - description: Uncategorized bucket (mutually exclusive with categoryId)
         in: query
@@ -4478,6 +4668,355 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/label/archive-label:
+    post:
+      consumes:
+      - application/json
+      description: Marks a label archived. Requires ownership.
+      parameters:
+      - description: Archive label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a label
+      tags:
+      - Label
+  /api/v1/label/create-label:
+    post:
+      consumes:
+      - application/json
+      description: Creates a reporting label for the authenticated user. Idempotent
+        on the request id; the name must be unique among the user's labels.
+      parameters:
+      - description: Create label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a label
+      tags:
+      - Label
+  /api/v1/label/delete-label:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a label. Transactions referencing it lose the association
+        (transactions_labels cascades). Requires ownership.
+      parameters:
+      - description: Delete label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a label
+      tags:
+      - Label
+  /api/v1/label/get-label-list:
+    get:
+      description: Returns all the authenticated user's available labels (own + shared
+        via account access, archived and not) in list order.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetLabelListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the label list
+      tags:
+      - Label
+  /api/v1/label/move-label:
+    post:
+      consumes:
+      - application/json
+      description: Places one label immediately after another (afterId null = first)
+        and returns the full available list (own + shared).
+      parameters:
+      - description: Move label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Move a label
+      tags:
+      - Label
+  /api/v1/label/sort-label-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own labels and returns the full available list (own + shared).
+      parameters:
+      - description: Sort label list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortLabelListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortLabelListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the label list
+      tags:
+      - Label
+  /api/v1/label/unarchive-label:
+    post:
+      consumes:
+      - application/json
+      description: Clears a label's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a label
+      tags:
+      - Label
+  /api/v1/label/update-label:
+    post:
+      consumes:
+      - application/json
+      description: Updates a label's name. Requires ownership; the new name must be
+        unique among the user's labels.
+      parameters:
+      - description: Update label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a label
+      tags:
+      - Label
   /api/v1/payee/archive-payee:
     post:
       consumes:
@@ -5635,7 +6174,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Imports transactions from an uploaded CSV using a field mapping
-        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.
       parameters:
       - description: CSV file
         in: formData
@@ -5670,6 +6209,14 @@ paths:
       - description: Override tag id
         in: formData
         name: tagId
+        type: string
+      - description: Override label ids (comma-joined), applied to every row
+        in: formData
+        name: labelIds
+        type: string
+      - description: Separator that splits the mapped labels cell (default ;)
+        in: formData
+        name: labelsSeparator
         type: string
       produces:
       - application/json

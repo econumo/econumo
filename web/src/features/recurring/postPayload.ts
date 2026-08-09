@@ -37,6 +37,9 @@ export function recurringPostPayload(
     categoryId: isTransfer ? null : recurring.categoryId,
     payeeId: isTransfer ? null : recurring.payeeId,
     tagId: isTransfer ? null : recurring.tagId,
+    // labelIds is deliberately OMITTED: this path posts a due template outright,
+    // with no chip row to edit, so it asks the server to inherit the template's
+    // labels rather than echoing a possibly-stale cached copy of them
     description: recurring.description || '',
     date: recurring.nextPaymentAt,
   }

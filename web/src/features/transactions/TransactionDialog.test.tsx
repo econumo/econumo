@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureAccounts, fixtureOwner, fixtureUsd } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
@@ -33,8 +33,35 @@ function renderDialog(routePath = '/account/a1') {
 const wireTxEcho = (over: Record<string, unknown> = {}) => ({
   id: 't-created', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
   amount: '9.99', amountRecipient: '9.99', categoryId: 'cat-food', description: '', payeeId: null, tagId: null,
-  date: '2026-07-03 10:00:00', ...over,
+  labelIds: [], date: '2026-07-03 10:00:00', ...over,
 })
+
+const wireLabel = (over: Record<string, unknown> = {}) => ({
+  id: 'label2', ownerUserId: 'u1', name: 'travel', icon: 'flight', position: 1, isArchived: 0,
+  createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00', ...over,
+})
+
+const captureUpdate = () => {
+  const seen: { body?: Record<string, unknown> } = {}
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      seen.body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  return seen
+}
+
+// The accessible name is "<name> <kind word>" (the kind word is untranslated
+// until Task 8 lands the catalogue entries), so match on the leading name and
+// pick the kind from data-kind.
+const chip = (name: string, kind: 'tag' | 'label') => {
+  const found = screen.getAllByRole('checkbox', { name: new RegExp('^' + name + '\\b') }).find((el) => el.getAttribute('data-kind') === kind)
+  if (!found) {
+    throw new Error(`no ${kind} chip named ${name}`)
+  }
+  return found
+}
 
 beforeEach(() => {
   localStorage.clear()
@@ -99,7 +126,7 @@ it('tag chips are keyboard-reachable and toggle with Enter and Space', async () 
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
 
-  const chip = await screen.findByRole('checkbox', { name: 'vacation' })
+  const chip = await screen.findByRole('checkbox', { name: /^vacation\b/ })
   screen.getByRole('combobox', { name: 'Recipient' }).focus()
   await user.tab()
   expect(chip).toHaveFocus()
@@ -186,11 +213,11 @@ it('tags show on expense but not income; income payee label is Sender', async ()
   renderDialog()
   useUiStore.getState().openTransactionModal({ type: 'expense' })
   await screen.findByRole('heading', { name: 'Add transaction' })
-  expect(await screen.findByRole('checkbox', { name: 'vacation' })).toBeInTheDocument()
+  expect(await screen.findByRole('checkbox', { name: /^vacation\b/ })).toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Recipient' })).toBeInTheDocument()
 
   await user.click(screen.getByRole('radio', { name: 'Income' }))
-  expect(screen.queryByRole('checkbox', { name: 'vacation' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('checkbox', { name: /^vacation\b/ })).not.toBeInTheDocument()
   expect(screen.getByRole('combobox', { name: 'Sender' })).toBeInTheDocument()
 })
 
@@ -376,7 +403,7 @@ it('creates a category on the fly and selects it', async () => {
 it('posting a recurring template: regular add dialog + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
   const wireRecurringDto: RecurringDto = {
     id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
-    amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
+    amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'rent',
     schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
   }
   let createCalled = false
@@ -443,4 +470,185 @@ it('read-only shared accounts are disabled in the transfer account pickers', asy
   // a writable account remains selectable
   await user.click(await screen.findByRole('option', { name: /Bank/ }))
   await waitFor(() => expect(toPicker().value).toContain('Bank'))
+})
+
+
+it('editing a transaction round-trips its existing labels', async () => {
+  // update-transaction REPLACES the label set: an edit that forgets to resend
+  // the attached ids deletes them, which is what this asserts against
+  const seen = captureUpdate()
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ labelIds: ['label1'] }) as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('health', 'label')).toHaveAttribute('aria-checked', 'true'))
+  // an edit that touches something else entirely must not disturb the labels
+  await user.type(screen.getByLabelText('Notes'), 'x')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.labelIds).toEqual(['label1'])
+  expect(seen.body!.description).toBe('x')
+})
+
+it('toggling label chips adds and removes ids independently of the tag', async () => {
+  server.use(...coreHandlers({ labels: [...fixtureLabels, wireLabel()] }))
+  const seen = captureUpdate()
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ labelIds: ['label1'] }) as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('travel', 'label')).toBeInTheDocument())
+  await user.click(chip('travel', 'label'))
+  expect(chip('travel', 'label')).toHaveAttribute('aria-checked', 'true')
+  // both stay on: labels are a free multi-select, unlike the radio-like tag
+  expect(chip('health', 'label')).toHaveAttribute('aria-checked', 'true')
+  await user.click(chip('health', 'label'))
+  await user.click(chip('vacation', 'tag'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.labelIds).toEqual(['label2'])
+  expect(seen.body!.tagId).toBe('tag1')
+})
+
+it('keeps an attached archived label on the row, hides an unattached one', async () => {
+  server.use(
+    ...coreHandlers({
+      labels: [
+        ...fixtureLabels,
+        wireLabel({ id: 'label-old', name: 'retired', isArchived: 1 }),
+        wireLabel({ id: 'label-gone', name: 'unused', isArchived: 1 }),
+      ],
+    }),
+  )
+  const seen = captureUpdate()
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ labelIds: ['label-old'] }) as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  // archived but attached: it must stay visible AND survive the save, since
+  // hiding it would silently detach it on the next write
+  await waitFor(() => expect(chip('retired', 'label')).toHaveAttribute('aria-checked', 'true'))
+  expect(screen.queryByRole('checkbox', { name: /^unused\b/ })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.labelIds).toEqual(['label-old'])
+})
+
+it('a transfer posts an empty label set', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/transaction/update-transaction', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ labelIds: ['label1'] }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(screen.getByRole('radio', { name: 'Transfer' }))
+  await user.click(screen.getByRole('combobox', { name: 'to account' }))
+  await user.click(await screen.findByText(/Bank/))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.labelIds).toEqual([])
+  expect(body!.tagId).toBeNull()
+})
+
+it('the inline create dialog picks the label kind and attaches the new label', async () => {
+  let created: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/label/create-label', async ({ request }) => {
+      created = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireLabel({ id: 'label-new', name: 'Books' }) } })
+    }),
+  )
+  const seen = captureUpdate()
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  // the button only appears once the user query resolves (canChangeAccountData)
+  await user.click(await screen.findByRole('button', { name: 'Add tag' }))
+  // reporting is the default kind, so the dialog needs no kind click
+  await user.type(await screen.findByLabelText('Name'), 'Books')
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(created).toBeDefined())
+  expect(created!.name).toBe('Books')
+  await waitFor(() => expect(chip('Books', 'label')).toHaveAttribute('aria-checked', 'true'))
+
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.labelIds).toEqual(['label-new'])
+})
+
+it('a rejected inline create shows the server message and keeps the dialog open', async () => {
+  // both kinds share one name namespace, so creating a reporting tag named
+  // after an existing budget tag is rejected by the server, not by this form
+  server.use(
+    http.post('*/api/v1/label/create-label', () =>
+      HttpResponse.json(
+        { success: false, message: 'Name is already taken', code: 400, errors: {} },
+        { status: 400 },
+      ),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho() as unknown as TransactionDto })
+
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.click(await screen.findByRole('button', { name: 'Add tag' }))
+  await user.type(await screen.findByLabelText('Name'), 'vacation')
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+
+  expect(await screen.findByText('Name is already taken')).toBeInTheDocument()
+  // the dialog stays open on the still-typed name so the user can correct it
+  expect(screen.getByLabelText('Name')).toHaveValue('vacation')
+})
+
+
+it('posting a template sends the chips the user actually left checked', async () => {
+  // post-recurring-transaction inherits the template's labels when labelIds is
+  // ABSENT, so the dialog must always send the field — otherwise a toggle made
+  // here is silently overwritten by the template's set server-side
+  const wireRecurringWithLabels: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: ['label1'],
+    description: 'rent', schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+  }
+  server.use(...coreHandlers({ labels: [...fixtureLabels, wireLabel()] }))
+  let postBody: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      postBody = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: wireTxEcho({ id: 't-posted', labelIds: ['label2'] }), accounts: fixtureAccounts, nextPaymentAt: '2026-08-05 00:00:00' },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ postRecurring: wireRecurringWithLabels })
+
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  // the chips start as the template's set
+  await waitFor(() => expect(chip('health', 'label')).toHaveAttribute('aria-checked', 'true'))
+  await user.click(chip('health', 'label'))
+  await user.click(chip('travel', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(postBody).toBeDefined())
+  expect(postBody!.recurringId).toBe('r1')
+  expect(postBody!.labelIds).toEqual(['label2'])
 })

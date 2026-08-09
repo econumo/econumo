@@ -1,8 +1,8 @@
 package apiparity
 
-// order_lists exercises the move-{category,tag,payee} routes: one relative move
-// per module, plus a closing read that must reflect the new order (catching an
-// engine difference in the ORDER BY or the key write that a write-only
+// order_lists exercises the move-{category,tag,payee,label} routes: one relative
+// move per module, plus a closing read that must reflect the new order (catching
+// an engine difference in the ORDER BY or the key write that a write-only
 // assertion would miss). The scenario name is kept so its golden file stays put.
 func init() {
 	register(Scenario{Name: "order_lists", Calls: func() []Call {
@@ -17,6 +17,8 @@ func init() {
 				Body: map[string]any{"id": TagWork, "afterId": nil}},
 			{Label: "move-payee", Method: "POST", Path: "/api/v1/payee/move-payee", Auth: "owner",
 				Body: map[string]any{"id": PayeeShop, "afterId": nil}},
+			{Label: "move-label", Method: "POST", Path: "/api/v1/label/move-label", Auth: "owner",
+				Body: map[string]any{"id": LabelWork, "afterId": nil}},
 			// The bulk counterpart: a whole-list reorder, which no single
 			// relative move can express (the A-Z action in settings).
 			{Label: "sort-category-list", Method: "POST", Path: "/api/v1/category/sort-category-list", Auth: "owner",
@@ -25,6 +27,8 @@ func init() {
 				Body: map[string]any{"ids": []string{TagWork}}},
 			{Label: "sort-payee-list", Method: "POST", Path: "/api/v1/payee/sort-payee-list", Auth: "owner",
 				Body: map[string]any{"ids": []string{PayeeShop}}},
+			{Label: "sort-label-list", Method: "POST", Path: "/api/v1/label/sort-label-list", Auth: "owner",
+				Body: map[string]any{"ids": []string{LabelWork}}},
 		}
 	}})
 }

@@ -23,6 +23,16 @@ func TestNewTag_NotArchived(t *testing.T) {
 	}
 }
 
+func TestNewTag_SeedsDefaultIcon(t *testing.T) {
+	tg := newTag(t)
+	if tg.Icon != DefaultTagIcon {
+		t.Fatalf("icon = %q, want %q", tg.Icon, DefaultTagIcon)
+	}
+	if DefaultTagIcon != "tag" {
+		t.Fatalf("DefaultTagIcon = %q, want \"tag\"", DefaultTagIcon)
+	}
+}
+
 func TestTag_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
 	tg := newTag(t)
 	tg.Unarchive(tt1) // no-op

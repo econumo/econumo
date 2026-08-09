@@ -2055,6 +2055,12 @@
                         "in": "query"
                     },
                     {
+                        "type": "string",
+                        "description": "Label id (reporting label)",
+                        "name": "labelId",
+                        "in": "query"
+                    },
+                    {
                         "type": "boolean",
                         "description": "Uncategorized bucket (mutually exclusive with categoryId)",
                         "name": "uncategorized",
@@ -4345,6 +4351,580 @@
                 }
             }
         },
+        "/api/v1/label/archive-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Marks a label archived. Requires ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Archive a label",
+                "parameters": [
+                    {
+                        "description": "Archive label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ArchiveLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ArchiveLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/create-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a reporting label for the authenticated user. Idempotent on the request id; the name must be unique among the user's labels.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Create a label",
+                "parameters": [
+                    {
+                        "description": "Create label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.CreateLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/delete-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes a label. Transactions referencing it lose the association (transactions_labels cascades). Requires ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Delete a label",
+                "parameters": [
+                    {
+                        "description": "Delete label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DeleteLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.DeleteLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/get-label-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns all the authenticated user's available labels (own + shared via account access, archived and not) in list order.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Get the label list",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetLabelListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/move-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Places one label immediately after another (afterId null = first) and returns the full available list (own + shared).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Move a label",
+                "parameters": [
+                    {
+                        "description": "Move label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.MoveLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.MoveLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/sort-label-list": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Applies an explicit order (a full list of ids) to the caller's own labels and returns the full available list (own + shared).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Sort the label list",
+                "parameters": [
+                    {
+                        "description": "Sort label list request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SortLabelListRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SortLabelListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/unarchive-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Clears a label's archived flag. Requires ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Unarchive a label",
+                "parameters": [
+                    {
+                        "description": "Unarchive label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UnarchiveLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UnarchiveLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/label/update-label": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Updates a label's name. Requires ownership; the new name must be unique among the user's labels.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Label"
+                ],
+                "summary": "Update a label",
+                "parameters": [
+                    {
+                        "description": "Update label request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateLabelRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.UpdateLabelResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/payee/archive-payee": {
             "post": {
                 "security": [
@@ -6243,7 +6823,7 @@
                         "Bearer": []
                     }
                 ],
-                "description": "Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.",
+                "description": "Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -6303,6 +6883,18 @@
                         "type": "string",
                         "description": "Override tag id",
                         "name": "tagId",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Override label ids (comma-joined), applied to every row",
+                        "name": "labelIds",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Separator that splits the mapped labels cell (default ;)",
+                        "name": "labelsSeparator",
                         "in": "formData"
                     }
                 ],
@@ -8412,6 +9004,17 @@
         "model.ArchiveCategoryResult": {
             "type": "object"
         },
+        "model.ArchiveLabelRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ArchiveLabelResult": {
+            "type": "object"
+        },
         "model.ArchivePayeeRequest": {
             "type": "object",
             "properties": {
@@ -8514,6 +9117,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "Reporting labels attached to the row. Always non-nil ([] when none) so a\nclient can render it without a null check, matching labelIds on the\ntransaction feature's own wire.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "payee": {
                     "$ref": "#/definitions/model.TxPayeeResult"
@@ -8921,6 +9531,28 @@
                 }
             }
         },
+        "model.CreateLabelRequest": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CreateLabelResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.LabelResult"
+                }
+            }
+        },
         "model.CreatePayeeRequest": {
             "type": "object",
             "properties": {
@@ -8994,6 +9626,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds is ignored for a transfer (transfers never carry labels); each\nentry is validated (parses as an id, exists, owned by the template's\naccount owner) by the service, not here.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "nextPaymentAt": {
                     "type": "string"
@@ -9072,6 +9711,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds is ignored for a transfer (transfers never carry labels); each\nentry is validated (parses as an id, exists, owned by the transaction's\naccount owner) by the service, not here.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "payeeId": {
                     "type": "string"
@@ -9342,6 +9988,17 @@
         "model.DeleteInviteResult": {
             "type": "object"
         },
+        "model.DeleteLabelRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.DeleteLabelResult": {
+            "type": "object"
+        },
         "model.DeletePayeeRequest": {
             "type": "object",
             "properties": {
@@ -9540,6 +10197,17 @@
                 }
             }
         },
+        "model.GetLabelListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelResult"
+                    }
+                }
+            }
+        },
         "model.GetOptionListResult": {
             "type": "object",
             "properties": {
@@ -9720,6 +10388,64 @@
                 }
             }
         },
+        "model.LabelResult": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.LabelSpendResult": {
+            "type": "object",
+            "properties": {
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ChildElementResult"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "spent": {
+                    "type": "string"
+                }
+            }
+        },
         "model.LoginRequest": {
             "type": "object",
             "properties": {
@@ -9881,6 +10607,28 @@
         },
         "model.MoveElementResult": {
             "type": "object"
+        },
+        "model.MoveLabelRequest": {
+            "type": "object",
+            "properties": {
+                "afterId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.MoveLabelResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelResult"
+                    }
+                }
+            }
         },
         "model.MovePayeeRequest": {
             "type": "object",
@@ -10061,6 +10809,13 @@
                 "id": {
                     "type": "string"
                 },
+                "labelIds": {
+                    "description": "Omit the field to inherit the template's labels; send a list to give the\nposted transaction exactly those labels; send an empty list to give it\nnone. Absent and empty therefore mean different things. Each entry is\nvalidated (parses, exists, owned by the account owner) by the transaction\ncreate path, not here — same rule as CreateTransactionRequest.LabelIds.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
                 "payeeId": {
                     "type": "string"
                 },
@@ -10115,6 +10870,12 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "nextPaymentAt": {
                     "type": "string"
@@ -10413,6 +11174,28 @@
                 }
             }
         },
+        "model.SortLabelListRequest": {
+            "type": "object",
+            "properties": {
+                "ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "model.SortLabelListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelResult"
+                    }
+                }
+            }
+        },
         "model.SortPayeeListRequest": {
             "type": "object",
             "properties": {
@@ -10471,6 +11254,12 @@
                     "items": {
                         "$ref": "#/definitions/model.BudgetFolderResult"
                     }
+                },
+                "labels": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.LabelSpendResult"
+                    }
                 }
             }
         },
@@ -10478,6 +11267,9 @@
             "type": "object",
             "properties": {
                 "createdAt": {
+                    "type": "string"
+                },
+                "icon": {
                     "type": "string"
                 },
                 "id": {
@@ -10529,6 +11321,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds is always a list, never null, so clients can iterate without a\nnil check. A transfer always carries an empty list.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "payeeId": {
                     "type": "string"
@@ -10590,6 +11389,17 @@
             }
         },
         "model.UnarchiveCategoryResult": {
+            "type": "object"
+        },
+        "model.UnarchiveLabelRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UnarchiveLabelResult": {
             "type": "object"
         },
         "model.UnarchivePayeeRequest": {
@@ -10850,6 +11660,25 @@
                 }
             }
         },
+        "model.UpdateLabelRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.UpdateLabelResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.LabelResult"
+                }
+            }
+        },
         "model.UpdateLanguageRequest": {
             "type": "object",
             "properties": {
@@ -10930,6 +11759,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds replaces the full label set (nil/empty clears it); ignored for a\ntransfer. See CreateRecurringTransactionRequest.LabelIds for the\nvalidation rule.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "nextPaymentAt": {
                     "type": "string"
@@ -11017,6 +11853,13 @@
                 },
                 "id": {
                     "type": "string"
+                },
+                "labelIds": {
+                    "description": "LabelIds replaces the full label set (nil/empty clears it); ignored for a\ntransfer. See CreateTransactionRequest.LabelIds for the validation rule.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "payeeId": {
                     "type": "string"

@@ -54,6 +54,24 @@ export interface BudgetFolderDto {
   position: number
 }
 
+/** a reporting label's period spend. No budgeted/available: a label never
+ *  becomes a budget element or carries a limit. Amounts across labels
+ *  deliberately overlap (one transaction can carry several) and do not sum
+ *  to total spend. */
+export interface LabelSpendDto {
+  id: Id
+  name: string
+  icon: string
+  isArchived: 0 | 1
+  /** decimal string (wire format, kept verbatim), already in the budget currency */
+  spent: string
+  ownerUserId: Id
+  /** per-category breakdown of this label's spend; unlike the labels
+   *  themselves these DO sum to the label's own total. Optional on the wire:
+   *  servers older than this release omit it. */
+  children?: BudgetChildElementDto[]
+}
+
 // nullable by period phase: future month = all null except holdings; current month = endBalance null
 export interface BudgetBalanceDto {
   currencyId: Id
@@ -86,6 +104,8 @@ export interface BudgetTransactionDto {
   category: { id: Id; name: string; icon: string } | null
   payee: { id: Id; name: string } | null
   tag: { id: Id; name: string } | null
+  /** reporting labels attached to the row; [] when none */
+  labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
 }
@@ -95,5 +115,7 @@ export interface BudgetDto {
   filters: { periodStart: string; periodEnd: string; excludedAccountsIds: Id[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
-  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[] }
+  /** labels is optional on the wire: servers older than the labels release —
+   *  still accepted by the app's compat floor — omit it. */
+  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
 }

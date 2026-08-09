@@ -94,20 +94,24 @@ func TestRecurringUpdate_TransferClearsClassifiers_AndRederivesDay(t *testing.T)
 	now := d("2026-07-14 10:00:00")
 	cat := vo.NewId()
 	recip := vo.NewId()
+	label := vo.NewId()
 	rt := model.NewRecurringTransaction(model.RecurringNewState{
 		ID: vo.NewId(), UserID: vo.NewId(), Type: model.TransactionTypeExpense,
-		AccountID: vo.NewId(), Amount: "50", CategoryID: &cat,
+		AccountID: vo.NewId(), Amount: "50", CategoryID: &cat, LabelIDs: []vo.Id{label},
 		Schedule: model.RecurringScheduleMonthly, NextPaymentAt: d("2026-07-31 00:00:00"), CreatedAt: now,
 	})
 	later := d("2026-07-15 10:00:00")
 	rt.Update(model.RecurringNewState{
 		ID: rt.ID, UserID: rt.UserID, Type: model.TransactionTypeTransfer,
 		AccountID: rt.AccountID, AccountRecipID: &recip, Amount: "60",
-		CategoryID: &cat, Schedule: model.RecurringScheduleWeekly,
+		CategoryID: &cat, LabelIDs: []vo.Id{label}, Schedule: model.RecurringScheduleWeekly,
 		NextPaymentAt: d("2026-08-05 00:00:00"),
 	}, later)
 	if rt.CategoryID != nil {
 		t.Fatal("transfer must clear CategoryID")
+	}
+	if rt.LabelIDs != nil {
+		t.Fatal("transfer must clear LabelIDs")
 	}
 	if rt.AccountRecipID == nil || !rt.AccountRecipID.Equal(recip) {
 		t.Fatal("transfer must keep AccountRecipID")
@@ -117,6 +121,26 @@ func TestRecurringUpdate_TransferClearsClassifiers_AndRederivesDay(t *testing.T)
 	}
 	if !rt.UpdatedAt.Equal(later) {
 		t.Fatal("UpdatedAt not stamped")
+	}
+}
+
+func TestRecurringUpdate_NonTransfer_KeepsLabelIDs(t *testing.T) {
+	now := d("2026-07-14 10:00:00")
+	cat := vo.NewId()
+	label := vo.NewId()
+	rt := model.NewRecurringTransaction(model.RecurringNewState{
+		ID: vo.NewId(), UserID: vo.NewId(), Type: model.TransactionTypeExpense,
+		AccountID: vo.NewId(), Amount: "50", CategoryID: &cat,
+		Schedule: model.RecurringScheduleMonthly, NextPaymentAt: d("2026-07-31 00:00:00"), CreatedAt: now,
+	})
+	later := d("2026-07-15 10:00:00")
+	rt.Update(model.RecurringNewState{
+		ID: rt.ID, UserID: rt.UserID, Type: model.TransactionTypeExpense,
+		AccountID: rt.AccountID, Amount: "60", CategoryID: &cat, LabelIDs: []vo.Id{label},
+		Schedule: model.RecurringScheduleWeekly, NextPaymentAt: d("2026-08-05 00:00:00"),
+	}, later)
+	if len(rt.LabelIDs) != 1 || !rt.LabelIDs[0].Equal(label) {
+		t.Fatalf("LabelIDs = %v, want [%s]", rt.LabelIDs, label)
 	}
 }
 

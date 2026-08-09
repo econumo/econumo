@@ -18,10 +18,12 @@ describe('useRecurringForm', () => {
   it('fromTransaction prefills fields, anchoring the next payment one interval after the transaction', () => {
     const tx = {
       id: 't1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: 42.5, amountRecipient: null,
-      categoryId: 'c1', payeeId: null, tagId: null, description: 'rent', date: '2026-08-17 10:00:00',
+      categoryId: 'c1', payeeId: null, tagId: null, labelIds: ['lb1'], description: 'rent', date: '2026-08-17 10:00:00',
     } as unknown as TransactionDto
     const s = initialRecurringFormState({ fromTransaction: tx }, accounts)
     expect(s.isNew).toBe(true)
+    // a template made from a transaction inherits its labels
+    expect(s.labelIds).toEqual(['lb1'])
     expect(s.amount).toBe('42.5')
     expect(s.categoryId).toBe('c1')
     expect(s.schedule).toBe('monthly')
@@ -30,6 +32,25 @@ describe('useRecurringForm', () => {
     // the source travels with the payload so the backend links it to the template
     expect(s.sourceTransactionId).toBe('t1')
     expect(buildRecurringPayload(s).sourceTransactionId).toBe('t1')
+  })
+
+  it('round-trips an edited template\'s labels and clears them for a transfer', () => {
+    const rt = {
+      id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '50',
+      categoryId: 'c1', payeeId: null, tagId: 'tg1', labelIds: ['lb1', 'lb2'], description: 'rent',
+      schedule: 'monthly', nextPaymentAt: '2026-09-01 00:00:00',
+    } as unknown as RecurringDto
+    const s = initialRecurringFormState({ recurring: rt }, accounts)
+    // update-recurring-transaction REPLACES the set, so an untouched edit must
+    // resend exactly what the template already carries
+    expect(s.labelIds).toEqual(['lb1', 'lb2'])
+    expect(buildRecurringPayload(s).labelIds).toEqual(['lb1', 'lb2'])
+    expect(buildRecurringPayload({ ...s, type: 'transfer' }).labelIds).toEqual([])
+  })
+
+  it('starts a from-scratch template with no labels', () => {
+    expect(initialRecurringFormState({}, accounts).labelIds).toEqual([])
+    expect(buildRecurringPayload(initialRecurringFormState({}, accounts)).labelIds).toEqual([])
   })
 
   it('only the from-transaction flow sends sourceTransactionId', () => {

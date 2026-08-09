@@ -14,7 +14,7 @@ import { SortDialog } from '@/components/SortDialog'
 import { SortableList, type SortableHandleProps } from '@/components/SortableList'
 import { fuzzyMatch } from '@/lib/fuzzy'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { afterIdFromDrop } from '@/lib/ordering'
+import { afterIdFromDrop, afterIdInScope } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
@@ -60,9 +60,12 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** page-level banner (e.g. a server refusal) rendered between info and the list */
   alert?: ReactNode
   createLabel: string
-  deleteTitle: string
-  /** badge on archived rows; per-list because languages inflect it per noun */
-  archivedLabel: string
+  /** a function is needed when one list mixes item kinds with different nouns (e.g. tag vs label) */
+  deleteTitle: string | ((item: T) => string)
+  /** badge on archived rows; per-noun because languages inflect it per noun — a function is
+   *  needed when one list mixes item kinds whose nouns take different inflections (e.g. tag vs
+   *  label; see commit 2d150b93 for the bug this guards against) */
+  archivedLabel: string | ((item: T) => string)
   items: T[]
   /** localStorage key for the active-only filter; absent = no filter control */
   storageKey?: string
@@ -71,6 +74,15 @@ interface ClassificationListProps<T extends ClassificationItem> {
   /** optional visual grouping (e.g. category income/expense) */
   sections?: ClassificationSection<T>[]
   showIcon?: boolean
+  /** icon tint override per item (e.g. kind accent colour); default is the plain muted icon class */
+  iconClassName?: (item: T) => string
+  /** confines reordering to items sharing the same key — needed when the list mixes kinds that
+   *  hold INDEPENDENT backend sort-key sequences (e.g. tags/labels), because a drag anchor or an
+   *  A-Z order that crossed kinds would name a row the receiving endpoint does not own, and the
+   *  server silently appends rather than erroring on such an anchor. onMove is therefore anchored
+   *  within the moved row's scope, and onSort fires ONCE PER SCOPE.
+   *  Absent = one scope for the whole list (e.g. category income+expense share one sequence). */
+  orderScope?: (item: T) => string
   /** extra muted lines rendered under the name */
   meta?: (item: T) => ReactNode
   /** per-item switch semantics; default = the archive toggle. null = no switch on this row */
@@ -105,6 +117,8 @@ export function ClassificationList<T extends ClassificationItem>({
   analyticsType,
   sections,
   showIcon,
+  iconClassName,
+  orderScope,
   meta,
   rowSwitch,
   hasActions,
@@ -194,11 +208,21 @@ export function ClassificationList<T extends ClassificationItem>({
 
   // A drag reorders only the rows on screen (a section, possibly with the
   // archived ones filtered out); rebuild the full id order so every other
-  // item keeps its slot before diffing positions.
+  // item keeps its slot before reading off the anchor.
   const rebuildFullOrder = (subsetIds: string[]): string[] => {
     const subset = new Set(subsetIds)
     const queue = [...subsetIds]
     return items.map((item) => (subset.has(item.id) ? (queue.shift() as string) : item.id))
+  }
+
+  // Without orderScope every row shares one sequence and the anchor is simply
+  // the preceding id; with it, rows of another kind must not become the anchor.
+  const anchorFor = (fullOrder: string[], movedId: string): string | null => {
+    if (!orderScope) {
+      return afterIdFromDrop(fullOrder, movedId)
+    }
+    const scopeOf = new Map(items.map((item) => [item.id, orderScope(item)]))
+    return afterIdInScope(fullOrder, movedId, (id) => scopeOf.get(id))
   }
 
   // A drag reports WHERE the dragged row landed, not what every index became:
@@ -209,7 +233,7 @@ export function ClassificationList<T extends ClassificationItem>({
     if (!onMove) {
       return
     }
-    onMove({ id: movedId, afterId: afterIdFromDrop(rebuildFullOrder(orderedIds), movedId) })
+    onMove({ id: movedId, afterId: anchorFor(rebuildFullOrder(orderedIds), movedId) })
   }
 
   const orderable = onMove !== undefined && items.length > 1
@@ -291,13 +315,15 @@ export function ClassificationList<T extends ClassificationItem>({
             <GripVertical className="size-4" />
           </button>
         ) : null}
-        {showIcon ? <EntityIcon name={item.icon} className="text-base text-muted-foreground" /> : null}
+        {showIcon ? <EntityIcon name={item.icon} className={`text-base ${iconClassName?.(item) ?? 'text-muted-foreground'}`} /> : null}
         <span className="flex min-w-0 flex-1 flex-col">
           <span className={`truncate text-sm ${item.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={item.name}>
             {item.name}
           </span>
           {item.isArchived === 1 ? (
-            <span className="text-xs text-muted-foreground">{archivedLabel}</span>
+            <span className="text-xs text-muted-foreground">
+              {typeof archivedLabel === 'function' ? archivedLabel(item) : archivedLabel}
+            </span>
           ) : null}
           {meta?.(item)}
         </span>
@@ -490,10 +516,23 @@ export function ClassificationList<T extends ClassificationItem>({
           open={sortOpen}
           onClose={() => setSortOpen(false)}
           onPick={(direction) => {
-            const ordered = [...items].sort((a, b) =>
-              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language),
-            )
-            onSort?.(ordered.map((i) => i.id))
+            const cmp = (a: T, b: T) =>
+              direction === 'asc' ? compareNames(a.name, b.name, i18n.language) : compareNames(b.name, a.name, i18n.language)
+            // One request per scope: each kind owns its own sort-key sequence, so a
+            // single merged order would name another kind's rows and be skipped there.
+            const groups = new Map<string, T[]>()
+            for (const item of items) {
+              const key = orderScope?.(item) ?? ''
+              const group = groups.get(key)
+              if (group) {
+                group.push(item)
+              } else {
+                groups.set(key, [item])
+              }
+            }
+            for (const group of groups.values()) {
+              onSort?.([...group].sort(cmp).map((i) => i.id))
+            }
             setSortOpen(false)
           }}
         />
@@ -508,7 +547,7 @@ export function ClassificationList<T extends ClassificationItem>({
             setDeleteTarget(null)
           }
         }}
-        title={deleteTitle}
+        title={typeof deleteTitle === 'function' ? (deleteTarget ? deleteTitle(deleteTarget) : '') : deleteTitle}
         question={deleteTarget?.name ?? ''}
         confirmLabel={t('common.button.delete.label')}
         cancelLabel={t('common.button.cancel.label')}

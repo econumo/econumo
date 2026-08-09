@@ -12,7 +12,7 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { TransactionRow } from '@/features/transactions/TransactionRow'
 import { useUserData } from '@/features/user/queries'
@@ -28,6 +28,7 @@ export function RecurringSettingsPage() {
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: labels } = useLabels()
   const { data: user } = useUserData()
   const openRecurringModal = useUiStore((s) => s.openRecurringModal)
   const openTransactionModal = useUiStore((s) => s.openTransactionModal)
@@ -39,7 +40,7 @@ export function RecurringSettingsPage() {
 
   const scheduleLabel = (rt: RecurringDto) => t(`recurring.schedule.${rt.schedule}`)
   const accountOf = (rt: RecurringDto) => accounts?.find((a) => a.id === rt.accountId)
-  const asTransaction = (rt: RecurringDto) => recurringAsTransaction(rt, { accounts, categories, payees, tags })
+  const asTransaction = (rt: RecurringDto) => recurringAsTransaction(rt, { accounts, categories, payees, tags, labels })
   // menu/sheet headings and aria labels still need a plain-text name; the row
   // itself derives its own title from the shaped transaction
   const title = (rt: RecurringDto) =>

@@ -51,6 +51,32 @@ func (c *nameCache) put(name string, v any) {
 	}
 }
 
+// splitLabelCell splits a mapped labels cell on the caller-chosen separator
+// (a CSV produced by another tool may use any delimiter, not just the export
+// default), trims each piece, drops blanks, and dedupes case-insensitively
+// (first occurrence wins, matching nameCache.put's dedup order).
+func splitLabelCell(cell, sep string) []string {
+	if cell == "" {
+		return nil
+	}
+	pieces := strings.Split(cell, sep)
+	seen := map[string]struct{}{}
+	out := make([]string, 0, len(pieces))
+	for _, p := range pieces {
+		name := strings.TrimSpace(p)
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(name)
+		if _, dup := seen[key]; dup {
+			continue
+		}
+		seen[key] = struct{}{}
+		out = append(out, name)
+	}
+	return out
+}
+
 // parseCSVRecords reads the CSV bytes header-first (setHeaderOffset 0) and
 // returns the header (BOM-stripped) plus each subsequent row as a
 // column-name -> value map. Fields are not pre-trimmed (fieldValue trims).

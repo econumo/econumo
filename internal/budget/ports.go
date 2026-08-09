@@ -74,3 +74,11 @@ type AverageRateLookup interface {
 	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 }
+
+// TransactionLabels resolves the reporting labels attached to a set of
+// transactions. The budget's own transaction rows join category/payee/tag
+// only; labels are many-per-transaction, so they come from a separate batch
+// lookup over the transaction feature's join table.
+type TransactionLabels interface {
+	LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error)
+}

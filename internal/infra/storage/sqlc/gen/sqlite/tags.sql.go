@@ -38,15 +38,15 @@ func (q *Queries) DeleteTag(ctx context.Context, id string) error {
 
 const getTagByID = `-- name: GetTagByID :one
 
-SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
 FROM tags
 WHERE id = ?
 `
 
 // Write-side queries for the tag module. The read-side query lives in
 // tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
-// category_read.sql). The tags table has no type/icon columns (unlike
-// categories): a tag's icon is a fixed "tag" and is not persisted.
+// category_read.sql). Unlike categories, a tag has no type column, but it does
+// have a persisted icon.
 func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 	row := q.db.QueryRowContext(ctx, getTagByID, id)
 	var i Tag
@@ -58,6 +58,7 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.SortKey,
+		&i.Icon,
 	)
 	return i, err
 }
@@ -65,7 +66,7 @@ func (q *Queries) GetTagByID(ctx context.Context, id string) (Tag, error) {
 const listTagsByOwner = `-- name: ListTagsByOwner :many
 ;
 
-SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key
+SELECT id, user_id, name, is_archived, created_at, updated_at, sort_key, icon
 FROM tags
 WHERE user_id = ?
 ORDER BY sort_key, id
@@ -90,6 +91,7 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortKey,
+			&i.Icon,
 		); err != nil {
 			return nil, err
 		}
@@ -107,12 +109,13 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 const upsertTag = `-- name: UpsertTag :exec
 ;
 
-INSERT INTO tags (id, user_id, name, is_archived, created_at, updated_at, sort_key)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO tags (id, user_id, name, is_archived, created_at, updated_at, sort_key, icon)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     user_id     = excluded.user_id,
     name        = excluded.name,
     sort_key    = excluded.sort_key,
+    icon        = excluded.icon,
     is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
@@ -125,6 +128,7 @@ type UpsertTagParams struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	SortKey    string
+	Icon       string
 }
 
 func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
@@ -136,6 +140,7 @@ func (q *Queries) UpsertTag(ctx context.Context, arg UpsertTagParams) error {
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.SortKey,
+		arg.Icon,
 	)
 	return err
 }

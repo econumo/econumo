@@ -19,6 +19,7 @@ export interface RecurringFormState {
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null
+  labelIds: Id[]
   description: string
   schedule: RecurringSchedule
   nextPaymentAt: string
@@ -78,6 +79,9 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       categoryId: rt.categoryId,
       payeeId: rt.payeeId,
       tagId: rt.tagId,
+      // update-recurring-transaction REPLACES the stored label set, so an edit
+      // has to carry the current ids through or saving would detach them
+      labelIds: rt.labelIds ?? [],
       description: rt.description,
       schedule: rt.schedule,
       nextPaymentAt: rt.nextPaymentAt,
@@ -97,6 +101,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
       categoryId: tx.categoryId,
       payeeId: tx.payeeId,
       tagId: tx.tagId,
+      labelIds: tx.labelIds ?? [],
       description: tx.description,
       schedule: 'monthly',
       // the source transaction anchors the schedule: the next payment is one
@@ -116,6 +121,7 @@ export function initialRecurringFormState(params: OpenRecurringParams, accounts:
     categoryId: null,
     payeeId: null,
     tagId: null,
+    labelIds: [],
     description: '',
     schedule: 'monthly',
     nextPaymentAt: formatDateTime(new Date()),
@@ -135,6 +141,9 @@ export function buildRecurringPayload(form: RecurringFormState): CreateRecurring
     categoryId: isTransfer ? null : form.categoryId,
     payeeId: isTransfer ? null : form.payeeId,
     tagId: isTransfer ? null : form.tagId,
+    // a transfer template carries no classification; [] (never null) so the
+    // replace-everything write clears whatever the template held before
+    labelIds: isTransfer ? [] : form.labelIds,
     description: form.description || '',
     schedule: form.schedule,
     nextPaymentAt: form.nextPaymentAt,

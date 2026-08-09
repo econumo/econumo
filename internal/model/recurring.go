@@ -67,12 +67,16 @@ type RecurringTransaction struct {
 	CategoryID     *vo.Id
 	PayeeID        *vo.Id
 	TagID          *vo.Id
-	Description    string
-	Schedule       RecurringSchedule
-	NextPaymentAt  time.Time
-	ScheduledDay   int16
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	// LabelIDs are the reporting labels attached to this template (nil/empty =
+	// none). Posting copies them onto the created transaction; see
+	// model.Transaction.LabelIDs for the same many-relation shape.
+	LabelIDs      []vo.Id
+	Description   string
+	Schedule      RecurringSchedule
+	NextPaymentAt time.Time
+	ScheduledDay  int16
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type RecurringNewState struct {
@@ -85,6 +89,7 @@ type RecurringNewState struct {
 	CategoryID     *vo.Id
 	PayeeID        *vo.Id
 	TagID          *vo.Id
+	LabelIDs       []vo.Id
 	Description    string
 	Schedule       RecurringSchedule
 	NextPaymentAt  time.Time
@@ -108,7 +113,7 @@ func recurringFrom(s RecurringNewState) *RecurringTransaction {
 	rt := &RecurringTransaction{
 		ID: s.ID, UserID: s.UserID, Type: s.Type, AccountID: s.AccountID,
 		AccountRecipID: s.AccountRecipID, Amount: s.Amount,
-		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID,
+		CategoryID: s.CategoryID, PayeeID: s.PayeeID, TagID: s.TagID, LabelIDs: s.LabelIDs,
 		Description: s.Description, Schedule: s.Schedule,
 		NextPaymentAt: s.NextPaymentAt, ScheduledDay: s.ScheduledDay,
 		CreatedAt: s.CreatedAt, UpdatedAt: s.UpdatedAt,
@@ -125,6 +130,7 @@ func (rt *RecurringTransaction) Update(s RecurringNewState, now time.Time) {
 	rt.CategoryID = s.CategoryID
 	rt.PayeeID = s.PayeeID
 	rt.TagID = s.TagID
+	rt.LabelIDs = s.LabelIDs
 	rt.Description = s.Description
 	rt.Schedule = s.Schedule
 	if !s.NextPaymentAt.Equal(rt.NextPaymentAt) {
@@ -144,7 +150,7 @@ func (rt *RecurringTransaction) Advance(now time.Time) {
 // non-transfers carry no recipient.
 func (rt *RecurringTransaction) normalize() {
 	if rt.Type.IsTransfer() {
-		rt.CategoryID, rt.PayeeID, rt.TagID = nil, nil, nil
+		rt.CategoryID, rt.PayeeID, rt.TagID, rt.LabelIDs = nil, nil, nil, nil
 	} else {
 		rt.AccountRecipID = nil
 	}

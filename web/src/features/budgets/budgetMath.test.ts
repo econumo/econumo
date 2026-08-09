@@ -32,7 +32,7 @@ it('archive keeps elements with a nonzero budget, spent or available, name-sorte
 })
 
 it('zero folders puts every active element into the no-folder bucket', () => {
-  const noFolders: BudgetDto = { ...budget, structure: { folders: [], elements: budget.structure.elements } }
+  const noFolders: BudgetDto = { ...budget, structure: { folders: [], elements: budget.structure.elements, labels: budget.structure.labels } }
   const buckets = bucketElements(noFolders, exch)
   expect(buckets.withFolder).toEqual([])
   expect(buckets.withoutFolder.elements.map((e) => e.id)).toEqual(['cat-food', 'env-1'])

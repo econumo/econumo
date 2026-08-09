@@ -18,6 +18,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req model
 	}
 
 	var deleted *model.Transaction
+	var labelIDs []string
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		t, gerr := s.repo.GetByID(ctx, id)
 		if gerr != nil {
@@ -26,6 +27,14 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req model
 		if aerr := s.checkWriteAccess(ctx, userID, t.AccountID, "transaction.transaction.not_available"); aerr != nil {
 			return aerr
 		}
+		// Fetched BEFORE Delete: the transactions_labels rows cascade away with
+		// the transaction, so reading labels after the delete would always come
+		// back empty even for a transaction that had them.
+		labels, lerr := s.repo.LabelsByTransactionIDs(ctx, []vo.Id{id})
+		if lerr != nil {
+			return lerr
+		}
+		labelIDs = labels[id.String()]
 		if derr := s.repo.Delete(ctx, id); derr != nil {
 			return derr
 		}
@@ -35,7 +44,7 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req model
 		return nil, err
 	}
 
-	item, err := s.toResult(ctx, deleted)
+	item, err := s.toResult(ctx, deleted, labelIDs)
 	if err != nil {
 		return nil, err
 	}

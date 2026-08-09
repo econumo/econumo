@@ -1,9 +1,8 @@
 // The Tag entity: the Tag aggregate root. The repository interface, the
 // write-side Service, and the read-side ReadService stay in internal/tag.
 //
-// Unlike a category, a tag has no type and no persisted icon: its icon is a
-// fixed "tag" and is not stored or returned on the wire (the TagResult DTO has
-// no icon field).
+// Unlike a category, a tag has no type column, but it does have a persisted
+// icon.
 package model
 
 import (
@@ -13,6 +12,11 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// DefaultTagIcon is the icon every tag is created with. The value is persisted
+// per row (not re-derived at render time) so a user-selectable icon later needs
+// no schema or rendering change.
+const DefaultTagIcon = "tag"
+
 // Tag is the tag aggregate root. The name is validated on the way in by the
 // application layer; the entity holds already-valid state and its mutators each
 // bump UpdatedAt only on a real change. Fields are exported for direct read
@@ -21,6 +25,7 @@ type Tag struct {
 	ID     vo.Id
 	UserID vo.Id
 	Name   string
+	Icon   string
 	// SortKey is the fractional index key that decides this row's slot in its
 	// list. It never leaves the server: responses carry a dense 0-based index.
 	SortKey    sortkey.Key
@@ -32,7 +37,7 @@ type Tag struct {
 // NewTag constructs a freshly-created tag. The sort key is assigned by
 // the service via SetSortKey before the first save.
 func NewTag(id, userID vo.Id, name string, now time.Time) *Tag {
-	return &Tag{ID: id, UserID: userID, Name: name, CreatedAt: now, UpdatedAt: now}
+	return &Tag{ID: id, UserID: userID, Name: name, Icon: DefaultTagIcon, CreatedAt: now, UpdatedAt: now}
 }
 
 func (t *Tag) UpdateName(name string, now time.Time) {

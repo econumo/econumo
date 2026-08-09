@@ -31,6 +31,15 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		PayeeId:            req.PayeeId,
 		TagId:              req.TagId,
 	}
+	// An explicit list (empty included) is the caller's own set; omitting the
+	// field means "inherit the template's labels", resolved inside the tx below.
+	// Either way the ids ride the create request, so the create path's reference
+	// checks apply to both: labels must belong to the posted account's owner
+	// (req.AccountId may differ from the template's account), and a transfer
+	// ignores them — inherited labels must not leak onto a transfer either.
+	if req.LabelIds != nil {
+		createReq.LabelIds = *req.LabelIds
+	}
 	if verr := createReq.Validate(); verr != nil {
 		return nil, verr
 	}
@@ -45,6 +54,13 @@ func (s *Service) PostRecurringTransaction(ctx context.Context, userID vo.Id, re
 		}
 		if aerr := s.checkWriteAccess(ctx, userID, rt.AccountID); aerr != nil {
 			return aerr
+		}
+		if req.LabelIds == nil {
+			labelIDs, lerr := s.labelIDsFor(ctx, rtID)
+			if lerr != nil {
+				return lerr
+			}
+			createReq.LabelIds = labelIDStrings(labelIDs)
 		}
 		created, gerr = s.creator.CreateTransactionFromRecurring(ctx, userID, createReq, rtID)
 		if gerr != nil {

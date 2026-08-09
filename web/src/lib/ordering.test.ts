@@ -1,4 +1,4 @@
-import { afterIdFromDrop, applyMove } from './ordering'
+import { afterIdFromDrop, afterIdInScope, applyMove } from './ordering'
 
 const items = [
   { id: 'a', position: 0 },
@@ -60,4 +60,25 @@ it('afterIdFromDrop reports the right anchor for a downward drag', () => {
 it('afterIdFromDrop reports the right anchor for an upward drag', () => {
   expect(afterIdFromDrop(['C', 'A', 'B'], 'C')).toBeNull()
   expect(afterIdFromDrop(['A', 'C', 'B'], 'C')).toBe('A')
+})
+
+// Tags and labels are rendered as one list but hold independent sort-key
+// sequences, so a label dropped at the top of the label section must report
+// "front" (null), not the tag that happens to sit above it -- the label
+// endpoint does not own that tag and would silently append instead.
+describe('afterIdInScope', () => {
+  const scope = (id: string) => (id.startsWith('tag') ? 'tag' : 'label')
+
+  it('ignores rows of another kind above the moved row', () => {
+    expect(afterIdInScope(['tag1', 'tag2', 'label1', 'label2'], 'label1', scope)).toBeNull()
+  })
+
+  it('reports the preceding row of the same kind', () => {
+    expect(afterIdInScope(['tag1', 'tag2', 'label1', 'label2'], 'label2', scope)).toBe('label1')
+    expect(afterIdInScope(['tag1', 'tag2', 'label1'], 'tag2', scope)).toBe('tag1')
+  })
+
+  it('reports null for the first row of the first kind', () => {
+    expect(afterIdInScope(['tag1', 'label1'], 'tag1', scope)).toBeNull()
+  })
 })

@@ -67,6 +67,9 @@
       "view": {
         "label": "Ver"
       },
+      "info": {
+        "label": "Informação"
+      },
       "up": {
         "label": "Mover para cima"
       },
@@ -231,6 +234,12 @@
         "payee": {
           "label": "Beneficiário"
         },
+        "tag": {
+          "label": "Etiqueta"
+        },
+        "label": {
+          "label": "Etiqueta de relatório"
+        },
         "tags": {
           "label": "Etiquetas"
         },
@@ -376,18 +385,6 @@
         "to": {
           "label": "Para"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nova etiqueta",
-          "name": {
-            "label": "Nova etiqueta",
-            "placeholder": "Introduza o nome da etiqueta",
-            "validation": {
-              "required_field": "Campo obrigatório"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -416,8 +413,17 @@
         "description": "Descrição",
         "description_placeholder": "Introduza a descrição para todas as transações",
         "payee": "Beneficiário",
-        "tag": "Etiqueta"
-      }
+        "tag": "Etiqueta de orçamento",
+        "labels": "Etiquetas de relatório"
+      },
+      "labels_separator": {
+        "button": "Alterar o separador de etiquetas",
+        "title": "Separador de etiquetas",
+        "tab": "Tabulação",
+        "newline": "Nova linha",
+        "custom_label": "Separador personalizado"
+      },
+      "new_labels_count": "Esta importação irá criar {count} nova etiqueta | Esta importação irá criar {count} novas etiquetas"
     },
     "import_result": {
       "success_title": "Importação concluída",
@@ -953,6 +959,13 @@
               "show_transactions": "Mostrar transações"
             }
           },
+          "labels": {
+            "heading": "Etiquetas de relatório",
+            "info": "As etiquetas de relatório mostram em que é gasto o seu dinheiro. Marque pessoas, animais ou lugares — um filho, um cão, uma segunda casa — e veja quanto gasta. Uma transação pode ter várias etiquetas de relatório."
+          },
+          "uncategorized": {
+            "info": "Despesas ainda sem categoria. Atribua uma categoria a estas transações e passarão para o orçamento acima, onde poderá planeá-las."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total de despesas"
@@ -1043,7 +1056,9 @@
         "settings": {
           "menu_item": "Etiquetas",
           "header": "Etiquetas",
-          "info": "As etiquetas agrupam automaticamente as despesas dentro do orçamento — útil em viagens, por exemplo: marque todas as despesas da viagem com uma etiqueta e obtenha a repartição dos gastos diretamente no orçamento.",
+          "info": "As etiquetas de orçamento ajudam a planear um projeto ou evento — umas férias, um casamento, uma renovação. Uma transação só pode ter uma destas, para que possa planear a sua despesa total. As etiquetas de relatório mostram para onde vai o seu dinheiro: marque pessoas, animais ou lugares. Destas, uma transação pode ter várias — não participam no orçamento.",
+          "section_budget": "Etiquetas de orçamento",
+          "section_reporting": "Etiquetas de relatório",
           "create_tag": "Criar etiqueta",
           "archived_item": "Em arquivo"
         }
@@ -1062,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Etiqueta de orçamento",
+            "label": "Etiqueta de relatório",
+            "tag_option": "Etiqueta de orçamento",
+            "tag_hint": "Planeie um projeto ou evento. Apenas uma etiqueta por transação.",
+            "label_option": "Etiqueta de relatório",
+            "label_hint": "Analise em que foi gasto o dinheiro. São permitidas várias etiquetas por transação.",
+            "locked_note": "A finalidade de uma etiqueta não pode ser alterada depois de criada."
+          },
+          "add_button": "Adicionar etiqueta",
           "name": {
             "label": "Nome",
             "validation": {
               "required_field": "Campo obrigatório",
+              "invalid_name": "O nome da etiqueta deve ter entre 3 e 64 caracteres"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Em arquivo"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Editar etiqueta"
+        },
+        "create": {
+          "header": "Nova etiqueta"
+        },
+        "delete": {
+          "title": "Eliminar etiqueta?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "O nome da etiqueta deve ter entre 3 e 64 caracteres"
             }
           }
@@ -1338,6 +1390,10 @@
       "base_immutable": "A moeda base não pode ser alterada.",
       "cannot_be_hidden": "Esta moeda não pode ser ocultada."
     },
+    "label": {
+      "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
+      "list_empty": "A lista de etiquetas está vazia."
+    },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",
@@ -1357,7 +1413,8 @@
     "transaction": {
       "account_not_available": "Esta conta não está disponível para esta operação.",
       "item_not_available": "Esta transação não está disponível para esta operação.",
-      "invalid_import_file": "Carregue um ficheiro CSV válido."
+      "invalid_import_file": "Carregue um ficheiro CSV válido.",
+      "too_many_labels": "Uma transação pode ter no máximo 50 etiquetas de relatório."
     },
     "user": {
       "report_period_invalid": "O período do relatório está incorreto.",

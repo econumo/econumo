@@ -6,6 +6,7 @@ import type { CreateTransactionDto, TransactionType } from '@/api/dto/transactio
 import type { FolderDto } from '@/api/dto/folder'
 import type { Id } from '@/api/types'
 import type { OpenTransactionParams } from '@/app/uiStore'
+import type { ClassificationKind } from '@/lib/classificationKind'
 import { formatDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
@@ -22,6 +23,7 @@ export interface TransactionFormState {
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null
+  labelIds: Id[]
   description: string
   date: string
 }
@@ -48,6 +50,9 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       categoryId: rt.categoryId,
       payeeId: rt.payeeId,
       tagId: rt.tagId,
+      // the post dialog sends its own labelIds, so the chips start as the
+      // template's set and any toggle the user makes lands on the transaction
+      labelIds: rt.labelIds ?? [],
       description: rt.description,
       date: rt.nextPaymentAt,
     }
@@ -67,6 +72,9 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       categoryId: tx.categoryId,
       payeeId: tx.payeeId,
       tagId: tx.tagId,
+      // update-transaction REPLACES the stored label set, so the edit form has
+      // to carry the current ids through untouched or saving would detach them
+      labelIds: tx.labelIds ?? [],
       description: tx.description,
       date: tx.date,
     }
@@ -82,6 +90,7 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
     categoryId: null,
     payeeId: null,
     tagId: null,
+    labelIds: [],
     description: '',
     date: formatDateTime(new Date()),
   }
@@ -106,26 +115,29 @@ interface ClassificationLists {
   categories: OwnedRow[]
   payees: OwnedRow[]
   tags: OwnedRow[]
+  labels: OwnedRow[]
 }
 
 interface ClassificationSelection {
   categoryId: Id | null
   payeeId: Id | null
   tagId: Id | null
+  labelIds: Id[]
 }
 
 /**
  * Drop classifications the ACCOUNT OWNER does not own.
  *
- * The server accepts only the owner's category/payee/tag on a shared account.
- * Rows written under an older, laxer rule can name the CALLER's own instead,
- * and those transactions then fail every save with "This transaction is not
- * available for this operation." Clearing them here lets the edit go through:
- * an unowned category falls back to uncategorized (null), the rest unselect.
+ * The server accepts only the owner's category/payee/tag/labels on a shared
+ * account. Rows written under an older, laxer rule can name the CALLER's own
+ * instead, and those transactions then fail every save with
+ * "This transaction is not available for this operation." Clearing them here
+ * lets the edit go through: an unowned category falls back to uncategorized
+ * (null), the rest simply unselect.
  *
- * An id absent from its list is KEPT, not dropped — the lists arrive from async
- * queries, and treating "not loaded yet" as "foreign" would wipe a perfectly
- * good selection on a slow connection.
+ * An id absent from its list is KEPT, not dropped — the lists arrive from
+ * async queries, and treating "not loaded yet" as "foreign" would wipe a
+ * perfectly good selection on a slow connection.
  */
 export function scrubForeignClassifications(
   selection: ClassificationSelection,
@@ -146,6 +158,7 @@ export function scrubForeignClassifications(
     categoryId: keep(lists.categories, selection.categoryId),
     payeeId: keep(lists.payees, selection.payeeId),
     tagId: keep(lists.tags, selection.tagId),
+    labelIds: selection.labelIds.filter((id) => keep(lists.labels, id) !== null),
   }
 }
 
@@ -167,8 +180,79 @@ export function buildPayload(form: TransactionFormState): CreateTransactionDto {
     description: form.description || '',
     payeeId: isTransfer ? null : form.payeeId,
     tagId: isTransfer ? null : form.tagId,
+    // a transfer carries no classification; [] (never null/undefined) so the
+    // replace-everything write clears whatever the row held before
+    labelIds: isTransfer ? [] : form.labelIds,
     date: form.date,
   }
+}
+
+// A tag is radio-like (one per transaction, re-picking clears it) while labels
+// are a free multi-select; both live on the same chip row, so the two
+// transitions are shared with the recurring form via a structural type.
+export function toggleTag<T extends { tagId: Id | null }>(state: T, id: Id): T {
+  return { ...state, tagId: state.tagId === id ? null : id }
+}
+
+export function toggleLabel<T extends { labelIds: Id[] }>(state: T, id: Id): T {
+  return {
+    ...state,
+    labelIds: state.labelIds.includes(id) ? state.labelIds.filter((labelId) => labelId !== id) : [...state.labelIds, id],
+  }
+}
+
+export function toggleClassification<T extends { tagId: Id | null; labelIds: Id[] }>(state: T, kind: ClassificationKind, id: Id): T {
+  return kind === 'tag' ? toggleTag(state, id) : toggleLabel(state, id)
+}
+
+export interface ClassificationChip {
+  kind: ClassificationKind
+  id: Id
+  name: string
+  icon: string
+  checked: boolean
+}
+
+interface ClassificationRow {
+  id: Id
+  ownerUserId: Id
+  name: string
+  icon: string
+  isArchived: 0 | 1
+}
+
+// Offered rows are the account OWNER's live ones (labels/tags belong to the
+// owner, not the caller — the server rejects anything else on a shared
+// account). An attached row is appended even when ARCHIVED, since dropping the
+// chip would drop its id from the form and the write replaces the whole set.
+// An attached row owned by someone ELSE is deliberately NOT appended: rows
+// written under an older, laxer server rule can name the caller's own
+// classifications, and keeping them would fail every save.
+function kindChips(rows: ClassificationRow[], kind: ClassificationKind, attached: Id[], ownerUserId: Id | undefined): ClassificationChip[] {
+  const ownedByAccount = (row: ClassificationRow) => !ownerUserId || row.ownerUserId === ownerUserId
+  const offered = rows.filter((row) => row.isArchived === 0 && ownedByAccount(row))
+  const extras = attached
+    .map((id) => rows.find((row) => row.id === id))
+    .filter((row): row is ClassificationRow => !!row && ownedByAccount(row) && !offered.some((shown) => shown.id === row.id))
+  return [...offered, ...extras].map((row) => ({
+    kind,
+    id: row.id,
+    name: row.name,
+    icon: row.icon,
+    checked: attached.includes(row.id),
+  }))
+}
+
+export function classificationChips(
+  tags: ClassificationRow[],
+  labels: ClassificationRow[],
+  selection: { tagId: Id | null; labelIds: Id[] },
+  ownerUserId: Id | undefined,
+): ClassificationChip[] {
+  return [
+    ...kindChips(tags, 'tag', selection.tagId ? [selection.tagId] : [], ownerUserId),
+    ...kindChips(labels, 'label', selection.labelIds, ownerUserId),
+  ]
 }
 
 export function accountOptions(accounts: AccountDto[], folders: FolderDto[], isNew: boolean): AccountDto[] {

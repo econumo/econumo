@@ -30,3 +30,21 @@ export function applyMove<T extends { id: string; position: number }>(
   const next = [...rest.slice(0, at), moved, ...rest.slice(at)]
   return next.map((it, position) => ({ ...it, position }))
 }
+
+// The anchor for a list that mixes kinds holding INDEPENDENT sort-key sequences
+// (tags vs labels). Ids outside the moved row's scope are dropped before the
+// anchor is read, because the receiving endpoint does not own them: it would
+// treat such an anchor as unknown and silently append instead of honouring the
+// drop. A dropped-to-front row therefore reports null even when rows of another
+// kind sit above it.
+export function afterIdInScope(
+  orderedIds: string[],
+  movedId: string,
+  scopeOf: (id: string) => string | undefined,
+): string | null {
+  const scope = scopeOf(movedId)
+  return afterIdFromDrop(
+    orderedIds.filter((id) => scopeOf(id) === scope),
+    movedId,
+  )
+}

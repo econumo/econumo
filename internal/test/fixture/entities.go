@@ -390,6 +390,42 @@ func (b *Builder) Tag(tg Tag) string {
 	return id
 }
 
+// Label describes a labels row.
+type Label struct {
+	ID     string
+	UserID string
+	Name   string // default "Label"
+	Icon   string // default "label"
+	// Position is test sugar: it derives SortKey so a test can express intended
+	// order as a small integer. The column itself does not exist.
+	Position int
+
+	SortKey  string
+	Archived bool
+}
+
+func (b *Builder) Label(l Label) string {
+	b.t.Helper()
+	id := b.orNewID(l.ID)
+	if l.Name == "" {
+		l.Name = "Label"
+	}
+	if l.Icon == "" {
+		l.Icon = "label"
+	}
+	arch := "FALSE"
+	if l.Archived {
+		arch = "TRUE"
+	}
+	if l.SortKey == "" {
+		l.SortKey = sortKeyAt(l.Position)
+	}
+	now := b.now()
+	b.insert(`INSERT INTO labels (id, user_id, name, icon, sort_key, is_archived, created_at, updated_at) VALUES (?, ?, ?, ?, ?, `+arch+`, ?, ?)`,
+		id, l.UserID, l.Name, l.Icon, l.SortKey, now, now)
+	return id
+}
+
 // Payee describes a payees row.
 type Payee struct {
 	ID     string

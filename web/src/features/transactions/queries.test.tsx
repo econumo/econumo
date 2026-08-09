@@ -44,7 +44,7 @@ it('create-transaction replaces the accounts cache and prepends the item', async
   const { result } = renderHook(() => useCreateTransaction(), { wrapper })
   result.current.mutate({
     id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '9.99',
-    amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null, date: '2026-07-01 09:30:00',
+    amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-07-01 09:30:00',
   })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 

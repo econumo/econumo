@@ -22,3 +22,11 @@ func (sqliteQuerier) UpsertRecurringTransaction(ctx context.Context, db backend.
 func (sqliteQuerier) DeleteRecurringTransaction(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteRecurringTransaction(ctx, id)
 }
+
+func (sqliteQuerier) DeleteRecurringLabels(ctx context.Context, db backend.DBTX, recurringTransactionID string) error {
+	return sqlitegen.New(db).DeleteRecurringLabels(ctx, recurringTransactionID)
+}
+
+func (sqliteQuerier) InsertRecurringLabel(ctx context.Context, db backend.DBTX, p insertLabelParams) error {
+	return sqlitegen.New(db).InsertRecurringLabel(ctx, p)
+}

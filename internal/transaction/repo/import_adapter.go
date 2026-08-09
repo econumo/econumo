@@ -59,6 +59,14 @@ type importPayeePort interface {
 	CreatePayee(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error)
 }
 
+// importLabelPort is the label-touching surface the importer uses, expressed
+// purely in apptransaction types so this file never imports the label
+// feature directly.
+type importLabelPort interface {
+	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error)
+}
+
 // ImportLookup adapts the collaborators to app/transaction.Importer.
 type ImportLookup struct {
 	accounts  importAccountPort
@@ -66,6 +74,7 @@ type ImportLookup struct {
 	category  importCategoryPort
 	payee     importPayeePort
 	tag       importTagPort
+	label     importLabelPort
 	transRepo *Repo
 }
 
@@ -73,19 +82,21 @@ var _ apptransaction.Importer = (*ImportLookup)(nil)
 
 // NewImportLookup wires the import adapter. category is typically
 // server.TransactionImportCategories, payee is typically
-// server.TransactionImportPayees, and tag is typically
-// server.TransactionImportTags.
+// server.TransactionImportPayees, tag is typically
+// server.TransactionImportTags, and label is typically
+// server.TransactionImportLabels.
 func NewImportLookup(
 	accounts importAccountPort,
 	access importAccountAccess,
 	category importCategoryPort,
 	payee importPayeePort,
 	tag importTagPort,
+	label importLabelPort,
 	transRepo *Repo,
 ) *ImportLookup {
 	return &ImportLookup{
 		accounts: accounts, access: access,
-		category: category, payee: payee, tag: tag,
+		category: category, payee: payee, tag: tag, label: label,
 		transRepo: transRepo,
 	}
 }
@@ -139,6 +150,14 @@ func (l *ImportLookup) CreatePayee(ctx context.Context, ownerID vo.Id, name stri
 
 func (l *ImportLookup) CreateTag(ctx context.Context, ownerID vo.Id, name string) (model.ImportNamed, error) {
 	return l.tag.CreateTag(ctx, ownerID, name)
+}
+
+func (l *ImportLookup) LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	return l.label.LabelsByOwner(ctx, ownerID)
+}
+
+func (l *ImportLookup) CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error) {
+	return l.label.CreateLabel(ctx, ownerID, name)
 }
 
 func (l *ImportLookup) SaveTransaction(ctx context.Context, t *model.Transaction) error {

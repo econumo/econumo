@@ -9,7 +9,8 @@ import (
 )
 
 // UpdateTag enforces name uniqueness among the owner's tags (excluding itself),
-// updates the name, and returns the refreshed item; ownership failure is a 403.
+// updates the name, and returns the refreshed item; ownership failure is a
+// masked not-found (400), so a caller cannot probe which tag ids exist.
 func (s *Service) UpdateTag(ctx context.Context, userID vo.Id, req model.UpdateTagRequest) (*model.UpdateTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

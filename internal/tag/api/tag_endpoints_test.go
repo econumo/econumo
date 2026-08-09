@@ -73,6 +73,9 @@ func TestCreateTag_Success(t *testing.T) {
 	if it.Name != "#shopping" {
 		t.Fatalf("item.name = %q, want #shopping", it.Name)
 	}
+	if it.Icon != "tag" {
+		t.Fatalf("item.icon = %q, want %q", it.Icon, "tag")
+	}
 	if it.Position != 0 {
 		t.Fatalf("first tag position = %d, want 0", it.Position)
 	}
@@ -86,13 +89,10 @@ func TestCreateTag_Success(t *testing.T) {
 		t.Fatalf("item.updatedAt = %q, want 2006-01-02 15:04:05", it.UpdatedAt)
 	}
 
-	// The tag result must NOT carry a type or icon field.
+	// The tag result must NOT carry a type field (unlike category).
 	itemObj := mustObject(t, probe["item"])
 	if _, ok := itemObj["type"]; ok {
 		t.Fatalf("tag item must not have a type field; body: %s", env.raw)
-	}
-	if _, ok := itemObj["icon"]; ok {
-		t.Fatalf("tag item must not have an icon field; body: %s", env.raw)
 	}
 	// isArchived must serialize as a JSON number, not a bool.
 	if string(itemObj["isArchived"]) != "0" {

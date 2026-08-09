@@ -93,6 +93,7 @@ func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 		ID:         t.ID.String(),
 		UserID:     t.UserID.String(),
 		Name:       t.Name,
+		Icon:       t.Icon,
 		SortKey:    string(t.SortKey),
 		IsArchived: t.IsArchived,
 		CreatedAt:  t.CreatedAt,
@@ -113,6 +114,6 @@ func hydrate(row tagRow) (*model.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Tag{ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
+	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

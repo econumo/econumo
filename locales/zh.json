@@ -67,6 +67,9 @@
       "view": {
         "label": "查看"
       },
+      "info": {
+        "label": "说明"
+      },
       "up": {
         "label": "上移"
       },
@@ -231,6 +234,12 @@
         "payee": {
           "label": "收款人"
         },
+        "tag": {
+          "label": "标签"
+        },
+        "label": {
+          "label": "统计标签"
+        },
         "tags": {
           "label": "标签"
         },
@@ -376,18 +385,6 @@
         "to": {
           "label": "转入账户"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "新建标签",
-          "name": {
-            "label": "新建标签",
-            "placeholder": "输入标签名称",
-            "validation": {
-              "required_field": "必填项"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -416,8 +413,17 @@
         "description": "说明",
         "description_placeholder": "为所有交易填写统一说明",
         "payee": "收款人",
-        "tag": "标签"
-      }
+        "tag": "预算标签",
+        "labels": "统计标签"
+      },
+      "labels_separator": {
+        "button": "修改标签分隔符",
+        "title": "标签分隔符",
+        "tab": "制表符",
+        "newline": "换行",
+        "custom_label": "自定义分隔符"
+      },
+      "new_labels_count": "本次导入将创建 {count} 个新标签"
     },
     "import_result": {
       "success_title": "导入完成",
@@ -953,6 +959,13 @@
               "show_transactions": "显示交易"
             }
           },
+          "labels": {
+            "heading": "统计标签",
+            "info": "统计标签显示钱花在了什么上。标记人物、宠物或地点——孩子、狗、第二处住所——即可看到你花了多少。一笔交易可以有多个统计标签。"
+          },
+          "uncategorized": {
+            "info": "尚未归类的支出。为这些交易指定分类后，它们会进入上方的预算，你就可以为其做计划。"
+          },
           "total": {
             "name": "合计",
             "expenses": "支出合计"
@@ -1043,7 +1056,9 @@
         "settings": {
           "menu_item": "标签",
           "header": "标签",
-          "info": "标签会在预算内自动归集支出——例如出行时很实用：为旅途中的每笔支出打上同一个标签，即可直接在预算中看到支出明细。",
+          "info": "预算标签帮助你规划一个项目或事件——一次旅行、一场婚礼、一次装修。一笔交易只能有一个这样的标签，以便规划它的总支出。统计标签显示钱花到了哪里：标记人物、宠物或地点。这类标签一笔交易可以有多个——它们不参与预算。",
+          "section_budget": "预算标签",
+          "section_reporting": "统计标签",
           "create_tag": "创建标签",
           "archived_item": "已归档"
         }
@@ -1062,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "预算标签",
+            "label": "统计标签",
+            "tag_option": "预算标签",
+            "tag_hint": "规划一个项目或事件。每笔交易只能有一个标签。",
+            "label_option": "统计标签",
+            "label_hint": "分析钱花在了什么上。每笔交易可以有多个标签。",
+            "locked_note": "标签的用途在创建后无法更改。"
+          },
+          "add_button": "添加标签",
           "name": {
             "label": "名称",
             "validation": {
               "required_field": "必填项",
+              "invalid_name": "标签名称需为 3-64 个字符"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "已归档"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "编辑标签"
+        },
+        "create": {
+          "header": "新建标签"
+        },
+        "delete": {
+          "title": "删除标签？"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "标签名称需为 3-64 个字符"
             }
           }
@@ -1338,6 +1390,10 @@
       "base_immutable": "基准货币无法修改。",
       "cannot_be_hidden": "该货币无法隐藏。"
     },
+    "label": {
+      "name_length": "标签名称需为 {min}-{max} 个字符。",
+      "list_empty": "标签列表为空。"
+    },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
@@ -1357,7 +1413,8 @@
     "transaction": {
       "account_not_available": "该账户不可用于此操作。",
       "item_not_available": "该交易不可用于此操作。",
-      "invalid_import_file": "请上传有效的 CSV 文件。"
+      "invalid_import_file": "请上传有效的 CSV 文件。",
+      "too_many_labels": "一笔交易最多可以有 50 个统计标签。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",

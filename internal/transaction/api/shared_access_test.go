@@ -283,11 +283,10 @@ func TestDeleteTransaction_SharedAccount_GuestRole_Denied(t *testing.T) {
 
 // TestCreateTransaction_SharedAccount_CallerOwnEntities_Rejected: on a shared
 // account every classification must belong to the ACCOUNT OWNER — the caller's
-// own category/payee/tag is rejected exactly like an unconnected stranger's id,
-// even though the caller could use it freely on their own account. Every
-// classification describes the owner's books, and the SPA's pickers filter to
-// the account owner, so nothing legitimate sends a caller-owned id. This is the
-// regression guard: a caller-OR-owner check would pass every case below.
+// own category/payee/tag/label is rejected exactly like an unconnected
+// stranger's id, even though the caller could use it freely on their own
+// account. This is the regression guard for the owner-only reference rule: a
+// caller-or-owner check would pass every case below.
 func TestCreateTransaction_SharedAccount_CallerOwnEntities_Rejected(t *testing.T) {
 	h := newHarness(t)
 	h.shareAccount(t, roleUser, true)
@@ -305,6 +304,7 @@ func TestCreateTransaction_SharedAccount_CallerOwnEntities_Rejected(t *testing.T
 		{"category", "categoryId", catID},
 		{"payee", "payeeId", callerPayeeID},
 		{"tag", "tagId", callerTagID},
+		{"label", "labelIds", []string{label1ID}},
 	}
 	for i, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
