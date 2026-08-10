@@ -80,3 +80,30 @@ describe('analyticsEnabled', () => {
     expect(analyticsEnabled()).toBe(expected)
   })
 })
+
+describe('app mode', () => {
+  afterEach(() => {
+    delete (window as { Capacitor?: unknown }).Capacitor
+    localStorage.clear()
+  })
+
+  it('always allows the custom API in the native app', () => {
+    window.econumoConfig = { ALLOW_CUSTOM_API: false }
+    window.Capacitor = { isNativePlatform: () => true }
+    expect(isCustomApiAllowed()).toBe(true)
+  })
+
+  it('defaults backendHost to Econumo Cloud in the native app', () => {
+    window.econumoConfig = {}
+    window.Capacitor = { isNativePlatform: () => true }
+    expect(backendHost()).toBe('https://app.econumo.com')
+  })
+
+  it('keeps a stored self-hosted backendHost in the native app', () => {
+    window.econumoConfig = {}
+    window.Capacitor = { isNativePlatform: () => true }
+    selfHosted(true)
+    backendHost('https://my.server.example')
+    expect(backendHost()).toBe('https://my.server.example')
+  })
+})

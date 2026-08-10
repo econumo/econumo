@@ -37,4 +37,13 @@ type Repository interface {
 	// Used for the user-wide visible-accounts list and any filtered single-account
 	// query.
 	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter model.TransactionFilter) ([]*model.Transaction, error)
+
+	// ReplaceLabels rewrites a transaction's label links; the caller runs this
+	// inside the same tx as Save so the classification and the row commit or
+	// roll back together.
+	ReplaceLabels(ctx context.Context, transactionID vo.Id, labelIDs []vo.Id) error
+
+	// LabelsByTransactionIDs batch-loads label ids for many transactions, keyed
+	// by transaction id (string), for attaching to already-hydrated results.
+	LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error)
 }

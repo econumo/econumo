@@ -50,9 +50,9 @@ type AccountsFolder struct {
 type AccountsOption struct {
 	AccountID string
 	UserID    string
-	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 type Budget struct {
@@ -83,7 +83,7 @@ type BudgetsElement struct {
 	Type       int16
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
-	Position   int16
+	SortKey    string
 }
 
 type BudgetsElementsLimit struct {
@@ -119,21 +119,21 @@ type BudgetsFolder struct {
 	ID        string
 	BudgetID  string
 	Name      string
-	Position  int16
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
 }
 
 type Category struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	Type       int16
 	Icon       string
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 type CurrenciesRate struct {
@@ -153,16 +153,28 @@ type Currency struct {
 	FractionDigits int16
 	UserID         *string
 	Rate           *string
+	IsDeleted      bool
 }
 
 type Folder struct {
 	ID        string
 	UserID    string
 	Name      string
-	Position  int16
 	IsVisible bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	SortKey   string
+}
+
+type Label struct {
+	ID         string
+	UserID     string
+	Name       string
+	Icon       string
+	SortKey    string
+	IsArchived bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type MessengerMessage struct {
@@ -186,10 +198,10 @@ type Payee struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
 }
 
 type RecurringTransaction struct {
@@ -210,14 +222,20 @@ type RecurringTransaction struct {
 	UpdatedAt          time.Time
 }
 
+type RecurringTransactionsLabel struct {
+	RecurringTransactionID string
+	LabelID                string
+}
+
 type Tag struct {
 	ID         string
 	UserID     string
 	Name       string
-	Position   int16
 	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	SortKey    string
+	Icon       string
 }
 
 type Transaction struct {
@@ -236,6 +254,11 @@ type Transaction struct {
 	UpdatedAt          time.Time
 	SpentAt            time.Time
 	RecurringID        *string
+}
+
+type TransactionsLabel struct {
+	TransactionID string
+	LabelID       string
 }
 
 type User struct {

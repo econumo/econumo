@@ -23,10 +23,11 @@ const maxImportRequest = maxImportUpload + (1 << 20)
 // ImportTransactionList handles POST /api/v1/transaction/import-transaction-list
 // (auth, multipart/form-data). Form fields: file (CSV upload), mapping (JSON
 // string), and optional overrides accountId/date/categoryId/description/payeeId/
-// tagId. Returns the JSON envelope with data = {imported, skipped, errors}.
+// tagId/labelIds/labelsSeparator. Returns the JSON envelope with data =
+// {imported, skipped, errors}.
 //
 // @Summary     Import a transaction list from CSV
-// @Description Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+// @Description Imports transactions from an uploaded CSV using a field mapping (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.
 // @Tags        Transaction
 // @Accept      multipart/form-data
 // @Produce     json
@@ -38,6 +39,8 @@ const maxImportRequest = maxImportUpload + (1 << 20)
 // @Param       description formData string false "Override description"
 // @Param       payeeId    formData string false "Override payee id"
 // @Param       tagId      formData string false "Override tag id"
+// @Param       labelIds   formData string false "Override label ids (comma-joined), applied to every row"
+// @Param       labelsSeparator formData string false "Separator that splits the mapped labels cell (default ;)"
 // @Success     200 {object} apidoc.JsonResponseOk{data=model.ImportResult}
 // @Failure     400 {object} apidoc.JsonResponseError
 // @Failure     401 {object} apidoc.JsonResponseUnauthorized
@@ -66,14 +69,24 @@ func (h *Handlers) ImportTransactionList(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// A CSV produced by another tool may use any delimiter for the labels
+	// cell, so the separator is caller-supplied rather than hardcoded;
+	// absent/empty defaults to the export default.
+	labelsSeparator := r.FormValue("labelsSeparator")
+	if labelsSeparator == "" {
+		labelsSeparator = ";"
+	}
+
 	req := model.ImportRequest{
-		Mapping:     mapping,
-		AccountId:   optFormValue(r, "accountId"),
-		Date:        optFormValue(r, "date"),
-		CategoryId:  optFormValue(r, "categoryId"),
-		Description: optFormValue(r, "description"),
-		PayeeId:     optFormValue(r, "payeeId"),
-		TagId:       optFormValue(r, "tagId"),
+		Mapping:         mapping,
+		AccountId:       optFormValue(r, "accountId"),
+		Date:            optFormValue(r, "date"),
+		CategoryId:      optFormValue(r, "categoryId"),
+		Description:     optFormValue(r, "description"),
+		PayeeId:         optFormValue(r, "payeeId"),
+		TagId:           optFormValue(r, "tagId"),
+		LabelIds:        optFormValue(r, "labelIds"),
+		LabelsSeparator: labelsSeparator,
 	}
 
 	// file (optional at this layer; the service reports "No file provided").
@@ -129,6 +142,7 @@ func parseImportMapping(raw string) (model.ImportMapping, error) {
 	m.Category = get("category")
 	m.Payee = get("payee")
 	m.Tag = get("tag")
+	m.Labels = get("labels")
 	return m, nil
 }
 

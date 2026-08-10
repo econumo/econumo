@@ -67,6 +67,9 @@
       "view": {
         "label": "Anzeigen"
       },
+      "info": {
+        "label": "Info"
+      },
       "up": {
         "label": "Nach oben verschieben"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "Econumo {version} ist verfügbar",
       "dismiss": "Ausblenden"
+    },
+    "serverUpdate": {
+      "notice": "Dein Econumo-Server ({version}) ist älter als diese App. Aktualisiere den Server, um die neuesten Funktionen zu erhalten."
+    },
+    "appUpdate": {
+      "title": "Aktualisierung erforderlich",
+      "blockedApp": "Diese App ist zu alt für deinen Econumo-Server: erforderlich ist App-Version {version} oder neuer. Bitte aktualisiere die App, um fortzufahren.",
+      "blockedServer": "Diese App benötigt Econumo-Server {min} oder neuer, dein Server ist {version}. Bitte aktualisiere den Server, um fortzufahren."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Zahlungsempfänger"
+        },
+        "tag": {
+          "label": "Budget-Tag"
+        },
+        "label": {
+          "label": "Auswertungs-Tag"
         },
         "tags": {
           "label": "Tags"
@@ -368,18 +385,6 @@
         "to": {
           "label": "An"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Neues Tag",
-          "name": {
-            "label": "Neues Tag",
-            "placeholder": "Tag-Namen eingeben",
-            "validation": {
-              "required_field": "Pflichtfeld"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Beschreibung",
         "description_placeholder": "Beschreibung für alle Transaktionen eingeben",
         "payee": "Zahlungsempfänger",
-        "tag": "Tag"
-      }
+        "tag": "Budget-Tag",
+        "labels": "Auswertungs-Tags"
+      },
+      "labels_separator": {
+        "button": "Trennzeichen für Tags ändern",
+        "title": "Trennzeichen für Tags",
+        "tab": "Tabulator",
+        "newline": "Zeilenumbruch",
+        "custom_label": "Eigenes Trennzeichen"
+      },
+      "new_labels_count": "Dieser Import erstellt {count} neues Tag | Dieser Import erstellt {count} neue Tags"
     },
     "import_result": {
       "success_title": "Import abgeschlossen",
@@ -945,6 +959,13 @@
               "show_transactions": "Transaktionen anzeigen"
             }
           },
+          "labels": {
+            "heading": "Auswertungs-Tags",
+            "info": "Auswertungs-Tags zeigen, wofür Ihr Geld ausgegeben wird. Markieren Sie Personen, Haustiere oder Orte — ein Kind, einen Hund, ein Ferienhaus — und sehen Sie, wie viel Sie ausgeben. Eine Transaktion kann mehrere Auswertungs-Tags tragen."
+          },
+          "uncategorized": {
+            "info": "Ausgaben ohne Kategorie. Weisen Sie diesen Transaktionen eine Kategorie zu, dann wandern sie in das Budget darüber und lassen sich einplanen."
+          },
           "total": {
             "name": "Gesamt",
             "expenses": "Gesamtausgaben"
@@ -1035,7 +1056,9 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags gruppieren Ausgaben in Ihrem Budget automatisch — praktisch zum Beispiel für Reisen: Markieren Sie jede Reiseausgabe mit einem Tag und erhalten Sie eine Aufschlüsselung Ihrer Ausgaben direkt im Budget.",
+          "info": "Budget-Tags helfen Ihnen, ein Projekt oder Ereignis zu planen — einen Urlaub, eine Hochzeit, eine Renovierung. Eine Transaktion kann nur ein solches Tag tragen, sodass sich ihre Gesamtausgaben planen lassen. Auswertungs-Tags zeigen, wohin Ihr Geld fließt: Markieren Sie Personen, Haustiere oder Orte. Davon kann eine Transaktion mehrere tragen — sie sind an der Budgetierung nicht beteiligt.",
+          "section_budget": "Budget-Tags",
+          "section_reporting": "Auswertungs-Tags",
           "create_tag": "Tag erstellen",
           "archived_item": "Archiviert"
         }
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Budget-Tag",
+            "label": "Auswertungs-Tag",
+            "tag_option": "Budget-Tag",
+            "tag_hint": "Planen Sie ein Projekt oder Ereignis. Nur ein Tag pro Transaktion.",
+            "label_option": "Auswertungs-Tag",
+            "label_hint": "Analysieren Sie, wofür das Geld ausgegeben wurde. Mehrere Tags pro Transaktion möglich.",
+            "locked_note": "Der Zweck eines Tags lässt sich nach dem Erstellen nicht mehr ändern."
+          },
+          "add_button": "Tag hinzufügen",
           "name": {
             "label": "Name",
             "validation": {
               "required_field": "Pflichtfeld",
+              "invalid_name": "Der Tag-Name muss 3-64 Zeichen lang sein"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Archiviert"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Tag bearbeiten"
+        },
+        "create": {
+          "header": "Neues Tag"
+        },
+        "delete": {
+          "title": "Tag löschen?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Der Tag-Name muss 3-64 Zeichen lang sein"
             }
           }
@@ -1330,6 +1390,10 @@
       "base_immutable": "Die Basiswährung kann nicht geändert werden",
       "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
     },
+    "label": {
+      "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
+      "list_empty": "Die Tag-Liste ist leer"
+    },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
       "already_exists": "Der Zahlungsempfänger existiert bereits.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "Dieses Konto ist für diesen Vorgang nicht verfügbar.",
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
-      "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch"
+      "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
+      "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

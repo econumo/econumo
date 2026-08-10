@@ -8,11 +8,9 @@ package model
 import (
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
-
-// PositionUnset is BudgetElement::POSITION_UNSET.
-const PositionUnset = 0
 
 // Budget is the aggregate root. Its excluded accounts, access grants, folders,
 // envelopes, and elements are loaded/persisted alongside it by the repository,
@@ -102,28 +100,20 @@ type BudgetFolder struct {
 	ID        vo.Id
 	BudgetID  vo.Id
 	Name      string
-	Position  int16
+	SortKey   sortkey.Key
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
 // NewBudgetFolder creates a folder.
-func NewBudgetFolder(id, budgetID vo.Id, name string, position int16, now time.Time) *BudgetFolder {
-	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, Position: position, CreatedAt: now, UpdatedAt: now}
+func NewBudgetFolder(id, budgetID vo.Id, name string, now time.Time) *BudgetFolder {
+	return &BudgetFolder{ID: id, BudgetID: budgetID, Name: name, CreatedAt: now, UpdatedAt: now}
 }
 
 // UpdateName changes the name, bumping updated_at only on change.
 func (f *BudgetFolder) UpdateName(name string, now time.Time) {
 	if f.Name != name {
 		f.Name = name
-		f.UpdatedAt = now
-	}
-}
-
-// UpdatePosition changes the position, bumping updated_at only on change.
-func (f *BudgetFolder) UpdatePosition(position int16, now time.Time) {
-	if f.Position != position {
-		f.Position = position
 		f.UpdatedAt = now
 	}
 }
@@ -177,26 +167,19 @@ type BudgetElement struct {
 	Type       ElementType
 	CurrencyID *vo.Id
 	FolderID   *vo.Id
-	Position   int16
+	SortKey    sortkey.Key
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
 
 // NewBudgetElement creates an element.
-func NewBudgetElement(id, budgetID, externalID vo.Id, typ ElementType, currencyID, folderID *vo.Id, position int16, now time.Time) *BudgetElement {
-	return &BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: typ, CurrencyID: currencyID, FolderID: folderID, Position: position, CreatedAt: now, UpdatedAt: now}
+func NewBudgetElement(id, budgetID, externalID vo.Id, typ ElementType, currencyID, folderID *vo.Id, now time.Time) *BudgetElement {
+	return &BudgetElement{ID: id, BudgetID: budgetID, ExternalID: externalID, Type: typ, CurrencyID: currencyID, FolderID: folderID, CreatedAt: now, UpdatedAt: now}
 }
 
-// IsPositionUnset reports whether the element still has its unset (zero)
-// position — a comparison against PositionUnset, not a bare field return.
-func (e *BudgetElement) IsPositionUnset() bool { return e.Position == PositionUnset }
-
-func (e *BudgetElement) UpdatePosition(position int16, now time.Time) {
-	if e.Position != position {
-		e.Position = position
-		e.UpdatedAt = now
-	}
-}
+// IsSortKeyUnset reports whether the element is excluded from the listing: an
+// archived entity, an envelope-child category, or a row not yet given a key.
+func (e *BudgetElement) IsSortKeyUnset() bool { return e.SortKey == "" }
 
 // UpdateCurrency changes the display currency (nil clears it).
 func (e *BudgetElement) UpdateCurrency(currencyID *vo.Id, now time.Time) {
@@ -249,4 +232,28 @@ func idPtrEqual(a, b *vo.Id) bool {
 		return a == b
 	}
 	return a.Equal(*b)
+}
+
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
+func (f *BudgetFolder) SetSortKey(k sortkey.Key) { f.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (f *BudgetFolder) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if f.SortKey != k {
+		f.SortKey = k
+		f.UpdatedAt = now
+	}
+}
+
+// SetSortKey sets the initial sort key at creation. It does not bump UpdatedAt,
+// because it is part of construction.
+func (e *BudgetElement) SetSortKey(k sortkey.Key) { e.SortKey = k }
+
+// UpdateSortKey moves the row, bumping updated_at only on a real change.
+func (e *BudgetElement) UpdateSortKey(k sortkey.Key, now time.Time) {
+	if e.SortKey != k {
+		e.SortKey = k
+		e.UpdatedAt = now
+	}
 }

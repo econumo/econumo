@@ -24,13 +24,24 @@ import (
 // exclusive; so are uncategorized and envelopeId - envelopes have no
 // uncategorized bucket of their own, so uncategorized+envelopeId falls
 // through to the same CodeBudgetTransactionFilterRequired error as any other
-// unsupported combination, exactly like tagId+envelopeId. Requires read
-// access.
+// unsupported combination, exactly like tagId+envelopeId. labelId selects that
+// label's transactions (a many-to-many join, unlike tagId's column compare),
+// narrowed by categoryId or uncategorized when either is set - the reporting-tag
+// folder's child rows drill down to exactly that pair. Pairing labelId with
+// another SELECTOR (tagId or envelopeId) stays rejected up front with
+// CodeBudgetTransactionFilterRequired: which of the two narrows would be
+// ambiguous, and silently picking one would return the wrong set.
+// Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{
 			Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice,
 		})
+	}
+	if req.LabelId != nil && strings.TrimSpace(*req.LabelId) != "" &&
+		((req.TagId != nil && strings.TrimSpace(*req.TagId) != "") ||
+			(req.EnvelopeId != nil && strings.TrimSpace(*req.EnvelopeId) != "")) {
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	budgetID, err := vo.ParseId(req.BudgetId)
 	if err != nil {
@@ -55,9 +66,40 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	cat := optID(req.CategoryId)
 	tag := optID(req.TagId)
 	env := optID(req.EnvelopeId)
+	// lbl is trimmed to agree with the mutual-exclusion guard above (which
+	// compares strings.TrimSpace(*req.LabelId)): a whitespace-only labelId
+	// must be treated as absent by BOTH checks, else it slips past the guard
+	// untrimmed and falls into an earlier switch case (e.g. categoryId's),
+	// silently discarding it instead of being rejected or ignored consistently.
+	lbl := strings.TrimSpace(optID(req.LabelId))
 
 	var rows []model.BudgetTransactionRow
 	switch {
+	// The label cases lead the switch, narrowest first: Go takes the FIRST
+	// matching case, and both the uncategorized and the categoryId case below
+	// would otherwise match a label request and silently drop the label.
+	case lbl != "" && cat != "":
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		categoryID, perr := vo.ParseId(cat)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabelAndCategory(ctx, labelID, categoryID, f.includedAccountIDs, periodStart, periodEnd)
+	case lbl != "" && req.Uncategorized:
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabelUncategorized(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
+	case lbl != "":
+		labelID, perr := vo.ParseId(lbl)
+		if perr != nil {
+			return nil, model.ValidateBlank(map[string]string{"labelId": ""})
+		}
+		rows, err = s.read.BudgetTransactionsByLabel(ctx, labelID, f.includedAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag == "" && env == "":
 		rows, err = s.read.BudgetTransactionsUncategorized(ctx, f.includedAccountIDs, periodStart, periodEnd)
 	case req.Uncategorized && tag != "" && env == "":
@@ -120,6 +162,26 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 	// tags map may be needed beyond the expense-only category filter; reuse f.tags.
 	authorCache := map[string]model.UserResult{}
 
+	// One batch lookup for the whole page: labels are many-per-transaction, so
+	// they cannot ride the row query without fanning each transaction into N
+	// rows (the same reason the budget's label spend has its own query).
+	labelsByTx := map[string][]string{}
+	if s.txLabels != nil && len(rows) > 0 {
+		txIDs := make([]vo.Id, 0, len(rows))
+		for _, row := range rows {
+			id, perr := vo.ParseId(row.ID)
+			if perr != nil {
+				continue
+			}
+			txIDs = append(txIDs, id)
+		}
+		found, lerr := s.txLabels.LabelsByTransactionIDs(ctx, txIDs)
+		if lerr != nil {
+			return nil, lerr
+		}
+		labelsByTx = found
+	}
+
 	items := make([]model.BudgetTransactionResult, 0, len(rows))
 	for _, row := range rows {
 		author, ok := authorCache[row.UserID]
@@ -131,12 +193,17 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 			author = model.UserResult{Id: o.ID, Avatar: o.Avatar, Name: o.Name}
 			authorCache[row.UserID] = author
 		}
+		labelIDs := labelsByTx[row.ID]
+		if labelIDs == nil {
+			labelIDs = []string{}
+		}
 		item := model.BudgetTransactionResult{
 			Id:          row.ID,
 			Author:      author,
 			CurrencyId:  row.CurrencyID,
 			Amount:      vo.NewDecimal(row.Amount).String(),
 			Description: row.Description,
+			LabelIds:    labelIDs,
 			SpentAt:     normalizeSpentAt(row.SpentAt),
 		}
 		if row.CategoryID != nil {

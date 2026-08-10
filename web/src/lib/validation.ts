@@ -49,6 +49,10 @@ export function isValidTagName(value: string): boolean {
   return value.length >= 3 && value.length <= 64
 }
 
+export function isValidLabelName(value: string): boolean {
+  return value.length >= 3 && value.length <= 64
+}
+
 export function isValidPayeeName(value: string): boolean {
   return value.length >= 3 && value.length <= 64
 }

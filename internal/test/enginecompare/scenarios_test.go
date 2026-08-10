@@ -58,8 +58,8 @@ func TestEngines_CategoryOwnAndShared(t *testing.T) {
 func snapshotCategories(rows []model.CategoryViewRow) string {
 	out := make([]string, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, fmt.Sprintf("%s|%s|%s|pos=%d|type=%d|arch=%t|%s|%s",
-			r.ID, r.UserID, r.Name, r.Position, r.Type, r.IsArchived, r.CreatedAt, r.UpdatedAt))
+		out = append(out, fmt.Sprintf("%s|%s|%s|type=%d|arch=%t|%s|%s",
+			r.ID, r.UserID, r.Name, r.Type, r.IsArchived, r.CreatedAt, r.UpdatedAt))
 	}
 	sort.Strings(out) // order-insensitive: ordering-of-ties is an accepted diff
 	return fmt.Sprintf("%d rows\n%v", len(out), out)

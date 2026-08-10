@@ -303,6 +303,46 @@ it('places the today anchor between the future block and the past', async () => 
   expect(order).toEqual(['tx-r1', 'future-anchor', 'tx-t-past'])
 })
 
+it('posts a due template straight from the preview, without the transaction form', async () => {
+  mockViewport(true)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'sub',
+    schedule: 'monthly', nextPaymentAt: stamp(new Date(Date.now() - 5 * day)),
+  }
+  let posted: Record<string, unknown> | null = null
+  server.use(
+    ...coreHandlers({ recurring: [template], transactions: [] }),
+    http.post('*/api/v1/recurring/post-recurring-transaction', async ({ request }) => {
+      posted = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: {
+          item: {
+            id: 't-new', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+            amount: '9.99', amountRecipient: null, categoryId: 'cat-food', description: 'sub',
+            payeeId: null, tagId: null, date: template.nextPaymentAt, recurringId: 'r1',
+          },
+          accounts: fixtureAccounts,
+          nextPaymentAt: stamp(new Date(Date.now() + 25 * day)),
+        },
+      })
+    }),
+  )
+  renderPage()
+  const user = userEvent.setup()
+  await user.click(await screen.findByTestId('tx-r1'))
+  await user.click(await screen.findByRole('button', { name: 'Post' }))
+
+  await waitFor(() => expect(posted).not.toBeNull())
+  expect(posted).toMatchObject({ recurringId: 'r1', amount: '9.99', accountId: 'a1', date: template.nextPaymentAt })
+  // the prefilled form is what this flow replaced: posting must not open it
+  expect(useUiStore.getState().transactionModal).toBeNull()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
 it('colours the Not posted label red only when the template is due', async () => {
   mockViewport(false)
   const day = 24 * 3600 * 1000

@@ -58,6 +58,26 @@ func (s *spendingStub) BudgetTransactionsUncategorized(context.Context, []vo.Id,
 	return nil, nil
 }
 
+func (s *spendingStub) BudgetTransactionsByLabel(context.Context, vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) BudgetTransactionsByLabelAndCategory(context.Context, vo.Id, vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) BudgetTransactionsByLabelUncategorized(context.Context, vo.Id, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) CountSpendingByLabel(context.Context, []vo.Id, time.Time, time.Time) ([]model.LabelSpendingRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) LabelsForUsers(context.Context, []vo.Id) (map[string]model.LabelMeta, error) {
+	return nil, nil
+}
+
 func strptr(s string) *string { return &s }
 
 func TestBuildElementsSpending_RoutesTheThreeBuckets(t *testing.T) {

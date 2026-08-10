@@ -16,12 +16,12 @@ type Querier interface {
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
-	// Usage census for delete protection: accounts (including soft-deleted ones,
-	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this currency id. $1 is reused everywhere,
-	// so the generated param is a single field.
+	// Usage census for delete protection. Only LIVE references count: a soft-deleted
+	// account is unreachable and unrestorable, so it must not pin a currency forever.
+	// $1 is reused everywhere, so the generated param is a single field.
 	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
@@ -36,14 +36,20 @@ type Querier interface {
 	DeleteBudgetLimitsByBudget(ctx context.Context, budgetID string) error
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCurrency(ctx context.Context, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteLabel(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
+	// Link rows between a recurring template and its reporting labels. See the
+	// sqlite variant for documentation.
+	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Link rows between a transaction and its reporting labels. See the sqlite
+	// variant for documentation.
+	DeleteTransactionLabels(ctx context.Context, transactionID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
@@ -95,6 +101,8 @@ type Querier interface {
 	// is frozen to show codes).
 	GetCurrencyCodeByID(ctx context.Context, id string) (string, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
+	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
@@ -106,6 +114,15 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
+	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
+	// persisted from the start.
+	GetLabelByID(ctx context.Context, id string) (Label, error)
+	// Read-model query for the label module (PostgreSQL variant: $N placeholders).
+	// See the sqlite variant for documentation.
+	// Available labels: own + labels of users who shared an account with this user.
+	// $1 is reused for both positions so the generated param stays single.
+	GetLabelListView(ctx context.Context, userID string) ([]Label, error)
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. See the sqlite variant.
 	GetLatestCurrencyRateListView(ctx context.Context) ([]GetLatestCurrencyRateListViewRow, error)
@@ -129,7 +146,8 @@ type Querier interface {
 	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
-	// placeholder syntax. The tags table has no type/icon columns.
+	// placeholder syntax. Unlike categories, a tag has no type column, but it does
+	// have a persisted icon.
 	GetTagByID(ctx context.Context, id string) (Tag, error)
 	// Read-model query for the tag module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation.
@@ -183,6 +201,8 @@ type Querier interface {
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertRecurringLabel(ctx context.Context, arg InsertRecurringLabelParams) error
+	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
 	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
@@ -236,6 +256,9 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
+	// The owner's labels ordered by sort key; used by move-label (load, place the
+	// moved row, save it) and as the basis for the returned list.
+	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -247,6 +270,7 @@ type Querier interface {
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
@@ -254,6 +278,9 @@ type Querier interface {
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
+	// Currencies are never removed: accounts.currency_id and transactions.account_id
+	// both cascade, so a DELETE would destroy account and transaction history.
+	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
@@ -274,6 +301,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

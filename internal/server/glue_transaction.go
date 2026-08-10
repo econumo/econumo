@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -332,4 +333,122 @@ func (p *TransactionImportPayees) CreatePayee(ctx context.Context, ownerID vo.Id
 		return model.ImportNamed{}, err
 	}
 	return model.ImportNamed{ID: res.Item.Id, Name: res.Item.Name, OwnerID: ownerID.String()}, nil
+}
+
+// transactionImportLabelService is the label-service create surface the
+// importer uses.
+type transactionImportLabelService interface {
+	CreateLabel(ctx context.Context, userID vo.Id, req model.CreateLabelRequest) (*model.CreateLabelResult, error)
+}
+
+// transactionImportLabelLister is the read surface over the label repo.
+type transactionImportLabelLister interface {
+	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Label, error)
+}
+
+// TransactionImportLabels adapts the label service/repo to the transaction
+// import adapter's label port.
+type TransactionImportLabels struct {
+	svc  transactionImportLabelService
+	list transactionImportLabelLister
+}
+
+// NewTransactionImportLabels wires the adapter.
+func NewTransactionImportLabels(svc transactionImportLabelService, list transactionImportLabelLister) *TransactionImportLabels {
+	return &TransactionImportLabels{svc: svc, list: list}
+}
+
+func (l *TransactionImportLabels) LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	list, err := l.list.ListByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportNamed, len(list))
+	for i, lb := range list {
+		out[i] = model.ImportNamed{ID: lb.ID.String(), Name: lb.Name, OwnerID: lb.UserID.String()}
+	}
+	return out, nil
+}
+
+// CreateLabel returns only the new label's id: the import loop tracks label
+// ids per row, so there is no need for the full model.ImportNamed round trip
+// CreateCategory/CreatePayee/CreateTag return.
+func (l *TransactionImportLabels) CreateLabel(ctx context.Context, ownerID vo.Id, name string) (vo.Id, error) {
+	res, err := l.svc.CreateLabel(ctx, ownerID, model.CreateLabelRequest{
+		Id: vo.NewId().String(), Name: name,
+	})
+	if err != nil {
+		return vo.Id{}, err
+	}
+	return vo.ParseId(res.Item.Id)
+}
+
+// transactionLabelByID is the minimal label-repo surface the ownership
+// adapter uses.
+type transactionLabelByID interface {
+	GetByID(ctx context.Context, id vo.Id) (*model.Label, error)
+}
+
+// TransactionLabelOwnership adapts the label repository to the transaction
+// feature's LabelOwnership port: a per-id GetByID is enough here since the
+// list a create/update request carries is a single transaction's
+// classification (naturally small), unlike LabelsByTransactionIDs's
+// transaction-count-bounded batch read.
+type TransactionLabelOwnership struct {
+	labels transactionLabelByID
+}
+
+// NewTransactionLabelOwnership wraps a label repository.
+func NewTransactionLabelOwnership(labels transactionLabelByID) *TransactionLabelOwnership {
+	return &TransactionLabelOwnership{labels: labels}
+}
+
+// LabelOwners resolves the owning user for every id that exists; a missing id
+// is simply absent from the returned map.
+func (l *TransactionLabelOwnership) LabelOwners(ctx context.Context, ids []vo.Id) (map[string]vo.Id, error) {
+	out := make(map[string]vo.Id, len(ids))
+	for _, id := range ids {
+		lbl, err := l.labels.GetByID(ctx, id)
+		if err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				continue
+			}
+			return nil, err
+		}
+		out[id.String()] = lbl.UserID
+	}
+	return out, nil
+}
+
+// TransactionLabelNameLookup adapts the label repository to the transaction
+// export adapter's LabelNames port. The export caller (buildExportLabelIndex)
+// dedupes ids across the whole export before calling this once, so the
+// per-id GetByID here (the same method TransactionLabelOwnership uses) never
+// runs more than once per distinct label — not once per transaction.
+type TransactionLabelNameLookup struct {
+	labels transactionLabelByID
+}
+
+// NewTransactionLabelNameLookup wraps a label repository.
+func NewTransactionLabelNameLookup(labels transactionLabelByID) *TransactionLabelNameLookup {
+	return &TransactionLabelNameLookup{labels: labels}
+}
+
+// LabelNames resolves name + sort key for every id that exists; a missing id
+// (e.g. deleted between the batch read and this lookup) is simply absent from
+// the returned map. Archived labels resolve like any other — they remain
+// attachable and must still export.
+func (l *TransactionLabelNameLookup) LabelNames(ctx context.Context, ids []vo.Id) (map[string]model.ExportLabel, error) {
+	out := make(map[string]model.ExportLabel, len(ids))
+	for _, id := range ids {
+		lbl, err := l.labels.GetByID(ctx, id)
+		if err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				continue
+			}
+			return nil, err
+		}
+		out[id.String()] = model.ExportLabel{Name: lbl.Name, SortKey: string(lbl.SortKey)}
+	}
+	return out, nil
 }

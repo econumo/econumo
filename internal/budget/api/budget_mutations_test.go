@@ -137,11 +137,9 @@ func TestCreateEnvelope_AtPositionZero(t *testing.T) {
 	}
 }
 
-// TestMoveElementList_NoTypeField verifies move-element-list identifies the
-// element by id ALONE (the form has no "type" field) and applies a folder change
-// + position. The request omits "type"; it must still succeed and move the
-// element into the folder.
-func TestMoveElementList_NoTypeField(t *testing.T) {
+// TestMoveElement_NoTypeField verifies move-element identifies the element by id
+// ALONE (the form has no "type" field) and applies the folder change.
+func TestMoveElement_NoTypeField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
@@ -151,15 +149,12 @@ func TestMoveElementList_NoTypeField(t *testing.T) {
 		t.Fatalf("create-folder precondition=%d body=%s", st, e.raw)
 	}
 
-	// Move the seeded category element into the budget folder at position 0.
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element-list", tok, map[string]any{
-		"budgetId": budgetID1,
-		"items": []map[string]any{
-			{"id": catID, "position": 0, "folderId": bFolderID1},
-		},
+	// Move the seeded category element into the budget folder, at the front.
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": catID, "folderId": bFolderID1, "afterId": nil,
 	})
 	if status != http.StatusOK {
-		t.Fatalf("move-element-list (no type)=%d want 200; body=%s", status, env.raw)
+		t.Fatalf("move-element (no type)=%d want 200; body=%s", status, env.raw)
 	}
 	var folder *string
 	h.db.QueryRow(`SELECT folder_id FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, catID).Scan(&folder)
@@ -168,22 +163,19 @@ func TestMoveElementList_NoTypeField(t *testing.T) {
 	}
 }
 
-// TestMoveElementList_ForeignFolder_403 verifies move-element-list rejects a
+// TestMoveElement_ForeignFolder_403 verifies move-element rejects a
 // folderId that is not one of the budget's folders (here: an ACCOUNTS folder
 // id) with access denied instead of hitting the budgets_folders FK.
-func TestMoveElementList_ForeignFolder_403(t *testing.T) {
+func TestMoveElement_ForeignFolder_403(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element-list", tok, map[string]any{
-		"budgetId": budgetID1,
-		"items": []map[string]any{
-			{"id": catID, "position": 0, "folderId": folderID},
-		},
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": catID, "folderId": folderID, "afterId": nil,
 	})
 	if status != http.StatusForbidden {
-		t.Fatalf("move-element-list (accounts folder)=%d want 403; body=%s", status, env.raw)
+		t.Fatalf("move-element (accounts folder)=%d want 403; body=%s", status, env.raw)
 	}
 	var folder *string
 	h.db.QueryRow(`SELECT folder_id FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, catID).Scan(&folder)

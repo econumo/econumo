@@ -31,6 +31,9 @@ type TransactionResult struct {
 	// RecurringId is the template this transaction was posted from, null for a
 	// hand-entered one. Read-only provenance: create/update never accept it.
 	RecurringId *string `json:"recurringId"`
+	// LabelIds is always a list, never null, so clients can iterate without a
+	// nil check. A transfer always carries an empty list.
+	LabelIds []string `json:"labelIds"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
@@ -49,6 +52,10 @@ type CreateTransactionRequest struct {
 	Description        *string        `json:"description"`
 	PayeeId            *string        `json:"payeeId"`
 	TagId              *string        `json:"tagId"`
+	// LabelIds is ignored for a transfer (transfers never carry labels); each
+	// entry is validated (parses as an id, exists, owned by the transaction's
+	// account owner) by the service, not here.
+	LabelIds []string `json:"labelIds"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.
@@ -89,6 +96,9 @@ type UpdateTransactionRequest struct {
 	Description        *string        `json:"description"`
 	PayeeId            *string        `json:"payeeId"`
 	TagId              *string        `json:"tagId"`
+	// LabelIds replaces the full label set (nil/empty clears it); ignored for a
+	// transfer. See CreateTransactionRequest.LabelIds for the validation rule.
+	LabelIds []string `json:"labelIds"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/date.

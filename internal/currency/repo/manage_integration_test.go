@@ -8,7 +8,6 @@ import (
 
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/model"
-	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -45,13 +44,15 @@ func TestManageRepo_InsertGetUpdateDelete(t *testing.T) {
 	if got.Name == nil || *got.Name != "Kid points" || got.Symbol != "kp" || got.FractionDigits != 2 {
 		t.Fatalf("update not persisted: %+v", got)
 	}
-	if err := r.DeleteCurrency(ctx, rec.ID); err != nil {
+	if err := r.SoftDeleteCurrency(ctx, rec.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := r.GetCurrencyRecord(ctx, rec.ID); err == nil {
-		t.Fatal("expected NotFound after delete")
-	} else if _, ok := errs.AsNotFound(err); !ok {
-		t.Fatalf("want NotFound, got %v", err)
+	got, err = r.GetCurrencyRecord(ctx, rec.ID)
+	if err != nil {
+		t.Fatalf("the row must survive a delete (currencies are never hard-deleted): %v", err)
+	}
+	if !got.IsDeleted {
+		t.Fatal("IsDeleted = false after SoftDeleteCurrency")
 	}
 }
 
@@ -211,4 +212,32 @@ func hiddenSet(t *testing.T, db *dbtest.DB, userID string) map[string]bool {
 		out[id] = true
 	}
 	return out
+}
+
+func TestManageRepo_UsageCountIgnoresDeletedAccounts(t *testing.T) {
+	r, _, f := newManage(t)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	cid := f.Currency(fixture.Currency{Code: "PTS", UserID: uid})
+	f.Account(fixture.Account{UserID: uid, CurrencyID: cid, Name: "Dead", Deleted: true})
+
+	if n, _ := r.CountCurrencyUsage(ctx, cid); n != 0 {
+		t.Fatalf("usage = %d, want 0: a soft-deleted account is not live usage", n)
+	}
+
+	f.Account(fixture.Account{UserID: uid, CurrencyID: cid, Name: "Live"})
+	if n, _ := r.CountCurrencyUsage(ctx, cid); n != 1 {
+		t.Fatalf("usage = %d, want 1 for a live account", n)
+	}
+}
+
+func TestManageRepo_OwnerCodeExistsIgnoresDeleted(t *testing.T) {
+	r, _, f := newManage(t)
+	ctx := context.Background()
+	uid := f.User(fixture.User{Name: "A"})
+	f.Currency(fixture.Currency{Code: "PTS", UserID: uid, Deleted: true})
+
+	if ok, _ := r.OwnerCodeExists(ctx, uid, "PTS"); ok {
+		t.Fatal("a deleted currency must not block re-creating its code")
+	}
 }

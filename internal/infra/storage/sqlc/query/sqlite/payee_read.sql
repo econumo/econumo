@@ -6,9 +6,9 @@
 -- Available payees: the user's OWN payees plus the payees of every user who has
 -- shared an account WITH this user. Mirrors PHP
 -- PayeeRepository::findAvailableForUserId (self + DISTINCT owners of accounts
--- granted via accounts_access), ordered by position. The user id is repeated
+-- granted via accounts_access), ordered by sort key. The user id is repeated
 -- positionally -> two-field Params struct.
-SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at
+SELECT p.id, p.user_id, p.name, p.is_archived, p.created_at, p.updated_at, p.sort_key
 FROM payees p
 WHERE p.user_id = ?
    OR p.user_id IN (
@@ -17,5 +17,5 @@ WHERE p.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ? AND aa.is_accepted = 1
    )
-ORDER BY p.position, p.id
+ORDER BY p.sort_key, p.id
 ;

@@ -187,11 +187,12 @@ type envelope struct {
 
 // tagItem is the wire shape of a tag result. Tests assert key presence and
 // types, including isArchived as a number, the "2006-01-02 15:04:05" timestamp
-// format, and the absence of type/icon.
+// format, and the absence of a type field (unlike category).
 type tagItem struct {
 	ID          string `json:"id"`
 	OwnerUserID string `json:"ownerUserId"`
 	Name        string `json:"name"`
+	Icon        string `json:"icon"`
 	Position    int    `json:"position"`
 	IsArchived  int    `json:"isArchived"`
 	CreatedAt   string `json:"createdAt"`
@@ -216,4 +217,24 @@ func (e envelope) errorsMap() map[string][]string {
 		_ = json.Unmarshal(e.Errors, &m)
 	}
 	return m
+}
+
+// allSortKeys reads every tag's stored sort key, so a test can assert how many
+// rows a single move actually rewrote.
+func (h *harness) allSortKeys(t *testing.T) map[string]string {
+	t.Helper()
+	rows, err := h.db.Query(`SELECT id, sort_key FROM tags`)
+	if err != nil {
+		t.Fatalf("read sort keys: %v", err)
+	}
+	defer rows.Close()
+	out := map[string]string{}
+	for rows.Next() {
+		var id, key string
+		if err := rows.Scan(&id, &key); err != nil {
+			t.Fatalf("scan: %v", err)
+		}
+		out[id] = key
+	}
+	return out
 }

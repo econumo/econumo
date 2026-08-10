@@ -2,7 +2,7 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
+import { coreHandlers, fixtureLabels, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useAccountTransactions, transactionTitleInfo } from './useAccountTransactions'
 import type { ViewTransaction } from './useAccountTransactions'
 
@@ -169,4 +169,32 @@ it('title logic: no category but WITH a description still shows the description,
   const base = { id: 't', author: fixtureOwner, amount: 1, amountRecipient: null, categoryId: null, payeeId: null, tagId: null, date: '2026-07-01 00:00:00', accountRecipientId: null, isInFuture: false }
   const descOnly = { ...base, type: 'expense', accountId: 'page', description: 'lunch' } as unknown as ViewTransaction
   expect(transactionTitleInfo(descOnly, 'page', t)).toEqual({ text: 'lunch', source: 'description' })
+})
+
+it('resolves labelIds to the owner\'s label rows, skipping ids that no longer exist', async () => {
+  server.use(
+    ...coreHandlers({
+      // a SECOND label the transaction does not carry: proves the ids filter,
+      // rather than the row simply echoing every label the owner has
+      labels: [
+        ...fixtureLabels,
+        { id: 'label2', ownerUserId: 'u1', name: 'unrelated', icon: 'label', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+      ],
+      transactions: [
+        {
+          id: 'tx-labelled', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+          amount: '5', amountRecipient: '5', categoryId: 'cat-food', description: '', payeeId: null, tagId: null,
+          labelIds: ['label1', 'label-gone'], date: '2026-07-02 09:00:00',
+        },
+      ],
+    }),
+  )
+  const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
+  await waitFor(() => expect(result.current.length).toBeGreaterThan(0))
+
+  const row = result.current.find((e) => e.kind === 'transaction')
+  const labels = row?.kind === 'transaction' ? row.transaction.labels : undefined
+  // the unresolvable id is dropped rather than rendered as a blank badge
+  expect(labels?.map((l) => l.name)).toEqual(['health'])
+  expect(labels?.[0].icon).toBe('sell')
 })

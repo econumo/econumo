@@ -94,10 +94,17 @@ func (s *Service) GetFolderList(ctx context.Context, userID vo.Id) (*model.GetFo
 	if err != nil {
 		return nil, err
 	}
-	sort.SliceStable(folders, func(i, j int) bool { return folders[i].Position < folders[j].Position })
+	sort.SliceStable(folders, func(i, j int) bool {
+		if folders[i].SortKey != folders[j].SortKey {
+			return folders[i].SortKey < folders[j].SortKey
+		}
+		return folders[i].ID.String() < folders[j].ID.String()
+	})
 	items := make([]model.AccountFolderResult, 0, len(folders))
 	for _, f := range folders {
-		items = append(items, toFolderResult(f))
+		res := toFolderResult(f)
+		res.Position = len(items)
+		items = append(items, res)
 	}
 	return &model.GetFolderListResult{Items: items}, nil
 }

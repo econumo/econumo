@@ -15,16 +15,13 @@ type Querier interface {
 	AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
-	// New-category position = count of the owner's existing categories.
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
-	// Usage census for delete protection: accounts (including soft-deleted ones,
-	// they still hold the FK), budgets, budget elements, and any user whose
-	// profile currency option stores this currency id.
+	// Usage census for delete protection. Only LIVE references count: a soft-deleted
+	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
-	// New-payee position = count of the owner's existing payees.
+	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
-	// New-tag position = count of the owner's existing tags.
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
 	DeleteAccessToken(ctx context.Context, id string) error
 	DeleteAccountAccess(ctx context.Context, arg DeleteAccountAccessParams) error
@@ -40,18 +37,28 @@ type Querier interface {
 	// ON DELETE SET NULL FK, matching the PHP delete-mode behaviour.
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
-	DeleteCurrency(ctx context.Context, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
+	// unlike tags there is no SET NULL, because the link is a join table.
+	DeleteLabel(ctx context.Context, id string) error
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	// Link rows between a recurring template and its reporting labels. Writes are
+	// delete-then-insert inside the caller's transaction, so a re-save is
+	// idempotent and never duplicates a pair.
+	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
 	DeleteRecurringTransaction(ctx context.Context, id string) error
 	// Transactions referencing this tag have tag_id set to NULL via the ON DELETE
 	// SET NULL FK, matching the PHP delete behaviour.
 	DeleteTag(ctx context.Context, id string) error
 	DeleteTransaction(ctx context.Context, id string) error
+	// Link rows between a transaction and its reporting labels. Writes are
+	// delete-then-insert inside the caller's transaction, so a re-save is
+	// idempotent and never duplicates a pair.
+	DeleteTransactionLabels(ctx context.Context, transactionID string) error
 	// Pending change-email requests (users_email_change_requests). The request is
 	// replaced with a fresh one, read back by user, and deleted once confirmed.
 	// Expiry is compared in the app layer (Go time), not in SQL.
@@ -136,7 +143,7 @@ type Querier interface {
 	// Available categories: the user's OWN categories plus the categories of every
 	// user who has shared an account WITH this user. Mirrors PHP
 	// CategoryRepository::findAvailableForUserId (self + DISTINCT owners of accounts
-	// granted to the user via accounts_access), ordered by position. The user id is
+	// granted to the user via accounts_access), ordered by sort key. The user id is
 	// repeated positionally, so sqlc generates a two-field Params struct.
 	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
 	// Look up a non-expired invite by code. The caller passes 'now' as a
@@ -155,6 +162,8 @@ type Querier interface {
 	// is frozen to show codes).
 	GetCurrencyCodeByID(ctx context.Context, id string) (string, error)
 	GetCurrencyIDByCode(ctx context.Context, code string) (string, error)
+	// Deleted rows are excluded: an owner may hold a live and a deleted currency with
+	// the same code, and LIMIT 1 would otherwise pick between them arbitrarily.
 	GetCurrencyIDByCodeForUser(ctx context.Context, arg GetCurrencyIDByCodeForUserParams) (string, error)
 	// User currency management (per-user custom currencies). Global currencies
 	// have user_id NULL; custom currencies carry their owner id.
@@ -163,10 +172,19 @@ type Querier interface {
 	// period-independent. Globals never carry a rate here.
 	GetFixedCurrencyRates(ctx context.Context) ([]GetFixedCurrencyRatesRow, error)
 	// Write-side queries for folders + the accounts_folders membership join
-	// (SQLite). A folder belongs to a user, has a position and an is_visible flag,
+	// (SQLite). A folder belongs to a user, has a sort key and an is_visible flag,
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// Write-side queries for the label module. The read-side query lives in
+	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
+	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
+	GetLabelByID(ctx context.Context, id string) (Label, error)
+	// Read-model query for the label module (CQRS read side).
+	// Available labels: the user's OWN labels plus the labels of every user who has
+	// shared an account WITH this user. The user id is repeated positionally, which
+	// generates a two-field Params struct.
+	GetLabelListView(ctx context.Context, arg GetLabelListViewParams) ([]Label, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
 	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
@@ -188,7 +206,7 @@ type Querier interface {
 	// Write-side queries for the payee module. The read-side query lives in
 	// payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). The payees table has the same shape as tags (no type/icon
-	// columns): a payee is a name + position + archived flag.
+	// columns): a payee is a name + sort key + archived flag.
 	GetPayeeByID(ctx context.Context, id string) (Payee, error)
 	// Read-model query for the payee module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
@@ -196,14 +214,14 @@ type Querier interface {
 	// Available payees: the user's OWN payees plus the payees of every user who has
 	// shared an account WITH this user. Mirrors PHP
 	// PayeeRepository::findAvailableForUserId (self + DISTINCT owners of accounts
-	// granted via accounts_access), ordered by position. The user id is repeated
+	// granted via accounts_access), ordered by sort key. The user id is repeated
 	// positionally -> two-field Params struct.
 	GetPayeeListView(ctx context.Context, arg GetPayeeListViewParams) ([]Payee, error)
 	GetRecurringTransactionByID(ctx context.Context, id string) (RecurringTransaction, error)
 	// Write-side queries for the tag module. The read-side query lives in
 	// tag_read.sql to keep the CQRS boundary visible (matching categories.sql vs
-	// category_read.sql). The tags table has no type/icon columns (unlike
-	// categories): a tag's icon is a fixed "tag" and is not persisted.
+	// category_read.sql). Unlike categories, a tag has no type column, but it does
+	// have a persisted icon.
 	GetTagByID(ctx context.Context, id string) (Tag, error)
 	// Read-model query for the tag module (CQRS read side). Tailored to the
 	// response shape; bypasses the domain aggregate. Separate from the write queries
@@ -283,6 +301,8 @@ type Querier interface {
 	// Claim a request id. The PK conflict is detected by the caller via a pre-check
 	// (GetOperationId) so a duplicate create is rejected.
 	InsertOperationId(ctx context.Context, arg InsertOperationIdParams) error
+	InsertRecurringLabel(ctx context.Context, arg InsertRecurringLabelParams) error
+	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
 	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
@@ -323,8 +343,8 @@ type Querier interface {
 	// Budgets the user owns OR has an access row for. Ordered by created_at for a
 	// stable list.
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
-	// The owner's categories ordered by position; used by order-category-list (load,
-	// apply position changes, re-save) and as the basis for the returned list.
+	// The owner's categories ordered by sort key; used by move-categorie (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)
 	// Write-side queries for the currency module: the CLI admin commands
@@ -354,12 +374,15 @@ type Querier interface {
 	// All (folder_id, account_id) memberships for a user's folders. Lets the caller
 	// resolve "which folder contains account X" in one query.
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
-	// The user's folders. Ordering is applied by the caller/assembler (by position).
+	// The user's folders. Ordering is applied by the caller/assembler (by sort key).
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	// The owner's payees ordered by position; used by order-payee-list (load, apply
-	// position changes, re-save) and as the basis for the returned list.
+	// The owner's labels ordered by sort key; used by move-label (load, place the
+	// moved row, save it) and as the basis for the returned list.
+	ListLabelsByOwner(ctx context.Context, userID string) ([]Label, error)
+	// The owner's payees ordered by sort key; used by move-payee (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListPayeesByOwner(ctx context.Context, userID string) ([]Payee, error)
 	// Pending grants TO this user (invites awaiting acceptance), excluding grants
 	// on accounts the owner has soft-deleted (no ghost invites). Ordered so both
@@ -367,14 +390,15 @@ type Querier interface {
 	ListPendingReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// Grants TO this user (accounts shared with them).
 	ListReceivedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
-	// The owner's tags ordered by position; used by order-tag-list (load, apply
-	// position changes, re-save) and as the basis for the returned list.
+	// The owner's tags ordered by sort key; used by move-tag (load,
+	// place the moved row, save it) and as the basis for the returned list.
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	// Transactions on an account (as source or recipient), newest first; id is the
 	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
+	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
@@ -384,6 +408,9 @@ type Querier interface {
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
+	// Currencies are never removed: accounts.currency_id and transactions.account_id
+	// both cascade, so a DELETE would destroy account and transaction history.
+	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
@@ -409,6 +436,7 @@ type Querier interface {
 	// (identifier_uniq_currencies_rates) upsert dedupes per day.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
 	UpsertTag(ctx context.Context, arg UpsertTagParams) error

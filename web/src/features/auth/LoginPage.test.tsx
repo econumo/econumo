@@ -182,6 +182,17 @@ it('prefills the current origin when expanding with no custom server configured'
   expect(screen.getByLabelText('Server address')).toHaveValue(window.location.origin)
 })
 
+it('leaves the server address empty when expanding in the native app', async () => {
+  // The WebView origin (capacitor://localhost) is meaningless as a server
+  // address — the field must stay on its placeholder for the user's own URL.
+  window.Capacitor = { isNativePlatform: () => true }
+  const user = userEvent.setup()
+  renderLogin()
+  await user.click(screen.getByRole('button', { name: /custom server/i }))
+  expect(screen.getByLabelText('Server address')).toHaveValue('')
+  delete (window as { Capacitor?: unknown }).Capacitor
+})
+
 it('reveals the server address field through the custom-server disclosure', async () => {
   window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
   const user = userEvent.setup()

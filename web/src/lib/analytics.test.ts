@@ -89,6 +89,18 @@ describe('capture', () => {
     expect(sentPayload(1).batch).toHaveLength(1)
   })
 
+  // crypto.randomUUID exists only in secure contexts, so a self-hosted instance
+  // reached over http://<lan-ip> does not have it (issue #197).
+  it('assigns a distinct_id in an insecure context, where crypto.randomUUID is absent', async () => {
+    const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto)
+    vi.stubGlobal('crypto', { getRandomValues })
+    vi.resetModules()
+    const insecure = await import('./analytics')
+    insecure.capture('a')
+    vi.advanceTimersByTime(10_000)
+    expect(sentPayload().batch[0].distinct_id).toMatch(/^[0-9a-f-]{36}$/)
+  })
+
   it('sends the tail via sendBeacon when the tab hides', () => {
     const beacon = vi.fn(() => true)
     vi.stubGlobal('navigator', { ...window.navigator, sendBeacon: beacon })

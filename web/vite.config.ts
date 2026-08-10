@@ -13,7 +13,7 @@ function backendPort(): string {
     return process.env.PORT
   }
   try {
-    const env = fs.readFileSync(path.resolve(__dirname, '../.env'), 'utf8')
+    const env = fs.readFileSync(path.resolve(import.meta.dirname, '../.env'), 'utf8')
     const match = /^\s*PORT\s*=\s*"?(\d+)"?\s*$/m.exec(env)
     if (match) {
       return match[1]
@@ -27,7 +27,7 @@ function backendPort(): string {
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   resolve: {
-    alias: { '@': path.resolve(__dirname, 'src') },
+    alias: { '@': path.resolve(import.meta.dirname, 'src') },
   },
   envPrefix: ['VITE_', 'ECONUMO_', 'WEBSITE_'],
   server: {

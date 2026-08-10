@@ -19,10 +19,6 @@ type Repository interface {
 	// ListByOwner returns the owner's tags ordered by position.
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, error)
 
-	// CountByOwner returns the number of tags the owner has (used to seed a new
-	// tag's position).
-	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
-
 	Save(ctx context.Context, t *model.Tag) error
 
 	// Delete removes a tag. Transactions referencing it have tag_id set to NULL

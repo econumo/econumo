@@ -52,7 +52,7 @@ it('createTransaction returns {item, accounts} with decimal strings passed throu
   const form = {
     id: 'op-tx-1', type: 'expense' as const, accountId: 'a1', accountRecipientId: null,
     amount: '9.99', amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null,
-    date: '2026-07-01 09:30:00',
+    labelIds: [], date: '2026-07-01 09:30:00',
   }
   const result = await transactionApi.createTransaction(form)
   expect(body).toEqual(form)

@@ -13,6 +13,7 @@ import (
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 	domtag "github.com/econumo/econumo/internal/tag"
 )
@@ -25,7 +26,6 @@ type (
 type querier interface {
 	GetTagByID(ctx context.Context, db backend.DBTX, id string) (tagRow, error)
 	ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error)
-	CountTagsByOwner(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
 }
@@ -87,21 +87,14 @@ func (r *Repo) ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Tag, err
 	return out, nil
 }
 
-func (r *Repo) CountByOwner(ctx context.Context, userID vo.Id) (int, error) {
-	n, err := r.q.CountTagsByOwner(ctx, r.db(ctx), userID.String())
-	if err != nil {
-		return 0, err
-	}
-	return int(n), nil
-}
-
 // Save: the caller runs this inside TxManager.WithTx.
 func (r *Repo) Save(ctx context.Context, t *model.Tag) error {
 	return r.q.UpsertTag(ctx, r.db(ctx), upsertParams{
 		ID:         t.ID.String(),
 		UserID:     t.UserID.String(),
 		Name:       t.Name,
-		Position:   t.Position,
+		Icon:       t.Icon,
+		SortKey:    string(t.SortKey),
 		IsArchived: t.IsArchived,
 		CreatedAt:  t.CreatedAt,
 		UpdatedAt:  t.UpdatedAt,
@@ -121,6 +114,6 @@ func hydrate(row tagRow) (*model.Tag, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Position: row.Position,
+	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

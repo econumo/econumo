@@ -12,6 +12,8 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
+	applabel "github.com/econumo/econumo/internal/label"
+	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
@@ -45,7 +47,9 @@ func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	catRepo := categoryrepo.NewRepo(db.Engine, txm)
 	tgRepo := tagrepo.NewRepo(db.Engine, txm)
 	pyRepo := payeerepo.NewRepo(db.Engine, txm)
-	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo))
+	labelRepo := labelrepo.NewRepo(db.Engine, txm)
+	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), labelrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
 	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), payeerepo.NewReadRepo(db.Engine, txm), accessResolver)
@@ -53,11 +57,12 @@ func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	txImportCategories := server.NewTransactionImportCategories(catSvc, catRepo)
 	txImportTags := server.NewTransactionImportTags(tgSvc, tgRepo)
 	txImportPayees := server.NewTransactionImportPayees(pySvc, pyRepo)
-	txImport := transactionrepo.NewImportLookup(txImportAccounts, accessResolver, txImportCategories, txImportPayees, txImportTags, txRepo)
+	txImportLabels := server.NewTransactionImportLabels(labelSvc, labelRepo)
+	txImport := transactionrepo.NewImportLookup(txImportAccounts, accessResolver, txImportCategories, txImportPayees, txImportTags, txImportLabels, txRepo)
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		txExport, txImport, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		txExport, txImport, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 

@@ -15,7 +15,12 @@ const maxBulkUpdateIds = 100
 
 // BulkUpdateTransactions re-classifies (sets or clears category/payee/tag on)
 // an explicit list of transactions in one all-or-nothing call. This is
-// MCP-only — there is no REST route.
+// MCP-only — there is no REST route. Labels are entirely outside this
+// request's shape and this method never calls ReplaceLabels, so
+// transactions_labels is never touched by a bulk update regardless of what
+// checkReferences computes for st.LabelIDs below (that value is written only
+// onto the in-memory t, which Save persists via the transactions row — Save
+// is an upsert and carries no label write).
 //
 // It deliberately does NOT run a raw UPDATE ... WHERE id IN: that would bypass
 // the single-update invariants and let a caller e.g. attach a category to a
@@ -109,7 +114,7 @@ func (s *Service) BulkUpdateTransactions(ctx context.Context, userID vo.Id, req 
 				st.TagID = newTagID
 			}
 
-			if rerr := s.checkReferences(ctx, userID, st); rerr != nil {
+			if rerr := s.checkReferences(ctx, userID, &st, nil); rerr != nil {
 				return rerr
 			}
 			t.Update(st, now)

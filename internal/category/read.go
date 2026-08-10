@@ -42,6 +42,7 @@ func (s *ReadService) GetCategoryList(ctx context.Context, userID vo.Id) (*model
 	for _, r := range rows {
 		items = append(items, toViewResult(r))
 	}
+	assignPositions(items)
 	return &model.GetCategoryListResult{Items: items}, nil
 }
 
@@ -58,7 +59,6 @@ func toViewResult(r model.CategoryViewRow) model.CategoryResult {
 		Id:          r.ID,
 		OwnerUserId: r.UserID,
 		Name:        r.Name,
-		Position:    int(r.Position),
 		Type:        typ,
 		Icon:        r.Icon,
 		IsArchived:  archived,

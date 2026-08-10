@@ -4,7 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useFolders } from './queries'
+import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useDeleteAccount, useFolders } from './queries'
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
@@ -110,6 +110,34 @@ it('decline-access immediately drops the pending account from the cache', async 
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
 
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-real'])
+})
+
+// Deleting an account is a soft delete on the server: it keeps the transfers
+// that pointed at the account, and still lists them on the surviving side. So
+// the cache must only drop a transaction when NEITHER of its accounts is left
+// — dropping the transfer here would hide it until the next refetch, then let
+// it reappear.
+it('delete-account keeps a transfer whose other account survives, drops the rest', async () => {
+  server.use(
+    http.post('*/api/v1/account/delete-account', () =>
+      HttpResponse.json({ success: true, message: '', data: {} }),
+    ),
+  )
+  const survivor = { ...wireAccount, id: 'a-keep' }
+  const transfer = {
+    ...wireCorrection, id: 't-transfer', type: 'transfer', accountId: 'a-real', accountRecipientId: 'a-keep',
+  }
+  const ownExpense = { ...wireCorrection, id: 't-own', type: 'expense', accountId: 'a-real', accountRecipientId: null }
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount, survivor])
+  queryClient.setQueryData(queryKeys.transactions, [transfer, ownExpense])
+
+  const { result } = renderHook(() => useDeleteAccount(), { wrapper })
+  result.current.mutate('a-real')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.accounts)!.map((a) => a.id)).toEqual(['a-keep'])
+  expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!.map((t) => t.id)).toEqual(['t-transfer'])
 })
 
 it('useAccounts hides an account pending my acceptance, and shows it once accepted', async () => {

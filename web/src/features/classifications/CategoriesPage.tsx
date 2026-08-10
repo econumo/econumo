@@ -11,7 +11,8 @@ import {
   useArchiveCategory,
   useUnarchiveCategory,
   useDeleteCategory,
-  useOrderCategories,
+  useMoveCategory,
+  useSortCategories
 } from './queries'
 
 export function CategoriesPage() {
@@ -23,7 +24,8 @@ export function CategoriesPage() {
   const archiveCategory = useArchiveCategory()
   const unarchiveCategory = useUnarchiveCategory()
   const deleteCategory = useDeleteCategory()
-  const orderCategories = useOrderCategories()
+  const moveCategories = useMoveCategory()
+  const sortCategories = useSortCategories()
 
   const [dialog, setDialog] = useState<{ open: boolean; category: CategoryDto | null }>({ open: false, category: null })
 
@@ -36,6 +38,7 @@ export function CategoriesPage() {
         info={t('classifications.categories.pages.settings.info')}
         createLabel={t('classifications.categories.pages.settings.create_category')}
         deleteTitle={t('classifications.categories.modals.delete.title')}
+        archivedLabel={t('classifications.categories.pages.settings.archived_item')}
         items={own}
         storageKey="settings.categories.activeOnly"
         analyticsType="category"
@@ -48,7 +51,8 @@ export function CategoriesPage() {
         onEdit={(category) => setDialog({ open: true, category })}
         onDelete={(id) => deleteCategory.mutate(id)}
         onToggleArchive={(category) => (category.isArchived === 0 ? archiveCategory.mutate(category.id) : unarchiveCategory.mutate(category.id))}
-        onOrder={(changes) => orderCategories.mutate(changes)}
+        onMove={(move) => moveCategories.mutate(move)}
+        onSort={(ids) => sortCategories.mutate(ids)}
       />
       <CategoryDialog
         open={dialog.open}

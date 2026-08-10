@@ -14,23 +14,23 @@ import (
 var _ = apidoc.JsonResponseError{}
 var _ = model.GetTagListResult{}
 
-// OrderTagList handles POST /api/v1/tag/order-tag-list (auth).
+// MoveTag handles POST /api/v1/tag/move-tag (auth).
 //
-// @Summary     Reorder the tag list
-// @Description Applies position changes to the user's tags and returns the full ordered list.
+// @Summary     Move a tag
+// @Description Places one tag immediately after another (afterId null = first) and returns the full ordered list.
 // @Tags        Tag
 // @Accept      json
 // @Produce     json
-// @Param       request body     model.OrderTagListRequest true "Order tag list request"
-// @Success     200     {object} apidoc.JsonResponseOk{data=model.OrderTagListResult}
+// @Param       request body     model.MoveTagRequest true "Move tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MoveTagResult}
 // @Failure     400     {object} apidoc.JsonResponseError
 // @Failure     401     {object} apidoc.JsonResponseUnauthorized
 // @Failure     402     {object} apidoc.JsonResponseError
 // @Failure     500     {object} apidoc.JsonResponseException
 // @Security    Bearer
-// @Router      /api/v1/tag/order-tag-list [post]
-func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.OrderTagList)
+// @Router      /api/v1/tag/move-tag [post]
+func (h *Handlers) MoveTag(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MoveTag)
 }
 
 // GetTagList handles GET /api/v1/tag/get-tag-list (auth). The request has no
@@ -48,4 +48,23 @@ func (h *Handlers) OrderTagList(w http.ResponseWriter, r *http.Request) {
 // @Router      /api/v1/tag/get-tag-list [get]
 func (h *Handlers) GetTagList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.read.GetTagList)
+}
+
+// SortTagList handles POST /api/v1/tag/sort-tag-list (auth).
+//
+// @Summary     Sort the tag list
+// @Description Applies an explicit order (a full list of ids) to the caller's own tags and returns the full ordered list.
+// @Tags        Tag
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.SortTagListRequest true "Sort tag list request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.SortTagListResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/tag/sort-tag-list [post]
+func (h *Handlers) SortTagList(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.SortTagList)
 }

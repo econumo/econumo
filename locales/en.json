@@ -67,6 +67,9 @@
       "view": {
         "label": "View"
       },
+      "info": {
+        "label": "About"
+      },
       "up": {
         "label": "Move up"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "Econumo {version} is out",
       "dismiss": "Dismiss"
+    },
+    "serverUpdate": {
+      "notice": "Your Econumo server ({version}) is older than this app. Update the server to get the latest features."
+    },
+    "appUpdate": {
+      "title": "Update required",
+      "blockedApp": "This app is too old for your Econumo server: it requires app version {version} or newer. Please update the app to continue.",
+      "blockedServer": "This app requires Econumo server {min} or newer, but your server is {version}. Please update the server to continue."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Payee"
+        },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Reporting tag"
         },
         "tags": {
           "label": "Tags"
@@ -368,18 +385,6 @@
         "to": {
           "label": "To"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "New tag",
-          "name": {
-            "label": "New tag",
-            "placeholder": "Enter tag name",
-            "validation": {
-              "required_field": "Required field"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Description",
         "description_placeholder": "Enter description for all transactions",
         "payee": "Payee",
-        "tag": "Tag"
-      }
+        "tag": "Budget tag",
+        "labels": "Reporting tags"
+      },
+      "labels_separator": {
+        "button": "Change the tag separator",
+        "title": "Tag separator",
+        "tab": "Tab",
+        "newline": "New line",
+        "custom_label": "Custom separator"
+      },
+      "new_labels_count": "This import will create {count} new tag | This import will create {count} new tags"
     },
     "import_result": {
       "success_title": "Import complete",
@@ -945,6 +959,13 @@
               "show_transactions": "Show transactions"
             }
           },
+          "labels": {
+            "heading": "Reporting tags",
+            "info": "Reporting tags show what your money goes on. Mark people, pets or places — a kid, a dog, a second home — and see how much you spend. A transaction can carry several reporting tags."
+          },
+          "uncategorized": {
+            "info": "Spending with no category yet. Assign a category to these transactions and they move into the budget above, where you can plan for them."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total expenses"
@@ -1035,7 +1056,9 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags automatically group spending within your budget — handy for trips, for example: mark every trip expense with one tag and get a spending breakdown right in the budget.",
+          "info": "Budget tags help you plan a project or event — a vacation, a wedding, a home renovation. A transaction can take only one such tag, so you can plan its total spending. Reporting tags show where your money goes: mark people, pets or places. A transaction can carry several of them — they take no part in budgeting.",
+          "section_budget": "Budget tags",
+          "section_reporting": "Reporting tags",
           "create_tag": "Create tag",
           "archived_item": "Archived"
         }
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Budget tag",
+            "label": "Reporting tag",
+            "tag_option": "Budget tag",
+            "tag_hint": "Plan a project or event. Only one tag per transaction.",
+            "label_option": "Reporting tag",
+            "label_hint": "Analyse what the money went on. Several tags per transaction allowed.",
+            "locked_note": "A tag's purpose can't be changed after it's created."
+          },
+          "add_button": "Add tag",
           "name": {
             "label": "Name",
             "validation": {
               "required_field": "Required field",
+              "invalid_name": "Tag name must be 3-64 characters"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Archived"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edit tag"
+        },
+        "create": {
+          "header": "New tag"
+        },
+        "delete": {
+          "title": "Delete tag?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Tag name must be 3-64 characters"
             }
           }
@@ -1330,6 +1390,10 @@
       "base_immutable": "The base currency cannot be modified",
       "cannot_be_hidden": "This currency cannot be hidden"
     },
+    "label": {
+      "name_length": "Tag name must be {min}-{max} characters",
+      "list_empty": "Tags list is empty"
+    },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "This account is not available for this operation.",
       "item_not_available": "This transaction is not available for this operation.",
-      "invalid_import_file": "Please upload a valid CSV file"
+      "invalid_import_file": "Please upload a valid CSV file",
+      "too_many_labels": "A transaction can have at most 50 reporting tags."
     },
     "user": {
       "report_period_invalid": "ReportPeriod is incorrect",

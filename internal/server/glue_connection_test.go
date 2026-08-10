@@ -84,7 +84,7 @@ func TestConnectionBudgetRevoker_RevokeBetween(t *testing.T) {
 	if err := budgets.SaveAccess(ctx, access); err != nil {
 		t.Fatalf("SaveAccess: %v", err)
 	}
-	el := model.NewBudgetElement(budgets.NextIdentity(), vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerCatB), model.ElementCategory, nil, nil, 0, revokerFixedTime)
+	el := model.NewBudgetElement(budgets.NextIdentity(), vo.MustParseId(revokerBudgetA), vo.MustParseId(revokerCatB), model.ElementCategory, nil, nil, revokerFixedTime)
 	if err := budgets.SaveElement(ctx, el); err != nil {
 		t.Fatalf("SaveElement: %v", err)
 	}

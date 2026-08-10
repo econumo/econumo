@@ -19,10 +19,6 @@ type Repository interface {
 	// ListByOwner returns the owner's categories ordered by position.
 	ListByOwner(ctx context.Context, userID vo.Id) ([]*model.Category, error)
 
-	// CountByOwner returns the number of categories the owner has (used to seed
-	// a new category's position).
-	CountByOwner(ctx context.Context, userID vo.Id) (int, error)
-
 	Save(ctx context.Context, c *model.Category) error
 
 	// Delete removes a category. Transactions referencing it have category_id set

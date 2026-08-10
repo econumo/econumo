@@ -1,4 +1,7 @@
 import { getItem, removeItem, setItem } from './storage'
+import { isNativeApp } from './platform'
+
+const CLOUD_HOST = 'https://app.econumo.com'
 
 export interface LocaleOption {
   value: string
@@ -39,7 +42,9 @@ export function backendHost(value?: string): string {
     return `${url.protocol}//${url.host}`
   }
   if (value === undefined) {
-    const defaultHost = window.location.origin
+    // Inside the WebView the origin is capacitor://localhost — meaningless as
+    // an API host, so the app defaults to Econumo Cloud instead.
+    const defaultHost = isNativeApp() ? CLOUD_HOST : window.location.origin
     if (!selfHosted()) {
       return defaultHost
     }
@@ -91,14 +96,18 @@ export function locale(value?: string): string {
 
 export function getLocaleOptions(): LocaleOption[] {
   return [
+    // English first, every other language by locale code.
     { value: 'en', label: 'English', short: 'EN' },
-    { value: 'ru', label: 'Русский', short: 'РУ' },
     { value: 'de', label: 'Deutsch', short: 'DE' },
+    { value: 'es', label: 'Español', short: 'ES' },
     { value: 'fr', label: 'Français', short: 'FR' },
     { value: 'it', label: 'Italiano', short: 'IT' },
-    { value: 'pt', label: 'Português', short: 'PT' },
-    { value: 'pl', label: 'Polski', short: 'PL' },
     { value: 'nl', label: 'Nederlands', short: 'NL' },
+    { value: 'pl', label: 'Polski', short: 'PL' },
+    { value: 'pt', label: 'Português', short: 'PT' },
+    { value: 'ru', label: 'Русский', short: 'РУ' },
+    { value: 'uk', label: 'Українська', short: 'УК' },
+    { value: 'zh', label: '简体中文', short: '中文' },
   ]
 }
 
@@ -117,6 +126,9 @@ export function getBillingUrl(): string {
 }
 
 export function isCustomApiAllowed(): boolean {
+  if (isNativeApp()) {
+    return true
+  }
   const allowCustomApi = window.econumoConfig?.ALLOW_CUSTOM_API
   if (typeof allowCustomApi === 'boolean') {
     return allowCustomApi

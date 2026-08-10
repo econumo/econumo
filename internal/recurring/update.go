@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -33,11 +34,25 @@ func (s *Service) UpdateRecurringTransaction(ctx context.Context, userID vo.Id, 
 				return aerr
 			}
 		}
+		if !st.Type.IsTransfer() {
+			ownerID, operr := s.accounts.AccountOwner(ctx, st.AccountID)
+			if operr != nil {
+				return &errs.ValidationError{Msg: "account.account.not_available", MsgCode: errs.CodeTransactionAccountNotAvailable}
+			}
+			ids, lerr := s.resolveLabels(ctx, ownerID, req.LabelIds)
+			if lerr != nil {
+				return lerr
+			}
+			st.LabelIDs = ids
+		}
 		rt.Update(st, s.clock.Now())
 		updated = rt
-		return s.repo.Save(ctx, rt)
+		if serr := s.repo.Save(ctx, rt); serr != nil {
+			return serr
+		}
+		return s.repo.ReplaceLabels(ctx, rt.ID, rt.LabelIDs)
 	}); err != nil {
 		return nil, err
 	}
-	return &model.UpdateRecurringTransactionResult{Item: toResult(updated)}, nil
+	return &model.UpdateRecurringTransactionResult{Item: toResult(updated, labelIDStrings(updated.LabelIDs))}, nil
 }

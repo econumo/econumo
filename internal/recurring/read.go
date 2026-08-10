@@ -16,9 +16,17 @@ func (s *Service) GetRecurringTransactionList(ctx context.Context, userID vo.Id)
 	if err != nil {
 		return nil, err
 	}
+	ids := make([]vo.Id, len(items))
+	for i, rt := range items {
+		ids[i] = rt.ID
+	}
+	labelsByID, err := s.repo.LabelsByRecurringIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]model.RecurringTransactionResult, 0, len(items))
 	for _, rt := range items {
-		out = append(out, toResult(rt))
+		out = append(out, toResult(rt, labelsByID[rt.ID.String()]))
 	}
 	return &model.GetRecurringTransactionListResult{Items: out}, nil
 }

@@ -67,6 +67,9 @@
       "view": {
         "label": "Bekijken"
       },
+      "info": {
+        "label": "Info"
+      },
       "up": {
         "label": "Omhoog verplaatsen"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "Econumo {version} is beschikbaar",
       "dismiss": "Sluiten"
+    },
+    "serverUpdate": {
+      "notice": "Je Econumo-server ({version}) is ouder dan deze app. Werk de server bij voor de nieuwste functies."
+    },
+    "appUpdate": {
+      "title": "Update vereist",
+      "blockedApp": "Deze app is te oud voor je Econumo-server: versie {version} of nieuwer is vereist. Werk de app bij om door te gaan.",
+      "blockedServer": "Deze app vereist Econumo-server {min} of nieuwer, maar je server is {version}. Werk de server bij om door te gaan."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Begunstigde"
+        },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Rapportagetag"
         },
         "tags": {
           "label": "Tags"
@@ -368,18 +385,6 @@
         "to": {
           "label": "Naar"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nieuwe tag",
-          "name": {
-            "label": "Nieuwe tag",
-            "placeholder": "Voer een tagnaam in",
-            "validation": {
-              "required_field": "Verplicht veld"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Omschrijving",
         "description_placeholder": "Voer een omschrijving in voor alle transacties",
         "payee": "Begunstigde",
-        "tag": "Tag"
-      }
+        "tag": "Budgettag",
+        "labels": "Rapportagetags"
+      },
+      "labels_separator": {
+        "button": "Scheidingsteken voor tags wijzigen",
+        "title": "Scheidingsteken voor tags",
+        "tab": "Tab",
+        "newline": "Nieuwe regel",
+        "custom_label": "Eigen scheidingsteken"
+      },
+      "new_labels_count": "Deze import maakt {count} nieuwe tag aan | Deze import maakt {count} nieuwe tags aan"
     },
     "import_result": {
       "success_title": "Import voltooid",
@@ -945,6 +959,13 @@
               "show_transactions": "Transacties tonen"
             }
           },
+          "labels": {
+            "heading": "Rapportagetags",
+            "info": "Rapportagetags laten zien waaraan uw geld wordt besteed. Markeer personen, huisdieren of plaatsen — een kind, een hond, een tweede woning — en zie hoeveel u uitgeeft. Een transactie kan meerdere rapportagetags dragen."
+          },
+          "uncategorized": {
+            "info": "Uitgaven zonder categorie. Wijs deze transacties een categorie toe, dan verhuizen ze naar het budget hierboven, waar u ze kunt inplannen."
+          },
           "total": {
             "name": "Totaal",
             "expenses": "Totale uitgaven"
@@ -1035,7 +1056,9 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Tags groeperen uitgaven automatisch binnen uw budget — handig voor bijvoorbeeld reizen: markeer alle uitgaven van een reis met één tag en zie de uitsplitsing direct in het budget.",
+          "info": "Budgettags helpen u een project of gebeurtenis te plannen — een vakantie, een bruiloft, een verbouwing. Een transactie kan er maar één dragen, zodat u de totale uitgave kunt plannen. Rapportagetags laten zien waar uw geld heen gaat: markeer personen, huisdieren of plaatsen. Daarvan kan een transactie er meerdere dragen — ze spelen geen rol in de budgettering.",
+          "section_budget": "Budgettags",
+          "section_reporting": "Rapportagetags",
           "create_tag": "Tag aanmaken",
           "archived_item": "Gearchiveerd"
         }
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Budgettag",
+            "label": "Rapportagetag",
+            "tag_option": "Budgettag",
+            "tag_hint": "Plan een project of gebeurtenis. Slechts één tag per transactie.",
+            "label_option": "Rapportagetag",
+            "label_hint": "Analyseer waaraan het geld is besteed. Meerdere tags per transactie toegestaan.",
+            "locked_note": "Het doel van een tag kan na het aanmaken niet meer worden gewijzigd."
+          },
+          "add_button": "Tag toevoegen",
           "name": {
             "label": "Naam",
             "validation": {
               "required_field": "Verplicht veld",
+              "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Gearchiveerd"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Tag bewerken"
+        },
+        "create": {
+          "header": "Nieuwe tag"
+        },
+        "delete": {
+          "title": "Tag verwijderen?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Tagnaam moet 3-64 tekens bevatten"
             }
           }
@@ -1330,6 +1390,10 @@
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
+    "label": {
+      "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
+      "list_empty": "De lijst met tags is leeg."
+    },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "Deze rekening is niet beschikbaar voor deze bewerking.",
       "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
-      "invalid_import_file": "Upload een geldig CSV-bestand."
+      "invalid_import_file": "Upload een geldig CSV-bestand.",
+      "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

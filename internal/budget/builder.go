@@ -25,6 +25,7 @@ type filters struct {
 	currencyIDs            []vo.Id
 	categories             map[string]model.CategoryMeta // expense-only, keyed by id
 	tags                   map[string]model.TagMeta
+	labels                 map[string]model.LabelMeta
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
@@ -179,11 +180,19 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		tagMap[t.ID] = t
 	}
 
+	// Labels resolve over the same owner set as tags, so a shared account's
+	// spend aggregates under the ACCOUNT OWNER's labels exactly like it does
+	// for tags.
+	labels, err := s.read.LabelsForUsers(ctx, userIDs)
+	if err != nil {
+		return filters{}, err
+	}
+
 	return filters{
 		periodStart: periodStart, periodEnd: periodEnd,
 		userIDs: userIDs, excludedAccountIDs: excludedForUser,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
-		categories: catMap, tags: tagMap,
+		categories: catMap, tags: tagMap, labels: labels,
 	}, nil
 }
 
@@ -215,6 +224,18 @@ func sortByPositionThenID[T any](items []T, pos func(T) int, id func(T) string) 
 	sort.Slice(items, func(i, j int) bool {
 		if pi, pj := pos(items[i]), pos(items[j]); pi != pj {
 			return pi < pj
+		}
+		return id(items[i]) < id(items[j])
+	})
+}
+
+// sortBySortKeyThenID is sortByPositionThenID for a list ordered by fractional
+// sort key rather than a dense index. The id tiebreak matters more here: rows
+// backfilled from the old integer positions can share a key.
+func sortBySortKeyThenID[T any](items []T, key func(T) string, id func(T) string) {
+	sort.Slice(items, func(i, j int) bool {
+		if ki, kj := key(items[i]), key(items[j]); ki != kj {
+			return ki < kj
 		}
 		return id(items[i]) < id(items[j])
 	})

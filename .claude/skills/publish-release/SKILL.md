@@ -115,6 +115,8 @@ whether/how to upgrade, and API-client authors who need to know about wire chang
 House style (see the v1.0.0 release for the reference tone):
 
 ```markdown
+📖 **[Read the full release notes, with screenshots →](https://econumo.com/releases/vX.Y.Z/)**
+
 <one-paragraph summary of the release's themes>
 
 ## What's new
@@ -140,6 +142,12 @@ exact version use `ghcr.io/econumo/econumo:vX.Y.Z`.
 
 **Full changelog**: [vLAST...vX.Y.Z](https://github.com/econumo/econumo/compare/vLAST...vX.Y.Z)
 ```
+
+The first line is always the link to that version's page on econumo.com, which carries the
+screenshots and the long-form write-up the GitHub body can't. The URL is always
+`https://econumo.com/releases/vX.Y.Z/` — write it without checking. The GitHub release ships
+first and the site page follows, so the link is expected to 404 for a while; that is the
+normal order, not a mistake to fix before publishing.
 
 Contributors come from the actual range, not memory:
 

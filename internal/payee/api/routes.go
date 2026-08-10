@@ -18,7 +18,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/payee/archive-payee", auth(h.ArchivePayee))
 		mux.Handle("POST /api/v1/payee/unarchive-payee", auth(h.UnarchivePayee))
 		mux.Handle("POST /api/v1/payee/delete-payee", auth(h.DeletePayee))
-		mux.Handle("POST /api/v1/payee/order-payee-list", auth(h.OrderPayeeList))
+		mux.Handle("POST /api/v1/payee/move-payee", auth(h.MovePayee))
+		mux.Handle("POST /api/v1/payee/sort-payee-list", auth(h.SortPayeeList))
 		mux.Handle("GET /api/v1/payee/get-payee-list", auth(h.GetPayeeList))
 	}
 }

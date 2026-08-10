@@ -83,10 +83,10 @@ it('creates and renames folders via the prompt dialog', async () => {
   await waitFor(() => expect(updated).toEqual({ id: 'f1', name: 'Renamed' }))
 })
 
-it('move down posts the swapped positions', async () => {
+it('move down posts the relative move', async () => {
   let body: unknown
   server.use(
-    http.post('*/api/v1/account/order-folder-list', async ({ request }) => {
+    http.post('*/api/v1/account/move-folder', async ({ request }) => {
       body = await request.json()
       return HttpResponse.json({ success: true, message: '', data: { items: fixtureFolders } })
     }),
@@ -96,13 +96,9 @@ it('move down posts the swapped positions', async () => {
   await screen.findByTestId('folder-General')
   await user.click(screen.getByRole('button', { name: 'folder actions General' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Move down' }))
+  // General (f1) swaps with Savings (f2), so it now sits directly after it.
   await waitFor(() =>
-    expect(body).toEqual({
-      changes: [
-        { id: 'f2', position: 0 },
-        { id: 'f1', position: 1 },
-      ],
-    }),
+    expect(body).toEqual({ id: 'f1', afterId: 'f2' }),
   )
 })
 
@@ -261,7 +257,7 @@ it('hidden folders are visually distinct', async () => {
 
 it('folder reorder applies optimistically before the server responds', async () => {
   server.use(
-    http.post('*/api/v1/account/order-folder-list', async () => {
+    http.post('*/api/v1/account/move-folder', async () => {
       await delay('infinite')
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),

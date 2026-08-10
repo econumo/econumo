@@ -73,6 +73,9 @@ func TestCreateTag_Success(t *testing.T) {
 	if it.Name != "#shopping" {
 		t.Fatalf("item.name = %q, want #shopping", it.Name)
 	}
+	if it.Icon != "tag" {
+		t.Fatalf("item.icon = %q, want %q", it.Icon, "tag")
+	}
 	if it.Position != 0 {
 		t.Fatalf("first tag position = %d, want 0", it.Position)
 	}
@@ -86,13 +89,10 @@ func TestCreateTag_Success(t *testing.T) {
 		t.Fatalf("item.updatedAt = %q, want 2006-01-02 15:04:05", it.UpdatedAt)
 	}
 
-	// The tag result must NOT carry a type or icon field.
+	// The tag result must NOT carry a type field (unlike category).
 	itemObj := mustObject(t, probe["item"])
 	if _, ok := itemObj["type"]; ok {
 		t.Fatalf("tag item must not have a type field; body: %s", env.raw)
-	}
-	if _, ok := itemObj["icon"]; ok {
-		t.Fatalf("tag item must not have an icon field; body: %s", env.raw)
 	}
 	// isArchived must serialize as a JSON number, not a bool.
 	if string(itemObj["isArchived"]) != "0" {
@@ -260,51 +260,6 @@ func TestArchiveTag_ThenListShowsArchived(t *testing.T) {
 	list2 := mustUnmarshal[itemsWrapper](t, listEnv2.Data)
 	if len(list2.Items) != 1 || list2.Items[0].ID != id || list2.Items[0].IsArchived != 0 {
 		t.Fatalf("list after unarchive = %+v, want one item (id %s) with isArchived=0", list2.Items, id)
-	}
-}
-
-func TestOrderTagList_Reorders(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	id1 := createTag(t, h, token, tagID1, "#first")  // pos 0
-	id2 := createTag(t, h, token, tagID2, "#second") // pos 1
-	id3 := createTag(t, h, token, tagID3, "#third")  // pos 2
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/tag/order-tag-list", token, map[string]any{
-		"changes": []map[string]any{
-			{"id": id3, "position": 0},
-			{"id": id1, "position": 2},
-		},
-	})
-	if status != http.StatusOK {
-		t.Fatalf("order status = %d, want 200; body: %s", status, env.raw)
-	}
-	res := mustUnmarshal[itemsWrapper](t, env.Data)
-	if len(res.Items) != 3 {
-		t.Fatalf("returned %d items, want 3", len(res.Items))
-	}
-	pos := map[string]int{}
-	for _, it := range res.Items {
-		pos[it.ID] = it.Position
-	}
-	if pos[id3] != 0 || pos[id2] != 1 || pos[id1] != 2 {
-		t.Fatalf("positions = %v, want id3=%s=0 id2=%s=1 id1=%s=2", pos, id3, id2, id1)
-	}
-	if res.Items[0].ID != id3 || res.Items[2].ID != id1 {
-		t.Fatalf("list order = [%s,...,%s], want [%s,...,%s]", res.Items[0].ID, res.Items[2].ID, id3, id1)
-	}
-}
-
-func TestOrderTagList_Empty_400(t *testing.T) {
-	h := newHarness(t)
-	token := h.issueToken(t)
-
-	status, env := h.do(t, http.MethodPost, "/api/v1/tag/order-tag-list", token, map[string]any{
-		"changes": []map[string]any{},
-	})
-	if status != http.StatusBadRequest {
-		t.Fatalf("status = %d, want 400 (empty changes); body: %s", status, env.raw)
 	}
 }
 

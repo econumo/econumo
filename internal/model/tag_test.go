@@ -23,6 +23,16 @@ func TestNewTag_NotArchived(t *testing.T) {
 	}
 }
 
+func TestNewTag_SeedsDefaultIcon(t *testing.T) {
+	tg := newTag(t)
+	if tg.Icon != DefaultTagIcon {
+		t.Fatalf("icon = %q, want %q", tg.Icon, DefaultTagIcon)
+	}
+	if DefaultTagIcon != "tag" {
+		t.Fatalf("DefaultTagIcon = %q, want \"tag\"", DefaultTagIcon)
+	}
+}
+
 func TestTag_Archive_Unarchive_OnlyBumpOnChange(t *testing.T) {
 	tg := newTag(t)
 	tg.Unarchive(tt1) // no-op
@@ -55,10 +65,10 @@ func TestTag_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestTag_SetPosition(t *testing.T) {
+func TestTag_SetSortKey(t *testing.T) {
 	tg := newTag(t)
-	tg.SetPosition(7)
-	if tg.Position != 7 {
-		t.Fatalf("position=%d want 7", tg.Position)
+	tg.SetSortKey("c007")
+	if tg.SortKey != "c007" {
+		t.Fatalf("position=%q want 7", tg.SortKey)
 	}
 }

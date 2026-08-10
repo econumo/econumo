@@ -26,9 +26,17 @@ func (s *Service) SkipRecurringTransaction(ctx context.Context, userID vo.Id, re
 			return aerr
 		}
 		rt.Advance(s.clock.Now())
-		return s.repo.Save(ctx, rt)
+		if serr := s.repo.Save(ctx, rt); serr != nil {
+			return serr
+		}
+		labelIDs, lerr := s.labelIDsFor(ctx, rt.ID)
+		if lerr != nil {
+			return lerr
+		}
+		rt.LabelIDs = labelIDs
+		return nil
 	}); err != nil {
 		return nil, err
 	}
-	return &model.SkipRecurringTransactionResult{Item: toResult(rt)}, nil
+	return &model.SkipRecurringTransactionResult{Item: toResult(rt, labelIDStrings(rt.LabelIDs))}, nil
 }

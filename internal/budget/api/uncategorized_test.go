@@ -1,7 +1,6 @@
 package api_test
 
 import (
-	"math"
 	"net/http"
 	"testing"
 
@@ -92,8 +91,17 @@ func TestUncategorized_TopLevelRowAppears(t *testing.T) {
 	if el.IsArchived != 0 {
 		t.Errorf("isArchived=%d want 0", el.IsArchived)
 	}
-	if el.Position != math.MaxInt16 {
-		t.Errorf("position=%d want %d (sentinel sorting it last)", el.Position, math.MaxInt16)
+	// The Uncategorized row still sorts LAST in its group, but position is now
+	// the dense 0-based index rather than an int16 sentinel, so "last" means
+	// "one past every real element" instead of 32767.
+	maxReal := -1
+	for _, other := range res.Item.Structure.Elements {
+		if other.Id != el.Id && other.FolderId == nil && other.Position > maxReal {
+			maxReal = other.Position
+		}
+	}
+	if el.Position != maxReal+1 {
+		t.Errorf("position=%d want %d (one past the last real ungrouped element)", el.Position, maxReal+1)
 	}
 	if el.OwnerUserId != nil {
 		t.Errorf("ownerUserId=%v want nil", el.OwnerUserId)

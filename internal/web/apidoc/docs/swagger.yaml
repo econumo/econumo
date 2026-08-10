@@ -122,15 +122,6 @@ definitions:
       position:
         type: integer
     type: object
-  model.AccountPositionChange:
-    properties:
-      folderId:
-        type: string
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.AccountResult:
     properties:
       balance:
@@ -162,6 +153,13 @@ definitions:
         type: string
     type: object
   model.ArchiveCategoryResult:
+    type: object
+  model.ArchiveLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveLabelResult:
     type: object
   model.ArchivePayeeRequest:
     properties:
@@ -230,6 +228,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          Reporting labels attached to the row. Always non-nil ([] when none) so a
+          client can render it without a null check, matching labelIds on the
+          transaction feature's own wire.
+        items:
+          type: string
+        type: array
       payee:
         $ref: '#/definitions/model.TxPayeeResult'
       spentAt:
@@ -492,6 +498,20 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreateLabelRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.CreateLabelResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.LabelResult'
+    type: object
   model.CreatePayeeRequest:
     properties:
       accountId:
@@ -540,6 +560,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is ignored for a transfer (transfers never carry labels); each
+          entry is validated (parses as an id, exists, owned by the template's
+          account owner) by the service, not here.
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       payeeId:
@@ -594,6 +622,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is ignored for a transfer (transfers never carry labels); each
+          entry is validated (parses as an id, exists, owned by the transaction's
+          account owner) by the service, not here.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:
@@ -635,6 +671,8 @@ definitions:
         type: integer
       id:
         type: string
+      isDeleted:
+        type: integer
       isHidden:
         type: integer
       name:
@@ -766,6 +804,13 @@ definitions:
     type: object
   model.DeleteInviteResult:
     type: object
+  model.DeleteLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteLabelResult:
+    type: object
   model.DeletePayeeRequest:
     properties:
       id:
@@ -823,13 +868,6 @@ definitions:
         type: string
       periodStart:
         type: string
-    type: object
-  model.FolderPositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
     type: object
   model.GenerateInviteRequest:
     type: object
@@ -897,6 +935,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.GetLabelListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
         type: array
     type: object
   model.GetOptionListResult:
@@ -1014,6 +1059,44 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.LabelResult:
+    properties:
+      createdAt:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      updatedAt:
+        type: string
+    type: object
+  model.LabelSpendResult:
+    properties:
+      children:
+        items:
+          $ref: '#/definitions/model.ChildElementResult'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      spent:
+        type: string
+    type: object
   model.LoginRequest:
     properties:
       password:
@@ -1050,25 +1133,115 @@ definitions:
       startedAt:
         type: string
     type: object
-  model.MoveElementListItem:
+  model.MoveAccountFolderRequest:
     properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveAccountFolderResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.AccountFolderResult'
+        type: array
+    type: object
+  model.MoveAccountRequest:
+    properties:
+      afterId:
+        type: string
       folderId:
         type: string
       id:
         type: string
-      position:
-        type: integer
     type: object
-  model.MoveElementListRequest:
+  model.MoveAccountResult:
     properties:
-      budgetId:
-        type: string
       items:
         items:
-          $ref: '#/definitions/model.MoveElementListItem'
+          $ref: '#/definitions/model.AccountResult'
         type: array
     type: object
-  model.MoveElementListResult:
+  model.MoveBudgetFolderRequest:
+    properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveBudgetFolderResult:
+    type: object
+  model.MoveCategoryRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveCategoryResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.MoveElementRequest:
+    properties:
+      afterId:
+        type: string
+      budgetId:
+        type: string
+      folderId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveElementResult:
+    type: object
+  model.MoveLabelRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveLabelResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
+        type: array
+    type: object
+  model.MovePayeeRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MovePayeeResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.MoveTagRequest:
+    properties:
+      afterId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.MoveTagResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
     type: object
   model.OptionResult:
     properties:
@@ -1076,94 +1249,6 @@ definitions:
         type: string
       value:
         type: string
-    type: object
-  model.OrderAccountListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.AccountPositionChange'
-        type: array
-    type: object
-  model.OrderAccountListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountResult'
-        type: array
-    type: object
-  model.OrderBudgetFolderListRequest:
-    properties:
-      budgetId:
-        type: string
-      items:
-        items:
-          $ref: '#/definitions/model.OrderFolderListItem'
-        type: array
-    type: object
-  model.OrderBudgetFolderListResult:
-    type: object
-  model.OrderCategoryListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderCategoryListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.CategoryResult'
-        type: array
-    type: object
-  model.OrderFolderListItem:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
-  model.OrderFolderListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.FolderPositionChange'
-        type: array
-    type: object
-  model.OrderFolderListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.AccountFolderResult'
-        type: array
-    type: object
-  model.OrderPayeeListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderPayeeListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.PayeeResult'
-        type: array
-    type: object
-  model.OrderTagListRequest:
-    properties:
-      changes:
-        items:
-          $ref: '#/definitions/model.PositionChange'
-        type: array
-    type: object
-  model.OrderTagListResult:
-    properties:
-      items:
-        items:
-          $ref: '#/definitions/model.TagResult'
-        type: array
     type: object
   model.ParentElementResult:
     properties:
@@ -1229,13 +1314,6 @@ definitions:
       name:
         type: string
     type: object
-  model.PositionChange:
-    properties:
-      id:
-        type: string
-      position:
-        type: integer
-    type: object
   model.PostRecurringTransactionRequest:
     properties:
       accountId:
@@ -1254,6 +1332,16 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          Omit the field to inherit the template's labels; send a list to give the
+          posted transaction exactly those labels; send an empty list to give it
+          none. Absent and empty therefore mean different things. Each entry is
+          validated (parses, exists, owned by the account owner) by the transaction
+          create path, not here — same rule as CreateTransactionRequest.LabelIds.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       recurringId:
@@ -1290,6 +1378,10 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       ownerUserId:
@@ -1467,6 +1559,62 @@ definitions:
       item:
         $ref: '#/definitions/model.RecurringTransactionResult'
     type: object
+  model.SortCategoryListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortCategoryListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CategoryResult'
+        type: array
+    type: object
+  model.SortLabelListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortLabelListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.LabelResult'
+        type: array
+    type: object
+  model.SortPayeeListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortPayeeListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PayeeResult'
+        type: array
+    type: object
+  model.SortTagListRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
+    type: object
+  model.SortTagListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
   model.StructureResult:
     properties:
       elements:
@@ -1477,10 +1625,16 @@ definitions:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
         type: array
+      labels:
+        items:
+          $ref: '#/definitions/model.LabelSpendResult'
+        type: array
     type: object
   model.TagResult:
     properties:
       createdAt:
+        type: string
+      icon:
         type: string
       id:
         type: string
@@ -1515,6 +1669,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds is always a list, never null, so clients can iterate without a
+          nil check. A transfer always carries an empty list.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       recurringId:
@@ -1556,6 +1717,13 @@ definitions:
         type: string
     type: object
   model.UnarchiveCategoryResult:
+    type: object
+  model.UnarchiveLabelRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveLabelResult:
     type: object
   model.UnarchivePayeeRequest:
     properties:
@@ -1722,6 +1890,18 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.UpdateLabelRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  model.UpdateLabelResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.LabelResult'
+    type: object
   model.UpdateLanguageRequest:
     properties:
       language:
@@ -1774,6 +1954,14 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds replaces the full label set (nil/empty clears it); ignored for a
+          transfer. See CreateRecurringTransactionRequest.LabelIds for the
+          validation rule.
+        items:
+          type: string
+        type: array
       nextPaymentAt:
         type: string
       payeeId:
@@ -1830,6 +2018,13 @@ definitions:
         type: string
       id:
         type: string
+      labelIds:
+        description: |-
+          LabelIds replaces the full label set (nil/empty clears it); ignored for a
+          transfer. See CreateTransactionRequest.LabelIds for the validation rule.
+        items:
+          type: string
+        type: array
       payeeId:
         type: string
       tagId:
@@ -2239,19 +2434,19 @@ paths:
       summary: Hide a folder
       tags:
       - Account
-  /api/v1/account/order-account-list:
+  /api/v1/account/move-account:
     post:
       consumes:
       - application/json
-      description: Repositions accounts and moves them between folders, returning
-        the full list.
+      description: Places one account immediately after another (afterId null = first)
+        and sets its folder; returns the full list.
       parameters:
-      - description: Order account list request
+      - description: Move account request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderAccountListRequest'
+          $ref: '#/definitions/model.MoveAccountRequest'
       produces:
       - application/json
       responses:
@@ -2262,7 +2457,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderAccountListResult'
+                  $ref: '#/definitions/model.MoveAccountResult'
               type: object
         "400":
           description: Bad Request
@@ -2282,22 +2477,22 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the account list
+      summary: Move an account
       tags:
       - Account
-  /api/v1/account/order-folder-list:
+  /api/v1/account/move-folder:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's folders and returns the
-        full ordered list.
+      description: Places one folder immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order folder list request
+      - description: Move folder request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderFolderListRequest'
+          $ref: '#/definitions/model.MoveAccountFolderRequest'
       produces:
       - application/json
       responses:
@@ -2308,7 +2503,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderFolderListResult'
+                  $ref: '#/definitions/model.MoveAccountFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -2328,7 +2523,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the folder list
+      summary: Move a folder
       tags:
       - Account
   /api/v1/account/replace-folder:
@@ -3087,6 +3282,10 @@ paths:
         in: query
         name: envelopeId
         type: string
+      - description: Label id (reporting label)
+        in: query
+        name: labelId
+        type: string
       - description: Uncategorized bucket (mutually exclusive with categoryId)
         in: query
         name: uncategorized
@@ -3204,17 +3403,17 @@ paths:
       summary: Include an account in a budget
       tags:
       - Budget
-  /api/v1/budget/move-element-list:
+  /api/v1/budget/move-element:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Move elements
+      - description: Move element
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.MoveElementListRequest'
+          $ref: '#/definitions/model.MoveElementRequest'
       produces:
       - application/json
       responses:
@@ -3225,7 +3424,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.MoveElementListResult'
+                  $ref: '#/definitions/model.MoveElementResult'
               type: object
         "400":
           description: Bad Request
@@ -3239,26 +3438,30 @@ paths:
           description: Payment Required
           schema:
             $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
         "500":
           description: Internal Server Error
           schema:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Move/reorder budget elements
+      summary: Move a budget element
       tags:
       - Budget
-  /api/v1/budget/order-folder-list:
+  /api/v1/budget/move-folder:
     post:
       consumes:
       - application/json
       parameters:
-      - description: Order folders
+      - description: Move folder
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderBudgetFolderListRequest'
+          $ref: '#/definitions/model.MoveBudgetFolderRequest'
       produces:
       - application/json
       responses:
@@ -3269,7 +3472,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderBudgetFolderListResult'
+                  $ref: '#/definitions/model.MoveBudgetFolderResult'
               type: object
         "400":
           description: Bad Request
@@ -3289,7 +3492,7 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder budget folders
+      summary: Move a budget folder
       tags:
       - Budget
   /api/v1/budget/reset-budget:
@@ -3722,19 +3925,19 @@ paths:
       summary: Get the category list
       tags:
       - Category
-  /api/v1/category/order-category-list:
+  /api/v1/category/move-category:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's categories and returns the
-        full ordered list.
+      description: Places one category immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order category list request
+      - description: Move category request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderCategoryListRequest'
+          $ref: '#/definitions/model.MoveCategoryRequest'
       produces:
       - application/json
       responses:
@@ -3745,7 +3948,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderCategoryListResult'
+                  $ref: '#/definitions/model.MoveCategoryResult'
               type: object
         "400":
           description: Bad Request
@@ -3765,7 +3968,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the category list
+      summary: Move a category
+      tags:
+      - Category
+  /api/v1/category/sort-category-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own categorys and returns the full ordered list.
+      parameters:
+      - description: Sort category list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortCategoryListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortCategoryListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the category list
       tags:
       - Category
   /api/v1/category/unarchive-category:
@@ -4419,6 +4668,355 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/label/archive-label:
+    post:
+      consumes:
+      - application/json
+      description: Marks a label archived. Requires ownership.
+      parameters:
+      - description: Archive label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a label
+      tags:
+      - Label
+  /api/v1/label/create-label:
+    post:
+      consumes:
+      - application/json
+      description: Creates a reporting label for the authenticated user. Idempotent
+        on the request id; the name must be unique among the user's labels.
+      parameters:
+      - description: Create label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create a label
+      tags:
+      - Label
+  /api/v1/label/delete-label:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a label. Transactions referencing it lose the association
+        (transactions_labels cascades). Requires ownership.
+      parameters:
+      - description: Delete label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a label
+      tags:
+      - Label
+  /api/v1/label/get-label-list:
+    get:
+      description: Returns all the authenticated user's available labels (own + shared
+        via account access, archived and not) in list order.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetLabelListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the label list
+      tags:
+      - Label
+  /api/v1/label/move-label:
+    post:
+      consumes:
+      - application/json
+      description: Places one label immediately after another (afterId null = first)
+        and returns the full available list (own + shared).
+      parameters:
+      - description: Move label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MoveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MoveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Move a label
+      tags:
+      - Label
+  /api/v1/label/sort-label-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own labels and returns the full available list (own + shared).
+      parameters:
+      - description: Sort label list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortLabelListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortLabelListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the label list
+      tags:
+      - Label
+  /api/v1/label/unarchive-label:
+    post:
+      consumes:
+      - application/json
+      description: Clears a label's archived flag. Requires ownership.
+      parameters:
+      - description: Unarchive label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a label
+      tags:
+      - Label
+  /api/v1/label/update-label:
+    post:
+      consumes:
+      - application/json
+      description: Updates a label's name. Requires ownership; the new name must be
+        unique among the user's labels.
+      parameters:
+      - description: Update label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update a label
+      tags:
+      - Label
   /api/v1/payee/archive-payee:
     post:
       consumes:
@@ -4585,19 +5183,19 @@ paths:
       summary: Get the payee list
       tags:
       - Payee
-  /api/v1/payee/order-payee-list:
+  /api/v1/payee/move-payee:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's payees and returns the full
-        ordered list.
+      description: Places one payee immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order payee list request
+      - description: Move payee request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderPayeeListRequest'
+          $ref: '#/definitions/model.MovePayeeRequest'
       produces:
       - application/json
       responses:
@@ -4608,7 +5206,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderPayeeListResult'
+                  $ref: '#/definitions/model.MovePayeeResult'
               type: object
         "400":
           description: Bad Request
@@ -4628,7 +5226,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the payee list
+      summary: Move a payee
+      tags:
+      - Payee
+  /api/v1/payee/sort-payee-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own payees and returns the full ordered list.
+      parameters:
+      - description: Sort payee list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortPayeeListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortPayeeListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the payee list
       tags:
       - Payee
   /api/v1/payee/unarchive-payee:
@@ -5175,19 +5819,19 @@ paths:
       summary: Get the tag list
       tags:
       - Tag
-  /api/v1/tag/order-tag-list:
+  /api/v1/tag/move-tag:
     post:
       consumes:
       - application/json
-      description: Applies position changes to the user's tags and returns the full
-        ordered list.
+      description: Places one tag immediately after another (afterId null = first)
+        and returns the full ordered list.
       parameters:
-      - description: Order tag list request
+      - description: Move tag request
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/model.OrderTagListRequest'
+          $ref: '#/definitions/model.MoveTagRequest'
       produces:
       - application/json
       responses:
@@ -5198,7 +5842,7 @@ paths:
             - $ref: '#/definitions/apidoc.JsonResponseOk'
             - properties:
                 data:
-                  $ref: '#/definitions/model.OrderTagListResult'
+                  $ref: '#/definitions/model.MoveTagResult'
               type: object
         "400":
           description: Bad Request
@@ -5218,7 +5862,53 @@ paths:
             $ref: '#/definitions/apidoc.JsonResponseException'
       security:
       - Bearer: []
-      summary: Reorder the tag list
+      summary: Move a tag
+      tags:
+      - Tag
+  /api/v1/tag/sort-tag-list:
+    post:
+      consumes:
+      - application/json
+      description: Applies an explicit order (a full list of ids) to the caller's
+        own tags and returns the full ordered list.
+      parameters:
+      - description: Sort tag list request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SortTagListRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SortTagListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Sort the tag list
       tags:
       - Tag
   /api/v1/tag/unarchive-tag:
@@ -5484,7 +6174,7 @@ paths:
       consumes:
       - multipart/form-data
       description: Imports transactions from an uploaded CSV using a field mapping
-        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags.
+        (JSON) and optional per-import overrides; find-or-creates accounts/categories/payees/tags/labels.
       parameters:
       - description: CSV file
         in: formData
@@ -5519,6 +6209,14 @@ paths:
       - description: Override tag id
         in: formData
         name: tagId
+        type: string
+      - description: Override label ids (comma-joined), applied to every row
+        in: formData
+        name: labelIds
+        type: string
+      - description: Separator that splits the mapped labels cell (default ;)
+        in: formData
+        name: labelsSeparator
         type: string
       produces:
       - application/json

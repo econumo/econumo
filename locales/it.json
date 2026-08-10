@@ -67,6 +67,9 @@
       "view": {
         "label": "Visualizza"
       },
+      "info": {
+        "label": "Informazioni"
+      },
       "up": {
         "label": "Sposta su"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "È disponibile Econumo {version}",
       "dismiss": "Ignora"
+    },
+    "serverUpdate": {
+      "notice": "Il tuo server Econumo ({version}) è più vecchio di questa app. Aggiorna il server per ottenere le ultime funzionalità."
+    },
+    "appUpdate": {
+      "title": "Aggiornamento necessario",
+      "blockedApp": "Questa app è troppo vecchia per il tuo server Econumo: è richiesta la versione {version} o successiva. Aggiorna l'app per continuare.",
+      "blockedServer": "Questa app richiede un server Econumo {min} o successivo, ma il tuo server è {version}. Aggiorna il server per continuare."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Beneficiario"
+        },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Tag per i report"
         },
         "tags": {
           "label": "Tag"
@@ -368,18 +385,6 @@
         "to": {
           "label": "A"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nuovo tag",
-          "name": {
-            "label": "Nuovo tag",
-            "placeholder": "Inserisci il nome del tag",
-            "validation": {
-              "required_field": "Campo obbligatorio"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Descrizione",
         "description_placeholder": "Inserisci una descrizione per tutte le transazioni",
         "payee": "Beneficiario",
-        "tag": "Tag"
-      }
+        "tag": "Tag di budget",
+        "labels": "Tag per i report"
+      },
+      "labels_separator": {
+        "button": "Cambia il separatore dei tag",
+        "title": "Separatore dei tag",
+        "tab": "Tabulazione",
+        "newline": "A capo",
+        "custom_label": "Separatore personalizzato"
+      },
+      "new_labels_count": "Questa importazione creerà {count} nuovo tag | Questa importazione creerà {count} nuovi tag"
     },
     "import_result": {
       "success_title": "Importazione completata",
@@ -945,6 +959,13 @@
               "show_transactions": "Mostra le transazioni"
             }
           },
+          "labels": {
+            "heading": "Tag per i report",
+            "info": "I tag di reportistica mostrano in cosa finiscono i tuoi soldi. Contrassegna persone, animali o luoghi — un figlio, un cane, una seconda casa — e scopri quanto spendi. Una transazione può avere diversi tag di reportistica."
+          },
+          "uncategorized": {
+            "info": "Spese ancora senza categoria. Assegna una categoria a queste transazioni e passeranno nel budget qui sopra, dove potrai pianificarle."
+          },
           "total": {
             "name": "Totale",
             "expenses": "Totale delle uscite"
@@ -1035,7 +1056,9 @@
         "settings": {
           "menu_item": "Tag",
           "header": "Tag",
-          "info": "I tag raggruppano automaticamente le spese all'interno del budget — comodi per i viaggi, per esempio: contrassegna con un unico tag tutte le spese del viaggio e ottieni il dettaglio delle spese direttamente nel budget.",
+          "info": "I tag di budget ti aiutano a pianificare un progetto o un evento: una vacanza, un matrimonio, una ristrutturazione. Una transazione può avere un solo tag di questo tipo, così puoi pianificarne la spesa complessiva. I tag di reportistica mostrano dove finiscono i tuoi soldi: contrassegna persone, animali o luoghi. Una transazione può averne diversi — non partecipano al budget.",
+          "section_budget": "Tag di budget",
+          "section_reporting": "Tag per i report",
           "create_tag": "Crea tag",
           "archived_item": "Archiviato"
         }
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Tag di budget",
+            "label": "Tag per i report",
+            "tag_option": "Tag di budget",
+            "tag_hint": "Pianifica un progetto o un evento. Un solo tag per transazione.",
+            "label_option": "Tag di reportistica",
+            "label_hint": "Analizza in cosa sono finiti i soldi. Sono ammessi più tag per transazione.",
+            "locked_note": "Lo scopo di un tag non può essere modificato dopo la creazione."
+          },
+          "add_button": "Aggiungi tag",
           "name": {
             "label": "Nome",
             "validation": {
               "required_field": "Campo obbligatorio",
+              "invalid_name": "Il nome del tag deve contenere da 3 a 64 caratteri"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Archiviata"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Modifica tag"
+        },
+        "create": {
+          "header": "Nuovo tag"
+        },
+        "delete": {
+          "title": "Eliminare il tag?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Il nome del tag deve contenere da 3 a 64 caratteri"
             }
           }
@@ -1330,6 +1390,10 @@
       "base_immutable": "La valuta di base non può essere modificata",
       "cannot_be_hidden": "Questa valuta non può essere nascosta"
     },
+    "label": {
+      "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
+      "list_empty": "L'elenco dei tag è vuoto"
+    },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
       "already_exists": "Il beneficiario esiste già.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "Questo conto non è disponibile per questa operazione.",
       "item_not_available": "Questa transazione non è disponibile per questa operazione.",
-      "invalid_import_file": "Carica un file CSV valido"
+      "invalid_import_file": "Carica un file CSV valido",
+      "too_many_labels": "Una transazione può avere al massimo 50 tag per i report."
     },
     "user": {
       "report_period_invalid": "Il periodo del report non è corretto",

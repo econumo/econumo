@@ -46,7 +46,6 @@ func (r *ReadRepo) CategoryListView(ctx context.Context, userID string) ([]model
 			ID:         c.ID,
 			UserID:     c.UserID,
 			Name:       c.Name,
-			Position:   c.Position,
 			Type:       c.Type,
 			Icon:       c.Icon,
 			IsArchived: c.IsArchived,

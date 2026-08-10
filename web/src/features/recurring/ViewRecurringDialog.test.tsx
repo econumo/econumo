@@ -18,7 +18,7 @@ const futurePaymentAt = formatDateTime(new Date(Date.now() + 365 * 24 * 3600 * 1
 
 const fixtureRecurring: RecurringDto = {
   id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
-  amount: '50.5', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'rent',
+  amount: '50.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'rent',
   schedule: 'monthly', nextPaymentAt: futurePaymentAt,
 }
 

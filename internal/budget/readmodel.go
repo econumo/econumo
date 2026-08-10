@@ -45,4 +45,28 @@ type ReadModel interface {
 	// [start, end) on the given accounts with no category and no tag, newest
 	// first. Backs the top-level "uncategorized" element's drill-down.
 	BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabel returns expense transactions (type=0) in
+	// [start, end) on the given accounts carrying labelID, newest first. The
+	// link is many-to-many (transactions_labels), unlike the single tag_id
+	// column BudgetTransactionsByTag compares against.
+	BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabelAndCategory narrows BudgetTransactionsByLabel to
+	// one category. Backs the per-category child rows of an expanded reporting-
+	// tag folder.
+	BudgetTransactionsByLabelAndCategory(ctx context.Context, labelID, categoryID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsByLabelUncategorized narrows BudgetTransactionsByLabel
+	// to category_id IS NULL - that folder's uncategorized child row.
+	BudgetTransactionsByLabelUncategorized(ctx context.Context, labelID vo.Id, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+
+	// CountSpendingByLabel: per (label, currency) spending over [start, end) for
+	// the given accounts. Deliberately separate from CountSpending: that query
+	// assumes one bucket per row, and joining the many-to-many
+	// transactions_labels there would fan one transaction into N rows and
+	// double-count the category/tag/currency bucket totals. Here the fan-out is
+	// the point: a transaction with two labels contributes its full amount to
+	// each.
+	CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.LabelSpendingRow, error)
+	// LabelsForUsers returns label metadata keyed by label id for the given
+	// owners (the budget's account owners).
+	LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[string]model.LabelMeta, error)
 }

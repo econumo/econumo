@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -49,17 +50,16 @@ type AccessStore interface {
 }
 
 // PositionStore is the per-user account ordering surface (the accounts_options
-// table). Consumed by CreateAccount and OrderAccountList (writes) and
-// buildAccountResult (usecase.go, the read for the embed).
+// table). An account's order is per-user, so it lives here rather than on the
+// account itself. Consumed by CreateAccount and MoveAccount (writes) and
+// buildAccountList (usecase.go, the read for the embed).
 type PositionStore interface {
-	// GetPosition returns the account's per-user position. missing -> ok=false.
-	GetPosition(ctx context.Context, accountID, userID vo.Id) (position int16, ok bool, err error)
+	// SortKeysByUser returns every account's per-user sort key, keyed by account
+	// id. Accounts with no options row are absent.
+	SortKeysByUser(ctx context.Context, userID vo.Id) (map[string]sortkey.Key, error)
 
-	// MaxPosition returns the highest per-user position for the user (0 if none).
-	MaxPosition(ctx context.Context, userID vo.Id) (int16, error)
-
-	// SavePosition upserts a per-user position row.
-	SavePosition(ctx context.Context, accountID, userID vo.Id, position int16, now time.Time) error
+	// SaveSortKey upserts a per-user sort key row.
+	SaveSortKey(ctx context.Context, accountID, userID vo.Id, key sortkey.Key, now time.Time) error
 }
 
 // BalanceReader computes account balances from the transactions table.

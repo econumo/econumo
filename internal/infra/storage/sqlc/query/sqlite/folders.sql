@@ -1,15 +1,15 @@
 -- Write-side queries for folders + the accounts_folders membership join
--- (SQLite). A folder belongs to a user, has a position and an is_visible flag,
+-- (SQLite). A folder belongs to a user, has a sort key and an is_visible flag,
 -- and contains accounts via accounts_folders.
 
 -- name: GetFolderByID :one
-SELECT id, user_id, name, position, is_visible, created_at, updated_at
+SELECT id, user_id, name, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE id = ?;
 
 -- name: ListFoldersByUser :many
--- The user's folders. Ordering is applied by the caller/assembler (by position).
-SELECT id, user_id, name, position, is_visible, created_at, updated_at
+-- The user's folders. Ordering is applied by the caller/assembler (by sort key).
+SELECT id, user_id, name, is_visible, created_at, updated_at, sort_key
 FROM folders
 WHERE user_id = ?;
 
@@ -17,11 +17,11 @@ WHERE user_id = ?;
 SELECT COUNT(*) FROM folders WHERE user_id = ?;
 
 -- name: UpsertFolder :exec
-INSERT INTO folders (id, user_id, name, position, is_visible, created_at, updated_at)
+INSERT INTO folders (id, user_id, name, is_visible, created_at, updated_at, sort_key)
 VALUES (?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     name       = excluded.name,
-    position   = excluded.position,
+    sort_key   = excluded.sort_key,
     is_visible = excluded.is_visible,
     updated_at = excluded.updated_at;
 

@@ -67,6 +67,9 @@
       "view": {
         "label": "Podgląd"
       },
+      "info": {
+        "label": "Informacje"
+      },
       "up": {
         "label": "Przenieś w górę"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "Econumo {version} jest już dostępne",
       "dismiss": "Ukryj"
+    },
+    "serverUpdate": {
+      "notice": "Twój serwer Econumo ({version}) jest starszy niż ta aplikacja. Zaktualizuj serwer, aby korzystać z najnowszych funkcji."
+    },
+    "appUpdate": {
+      "title": "Wymagana aktualizacja",
+      "blockedApp": "Ta aplikacja jest zbyt stara dla Twojego serwera Econumo: wymagana jest wersja aplikacji {version} lub nowsza. Zaktualizuj aplikację, aby kontynuować.",
+      "blockedServer": "Ta aplikacja wymaga serwera Econumo {min} lub nowszego, a Twój serwer to {version}. Zaktualizuj serwer, aby kontynuować."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Odbiorca"
+        },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Tag raportowy"
         },
         "tags": {
           "label": "Tagi"
@@ -368,18 +385,6 @@
         "to": {
           "label": "Na konto"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nowy tag",
-          "name": {
-            "label": "Nowy tag",
-            "placeholder": "Wpisz nazwę tagu",
-            "validation": {
-              "required_field": "Pole wymagane"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Opis",
         "description_placeholder": "Wpisz opis dla wszystkich transakcji",
         "payee": "Odbiorca",
-        "tag": "Tag"
-      }
+        "tag": "Tag budżetowy",
+        "labels": "Tagi raportowe"
+      },
+      "labels_separator": {
+        "button": "Zmień separator tagów",
+        "title": "Separator tagów",
+        "tab": "Tabulator",
+        "newline": "Nowa linia",
+        "custom_label": "Własny separator"
+      },
+      "new_labels_count": "Ten import utworzy {count} nowy tag | Ten import utworzy {count} nowe tagi | Ten import utworzy {count} nowych tagów"
     },
     "import_result": {
       "success_title": "Import zakończony",
@@ -945,6 +959,13 @@
               "show_transactions": "Pokaż transakcje"
             }
           },
+          "labels": {
+            "heading": "Tagi raportowe",
+            "info": "Tagi raportowe pokazują, na co idą pieniądze. Oznaczaj osoby, zwierzęta lub miejsca — dziecko, psa, drugi dom — i sprawdzaj, ile wydajesz. Transakcja może mieć kilka tagów raportowych."
+          },
+          "uncategorized": {
+            "info": "Wydatki bez kategorii. Przypisz tym transakcjom kategorię, a trafią do budżetu powyżej, gdzie można je zaplanować."
+          },
           "total": {
             "name": "Razem",
             "expenses": "Suma wydatków"
@@ -1035,7 +1056,9 @@
         "settings": {
           "menu_item": "Tagi",
           "header": "Tagi",
-          "info": "Tagi automatycznie grupują wydatki w budżecie — przydają się na przykład w podróży: oznacz jednym tagiem wszystkie wydatki z wyjazdu, a zestawienie zobaczysz od razu w budżecie.",
+          "info": "Tagi budżetowe pomagają zaplanować projekt lub wydarzenie — wakacje, wesele, remont. Transakcja może mieć tylko jeden taki tag, dzięki czemu można zaplanować jej łączny wydatek. Tagi raportowe pokazują, dokąd trafiają pieniądze: oznaczaj osoby, zwierzęta lub miejsca. Takich tagów transakcja może mieć kilka — nie biorą udziału w budżetowaniu.",
+          "section_budget": "Tagi budżetowe",
+          "section_reporting": "Tagi raportowe",
           "create_tag": "Utwórz tag",
           "archived_item": "W archiwum"
         }
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Tag budżetowy",
+            "label": "Tag raportowy",
+            "tag_option": "Tag budżetowy",
+            "tag_hint": "Zaplanuj projekt lub wydarzenie. Tylko jeden tag na transakcję.",
+            "label_option": "Tag raportowy",
+            "label_hint": "Analizuj, na co poszły pieniądze. Dozwolonych jest kilka tagów na transakcję.",
+            "locked_note": "Przeznaczenia tagu nie można zmienić po jego utworzeniu."
+          },
+          "add_button": "Dodaj tag",
           "name": {
             "label": "Nazwa",
             "validation": {
               "required_field": "Pole wymagane",
+              "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "W archiwum"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Edytuj tag"
+        },
+        "create": {
+          "header": "Nowy tag"
+        },
+        "delete": {
+          "title": "Usunąć tag?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Nazwa tagu musi mieć od 3 do 64 znaków"
             }
           }
@@ -1330,6 +1390,10 @@
       "base_immutable": "Waluty bazowej nie można zmienić.",
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
+    "label": {
+      "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "list_empty": "Lista tagów jest pusta."
+    },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "To konto jest niedostępne dla tej operacji.",
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
-      "invalid_import_file": "Prześlij prawidłowy plik CSV."
+      "invalid_import_file": "Prześlij prawidłowy plik CSV.",
+      "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

@@ -212,11 +212,11 @@ it('delete posts mode=delete and scrubs the category from cached transactions', 
   })
 })
 
-it('A-Z sort posts the changed positions', async () => {
-  let body: unknown
+it('A-Z sort posts the whole target order in one request', async () => {
+  const bodies: unknown[] = []
   server.use(
-    http.post('*/api/v1/category/order-category-list', async ({ request }) => {
-      body = await request.json()
+    http.post('*/api/v1/category/sort-category-list', async ({ request }) => {
+      bodies.push(await request.json())
       return HttpResponse.json({ success: true, message: '', data: { items: [] } })
     }),
   )
@@ -225,13 +225,6 @@ it('A-Z sort posts the changed positions', async () => {
   await screen.findByText('Food')
   await user.click(screen.getByRole('button', { name: /Reorder list/ }))
   await user.click(await screen.findByRole('button', { name: 'Alphabetically (A-Z)' }))
-  // alphabetical: Food(0) Old(1) Salary(2); current: Food(0) Salary(1) Old(2)
-  await waitFor(() =>
-    expect(body).toEqual({
-      changes: [
-        { id: 'cat-archived', position: 1 },
-        { id: 'cat-salary', position: 2 },
-      ],
-    }),
-  )
+  // alphabetical target: Food, Old, Salary -- one request carrying the full order.
+  await waitFor(() => expect(bodies).toEqual([{ ids: ['cat-food', 'cat-archived', 'cat-salary'] }]))
 })

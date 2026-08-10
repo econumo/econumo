@@ -15,22 +15,24 @@ import (
 // RecurringTransactionResult is one recurring transaction in the API. type is
 // the alias string; amount is a normalized decimal; nextPaymentAt is
 // "2006-01-02 15:04:05" (space separator, no timezone). Optional ids are null
-// when absent.
+// when absent. LabelIds is always a list, never null; a transfer template
+// always carries an empty list.
 type RecurringTransactionResult struct {
-	Id                 string  `json:"id"`
-	OwnerUserId        string  `json:"ownerUserId"`
-	Type               string  `json:"type"`
-	AccountId          string  `json:"accountId"`
-	AccountRecipientId *string `json:"accountRecipientId"`
-	Amount             string  `json:"amount"`
-	CategoryId         *string `json:"categoryId"`
-	PayeeId            *string `json:"payeeId"`
-	TagId              *string `json:"tagId"`
-	Description        string  `json:"description"`
-	Schedule           string  `json:"schedule"`
-	NextPaymentAt      string  `json:"nextPaymentAt"`
-	CreatedAt          string  `json:"createdAt"`
-	UpdatedAt          string  `json:"updatedAt"`
+	Id                 string   `json:"id"`
+	OwnerUserId        string   `json:"ownerUserId"`
+	Type               string   `json:"type"`
+	AccountId          string   `json:"accountId"`
+	AccountRecipientId *string  `json:"accountRecipientId"`
+	Amount             string   `json:"amount"`
+	CategoryId         *string  `json:"categoryId"`
+	PayeeId            *string  `json:"payeeId"`
+	TagId              *string  `json:"tagId"`
+	Description        string   `json:"description"`
+	Schedule           string   `json:"schedule"`
+	NextPaymentAt      string   `json:"nextPaymentAt"`
+	CreatedAt          string   `json:"createdAt"`
+	UpdatedAt          string   `json:"updatedAt"`
+	LabelIds           []string `json:"labelIds"`
 }
 
 // GetRecurringTransactionListResult is the response: {items: [...]}.
@@ -57,6 +59,10 @@ type CreateRecurringTransactionRequest struct {
 	// created FROM; it is linked to the new template (its recurringId) in the
 	// same write, so the source immediately reads as the series' first instance.
 	SourceTransactionId *string `json:"sourceTransactionId"`
+	// LabelIds is ignored for a transfer (transfers never carry labels); each
+	// entry is validated (parses as an id, exists, owned by the template's
+	// account owner) by the service, not here.
+	LabelIds []string `json:"labelIds"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/schedule/nextPaymentAt
@@ -84,6 +90,10 @@ type UpdateRecurringTransactionRequest struct {
 	Description        *string       `json:"description"`
 	Schedule           string        `json:"schedule"`
 	NextPaymentAt      string        `json:"nextPaymentAt"`
+	// LabelIds replaces the full label set (nil/empty clears it); ignored for a
+	// transfer. See CreateRecurringTransactionRequest.LabelIds for the
+	// validation rule.
+	LabelIds []string `json:"labelIds"`
 }
 
 // Validate enforces tier-1 NotBlank on id/type/amount/accountId/schedule/nextPaymentAt
@@ -126,6 +136,12 @@ type PostRecurringTransactionRequest struct {
 	TagId              *string        `json:"tagId"`
 	Description        *string        `json:"description"`
 	Date               string         `json:"date"`
+	// Omit the field to inherit the template's labels; send a list to give the
+	// posted transaction exactly those labels; send an empty list to give it
+	// none. Absent and empty therefore mean different things. Each entry is
+	// validated (parses, exists, owned by the account owner) by the transaction
+	// create path, not here — same rule as CreateTransactionRequest.LabelIds.
+	LabelIds *[]string `json:"labelIds"`
 }
 
 // Validate enforces NotBlank on recurringId/id/type/amount/accountId/date.

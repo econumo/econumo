@@ -166,6 +166,59 @@ it('the top-level Uncategorized target requests uncategorized=1 and no categoryI
   expect(params.has('categoryId')).toBe(false)
 })
 
+it('a label target requests labelId only -- never combined with categoryId/tagId/envelopeId/uncategorized', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: 'l1', type: 'label', name: 'Kid A', icon: 'label', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('l1')
+  // the backend 400s on any combination with another filter, so a broken query
+  // string here would be a production regression, not just a UI nit
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('tagId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+  expect(params.has('uncategorized')).toBe(false)
+  expect(Array.from(params.keys()).sort()).toEqual(['budgetId', 'labelId', 'periodStart'])
+})
+
+it("a label's category child requests labelId and categoryId together", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: 'cat-groceries',
+    type: BudgetElementType.CATEGORY,
+    name: 'Groceries',
+    icon: 'local_grocery_store',
+    currencyId: null,
+    parent: { id: 'label-kid-a', type: 'label' },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('label-kid-a')
+  expect(params.get('categoryId')).toBe('cat-groceries')
+  // labelId still 400s alongside tagId/envelopeId, so only the category pairs with it
+  expect(params.has('tagId')).toBe(false)
+  expect(params.has('envelopeId')).toBe(false)
+  expect(params.has('uncategorized')).toBe(false)
+})
+
+it("a label's uncategorized child requests labelId and uncategorized=1, and no categoryId", async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({
+    id: UNCATEGORIZED_ID,
+    type: BudgetElementType.CATEGORY,
+    name: 'Uncategorized',
+    icon: 'question_mark',
+    currencyId: null,
+    parent: { id: 'label-kid-a', type: 'label' },
+  })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('labelId')).toBe('label-kid-a')
+  expect(params.get('uncategorized')).toBe('1')
+  expect(params.has('categoryId')).toBe(false)
+  expect(params.has('tagId')).toBe(false)
+})
+
 it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categoryId", async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({
@@ -181,4 +234,26 @@ it("a tag's Uncategorized child requests uncategorized=1 and tagId, and no categ
   expect(params.get('uncategorized')).toBe('1')
   expect(params.get('tagId')).toBe('tag-x')
   expect(params.has('categoryId')).toBe(false)
+})
+
+it("a partner's row previews with its reporting tags", async () => {
+  // not in the caller's own transaction list, so the preview is SYNTHESIZED
+  // from the budget wire — which now carries labelIds
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: { items: [{
+          id: 'tx-foreign', author: fixtureOwner, currencyId: 'cur-usd', amount: '5',
+          description: 'partner spend', category: null, payee: null, tag: null,
+          labelIds: ['label1'], spentAt: '2026-07-02 10:00:00',
+        }] },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  await user.click(await screen.findByRole('button', { name: /partner spend/ }))
+  // 'health' is the fixture label behind label1
+  expect(await screen.findByText('health')).toBeInTheDocument()
 })

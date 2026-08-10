@@ -56,7 +56,7 @@ type updateEnvelopeInput struct {
 	Icon        string   `json:"icon" jsonschema:"icon name"`
 	CurrencyID  string   `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
 	CategoryIDs []string `json:"category_ids,omitempty" jsonschema:"category ids (UUID) grouped under this envelope, from list_categories; replaces the full set"`
-	Archived    bool     `json:"archived" jsonschema:"true to archive the envelope (there is no delete), false to unarchive"`
+	Archived    bool     `json:"archived" jsonschema:"true to archive the envelope (MCP has no delete; the app does), false to unarchive"`
 }
 
 type setLimitInput struct {
@@ -85,19 +85,15 @@ type accountIncludedResult struct {
 	Included  bool   `json:"included"`
 }
 
-type moveElementItemInput struct {
-	ElementID string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
-	FolderID  string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
-	Position  int    `json:"position" jsonschema:"0-based position within the target folder"`
-}
-
 type moveElementInput struct {
-	BudgetID string                 `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	Items    []moveElementItemInput `json:"items" jsonschema:"the elements to move; each names an element_id and its target folder_id + position"`
+	BudgetID       string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	ElementID      string `json:"element_id" jsonschema:"envelope, tag or category id (UUID), from get_budget"`
+	FolderID       string `json:"folder_id,omitempty" jsonschema:"target folder id (UUID), from get_budget; omit to move to the default (ungrouped) area"`
+	AfterElementID string `json:"after_element_id,omitempty" jsonschema:"place the element directly after this one within the target folder; omit to place it first"`
 }
 
-// moveElementResult reports no move count: MoveElementList silently skips any
-// item whose element_id isn't found in the budget, so a count would overstate
+// moveElementResult echoes the element that was asked for: MoveElement silently
+// skips an element_id that isn't in the budget, so reporting a count would overstate
 // what actually happened. Verify the outcome with get_budget.
 type moveElementResult struct {
 	BudgetID   string   `json:"budget_id"`
@@ -274,7 +270,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_envelope",
-			Description: "Update an envelope's name/icon/currency/categories, or archive/unarchive it (there is no delete). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."},
+			Description: "Update an envelope's name/icon/currency/categories, or archive/unarchive it (MCP has no delete; the app does). Send the full field set including category_ids, which replaces the group. Use get_budget for its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateEnvelopeInput) (*sdk.CallToolResult, model.UpdateEnvelopeResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_envelope")
 				userID, err := webmcp.UserID(ctx)
@@ -324,32 +320,22 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move budget elements (envelopes, tags, standalone categories) into folders or reorder them. Use get_budget for element_id and folder_id; omit folder_id to move an element to the default ungrouped area."},
+			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, moveElementResult{}, err
 				}
-				items := make([]model.MoveElementListItem, 0, len(in.Items))
-				for _, it := range in.Items {
-					items = append(items, model.MoveElementListItem{
-						Id:       it.ElementID,
-						FolderId: strPtr(it.FolderID),
-						Position: it.Position,
-					})
-				}
-				if _, err := svc.MoveElementList(ctx, userID, model.MoveElementListRequest{
+				if _, err := svc.MoveElement(ctx, userID, model.MoveElementRequest{
 					BudgetId: in.BudgetID,
-					Items:    items,
+					Id:       in.ElementID,
+					FolderId: strPtr(in.FolderID),
+					AfterId:  strPtr(in.AfterElementID),
 				}); err != nil {
 					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
 				}
-				elementIDs := make([]string, 0, len(in.Items))
-				for _, it := range in.Items {
-					elementIDs = append(elementIDs, it.ElementID)
-				}
-				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: elementIDs}, nil
+				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: []string{in.ElementID}}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_budget_account_included",

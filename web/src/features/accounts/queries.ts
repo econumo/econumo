@@ -6,6 +6,7 @@ import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { applyMove } from '@/lib/ordering'
 import { isPendingForMe } from '@/features/connections/shared'
 import { useUserData } from '@/features/user/queries'
 
@@ -88,9 +89,16 @@ export function useDeleteAccount() {
   return useMutation({
     mutationFn: accountApi.deleteAccount,
     onSuccess: (_result, id) => {
-      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) => (prev ?? []).filter((a) => a.id !== id))
+      const remaining = (queryClient.getQueryData<AccountDto[]>(queryKeys.accounts) ?? []).filter((a) => a.id !== id)
+      queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, remaining)
+      // Deleting an account is a soft delete that leaves its transactions in
+      // place, and the server still lists a transfer whose OTHER leg is a
+      // surviving account (the money did move). Dropping those here would only
+      // hide them until the next refetch, so mirror the server: a transaction
+      // goes only when neither of its accounts is left.
+      const survives = new Set(remaining.map((a) => a.id))
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
-        (prev ?? []).filter((t) => t.accountId !== id && t.accountRecipientId !== id),
+        (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
       )
       trackEvent(METRICS.ACCOUNT_DELETE)
     },
@@ -115,24 +123,29 @@ export function useLeaveSharedAccount() {
   })
 }
 
-export function useOrderAccounts() {
+export function useMoveAccount() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: accountApi.orderAccountList,
+    mutationFn: ({ id, afterId, folderId }: { id: Id; afterId: Id | null; folderId: Id | null }) =>
+      accountApi.moveAccount(id, afterId, folderId),
     // optimistic: the new arrangement lands instantly, the echo just confirms it
-    onMutate: async (changes) => {
+    onMutate: async ({ id, afterId, folderId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.accounts })
       const previous = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)
-      const byId = new Map(changes.map((c) => [c.id, c]))
+      // The RAW cache holds get-account-list's response, which is REVERSED
+      // (useAccounts sorts a derived view, never the cache). applyMove assumes
+      // position order and re-stamps positions by array index, so applied to
+      // the reversed array it would flip the whole list until the echo lands.
       queryClient.setQueryData<AccountDto[]>(queryKeys.accounts, (prev) =>
-        (prev ?? []).map((a) => {
-          const change = byId.get(a.id)
-          return change ? { ...a, folderId: change.folderId, position: change.position } : a
-        }),
+        applyMove(
+          [...(prev ?? [])].sort((a, b) => a.position - b.position),
+          id,
+          afterId,
+        ).map((a) => (a.id === id ? { ...a, folderId } : a)),
       )
       return { previous }
     },
-    onError: (_err, _changes, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.accounts, context.previous)
       }
@@ -166,23 +179,17 @@ export function useUpdateFolder() {
   })
 }
 
-export function useOrderFolders() {
+export function useMoveFolder() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: accountApi.orderFolderList,
-    onMutate: async (changes) => {
+    mutationFn: ({ id, afterId }: { id: Id; afterId: Id | null }) => accountApi.moveFolder(id, afterId),
+    onMutate: async ({ id, afterId }) => {
       await queryClient.cancelQueries({ queryKey: queryKeys.folders })
       const previous = queryClient.getQueryData<FolderDto[]>(queryKeys.folders)
-      const positions = new Map(changes.map((c) => [c.id, c.position]))
-      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) =>
-        (prev ?? []).map((f) => {
-          const position = positions.get(f.id)
-          return position === undefined ? f : { ...f, position }
-        }),
-      )
+      queryClient.setQueryData<FolderDto[]>(queryKeys.folders, (prev) => applyMove(prev ?? [], id, afterId))
       return { previous }
     },
-    onError: (_err, _changes, context) => {
+    onError: (_err, _vars, context) => {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.folders, context.previous)
       }

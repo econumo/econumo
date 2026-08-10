@@ -17,9 +17,11 @@ RUN npm install -g pnpm@11
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
-# web/src/app/i18n.ts imports ../../../locales/*.json, so locales/ must land
-# one level above WORKDIR (/build/locales), mirroring the repo-root layout.
+# web/src/app/i18n.ts imports ../../../locales/*.json and appConfig.ts imports
+# ../../../compat/versions.json, so both must land one level above WORKDIR,
+# mirroring the repo-root layout.
 COPY locales/ /build/locales/
+COPY compat/ /build/compat/
 # Vite inlines ECONUMO_VERSION (envPrefix in vite.config.ts) as the UI version label.
 # Pass --build-arg ECONUMO_VERSION=v1.2.3 to set it; defaults to "dev".
 ARG ECONUMO_VERSION=""
@@ -33,9 +35,11 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY cmd/ ./cmd/
 COPY internal/ ./internal/
-# internal/infra/i18n imports github.com/econumo/econumo/locales, which lives
-# at the module root alongside cmd/ and internal/.
+# internal/infra/i18n imports github.com/econumo/econumo/locales and
+# internal/server imports github.com/econumo/econumo/compat — both live at the
+# module root alongside cmd/ and internal/.
 COPY locales/ ./locales/
+COPY compat/ ./compat/
 # The built SPA is embedded into the binary (web/embed.go, go:embed): the
 # image and the downloadable release binary share one code path, and the
 # runtime stage no longer carries a separate /app/web.

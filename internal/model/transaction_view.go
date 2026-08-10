@@ -11,6 +11,14 @@ type ExportAccount struct {
 	CurrencyCode string
 }
 
+// ExportLabel is a label's name and sort key, resolved for the CSV export's
+// labels column (list order, not id order, determines the export's join
+// order). The key is an internal ordering token: only Name reaches the file.
+type ExportLabel struct {
+	Name    string
+	SortKey string
+}
+
 // ImportAccount / ImportNamed are the lightweight entity views the CSV
 // importer works with (id + name + owner for the belongs-to checks; a named
 // entity carries no type since it's only matched by name).
@@ -38,6 +46,7 @@ type ImportMapping struct {
 	Category      string
 	Payee         string
 	Tag           string
+	Labels        string
 }
 
 // ImportRequest is the decoded import request: the CSV bytes, the mapping, and
@@ -52,6 +61,11 @@ type ImportRequest struct {
 	Description *string
 	PayeeId     *string
 	TagId       *string
+	LabelIds    *string // comma-joined id list; applies to every row
+	// LabelsSeparator splits the mapped labels cell; the caller may use any
+	// delimiter (a CSV from another tool need not match the export default),
+	// so this is read from the request rather than hardcoded.
+	LabelsSeparator string
 }
 
 // ImportResult is the wire result: counts + an errors map (message ->

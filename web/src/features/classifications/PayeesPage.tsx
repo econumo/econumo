@@ -5,7 +5,8 @@ import { isNotEmpty, isValidPayeeName } from '@/lib/validation'
 import type { PayeeDto } from '@/api/dto/payee'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
-import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useOrderPayees } from './queries'
+import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useMovePayee,
+  useSortPayees } from './queries'
 
 export function PayeesPage() {
   const { t } = useTranslation()
@@ -16,7 +17,8 @@ export function PayeesPage() {
   const archivePayee = useArchivePayee()
   const unarchivePayee = useUnarchivePayee()
   const deletePayee = useDeletePayee()
-  const orderPayees = useOrderPayees()
+  const movePayees = useMovePayee()
+  const sortPayees = useSortPayees()
 
   const [dialog, setDialog] = useState<{ open: boolean; payee: PayeeDto | null }>({ open: false, payee: null })
   const own = payees.filter((p) => !user || p.ownerUserId === user.id)
@@ -39,6 +41,7 @@ export function PayeesPage() {
         heading={t('classifications.payees.pages.settings.menu_item')}
         createLabel={t('classifications.payees.pages.settings.create_payee')}
         deleteTitle={t('classifications.payees.modals.delete.title')}
+        archivedLabel={t('classifications.payees.pages.settings.archived_item')}
         items={own}
         storageKey="settings.payees.activeOnly"
         analyticsType="payee"
@@ -46,7 +49,8 @@ export function PayeesPage() {
         onEdit={(payee) => setDialog({ open: true, payee })}
         onDelete={(id) => deletePayee.mutate(id)}
         onToggleArchive={(payee) => (payee.isArchived === 0 ? archivePayee.mutate(payee.id) : unarchivePayee.mutate(payee.id))}
-        onOrder={(changes) => orderPayees.mutate(changes)}
+        onMove={(move) => movePayees.mutate(move)}
+        onSort={(ids) => sortPayees.mutate(ids)}
       />
       <PromptDialog
         open={dialog.open}

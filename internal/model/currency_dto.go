@@ -20,16 +20,16 @@ type CurrencyResult struct {
 	FractionDigits int    `json:"fractionDigits"`
 }
 
-// CurrencyListItem is a get-currency-list item: the shared currency shape
-// plus the caller-relative flags. Anonymous embedding keeps the JSON flat, so
-// the list endpoint's wire shape is CurrencyResult's fields + scope/isArchived/
-// isHidden, while every other endpoint embedding CurrencyResult is untouched.
-// scope is "global" | "own" | "shared" (reachable via a shared account/budget,
-// not owned by the caller); isArchived/isHidden are ints 0/1.
+// CurrencyListItem is a get-currency-list item: the shared currency shape plus
+// the caller-relative flags. Anonymous embedding keeps the JSON flat.
+// scope is "global" | "own" | "shared"; isHidden/isDeleted are ints 0/1.
+// A deleted currency is still listed -- accounts and rates that reference it
+// must keep resolving -- so consumers filter on the flag themselves.
 type CurrencyListItem struct {
 	CurrencyResult
-	Scope    string `json:"scope"`
-	IsHidden int    `json:"isHidden"`
+	Scope     string `json:"scope"`
+	IsHidden  int    `json:"isHidden"`
+	IsDeleted int    `json:"isDeleted"`
 }
 
 // GetCurrencyListResult is the get-currency-list response: {items: [...]}.

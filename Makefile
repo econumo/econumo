@@ -1,4 +1,4 @@
-.PHONY: help web-install web-run web-test web-bundle web-lint go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
+.PHONY: help web-install web-run web-test web-bundle web-lint mobile-install mobile-sync mobile-ios mobile-android mobile-testflight mobile-testflight-guard go-build go-run go-test test-cover go-lint test test-engines test-repo-pgsql pg-ensure docker-up docker-down publish-dev publish-buildx-ensure swagger swagger-check release-binaries cdn-upload
 
 # Default target
 .DEFAULT_GOAL := help
@@ -18,6 +18,12 @@ help:
 	@echo "  make web-test         - Run web tests"
 	@echo "  make web-lint         - Run web linter"
 	@echo "  make web-bundle       - Bundle web for production"
+	@echo ""
+	@echo "Mobile (mobile/):"
+	@echo "  make mobile-install   - Install mobile dependencies"
+	@echo "  make mobile-sync      - Build web/ and sync into the native iOS/Android projects"
+	@echo "  make mobile-ios       - Sync + open the iOS project in Xcode"
+	@echo "  make mobile-android   - Sync + open the Android project in Android Studio"
 	@echo ""
 	@echo "Releases:"
 	@echo "  make release-binaries - Cross-compile the downloadable release binaries (SPA embedded)"
@@ -50,6 +56,40 @@ web-lint:
 web-bundle:
 	@echo "Bundling web for production..."
 	cd web && pnpm build
+
+# --- Mobile (Capacitor, mobile/) ---
+
+mobile-install:
+	cd mobile && pnpm install
+
+mobile-sync:
+	cd web && pnpm build
+	cd mobile && pnpm exec cap sync
+
+mobile-ios: mobile-sync
+	cd mobile && pnpm exec cap open ios
+
+mobile-android: mobile-sync
+	cd mobile && pnpm exec cap open android
+
+# Archive the iOS app and upload it to App Store Connect / TestFlight using
+# the Apple ID stored in Xcode (one-time: Xcode -> Settings -> Accounts).
+# APP_VERSION is the marketing version, BUILD must be unique per upload; the
+# SPA's version label follows APP_VERSION automatically. See mobile/README.md.
+mobile-testflight: export ECONUMO_VERSION = v$(APP_VERSION)
+mobile-testflight: mobile-testflight-guard mobile-sync
+	cd mobile/ios/App && xcodebuild -project App.xcodeproj -scheme App \
+		-destination generic/platform=iOS -archivePath build/App.xcarchive \
+		MARKETING_VERSION=$(APP_VERSION) CURRENT_PROJECT_VERSION=$(BUILD) \
+		DEVELOPMENT_TEAM=$(APPLE_TEAM_ID) \
+		archive -allowProvisioningUpdates
+	cd mobile/ios/App && xcodebuild -exportArchive -archivePath build/App.xcarchive \
+		-exportOptionsPlist ExportOptions.plist -exportPath build/export \
+		-allowProvisioningUpdates
+
+mobile-testflight-guard:
+	@test -n "$(APP_VERSION)" && test -n "$(BUILD)" && test -n "$(APPLE_TEAM_ID)" || \
+		{ echo "usage: APPLE_TEAM_ID=XXXXXXXXXX make mobile-testflight APP_VERSION=1.0.0 BUILD=1"; exit 1; }
 
 # --- Backend (Go) ---
 
@@ -153,7 +193,7 @@ go-lint: swagger-check
 # runs; the build pipeline uses this pinned version). `go run <pkg>@<ver>` needs
 # the module cache (network on first use).
 SWAG_VERSION := $(shell go list -m -f '{{.Version}}' github.com/swaggo/swag 2>/dev/null || echo v1.16.6)
-SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../../user,../../currency,../../account,../../category,../../tag,../../payee,../../transaction,../../connection,../../budget,../../recurring,../../system,../../model --parseInternal --parseDependency
+SWAG_INIT     = go run github.com/swaggo/swag/cmd/swag@$(SWAG_VERSION) init -g doc.go -d .,../../user,../../currency,../../account,../../category,../../tag,../../label,../../payee,../../transaction,../../connection,../../budget,../../recurring,../../system,../../model --parseInternal --parseDependency
 
 # Regenerate the committed OpenAPI docs from the handler/DTO annotations. This is
 # a prerequisite of go-build / go-run / publish-dev / up so a built artifact never

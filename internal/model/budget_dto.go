@@ -92,10 +92,28 @@ type ParentElementResult struct {
 	OwnerUserId *string              `json:"ownerUserId"`
 }
 
-// StructureResult is the budget's folders + ordered elements.
+// LabelSpendResult is one reporting label in the budget's labels block. It has
+// no budgeted/available fields on purpose: a label carries no limit and takes no
+// part in envelope math, so only its period spend is meaningful. Amounts across
+// labels deliberately overlap and do not sum to total spend.
+//
+// Children break THIS label's own spend down by category and do sum to Spent;
+// the overlap is between labels, not within one.
+type LabelSpendResult struct {
+	Id          string               `json:"id"`
+	Name        string               `json:"name"`
+	Icon        string               `json:"icon"`
+	IsArchived  int                  `json:"isArchived"`
+	Spent       string               `json:"spent"`
+	OwnerUserId string               `json:"ownerUserId"`
+	Children    []ChildElementResult `json:"children"`
+}
+
+// StructureResult is the budget's folders + ordered elements + labels.
 type StructureResult struct {
 	Folders  []BudgetFolderResult  `json:"folders"`
 	Elements []ParentElementResult `json:"elements"`
+	Labels   []LabelSpendResult    `json:"labels"`
 }
 
 // BudgetResult is the full get-budget shape.
@@ -232,24 +250,32 @@ func (r DeleteFolderRequest) Validate() error {
 // DeleteFolderResult is empty.
 type DeleteFolderResult struct{}
 
-// OrderFolderListItem is one folder reorder instruction.
-type OrderFolderListItem struct {
-	Id       string `json:"id"`
-	Position int    `json:"position"`
+// MoveBudgetFolderRequest is the budget move-folder request body. AfterId is the
+// id of the folder this one should land immediately after; null means "move to
+// the front".
+type MoveBudgetFolderRequest struct {
+	BudgetId string  `json:"budgetId"`
+	Id       string  `json:"id"`
+	AfterId  *string `json:"afterId"`
 }
 
-// OrderBudgetFolderListRequest reorders folders.
-type OrderBudgetFolderListRequest struct {
-	BudgetId string                `json:"budgetId"`
-	Items    []OrderFolderListItem `json:"items"`
+func (r MoveBudgetFolderRequest) Validate() error {
+	if _, err := vo.ParseId(r.BudgetId); err != nil {
+		return ValidateBlank(map[string]string{"budgetId": ""})
+	}
+	if _, err := vo.ParseId(r.Id); err != nil {
+		return err
+	}
+	if r.AfterId != nil {
+		if _, err := vo.ParseId(*r.AfterId); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (r OrderBudgetFolderListRequest) Validate() error {
-	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
-}
-
-// OrderBudgetFolderListResult is empty.
-type OrderBudgetFolderListResult struct{}
+// MoveBudgetFolderResult is the budget move-folder response: {}.
+type MoveBudgetFolderResult struct{}
 
 // CreateEnvelopeRequest creates an envelope (+ its budget element).
 type CreateEnvelopeRequest struct {
@@ -422,38 +448,37 @@ func (r SetLimitRequest) Validate() error {
 // SetLimitResult is empty.
 type SetLimitResult struct{}
 
-// MoveElementListItem is one element move/reorder instruction. The wire shape is
-// {id, position, folderId?} — the element is identified by its EXTERNAL id alone
-// (no type), matched against the budget element whose external id equals it
-// (first-seen wins).
-type MoveElementListItem struct {
+// MoveElementRequest is the move-element request body. The element is
+// identified by its EXTERNAL id (no type discriminator, first match wins).
+// AfterId is the element it should land immediately after within FolderId; null
+// means "move to the front". FolderId null puts it in the no-folder group.
+type MoveElementRequest struct {
+	BudgetId string  `json:"budgetId"`
 	Id       string  `json:"id"`
 	FolderId *string `json:"folderId"`
-	Position int     `json:"position"`
+	AfterId  *string `json:"afterId"`
 }
 
-// MoveElementListRequest moves/reorders elements.
-type MoveElementListRequest struct {
-	BudgetId string                `json:"budgetId"`
-	Items    []MoveElementListItem `json:"items"`
-}
-
-func (r MoveElementListRequest) Validate() error {
-	if err := ValidateBlank(map[string]string{"budgetId": r.BudgetId}); err != nil {
+func (r MoveElementRequest) Validate() error {
+	if _, err := vo.ParseId(r.BudgetId); err != nil {
+		return ValidateBlank(map[string]string{"budgetId": ""})
+	}
+	if _, err := vo.ParseId(r.Id); err != nil {
 		return err
 	}
-	var fields []errs.FieldError
-	for _, it := range r.Items {
-		fields = append(fields, validatePositionField("position", it.Position)...)
-	}
-	if len(fields) > 0 {
-		return errs.NewValidation("Validation failed", fields...)
+	for _, opt := range []*string{r.FolderId, r.AfterId} {
+		if opt == nil || *opt == "" {
+			continue
+		}
+		if _, err := vo.ParseId(*opt); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-// MoveElementListResult is empty.
-type MoveElementListResult struct{}
+// MoveElementResult is the move-element response: {}.
+type MoveElementResult struct{}
 
 // BudgetTransactionListRequest is the budget transaction-list query.
 type BudgetTransactionListRequest struct {
@@ -462,6 +487,7 @@ type BudgetTransactionListRequest struct {
 	CategoryId    *string `json:"categoryId"`
 	TagId         *string `json:"tagId"`
 	EnvelopeId    *string `json:"envelopeId"`
+	LabelId       *string `json:"labelId"`
 	Uncategorized bool    `json:"uncategorized,omitempty"`
 }
 
@@ -490,27 +516,16 @@ type BudgetTransactionResult struct {
 	Category    *TxCategoryResult `json:"category"`
 	Payee       *TxPayeeResult    `json:"payee"`
 	Tag         *TxTagResult      `json:"tag"`
-	SpentAt     string            `json:"spentAt"`
+	// Reporting labels attached to the row. Always non-nil ([] when none) so a
+	// client can render it without a null check, matching labelIds on the
+	// transaction feature's own wire.
+	LabelIds []string `json:"labelIds"`
+	SpentAt  string   `json:"spentAt"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.
 type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
-}
-
-// Positions are persisted into an int16 column; a value outside this range would
-// wrap silently and corrupt ordering, so it is rejected at the edge.
-const (
-	positionMin = -32768
-	positionMax = 32767
-)
-
-// validatePositionField reports a single out-of-int16-range position.
-func validatePositionField(key string, pos int) []errs.FieldError {
-	if pos < positionMin || pos > positionMax {
-		return []errs.FieldError{{Key: key, Message: "This value is out of range.", Code: errs.CodeOutOfRange}}
-	}
-	return nil
 }
 
 // ValidateBlank returns a ValidationError listing every blank field with the

@@ -11,7 +11,7 @@ import (
 
 const getTagListView = `-- name: GetTagListView :many
 
-SELECT t.id, t.user_id, t.name, t.position, t.is_archived, t.created_at, t.updated_at
+SELECT t.id, t.user_id, t.name, t.is_archived, t.created_at, t.updated_at, t.sort_key, t.icon
 FROM tags t
 WHERE t.user_id = ?
    OR t.user_id IN (
@@ -20,7 +20,7 @@ WHERE t.user_id = ?
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = ? AND aa.is_accepted = 1
    )
-ORDER BY t.position, t.id
+ORDER BY t.sort_key, t.id
 `
 
 type GetTagListViewParams struct {
@@ -48,10 +48,11 @@ func (q *Queries) GetTagListView(ctx context.Context, arg GetTagListViewParams) 
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
+			&i.Icon,
 		); err != nil {
 			return nil, err
 		}

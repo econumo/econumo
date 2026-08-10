@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { ViewTransactionDialog } from '@/features/transactions/ViewTransactionDialog'
 import { useAccounts } from '@/features/accounts/queries'
-import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
+import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { recurringAsTransaction } from './asTransaction'
 
 export interface ViewRecurringDialogProps {
@@ -17,6 +17,7 @@ export interface ViewRecurringDialogProps {
   canChange: boolean
   dismissible?: boolean
   skipPending?: boolean
+  postPending?: boolean
 }
 
 /**
@@ -37,14 +38,16 @@ export function ViewRecurringDialog({
   canChange,
   dismissible = true,
   skipPending = false,
+  postPending = false,
 }: ViewRecurringDialogProps) {
   const { t } = useTranslation()
   const { data: accounts } = useAccounts()
   const { data: categories } = useCategories()
   const { data: payees } = usePayees()
   const { data: tags } = useTags()
+  const { data: labels } = useLabels()
 
-  const asTransaction = recurringAsTransaction(recurring, { accounts, categories, payees, tags })
+  const asTransaction = recurringAsTransaction(recurring, { accounts, categories, payees, tags, labels })
 
   return (
     <ViewTransactionDialog
@@ -60,8 +63,10 @@ export function ViewRecurringDialog({
       onOpenRecurring={onEdit}
       footer={
         /* hide | post | skip — small, wide, small. Post leads because a due
-           template is here to be acted on. Editing is the schedule row in the
-           body, and deleting lives on the settings list, not here. */
+           template is here to be acted on, and on this sheet it posts outright
+           rather than opening a prefilled form: a due template is already the
+           transaction the user meant. Editing is the schedule row in the body,
+           and deleting lives on the settings list, not here. */
         <div className="flex gap-3 [&_button]:h-11">
           <Button
             type="button"
@@ -76,7 +81,7 @@ export function ViewRecurringDialog({
           </Button>
           {onPost ? (
             <>
-              <Button type="button" className="flex-1" disabled={!canChange} onClick={onPost}>
+              <Button type="button" className="flex-1" disabled={!canChange || postPending || skipPending} onClick={onPost}>
                 {t('recurring.preview.post')}
               </Button>
               <Button
@@ -84,7 +89,7 @@ export function ViewRecurringDialog({
                 variant="secondary"
                 size="icon"
                 className="size-11"
-                disabled={!canChange || skipPending}
+                disabled={!canChange || skipPending || postPending}
                 aria-label={t('recurring.preview.skip')}
                 title={t('recurring.preview.skip')}
                 onClick={onSkip}

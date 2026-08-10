@@ -42,7 +42,7 @@ type manageQuerier interface {
 	OwnerCurrencyCodeExists(ctx context.Context, db backend.DBTX, code, userID string) (int64, error)
 	InsertUserCurrency(ctx context.Context, db backend.DBTX, p insertUserCurrencyP) error
 	UpdateCurrencyDetails(ctx context.Context, db backend.DBTX, p updateCurrencyDetailsP) error
-	DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
+	SoftDeleteCurrency(ctx context.Context, db backend.DBTX, id string) error
 	CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error)
 	InsertHiddenCurrency(ctx context.Context, db backend.DBTX, p hideP) error
 	DeleteHiddenCurrency(ctx context.Context, db backend.DBTX, p unhideP) error
@@ -91,6 +91,7 @@ func (r *ManageRepo) GetCurrencyRecord(ctx context.Context, id string) (model.Cu
 		UserID:         row.UserID,
 		Rate:           row.Rate,
 		CreatedAt:      row.CreatedAt,
+		IsDeleted:      row.IsDeleted,
 	}, nil
 }
 
@@ -133,8 +134,8 @@ func (r *ManageRepo) UpdateCurrencyDetails(ctx context.Context, id, name, symbol
 	})
 }
 
-func (r *ManageRepo) DeleteCurrency(ctx context.Context, id string) error {
-	return r.q.DeleteCurrency(ctx, r.db(ctx), id)
+func (r *ManageRepo) SoftDeleteCurrency(ctx context.Context, id string) error {
+	return r.q.SoftDeleteCurrency(ctx, r.db(ctx), id)
 }
 
 func (r *ManageRepo) CountCurrencyUsage(ctx context.Context, id string) (int64, error) {
@@ -213,8 +214,8 @@ func (sqliteManageQuerier) UpdateCurrencyDetails(ctx context.Context, db backend
 	return sqlitegen.New(db).UpdateCurrencyDetails(ctx, p)
 }
 
-func (sqliteManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
-	return sqlitegen.New(db).DeleteCurrency(ctx, id)
+func (sqliteManageQuerier) SoftDeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).SoftDeleteCurrency(ctx, id)
 }
 
 func (sqliteManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {
@@ -272,8 +273,8 @@ func (pgsqlManageQuerier) UpdateCurrencyDetails(ctx context.Context, db backend.
 	return pgsqlgen.New(db).UpdateCurrencyDetails(ctx, pgsqlgen.UpdateCurrencyDetailsParams(p))
 }
 
-func (pgsqlManageQuerier) DeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
-	return pgsqlgen.New(db).DeleteCurrency(ctx, id)
+func (pgsqlManageQuerier) SoftDeleteCurrency(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).SoftDeleteCurrency(ctx, id)
 }
 
 func (pgsqlManageQuerier) CountCurrencyUsage(ctx context.Context, db backend.DBTX, id string) (int64, error) {

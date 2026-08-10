@@ -54,6 +54,31 @@ make web-lint      # cd web && pnpm lint      (oxlint)
 make web-bundle    # cd web && pnpm build     (production SPA build -> web/dist)
 ```
 
+### Mobile app (Capacitor) — in `mobile/`
+
+The iOS/Android apps are a Capacitor shell around the `web/` SPA — `web/` stays
+the single frontend. App-specific behavior branches on `isNativeApp()`
+(`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
+Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
+the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
+`ALLOW_REGISTRATION` and `ANALYTICS` into `window.econumoConfig` (a fixed
+allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
+store). App and server version-check each other in BOTH directions, one hard
+floor per side; both floors live in the single shared `compat/versions.json`
+(Go embeds it, the SPA imports it — same pattern as `locales/`):
+`minServerVersion` is the oldest server the app accepts, `minAppVersion`
+(served as `MIN_APP_VERSION`) the oldest app the server accepts — crossing
+either hard-blocks the app (`AppUpdateBlock`); compatible-but-outdated pairs
+get soft nudges (the existing release `UpdateNotice` covers an outdated app,
+`ServerVersionNotice` an outdated server). Full rules in `mobile/README.md`.
+
+```bash
+make mobile-install   # cd mobile && pnpm install
+make mobile-sync      # build web/ + cap sync into ios/ and android/
+make mobile-ios       # sync + open in Xcode
+make mobile-android   # sync + open in Android Studio
+```
+
 ### Publishing
 
 ```bash
@@ -661,6 +686,11 @@ data unreadable. Most are also asserted by the test suite.
   month-end clamping via a persisted scheduled day (31st → Feb 28 → Mar 31); posting is
   manual (the user acts on a due template) and idempotent on the client-supplied
   transaction id.
+- **Currency deletion is always soft**: deleting a custom currency sets `currencies.is_deleted`,
+  never removes the row — `accounts.currency_id` and `transactions.account_id` cascade from it,
+  so a hard delete would silently destroy every account and transaction in that currency. A
+  deleted currency still appears in `get-currency-list`/`get-currency-rate-list` so entities
+  that hold it keep resolving their symbol and rate.
 
 ## Deployment
 

@@ -1,0 +1,6 @@
+CAPACITOR_DEBUG = true
+
+// Machine-local, uncommitted settings (signing team, etc). The include is
+// optional: a fresh checkout without local.xcconfig builds unsigned/simulator
+// targets exactly as before.
+#include? "local.xcconfig"

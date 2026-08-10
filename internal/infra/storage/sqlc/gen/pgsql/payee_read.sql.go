@@ -11,7 +11,7 @@ import (
 
 const getPayeeListView = `-- name: GetPayeeListView :many
 
-SELECT p.id, p.user_id, p.name, p.position, p.is_archived, p.created_at, p.updated_at
+SELECT p.id, p.user_id, p.name, p.is_archived, p.created_at, p.updated_at, p.sort_key
 FROM payees p
 WHERE p.user_id = $1
    OR p.user_id IN (
@@ -20,7 +20,7 @@ WHERE p.user_id = $1
        JOIN accounts a ON a.id = aa.account_id
        WHERE aa.user_id = $1 AND aa.is_accepted = true
    )
-ORDER BY p.position, p.id
+ORDER BY p.sort_key, p.id
 `
 
 // Read-model query for the payee module (PostgreSQL variant: $N placeholders).
@@ -40,10 +40,10 @@ func (q *Queries) GetPayeeListView(ctx context.Context, userID string) ([]Payee,
 			&i.ID,
 			&i.UserID,
 			&i.Name,
-			&i.Position,
 			&i.IsArchived,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.SortKey,
 		); err != nil {
 			return nil, err
 		}

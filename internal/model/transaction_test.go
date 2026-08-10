@@ -108,3 +108,62 @@ func TestUpdate_Transfer_KeepsRecipient_ClearsMetadata(t *testing.T) {
 		t.Fatal("transfer must clear category/payee/tag")
 	}
 }
+
+func TestUpdateClearsLabelsOnTransfer(t *testing.T) {
+	now := time.Now()
+	labels := []vo.Id{vo.NewId(), vo.NewId()}
+	tx := New(NewState{
+		ID: vo.NewId(), UserID: vo.NewId(), Type: TransactionTypeExpense,
+		AccountID: vo.NewId(), Amount: "10", LabelIDs: labels,
+		SpentAt: now, CreatedAt: now,
+	})
+	if len(tx.LabelIDs) != 2 {
+		t.Fatalf("expense should keep labels, got %d", len(tx.LabelIDs))
+	}
+
+	recip := vo.NewId()
+	tx.Update(NewState{
+		Type: TransactionTypeTransfer, AccountID: tx.AccountID,
+		AccountRecipID: &recip, Amount: "10", LabelIDs: labels, SpentAt: now,
+	}, now)
+	if len(tx.LabelIDs) != 0 {
+		t.Fatalf("transfer must clear labels, got %d", len(tx.LabelIDs))
+	}
+}
+
+// TestUpdate_NonTransfer_SetsLabelsFromState pins the non-transfer branch's
+// "t.LabelIDs = s.LabelIDs" assignment: the transaction starts with NO
+// labels, so if that line were ever deleted, tx.LabelIDs would stay nil
+// after Update and this test would go red (unlike a test that starts with
+// the SAME labels already set, where a deleted assignment is a silent no-op).
+func TestUpdate_NonTransfer_SetsLabelsFromState(t *testing.T) {
+	s := baseState(t)
+	s.LabelIDs = nil
+	tx := New(s)
+	if len(tx.LabelIDs) != 0 {
+		t.Fatalf("precondition: want no labels, got %d", len(tx.LabelIDs))
+	}
+
+	labels := []vo.Id{vo.NewId(), vo.NewId()}
+	upd := baseState(t)
+	upd.LabelIDs = labels
+	tx.Update(upd, tc1)
+
+	if len(tx.LabelIDs) != 2 || tx.LabelIDs[0] != labels[0] || tx.LabelIDs[1] != labels[1] {
+		t.Fatalf("non-transfer Update must set labels from state: got %v, want %v", tx.LabelIDs, labels)
+	}
+}
+
+// TestFromState_CarriesLabelIDs pins the "LabelIDs: s.LabelIDs" field in
+// FromState's struct literal: unlike New (exercised by
+// TestUpdateClearsLabelsOnTransfer), nothing else calls FromState with
+// labels set, so a deleted assignment there would stay green everywhere else.
+func TestFromState_CarriesLabelIDs(t *testing.T) {
+	labels := []vo.Id{vo.NewId(), vo.NewId()}
+	s := baseState(t)
+	s.LabelIDs = labels
+	tx := FromState(s)
+	if len(tx.LabelIDs) != 2 || tx.LabelIDs[0] != labels[0] || tx.LabelIDs[1] != labels[1] {
+		t.Fatalf("FromState must carry LabelIDs: got %v, want %v", tx.LabelIDs, labels)
+	}
+}

@@ -25,7 +25,7 @@ func Compose(fns ...Register) Register {
 }
 
 const instructions = "Econumo personal-finance server. Read reference data with the list_accounts, " +
-	"list_categories, list_tags, list_payees, list_currencies, list_budgets and get_user tools; " +
+	"list_categories, list_tags, list_labels, list_payees, list_currencies, list_budgets and get_user tools; " +
 	"query monthly budget state with get_budget and transactions with list_transactions; log " +
 	"changes with create_transaction / update_transaction / delete_transaction. Manage accounts " +
 	"and full budget structure (folders, envelopes, limits, moves) with create_account and the " +

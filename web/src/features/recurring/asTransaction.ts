@@ -1,6 +1,7 @@
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { AccountDto } from '@/api/dto/account'
 import type { CategoryDto } from '@/api/dto/category'
+import type { LabelDto } from '@/api/dto/label'
 import type { PayeeDto } from '@/api/dto/payee'
 import type { TagDto } from '@/api/dto/tag'
 import type { ViewTransaction } from '@/features/transactions/useAccountTransactions'
@@ -10,6 +11,7 @@ interface Lookups {
   categories?: CategoryDto[]
   payees?: PayeeDto[]
   tags?: TagDto[]
+  labels?: LabelDto[]
 }
 
 /**
@@ -18,7 +20,7 @@ interface Lookups {
  * a parallel layout. Mirrors the mapping useAccountTransactions already applies
  * to build the account list's unposted virtual rows.
  */
-export function recurringAsTransaction(recurring: RecurringDto, { accounts, categories, payees, tags }: Lookups): ViewTransaction {
+export function recurringAsTransaction(recurring: RecurringDto, { accounts, categories, payees, tags, labels }: Lookups): ViewTransaction {
   return {
     id: recurring.id,
     type: recurring.type,
@@ -30,6 +32,7 @@ export function recurringAsTransaction(recurring: RecurringDto, { accounts, cate
     categoryId: recurring.categoryId,
     payeeId: recurring.payeeId,
     tagId: recurring.tagId,
+    labelIds: recurring.labelIds ?? [],
     description: recurring.description,
     // the next payment IS this row's date, which is why the recurring surfaces
     // need no separate "next payment" field
@@ -41,6 +44,9 @@ export function recurringAsTransaction(recurring: RecurringDto, { accounts, cate
     category: recurring.categoryId ? categories?.find((c) => c.id === recurring.categoryId) : undefined,
     payee: recurring.payeeId ? payees?.find((p) => p.id === recurring.payeeId) : undefined,
     tag: recurring.tagId ? tags?.find((tg) => tg.id === recurring.tagId) : undefined,
+    // ordered by the owner's label list, like the account list's rows; an id
+    // that no longer resolves is dropped rather than rendered blank
+    labels: (labels ?? []).filter((l) => (recurring.labelIds ?? []).includes(l.id)),
     // `recurring` marks the template itself; isInFuture is left false so the row
     // is dimmed by that flag alone rather than twice over
     isInFuture: false,

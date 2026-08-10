@@ -14,7 +14,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
-import { getChangedPositions } from '@/lib/ordering'
+import { afterIdFromDrop } from '@/lib/ordering'
 import { getItem, setItem } from '@/lib/storage'
 import { isNotEmpty, isValidFolderName } from '@/lib/validation'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -38,15 +38,15 @@ import {
   useReplaceFolder,
   useHideFolder,
   useShowFolder,
-  useOrderFolders,
-  useOrderAccounts,
+  useMoveFolder,
+  useMoveAccount,
   useLeaveSharedAccount,
   useDeleteAccount,
   useGrantAccountAccess,
   useRevokeAccountAccess,
 } from './queries'
 import type { FolderBucket } from './accountOrdering'
-import { bucketsFromAccounts, moveAccount, buildAccountChanges } from './accountOrdering'
+import { bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
 import { snapRowToPointer } from '@/lib/dnd'
 
 const COLLAPSED_FOLDERS_KEY = 'settings.accounts.collapsedFolders'
@@ -286,8 +286,8 @@ export function AccountsSettingsPage() {
   const replaceFolder = useReplaceFolder()
   const hideFolder = useHideFolder()
   const showFolder = useShowFolder()
-  const orderFolders = useOrderFolders()
-  const orderAccounts = useOrderAccounts()
+  const moveFolder = useMoveFolder()
+  const moveAccountMutation = useMoveAccount()
   const deleteAccount = useDeleteAccount()
   const declineAccountAccess = useLeaveSharedAccount()
 
@@ -371,10 +371,7 @@ export function AccountsSettingsPage() {
       const swapWith = action === 'up' ? index - 1 : index + 1
       const orderedIds = folders.map((f) => f.id)
       ;[orderedIds[index], orderedIds[swapWith]] = [orderedIds[swapWith], orderedIds[index]]
-      const changes = getChangedPositions(folders, orderedIds)
-      if (changes.length > 0) {
-        orderFolders.mutate(changes)
-      }
+      moveFolder.mutate({ id: folder.id, afterId: afterIdFromDrop(orderedIds, folder.id) })
     }
   }
 
@@ -405,24 +402,22 @@ export function AccountsSettingsPage() {
       if (from === -1 || to === -1 || from === to) {
         return
       }
-      const changes = getChangedPositions(folders, arrayMove(folderIds, from, to))
-      if (changes.length > 0) {
-        orderFolders.mutate(changes)
-      }
+      const reordered = arrayMove(folderIds, from, to)
+      moveFolder.mutate({ id: draggingFolderId, afterId: afterIdFromDrop(reordered, draggingFolderId) })
       return
     }
     const final =
       over && active.id !== over.id
         ? moveAccount(dragBuckets ?? serverBuckets, String(active.id), String(over.id))
         : dragBuckets ?? serverBuckets
-    const changes = buildAccountChanges(accounts, final)
-    if (changes.length === 0) {
+    const move = accountMoveFrom(final, String(active.id))
+    if (!move) {
       setDragBuckets(null)
       return
     }
     // keep the preview until the server echoes the new order (or roll back on error)
     setDragBuckets(final)
-    orderAccounts.mutate(changes, { onSettled: () => setDragBuckets(null) })
+    moveAccountMutation.mutate(move, { onSettled: () => setDragBuckets(null) })
   }
 
   return (

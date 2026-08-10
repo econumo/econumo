@@ -6,6 +6,10 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // getRaw performs a GET and returns the status, response headers, and raw body
@@ -43,7 +47,7 @@ func TestExportTransactionList_HeaderOnlyWhenEmpty(t *testing.T) {
 	if len(records) != 1 {
 		t.Fatalf("rows=%d want 1 (header only)\n%s", len(records), body)
 	}
-	want := []string{"transaction_id", "account_name", "account_currency", "category", "description", "tag", "payee", "amount", "date"}
+	want := []string{"transaction_id", "account_name", "account_currency", "category", "description", "tag", "labels", "payee", "amount", "date"}
 	if strings.Join(records[0], ",") != strings.Join(want, ",") {
 		t.Fatalf("header=%v want %v", records[0], want)
 	}
@@ -75,13 +79,13 @@ func TestExportTransactionList_ExpenseAndIncomeSigns(t *testing.T) {
 	// rows by their amount column instead.
 	byAmount := map[string][]string{}
 	for _, r := range records[1:] {
-		byAmount[r[7]] = r
+		byAmount[r[8]] = r
 	}
 	exp := byAmount["-42.5"]
 	if exp == nil {
 		t.Fatalf("no row for expense tx (amount -42.5)\n%s", body)
 	}
-	// amount column (index 7) negative for expense; category resolved.
+	// amount column (index 8) negative for expense; category resolved.
 	if exp[2] != "USD" {
 		t.Fatalf("expense currency=%q want USD", exp[2])
 	}
@@ -112,6 +116,47 @@ func TestExportTransactionList_NoToken_401(t *testing.T) {
 	status, _, _ := h.getRaw(t, "/api/v1/transaction/export-transaction-list", "")
 	if status != http.StatusUnauthorized {
 		t.Fatalf("status=%d want 401", status)
+	}
+}
+
+// TestExportTransactionList_LabelsColumn_PositionOrder is the end-to-end
+// counterpart to the internal/transaction package's exportLabelIndex.cell unit
+// tests: it exercises the real wiring (server.TransactionLabelNameLookup ->
+// the label repo's GetByID -> internal/transaction's buildExportLabelIndex),
+// not just the in-package helper. The two seeded labels' ids sort ascending
+// as [labelLowID, labelHighID] -- exactly the order the repo's
+// LabelsByTransactionIDs returns (ORDER BY label_id) -- but their positions
+// are reversed relative to that, so a correct export must still read
+// "Kid A;Kid B" (position order), not "Kid B;Kid A" (id/read order).
+func TestExportTransactionList_LabelsColumn_PositionOrder(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const (
+		labelLowID  = "eeee0000-0000-0000-0000-000000000001" // sorts first by id
+		labelHighID = "eeee0000-0000-0000-0000-000000000002" // sorts second by id
+	)
+	txm := backend.NewTxManager(h.db)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	f.Label(fixture.Label{ID: labelLowID, UserID: seedUserID, Name: "Kid B", Position: 1})
+	f.Label(fixture.Label{ID: labelHighID, UserID: seedUserID, Name: "Kid A", Position: 0})
+
+	if st, e := h.do(t, http.MethodPost, "/api/v1/transaction/create-transaction", tok,
+		createReqWithLabels(txID1, "expense", "7.25", []string{labelLowID, labelHighID})); st != 200 {
+		t.Fatalf("create expense = %d; body=%s", st, e.raw)
+	}
+
+	status, _, body := h.getRaw(t, "/api/v1/transaction/export-transaction-list", tok)
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, body)
+	}
+	records := parseCSV(t, body)
+	if len(records) != 2 {
+		t.Fatalf("rows=%d want 2 (header + 1)\n%s", len(records), body)
+	}
+	const labelsCol = 6
+	if got := records[1][labelsCol]; got != "Kid A;Kid B" {
+		t.Fatalf("labels column = %q, want %q (position order)\n%s", got, "Kid A;Kid B", body)
 	}
 }
 

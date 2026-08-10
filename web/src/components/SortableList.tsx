@@ -32,7 +32,11 @@ function SortableRow<T extends { id: string }>({ item, renderItem }: SortableRow
 
 interface SortableListProps<T extends { id: string }> {
   items: T[]
-  onReorder: (orderedIds: string[]) => void
+  // movedId is the row the user actually dragged. Callers that need to report
+  // a single relative move must not infer it from the reordered list: comparing
+  // old and new order finds the first index that differs, which is the
+  // DISPLACED neighbour, not the dragged row, whenever the drag went downward.
+  onReorder: (orderedIds: string[], movedId: string) => void
   renderItem: (item: T, handleProps: SortableHandleProps) => ReactNode
   disabled?: boolean
 }
@@ -82,7 +86,7 @@ export function SortableList<T extends { id: string }>({ items, onReorder, rende
     }
     const orderedIds = arrayMove(shown, oldIndex, newIndex).map((i) => i.id)
     setPreviewIds(orderedIds)
-    onReorder(orderedIds)
+    onReorder(orderedIds, String(active.id))
   }
 
   if (disabled) {

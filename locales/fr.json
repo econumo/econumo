@@ -67,6 +67,9 @@
       "view": {
         "label": "Voir"
       },
+      "info": {
+        "label": "À propos"
+      },
       "up": {
         "label": "Monter"
       },
@@ -150,6 +153,14 @@
     "update": {
       "notice": "Econumo {version} est disponible",
       "dismiss": "Masquer"
+    },
+    "serverUpdate": {
+      "notice": "Votre serveur Econumo ({version}) est plus ancien que cette application. Mettez à jour le serveur pour profiter des dernières fonctionnalités."
+    },
+    "appUpdate": {
+      "title": "Mise à jour requise",
+      "blockedApp": "Cette application est trop ancienne pour votre serveur Econumo : la version {version} ou ultérieure est requise. Veuillez mettre à jour l'application pour continuer.",
+      "blockedServer": "Cette application nécessite un serveur Econumo {min} ou ultérieur, mais votre serveur est en {version}. Veuillez mettre à jour le serveur pour continuer."
     }
   },
   "accounts": {
@@ -222,6 +233,12 @@
         },
         "payee": {
           "label": "Bénéficiaire"
+        },
+        "tag": {
+          "label": "Tag"
+        },
+        "label": {
+          "label": "Tag de rapport"
         },
         "tags": {
           "label": "Tags"
@@ -368,18 +385,6 @@
         "to": {
           "label": "Vers"
         }
-      },
-      "dialog": {
-        "new_tag": {
-          "header": "Nouveau tag",
-          "name": {
-            "label": "Nouveau tag",
-            "placeholder": "Saisissez le nom du tag",
-            "validation": {
-              "required_field": "Champ obligatoire"
-            }
-          }
-        }
       }
     },
     "import_csv": {
@@ -408,8 +413,17 @@
         "description": "Description",
         "description_placeholder": "Saisissez une description pour toutes les transactions",
         "payee": "Bénéficiaire",
-        "tag": "Tag"
-      }
+        "tag": "Tag budgétaire",
+        "labels": "Tags de rapport"
+      },
+      "labels_separator": {
+        "button": "Modifier le séparateur de tags",
+        "title": "Séparateur de tags",
+        "tab": "Tabulation",
+        "newline": "Saut de ligne",
+        "custom_label": "Séparateur personnalisé"
+      },
+      "new_labels_count": "Cet import créera {count} nouveau tag | Cet import créera {count} nouveaux tags"
     },
     "import_result": {
       "success_title": "Import terminé",
@@ -945,6 +959,13 @@
               "show_transactions": "Afficher les transactions"
             }
           },
+          "labels": {
+            "heading": "Tags de rapport",
+            "info": "Les tags de rapport montrent à quoi sert votre argent. Marquez des personnes, des animaux ou des lieux — un enfant, un chien, une résidence secondaire — et voyez combien vous dépensez. Une transaction peut porter plusieurs tags de rapport."
+          },
+          "uncategorized": {
+            "info": "Dépenses sans catégorie pour l'instant. Attribuez une catégorie à ces transactions et elles rejoindront le budget ci-dessus, où vous pourrez les planifier."
+          },
           "total": {
             "name": "Total",
             "expenses": "Total des dépenses"
@@ -990,7 +1011,7 @@
           "menu_item": "Catégories",
           "header": "Catégories",
           "info": "Les catégories regroupent vos dépenses et vos revenus. Archivez celles que vous n’utilisez plus — leur historique est conservé.",
-          "archived_item": "Archivées",
+          "archived_item": "Archivée",
           "create_category": "Créer une catégorie"
         }
       },
@@ -1035,9 +1056,11 @@
         "settings": {
           "menu_item": "Tags",
           "header": "Tags",
-          "info": "Les tags regroupent automatiquement les dépenses au sein de votre budget — pratique pour les voyages, par exemple : marquez chaque dépense du voyage avec un même tag et obtenez la répartition des dépenses directement dans le budget.",
+          "info": "Les tags budgétaires vous aident à planifier un projet ou un événement — des vacances, un mariage, des travaux. Une transaction ne peut en porter qu’un seul, ce qui permet de planifier sa dépense totale. Les tags de rapport montrent où va votre argent : marquez des personnes, des animaux ou des lieux. Une transaction peut en porter plusieurs — ils n’interviennent pas dans le budget.",
+          "section_budget": "Tags budgétaires",
+          "section_reporting": "Tags de rapport",
           "create_tag": "Créer un tag",
-          "archived_item": "Archivés"
+          "archived_item": "Archivé"
         }
       },
       "modals": {
@@ -1054,10 +1077,47 @@
       },
       "forms": {
         "tag": {
+          "kind": {
+            "tag": "Tag budgétaire",
+            "label": "Tag de rapport",
+            "tag_option": "Tag budgétaire",
+            "tag_hint": "Planifiez un projet ou un événement. Un seul tag par transaction.",
+            "label_option": "Tag de rapport",
+            "label_hint": "Analysez à quoi l’argent a servi. Plusieurs tags par transaction sont autorisés.",
+            "locked_note": "La vocation d’un tag ne peut plus être modifiée après sa création."
+          },
+          "add_button": "Ajouter un tag",
           "name": {
             "label": "Nom",
             "validation": {
               "required_field": "Champ obligatoire",
+              "invalid_name": "Le nom du tag doit contenir de 3 à 64 caractères"
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "pages": {
+        "settings": {
+          "archived_item": "Archivée"
+        }
+      },
+      "modals": {
+        "edit": {
+          "header": "Modifier le tag"
+        },
+        "create": {
+          "header": "Nouveau tag"
+        },
+        "delete": {
+          "title": "Supprimer le tag ?"
+        }
+      },
+      "forms": {
+        "label": {
+          "name": {
+            "validation": {
               "invalid_name": "Le nom du tag doit contenir de 3 à 64 caractères"
             }
           }
@@ -1071,7 +1131,7 @@
           "header": "Bénéficiaires",
           "info": "Les bénéficiaires montrent où va votre argent. Archivez ceux dont vous n’avez plus besoin.",
           "create_payee": "Créer un bénéficiaire",
-          "archived_item": "Archivés"
+          "archived_item": "Archivé"
         }
       },
       "modals": {
@@ -1330,6 +1390,10 @@
       "base_immutable": "La devise de base ne peut pas être modifiée.",
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
+    "label": {
+      "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
+      "list_empty": "La liste des tags est vide."
+    },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",
@@ -1349,7 +1413,8 @@
     "transaction": {
       "account_not_available": "Ce compte n’est pas disponible pour cette opération.",
       "item_not_available": "Cette transaction n’est pas disponible pour cette opération.",
-      "invalid_import_file": "Veuillez importer un fichier CSV valide."
+      "invalid_import_file": "Veuillez importer un fichier CSV valide.",
+      "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

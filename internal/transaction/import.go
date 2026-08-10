@@ -7,12 +7,22 @@ package transaction
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+// maxLabelsPerImportRow caps how many distinct labels one mapped cell may
+// resolve to. A mapped column that isn't really a label list (e.g.
+// description) would otherwise mass-create junk labels — one cell can split
+// into many values, a bigger blast radius than the single-valued
+// category/payee/tag columns. Exceeding it is a row-level error rather than a
+// silent truncation, so the mis-mapping is visible instead of hidden.
+const maxLabelsPerImportRow = 10
 
 // ImportTransactionList runs the CSV import for the user. It returns the result
 // with counts + errors; only an infrastructure error (tx failure, override
@@ -117,9 +127,27 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	if err != nil {
 		return err
 	}
+	labels, err := imp.LabelsByOwner(ctx, accountOwnerID)
+	if err != nil {
+		return err
+	}
 	categoryByName := newNamedCache(categories)
 	payeeByName := newNamedCache(payees)
 	tagByName := newNamedCache(tags)
+	// labelCaches is keyed by owner id, seeded with the outer accountOwnerID's
+	// cache (the common case: every row lands on the same owner). A row-mapped
+	// account name (no accountId override) can resolve to a DIFFERENT owner's
+	// shared account per row -- unlike category/payee/tag, a label is
+	// owner-only (see checkReferences in usecase.go), so reusing this owner's
+	// cache for that row would create/attach the label under the wrong owner,
+	// leaving the account owner unable to resolve it afterwards (a caller-owned
+	// label fails the owner-only belongs-to check on the next
+	// update-transaction). importRow re-derives the label owner per row from
+	// the resolved account and looks up (or lazily builds) that owner's cache
+	// here instead. category/payee/tag intentionally keep using the single
+	// outer accountOwnerID below: their belongs-to check accepts either the
+	// caller or the account owner, so they already tolerate this case.
+	labelCaches := map[string]*nameCache{accountOwnerID.String(): newNamedCache(labels)}
 
 	// Override date.
 	var overrideDate *time.Time
@@ -148,6 +176,19 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 		addImportError(result, "Tag not found for provided tagId", 0)
 		return nil
 	}
+	overrideLabelIDs, ok, labelsTooMany := resolveOverrideLabelIDs(req.LabelIds, labels)
+	if !ok {
+		if labelsTooMany {
+			addImportError(result, fmt.Sprintf("Too many labelIds provided, exceeding the maximum of %d", maxLabelsPerImportRow), 0)
+		} else {
+			addImportError(result, "Label not found for provided labelIds", 0)
+		}
+		return nil
+	}
+	labelsSeparator := req.LabelsSeparator
+	if labelsSeparator == "" {
+		labelsSeparator = ";"
+	}
 	var overrideDescription *string
 	if req.Description != nil {
 		d := strings.TrimSpace(*req.Description)
@@ -173,8 +214,8 @@ func (s *Service) runImport(ctx context.Context, userID vo.Id, req model.ImportR
 	for i, row := range records {
 		rowNumber := i + 2
 		if rerr := s.importRow(ctx, userID, accountOwnerID, req, dualMode, row, rowNumber,
-			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideDescription,
-			accountByName, categoryByName, payeeByName, tagByName, result); rerr != nil {
+			overrideAccount, overrideDate, overrideCategory, overridePayee, overrideTag, overrideLabelIDs, overrideDescription, labelsSeparator,
+			accountByName, categoryByName, payeeByName, tagByName, labelCaches, result); rerr != nil {
 			// Row-level error: record + skip, continue.
 			addImportError(result, rerr.Error(), rowNumber)
 			result.Skipped++
@@ -192,8 +233,9 @@ func (s *Service) importRow(
 	ctx context.Context, userID, accountOwnerID vo.Id, req model.ImportRequest, dualMode bool,
 	row map[string]string, rowNumber int,
 	overrideAccount *model.ImportAccount, overrideDate *time.Time,
-	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideDescription *string,
-	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, result *model.ImportResult,
+	overrideCategory, overridePayee, overrideTag *model.ImportNamed, overrideLabelIDs []vo.Id, overrideDescription *string,
+	labelsSeparator string,
+	accountByName *nameCache, categoryByName, payeeByName, tagByName *nameCache, labelCaches map[string]*nameCache, result *model.ImportResult,
 ) error {
 	imp := s.importer
 
@@ -300,6 +342,57 @@ func (s *Service) importRow(
 		tagID = &id
 	}
 
+	// labels (override applies to every row; otherwise the mapped cell is
+	// split on the caller's separator, trimmed/deduped/blanks-dropped, and
+	// each piece is find-or-created — mirroring category/payee/tag above, but
+	// multi-valued). A label must belong to the ACCOUNT OWNER, so it is
+	// resolved against labelOwnerID -- the resolved account's actual owner,
+	// re-derived per row -- rather than the outer accountOwnerID that
+	// category/payee/tag still use: a row-mapped account name (no accountId
+	// override) can land on a shared account owned by someone other than the
+	// caller, and reusing the caller's owner there would attach a
+	// caller-owned label the account owner can never resolve afterwards.
+	labelOwnerID := accountOwnerID
+	if oo, operr := vo.ParseId(account.OwnerID); operr == nil {
+		labelOwnerID = oo
+	}
+	var labelIDs []vo.Id
+	if overrideLabelIDs != nil {
+		if !labelOwnerID.Equal(accountOwnerID) {
+			return errs.NewValidation("labelIds override does not apply: the resolved account belongs to a different owner")
+		}
+		labelIDs = overrideLabelIDs
+	} else if req.Mapping.Labels != "" {
+		names := splitLabelCell(fieldValue(row, req.Mapping.Labels), labelsSeparator)
+		// names is already deduped (case-insensitively) by splitLabelCell, so
+		// the cap counts distinct labels, not raw split pieces - "Kid A;kid a"
+		// is one label and must not count as two against the limit.
+		if len(names) > maxLabelsPerImportRow {
+			return errs.NewValidation(fmt.Sprintf("Row has %d labels, exceeding the maximum of %d", len(names), maxLabelsPerImportRow))
+		}
+		if len(names) > 0 {
+			labelByName, cerr := s.labelCacheForOwner(ctx, labelOwnerID, labelCaches)
+			if cerr != nil {
+				return cerr
+			}
+			labelIDs = make([]vo.Id, 0, len(names))
+			for _, name := range names {
+				lb, err := s.findOrCreateNamed(ctx, name, labelByName, func(ctx context.Context) (model.ImportNamed, error) {
+					id, cerr := imp.CreateLabel(ctx, labelOwnerID, name)
+					if cerr != nil {
+						return model.ImportNamed{}, cerr
+					}
+					return model.ImportNamed{ID: id.String(), Name: name, OwnerID: labelOwnerID.String()}, nil
+				})
+				if err != nil {
+					return err
+				}
+				id, _ := vo.ParseId(lb.ID)
+				labelIDs = append(labelIDs, id)
+			}
+		}
+	}
+
 	accID, _ := vo.ParseId(account.ID)
 	typ := model.TransactionTypeExpense
 	if income {
@@ -308,11 +401,19 @@ func (s *Service) importRow(
 	now := s.clock.Now()
 	t := model.New(model.NewState{
 		ID: s.repo.NextIdentity(), UserID: userID, Type: typ, AccountID: accID,
-		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID,
+		Amount: amount.Abs().String(), CategoryID: categoryID, PayeeID: payeeID, TagID: tagID, LabelIDs: labelIDs,
 		Description: description, SpentAt: date, CreatedAt: now, UpdatedAt: now,
 	})
 	if err := imp.SaveTransaction(ctx, t); err != nil {
 		return err
+	}
+	// t is a brand-new row (NextIdentity), so ReplaceLabels's DELETE can never
+	// match; skip the round trip entirely when there is nothing to attach
+	// (the common case on an import with no labels mapping).
+	if len(t.LabelIDs) > 0 {
+		if err := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); err != nil {
+			return err
+		}
 	}
 	result.Imported++
 	return nil
@@ -354,6 +455,25 @@ func (s *Service) findOrCreateNamed(ctx context.Context, name string, cache *nam
 	return created, nil
 }
 
+// labelCacheForOwner returns the cached name->label lookup for ownerID,
+// fetching and caching it on first use. Owners besides the outer
+// accountOwnerID only show up when a row-mapped account name resolves to a
+// shared account (see the label section of importRow), so this is a cheap
+// no-op map lookup for every import that never touches a second owner.
+func (s *Service) labelCacheForOwner(ctx context.Context, ownerID vo.Id, caches map[string]*nameCache) (*nameCache, error) {
+	key := ownerID.String()
+	if c, ok := caches[key]; ok {
+		return c, nil
+	}
+	labels, err := s.importer.LabelsByOwner(ctx, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	c := newNamedCache(labels)
+	caches[key] = c
+	return c, nil
+}
+
 // trimPtr returns the trimmed pointee, or "" when nil/blank (a blank override is
 // treated the same as absent).
 func trimPtr(p *string) string {
@@ -390,6 +510,67 @@ func resolveOverrideNamed(idPtr *string, list []model.ImportNamed) (*model.Impor
 		}
 	}
 	return nil, false
+}
+
+// resolveOverrideLabelIDs parses the comma-joined labelIds override against
+// the pre-fetched owner-scoped label list: membership in that list IS the
+// belongs-to-the-account-owner check, the same way a single tagId override is
+// authorized against the owner-scoped tags list. Duplicate ids collapse to
+// one (first occurrence wins). The deduped count is capped at
+// maxLabelsPerImportRow: this override applies to EVERY imported row (unlike
+// the per-row mapped-cell cap, which only ever bounds one row), so it is a
+// top-level input worth bounding at the same width rather than letting a
+// bad value fan out into per-row work for the whole file - closer in spirit
+// to the per-row cap than to the 50-per-transaction ceiling
+// resolveLabels/write side enforces downstream. Returns (nil, true) when
+// idsCSV is absent/blank (a blank override is treated as absent, like every
+// other override id); (ids, true) when every piece resolves within the cap;
+// (nil, false, tooMany=false) when any piece is not found; (nil, false,
+// tooMany=true) when the deduped count exceeds the cap - both are top-level
+// errors, matching how a bad tagId override behaves, but distinguished so
+// the caller can report the right message.
+func resolveOverrideLabelIDs(idsCSV *string, list []model.ImportNamed) (ids []vo.Id, ok bool, tooMany bool) {
+	csv := trimPtr(idsCSV)
+	if csv == "" {
+		return nil, true, false
+	}
+	pieces := strings.Split(csv, ",")
+	seen := make(map[string]struct{}, len(pieces))
+	out := make([]vo.Id, 0, len(pieces))
+	for _, p := range pieces {
+		raw := strings.TrimSpace(p)
+		if raw == "" {
+			continue
+		}
+		found := false
+		for i := range list {
+			if list[i].ID == raw {
+				id, err := vo.ParseId(list[i].ID)
+				if err != nil {
+					return nil, false, false
+				}
+				if _, dup := seen[id.String()]; !dup {
+					seen[id.String()] = struct{}{}
+					out = append(out, id)
+				}
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil, false, false
+		}
+	}
+	if len(out) == 0 {
+		// Every piece was blank (e.g. idsCSV == ","): treat exactly like an
+		// absent override, not an explicit "no labels", so a mapped labels
+		// column still resolves per row instead of being silently suppressed.
+		return nil, true, false
+	}
+	if len(out) > maxLabelsPerImportRow {
+		return nil, false, true
+	}
+	return out, true, false
 }
 
 // addImportError appends a row number to the errors map under message (creating

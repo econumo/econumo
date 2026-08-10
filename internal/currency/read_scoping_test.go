@@ -53,6 +53,7 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 			{ID: "global-hidden", Code: "HHH", Symbol: "H", UserID: nil},
 			{ID: "own-hidden", Code: "PTS", Symbol: "p", UserID: strPtr(meID)},
 			{ID: "foreign-custom", Code: "GEM", Symbol: "g", UserID: strPtr(otherID)},
+			{ID: "own-deleted", Code: "OLD", Symbol: "o", UserID: strPtr(meID), IsDeleted: true},
 		},
 		// A hidden entry for a foreign custom must NOT surface on its row.
 		hidden: []string{"global-hidden", "own-hidden", "foreign-custom"},
@@ -79,6 +80,14 @@ func TestReadService_GetCurrencyList_ScopeAndFlags(t *testing.T) {
 	}
 	if got := byID["foreign-custom"]; got.Scope != appcurrency.ScopeShared || got.IsHidden != 0 {
 		t.Errorf("foreign-custom: scope=%q isHidden=%d, want shared/0", got.Scope, got.IsHidden)
+	}
+	// A deleted currency stays in the list (accounts/rates referencing it must
+	// keep resolving); only the flag tells consumers to filter it out.
+	if got := byID["own-deleted"]; got.IsDeleted != 1 {
+		t.Errorf("own-deleted: isDeleted=%d, want 1", got.IsDeleted)
+	}
+	if got := byID["global-usd"]; got.IsDeleted != 0 {
+		t.Errorf("global-usd: isDeleted=%d, want 0", got.IsDeleted)
 	}
 }
 

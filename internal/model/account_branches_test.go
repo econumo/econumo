@@ -63,8 +63,8 @@ func TestNewFolder_Defaults(t *testing.T) {
 	if f.Name != "Daily" {
 		t.Errorf("name=%q want Daily", f.Name)
 	}
-	if f.Position != 0 {
-		t.Errorf("position=%d want 0", f.Position)
+	if f.SortKey != "" {
+		t.Errorf("a new entity must carry no sort key, got %q", f.SortKey)
 	}
 	if !f.IsVisible {
 		t.Error("new folder must be visible")
@@ -86,9 +86,9 @@ func TestFolder_Getters(t *testing.T) {
 func TestFolder_FromState_RoundTrip(t *testing.T) {
 	id := mustID(t, "44444444-4444-4444-4444-444444444444")
 	uid := mustID(t, "22222222-2222-2222-2222-222222222222")
-	f := &Folder{ID: id, UserID: uid, Name: "Hidden", Position: 9, IsVisible: false, CreatedAt: ta0, UpdatedAt: ta1}
-	if f.Position != 9 {
-		t.Errorf("position=%d want 9", f.Position)
+	f := &Folder{ID: id, UserID: uid, Name: "Hidden", SortKey: "c009", IsVisible: false, CreatedAt: ta0, UpdatedAt: ta1}
+	if f.SortKey != "c009" {
+		t.Errorf("position=%q want 9", f.SortKey)
 	}
 	if f.IsVisible {
 		t.Error("isVisible should round-trip as false")
@@ -101,14 +101,14 @@ func TestFolder_FromState_RoundTrip(t *testing.T) {
 	}
 }
 
-func TestFolder_SetPosition_NoBump(t *testing.T) {
+func TestFolder_SetSortKey_NoBump(t *testing.T) {
 	f := newFolder(t)
-	f.SetPosition(4)
-	if f.Position != 4 {
-		t.Errorf("position=%d want 4", f.Position)
+	f.SetSortKey("c004")
+	if f.SortKey != "c004" {
+		t.Errorf("position=%q want 4", f.SortKey)
 	}
 	if !f.UpdatedAt.Equal(ta0) {
-		t.Errorf("SetPosition bumped updatedAt to %v", f.UpdatedAt)
+		t.Errorf("SetSortKey bumped updatedAt to %v", f.UpdatedAt)
 	}
 }
 
@@ -124,15 +124,15 @@ func TestFolder_UpdateName_OnlyBumpsOnChange(t *testing.T) {
 	}
 }
 
-func TestFolder_UpdatePosition_OnlyBumpsOnChange(t *testing.T) {
+func TestFolder_UpdateSortKey_OnlyBumpsOnChange(t *testing.T) {
 	f := newFolder(t)
-	f.UpdatePosition(0, ta1) // same -> no-op
+	f.UpdateSortKey("", ta1) // same -> no-op
 	if !f.UpdatedAt.Equal(ta0) {
-		t.Fatal("same-position update bumped updatedAt")
+		t.Fatal("same-key update bumped updatedAt")
 	}
-	f.UpdatePosition(2, ta1)
-	if f.Position != 2 || !f.UpdatedAt.Equal(ta1) {
-		t.Fatalf("position change: %d / %v", f.Position, f.UpdatedAt)
+	f.UpdateSortKey("c002", ta1)
+	if f.SortKey != "c002" || !f.UpdatedAt.Equal(ta1) {
+		t.Fatalf("key change: %q / %v", f.SortKey, f.UpdatedAt)
 	}
 }
 
