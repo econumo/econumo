@@ -30,6 +30,21 @@ type ReadModel interface {
 	CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error)
 	// SummarizedLimits: summed element limits over [start, end) (for budgetedBefore).
 	SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]model.SummarizedLimitRow, error)
+	// SpendingByMonth: expense spending per (month, category/tag, currency)
+	// over [from, to) — the plan sheet's actual-expense cells in ONE query for
+	// the whole window. Bucketing matches CountSpending (rows outside the
+	// category set are dropped except NULL-category rows; a tag_id row keeps
+	// its tag).
+	SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error)
+	// IncomeByMonth: income (type=1) per (month, category, currency) over
+	// [from, to) on the given accounts. Deliberately NO category filter: the
+	// plan builder files rows whose category is not a participant income
+	// category — and NULL-category rows — under the income-side Uncategorized
+	// row, so no income ever silently vanishes from the Balance projection.
+	IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error)
+	// LimitsByMonth: every element limit of the budget in [from, to) as
+	// (external_id, type, month, amount) — the plan sheet's planned cells.
+	LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.MonthlyLimitRow, error)
 
 	// BudgetTransactionsByCategories returns expense transactions (type=0, tag IS
 	// NULL) in [start, end) on the given accounts, in the given categories,

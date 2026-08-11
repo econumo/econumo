@@ -567,6 +567,202 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 	return out, rows.Err()
 }
 
+// planMonthExpr renders a datetime column as its first-of-month TEXT
+// "YYYY-MM-01" — the same bytes on both engines, so grouped months compare
+// and serialize identically.
+func (r *ReadRepo) planMonthExpr(col string) string {
+	if r.driver == "postgresql" {
+		return "to_char(" + col + ", 'YYYY-MM') || '-01'"
+	}
+	return "strftime('%Y-%m-01', " + col + ")"
+}
+
+// SpendingByMonth implements ReadModel.
+func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error) {
+	// Empty IN () is a no-op on SQLite but a syntax error on PostgreSQL (same
+	// guard as CountSpending); an empty category set is NOT a short-circuit —
+	// the NULL-category rows still have to come back.
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	catArgs := idArgs(categoryIDs)
+	accArgs := idArgs(accountIDs)
+	month := r.planMonthExpr("t.spent_at")
+	var sql string
+	var args []any
+	if r.driver == "postgresql" {
+		accIn := r.ph(1, len(accArgs))
+		catWhere := "t.category_id IS NULL"
+		if len(catArgs) > 0 {
+			catWhere = "(t.category_id IN (" + r.ph(1+len(accArgs), len(catArgs)) + ") OR t.category_id IS NULL)"
+		}
+		dStart := "$" + itoa(1+len(accArgs)+len(catArgs))
+		dEnd := "$" + itoa(2+len(accArgs)+len(catArgs))
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		args = append(args, accArgs...)
+		args = append(args, catArgs...)
+		args = append(args, from, to)
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		catWhere := "t.category_id IS NULL"
+		if len(catArgs) > 0 {
+			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
+		}
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, a.currency_id"
+		args = append(args, accArgs...)
+		args = append(args, catArgs...)
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.MonthlySpendingRow
+	for rows.Next() {
+		var monthStr string
+		var categoryID, tagID, currencyID *string
+		// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact NUMERIC
+		// text — same split as CountSpending.
+		a := "0"
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = *amount
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &tagID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+			}
+		}
+		out = append(out, model.MonthlySpendingRow{Month: monthStr, CategoryID: categoryID, TagID: tagID, CurrencyID: *currencyID, Amount: a})
+	}
+	return out, rows.Err()
+}
+
+// IncomeByMonth implements ReadModel.
+func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	month := r.planMonthExpr("t.spent_at")
+	var sql string
+	var args []any
+	if r.driver == "postgresql" {
+		accIn := r.ph(1, len(accArgs))
+		dStart := "$" + itoa(1+len(accArgs))
+		dEnd := "$" + itoa(2+len(accArgs))
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, a.currency_id"
+		args = append(args, accArgs...)
+		args = append(args, from, to)
+	} else {
+		accIn := r.ph(1, len(accArgs))
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, a.currency_id"
+		args = append(args, accArgs...)
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.MonthlyIncomeRow
+	for rows.Next() {
+		var monthStr string
+		var categoryID, currencyID *string
+		a := "0"
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = *amount
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&monthStr, &amount, &categoryID, &currencyID); err != nil {
+				return nil, err
+			}
+			if currencyID == nil {
+				continue
+			}
+			if amount != nil {
+				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+			}
+		}
+		out = append(out, model.MonthlyIncomeRow{Month: monthStr, CategoryID: categoryID, CurrencyID: *currencyID, Amount: a})
+	}
+	return out, rows.Err()
+}
+
+// LimitsByMonth implements ReadModel. SUM + GROUP BY is one row per
+// (element, month) anyway — (element_id, period) is unique — but keeps the
+// scan on the proven SummarizedLimits float/NUMERIC split.
+func (r *ReadRepo) LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.MonthlyLimitRow, error) {
+	month := r.planMonthExpr("l.period")
+	var sql string
+	var pStart, pEnd any = from, to
+	if r.driver == "postgresql" {
+		sql = "SELECT e.external_id, e.type, " + month + " as month, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = $1 AND l.period >= $2 AND l.period < $3 GROUP BY e.external_id, e.type, month"
+	} else {
+		sql = "SELECT e.external_id, e.type, " + month + " as month, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = ? AND l.period >= ? AND l.period < ? GROUP BY e.external_id, e.type, month"
+		// See sqliteDatetime: the period bounds must bind as 'Y-m-d H:i:s' text.
+		pStart, pEnd = sqliteDatetime(from), sqliteDatetime(to)
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, budgetID.String(), pStart, pEnd)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.MonthlyLimitRow
+	for rows.Next() {
+		var row model.MonthlyLimitRow
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&row.ExternalID, &row.Type, &row.Month, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				row.Amount = *amount
+			} else {
+				row.Amount = "0"
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&row.ExternalID, &row.Type, &row.Month, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				row.Amount = strconv.FormatFloat(*amount, 'f', 8, 64)
+			} else {
+				row.Amount = "0"
+			}
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 // budgetTxCols is the column list for the budget transaction list (account
 // currency joined in).
 const budgetTxCols = "t.id, t.user_id, a.currency_id, t.amount, t.description, t.spent_at, t.category_id, t.payee_id, t.tag_id"
