@@ -149,10 +149,34 @@ export const fixtureWirePlan = {
   months: ['2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01'],
   openingBalances: [{ currencyId: 'cur-usd', amount: '500' }],
   currencyRates: [
-    { period: '2026-05-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.90', periodStart: '2026-05-01', periodEnd: '2026-06-01' }] },
-    { period: '2026-06-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.91', periodStart: '2026-06-01', periodEnd: '2026-07-01' }] },
-    { period: '2026-07-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.92', periodStart: '2026-07-01', periodEnd: '2026-08-01' }] },
-    { period: '2026-08-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.93', periodStart: '2026-08-01', periodEnd: '2026-09-01' }] },
+    {
+      period: '2026-05-01',
+      rates: [
+        { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-05-01', periodEnd: '2026-06-01' },
+        { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.90', periodStart: '2026-05-01', periodEnd: '2026-06-01' },
+      ],
+    },
+    {
+      period: '2026-06-01',
+      rates: [
+        { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-06-01', periodEnd: '2026-07-01' },
+        { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.91', periodStart: '2026-06-01', periodEnd: '2026-07-01' },
+      ],
+    },
+    {
+      period: '2026-07-01',
+      rates: [
+        { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+        { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.92', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+      ],
+    },
+    {
+      period: '2026-08-01',
+      rates: [
+        { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-08-01', periodEnd: '2026-09-01' },
+        { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.93', periodStart: '2026-08-01', periodEnd: '2026-09-01' },
+      ],
+    },
   ],
   structure: {
     folders: [{ id: 'bf1', name: 'Essentials', position: 0 }],

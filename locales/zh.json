@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "预算",
+          "plan": "计划"
+        },
+        "section": {
+          "income": "收入",
+          "archived": "已归档"
+        },
+        "nav": {
+          "prev": "更早的月份",
+          "next": "更晚的月份"
+        },
+        "cell": {
+          "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
+        },
+        "totals": {
+          "income": "收入",
+          "expenses": "支出",
+          "net": "净额",
+          "balance": "余额"
+        },
+        "density": {
+          "hide_empty": "隐藏空行",
+          "hidden": "已隐藏 {count} 项",
+          "show": "显示"
+        },
+        "menu": {
+          "move_to_folder": "移动到文件夹…",
+          "no_folder": "无文件夹"
+        }
+      },
       "settings": {
         "menu_item": "预算",
         "header": "预算",

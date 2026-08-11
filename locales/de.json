@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Einnahmen",
+          "archived": "Archiviert"
+        },
+        "nav": {
+          "prev": "Frühere Monate",
+          "next": "Spätere Monate"
+        },
+        "cell": {
+          "aria": "{name}, {month}: Ist {actual}, geplant {planned}"
+        },
+        "totals": {
+          "income": "Einnahmen",
+          "expenses": "Ausgaben",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Leere Zeilen ausblenden",
+          "hidden": "{count} ausgeblendet",
+          "show": "Einblenden"
+        },
+        "menu": {
+          "move_to_folder": "In Ordner verschieben…",
+          "no_folder": "Kein Ordner"
+        }
+      },
       "settings": {
         "menu_item": "Budgets",
         "header": "Budgets",

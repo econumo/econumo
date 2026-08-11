@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Inkomsten",
+          "archived": "Gearchiveerd"
+        },
+        "nav": {
+          "prev": "Eerdere maanden",
+          "next": "Latere maanden"
+        },
+        "cell": {
+          "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
+        },
+        "totals": {
+          "income": "Inkomsten",
+          "expenses": "Uitgaven",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Lege rijen verbergen",
+          "hidden": "{count} verborgen",
+          "show": "Tonen"
+        },
+        "menu": {
+          "move_to_folder": "Naar map verplaatsen…",
+          "no_folder": "Geen map"
+        }
+      },
       "settings": {
         "menu_item": "Budgetten",
         "header": "Budgetten",

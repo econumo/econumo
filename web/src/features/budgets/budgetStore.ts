@@ -26,6 +26,15 @@ interface BudgetPeriodState {
   /** fold state belongs to one budget; reset when the budget id changes */
   foldBudgetId: Id | null
   resetFoldsFor: (budgetId: Id) => void
+  budgetMode: 'budget' | 'plan'
+  setBudgetMode: (m: 'budget' | 'plan') => void
+  planFirstMonth: string | null
+  setPlanFirstMonth: (month: string) => void
+  /** folded plan sections: 'income', folder ids, 'archived' */
+  planFolds: Record<string, true>
+  togglePlanFold: (key: string) => void
+  planHideEmpty: boolean
+  togglePlanHideEmpty: () => void
 }
 
 export const useBudgetPeriodStore = create<BudgetPeriodState>()(
@@ -52,6 +61,34 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         if (get().foldBudgetId !== budgetId) {
           set({ foldBudgetId: budgetId, unfoldedElements: {} })
         }
+      },
+      budgetMode: 'budget',
+      setBudgetMode: (m) => {
+        if (m === 'plan' && get().budgetMode !== 'plan') {
+          trackEvent(METRICS.BUDGET_PLAN_OPEN)
+        }
+        set({ budgetMode: m })
+      },
+      planFirstMonth: null,
+      setPlanFirstMonth: (month) => {
+        trackEvent(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+        set({ planFirstMonth: normalizePeriod(month) })
+      },
+      planFolds: {},
+      togglePlanFold: (key) =>
+        set((state) => {
+          const next = { ...state.planFolds }
+          if (next[key]) {
+            delete next[key]
+          } else {
+            next[key] = true
+          }
+          return { planFolds: next }
+        }),
+      planHideEmpty: false,
+      togglePlanHideEmpty: () => {
+        trackEvent(METRICS.BUDGET_PLAN_HIDE_EMPTY_TOGGLE)
+        set((state) => ({ planHideEmpty: !state.planHideEmpty }))
       },
     }),
     { name: 'budgetPeriod' },

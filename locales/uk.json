@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Бюджет",
+          "plan": "План"
+        },
+        "section": {
+          "income": "Доходи",
+          "archived": "В архіві"
+        },
+        "nav": {
+          "prev": "Попередні місяці",
+          "next": "Наступні місяці"
+        },
+        "cell": {
+          "aria": "{name}, {month}: факт {actual}, план {planned}"
+        },
+        "totals": {
+          "income": "Доходи",
+          "expenses": "Витрати",
+          "net": "Нетто",
+          "balance": "Баланс"
+        },
+        "density": {
+          "hide_empty": "Приховувати порожні рядки",
+          "hidden": "{count} приховано",
+          "show": "Показати"
+        },
+        "menu": {
+          "move_to_folder": "Перемістити до папки…",
+          "no_folder": "Без папки"
+        }
+      },
       "settings": {
         "menu_item": "Бюджети",
         "header": "Бюджети",

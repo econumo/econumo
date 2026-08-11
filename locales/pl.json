@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budżet",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Przychody",
+          "archived": "W archiwum"
+        },
+        "nav": {
+          "prev": "Wcześniejsze miesiące",
+          "next": "Późniejsze miesiące"
+        },
+        "cell": {
+          "aria": "{name}, {month}: rzeczywiste {actual}, planowane {planned}"
+        },
+        "totals": {
+          "income": "Przychody",
+          "expenses": "Wydatki",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Ukryj puste wiersze",
+          "hidden": "{count} ukrytych",
+          "show": "Pokaż"
+        },
+        "menu": {
+          "move_to_folder": "Przenieś do folderu…",
+          "no_folder": "Brak folderu"
+        }
+      },
       "settings": {
         "menu_item": "Budżety",
         "header": "Budżety",

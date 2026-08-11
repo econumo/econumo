@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Income",
+          "archived": "Archived"
+        },
+        "nav": {
+          "prev": "Earlier months",
+          "next": "Later months"
+        },
+        "cell": {
+          "aria": "{name}, {month}: actual {actual}, planned {planned}"
+        },
+        "totals": {
+          "income": "Income",
+          "expenses": "Expenses",
+          "net": "Net",
+          "balance": "Balance"
+        },
+        "density": {
+          "hide_empty": "Hide empty rows",
+          "hidden": "{count} hidden",
+          "show": "Show"
+        },
+        "menu": {
+          "move_to_folder": "Move to folder…",
+          "no_folder": "No folder"
+        }
+      },
       "settings": {
         "menu_item": "Budgets",
         "header": "Budgets",

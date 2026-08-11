@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Бюджет",
+          "plan": "План"
+        },
+        "section": {
+          "income": "Доходы",
+          "archived": "В архиве"
+        },
+        "nav": {
+          "prev": "Предыдущие месяцы",
+          "next": "Следующие месяцы"
+        },
+        "cell": {
+          "aria": "{name}, {month}: факт {actual}, план {planned}"
+        },
+        "totals": {
+          "income": "Доходы",
+          "expenses": "Расходы",
+          "net": "Нетто",
+          "balance": "Баланс"
+        },
+        "density": {
+          "hide_empty": "Скрывать пустые строки",
+          "hidden": "{count} скрыто",
+          "show": "Показать"
+        },
+        "menu": {
+          "move_to_folder": "Переместить в папку…",
+          "no_folder": "Без папки"
+        }
+      },
       "settings": {
         "menu_item": "Бюджеты",
         "header": "Бюджеты",

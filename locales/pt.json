@@ -972,6 +972,38 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Orçamento",
+          "plan": "Plano"
+        },
+        "section": {
+          "income": "Receitas",
+          "archived": "Em arquivo"
+        },
+        "nav": {
+          "prev": "Meses anteriores",
+          "next": "Meses seguintes"
+        },
+        "cell": {
+          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+        },
+        "totals": {
+          "income": "Receitas",
+          "expenses": "Despesas",
+          "net": "Líquido",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Ocultar linhas vazias",
+          "hidden": "{count} ocultas",
+          "show": "Mostrar"
+        },
+        "menu": {
+          "move_to_folder": "Mover para pasta…",
+          "no_folder": "Sem pasta"
+        }
+      },
       "settings": {
         "menu_item": "Orçamentos",
         "header": "Orçamentos",

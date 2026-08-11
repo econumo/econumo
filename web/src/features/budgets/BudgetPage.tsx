@@ -55,6 +55,7 @@ import { bucketElements, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { BudgetTable } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
+import { PlanSheet } from './PlanSheet'
 import { ExpenseWidget } from './ExpenseWidget'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -186,6 +187,8 @@ export function BudgetPage() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const budgetMode = useBudgetPeriodStore((s) => s.budgetMode)
+  const setBudgetMode = useBudgetPeriodStore((s) => s.setBudgetMode)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
 
   const setLimit = useSetLimit()
@@ -212,6 +215,14 @@ export function BudgetPage() {
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
+
+  // edit-structure mode is a budget-mode-only affair; entering it always
+  // shows the budget table, never the plan sheet
+  useEffect(() => {
+    if (editMode) {
+      setBudgetMode('budget')
+    }
+  }, [editMode, setBudgetMode])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -587,107 +598,128 @@ export function BudgetPage() {
         )}
       </header>
 
-      <PeriodStrip startedAt={budget.meta.startedAt} />
+      <div role="tablist" aria-label="budget mode" className="flex w-fit rounded-md border p-0.5">
+        {(['budget', 'plan'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={budgetMode === m}
+            className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
+            onClick={() => setBudgetMode(m)}
+          >
+            {t(m === 'budget' ? 'budgets.page.plan.toggle.budget' : 'budgets.page.plan.toggle.plan')}
+          </button>
+        ))}
+      </div>
 
-      {editMode ? (
-        <div>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
-            <FolderPlus className="size-4" />
-            {t('budgets.page.budget.structure.action.create_folder')}
-          </Button>
-        </div>
-      ) : null}
-
-      {isPlaceholderData || periodSwitching ? (
-        // month switch in flight — the strip stays put, the stale table is
-        // replaced by the loader until the new period lands
-        <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
-          <CoinLoader label={t('common.app.modal.loading.data_loading')} />
-        </div>
+      {budgetMode === 'plan' ? (
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} />
       ) : (
         <>
-          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+          <PeriodStrip startedAt={budget.meta.startedAt} />
 
-          <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={preferRowCollisions}
-              // rows collapse on drag start, so drop-zone rects must re-measure
-              // mid-drag and the grabbed node re-anchors to the pointer
-              measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-              modifiers={[snapRowToPointer]}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              onDragCancel={() => {
-                setDragInProgress(false)
-                setDraggingFolderId(null)
-                setDropFolderKey(null)
-                setDragArrangement(null)
-              }}
-            >
-              <SortableContext
-                items={buckets.withFolder.map((b) => b.folder!.id)}
-                strategy={verticalListSortingStrategy}
-              >
-              <BudgetTable
-                budget={budget}
-                buckets={buckets}
-                hideChildren={dragInProgress}
-                hideContents={draggingFolderId !== null}
-                renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
-                // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
-                renderFolderActions={editMode ? folderActions : undefined}
-                renderActions={editMode ? elementActions : undefined}
-                renderBudgetCell={
-                  limitsEditable && !editMode && !isCompact
-                    ? (element) => (
-                        <LimitEditor
-                          element={element}
-                          currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
-                          onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
-                        />
-                      )
-                    : undefined
-                }
-                renderRowWrapper={
-                  editMode
-                    ? (element, _bucket, row) => (
-                        <DraggableElement key={element.id} id={element.id}>
-                          {row}
-                        </DraggableElement>
-                      )
-                    : isCompact && limitsEditable
-                      ? (element, _bucket, row) => (
-                          <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
-                            {row}
-                          </ElementLongPress>
-                        )
-                      : undefined
-                }
-                sectionWrapper={
-                  editMode
-                    ? (bucket, _key, node) => {
-                        const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
-                        return (
-                          <SortableSection
-                            bucket={bucket}
-                            id={`bfolder:${folderKey}`}
-                            highlighted={dropFolderKey === folderKey}
-                            folderDragging={draggingFolderId !== null}
-                          >
-                            {node}
-                          </SortableSection>
-                        )
-                      }
-                    : undefined
-                }
-                onSpentClick={editMode ? undefined : setTransactionsTarget}
-                onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
-              />
-              </SortableContext>
-            </DndContext>
-          </div>
+          {editMode ? (
+            <div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
+                <FolderPlus className="size-4" />
+                {t('budgets.page.budget.structure.action.create_folder')}
+              </Button>
+            </div>
+          ) : null}
+
+          {isPlaceholderData || periodSwitching ? (
+            // month switch in flight — the strip stays put, the stale table is
+            // replaced by the loader until the new period lands
+            <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
+              <CoinLoader label={t('common.app.modal.loading.data_loading')} />
+            </div>
+          ) : (
+            <>
+              {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+
+              <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={preferRowCollisions}
+                  // rows collapse on drag start, so drop-zone rects must re-measure
+                  // mid-drag and the grabbed node re-anchors to the pointer
+                  measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+                  modifiers={[snapRowToPointer]}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={() => {
+                    setDragInProgress(false)
+                    setDraggingFolderId(null)
+                    setDropFolderKey(null)
+                    setDragArrangement(null)
+                  }}
+                >
+                  <SortableContext
+                    items={buckets.withFolder.map((b) => b.folder!.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                  <BudgetTable
+                    budget={budget}
+                    buckets={buckets}
+                    hideChildren={dragInProgress}
+                    hideContents={draggingFolderId !== null}
+                    renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
+                    // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
+                    renderFolderActions={editMode ? folderActions : undefined}
+                    renderActions={editMode ? elementActions : undefined}
+                    renderBudgetCell={
+                      limitsEditable && !editMode && !isCompact
+                        ? (element) => (
+                            <LimitEditor
+                              element={element}
+                              currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
+                              onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
+                            />
+                          )
+                        : undefined
+                    }
+                    renderRowWrapper={
+                      editMode
+                        ? (element, _bucket, row) => (
+                            <DraggableElement key={element.id} id={element.id}>
+                              {row}
+                            </DraggableElement>
+                          )
+                        : isCompact && limitsEditable
+                          ? (element, _bucket, row) => (
+                              <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
+                                {row}
+                              </ElementLongPress>
+                            )
+                          : undefined
+                    }
+                    sectionWrapper={
+                      editMode
+                        ? (bucket, _key, node) => {
+                            const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
+                            return (
+                              <SortableSection
+                                bucket={bucket}
+                                id={`bfolder:${folderKey}`}
+                                highlighted={dropFolderKey === folderKey}
+                                folderDragging={draggingFolderId !== null}
+                              >
+                                {node}
+                              </SortableSection>
+                            )
+                          }
+                        : undefined
+                    }
+                    onSpentClick={editMode ? undefined : setTransactionsTarget}
+                    onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
+                  />
+                  </SortableContext>
+                </DndContext>
+              </div>
+            </>
+          )}
         </>
       )}
 
