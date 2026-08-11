@@ -673,7 +673,9 @@ export function BudgetPage() {
                       limitsEditable && !editMode && !isCompact
                         ? (element) => (
                             <LimitEditor
-                              element={element}
+                              id={element.id}
+                              name={element.name}
+                              value={element.budgeted}
                               currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
                               onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
                             />
@@ -815,7 +817,7 @@ export function BudgetPage() {
       ) : null}
 
       <SetLimitDialog
-        element={limitTarget}
+        target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
       />

@@ -4,15 +4,18 @@ import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
-import { isZero } from '@/lib/decimal'
+import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
-import type { BudgetDto, PlanChildDto } from '@/api/dto/budget'
-import { UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
+import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
+import { useIsCompact } from '@/hooks/useIsCompact'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
-import { useBudgetPlan } from './queries'
+import { canUpdateLimits, useBudgetPlan, usePlanSetLimit } from './queries'
+import { LimitEditor } from './LimitEditor'
+import { SetLimitDialog } from './SetLimitDialog'
 import {
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
@@ -46,12 +49,23 @@ function renderActual(actual: string | undefined, month: string, cur: string, cu
   return moneyFormat(actual, currency, { showCurrency: false, useNativePrecision: false })
 }
 
+interface PlanLimitTarget {
+  el: PlanElementDto
+  month: string
+  monthIndex: number
+}
+
 interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   cur: string
   currencies: CurrencyDto[]
   gridCols: string
+  meta: BudgetMetaDto
+  userId: Id | undefined
+  isCompact: boolean
+  commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
+  openDialog: (target: PlanLimitTarget) => void
 }
 
 function ChildRow({ child, parentCurrency, ctx }: { child: PlanChildDto; parentCurrency: CurrencyDto | undefined; ctx: GridCtx }) {
@@ -96,6 +110,8 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
   const isUncategorized = el.id === UNCATEGORIZED_ID
   const expandable = el.children.length > 0
   const Chevron = unfolded ? ChevronDown : ChevronRight
+  // children/uncategorized/archived rows never carry their own limit; canUpdateLimits below adds the role + start-date gate per cell
+  const editableRow = !isUncategorized && el.isArchived === 0
 
   const name = (
     <>
@@ -133,6 +149,12 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
+          const editable = editableRow && idx >= 0 && canUpdateLimits(ctx.meta, ctx.userId, m)
+          // overspend highlight: expense side only, current/future months, a set plan the actual has already cleared
+          const overspend =
+            !isIncomeType(el.type) && m >= ctx.cur && !!cell && cell.planned !== '' && cmp(cell.actual, cell.planned) > 0
+          const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
+          const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
           return (
             <div
               key={m}
@@ -140,11 +162,30 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
               data-testid={`plan-cell-${el.id}:${i}`}
               className={`flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}`}
             >
-              <span data-testid="cell-actual" className="text-xs text-muted-foreground">
+              <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
                 {renderActual(cell?.actual, m, ctx.cur, currency)}
               </span>
               <span data-testid="cell-planned" className="text-sm">
-                {cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+                {editable && !ctx.isCompact ? (
+                  <LimitEditor
+                    id={`${el.id}-${m}`}
+                    name={displayName}
+                    value={plannedValue}
+                    currency={currency}
+                    onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
+                  />
+                ) : editable ? (
+                  <button
+                    type="button"
+                    className="w-full text-right underline-offset-2 hover:underline"
+                    aria-label={`limit ${displayName}`}
+                    onClick={() => ctx.openDialog({ el, month: m, monthIndex: idx })}
+                  >
+                    {moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false })}
+                  </button>
+                ) : (
+                  plannedText
+                )}
               </span>
             </div>
           )
@@ -182,8 +223,9 @@ function FolderRows({ section, ctx }: { section: PlanFolderSection; ctx: GridCtx
 }
 
 export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
-  void userId // reserved for editing/permission checks landing in Task 5
   const { t, i18n } = useTranslation()
+  const isCompact = useIsCompact()
+  const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
   useEffect(() => {
@@ -205,7 +247,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const hideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
 
-  const { data: plan, isPending } = useBudgetPlan(budget.meta.id, firstMonth, visible)
+  const { data: plan, isPending, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)
+  const setLimit = usePlanSetLimit(planKey)
+  const commit = (elementId: Id, month: string, monthIndex: number, amount: string | null) =>
+    setLimit.mutate({ budgetId: budget.meta.id, elementId, period: month, amount, monthIndex })
 
   const visibleMonths = Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i))
   const monthIndex = (m: string): number => (plan ? plan.months.indexOf(m) : -1)
@@ -224,7 +269,19 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' })
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
-  const ctx: GridCtx = { visibleMonths, monthIndex, cur, currencies, gridCols }
+  const ctx: GridCtx = {
+    visibleMonths,
+    monthIndex,
+    cur,
+    currencies,
+    gridCols,
+    meta: budget.meta,
+    userId,
+    isCompact,
+    commit,
+    openDialog: setPlanLimitTarget,
+  }
+  const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
   return (
     <div ref={containerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto" data-testid="plan-sheet">
@@ -290,6 +347,24 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           ))}
         </section>
       ) : null}
+
+      <SetLimitDialog
+        target={
+          planLimitTarget
+            ? {
+                id: planLimitTarget.el.id,
+                name: elementDisplayName(planLimitTarget.el.id, planLimitTarget.el.name, t),
+                value: dialogCell && dialogCell.planned !== '' ? dialogCell.planned : '0',
+              }
+            : null
+        }
+        onClose={() => setPlanLimitTarget(null)}
+        onCommit={(elementId, amount) => {
+          if (planLimitTarget) {
+            commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
+          }
+        }}
+      />
     </div>
   )
 }

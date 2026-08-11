@@ -2,9 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { http, HttpResponse } from 'msw'
+import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureOwner, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -123,4 +123,66 @@ it('setBudgetMode fires BUDGET_PLAN_OPEN once switching to plan, not on a no-op 
 it('setPlanFirstMonth fires BUDGET_PLAN_CHANGE_WINDOW', () => {
   useBudgetPeriodStore.getState().setPlanFirstMonth('2026-05-01')
   expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_CHANGE_WINDOW)
+})
+
+it('editing a planned cell sends set-limit with the cell month and patches optimistically', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    // the response never resolves within the test, so the invalidated refetch (which
+    // would otherwise revert to the unchanged mock data) can't race the optimistic patch
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      body = await request.json()
+      await delay('infinite')
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // pe1's second visible column (Jul/Aug/Sep window -> Aug)
+  const cell = screen.getByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
+  const input = await screen.findByLabelText('Budget')
+  await user.clear(input)
+  await user.type(input, '350')
+  await user.click(screen.getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '350' }))
+  expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
+})
+
+it('uncategorized and child cells are not editable; guest role sees no editors', async () => {
+  const guestBudget = {
+    ...fixtureWireBudget,
+    meta: { ...fixtureWireBudget.meta, access: [{ user: fixtureOwner, role: 'guest' as const, isAccepted: 1 as const }] },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
+    planHandler(),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // guest role: pe1 would normally be editable for the owner, but not here
+  const pe1Cell = screen.getByTestId('plan-cell-pe1:1')
+  expect(within(pe1Cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
+
+  // children never carry their own limit, regardless of role
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  await user.click(within(pe1Row).getByText('Living'))
+  const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
+  expect(within(childCell).queryByRole('button')).not.toBeInTheDocument()
+
+  // uncategorized rows are never editable, regardless of role
+  for (const cell of screen.getAllByTestId('plan-cell-uncategorized:1')) {
+    expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
+  }
 })
