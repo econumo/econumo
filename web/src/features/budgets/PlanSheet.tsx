@@ -20,13 +20,16 @@ import {
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
+  balanceRow,
   bucketPlanRows,
   clampFirstMonth,
   currentMonth,
+  makePlanExchange,
   planInitialFirstMonth,
+  planTotals,
   planVisibleCount,
 } from './planMath'
-import type { PlanFolderSection, PlanRow } from './planMath'
+import type { PlanFolderSection, PlanMonthTotals, PlanRow } from './planMath'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -222,6 +225,78 @@ function FolderRows({ section, ctx }: { section: PlanFolderSection; ctx: GridCtx
   )
 }
 
+interface TotalsRowSpec {
+  key: 'income' | 'expenses' | 'net'
+  actual: (t: PlanMonthTotals) => string
+  planned: (t: PlanMonthTotals) => string
+}
+
+const TOTALS_ROWS: TotalsRowSpec[] = [
+  { key: 'income', actual: (t) => t.incomeActual, planned: (t) => t.incomePlanned },
+  { key: 'expenses', actual: (t) => t.expenseActual, planned: (t) => t.expensePlanned },
+  { key: 'net', actual: (t) => t.netActual, planned: (t) => t.netPlanned },
+]
+
+function TotalsFooter({
+  visibleMonths,
+  monthIndex,
+  cur,
+  gridCols,
+  totals,
+  balance,
+  currency,
+}: {
+  visibleMonths: string[]
+  monthIndex: (m: string) => number
+  cur: string
+  gridCols: string
+  totals: PlanMonthTotals[]
+  balance: string[]
+  currency: CurrencyDto | undefined
+}) {
+  const { t } = useTranslation()
+  return (
+    <div className="sticky bottom-0 z-10 flex flex-col border-t bg-background" data-testid="plan-totals">
+      {TOTALS_ROWS.map((spec) => (
+        <div key={spec.key} role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
+          <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
+          {visibleMonths.map((m) => {
+            const idx = monthIndex(m)
+            const row = idx >= 0 ? totals[idx] : undefined
+            return (
+              <div key={m} className={`flex flex-col items-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
+                <span className="text-xs text-muted-foreground">
+                  {row ? moneyFormat(spec.actual(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+                </span>
+                <span className="text-sm">
+                  {row ? moneyFormat(spec.planned(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+      <div role="row" className="grid items-center gap-1 border-t px-2 py-1.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
+        <span className="truncate text-xs">{t('budgets.page.plan.totals.balance')}</span>
+        {visibleMonths.map((m, i) => {
+          const idx = monthIndex(m)
+          const value = idx >= 0 ? balance[idx] : undefined
+          const negative = value !== undefined && cmp(value, '0') < 0
+          return (
+            <div
+              key={m}
+              data-testid={`plan-balance-${i}`}
+              className={`px-2 py-1 text-right text-sm ${m === cur ? 'bg-accent/40' : ''} ${negative ? 'text-destructive' : ''}`}
+            >
+              {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
@@ -269,6 +344,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const monthFmt = new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' })
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
+  const ex = makePlanExchange(plan, currencies)
+  const totals = planTotals(plan, ex)
+  const balance = balanceRow(plan, totals, ex)
+  const planCurrency = currencies.find((c) => c.id === plan.meta.currencyId)
   const ctx: GridCtx = {
     visibleMonths,
     monthIndex,
@@ -347,6 +426,16 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           ))}
         </section>
       ) : null}
+
+      <TotalsFooter
+        visibleMonths={visibleMonths}
+        monthIndex={monthIndex}
+        cur={cur}
+        gridCols={gridCols}
+        totals={totals}
+        balance={balance}
+        currency={planCurrency}
+      />
 
       <SetLimitDialog
         target={

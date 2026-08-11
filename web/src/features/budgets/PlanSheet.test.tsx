@@ -4,10 +4,13 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureOwner, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureEur, fixtureOwner, fixtureUsd, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
+import type { BudgetPlanDto } from '@/api/dto/budget'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { balanceRow, makePlanExchange, planTotals } from './planMath'
+import { moneyFormat } from '@/lib/money'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
@@ -154,6 +157,33 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
 
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '350' }))
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
+})
+
+it('totals block renders income/expenses/net pairs and the running balance', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const totalsBlock = screen.getByTestId('plan-totals')
+  expect(within(totalsBlock).getByText('Income')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Expenses')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Net')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Balance')).toBeInTheDocument()
+
+  // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
+  // visible column (index 2) is Aug, the fixture's last fetched month (index 3),
+  // so its running balance is the seed plus the FULL sum of effectiveNet across
+  // all 4 fetched months — computed here via the math core, not hand-derived.
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const totals = planTotals(plan, ex)
+  const balance = balanceRow(plan, totals, ex)
+  const expected = moneyFormat(balance[3], fixtureUsd, { showCurrency: false, useNativePrecision: false })
+
+  expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
 
 it('uncategorized and child cells are not editable; guest role sees no editors', async () => {
