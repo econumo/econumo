@@ -184,3 +184,32 @@ func boolQuery(v string) bool {
 func (h *Handlers) GetBudgetList(w http.ResponseWriter, r *http.Request) {
 	endpoint.HandleNoBody(w, r, h.svc.GetBudgetList)
 }
+
+// GetBudgetPlan handles GET /api/v1/budget/get-budget-plan.
+//
+// @Summary  Multi-month budget plan sheet
+// @Tags     Budget
+// @Produce  json
+// @Param    id     query string  true  "Budget id"
+// @Param    from   query string  false "Window start (Y-m-d, snapped to first of month; defaults to the current month)"
+// @Param    months query integer false "Window length in months (1-24, default 12)"
+// @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetPlanResult}
+// @Failure  400 {object} apidoc.JsonResponseError
+// @Failure  401 {object} apidoc.JsonResponseUnauthorized
+// @Failure  500 {object} apidoc.JsonResponseException
+// @Security Bearer
+// @Router   /api/v1/budget/get-budget-plan [get]
+func (h *Handlers) GetBudgetPlan(w http.ResponseWriter, r *http.Request) {
+	userID, ok := middleware.RequireUser(w, r)
+	if !ok {
+		return
+	}
+	q := r.URL.Query()
+	req := model.GetBudgetPlanRequest{Id: q.Get("id"), From: q.Get("from"), Months: q.Get("months")}
+	res, err := h.svc.GetBudgetPlan(r.Context(), userID, req)
+	if err != nil {
+		httpx.WriteError(r.Context(), w, err)
+		return
+	}
+	httpx.OK(w, res)
+}

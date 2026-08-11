@@ -180,7 +180,7 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 
 // getElementSelfHeal resolves a wire (external) element id to its budget
 // element, backfilling a missing budget_elements row. Rows are seeded at
-// create-budget and maintained by restoreElementsOrder, which runs only on
+// create-budget and maintained by syncElements, which runs only on
 // structure mutations — so a tag/category created after the budget has no row
 // yet, even though get-budget already shows it (visibility is computed from
 // spending/limits, not element rows). On a miss, restore the element order

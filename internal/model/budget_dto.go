@@ -205,6 +205,96 @@ type GetBudgetListResult struct {
 	Items []MetaResult `json:"items"`
 }
 
+// GetBudgetPlanRequest selects a budget + a month window for the plan read.
+// From and Months arrive as raw query strings; the service parses them.
+type GetBudgetPlanRequest struct {
+	Id     string `json:"id"`
+	From   string `json:"from"`
+	Months string `json:"months"`
+}
+
+func (r GetBudgetPlanRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+// PlanCellResult is one (element, month) plan cell. Planned is "" when no
+// limit row exists for that month — the frozen empty-cell encoding.
+type PlanCellResult struct {
+	Actual  string `json:"actual"`
+	Planned string `json:"planned"`
+}
+
+// PlanChildCellResult is one (envelope child, month) cell — actual only;
+// planned lives on the parent, exactly like budgeted on the budget page.
+type PlanChildCellResult struct {
+	Actual string `json:"actual"`
+}
+
+// PlanChildResult is a category nested under an envelope in the plan sheet.
+// Cells align index-for-index with BudgetPlanResult.Months.
+type PlanChildResult struct {
+	Id          string                `json:"id"`
+	Type        int                   `json:"type"`
+	Name        string                `json:"name"`
+	Icon        string                `json:"icon"`
+	IsArchived  int                   `json:"isArchived"`
+	OwnerUserId string                `json:"ownerUserId"`
+	Cells       []PlanChildCellResult `json:"cells"`
+}
+
+// PlanElementResult is one plan-sheet row (income and expense alike; the
+// element type encodes the side). Cells align with BudgetPlanResult.Months.
+type PlanElementResult struct {
+	Id          string            `json:"id"`
+	Type        int               `json:"type"`
+	Name        string            `json:"name"`
+	Icon        string            `json:"icon"`
+	CurrencyId  string            `json:"currencyId"`
+	IsArchived  int               `json:"isArchived"`
+	FolderId    *string           `json:"folderId"`
+	Position    int               `json:"position"`
+	OwnerUserId *string           `json:"ownerUserId"`
+	Cells       []PlanCellResult  `json:"cells"`
+	Children    []PlanChildResult `json:"children"`
+}
+
+// OpeningBalanceResult is one currency's real account balance at the window
+// start (transactions dated <= months[0], the same bound as the budget page's
+// startBalance) — the client-side Balance row's seed.
+type OpeningBalanceResult struct {
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanMonthRatesResult is one window month's average currency rates. Period is
+// the REQUESTED month; each rate row reports its own snapped period, exactly
+// as the budget page's currencyRates block does.
+type PlanMonthRatesResult struct {
+	Period string                      `json:"period"`
+	Rates  []AverageCurrencyRateResult `json:"rates"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult `json:"folders"`
+	Elements []PlanElementResult  `json:"elements"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape.
+type BudgetPlanResult struct {
+	Meta            MetaResult             `json:"meta"`
+	Months          []string               `json:"months"`
+	OpeningBalances []OpeningBalanceResult `json:"openingBalances"`
+	CurrencyRates   []PlanMonthRatesResult `json:"currencyRates"`
+	Structure       PlanStructureResult    `json:"structure"`
+}
+
+// GetBudgetPlanResult is {item: BudgetPlanResult}.
+type GetBudgetPlanResult struct {
+	Item BudgetPlanResult `json:"item"`
+}
+
 // CreateBudgetFolderRequest / UpdateBudgetFolderRequest bodies.
 type CreateBudgetFolderRequest struct {
 	BudgetId string `json:"budgetId"`

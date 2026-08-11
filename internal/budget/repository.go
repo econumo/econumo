@@ -53,7 +53,7 @@ type FolderStore interface {
 // EnvelopeStore is the budget-envelope persistence surface, including its
 // category-membership join table. Consumed by loadAggregate (usecase.go),
 // CreateEnvelope/UpdateEnvelope/DeleteEnvelope (envelopes.go), and
-// restoreElementsOrder (move.go). Envelope ids are always client-supplied, so
+// syncElements (move.go). Envelope ids are always client-supplied, so
 // there is no NextIdentity here.
 type EnvelopeStore interface {
 	ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*model.BudgetEnvelope, error)
@@ -71,7 +71,7 @@ type EnvelopeStore interface {
 // Consumed by loadAggregate (usecase.go), seedCategoryElements/
 // seedTagElements (create.go), CreateEnvelope/UpdateEnvelope/DeleteEnvelope
 // (envelopes.go), ChangeElementCurrency/SetLimit (accounts.go), and
-// MoveElementList/shiftElements/restoreElementsOrder (move.go). NextIdentity
+// MoveElement/syncElements (move.go). NextIdentity
 // allocates a fresh element id.
 type ElementStore interface {
 	NextIdentity() vo.Id
