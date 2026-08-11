@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -53,6 +54,10 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 			moved = e
 			break
 		}
+	}
+
+	if moved != nil && folderID != nil && sideMixed(b.elements, *folderID, moved.Type) {
+		return nil, folderSideMixedErr()
 	}
 
 	now := s.clock.Now()
@@ -108,6 +113,40 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 		return e.FolderID == nil
 	}
 	return e.FolderID != nil && e.FolderID.Equal(*folderID)
+}
+
+// folderSide reports the folder's derived side over its member elements: no
+// members = neutral (both false). Archived members count — a folder holding
+// only an archived income category is still income-sided.
+func folderSide(elements []*model.BudgetElement, folderID vo.Id) (income, expense bool) {
+	for _, e := range elements {
+		if e.FolderID == nil || !e.FolderID.Equal(folderID) {
+			continue
+		}
+		if e.Type.IsIncomeSide() {
+			income = true
+		} else {
+			expense = true
+		}
+	}
+	return income, expense
+}
+
+// sideMixed reports whether placing an element of type typ into the folder
+// would mix income and expense sides. Same-side members never conflict, so the
+// element being re-placed inside its own folder needs no exclusion.
+func sideMixed(elements []*model.BudgetElement, folderID vo.Id, typ model.ElementType) bool {
+	income, expense := folderSide(elements, folderID)
+	if typ.IsIncomeSide() {
+		return expense
+	}
+	return income
+}
+
+func folderSideMixedErr() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "folderId", Message: "Income and expense elements cannot share a folder", Code: errs.CodeBudgetFolderSideMixed,
+	})
 }
 
 // syncElements reconciles the budgets_elements rows with the entities that

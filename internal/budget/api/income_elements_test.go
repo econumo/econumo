@@ -150,3 +150,56 @@ func TestCreateBudget_SeedsIncomeCategories(t *testing.T) {
 		t.Errorf("get-budget must not surface the income category anywhere; body=%s", b.Data)
 	}
 }
+
+// TestMoveElement_CrossSideRejected: folder sides are derived from members;
+// mixing income and expense elements in one folder is rejected with the coded
+// error, and emptying a folder reverts it to neutral.
+func TestMoveElement_CrossSideRejected(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const incomeCatID = "cccc2222-0000-7000-8000-0000000000ac"
+	const expenseCatID = "cccc2222-0000-7000-8000-0000000000ad"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: incomeCatID, UserID: seedUserID, Name: "Wages Move", Type: 1, Icon: "payments"})
+	f.Category(fixture.Category{ID: expenseCatID, UserID: seedUserID, Name: "Rent Move", Type: 0, Icon: "home"})
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Folder Sides Budget"))
+
+	const folderID = "bfff2222-0000-7000-8000-0000000000aa"
+	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": folderID, "name": "Mixed?",
+	})
+
+	// Neutral folder accepts an income element.
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeCatID, "folderId": folderID, "afterId": nil,
+	})
+	if st != http.StatusOK {
+		t.Fatalf("income into neutral folder = %d, want 200; body=%s", st, env.raw)
+	}
+
+	// Now income-sided: an expense element is rejected with the coded error.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": expenseCatID, "folderId": folderID, "afterId": nil,
+	})
+	if st != http.StatusBadRequest {
+		t.Fatalf("expense into income folder = %d, want 400; body=%s", st, env.raw)
+	}
+	if !strings.Contains(string(env.raw), "Income and expense elements cannot share a folder") {
+		t.Errorf("want the folder side-mixing message; body=%s", env.raw)
+	}
+
+	// Emptying the folder reverts it to neutral: the expense move then succeeds.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeCatID, "folderId": nil, "afterId": nil,
+	})
+	if st != http.StatusOK {
+		t.Fatalf("income out of folder = %d; body=%s", st, env.raw)
+	}
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": expenseCatID, "folderId": folderID, "afterId": nil,
+	})
+	if st != http.StatusOK {
+		t.Fatalf("expense into re-neutraled folder = %d, want 200; body=%s", st, env.raw)
+	}
+}
