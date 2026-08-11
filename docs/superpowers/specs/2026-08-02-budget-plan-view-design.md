@@ -130,15 +130,16 @@ own; its contents give it one** — but derived rather than stored:
   Both reads already load all elements, so derivation is a free pass over data in
   hand — no schema change, and no stale state (removing the last income element
   reverts the folder to neutral automatically).
-- **Enforcement**: `MoveElement` (`POST /api/v1/budget/move-element` — the only
-  path assigning an element a `folderId`) rejects a move that would mix sides,
-  with a coded error sibling to the envelope homogeneity one. Because envelope
-  sides are immutable and `syncElements` updates types in place, the move path
-  is the *only* way a folder could mix — one enforcement point. The UI never
-  offers cross-side targets; the error is the API backstop. Implementation
-  notes: `MoveElement` matches the element by external id with no type
-  discriminator and silently no-ops on unknown ids — the side check slots in
-  where the element is resolved.
+- **Enforcement**: exactly two writes assign an element a `folderId` —
+  `MoveElement` (`POST /api/v1/budget/move-element`) and `create-envelope`
+  (which takes an optional `folderId`) — and both reject a placement that would
+  mix sides, with a coded error sibling to the envelope homogeneity one.
+  Because envelope sides are immutable and `syncElements` updates types in
+  place, no other path can mix a folder. The UI never offers cross-side
+  targets; the error is the API backstop. Implementation notes: `MoveElement`
+  matches the element by external id with no type discriminator and silently
+  no-ops on unknown ids — the side check slots in where the element is
+  resolved.
 - **`get-budget` filters income-sided folders out**; neutral (empty) folders keep
   appearing exactly as today. So: create an empty folder → it shows in both views
   and moves like any folder; give it an income member → it disappears from the
