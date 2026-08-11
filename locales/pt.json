@@ -1362,7 +1362,9 @@
       "envelope_name_length": "O nome do envelope deve ter entre {min} e {max} caracteres.",
       "invalid_element_type_alias": "O tipo de elemento de orçamento com o alias {alias} não existe.",
       "invalid_role_alias": "O papel de utilizador de orçamento com o alias {alias} não existe.",
-      "transaction_filter_required": "Falha na validação."
+      "transaction_filter_required": "Falha na validação.",
+      "envelope_side_mixed": "Um envelope não pode misturar categorias de renda e despesa.",
+      "folder_side_mixed": "Os elementos de renda e despesa não podem compartilhar uma pasta."
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",

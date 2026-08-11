@@ -1362,7 +1362,9 @@
       "envelope_name_length": "Envelopnaam moet {min}-{max} tekens bevatten.",
       "invalid_element_type_alias": "Een budgetelementtype met alias {alias} bestaat niet.",
       "invalid_role_alias": "Een budgetgebruikersrol met alias {alias} bestaat niet.",
-      "transaction_filter_required": "Validatie mislukt."
+      "transaction_filter_required": "Validatie mislukt.",
+      "envelope_side_mixed": "Een envelop kan inkomsten- en uitgavencategorieën niet mengen.",
+      "folder_side_mixed": "Inkomsten- en uitgavenelementen kunnen geen map delen."
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

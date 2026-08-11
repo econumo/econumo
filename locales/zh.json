@@ -1362,7 +1362,9 @@
       "envelope_name_length": "信封名称需为 {min}-{max} 个字符。",
       "invalid_element_type_alias": "别名为 {alias} 的预算元素类型不存在。",
       "invalid_role_alias": "别名为 {alias} 的预算用户角色不存在。",
-      "transaction_filter_required": "校验未通过。"
+      "transaction_filter_required": "校验未通过。",
+      "envelope_side_mixed": "信封不能混合收入和支出分类。",
+      "folder_side_mixed": "收入和支出元素无法共享一个文件夹。"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",
