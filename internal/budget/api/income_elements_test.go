@@ -203,3 +203,99 @@ func TestMoveElement_CrossSideRejected(t *testing.T) {
 		t.Fatalf("expense into re-neutraled folder = %d, want 200; body=%s", st, env.raw)
 	}
 }
+
+// TestCreateEnvelope_IncomeSide covers the envelope-side matrix: income
+// envelope with income children OK (children rendered), homogeneity rejections
+// both directions, unknown category rejected, invalid side rejected, and
+// cross-side folder placement rejected at create time.
+func TestCreateEnvelope_IncomeSide(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const incomeCatID = "cccc2222-0000-7000-8000-0000000000ae"
+	const expenseCatID = "cccc2222-0000-7000-8000-0000000000af"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: incomeCatID, UserID: seedUserID, Name: "Wages Env", Type: 1, Icon: "payments"})
+	f.Category(fixture.Category{ID: expenseCatID, UserID: seedUserID, Name: "Rent Env", Type: 0, Icon: "home"})
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Envelope Sides Budget"))
+
+	envBody := func(id, side string, cats []string, folderID any) map[string]any {
+		return map[string]any{
+			"budgetId": budgetID1, "id": id, "name": "Env " + id[:4], "icon": "cart",
+			"currencyId": usdID, "folderId": folderID, "side": side, "categories": cats,
+		}
+	}
+
+	// Income envelope with an income child: created, child rendered, type=4.
+	const incomeEnvID = "beee2222-0000-7000-8000-0000000000b0"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, envBody(incomeEnvID, "income", []string{incomeCatID}, nil))
+	if st != http.StatusOK {
+		t.Fatalf("create income envelope = %d; body=%s", st, env.raw)
+	}
+	if !strings.Contains(string(env.Data), incomeCatID) {
+		t.Errorf("income child must be rendered in the result; body=%s", env.Data)
+	}
+	if typ, _, _ := elementTypeAndKey(t, h.db, budgetID1, incomeEnvID); typ != 4 {
+		t.Errorf("income envelope element type=%d want 4", typ)
+	}
+
+	// Homogeneity: expense child in an income envelope.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b1", "income", []string{expenseCatID}, nil))
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot mix income and expense categories") {
+		t.Fatalf("expense child in income envelope: st=%d body=%s", st, env.raw)
+	}
+
+	// Homogeneity the other way: income child in a (default expense) envelope.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b2", "", []string{incomeCatID}, nil))
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot mix income and expense categories") {
+		t.Fatalf("income child in expense envelope: st=%d body=%s", st, env.raw)
+	}
+
+	// Existence/ownership: unknown category id.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b3", "", []string{"9999aaaa-0000-7000-8000-00000000dead"}, nil))
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "Category not found") {
+		t.Fatalf("unknown child category: st=%d body=%s", st, env.raw)
+	}
+
+	// Invalid side alias.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b4", "both", []string{}, nil))
+	if st != http.StatusBadRequest {
+		t.Fatalf("invalid side: st=%d body=%s", st, env.raw)
+	}
+
+	// Cross-side folder placement at create time: put the expense category into
+	// a folder, then try to create an income envelope inside that folder.
+	const folderID = "bfff2222-0000-7000-8000-0000000000ab"
+	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": folderID, "name": "Expenses",
+	})
+	h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": expenseCatID, "folderId": folderID, "afterId": nil,
+	})
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
+		envBody("beee2222-0000-7000-8000-0000000000b5", "income", []string{}, folderID))
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "Income and expense elements cannot share a folder") {
+		t.Fatalf("income envelope into expense folder: st=%d body=%s", st, env.raw)
+	}
+
+	// Update keeps the stored side: income children stay valid on update, and an
+	// expense child is still rejected (side is immutable, no side field on update).
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
+		"currencyId": usdID, "isArchived": 0, "categories": []string{incomeCatID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("update income envelope with income child = %d; body=%s", st, env.raw)
+	}
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
+		"currencyId": usdID, "isArchived": 0, "categories": []string{expenseCatID},
+	})
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot mix income and expense categories") {
+		t.Fatalf("update income envelope with expense child: st=%d body=%s", st, env.raw)
+	}
+}

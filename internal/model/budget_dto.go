@@ -286,6 +286,9 @@ type CreateEnvelopeRequest struct {
 	CurrencyId string   `json:"currencyId"`
 	FolderId   *string  `json:"folderId"`
 	Categories []string `json:"categories"`
+	// Side selects the envelope's (immutable) side: "" or "expense" (default),
+	// or "income". Income envelopes exist only in the plan view.
+	Side string `json:"side"`
 }
 
 func (r CreateEnvelopeRequest) Validate() error {

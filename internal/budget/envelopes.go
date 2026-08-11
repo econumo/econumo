@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -20,6 +21,10 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 		return nil, model.ValidateBlank(map[string]string{"id": ""})
 	}
 	if err := model.ValidateName("Envelope", req.Name); err != nil {
+		return nil, err
+	}
+	envType, err := model.EnvelopeTypeFromSide(req.Side)
+	if err != nil {
 		return nil, err
 	}
 	curID, err := vo.ParseId(req.CurrencyId)
@@ -41,6 +46,12 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
+		return nil, err
+	}
+	if folderID != nil && sideMixed(b.elements, *folderID, envType) {
+		return nil, folderSideMixedErr()
+	}
 	// A new envelope element lands at the FRONT of its group. With sort keys that
 	// is a single write -- a key below the group's current first -- so no sibling
 	// is touched.
@@ -57,7 +68,7 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 		if serr := s.envelopes.SaveEnvelope(txCtx, env); serr != nil {
 			return serr
 		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, model.ElementEnvelope, &curID, folderID, now)
+		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, envelopeID, envType, &curID, folderID, now)
 		el.SetSortKey(newKey)
 		if serr := s.elements.SaveElement(txCtx, el); serr != nil {
 			return serr
@@ -76,12 +87,12 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if err != nil {
 		return nil, err
 	}
-	children, err := s.envelopeChildren(ctx, b, req.Categories)
+	children, err := s.envelopeChildren(ctx, b, req.Categories, envType.IsIncomeSide())
 	if err != nil {
 		return nil, err
 	}
 	// The new envelope lands at the front of its group, so its dense index is 0.
-	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, 0, false, children)}, nil
+	return &model.CreateEnvelopeResult{Item: newEnvelopeElementResult(envelopeID, req.Name, req.Icon, curID, folderID, 0, false, envType, children)}, nil
 }
 
 // UpdateEnvelope updates an envelope's name/icon/archived + categories (canUpdate).
@@ -114,6 +125,9 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	now := s.clock.Now()
 	var elementKeyOfEnvelope sortkey.Key
 	var folderID *vo.Id
+	// The side is immutable by construction: there is no side field on update,
+	// so it is read from the existing element row (default expense if missing).
+	envType := model.ElementEnvelope
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		env, gerr := s.envelopes.GetEnvelope(txCtx, envelopeID)
 		if gerr != nil {
@@ -133,6 +147,10 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 			}
 			elementKeyOfEnvelope = el.SortKey
 			folderID = el.FolderID
+			envType = el.Type
+		}
+		if verr := s.validateEnvelopeCategories(txCtx, b, envType.IsIncomeSide(), req.Categories); verr != nil {
+			return verr
 		}
 		// Replace category assignments.
 		existing, cerr := s.envelopes.EnvelopeCategoryIDs(txCtx, envelopeID)
@@ -162,13 +180,13 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	if err != nil {
 		return nil, err
 	}
-	children, err := s.envelopeChildren(ctx, b, req.Categories)
+	children, err := s.envelopeChildren(ctx, b, req.Categories, envType.IsIncomeSide())
 	if err != nil {
 		return nil, err
 	}
 	return &model.UpdateEnvelopeResult{Item: newEnvelopeElementResult(
 		envelopeID, req.Name, req.Icon, curID, folderID,
-		elementIndex(b.elements, folderID, elementKeyOfEnvelope), req.IsArchived == 1, children,
+		elementIndex(b.elements, folderID, elementKeyOfEnvelope), req.IsArchived == 1, envType, children,
 	)}, nil
 }
 
@@ -226,8 +244,9 @@ func lastElementKey(b *budgetAggregate) sortkey.Key {
 
 // newEnvelopeElementResult builds the model.ParentElementResult for a freshly
 // created/updated envelope (no spending yet -> zero money fields). children are
-// the envelope's category children (also zero spending).
-func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, children []model.ChildElementResult) model.ParentElementResult {
+// the envelope's category children (also zero spending). typ reflects the
+// envelope's stored (immutable) side.
+func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, folderID *vo.Id, position int, archived bool, typ model.ElementType, children []model.ChildElementResult) model.ParentElementResult {
 	var fid *string
 	if folderID != nil {
 		s := folderID.String()
@@ -237,17 +256,59 @@ func newEnvelopeElementResult(id vo.Id, name, icon string, currencyID vo.Id, fol
 		children = []model.ChildElementResult{}
 	}
 	return model.ParentElementResult{
-		Id: id.String(), Type: int(model.ElementEnvelope.Int16()), Name: name, Icon: icon,
+		Id: id.String(), Type: int(typ.Int16()), Name: name, Icon: icon,
 		CurrencyId: currencyID.String(), IsArchived: boolToInt(archived), FolderId: fid, Position: position,
 		Budgeted: "0", Available: "0", Spent: "0", BudgetSpent: "0",
 		Children: children, OwnerUserId: nil,
 	}
 }
 
+// validateEnvelopeCategories checks every requested child id parses, belongs to
+// a budget participant, and matches the envelope's side (the homogeneity rule).
+// This is deliberately stricter than the historical behavior, which accepted
+// arbitrary ids and hid mismatches at read time.
+func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggregate, income bool, categoryIDs []string) error {
+	if len(categoryIDs) == 0 {
+		return nil
+	}
+	userIDs := []vo.Id{b.budget.UserID}
+	for _, a := range b.access {
+		if a.IsAccepted && a.Role != roleGuest() {
+			userIDs = append(userIDs, a.UserID)
+		}
+	}
+	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
+	if err != nil {
+		return err
+	}
+	byID := map[string]model.CategoryMeta{}
+	for _, c := range cats {
+		byID[c.ID] = c
+	}
+	for _, raw := range categoryIDs {
+		if _, perr := vo.ParseId(raw); perr != nil {
+			return model.ValidateBlank(map[string]string{"categories": ""})
+		}
+		c, ok := byID[raw]
+		if !ok {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "categories", Message: "Category not found", Code: errs.CodeCategoryNotFound,
+			})
+		}
+		if c.IsIncome != income {
+			return errs.NewValidation("Validation failed", errs.FieldError{
+				Key: "categories", Message: "An envelope cannot mix income and expense categories", Code: errs.CodeBudgetEnvelopeSideMixed,
+			})
+		}
+	}
+	return nil
+}
+
 // envelopeChildren resolves a set of category ids to the response child shape
-// (category metadata + zero spending). Order follows the requested category ids;
-// the API comparison is order-insensitive.
-func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string) ([]model.ChildElementResult, error) {
+// (category metadata + zero spending), filtered to the envelope's own side.
+// Order follows the requested category ids; the API comparison is
+// order-insensitive.
+func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, categoryIDs []string, income bool) ([]model.ChildElementResult, error) {
 	if len(categoryIDs) == 0 {
 		return []model.ChildElementResult{}, nil
 	}
@@ -263,10 +324,14 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 	}
 	byID := map[string]model.CategoryMeta{}
 	for _, c := range cats {
-		if c.IsIncome { // only expense categories are eligible participants
-			continue
+		if c.IsIncome != income {
+			continue // children render only on their own side
 		}
 		byID[c.ID] = c
+	}
+	childType := model.ElementCategory
+	if income {
+		childType = model.ElementIncomeCategory
 	}
 	out := make([]model.ChildElementResult, 0, len(categoryIDs))
 	for _, cid := range categoryIDs {
@@ -275,7 +340,7 @@ func (s *Service) envelopeChildren(ctx context.Context, b *budgetAggregate, cate
 			continue
 		}
 		out = append(out, model.ChildElementResult{
-			Id: c.ID, Type: int(model.ElementCategory.Int16()), Name: c.Name, Icon: c.Icon,
+			Id: c.ID, Type: int(childType.Int16()), Name: c.Name, Icon: c.Icon,
 			IsArchived: boolToInt(c.IsArchived), Spent: "0", BudgetSpent: "0", OwnerUserId: c.OwnerID,
 		})
 	}
