@@ -299,3 +299,62 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 		t.Fatalf("update income envelope with expense child: st=%d body=%s", st, env.raw)
 	}
 }
+
+// TestGetBudget_ExcludesIncomeEnvelopesAndFolders: an income envelope never
+// renders in get-budget, an income-sided folder disappears from the folder
+// list, and a re-neutraled folder comes back.
+func TestGetBudget_ExcludesIncomeEnvelopesAndFolders(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const incomeCatID = "cccc2222-0000-7000-8000-0000000000b6"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: incomeCatID, UserID: seedUserID, Name: "Wages GB", Type: 1, Icon: "payments"})
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "GB Exclusion Budget"))
+
+	const incomeEnvID = "beee2222-0000-7000-8000-0000000000b7"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries GB", "icon": "payments",
+		"currencyId": usdID, "folderId": nil, "side": "income", "categories": []string{incomeCatID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create income envelope = %d; body=%s", st, env.raw)
+	}
+
+	const folderID = "bfff2222-0000-7000-8000-0000000000ac"
+	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
+		"budgetId": budgetID1, "id": folderID, "name": "Income Folder",
+	})
+	// Neutral folder: visible.
+	st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-budget=%d body=%s", st, b.raw)
+	}
+	if !strings.Contains(string(b.Data), folderID) {
+		t.Fatalf("neutral folder must be visible; body=%s", b.Data)
+	}
+	if strings.Contains(string(b.Data), incomeEnvID) || strings.Contains(string(b.Data), incomeCatID) {
+		t.Fatalf("income envelope/category must not render in get-budget; body=%s", b.Data)
+	}
+
+	// Give the folder an income member: it disappears from get-budget.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "folderId": folderID, "afterId": nil,
+	})
+	if st != http.StatusOK {
+		t.Fatalf("move income envelope into folder = %d; body=%s", st, env.raw)
+	}
+	_, b = h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	if strings.Contains(string(b.Data), folderID) {
+		t.Fatalf("income-sided folder must be filtered from get-budget; body=%s", b.Data)
+	}
+
+	// Empty it again: back to neutral, visible again.
+	h.do(t, http.MethodPost, "/api/v1/budget/move-element", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "folderId": nil, "afterId": nil,
+	})
+	_, b = h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	if !strings.Contains(string(b.Data), folderID) {
+		t.Fatalf("re-neutraled folder must reappear; body=%s", b.Data)
+	}
+}
