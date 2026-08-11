@@ -25,7 +25,11 @@ export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProp
       setValue(isZero(target.value) ? '' : normalizeNumber(target.value))
       setError(null)
     }
-  }, [target])
+    // id/value only: both call sites build `target` as a fresh object literal every
+    // render, so keying on the object itself would reset a mid-edit value on any
+    // unrelated parent re-render (e.g. a background refetch while the dialog is open)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.id, target?.value])
 
   if (!target) {
     return null
