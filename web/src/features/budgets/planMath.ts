@@ -61,18 +61,21 @@ const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' :
 
 export type FolderSide = Side | 'neutral'
 
-// A folder's side follows its (active) members: any income member -> income,
-// any expense member -> expense, no members -> neutral. Shared with the
-// row-menu "Move to folder…" target list so the two can't diverge.
+// A folder's side follows its members: any income member -> income, any
+// expense member -> expense, no members -> neutral. Archived members count
+// too, matching the backend's folderSide (internal/budget/move.go) — a
+// folder holding only an archived income category is still income-sided.
+// Shared with the row-menu "Move to folder…" target list so the two can't
+// diverge, and so plan-view bucketing agrees with what the server will accept.
 export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
-  const active = plan.structure.elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
+  const members = plan.structure.elements.filter((el) => el.id !== UNCATEGORIZED_ID)
   const sides = new Map<Id, FolderSide>()
   for (const folder of plan.structure.folders) {
-    const members = active.filter((el) => el.folderId === folder.id)
-    if (members.length === 0) {
+    const inFolder = members.filter((el) => el.folderId === folder.id)
+    if (inFolder.length === 0) {
       sides.set(folder.id, 'neutral')
     } else {
-      sides.set(folder.id, members.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
+      sides.set(folder.id, inFolder.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
     }
   }
   return sides

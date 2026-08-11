@@ -136,10 +136,12 @@ function MoveToFolderDialog({
     return null
   }
   const side: 'income' | 'expense' = isIncomeType(target.type) ? 'income' : 'expense'
-  const targets = folders.filter((f) => {
-    const s = folderSideMap.get(f.id) ?? 'neutral'
-    return s === side || s === 'neutral'
-  })
+  const targets = [...folders]
+    .sort((a, b) => a.position - b.position)
+    .filter((f) => {
+      const s = folderSideMap.get(f.id) ?? 'neutral'
+      return s === side || s === 'neutral'
+    })
   return (
     <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.page.plan.menu.move_to_folder')}>
       <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">

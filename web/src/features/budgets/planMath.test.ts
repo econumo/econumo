@@ -173,7 +173,7 @@ describe('bucketPlanRows', () => {
 })
 
 describe('folderSides', () => {
-  it('derives income/expense/neutral per folder from active members, matching bucketPlanRows', () => {
+  it('derives income/expense/neutral per folder from members, matching bucketPlanRows', () => {
     const f1: BudgetFolderDto = { id: 'f1', name: 'Job', position: 0 }
     const f2: BudgetFolderDto = { id: 'f2', name: 'Bills', position: 1 }
     const f3: BudgetFolderDto = { id: 'f3', name: 'Empty', position: 2 }
@@ -185,9 +185,23 @@ describe('folderSides', () => {
     const sides = folderSides(plan)
 
     expect(sides.get('f1')).toBe('income')
-    // an archived income member does not flip f2's side back to income
-    expect(sides.get('f2')).toBe('expense')
+    // an archived income member counts (matches the backend's folderSide), so
+    // f2 (an active expense category + an archived income category) reads income
+    expect(sides.get('f2')).toBe('income')
     expect(sides.get('f3')).toBe('neutral')
+  })
+
+  it('a folder holding only an archived member is still classified by that member (matches the backend rule)', () => {
+    const fIncome: BudgetFolderDto = { id: 'f-income', name: 'Old salary', position: 0 }
+    const fExpense: BudgetFolderDto = { id: 'f-expense', name: 'Old rent', position: 1 }
+    const archivedIncomeOnly = mkEl({ id: 'cat-archived-income-only', type: 3, name: 'Old bonus', folderId: 'f-income', isArchived: 1, position: 0 })
+    const archivedExpenseOnly = mkEl({ id: 'cat-archived-expense-only', type: 1, name: 'Old rent', folderId: 'f-expense', isArchived: 1, position: 0 })
+    const plan = mkPlan({ structure: { folders: [fIncome, fExpense], elements: [archivedIncomeOnly, archivedExpenseOnly] } })
+
+    const sides = folderSides(plan)
+
+    expect(sides.get('f-income')).toBe('income')
+    expect(sides.get('f-expense')).toBe('expense')
   })
 })
 
