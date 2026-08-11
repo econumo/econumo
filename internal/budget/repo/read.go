@@ -570,11 +570,19 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 // planMonthExpr renders a datetime column as its first-of-month TEXT
 // "YYYY-MM-01" — the same bytes on both engines, so grouped months compare
 // and serialize identically.
+//
+// SQLite: NOT strftime() — a time.Time bound raw (no explicit format, e.g.
+// transactions.spent_at written via the sqlc passthrough) is stored by
+// modernc.org/sqlite as Go's default t.String() ("2024-04-10 10:00:00 +0000
+// UTC"), which strftime() cannot parse and silently returns NULL, crashing
+// the scan. Every TEXT datetime form this column can hold (that default, the
+// 'Y-m-d H:i:s' fixture/limitPeriodArg form, and legacy RFC3339) agrees on
+// the first 7 bytes "YYYY-MM", so slicing sidesteps parsing entirely.
 func (r *ReadRepo) planMonthExpr(col string) string {
 	if r.driver == "postgresql" {
 		return "to_char(" + col + ", 'YYYY-MM') || '-01'"
 	}
-	return "strftime('%Y-%m-01', " + col + ")"
+	return "substr(" + col + ", 1, 7) || '-01'"
 }
 
 // SpendingByMonth implements ReadModel.
