@@ -3,6 +3,7 @@ package api_test
 import (
 	"database/sql"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -114,5 +115,38 @@ func TestSyncElements_KeepsEnvelopeStoredType(t *testing.T) {
 	var rows int
 	if err := h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements WHERE budget_id = ? AND external_id = ?`, budgetID1, envID).Scan(&rows); err != nil || rows != 1 {
 		t.Fatalf("element rows for envelope = %d (err=%v), want exactly 1", rows, err)
+	}
+}
+
+// TestCreateBudget_SeedsIncomeCategories: a pre-existing income category gets a
+// live type=3 element at budget creation — and get-budget must not show it
+// (the frozen contract).
+func TestCreateBudget_SeedsIncomeCategories(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const incomeCatID = "cccc2222-0000-7000-8000-0000000000ab"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: incomeCatID, UserID: seedUserID, Name: "Wages", Type: 1, Icon: "payments"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Seeded Income Budget"))
+
+	typ, sortKey, found := elementTypeAndKey(t, h.db, budgetID1, incomeCatID)
+	if !found {
+		t.Fatalf("income category must be seeded at budget creation")
+	}
+	if typ != 3 {
+		t.Errorf("seeded type=%d want 3", typ)
+	}
+	if sortKey == "" {
+		t.Errorf("live income element must carry a sort key")
+	}
+
+	st, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-budget=%d body=%s", st, b.raw)
+	}
+	if strings.Contains(string(b.Data), incomeCatID) {
+		t.Errorf("get-budget must not surface the income category anywhere; body=%s", b.Data)
 	}
 }

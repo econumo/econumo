@@ -90,38 +90,46 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	return &model.CreateBudgetResult{Item: result}, nil
 }
 
-// seedCategoryElements creates a budget element for each non-income category of
-// the user; archived categories get the unset key, others get an increasing one.
-// Ids in skip already have an element in the budget (accept after an earlier
-// membership) and are left untouched. Returns the key the next element follows.
+// seedCategoryElements creates a budget element for each category of the user —
+// expense categories first (type=category), then income categories
+// (type=income_category), one continuous key chain. Archived categories get the
+// unset key. Ids in skip already have an element in the budget (accept after an
+// earlier membership) and are left untouched. Returns the key the next element
+// follows.
 func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, after sortkey.Key, now time.Time, skip map[vo.Id]bool) (sortkey.Key, error) {
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{userID})
 	if err != nil {
 		return after, err
 	}
-	for _, c := range cats {
-		if c.IsIncome {
-			continue
-		}
-		extID, perr := vo.ParseId(c.ID)
-		if perr != nil {
-			return after, perr
-		}
-		if skip[extID] {
-			continue
-		}
-		key := sortkey.Key("")
-		if !c.IsArchived {
-			next, kerr := nextSeedKey(after)
-			if kerr != nil {
-				return after, kerr
+	for _, wantIncome := range []bool{false, true} {
+		for _, c := range cats {
+			if c.IsIncome != wantIncome {
+				continue
 			}
-			key, after = next, next
-		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, now)
-		el.SetSortKey(key)
-		if serr := s.elements.SaveElement(ctx, el); serr != nil {
-			return after, serr
+			extID, perr := vo.ParseId(c.ID)
+			if perr != nil {
+				return after, perr
+			}
+			if skip[extID] {
+				continue
+			}
+			typ := model.ElementCategory
+			if c.IsIncome {
+				typ = model.ElementIncomeCategory
+			}
+			key := sortkey.Key("")
+			if !c.IsArchived {
+				next, kerr := nextSeedKey(after)
+				if kerr != nil {
+					return after, kerr
+				}
+				key, after = next, next
+			}
+			el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, typ, nil, nil, now)
+			el.SetSortKey(key)
+			if serr := s.elements.SaveElement(ctx, el); serr != nil {
+				return after, serr
+			}
 		}
 	}
 	return after, nil
