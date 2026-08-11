@@ -645,7 +645,7 @@ export function BudgetPage() {
                         <LimitEditor
                           element={element}
                           currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
-                          onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, amount })}
+                          onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
                         />
                       )
                     : undefined
@@ -785,7 +785,7 @@ export function BudgetPage() {
       <SetLimitDialog
         element={limitTarget}
         onClose={() => setLimitTarget(null)}
-        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, amount })}
+        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
       />
 
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />

@@ -3,9 +3,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureBudgets, fixtureOwner } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
+import type { BudgetDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
-import { useBudgets, useCreateBudget, useDeclineBudgetAccess, useDeleteBudget } from './queries'
+import { useBudgets, useCreateBudget, useDeclineBudgetAccess, useDeleteBudget, useSetLimit } from './queries'
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -99,4 +100,22 @@ it('delete removes from the cache and invalidates budget + user', async () => {
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.budgets)!.map((b) => b.id)).toEqual(['b2'])
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.user })
+})
+
+it('useSetLimit sends the explicit period and patches that period cache', async () => {
+  let sent: Record<string, unknown> | null = null
+  server.use(
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      sent = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], fixtureWireBudget)
+  const { result } = renderHook(() => useSetLimit(), { wrapper })
+  result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' })
+  await waitFor(() => expect(sent).not.toBeNull())
+  expect(sent).toMatchObject({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' })
+  const patched = queryClient.getQueryData<BudgetDto>([...queryKeys.budget, 'b1', '2026-09-01'])
+  expect(patched?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted).toBe('250')
 })

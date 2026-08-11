@@ -113,13 +113,12 @@ export function useBudget() {
 
 export function useSetLimit() {
   const queryClient = useQueryClient()
-  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   return useMutation({
-    mutationFn: (form: { budgetId: Id; elementId: Id; amount: string | null }) =>
-      budgetApi.setLimit({ ...form, period: selectedDate }),
+    mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null }) =>
+      budgetApi.setLimit(form),
     onMutate: async (form) => {
       // optimistic budgeted patch with rollback (Vue parity: instant cell feedback)
-      const key = [...queryKeys.budget, form.budgetId, selectedDate]
+      const key = [...queryKeys.budget, form.budgetId, form.period]
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<BudgetDto | null>(key)
       queryClient.setQueryData<BudgetDto | null>(key, (prev) => {

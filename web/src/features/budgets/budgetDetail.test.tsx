@@ -76,7 +76,7 @@ it('set-limit patches budgeted optimistically and rolls back on error', async ()
   queryClient.setQueryData(key, initial)
 
   const { result } = renderHook(() => useSetLimit(), { wrapper })
-  result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', amount: '999' })
+  result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-07-01', amount: '999' })
   await waitFor(() => {
     const cached = queryClient.getQueryData<BudgetDto>(key)!
     expect(cached.structure.elements[0].budgeted === '999' || result.current.isError).toBe(true)
