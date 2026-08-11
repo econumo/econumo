@@ -76,6 +76,8 @@ export interface EnvelopeForm {
   currencyId: Id
   folderId: Id | null
   categories: Id[]
+  /** create only, and only when 'income' — immutable once set; update never sends it */
+  side?: 'income'
 }
 
 export async function createEnvelope(form: EnvelopeForm): Promise<BudgetElementDto> {

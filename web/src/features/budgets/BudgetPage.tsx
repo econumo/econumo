@@ -756,6 +756,7 @@ export function BudgetPage() {
         open={envelopeDialog.open}
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
+        side="expense"
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })

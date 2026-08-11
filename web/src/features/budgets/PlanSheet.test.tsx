@@ -266,3 +266,98 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
     expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
   }
 })
+
+it('income + opens the envelope dialog constrained to income categories and submits side=income', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/create-envelope', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true,
+        message: '',
+        data: {
+          item: {
+            id: 'env-new', type: 4, name: 'Bonuses', icon: 'payments', currencyId: 'cur-usd', folderId: null,
+            position: 9, budgeted: '0', available: '0', spent: '0', budgetSpent: '0', ownerUserId: null, isArchived: 0, children: [],
+          },
+        },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByRole('button', { name: 'create income envelope' }))
+  const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
+  expect(within(dialog).getByText('Salary')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Food')).not.toBeInTheDocument()
+
+  await user.type(within(dialog).getByLabelText('Name'), 'Bonuses')
+  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(body).toMatchObject({ name: 'Bonuses', side: 'income' }))
+})
+
+it('move-to-folder menu lists only same-side and neutral folders and calls move-element', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      folders: [
+        ...plan.structure.folders, // bf1 'Essentials' -> expense (holds pe1)
+        { id: 'bf2', name: 'Bonuses Folder', position: 1 }, // income (holds ie1)
+        { id: 'bf3', name: 'Misc Folder', position: 2 }, // neutral (no members)
+      ],
+      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf2' } : el)),
+    },
+  }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithFolders),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // cat-food is a loose EXPENSE category row
+  await user.click(screen.getByRole('button', { name: 'plan row actions Food' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
+  expect(within(dialog).getByRole('button', { name: 'Essentials' })).toBeInTheDocument() // expense-sided
+  expect(within(dialog).getByRole('button', { name: 'Misc Folder' })).toBeInTheDocument() // neutral
+  expect(within(dialog).getByRole('button', { name: 'No folder' })).toBeInTheDocument()
+  expect(within(dialog).queryByRole('button', { name: 'Bonuses Folder' })).not.toBeInTheDocument() // income-sided, excluded
+
+  await user.click(within(dialog).getByRole('button', { name: 'Misc Folder' }))
+
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'cat-food', folderId: 'bf3', afterId: null }))
+})
+
+it('budget-mode envelope dialog still offers expense categories only', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'create envelope Default folder' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
+  expect(within(dialog).getByText('Food')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Salary')).not.toBeInTheDocument()
+})

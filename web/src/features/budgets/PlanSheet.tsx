@@ -1,23 +1,37 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Plus } from 'lucide-react'
+import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
-import type { BudgetDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
-import { canUpdateLimits, useBudgetPlan, usePlanSetLimit } from './queries'
+import {
+  canConfigureBudget,
+  canEditBudget,
+  canUpdateLimits,
+  useBudgetPlan,
+  useCreateEnvelope,
+  useMoveElement,
+  usePlanSetLimit,
+  useUpdateEnvelope,
+} from './queries'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
+import { EnvelopeDialog } from './EnvelopeDialog'
 import {
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
@@ -26,12 +40,13 @@ import {
   bucketPlanRows,
   clampFirstMonth,
   currentMonth,
+  folderSides,
   makePlanExchange,
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
 } from './planMath'
-import type { PlanFolderSection, PlanMonthTotals, PlanRow } from './planMath'
+import type { FolderSide, PlanFolderSection, PlanMonthTotals, PlanRow } from './planMath'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
@@ -71,6 +86,82 @@ interface GridCtx {
   isCompact: boolean
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
+  canEdit: boolean
+  onEditEnvelope: (el: PlanElementDto) => void
+  onMoveToFolder: (el: PlanElementDto) => void
+}
+
+// Every non-uncategorized, non-child parent row gets this menu; envelope
+// rows additionally get Edit. "Move to folder…" opens a second, side-filtered
+// picker (MoveToFolderDialog) rather than a nested submenu — Radix menu
+// submenus lose focus/click races under jsdom's synthetic pointer events.
+function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
+  const { t } = useTranslation()
+  const isEnvelope = el.type === BudgetElementType.ENVELOPE || el.type === BudgetElementType.INCOME_ENVELOPE
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="size-5 shrink-0" aria-label={`plan row actions ${el.name}`}>
+          <MoreVertical className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {isEnvelope ? (
+          <DropdownMenuItem onSelect={() => ctx.onEditEnvelope(el)}>{t('common.button.edit.label')}</DropdownMenuItem>
+        ) : null}
+        <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>{t('budgets.page.plan.menu.move_to_folder')}</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// The side-filtered folder picker opened by RowMenu's "Move to folder…":
+// same-side + neutral folders (per the shared folderSides derivation), plus
+// "No folder". A plain list dialog, not a DropdownMenuSub (see RowMenu).
+function MoveToFolderDialog({
+  target,
+  folders,
+  folderSideMap,
+  onClose,
+  onPick,
+}: {
+  target: PlanElementDto | null
+  folders: BudgetFolderDto[]
+  folderSideMap: Map<Id, FolderSide>
+  onClose: () => void
+  onPick: (folderId: Id | null) => void
+}) {
+  const { t } = useTranslation()
+  if (!target) {
+    return null
+  }
+  const side: 'income' | 'expense' = isIncomeType(target.type) ? 'income' : 'expense'
+  const targets = folders.filter((f) => {
+    const s = folderSideMap.get(f.id) ?? 'neutral'
+    return s === side || s === 'neutral'
+  })
+  return (
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.page.plan.menu.move_to_folder')}>
+      <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
+        {targets.map((f) => (
+          <li key={f.id}>
+            <button
+              type="button"
+              className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+              onClick={() => onPick(f.id)}
+            >
+              {f.name}
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover" onClick={() => onPick(null)}>
+            {t('budgets.page.plan.menu.no_folder')}
+          </button>
+        </li>
+      </ul>
+    </ResponsiveDialog>
+  )
 }
 
 function ChildRow({ child, parentCurrency, ctx }: { child: PlanChildDto; parentCurrency: CurrencyDto | undefined; ctx: GridCtx }) {
@@ -134,23 +225,26 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
         className="grid items-center gap-1 rounded-md px-2 py-1.5 hover:bg-accent/50"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
-        {expandable ? (
-          <button
-            type="button"
-            className="flex min-w-0 items-center gap-1.5 text-left"
-            aria-expanded={unfolded}
-            title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
-            onClick={() => toggleElement(el.id)}
-          >
-            <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-            {name}
-          </button>
-        ) : (
-          <span className="flex min-w-0 items-center gap-1.5">
-            {isUncategorized ? null : <span className="w-3.5 shrink-0" />}
-            {name}
-          </span>
-        )}
+        <div className="flex min-w-0 items-center justify-between gap-1">
+          {expandable ? (
+            <button
+              type="button"
+              className="flex min-w-0 items-center gap-1.5 text-left"
+              aria-expanded={unfolded}
+              title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
+              onClick={() => toggleElement(el.id)}
+            >
+              <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+              {name}
+            </button>
+          ) : (
+            <span className="flex min-w-0 items-center gap-1.5">
+              {isUncategorized ? null : <span className="w-3.5 shrink-0" />}
+              {name}
+            </span>
+          )}
+          {!isUncategorized && ctx.canEdit ? <RowMenu el={el} ctx={ctx} /> : null}
+        </div>
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
@@ -229,6 +323,7 @@ function SectionHeader({
   onToggleFold,
   hiddenCount,
   onShow,
+  action,
 }: {
   label: string
   foldKey: string
@@ -236,6 +331,7 @@ function SectionHeader({
   onToggleFold: (key: string) => void
   hiddenCount: number
   onShow: () => void
+  action?: ReactNode
 }) {
   const { t } = useTranslation()
   const Chevron = folded ? ChevronRight : ChevronDown
@@ -251,7 +347,10 @@ function SectionHeader({
         <Chevron className="size-3.5 shrink-0" />
         {label}
       </button>
-      <HiddenRowsNotice count={hiddenCount} onShow={onShow} />
+      <span className="flex items-center gap-1.5">
+        {action}
+        <HiddenRowsNotice count={hiddenCount} onShow={onShow} />
+      </span>
     </div>
   )
 }
@@ -375,12 +474,35 @@ function TotalsFooter({
   )
 }
 
+interface EnvelopeDialogState {
+  open: boolean
+  envelope: PlanElementDto | null
+  folderId: Id | null
+  side: 'expense' | 'income'
+}
+
+const CLOSED_ENVELOPE_DIALOG: EnvelopeDialogState = { open: false, envelope: null, folderId: null, side: 'expense' }
+
 export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
+  const [envelopeDialog, setEnvelopeDialog] = useState<EnvelopeDialogState>(CLOSED_ENVELOPE_DIALOG)
+  const closeEnvelopeDialog = () => setEnvelopeDialog(CLOSED_ENVELOPE_DIALOG)
+  const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
+  const createEnvelope = useCreateEnvelope()
+  const updateEnvelope = useUpdateEnvelope()
+  const moveElement = useMoveElement()
+  const pickFolder = (folderId: Id | null) => {
+    if (moveFolderTarget) {
+      // position only drives the local drag preview elsewhere; plan-view moves ignore it
+      // and rely on the invalidated refetch (useMoveElement extends useInvalidateBudget)
+      moveElement.mutate({ budgetId: budget.meta.id, item: { id: moveFolderTarget.id, folderId, position: 0, afterId: null } })
+    }
+    setMoveFolderTarget(null)
+  }
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
   useEffect(() => {
@@ -417,6 +539,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   // always the unfiltered structure (per-row `hidden` flags, nothing dropped) — hideEmpty
   // is applied per SECTION at render time so each header's reveal is independent
   const rows = useMemo(() => (plan ? bucketPlanRows(plan, false) : null), [plan])
+  const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
+  const canEdit = canEditBudget(budget.meta, userId)
+  const configure = canConfigureBudget(budget.meta, userId)
 
   if (!plan || !rows) {
     return isPending ? (
@@ -445,6 +570,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
     isCompact,
     commit,
     openDialog: setPlanLimitTarget,
+    canEdit,
+    onEditEnvelope: (el) =>
+      setEnvelopeDialog({ open: true, envelope: el, folderId: el.folderId, side: isIncomeType(el.type) ? 'income' : 'expense' }),
+    onMoveToFolder: setMoveFolderTarget,
   }
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
@@ -519,6 +648,21 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           onToggleFold={togglePlanFold}
           hiddenCount={incomeHiddenCount}
           onShow={() => revealSection('income')}
+          action={
+            configure ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="size-6"
+                aria-label="create income envelope"
+                title={t('budgets.modal.create_envelope_form.header')}
+                onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: null, side: 'income' })}
+              >
+                <Plus className="size-4" />
+              </Button>
+            ) : null
+          }
         />
         {!incomeFolded ? (
           <>
@@ -608,6 +752,52 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
+      />
+
+      <EnvelopeDialog
+        open={envelopeDialog.open}
+        envelope={envelopeDialog.envelope}
+        budgetCurrencyId={budget.meta.currencyId}
+        side={envelopeDialog.side}
+        onClose={closeEnvelopeDialog}
+        onSubmit={(form) => {
+          if (envelopeDialog.envelope) {
+            updateEnvelope.mutate(
+              {
+                budgetId: budget.meta.id,
+                id: envelopeDialog.envelope.id,
+                name: form.name,
+                icon: form.icon,
+                currencyId: form.currencyId,
+                isArchived: form.isArchived,
+                categories: form.categories,
+              },
+              { onSuccess: closeEnvelopeDialog },
+            )
+          } else {
+            createEnvelope.mutate(
+              {
+                budgetId: budget.meta.id,
+                id: uuidv7(),
+                name: form.name,
+                icon: form.icon,
+                currencyId: form.currencyId,
+                folderId: envelopeDialog.folderId,
+                categories: form.categories,
+                ...(envelopeDialog.side === 'income' ? { side: 'income' as const } : {}),
+              },
+              { onSuccess: closeEnvelopeDialog },
+            )
+          }
+        }}
+      />
+
+      <MoveToFolderDialog
+        target={moveFolderTarget}
+        folders={plan.structure.folders}
+        folderSideMap={folderSideMap}
+        onClose={() => setMoveFolderTarget(null)}
+        onPick={pickFolder}
       />
     </div>
   )

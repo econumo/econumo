@@ -6,6 +6,7 @@ import {
   balanceRow,
   bucketPlanRows,
   clampFirstMonth,
+  folderSides,
   makePlanExchange,
   monthDiff,
   planInitialFirstMonth,
@@ -168,6 +169,25 @@ describe('bucketPlanRows', () => {
     expect(rows.expense.loose).toEqual([{ element: active, hidden: false }])
     expect(rows.income.loose).toEqual([])
     expect(rows.income.folders).toEqual([])
+  })
+})
+
+describe('folderSides', () => {
+  it('derives income/expense/neutral per folder from active members, matching bucketPlanRows', () => {
+    const f1: BudgetFolderDto = { id: 'f1', name: 'Job', position: 0 }
+    const f2: BudgetFolderDto = { id: 'f2', name: 'Bills', position: 1 }
+    const f3: BudgetFolderDto = { id: 'f3', name: 'Empty', position: 2 }
+    const incomeEnvelope = mkEl({ id: 'env-income', type: 4, name: 'Salary', folderId: 'f1', position: 0 })
+    const expenseCategory = mkEl({ id: 'cat-expense', type: 1, name: 'Rent', folderId: 'f2', position: 0 })
+    const archivedIncome = mkEl({ id: 'cat-archived-income', type: 3, name: 'Old bonus', folderId: 'f2', isArchived: 1, position: 1 })
+    const plan = mkPlan({ structure: { folders: [f1, f2, f3], elements: [incomeEnvelope, expenseCategory, archivedIncome] } })
+
+    const sides = folderSides(plan)
+
+    expect(sides.get('f1')).toBe('income')
+    // an archived income member does not flip f2's side back to income
+    expect(sides.get('f2')).toBe('expense')
+    expect(sides.get('f3')).toBe('neutral')
   })
 })
 

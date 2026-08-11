@@ -1,6 +1,7 @@
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
+import type { Id } from '@/api/types'
 import { compareNames } from '@/lib/collate'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
@@ -58,6 +59,25 @@ const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZer
 type Side = 'income' | 'expense'
 const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' : 'expense')
 
+export type FolderSide = Side | 'neutral'
+
+// A folder's side follows its (active) members: any income member -> income,
+// any expense member -> expense, no members -> neutral. Shared with the
+// row-menu "Move to folder…" target list so the two can't diverge.
+export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
+  const active = plan.structure.elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
+  const sides = new Map<Id, FolderSide>()
+  for (const folder of plan.structure.folders) {
+    const members = active.filter((el) => el.folderId === folder.id)
+    if (members.length === 0) {
+      sides.set(folder.id, 'neutral')
+    } else {
+      sides.set(folder.id, members.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
+    }
+  }
+  return sides
+}
+
 export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRows {
   const folders = [...plan.structure.folders].sort((a, b) => a.position - b.position)
   const elements = plan.structure.elements
@@ -74,12 +94,11 @@ export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRow
     return el ? { element: el, hidden: false } : null
   }
 
-  // A folder's side follows its members (any income member -> income area);
-  // a memberless folder is neutral and defaults to the expense area.
+  // A memberless (neutral) folder defaults to the expense area for display.
+  const sides = folderSides(plan)
   const folderSide = new Map<string, Side>()
   for (const folder of folders) {
-    const members = active.filter((el) => el.folderId === folder.id)
-    folderSide.set(folder.id, members.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
+    folderSide.set(folder.id, sides.get(folder.id) === 'income' ? 'income' : 'expense')
   }
 
   const toRow = (el: PlanElementDto): PlanRow => ({ element: el, hidden: isRowHidden(el) })

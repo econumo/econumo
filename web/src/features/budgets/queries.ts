@@ -216,7 +216,10 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
 
 function useInvalidateBudget() {
   const queryClient = useQueryClient()
-  return () => void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+  }
 }
 
 export function useCreateEnvelope() {
