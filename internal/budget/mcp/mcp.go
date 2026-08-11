@@ -3,6 +3,7 @@ package mcp
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	sdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -156,6 +157,38 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				res, err := svc.GetBudget(ctx, userID, model.GetBudgetRequest{Id: in.BudgetID, Date: date})
 				if err != nil {
 					return nil, model.GetBudgetResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type getBudgetPlanInput struct {
+			BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+			FromMonth string `json:"from_month,omitempty" jsonschema:"YYYY-MM window start; defaults to the current month"`
+			Months    int    `json:"months,omitempty" jsonschema:"window length in months, 1-24; defaults to 12"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "get_budget_plan",
+			Description: "Multi-month plan sheet: every income and expense row with per-month actual and planned amounts, plus opening balances and per-month rates. Planned values are edited with set_limit."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in getBudgetPlanInput) (*sdk.CallToolResult, model.GetBudgetPlanResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "get_budget_plan")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.GetBudgetPlanResult{}, err
+				}
+				from := ""
+				if in.FromMonth != "" {
+					if _, perr := time.Parse("2006-01", in.FromMonth); perr != nil {
+						return nil, model.GetBudgetPlanResult{}, errs.NewValidation("from_month must be YYYY-MM")
+					}
+					from = in.FromMonth + "-01"
+				}
+				months := ""
+				if in.Months != 0 {
+					months = strconv.Itoa(in.Months)
+				}
+				res, err := svc.GetBudgetPlan(ctx, userID, model.GetBudgetPlanRequest{Id: in.BudgetID, From: from, Months: months})
+				if err != nil {
+					return nil, model.GetBudgetPlanResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, *res, nil
 			})

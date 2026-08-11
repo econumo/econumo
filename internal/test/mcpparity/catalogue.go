@@ -112,6 +112,22 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"junk"}}}`},
 	}})
 
+	// budget_plan REST-seeds a budget with a fixed 2024 window plus one planned
+	// value, then drives get_budget_plan for a valid window and an out-of-range
+	// months (the REST read's own scenario pins the full cell math; this pins
+	// the MCP edge + schema).
+	const mcpPlanBudgetID = "b0000000-0000-0000-0000-0000000000c9"
+	register(Scenario{Name: "budget_plan", Steps: []Step{
+		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
+			Body: map[string]any{"id": mcpPlanBudgetID, "name": "MCP Plan Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+		{Label: "seed-limit", Method: "POST", Path: "/api/v1/budget/set-limit",
+			Body: map[string]any{"budgetId": mcpPlanBudgetID, "elementId": apiparity.CatFood, "period": "2024-05-01", "amount": "300"}},
+		{Label: "get-budget-plan",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":3}}}`},
+		{Label: "get-budget-plan-bad-months",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":40}}}`},
+	}})
+
 	// budget_write drives all eight budget create/configure MCP tools end to
 	// end, purely via MCP calls on top of the apiparity fixture (owner's seeded
 	// account + categories). create_budget/create_folder/create_envelope mint
