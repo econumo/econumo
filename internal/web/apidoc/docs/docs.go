@@ -9511,6 +9511,10 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "side": {
+                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default),\nor \"income\". Income envelopes exist only in the plan view.",
+                    "type": "string"
                 }
             }
         },

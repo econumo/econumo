@@ -139,8 +139,14 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
 		{Label: "move-element",
 			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","folder_id":"{{folder_id}}"}}}`},
+		// category_ids used to include CatSalary (income) here too; it was
+		// silently ignored (never rendered in children — see budget_write.golden),
+		// so dropping it is byte-identical, and envelope homogeneity now rejects
+		// a mixed-side category set outright. The REST twin
+		// (catalogue_budget_structure.go) carries the analogous fix; the new
+		// budget_income_elements scenario carries the rejection coverage.
 		{Label: "update-envelope",
-			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `"],"archived":false}}}`},
 		{Label: "set-limit",
 			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-05","amount":"150.00"}}}`},
 		{Label: "set-budget-account-included",
