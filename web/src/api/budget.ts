@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -44,6 +44,13 @@ export async function deleteBudget(id: Id): Promise<void> {
 export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   const response = await api.get<Envelope<{ item: BudgetDto }>>(
     apiUrl(`/api/v1/budget/get-budget?id=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`),
+  )
+  return response.data.data.item
+}
+
+export async function getBudgetPlan(id: Id, from: string, months: number): Promise<BudgetPlanDto> {
+  const response = await api.get<Envelope<{ item: BudgetPlanDto }>>(
+    apiUrl(`/api/v1/budget/get-budget-plan?id=${encodeURIComponent(id)}&from=${encodeURIComponent(from)}&months=${months}`),
   )
   return response.data.data.item
 }

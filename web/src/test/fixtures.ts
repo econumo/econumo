@@ -136,6 +136,144 @@ export const fixtureWireBudget = {
   },
 }
 
+// Shared fixture for the budget plan-view sheet: 4 months, one of every element
+// shape (folder-bound expense envelope + child, standalone expense category, tag,
+// income envelope + child, standalone income category, both uncategorized rows),
+// one non-budget-currency row (FX rendering), and one all-zero dormant row
+// (hide-empty tests). Reused by every plan-view task, not just this one.
+export const fixtureWirePlan = {
+  meta: {
+    id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+  },
+  months: ['2026-05-01', '2026-06-01', '2026-07-01', '2026-08-01'],
+  openingBalances: [{ currencyId: 'cur-usd', amount: '500' }],
+  currencyRates: [
+    { period: '2026-05-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.90', periodStart: '2026-05-01', periodEnd: '2026-06-01' }] },
+    { period: '2026-06-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.91', periodStart: '2026-06-01', periodEnd: '2026-07-01' }] },
+    { period: '2026-07-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.92', periodStart: '2026-07-01', periodEnd: '2026-08-01' }] },
+    { period: '2026-08-01', rates: [{ currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '0.93', periodStart: '2026-08-01', periodEnd: '2026-09-01' }] },
+  ],
+  structure: {
+    folders: [{ id: 'bf1', name: 'Essentials', position: 0 }],
+    elements: [
+      {
+        id: 'pe1', type: 0, name: 'Living', icon: 'home', currencyId: 'cur-usd', isArchived: 0,
+        folderId: 'bf1', position: 0, ownerUserId: null,
+        cells: [
+          { actual: '50', planned: '200' },
+          { actual: '60', planned: '200' },
+          { actual: '45', planned: '250' },
+          { actual: '0', planned: '' },
+        ],
+        children: [
+          {
+            id: 'cat-rent', type: 1, name: 'Rent', icon: 'house', isArchived: 0, ownerUserId: 'u1',
+            cells: [{ actual: '50' }, { actual: '60' }, { actual: '45' }, { actual: '0' }],
+          },
+        ],
+      },
+      {
+        id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 1, ownerUserId: 'u1',
+        cells: [
+          { actual: '120', planned: '150' },
+          { actual: '130', planned: '150' },
+          { actual: '125', planned: '' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'tag1', type: 2, name: 'vacation', icon: 'tag', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 2, ownerUserId: 'u1',
+        cells: [
+          { actual: '20', planned: '' },
+          { actual: '25', planned: '' },
+          { actual: '15', planned: '50' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'ie1', type: 4, name: 'Salaries', icon: 'payments', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 3, ownerUserId: null,
+        cells: [
+          { actual: '2000', planned: '' },
+          { actual: '2000', planned: '2000' },
+          { actual: '0', planned: '2000' },
+          { actual: '0', planned: '' },
+        ],
+        children: [
+          {
+            id: 'cat-salary', type: 3, name: 'Salary', icon: 'payments', isArchived: 0, ownerUserId: 'u1',
+            cells: [{ actual: '2000' }, { actual: '2000' }, { actual: '0' }, { actual: '0' }],
+          },
+        ],
+      },
+      {
+        id: 'cat-freelance', type: 3, name: 'Freelance', icon: 'work', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 4, ownerUserId: 'u1',
+        cells: [
+          { actual: '300', planned: '' },
+          { actual: '0', planned: '500' },
+          { actual: '400', planned: '500' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'uncategorized', type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 5, ownerUserId: null,
+        cells: [
+          { actual: '10', planned: '' },
+          { actual: '0', planned: '' },
+          { actual: '5', planned: '' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'uncategorized', type: 3, name: 'Uncategorized', icon: 'question_mark', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 6, ownerUserId: null,
+        cells: [
+          { actual: '0', planned: '' },
+          { actual: '50', planned: '' },
+          { actual: '0', planned: '' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'env-eur', type: 0, name: 'Euro Stash', icon: 'savings', currencyId: 'cur-eur', isArchived: 0,
+        folderId: null, position: 7, ownerUserId: null,
+        cells: [
+          { actual: '30', planned: '100' },
+          { actual: '40', planned: '100' },
+          { actual: '35', planned: '' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+      {
+        id: 'cat-dormant', type: 1, name: 'Unused', icon: 'inbox', currencyId: 'cur-usd', isArchived: 0,
+        folderId: null, position: 8, ownerUserId: 'u1',
+        cells: [
+          { actual: '0', planned: '' },
+          { actual: '0', planned: '' },
+          { actual: '0', planned: '' },
+          { actual: '0', planned: '' },
+        ],
+        children: [],
+      },
+    ],
+  },
+}
+
+export function planHandler(plan: unknown = fixtureWirePlan) {
+  return http.get('*/api/v1/budget/get-budget-plan', () => envelope({ item: plan }))
+}
+
 export const fixtureConnections: ConnectionDto[] = [
   { user: { id: 'u2', avatar: 'pets:sky', name: 'Partner' }, accessLevel: 'full', accessUntil: '', sharedAccounts: [] },
 ]

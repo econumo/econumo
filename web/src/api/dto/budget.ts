@@ -19,8 +19,11 @@ export interface BudgetMetaDto {
   access: BudgetAccessDto[]
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
+
+export const isIncomeType = (t: BudgetElementType): boolean =>
+  t === BudgetElementType.INCOME_CATEGORY || t === BudgetElementType.INCOME_ENVELOPE
 
 /** the presentation-only element the backend emits for spending with no category */
 export const UNCATEGORIZED_ID = 'uncategorized'
@@ -118,4 +121,50 @@ export interface BudgetDto {
   /** labels is optional on the wire: servers older than the labels release —
    *  still accepted by the app's compat floor — omit it. */
   structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
+}
+
+/** per-month cell on a plan-view parent row. planned '' = no limit set that month. */
+export interface PlanCellDto {
+  actual: string
+  planned: string
+}
+
+/** per-month cell on a plan-view child row: children never carry their own limit. */
+export interface PlanChildDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  isArchived: 0 | 1
+  ownerUserId: Id
+  cells: { actual: string }[]
+}
+
+export interface PlanElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  isArchived: 0 | 1
+  folderId: Id | null
+  position: number
+  ownerUserId: Id | null
+  cells: PlanCellDto[]
+  children: PlanChildDto[]
+}
+
+export interface PlanMonthRatesDto {
+  /** date-only Y-m-d, first of the month */
+  period: string
+  rates: BudgetRateDto[]
+}
+
+export interface BudgetPlanDto {
+  meta: BudgetMetaDto
+  /** date-only Y-m-d, first of each month in the fetched window */
+  months: string[]
+  openingBalances: { currencyId: Id; amount: string }[]
+  currencyRates: PlanMonthRatesDto[]
+  structure: { folders: BudgetFolderDto[]; elements: PlanElementDto[] }
 }

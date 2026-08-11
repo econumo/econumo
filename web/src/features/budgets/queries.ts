@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as budgetApi from '@/api/budget'
-import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { compareNames } from '@/lib/collate'
@@ -12,6 +12,7 @@ import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
+import { addMonths } from './planMath'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -143,6 +144,73 @@ export function useSetLimit() {
       }
     },
     onSuccess: () => trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT),
+  })
+}
+
+export const PLAN_BUFFER = 2
+
+export function planFetchWindow(firstMonth: string, visibleMonths: number): { from: string; months: number } {
+  // buffer both sides so arrow navigation renders instantly; the server caps months at 24
+  const months = Math.min(visibleMonths + 2 * PLAN_BUFFER, 24)
+  return { from: addMonths(firstMonth, -PLAN_BUFFER), months }
+}
+
+export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number) {
+  const { from, months } = planFetchWindow(firstMonth, visibleMonths)
+  const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const query = useQuery<BudgetPlanDto | null>({
+    queryKey: planKey,
+    queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
+    enabled: budgetId !== null,
+    staleTime: TEN_MINUTES,
+    // shifting months keeps showing the previous window instead of a blank sheet
+    placeholderData: keepPreviousData,
+  })
+  return { ...query, fetchFrom: from, planKey }
+}
+
+export function usePlanSetLimit(planKey: readonly unknown[]) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null; monthIndex: number }) =>
+      budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }),
+    onMutate: async (form) => {
+      await queryClient.cancelQueries({ queryKey: planKey })
+      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        return {
+          ...prev,
+          structure: {
+            ...prev.structure,
+            elements: prev.structure.elements.map((el) =>
+              el.id === form.elementId
+                ? {
+                    ...el,
+                    cells: el.cells.map((c, i) =>
+                      i === form.monthIndex ? { ...c, planned: form.amount === null ? '' : form.amount } : c,
+                    ),
+                  }
+                : el,
+            ),
+          },
+        }
+      })
+      return { previous }
+    },
+    onError: (_err, _form, context) => {
+      if (context) {
+        queryClient.setQueryData(planKey, context.previous)
+      }
+    },
+    onSuccess: (_res, form) => {
+      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
+      // the budget-page cache for that month is now stale; the plan cache resyncs too
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, form.period] })
+      void queryClient.invalidateQueries({ queryKey: planKey })
+    },
   })
 }
 
