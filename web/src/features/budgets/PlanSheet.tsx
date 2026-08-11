@@ -2,6 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
 import { cmp, isZero } from '@/lib/decimal'
@@ -205,20 +207,96 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
   )
 }
 
-function SectionHeader({ label }: { label: string }) {
-  return <div className="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</div>
-}
-
-function FolderRows({ section, ctx }: { section: PlanFolderSection; ctx: GridCtx }) {
-  if (section.rows.length === 0) {
+function HiddenRowsNotice({ count, onShow }: { count: number; onShow: () => void }) {
+  const { t } = useTranslation()
+  if (count <= 0) {
     return null
   }
   return (
+    <span className="flex shrink-0 items-center gap-1 text-[11px] font-normal normal-case tracking-normal text-muted-foreground">
+      {t('budgets.page.plan.density.hidden', { count })}
+      <button type="button" className="underline-offset-2 hover:underline" onClick={onShow}>
+        {t('budgets.page.plan.density.show')}
+      </button>
+    </span>
+  )
+}
+
+function SectionHeader({
+  label,
+  foldKey,
+  folded,
+  onToggleFold,
+  hiddenCount,
+  onShow,
+}: {
+  label: string
+  foldKey: string
+  folded: boolean
+  onToggleFold: (key: string) => void
+  hiddenCount: number
+  onShow: () => void
+}) {
+  const { t } = useTranslation()
+  const Chevron = folded ? ChevronRight : ChevronDown
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-x-2 px-2 pt-2 pb-1">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground"
+        aria-expanded={!folded}
+        title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
+        onClick={() => onToggleFold(foldKey)}
+      >
+        <Chevron className="size-3.5 shrink-0" />
+        {label}
+      </button>
+      <HiddenRowsNotice count={hiddenCount} onShow={onShow} />
+    </div>
+  )
+}
+
+function FolderRows({
+  section,
+  ctx,
+  hideEmpty,
+  folded,
+  revealed,
+  onToggleFold,
+  onReveal,
+}: {
+  section: PlanFolderSection
+  ctx: GridCtx
+  hideEmpty: boolean
+  folded: boolean
+  revealed: boolean
+  onToggleFold: (key: string) => void
+  onReveal: () => void
+}) {
+  const { t } = useTranslation()
+  if (section.rows.length === 0) {
+    return null
+  }
+  const showEmpty = hideEmpty && !revealed
+  const visibleRows = folded ? [] : showEmpty ? section.rows.filter((r) => !r.hidden) : section.rows
+  const hiddenCount = !folded && showEmpty ? section.rows.filter((r) => r.hidden).length : 0
+  const Chevron = folded ? ChevronRight : ChevronDown
+  return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
-      <div className="truncate px-1.5 pb-1 text-sm font-medium" title={section.folder.name}>
-        {section.folder.name}
+      <div className="flex flex-wrap items-center justify-between gap-x-2 pb-1">
+        <button
+          type="button"
+          className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
+          aria-expanded={!folded}
+          title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
+          onClick={() => onToggleFold(section.folder.id)}
+        >
+          <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">{section.folder.name}</span>
+        </button>
+        <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
       </div>
-      {section.rows.map((r) => (
+      {visibleRows.map((r) => (
         <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
       ))}
     </div>
@@ -301,6 +379,8 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
+  const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
   useEffect(() => {
@@ -320,6 +400,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const persisted = useBudgetPeriodStore((s) => s.planFirstMonth)
   const setPlanFirstMonth = useBudgetPeriodStore((s) => s.setPlanFirstMonth)
   const hideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
+  const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
+  const planFolds = useBudgetPeriodStore((s) => s.planFolds)
+  const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
+  const folded = (key: string): boolean => !!planFolds[key]
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
 
   const { data: plan, isPending, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)
@@ -330,7 +414,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const visibleMonths = Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i))
   const monthIndex = (m: string): number => (plan ? plan.months.indexOf(m) : -1)
 
-  const rows = useMemo(() => (plan ? bucketPlanRows(plan, hideEmpty) : null), [plan, hideEmpty])
+  // always the unfiltered structure (per-row `hidden` flags, nothing dropped) — hideEmpty
+  // is applied per SECTION at render time so each header's reveal is independent
+  const rows = useMemo(() => (plan ? bucketPlanRows(plan, false) : null), [plan])
 
   if (!plan || !rows) {
     return isPending ? (
@@ -362,8 +448,36 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
+  // per-section hide-empty: a row belongs to exactly one bucket — a folder, or its
+  // side's loose rows — so each bucket's count/reveal is independent of the others
+  const sectionVisibleRows = (sectionRows: PlanRow[], revealed: boolean) =>
+    hideEmpty && !revealed ? sectionRows.filter((r) => !r.hidden) : sectionRows
+  const sectionHiddenCount = (sectionRows: PlanRow[], revealed: boolean) =>
+    hideEmpty && !revealed ? sectionRows.filter((r) => r.hidden).length : 0
+
+  const incomeFolded = folded('income')
+  const incomeRevealed = revealedSections.has('income')
+  const incomeLoose = incomeFolded ? [] : sectionVisibleRows(rows.income.loose, incomeRevealed)
+  const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(rows.income.loose, incomeRevealed)
+
+  const expenseRevealed = revealedSections.has('expense')
+  const expenseLoose = sectionVisibleRows(rows.expense.loose, expenseRevealed)
+  const expenseHiddenCount = sectionHiddenCount(rows.expense.loose, expenseRevealed)
+
   return (
     <div ref={containerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto" data-testid="plan-sheet">
+      <div className="flex items-center gap-2 border-b px-2 py-1.5">
+        <Switch
+          id="plan-hide-empty"
+          size="sm"
+          checked={hideEmpty}
+          onCheckedChange={() => togglePlanHideEmpty()}
+          aria-label={t('budgets.page.plan.density.hide_empty')}
+        />
+        <Label htmlFor="plan-hide-empty" className="text-xs font-normal text-muted-foreground">
+          {t('budgets.page.plan.density.hide_empty')}
+        </Label>
+      </div>
       <div className="sticky top-0 z-10 grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
         <div className="flex items-center gap-1 px-2">
           <Button
@@ -398,32 +512,73 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
       </div>
 
       <section data-testid="plan-section-income" className="flex flex-col gap-1 px-1 py-1">
-        <SectionHeader label={t('budgets.page.plan.section.income')} />
-        {rows.income.folders.map((f) => (
-          <FolderRows key={f.folder.id} section={f} ctx={ctx} />
-        ))}
-        {rows.income.loose.map((r) => (
-          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-        ))}
-        {rows.income.uncategorized ? <ElementRow key={rowKey(rows.income.uncategorized)} row={rows.income.uncategorized} ctx={ctx} /> : null}
+        <SectionHeader
+          label={t('budgets.page.plan.section.income')}
+          foldKey="income"
+          folded={incomeFolded}
+          onToggleFold={togglePlanFold}
+          hiddenCount={incomeHiddenCount}
+          onShow={() => revealSection('income')}
+        />
+        {!incomeFolded ? (
+          <>
+            {rows.income.folders.map((f) => (
+              <FolderRows
+                key={f.folder.id}
+                section={f}
+                ctx={ctx}
+                hideEmpty={hideEmpty}
+                folded={folded(f.folder.id)}
+                revealed={revealedSections.has(f.folder.id)}
+                onToggleFold={togglePlanFold}
+                onReveal={() => revealSection(f.folder.id)}
+              />
+            ))}
+            {incomeLoose.map((r) => (
+              <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+            ))}
+            {rows.income.uncategorized ? <ElementRow key={rowKey(rows.income.uncategorized)} row={rows.income.uncategorized} ctx={ctx} /> : null}
+          </>
+        ) : null}
       </section>
 
       <section data-testid="plan-section-expense" className="flex flex-col gap-1 px-1 py-1">
         {rows.expense.folders.map((f) => (
-          <FolderRows key={f.folder.id} section={f} ctx={ctx} />
+          <FolderRows
+            key={f.folder.id}
+            section={f}
+            ctx={ctx}
+            hideEmpty={hideEmpty}
+            folded={folded(f.folder.id)}
+            revealed={revealedSections.has(f.folder.id)}
+            onToggleFold={togglePlanFold}
+            onReveal={() => revealSection(f.folder.id)}
+          />
         ))}
-        {rows.expense.loose.map((r) => (
+        {expenseLoose.map((r) => (
           <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
         ))}
         {rows.expense.uncategorized ? <ElementRow key={rowKey(rows.expense.uncategorized)} row={rows.expense.uncategorized} ctx={ctx} /> : null}
+        {expenseHiddenCount > 0 ? (
+          <div className="px-2 pb-1">
+            <HiddenRowsNotice count={expenseHiddenCount} onShow={() => revealSection('expense')} />
+          </div>
+        ) : null}
       </section>
 
       {rows.archived.length > 0 ? (
         <section data-testid="plan-section-archived" className="flex flex-col gap-1 px-1 py-1">
-          <SectionHeader label={t('budgets.page.plan.section.archived')} />
-          {rows.archived.map((r) => (
-            <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-          ))}
+          <SectionHeader
+            label={t('budgets.page.plan.section.archived')}
+            foldKey="archived"
+            folded={folded('archived')}
+            onToggleFold={togglePlanFold}
+            hiddenCount={0}
+            onShow={() => {}}
+          />
+          {!folded('archived')
+            ? rows.archived.map((r) => <ElementRow key={rowKey(r)} row={r} ctx={ctx} />)
+            : null}
         </section>
       ) : null}
 

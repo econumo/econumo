@@ -186,6 +186,56 @@ it('totals block renders income/expenses/net pairs and the running balance', asy
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
 
+it('folding a section header collapses its rows and persists', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  const { unmount } = renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Essentials' }))
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  expect(useBudgetPeriodStore.getState().planFolds.bf1).toBe(true)
+
+  unmount()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+})
+
+it('hide-empty removes dormant rows, shows the per-section count, Show reveals them', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
+  expect(screen.getByText('1 hidden')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Show' }))
+  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
+  expect(screen.queryByText('1 hidden')).not.toBeInTheDocument()
+})
+
+it('the hide-empty toggle fires its metric once, not double-fired by the sheet', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  vi.mocked(trackEvent).mockClear()
+  await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_HIDE_EMPTY_TOGGLE)
+  expect(trackEvent).toHaveBeenCalledTimes(1)
+})
+
 it('uncategorized and child cells are not editable; guest role sees no editors', async () => {
   const guestBudget = {
     ...fixtureWireBudget,
