@@ -165,7 +165,10 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}
-	// Task 4 adds: incomeRows, err := s.read.IncomeByMonth(...)
+	incomeRows, err := s.read.IncomeByMonth(ctx, f.includedAccountIDs, monthsList[0], windowEnd)
+	if err != nil {
+		return model.PlanStructureResult{}, err
+	}
 
 	// planned lookup: elementKey -> per-month amount strings.
 	limits := map[string][]string{}
@@ -228,8 +231,6 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 			}
 		}
 	}
-	_ = incomeChildOf // consumed in the income walk (Task 4)
-
 	toConvert := map[string][]model.ConvertItem{}
 	addActual := func(el *planElement, i int, index string, amount vo.DecimalNumber, currencyID vo.Id, to vo.Id) {
 		item := model.ConvertItem{
@@ -242,28 +243,35 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 
 	var elements []*planElement
 
-	// --- expense envelopes (income envelopes: Task 4) ---
+	// --- envelopes, both sides ---
 	for _, env := range b.envelopes {
+		typ := model.ElementEnvelope
+		catSource := f.categories
+		childTyp := model.ElementCategory
+		childOf := expenseChildOf
 		if envelopeType[env.ID.String()] == model.ElementIncomeEnvelope {
-			continue // Task 4
+			typ = model.ElementIncomeEnvelope
+			catSource = f.incomeCategories
+			childTyp = model.ElementIncomeCategory
+			childOf = incomeChildOf
 		}
-		index := elementKey(env.ID.String(), model.ElementEnvelope)
+		index := elementKey(env.ID.String(), typ)
 		el := &planElement{
-			id: env.ID.String(), typ: model.ElementEnvelope, name: env.Name, icon: env.Icon,
+			id: env.ID.String(), typ: typ, name: env.Name, icon: env.Icon,
 			ownerID: nil, currencyID: elementCurrency(index), isArchived: env.IsArchived,
 			folderID: optFolder(options[index]), sortKey: optSortKey(options[index]),
 			planned: plannedFor(index),
 		}
 		for _, catID := range envelopeCats[env.ID.String()] {
-			if expenseChildOf[catID] != env.ID.String() {
-				continue // claimed by an earlier envelope: first-envelope-wins, matches where spending is filed
+			if childOf[catID] != env.ID.String() {
+				continue // claimed by an earlier envelope, or wrong side: first-envelope-wins, matches where spending is filed
 			}
-			cat, ok := f.categories[catID]
+			cat, ok := catSource[catID]
 			if !ok {
-				continue // income or non-participant: renders on its own side
+				continue // wrong side or non-participant: renders on its own side
 			}
 			el.children = append(el.children, planChild{
-				id: catID, typ: model.ElementCategory, name: cat.Name, icon: cat.Icon,
+				id: catID, typ: childTyp, name: cat.Name, icon: cat.Icon,
 				ownerID: cat.OwnerID, isArchived: cat.IsArchived,
 			})
 		}
@@ -309,6 +317,28 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 	elements = append(elements, expenseUncat)
 
+	incomeCatEls := map[string]*planElement{}
+	for catIDStr, cat := range f.incomeCategories {
+		if _, inEnvelope := incomeChildOf[catIDStr]; inEnvelope {
+			continue
+		}
+		index := elementKey(catIDStr, model.ElementIncomeCategory)
+		el := &planElement{
+			id: catIDStr, typ: model.ElementIncomeCategory, name: cat.Name, icon: cat.Icon,
+			ownerID: strPtr(cat.OwnerID), currencyID: elementCurrency(index), isArchived: cat.IsArchived,
+			folderID: optFolder(options[index]), sortKey: optSortKey(options[index]),
+			planned: plannedFor(index),
+		}
+		incomeCatEls[catIDStr] = el
+		elements = append(elements, el)
+	}
+	incomeUncat := &planElement{
+		id: model.UncategorizedID, typ: model.ElementIncomeCategory,
+		name: model.UncategorizedName, icon: model.UncategorizedIcon,
+		currencyID: budgetCurrencyID, sortLast: true, planned: make([]string, nMonths),
+	}
+	elements = append(elements, incomeUncat)
+
 	// --- file the expense spending rows ---
 	for _, row := range spendRows {
 		i, ok := monthIdx[row.Month]
@@ -351,7 +381,45 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 	}
 
-	// Task 4 files the income rows here.
+	for _, row := range incomeRows {
+		i, ok := monthIdx[row.Month]
+		if !ok {
+			continue
+		}
+		cid, perr := vo.ParseId(row.CurrencyID)
+		if perr != nil {
+			return model.PlanStructureResult{}, perr
+		}
+		amount := vo.NewDecimal(row.Amount)
+		// Rows with no category — or a category that is not a participant
+		// income category — land in the income Uncategorized row, so no income
+		// ever vanishes from the sheet's Balance math.
+		catID := ""
+		if row.CategoryID != nil {
+			catID = *row.CategoryID
+		}
+		if catID == "" || (f.incomeCategories[catID].ID == "" && incomeChildOf[catID] == "") {
+			addActual(incomeUncat, i, elementKey(model.UncategorizedID, model.ElementIncomeCategory), amount, cid, budgetCurrencyID)
+			continue
+		}
+		if envID, inEnvelope := incomeChildOf[catID]; inEnvelope {
+			parent := elementByID[envID]
+			parentIndex := elementKey(envID, model.ElementIncomeEnvelope)
+			addActual(parent, i, parentIndex, amount, cid, parent.currencyID)
+			subIndex := elementKey(catID, model.ElementIncomeCategory)
+			toConvert[planChildKey(i, parentIndex, subIndex)] = append(toConvert[planChildKey(i, parentIndex, subIndex)], model.ConvertItem{
+				PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0),
+				From: cid, To: parent.currencyID, Amount: amount,
+			})
+			for ci := range parent.children {
+				if parent.children[ci].id == catID {
+					parent.children[ci].hasActual = true
+				}
+			}
+		} else if el, ok := incomeCatEls[catID]; ok {
+			addActual(el, i, elementKey(catID, model.ElementIncomeCategory), amount, cid, el.currencyID)
+		}
+	}
 
 	converted, err := s.convertor.BulkConvert(ctx, monthsList[0], windowEnd, toConvert)
 	if err != nil {

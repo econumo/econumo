@@ -337,3 +337,153 @@ func TestGetBudgetPlan_RequiresMembership(t *testing.T) {
 	}
 	_ = json.RawMessage(env.raw)
 }
+
+// TestGetBudgetPlan_IncomeRows: income envelope with child cells, standalone
+// income category, income-side Uncategorized, planned income from set-limit.
+func TestGetBudgetPlan_IncomeRows(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const salaryCatID = "cccc2222-0000-7000-8000-0000000000c1"
+	const bonusCatID = "cccc2222-0000-7000-8000-0000000000c2"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: salaryCatID, UserID: seedUserID, Name: "Salary", Type: 1, Icon: "payments"})
+	f.Category(fixture.Category{ID: bonusCatID, UserID: seedUserID, Name: "Bonus", Type: 1, Icon: "star"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Income Plan Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	const incomeEnvID = "beee2222-0000-7000-8000-0000000000c1"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
+		"currencyId": usdID, "folderId": nil, "side": "income", "categories": []string{salaryCatID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create income envelope = %d; body=%s", st, env.raw)
+	}
+
+	// Income transactions: salary Apr+May, bonus May, category-less June.
+	f.Transaction(fixture.Transaction{ID: "d0003222-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: salaryCatID, Type: 1, Amount: "1000.00000000", SpentAt: "2024-04-05 08:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0003222-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		CategoryID: salaryCatID, Type: 1, Amount: "1100.00000000", SpentAt: "2024-05-05 08:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0003222-0000-7000-8000-000000000003", UserID: seedUserID, AccountID: accountID,
+		CategoryID: bonusCatID, Type: 1, Amount: "200.00000000", SpentAt: "2024-05-15 08:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0003222-0000-7000-8000-000000000004", UserID: seedUserID, AccountID: accountID,
+		Type: 1, Amount: "50.00000000", SpentAt: "2024-06-06 08:00:00"})
+
+	// Planned income: envelope May=1500, standalone bonus May=250.
+	for _, l := range []struct{ id, amount string }{{incomeEnvID, "1500"}, {bonusCatID, "250"}} {
+		st, env = h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
+			"budgetId": budgetID1, "elementId": l.id, "period": "2024-05-01", "amount": l.amount,
+		})
+		if st != http.StatusOK {
+			t.Fatalf("set-limit %s = %d; body=%s", l.id, st, env.raw)
+		}
+	}
+
+	st, env = getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=3")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+
+	rows := map[string][]model.PlanElementResult{}
+	for _, el := range item.Structure.Elements {
+		rows[el.Id] = append(rows[el.Id], el)
+	}
+
+	// Income envelope: type 4, child salary cells, planned May=1500.
+	envRows := rows[incomeEnvID]
+	if len(envRows) != 1 || envRows[0].Type != 4 {
+		t.Fatalf("income envelope rows = %+v", envRows)
+	}
+	er := envRows[0]
+	if !decEq(er.Cells[0].Actual, "1000") || !decEq(er.Cells[1].Actual, "1100") || !decEq(er.Cells[1].Planned, "1500") {
+		t.Errorf("income envelope cells = %+v", er.Cells)
+	}
+	if len(er.Children) != 1 || er.Children[0].Id != salaryCatID || er.Children[0].Type != 3 {
+		t.Fatalf("income envelope children = %+v", er.Children)
+	}
+	if !decEq(er.Children[0].Cells[1].Actual, "1100") {
+		t.Errorf("salary child cells = %+v", er.Children[0].Cells)
+	}
+
+	// Standalone income category: type 3, May actual 200 + planned 250.
+	bonusRows := rows[bonusCatID]
+	if len(bonusRows) != 1 || bonusRows[0].Type != 3 {
+		t.Fatalf("bonus rows = %+v", bonusRows)
+	}
+	if !decEq(bonusRows[0].Cells[1].Actual, "200") || !decEq(bonusRows[0].Cells[1].Planned, "250") {
+		t.Errorf("bonus cells = %+v", bonusRows[0].Cells)
+	}
+	// Salary must not ALSO appear standalone.
+	if len(rows[salaryCatID]) != 0 {
+		t.Errorf("income envelope child must not surface standalone")
+	}
+
+	// TWO Uncategorized rows can coexist (same id, distinguished by type).
+	var uncatTypes []int
+	for _, u := range rows[model.UncategorizedID] {
+		uncatTypes = append(uncatTypes, u.Type)
+	}
+	if len(uncatTypes) != 1 || uncatTypes[0] != 3 {
+		// only the income one exists here (no uncategorized EXPENSE in this test)
+		t.Fatalf("uncategorized rows types = %v, want [3]", uncatTypes)
+	}
+	for _, u := range rows[model.UncategorizedID] {
+		if u.Type == 3 && !decEq(u.Cells[2].Actual, "50") {
+			t.Errorf("income uncategorized cells = %+v", u.Cells)
+		}
+	}
+}
+
+// TestGetBudgetPlan_DirtyCrossSideLink: a stored income-category link on an
+// EXPENSE envelope (pre-migration residue, unreachable via the API) must not
+// trap the category — it renders as a standalone income row and the envelope
+// shows no such child.
+func TestGetBudgetPlan_DirtyCrossSideLink(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const salaryCatID = "cccc2222-0000-7000-8000-0000000000c3"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: salaryCatID, UserID: seedUserID, Name: "Salary Dirty", Type: 1, Icon: "payments"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Dirty Link Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	const envID = "beee2222-0000-7000-8000-0000000000c3"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": envID, "name": "Expenses", "icon": "cart",
+		"currencyId": usdID, "folderId": nil, "categories": []string{},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create-envelope = %d; body=%s", st, env.raw)
+	}
+	// Force the dirty link past the write-path validation.
+	if _, err := h.db.Exec(`INSERT INTO budgets_envelopes_categories (budget_envelope_id, category_id) VALUES (?, ?)`, envID, salaryCatID); err != nil {
+		t.Fatalf("force dirty link: %v", err)
+	}
+
+	st, env = getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=2")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+	var sawSalaryStandalone, sawSalaryAsChild bool
+	for _, el := range item.Structure.Elements {
+		if el.Id == salaryCatID && el.Type == 3 {
+			sawSalaryStandalone = true
+		}
+		for _, ch := range el.Children {
+			if ch.Id == salaryCatID {
+				sawSalaryAsChild = true
+			}
+		}
+	}
+	if !sawSalaryStandalone || sawSalaryAsChild {
+		t.Fatalf("dirty link: standalone=%v asChild=%v; want standalone income row only. body=%s",
+			sawSalaryStandalone, sawSalaryAsChild, env.Data)
+	}
+}
