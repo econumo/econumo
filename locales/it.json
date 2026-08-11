@@ -1363,8 +1363,8 @@
       "invalid_element_type_alias": "Il tipo di elemento del budget con alias {alias} non esiste",
       "invalid_role_alias": "Il ruolo utente del budget con alias {alias} non esiste",
       "transaction_filter_required": "Convalida non riuscita",
-      "envelope_side_mixed": "Una busta non può mescolare categorie di reddito e spese",
-      "folder_side_mixed": "Gli elementi di reddito e spesa non possono condividere una cartella"
+      "envelope_side_mixed": "Una busta non può mescolare categorie di entrata e di uscita",
+      "folder_side_mixed": "Gli elementi di entrata e uscita non possono condividere una cartella"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",
