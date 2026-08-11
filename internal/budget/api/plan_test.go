@@ -113,6 +113,132 @@ func TestGetBudgetPlan_Validation(t *testing.T) {
 	}
 }
 
+// TestGetBudgetPlan_ExpenseCells: envelope parent/child cells, tag rows, the
+// standalone category, the Uncategorized row, planned-from-limit cells and
+// month alignment — all in one window.
+func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const rentCatID = "cccc2222-0000-7000-8000-0000000000c0"
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Category(fixture.Category{ID: rentCatID, UserID: seedUserID, Name: "Rent", Type: 0, Icon: "home"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Cells Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	// Envelope over the seeded expense category catID ("Food").
+	const envID = "beee2222-0000-7000-8000-0000000000c0"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": envID, "name": "Living", "icon": "cart",
+		"currencyId": usdID, "folderId": nil, "categories": []string{catID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create-envelope = %d; body=%s", st, env.raw)
+	}
+
+	// Transactions: Food in Apr + May, tagged expense in May, uncategorized in
+	// May, Rent untouched (still visible: non-archived standalone).
+	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "40.00000000", SpentAt: "2024-04-10 10:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "60.00000000", SpentAt: "2024-05-02 09:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000003", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, TagID: tagID, Type: 0, Amount: "15.00000000", SpentAt: "2024-05-20 12:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0002222-0000-7000-8000-000000000004", UserID: seedUserID, AccountID: accountID,
+		Type: 0, Amount: "5.00000000", SpentAt: "2024-05-21 12:00:00"})
+
+	// Limits: envelope Apr=100, May=120; Rent May=300.
+	for _, l := range []struct{ id, period, amount string }{
+		{envID, "2024-04-01", "100"}, {envID, "2024-05-01", "120"}, {rentCatID, "2024-05-01", "300"},
+	} {
+		st, env = h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
+			"budgetId": budgetID1, "elementId": l.id, "period": l.period, "amount": l.amount,
+		})
+		if st != http.StatusOK {
+			t.Fatalf("set-limit %s %s = %d; body=%s", l.id, l.period, st, env.raw)
+		}
+	}
+
+	st, env = getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=3")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+
+	byID := map[string]model.PlanElementResult{}
+	for _, el := range item.Structure.Elements {
+		byID[el.Id] = el
+	}
+
+	// Envelope: parent actual = child (Food) totals; planned from its limits.
+	envRow, ok := byID[envID]
+	if !ok {
+		t.Fatalf("envelope row missing; elements=%s", env.Data)
+	}
+	if len(envRow.Cells) != 3 {
+		t.Fatalf("envelope cells = %d, want 3", len(envRow.Cells))
+	}
+	for i, want := range []struct{ actual, planned string }{
+		{"40", "100"}, {"60", "120"}, {"0", ""},
+	} {
+		c := envRow.Cells[i]
+		if !decEq(c.Actual, want.actual) {
+			t.Errorf("envelope cell[%d].actual = %q want %q", i, c.Actual, want.actual)
+		}
+		if want.planned == "" && c.Planned != "" {
+			t.Errorf("envelope cell[%d].planned = %q want empty", i, c.Planned)
+		}
+		if want.planned != "" && !decEq(c.Planned, want.planned) {
+			t.Errorf("envelope cell[%d].planned = %q want %q", i, c.Planned, want.planned)
+		}
+	}
+	if len(envRow.Children) != 1 || envRow.Children[0].Id != catID {
+		t.Fatalf("envelope children = %+v", envRow.Children)
+	}
+	if !decEq(envRow.Children[0].Cells[0].Actual, "40") || !decEq(envRow.Children[0].Cells[1].Actual, "60") {
+		t.Errorf("child cells = %+v", envRow.Children[0].Cells)
+	}
+
+	// Tag row: leaf, May actual 15 (the tagged row belongs to the tag, not Food).
+	tagRow, ok := byID[tagID]
+	if !ok {
+		t.Fatalf("tag row missing")
+	}
+	if len(tagRow.Children) != 0 {
+		t.Errorf("tag rows are leaves in the plan; children=%+v", tagRow.Children)
+	}
+	if !decEq(tagRow.Cells[1].Actual, "15") {
+		t.Errorf("tag May actual = %q", tagRow.Cells[1].Actual)
+	}
+
+	// Standalone non-archived category with no activity still shows, planned May=300.
+	rentRow, ok := byID[rentCatID]
+	if !ok {
+		t.Fatalf("standalone category row missing")
+	}
+	if !decEq(rentRow.Cells[1].Planned, "300") || !decEq(rentRow.Cells[0].Actual, "0") {
+		t.Errorf("rent cells = %+v", rentRow.Cells)
+	}
+
+	// Uncategorized: actual-only May=5, planned always "".
+	uncat, ok := byID[model.UncategorizedID]
+	if !ok {
+		t.Fatalf("uncategorized row missing")
+	}
+	if uncat.Type != 1 {
+		t.Errorf("uncategorized type = %d want 1", uncat.Type)
+	}
+	if !decEq(uncat.Cells[1].Actual, "5") || uncat.Cells[1].Planned != "" {
+		t.Errorf("uncategorized cells = %+v", uncat.Cells)
+	}
+
+	// Food must NOT appear standalone (it lives inside the envelope).
+	if _, dup := byID[catID]; dup {
+		t.Errorf("envelope child must not surface as a standalone row")
+	}
+}
+
 // TestGetBudgetPlan_RequiresMembership: a non-member gets the standard 403.
 func TestGetBudgetPlan_RequiresMembership(t *testing.T) {
 	h := newHarness(t)
