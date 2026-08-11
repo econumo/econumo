@@ -255,6 +255,9 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 			planned: plannedFor(index),
 		}
 		for _, catID := range envelopeCats[env.ID.String()] {
+			if expenseChildOf[catID] != env.ID.String() {
+				continue // claimed by an earlier envelope: first-envelope-wins, matches where spending is filed
+			}
 			cat, ok := f.categories[catID]
 			if !ok {
 				continue // income or non-participant: renders on its own side

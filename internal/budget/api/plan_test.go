@@ -239,6 +239,88 @@ func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
 	}
 }
 
+// TestGetBudgetPlan_EnvelopeCategoryDedup: a category claimed by two envelopes
+// (the write path never enforces cross-envelope uniqueness) must surface as a
+// child of exactly one — the first-owning envelope, matching where its
+// spending is filed — never doubled, and never standalone.
+func TestGetBudgetPlan_EnvelopeCategoryDedup(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Dedup Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	const envAID = "beee3333-0000-7000-8000-0000000000d0"
+	const envBID = "beee4444-0000-7000-8000-0000000000d1"
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": envAID, "name": "Living A", "icon": "cart",
+		"currencyId": usdID, "folderId": nil, "categories": []string{catID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create-envelope A = %d; body=%s", st, env.raw)
+	}
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": envBID, "name": "Living B", "icon": "cart",
+		"currencyId": usdID, "folderId": nil, "categories": []string{},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("create-envelope B = %d; body=%s", st, env.raw)
+	}
+	// The write path accepts a category already claimed by another envelope —
+	// nothing enforces cross-envelope uniqueness.
+	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
+		"budgetId": budgetID1, "id": envBID, "name": "Living B", "icon": "cart",
+		"currencyId": usdID, "isArchived": 0, "categories": []string{catID},
+	})
+	if st != http.StatusOK {
+		t.Fatalf("update-envelope B = %d; body=%s", st, env.raw)
+	}
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Transaction(fixture.Transaction{ID: "d0003333-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "40.00000000", SpentAt: "2024-04-10 10:00:00"})
+
+	st, env = getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=1")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+
+	byID := map[string]model.PlanElementResult{}
+	for _, el := range item.Structure.Elements {
+		byID[el.Id] = el
+	}
+
+	envA, ok := byID[envAID]
+	if !ok {
+		t.Fatalf("envelope A missing; elements=%+v", item.Structure.Elements)
+	}
+	if len(envA.Children) != 1 || envA.Children[0].Id != catID {
+		t.Fatalf("envelope A children = %+v, want exactly [catID]", envA.Children)
+	}
+	if !decEq(envA.Children[0].Cells[0].Actual, "40") {
+		t.Errorf("envelope A child actual = %q want 40", envA.Children[0].Cells[0].Actual)
+	}
+	if !decEq(envA.Cells[0].Actual, "40") {
+		t.Errorf("envelope A actual = %q want 40", envA.Cells[0].Actual)
+	}
+
+	envB, ok := byID[envBID]
+	if !ok {
+		t.Fatalf("envelope B missing; elements=%+v", item.Structure.Elements)
+	}
+	if len(envB.Children) != 0 {
+		t.Errorf("envelope B children = %+v, want none (category claimed by A)", envB.Children)
+	}
+	if !decEq(envB.Cells[0].Actual, "0") {
+		t.Errorf("envelope B actual = %q want 0", envB.Cells[0].Actual)
+	}
+
+	if _, dup := byID[catID]; dup {
+		t.Errorf("category must not surface as a standalone row")
+	}
+}
+
 // TestGetBudgetPlan_RequiresMembership: a non-member gets the standard 403.
 func TestGetBudgetPlan_RequiresMembership(t *testing.T) {
 	h := newHarness(t)
