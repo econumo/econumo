@@ -212,9 +212,11 @@ never reconcile with the opening balances. All existing wire conventions hold
 escaping off).
 
 - `openingBalances` — per-currency account balances at the start of `months[0]`,
-  computed by the budget read repo's `AccountsBalancesOnDate` (already takes an
-  arbitrary as-of date and the excluded-accounts-respecting
-  `includedAccountIDs`). Seeds the client-side Balance row.
+  computed by the budget read repo's `AccountsBalancesBeforeDate` (strictly
+  before the window start — the Balance row adds month nets on top, so the
+  boundary instant must not appear in both; already takes an arbitrary as-of
+  date and the excluded-accounts-respecting `includedAccountIDs`). Seeds the
+  client-side Balance row.
 - `currencyRates` — the existing per-period average-rate computation, once per
   month in the window. Future months are already handled: `AverageRates` snaps
   to the latest published rate's month, so every month in the window carries

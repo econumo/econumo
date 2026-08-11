@@ -671,16 +671,20 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 	month := r.planMonthExpr("t.spent_at")
 	var sql string
 	var args []any
+	// INNER JOIN: every income row's account must be one of accountIDs (the
+	// Go side no longer needs to discard NULL-currency groups from a
+	// LEFT JOIN mismatch — the filter now drives the scan directly, same
+	// shape as CountSpending/SpendingByMonth's account predicate).
 	if r.driver == "postgresql" {
 		accIn := r.ph(1, len(accArgs))
 		dStart := "$" + itoa(1+len(accArgs))
 		dEnd := "$" + itoa(2+len(accArgs))
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, t.category_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, from, to)
 	} else {
 		accIn := r.ph(1, len(accArgs))
-		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, a.currency_id"
+		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, a.currency_id"
 		args = append(args, accArgs...)
 		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))

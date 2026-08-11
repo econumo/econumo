@@ -28,8 +28,11 @@ func planItem(t *testing.T, env envelope) model.BudgetPlanResult {
 	return res.Item
 }
 
-// TestGetBudgetPlan_SkeletonShape: months list, meta, openingBalances,
-// per-month currencyRates and folders — the response frame Tasks 3-4 fill.
+// TestGetBudgetPlan_SkeletonShape pins the response frame fields: months,
+// meta, openingBalances, per-month currencyRates and folders. The harness's
+// seeded category makes structure.elements non-empty, so this test only
+// asserts the frame — the elements themselves are covered by the cell tests
+// below.
 func TestGetBudgetPlan_SkeletonShape(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -74,8 +77,8 @@ func TestGetBudgetPlan_SkeletonShape(t *testing.T) {
 	if len(item.Structure.Folders) != 1 || item.Structure.Folders[0].Id != folderID2 || item.Structure.Folders[0].Position != 0 {
 		t.Errorf("folders = %+v", item.Structure.Folders)
 	}
-	if item.Structure.Elements == nil {
-		t.Errorf("structure.elements must be [] not null")
+	if len(item.Structure.Elements) == 0 {
+		t.Errorf("structure.elements must be non-empty: the harness seeds a standalone category")
 	}
 }
 
@@ -239,10 +242,60 @@ func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
 	}
 }
 
+// TestGetBudgetPlan_OpeningBalanceExcludesWindowBoundary: a transaction dated
+// exactly at the window start's midnight must count toward month 0's actual
+// cell (whose window is [from, from+1mo)) and must NOT also inflate the
+// opening balance (which must be strictly before from) — otherwise the
+// client's chained Balance row (seed + monthly nets) double-counts it.
+func TestGetBudgetPlan_OpeningBalanceExcludesWindowBoundary(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Boundary Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+
+	// Pre-window income: seeds a non-zero opening balance.
+	f.Transaction(fixture.Transaction{ID: "d0004444-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
+		Type: 1, Amount: "500.00000000", SpentAt: "2024-03-15 10:00:00"})
+	// Dated exactly at the window start's midnight: must land in month 0's
+	// actual cell, must NOT also land in the opening balance.
+	f.Transaction(fixture.Transaction{ID: "d0004444-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: accountID,
+		CategoryID: catID, Type: 0, Amount: "40.00000000", SpentAt: "2024-04-01 00:00:00"})
+
+	st, env := getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=1")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+
+	if len(item.OpeningBalances) != 1 || !decEq(item.OpeningBalances[0].Amount, "500") {
+		t.Fatalf("openingBalances = %+v, want [500] (the midnight expense must not be included)", item.OpeningBalances)
+	}
+
+	byID := map[string]model.PlanElementResult{}
+	for _, el := range item.Structure.Elements {
+		byID[el.Id] = el
+	}
+	foodRow, ok := byID[catID]
+	if !ok {
+		t.Fatalf("Food category row missing; elements=%+v", item.Structure.Elements)
+	}
+	if !decEq(foodRow.Cells[0].Actual, "40") {
+		t.Errorf("month0 actual = %q, want 40 (the midnight expense must count here)", foodRow.Cells[0].Actual)
+	}
+}
+
 // TestGetBudgetPlan_EnvelopeCategoryDedup: a category claimed by two envelopes
 // (the write path never enforces cross-envelope uniqueness) must surface as a
-// child of exactly one — the first-owning envelope, matching where its
-// spending is filed — never doubled, and never standalone.
+// child of exactly one — the LOWEST-ID envelope wins, deterministically,
+// regardless of creation order or the DB's (unordered) ListEnvelopes row
+// order — never doubled, and never standalone. The envelope with the higher
+// id is created and claims the category FIRST, and the lower-id envelope
+// claims it SECOND via a later update: if ownership followed creation/DB
+// order (the pre-fix behavior), the higher-id envelope would win; the fix
+// requires the lower-id envelope to win instead.
 func TestGetBudgetPlan_EnvelopeCategoryDedup(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
@@ -250,30 +303,30 @@ func TestGetBudgetPlan_EnvelopeCategoryDedup(t *testing.T) {
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
 		map[string]any{"id": budgetID1, "name": "Dedup Budget", "currencyId": usdID, "startDate": "2024-04-01"})
 
-	const envAID = "beee3333-0000-7000-8000-0000000000d0"
-	const envBID = "beee4444-0000-7000-8000-0000000000d1"
+	const envHighID = "feee3333-0000-7000-8000-0000000000d0" // created first, claims catID first
+	const envLowID = "1eee4444-0000-7000-8000-0000000000d1"  // lower id; created second, claims catID second
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
-		"budgetId": budgetID1, "id": envAID, "name": "Living A", "icon": "cart",
+		"budgetId": budgetID1, "id": envHighID, "name": "Living High", "icon": "cart",
 		"currencyId": usdID, "folderId": nil, "categories": []string{catID},
 	})
 	if st != http.StatusOK {
-		t.Fatalf("create-envelope A = %d; body=%s", st, env.raw)
+		t.Fatalf("create-envelope high = %d; body=%s", st, env.raw)
 	}
 	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
-		"budgetId": budgetID1, "id": envBID, "name": "Living B", "icon": "cart",
+		"budgetId": budgetID1, "id": envLowID, "name": "Living Low", "icon": "cart",
 		"currencyId": usdID, "folderId": nil, "categories": []string{},
 	})
 	if st != http.StatusOK {
-		t.Fatalf("create-envelope B = %d; body=%s", st, env.raw)
+		t.Fatalf("create-envelope low = %d; body=%s", st, env.raw)
 	}
 	// The write path accepts a category already claimed by another envelope —
 	// nothing enforces cross-envelope uniqueness.
 	st, env = h.do(t, http.MethodPost, "/api/v1/budget/update-envelope", tok, map[string]any{
-		"budgetId": budgetID1, "id": envBID, "name": "Living B", "icon": "cart",
+		"budgetId": budgetID1, "id": envLowID, "name": "Living Low", "icon": "cart",
 		"currencyId": usdID, "isArchived": 0, "categories": []string{catID},
 	})
 	if st != http.StatusOK {
-		t.Fatalf("update-envelope B = %d; body=%s", st, env.raw)
+		t.Fatalf("update-envelope low = %d; body=%s", st, env.raw)
 	}
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
@@ -291,29 +344,29 @@ func TestGetBudgetPlan_EnvelopeCategoryDedup(t *testing.T) {
 		byID[el.Id] = el
 	}
 
-	envA, ok := byID[envAID]
+	envLow, ok := byID[envLowID]
 	if !ok {
-		t.Fatalf("envelope A missing; elements=%+v", item.Structure.Elements)
+		t.Fatalf("lower-id envelope missing; elements=%+v", item.Structure.Elements)
 	}
-	if len(envA.Children) != 1 || envA.Children[0].Id != catID {
-		t.Fatalf("envelope A children = %+v, want exactly [catID]", envA.Children)
+	if len(envLow.Children) != 1 || envLow.Children[0].Id != catID {
+		t.Fatalf("lower-id envelope children = %+v, want exactly [catID]", envLow.Children)
 	}
-	if !decEq(envA.Children[0].Cells[0].Actual, "40") {
-		t.Errorf("envelope A child actual = %q want 40", envA.Children[0].Cells[0].Actual)
+	if !decEq(envLow.Children[0].Cells[0].Actual, "40") {
+		t.Errorf("lower-id envelope child actual = %q want 40", envLow.Children[0].Cells[0].Actual)
 	}
-	if !decEq(envA.Cells[0].Actual, "40") {
-		t.Errorf("envelope A actual = %q want 40", envA.Cells[0].Actual)
+	if !decEq(envLow.Cells[0].Actual, "40") {
+		t.Errorf("lower-id envelope actual = %q want 40", envLow.Cells[0].Actual)
 	}
 
-	envB, ok := byID[envBID]
+	envHigh, ok := byID[envHighID]
 	if !ok {
-		t.Fatalf("envelope B missing; elements=%+v", item.Structure.Elements)
+		t.Fatalf("higher-id envelope missing; elements=%+v", item.Structure.Elements)
 	}
-	if len(envB.Children) != 0 {
-		t.Errorf("envelope B children = %+v, want none (category claimed by A)", envB.Children)
+	if len(envHigh.Children) != 0 {
+		t.Errorf("higher-id envelope children = %+v, want none (category owned by the lower id)", envHigh.Children)
 	}
-	if !decEq(envB.Cells[0].Actual, "0") {
-		t.Errorf("envelope B actual = %q want 0", envB.Cells[0].Actual)
+	if !decEq(envHigh.Cells[0].Actual, "0") {
+		t.Errorf("higher-id envelope actual = %q want 0", envHigh.Cells[0].Actual)
 	}
 
 	if _, dup := byID[catID]; dup {
@@ -485,5 +538,77 @@ func TestGetBudgetPlan_DirtyCrossSideLink(t *testing.T) {
 	if !sawSalaryStandalone || sawSalaryAsChild {
 		t.Fatalf("dirty link: standalone=%v asChild=%v; want standalone income row only. body=%s",
 			sawSalaryStandalone, sawSalaryAsChild, env.Data)
+	}
+}
+
+// TestGetBudgetPlan_PerMonthRateConversion: a EUR expense in the Food
+// category (a plain USD-budget row, so conversion cannot short-circuit) posted
+// in two different window months, each month publishing a DIFFERENT EUR->USD
+// average rate, must convert with ITS OWN month's rate — not a single
+// window-wide rate. Mirrors two_currency_test.go's fixture approach
+// (currency + per-date fixture.Rate rows), but across two months instead of
+// one.
+func TestGetBudgetPlan_PerMonthRateConversion(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+
+	const planEurID = "eeee2222-0000-7000-8000-000000000e34"
+	const planEurAcctID = "aaaa3333-0000-7000-8000-000000000003"
+
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+	f.Currency(fixture.Currency{ID: planEurID, Code: "EUR", Symbol: "E"})
+	// Jan 2026: AVG(0.90, 0.92) = 0.91. Feb 2026: AVG(0.80, 0.84) = 0.82 —
+	// deliberately different from Jan's, so a bug that reused one rate across
+	// the whole window would produce identical conversions for both months.
+	for _, r := range []struct{ id, date, rate string }{
+		{"20000000-0000-7000-8000-000000000011", "2026-01-10", "0.90"},
+		{"20000000-0000-7000-8000-000000000012", "2026-01-20", "0.92"},
+		{"20000000-0000-7000-8000-000000000013", "2026-02-10", "0.80"},
+		{"20000000-0000-7000-8000-000000000014", "2026-02-20", "0.84"},
+	} {
+		f.Rate(fixture.Rate{ID: r.id, CurrencyID: planEurID, BaseCurrencyID: usdID, Rate: r.rate, PublishedAt: r.date})
+	}
+	f.Account(fixture.Account{ID: planEurAcctID, UserID: seedUserID, CurrencyID: planEurID, Name: "Euro Plan"})
+	f.AccountInFolder(folderID, planEurAcctID)
+	f.AccountOption(planEurAcctID, seedUserID, 1)
+
+	// A 100 EUR Food expense in each month; the element (Food, standalone
+	// category) carries the budget's own USD currency, so BulkConvert must
+	// actually convert rather than pass the amount through unchanged.
+	f.Transaction(fixture.Transaction{ID: "d0005555-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: planEurAcctID,
+		CategoryID: catID, Type: 0, Amount: "100.00", SpentAt: "2026-01-15 12:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0005555-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: planEurAcctID,
+		CategoryID: catID, Type: 0, Amount: "100.00", SpentAt: "2026-02-15 12:00:00"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Rate Plan Budget", "currencyId": usdID, "startDate": "2026-01-01"})
+
+	st, env := getPlan(t, h, tok, "id="+budgetID1+"&from=2026-01-01&months=2")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+
+	byID := map[string]model.PlanElementResult{}
+	for _, el := range item.Structure.Elements {
+		byID[el.Id] = el
+	}
+	foodRow, ok := byID[catID]
+	if !ok {
+		t.Fatalf("Food category row missing; elements=%+v", item.Structure.Elements)
+	}
+	if len(foodRow.Cells) != 2 {
+		t.Fatalf("Food cells = %d, want 2", len(foodRow.Cells))
+	}
+	// 100 EUR / 0.91 (Jan avg) = 109.8901... -> 109.89 (USD, 2dp).
+	if !decEq(foodRow.Cells[0].Actual, "109.89") {
+		t.Errorf("Jan actual = %q, want 109.89 (100 EUR / 0.91)", foodRow.Cells[0].Actual)
+	}
+	// 100 EUR / 0.82 (Feb avg) = 121.9512... -> 121.95 (USD, 2dp).
+	if !decEq(foodRow.Cells[1].Actual, "121.95") {
+		t.Errorf("Feb actual = %q, want 121.95 (100 EUR / 0.82)", foodRow.Cells[1].Actual)
+	}
+	if decEq(foodRow.Cells[0].Actual, foodRow.Cells[1].Actual) {
+		t.Fatalf("Jan and Feb actuals must differ (different month rates): both = %q", foodRow.Cells[0].Actual)
 	}
 }

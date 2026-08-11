@@ -66,11 +66,14 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 	}, nil
 }
 
-// buildOpeningBalances sums per-currency balances of the included accounts as
-// of the window start, ordered budget currency first then discovery order —
-// the same per-currency ordering rule as the budget page's balances block.
+// buildOpeningBalances sums per-currency balances of the included accounts
+// strictly before the window start, ordered budget currency first then
+// discovery order — the same per-currency ordering rule as the budget page's
+// balances block, but a different date bound: month 0's actual cells cover
+// [from, from+1mo), so the seed must exclude spent_at == from exactly or the
+// Balance row (seed + monthly nets) would double-count that instant.
 func (s *Service) buildOpeningBalances(ctx context.Context, budgetCurrencyID vo.Id, f filters, from time.Time) ([]model.OpeningBalanceResult, error) {
-	rows, err := s.read.AccountsBalancesOnDate(ctx, f.includedAccountIDs, from)
+	rows, err := s.read.AccountsBalancesBeforeDate(ctx, f.includedAccountIDs, from)
 	if err != nil {
 		return nil, err
 	}
@@ -215,9 +218,14 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	// categoryID -> owning envelope external id, split by the ENVELOPE's side:
 	// only side-matching membership hides a category from the top level (a
 	// residual dirty cross-side link must not trap a row invisibly).
+	// Ownership is deterministic regardless of ListEnvelopes' (unordered) row
+	// order: the membership maps are built over an id-sorted copy, so the
+	// lowest envelope id always wins a doubly-claimed category.
+	envelopesByID := append([]*model.BudgetEnvelope(nil), b.envelopes...)
+	sort.Slice(envelopesByID, func(i, j int) bool { return envelopesByID[i].ID.String() < envelopesByID[j].ID.String() })
 	expenseChildOf := map[string]string{}
 	incomeChildOf := map[string]string{}
-	for _, env := range b.envelopes {
+	for _, env := range envelopesByID {
 		income := envelopeType[env.ID.String()] == model.ElementIncomeEnvelope
 		for _, catID := range envelopeCats[env.ID.String()] {
 			if income {
@@ -421,7 +429,16 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 	}
 
-	converted, err := s.convertor.BulkConvert(ctx, monthsList[0], windowEnd, toConvert)
+	// BulkConvert's top-level (periodStart, periodEnd) doubles as month 0's rate
+	// range (its "currentKey" is monthKey(periodStart), so any item dated in
+	// that same month reuses this range instead of getting its own entry — see
+	// BulkConvert's needed-map construction). Passing the WHOLE window here
+	// would make month 0 use the window-wide snapped average (typically the
+	// LATEST month's rate) instead of its own month's average, while every
+	// other month in the window still gets its own correctly-scoped range.
+	// Bounding it to just month 0 keeps that implicit range consistent with
+	// what every other month already gets explicitly.
+	converted, err := s.convertor.BulkConvert(ctx, monthsList[0], monthsList[0].AddDate(0, 1, 0), toConvert)
 	if err != nil {
 		return model.PlanStructureResult{}, err
 	}

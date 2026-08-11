@@ -258,9 +258,13 @@ type PlanElementResult struct {
 	Children    []PlanChildResult `json:"children"`
 }
 
-// OpeningBalanceResult is one currency's real account balance at the window
-// start (transactions dated <= months[0], the same bound as the budget page's
-// startBalance) — the client-side Balance row's seed.
+// OpeningBalanceResult is one currency's real account balance strictly
+// BEFORE the window start (transactions dated < months[0]) — the client-side
+// Balance row's seed. This deliberately differs from the budget page's
+// startBalance bound (<=): the plan's Balance row arithmetically chains this
+// seed to the per-month nets (seed + net(month0) + ...), and month 0's
+// actual cells already cover [months[0], months[0]+1mo), so the boundary
+// instant must not appear in both or it is double-counted.
 type OpeningBalanceResult struct {
 	CurrencyId string `json:"currencyId"`
 	Amount     string `json:"amount"`
