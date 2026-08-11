@@ -197,6 +197,16 @@ func (e *BudgetElement) UpdateFolder(folderID *vo.Id, now time.Time) {
 	}
 }
 
+// UpdateType changes the element's stored type (its side). One row per external
+// id (UNIQUE(budget_id, external_id)) means a side change must be an in-place
+// update — deleting the row would cascade its limits away.
+func (e *BudgetElement) UpdateType(typ ElementType, now time.Time) {
+	if e.Type != typ {
+		e.Type = typ
+		e.UpdatedAt = now
+	}
+}
+
 // BudgetElementLimit is a per-period (month) spending limit on an element.
 type BudgetElementLimit struct {
 	ID        vo.Id
