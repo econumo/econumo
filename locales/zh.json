@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
         },
+        "fill": {
+          "handle_aria": "将计划值复制到后续月份"
+        },
         "totals": {
           "income": "收入",
           "expenses": "支出",

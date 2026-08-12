@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}, {month}: actual {actual}, planned {planned}"
         },
+        "fill": {
+          "handle_aria": "Copy planned value to the following months"
+        },
         "totals": {
           "income": "Income",
           "expenses": "Expenses",

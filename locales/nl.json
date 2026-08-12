@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
         },
+        "fill": {
+          "handle_aria": "Geplande waarde naar de volgende maanden kopiëren"
+        },
         "totals": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",

@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}, {month}: факт {actual}, план {planned}"
         },
+        "fill": {
+          "handle_aria": "Скопіювати планове значення на наступні місяці"
+        },
         "totals": {
           "income": "Доходи",
           "expenses": "Витрати",

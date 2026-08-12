@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -25,6 +25,7 @@ import {
   canUpdateLimits,
   useBudgetPlan,
   useCreateEnvelope,
+  useFillPlannedCells,
   useMoveElement,
   usePlanSetLimit,
   useUpdateEnvelope,
@@ -40,6 +41,7 @@ import {
   bucketPlanRows,
   clampFirstMonth,
   currentMonth,
+  fillTargetCol,
   folderSides,
   makePlanExchange,
   monthDate,
@@ -110,6 +112,18 @@ export interface PlanSelection {
   col: number
 }
 
+/** Excel-style fill-right drag state: startCol is the source column (the value being
+ *  copied), targetCol the column the pointer currently covers (>= startCol). */
+interface FillDrag {
+  rowKey: string
+  elementId: Id
+  amount: string
+  startCol: number
+  targetCol: number
+  startX: number
+  colWidth: number
+}
+
 /** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
  *  with a fetched cell and update rights for that month — children never carry limits. */
 function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
@@ -133,6 +147,13 @@ interface GridCtx {
   onMoveToFolder: (el: PlanElementDto) => void
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
+  fill: {
+    active: { rowKey: string; startCol: number; targetCol: number } | null
+    start: (rowKey: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => void
+    move: (e: ReactPointerEvent<HTMLElement>) => void
+    end: () => void
+    cancel: () => void
+  }
 }
 
 // Every non-uncategorized, non-child parent row gets this menu; envelope
@@ -332,6 +353,8 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
           const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
+          const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
+          const showFillHandle = selected && editable && !!cell && cell.planned !== '' && !ctx.isCompact && ctx.visibleMonths.length > 1
           return (
             <div
               key={m}
@@ -341,7 +364,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(monthDate(m)), actual: actualText, planned: plannedText })}
               data-month={m}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}`}
+              className={`relative flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -369,6 +392,19 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   plannedText
                 )}
               </span>
+              {showFillHandle ? (
+                <span
+                  data-testid="fill-handle"
+                  role="button"
+                  aria-label={t('budgets.page.plan.fill.handle_aria')}
+                  className="absolute -right-0.5 -bottom-0.5 z-10 size-2 cursor-crosshair rounded-[1px] border border-background bg-ring"
+                  onPointerDown={(e) => ctx.fill.start(rk, el, i, e)}
+                  onPointerMove={(e) => ctx.fill.move(e)}
+                  onPointerUp={() => ctx.fill.end()}
+                  onPointerCancel={() => ctx.fill.cancel()}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : null}
             </div>
           )
         })}
@@ -660,11 +696,13 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
+  const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
   const { data: plan, isPending, isError, refetch, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)
   const setLimit = usePlanSetLimit(planKey)
+  const fillCells = useFillPlannedCells(planKey)
 
   // clicking a cell must land keyboard focus on the grid too, or the arrow keys that
   // follow a click are dead until the user tabs in manually (F2). A cell click also
@@ -698,6 +736,50 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
   const canEdit = canEditBudget(budget.meta, userId)
   const configure = canConfigureBudget(budget.meta, userId)
+
+  const fillStart = useCallback(
+    (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
+      const colWidth = (e.currentTarget.closest('[role="gridcell"]') as HTMLElement | null)?.getBoundingClientRect().width ?? 0
+      e.currentTarget.setPointerCapture(e.pointerId)
+      e.preventDefault()
+      e.stopPropagation()
+      const month = visibleMonths[col]
+      const idx = month !== undefined ? monthIndex(month) : -1
+      const amount = idx >= 0 ? (el.cells[idx]?.planned ?? '') : ''
+      setFillDrag({ rowKey: rk, elementId: el.id, amount, startCol: col, targetCol: col, startX: e.clientX, colWidth })
+    },
+    [visibleMonths, monthIndex],
+  )
+
+  const fillMove = useCallback(
+    (e: ReactPointerEvent<HTMLElement>) => {
+      if (!fillDrag) {
+        return
+      }
+      setFillDrag({ ...fillDrag, targetCol: fillTargetCol(fillDrag.startCol, e.clientX - fillDrag.startX, fillDrag.colWidth, visible - 1) })
+    },
+    [fillDrag, visible],
+  )
+
+  const fillEnd = useCallback(() => {
+    if (!fillDrag) {
+      return
+    }
+    if (fillDrag.targetCol > fillDrag.startCol) {
+      const targets: { period: string; monthIndex: number }[] = []
+      for (let c = fillDrag.startCol + 1; c <= fillDrag.targetCol; c++) {
+        const period = visibleMonths[c]
+        const idx = period !== undefined ? monthIndex(period) : -1
+        if (period !== undefined && idx >= 0) {
+          targets.push({ period, monthIndex: idx })
+        }
+      }
+      fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
+    }
+    setFillDrag(null)
+  }, [fillDrag, visibleMonths, monthIndex, fillCells, budget.meta.id])
+
+  const fillCancel = useCallback(() => setFillDrag(null), [])
 
   // always the unfiltered structure (per-row `hidden` flags, nothing dropped) — hideEmpty
   // is applied per SECTION at render time so each header's reveal is independent
@@ -737,9 +819,37 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
       onMoveToFolder: setMoveFolderTarget,
       selection,
       select,
+      fill: {
+        active: fillDrag ? { rowKey: fillDrag.rowKey, startCol: fillDrag.startCol, targetCol: fillDrag.targetCol } : null,
+        start: fillStart,
+        move: fillMove,
+        end: fillEnd,
+        cancel: fillCancel,
+      },
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, visibleMonths, monthIndex, cur, currencies, gridCols, budget.meta, userId, isCompact, monthFmt, commit, canEdit, onEditEnvelope, selection, select])
+  }, [
+    plan,
+    visibleMonths,
+    monthIndex,
+    cur,
+    currencies,
+    gridCols,
+    budget.meta,
+    userId,
+    isCompact,
+    monthFmt,
+    commit,
+    canEdit,
+    onEditEnvelope,
+    selection,
+    select,
+    fillDrag,
+    fillStart,
+    fillMove,
+    fillEnd,
+    fillCancel,
+  ])
 
   if (!plan || !rows || !ctx || !ex) {
     if (isError) {
@@ -806,6 +916,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Escape' && fillDrag) {
+      setFillDrag(null)
+      return
+    }
     // Radix portals render popover/dialog/drawer/dropdown-menu content outside the
     // grid's DOM subtree, but React re-dispatches the event through the component
     // tree, so it still reaches this handler. Without this guard, typing in the

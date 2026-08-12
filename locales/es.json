@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}, {month}: real {actual}, previsto {planned}"
         },
+        "fill": {
+          "handle_aria": "Copiar el valor previsto a los meses siguientes"
+        },
         "totals": {
           "income": "Ingresos",
           "expenses": "Gastos",

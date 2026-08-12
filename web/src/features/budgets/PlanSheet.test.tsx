@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -662,4 +662,128 @@ it('a folder with no elements still renders as a header-only folder in the expen
 
   expect(screen.getByTestId('plan-folder-bf-empty')).toBeInTheDocument()
   expect(within(screen.getByTestId('plan-section-expense')).getByText('Empty Folder')).toBeInTheDocument()
+})
+
+describe('fill handle', () => {
+  beforeEach(() => {
+    HTMLElement.prototype.setPointerCapture ??= () => {}
+    HTMLElement.prototype.releasePointerCapture ??= () => {}
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({
+      width: 110,
+      height: 0,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      x: 0,
+      y: 0,
+      toJSON: () => {},
+    } as DOMRect)
+  })
+
+  it('renders only on the selected editable non-empty cell', async () => {
+    usePlanHandlers()
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    // window is Jun/Jul/Aug; pe1's col0 (Jun) has planned '200'
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    expect(screen.getByTestId('plan-cell-pe1:0')).toContainElement(screen.getByTestId('fill-handle'))
+
+    // uncategorized rows are never editable
+    const uncatCell = screen.getAllByTestId('plan-cell-uncategorized:0')[0]
+    await user.click(uncatCell)
+    expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
+
+    // pe1's col2 (Aug) has planned ''
+    await user.click(screen.getByTestId('plan-cell-pe1:2'))
+    expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
+  })
+
+  it('drag right copies the value into covered months, one set-limit per month', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      // the response never resolves within the test, so the invalidated refetch (which
+      // would otherwise revert to the unchanged mock data) can't race the optimistic patch
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        await delay('infinite')
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    // window is Jun/Jul/Aug; drag pe1's col0 (Jun, planned '200') two columns right
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const handle = screen.getByTestId('fill-handle')
+
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 320, pointerId: 1 })
+    const jul = screen.getByTestId('plan-cell-pe1:1')
+    const aug = screen.getByTestId('plan-cell-pe1:2')
+    expect(jul.className).toContain('fill-covered')
+    expect(aug.className).toContain('fill-covered')
+    fireEvent.pointerUp(handle, { clientX: 320, pointerId: 1 })
+
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' },
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '200' },
+      ]),
+    )
+    expect(within(jul).getByTestId('cell-planned')).toHaveTextContent('200')
+    expect(within(aug).getByTestId('cell-planned')).toHaveTextContent('200')
+
+    // releasing without moving (targetCol === startCol) posts nothing
+    bodies.length = 0
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const handle2 = screen.getByTestId('fill-handle')
+    fireEvent.pointerDown(handle2, { clientX: 100, pointerId: 2 })
+    fireEvent.pointerUp(handle2, { clientX: 100, pointerId: 2 })
+    expect(bodies).toHaveLength(0)
+  })
+
+  it('Escape during the drag cancels without any request', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const grid = screen.getByTestId('plan-sheet')
+    grid.focus()
+    const handle = screen.getByTestId('fill-handle')
+
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 210, pointerId: 1 })
+    expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
+
+    fireEvent.keyDown(grid, { key: 'Escape' })
+    expect(screen.getByTestId('plan-cell-pe1:1').className).not.toContain('fill-covered')
+
+    fireEvent.pointerUp(handle, { clientX: 210, pointerId: 1 })
+    expect(bodies).toHaveLength(0)
+  })
 })

@@ -988,6 +988,9 @@
         "cell": {
           "aria": "{name}, {month}: effettivo {actual}, pianificato {planned}"
         },
+        "fill": {
+          "handle_aria": "Copia il valore pianificato nei mesi successivi"
+        },
         "totals": {
           "income": "Entrate",
           "expenses": "Uscite",
