@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Fusionner avec…",
+        "title": "Fusionner « {name} » avec",
+        "confirm": "Fusionner",
+        "warning": "Toutes les transactions et transactions récurrentes utilisant « {name} » seront transférées vers l’élément choisi, et « {name} » sera supprimé. Cette action est irréversible.",
+        "warning_label": "Toutes les transactions et transactions récurrentes portant le tag « {name} » recevront le tag choisi, et « {name} » sera supprimé. Cette action est irréversible.",
+        "envelope_info": "Les limites budgétaires sont additionnées. Si les deux se trouvent dans des enveloppes différentes, ajustez d’abord votre budget."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

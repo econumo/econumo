@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Merge into…",
+        "title": "Merge “{name}” into",
+        "confirm": "Merge",
+        "warning": "All transactions and recurring transactions using “{name}” move to the item you pick, and “{name}” is deleted. This can’t be undone.",
+        "warning_label": "Every transaction and recurring transaction tagged “{name}” gets the tag you pick instead, and “{name}” is deleted. This can’t be undone.",
+        "envelope_info": "Budget limits are added together. If the two sit in different envelopes, sort that out in your budget first."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

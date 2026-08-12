@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "合并到…",
+        "title": "将“{name}”合并到",
+        "confirm": "合并",
+        "warning": "使用“{name}”的所有交易和定期交易将转移到所选项目，并删除“{name}”。此操作无法撤销。",
+        "warning_label": "带有“{name}”标签的所有交易和定期交易将改用所选标签，并删除“{name}”。此操作无法撤销。",
+        "envelope_info": "预算限额会相加。如果两者位于不同的信封中，请先调整预算。"
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

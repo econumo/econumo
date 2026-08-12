@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Combinar con…",
+        "title": "Combinar «{name}» con",
+        "confirm": "Combinar",
+        "warning": "Todas las transacciones y transacciones recurrentes con «{name}» pasarán al elemento que elijas, y «{name}» se eliminará. Esto no se puede deshacer.",
+        "warning_label": "Todas las transacciones y transacciones recurrentes con la etiqueta «{name}» recibirán la etiqueta que elijas, y «{name}» se eliminará. Esto no se puede deshacer.",
+        "envelope_info": "Los límites del presupuesto se suman. Si ambos están en sobres distintos, ajusta primero tu presupuesto."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

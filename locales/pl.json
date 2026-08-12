@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Scal z…",
+        "title": "Scal „{name}” z",
+        "confirm": "Scal",
+        "warning": "Wszystkie transakcje i transakcje cykliczne z „{name}” zostaną przeniesione do wybranego elementu, a „{name}” zostanie usunięty. Tej operacji nie można cofnąć.",
+        "warning_label": "Wszystkie transakcje i transakcje cykliczne z tagiem „{name}” otrzymają wybrany tag, a „{name}” zostanie usunięty. Tej operacji nie można cofnąć.",
+        "envelope_info": "Limity budżetu są sumowane. Jeśli oba znajdują się w różnych kopertach, najpierw dostosuj budżet."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

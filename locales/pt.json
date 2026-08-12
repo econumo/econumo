@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Mesclar com…",
+        "title": "Mesclar “{name}” com",
+        "confirm": "Mesclar",
+        "warning": "Todas as transações e transações recorrentes que usam “{name}” passarão para o item escolhido, e “{name}” será excluído. Não é possível desfazer.",
+        "warning_label": "Todas as transações e transações recorrentes com a etiqueta “{name}” receberão a etiqueta escolhida, e “{name}” será excluído. Não é possível desfazer.",
+        "envelope_info": "Os limites do orçamento são somados. Se os dois estiverem em envelopes diferentes, ajuste o orçamento primeiro."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

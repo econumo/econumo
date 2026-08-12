@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Unisci a…",
+        "title": "Unisci «{name}» a",
+        "confirm": "Unisci",
+        "warning": "Tutte le transazioni e le transazioni ricorrenti che usano «{name}» passeranno all’elemento scelto e «{name}» verrà eliminato. L’operazione non è reversibile.",
+        "warning_label": "Tutte le transazioni e le transazioni ricorrenti con il tag «{name}» riceveranno il tag scelto e «{name}» verrà eliminato. L’operazione non è reversibile.",
+        "envelope_info": "I limiti di budget vengono sommati. Se i due si trovano in buste diverse, sistema prima il budget."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

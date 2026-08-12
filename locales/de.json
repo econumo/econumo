@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Zusammenführen mit …",
+        "title": "„{name}“ zusammenführen mit",
+        "confirm": "Zusammenführen",
+        "warning": "Alle Transaktionen und wiederkehrenden Transaktionen mit „{name}“ werden auf den gewählten Eintrag übertragen, und „{name}“ wird gelöscht. Das lässt sich nicht rückgängig machen.",
+        "warning_label": "Alle Transaktionen und wiederkehrenden Transaktionen mit dem Tag „{name}“ erhalten stattdessen den gewählten Tag, und „{name}“ wird gelöscht. Das lässt sich nicht rückgängig machen.",
+        "envelope_info": "Budgetlimits werden addiert. Liegen beide in verschiedenen Umschlägen, passe zuerst dein Budget an."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {

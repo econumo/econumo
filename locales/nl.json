@@ -1005,6 +1005,16 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Samenvoegen met…",
+        "title": "‘{name}’ samenvoegen met",
+        "confirm": "Samenvoegen",
+        "warning": "Alle transacties en terugkerende transacties met ‘{name}’ gaan naar het gekozen item en ‘{name}’ wordt verwijderd. Dit kan niet ongedaan worden gemaakt.",
+        "warning_label": "Alle transacties en terugkerende transacties met de tag ‘{name}’ krijgen de gekozen tag en ‘{name}’ wordt verwijderd. Dit kan niet ongedaan worden gemaakt.",
+        "envelope_info": "Budgetlimieten worden bij elkaar opgeteld. Staan ze in verschillende enveloppen, pas dan eerst je budget aan."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
