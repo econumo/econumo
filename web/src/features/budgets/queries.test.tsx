@@ -134,6 +134,20 @@ it('useSetLimit sends the explicit period and patches that period cache', async 
   expect(patched?.structure.elements.find((e) => e.id === 'cat-food')?.budgeted).toBe('250')
 })
 
+it('useSetLimit (budget mode) also invalidates the plan cache so the plan sheet resyncs', async () => {
+  server.use(
+    http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  const planKey = [...queryKeys.budgetPlan, 'b1', '2026-08-01', 10] as const
+  queryClient.setQueryData(planKey, fixtureWirePlan)
+  const spy = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useSetLimit(), { wrapper })
+  result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-09-01', amount: '250' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budgetPlan })
+})
+
 it('useBudgetPlan fetches a buffered window and keeps previous data across shifts', async () => {
   const calls: string[] = []
   server.use(

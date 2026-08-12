@@ -143,7 +143,13 @@ export function useSetLimit() {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: () => trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT),
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
+      // budget-mode edits patch only the budget-page cache above; the plan cache
+      // (a different window/query key) must be invalidated too or the plan sheet
+      // keeps showing the pre-edit limit until something else happens to refetch it
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+    },
   })
 }
 

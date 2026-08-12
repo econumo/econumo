@@ -9,7 +9,7 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { balanceRow, makePlanExchange, planTotals } from './planMath'
+import { balanceRow, formatPlanMonth, makePlanExchange, planTotals } from './planMath'
 import { moneyFormat } from '@/lib/money'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -439,7 +439,7 @@ it('cells expose the aria label and aria-selected', async () => {
   const cell = screen.getByTestId('plan-cell-pe1:1')
   expect(cell).toHaveAttribute('role', 'gridcell')
   expect(cell).toHaveAttribute('aria-selected', 'false')
-  const monthLabel = new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit' }).format(new Date('2026-07-01'))
+  const monthLabel = formatPlanMonth('2026-07-01', 'en')
   const actualLabel = moneyFormat('45', fixtureUsd, { showCurrency: false, useNativePrecision: false })
   const plannedLabel = moneyFormat('250', fixtureUsd, { showCurrency: false, useNativePrecision: false })
   expect(cell).toHaveAttribute('aria-label', `Living, ${monthLabel}: actual ${actualLabel}, planned ${plannedLabel}`)
@@ -529,4 +529,137 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
   const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
   expect(within(dialog).getByText('Food')).toBeInTheDocument()
   expect(within(dialog).queryByText('Salary')).not.toBeInTheDocument()
+})
+
+it('clicking a cell focuses the grid so arrow keys work immediately, no manual focus needed', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+  // no grid.focus() call here — the click itself must have focused the grid
+  await user.keyboard('{ArrowRight}')
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+})
+
+it('the selected cell gets a visible focus ring', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const cell = screen.getByTestId('plan-cell-pe1:0')
+  expect(cell.className).not.toMatch(/ring-2/)
+  await user.click(cell)
+  expect(cell.className).toMatch(/ring-2/)
+})
+
+it('grid structure: sections are rowgroups, the month header sits outside the grid, and aria-activedescendant tracks the selection', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const grid = screen.getByTestId('plan-sheet')
+  expect(grid).toHaveAttribute('role', 'grid')
+  expect(screen.getByTestId('plan-section-income')).toHaveAttribute('role', 'rowgroup')
+  expect(screen.getByTestId('plan-section-expense')).toHaveAttribute('role', 'rowgroup')
+  expect(grid).not.toHaveAttribute('aria-activedescendant')
+
+  const monthHeader = screen.getAllByRole('columnheader')[0]
+  expect(grid.contains(monthHeader)).toBe(false)
+
+  const cell = screen.getByTestId('plan-cell-pe1:0')
+  await user.click(cell)
+  expect(cell.id).not.toBe('')
+  expect(grid).toHaveAttribute('aria-activedescendant', cell.id)
+})
+
+it('a failed plan fetch shows the error state instead of a blank area, and retry recovers', async () => {
+  let hits = 0
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    http.get('*/api/v1/budget/get-budget-plan', () => {
+      hits += 1
+      return hits === 1
+        ? HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })
+        : HttpResponse.json({ success: true, message: '', data: { item: fixtureWirePlan } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-error')
+
+  await user.click(screen.getByRole('button', { name: 'Try again' }))
+  await screen.findByTestId('plan-sheet')
+})
+
+it('grid keydown ignores arrow keys while a row-actions dropdown menu is open', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  await user.click(screen.getByRole('button', { name: 'plan row actions Living' }))
+  await screen.findByRole('menu')
+
+  await user.keyboard('{ArrowDown}')
+  // had the grid handled this, selection would have jumped to the next row (Food); the
+  // dropdown-menu-content guard means the keystroke never reached grid navigation
+  expect(screen.queryByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'false')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+})
+
+it('ArrowLeft at the name cell does not page the window past the budget start', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  grid.focus()
+  await user.keyboard('{ArrowLeft}')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-01-01')
+
+  // at the name cell AND already at the budget start: a further ArrowLeft must not
+  // page earlier (the prev nav button is disabled here too — same clamp, keyboard path)
+  await user.keyboard('{ArrowLeft}')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-01-01')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+})
+
+it('a folder with no elements still renders as a header-only folder in the expense area', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithEmptyFolder: BudgetPlanDto = {
+    ...plan,
+    structure: { ...plan.structure, folders: [...plan.structure.folders, { id: 'bf-empty', name: 'Empty Folder', position: 5 }] },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithEmptyFolder),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  expect(screen.getByTestId('plan-folder-bf-empty')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-section-expense')).getByText('Empty Folder')).toBeInTheDocument()
 })

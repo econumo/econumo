@@ -22,6 +22,19 @@ export function currentMonth(now: Date = new Date()): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+// A plain "YYYY-MM-01" parses as UTC midnight; formatting that directly in the
+// caller's local zone can render the WRONG month west of UTC (e.g. Jun 30 for
+// a "2026-07-01" input). Build the Date from local components instead, mirroring
+// budgetMath's periodRange, so month formatting is zone-safe everywhere.
+export function monthDate(m: string): Date {
+  const [y, mo] = m.split('-').map(Number)
+  return new Date(y, mo - 1, 1)
+}
+
+export function formatPlanMonth(m: string, lang: string): string {
+  return new Intl.DateTimeFormat(lang, { month: 'short', year: '2-digit' }).format(monthDate(m))
+}
+
 export const PLAN_NAME_COL_PX = 180
 export const PLAN_MIN_MONTH_COL_PX = 110
 

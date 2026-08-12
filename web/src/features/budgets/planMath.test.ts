@@ -7,7 +7,9 @@ import {
   bucketPlanRows,
   clampFirstMonth,
   folderSides,
+  formatPlanMonth,
   makePlanExchange,
+  monthDate,
   monthDiff,
   planInitialFirstMonth,
   planTotals,
@@ -49,6 +51,21 @@ describe('window math', () => {
   it('addMonths crosses years both ways', () => {
     expect(addMonths('2026-01-01', -1)).toBe('2025-12-01')
     expect(addMonths('2026-11-01', 2)).toBe('2027-01-01')
+  })
+
+  it('monthDate builds a LOCAL date, immune to the host zone (F1: west-of-UTC month labels)', () => {
+    // "new Date('2026-07-01')" parses as UTC midnight; formatting that directly in a
+    // zone behind UTC renders the WRONG month (e.g. Jun 30). monthDate must build from
+    // local y/m/d components instead — the invariant here is that it always agrees with
+    // an explicitly-local `new Date(y, m - 1, 1)`, regardless of what zone the test runs in.
+    expect(monthDate('2026-07-01').getTime()).toBe(new Date(2026, 6, 1).getTime())
+    expect(monthDate('2026-01-01').getTime()).toBe(new Date(2026, 0, 1).getTime())
+  })
+
+  it('formatPlanMonth renders from the local-date path, not a raw UTC parse', () => {
+    const label = formatPlanMonth('2026-07-01', 'en')
+    expect(label).toBe(new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit' }).format(new Date(2026, 6, 1)))
+    expect(label).toContain('Jul')
   })
 
   it('monthDiff counts months from a to b', () => {
