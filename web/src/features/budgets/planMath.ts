@@ -178,6 +178,10 @@ export interface PlanMonthTotals {
   expensePlanned: string
   netActual: string
   netPlanned: string
+  /** per-cell max(actual, planned) summed; past months = actual */
+  effectiveIncome: string
+  /** same accumulation as effectiveIncome, expense side */
+  effectiveExpense: string
   /** per-element-cell max(actual, planned): the Balance row's contribution */
   effectiveNet: string
 }
@@ -229,6 +233,8 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       expensePlanned,
       netActual: sub(incomeActual, expenseActual),
       netPlanned: sub(incomePlanned, expensePlanned),
+      effectiveIncome: effIncome,
+      effectiveExpense: effExpense,
       effectiveNet: sub(effIncome, effExpense),
     }
   })

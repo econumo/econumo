@@ -159,7 +159,7 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
 })
 
-it('totals block renders income/expenses/net pairs and the running balance', async () => {
+it('totals block renders one effective value per cell for income/expenses/net, and the running balance', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
@@ -174,15 +174,31 @@ it('totals block renders income/expenses/net pairs and the running balance', asy
   expect(within(totalsBlock).getByText('Balance')).toBeInTheDocument()
 
   // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
-  // visible column (index 2) is Aug, the fixture's last fetched month (index 3),
-  // so its running balance is the seed plus the FULL sum of effectiveNet across
-  // all 4 fetched months — computed here via the math core, not hand-derived.
+  // visible column (index 2) is Aug, the fixture's last fetched month (index 3).
+  // Both the totals rows and the running balance are computed here via the math
+  // core, not hand-derived.
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
   const totals = planTotals(plan, ex)
   const balance = balanceRow(plan, totals, ex)
-  const expected = moneyFormat(balance[3], fixtureUsd, { showCurrency: false, useNativePrecision: false })
 
+  const rows = within(totalsBlock).getAllByRole('row')
+  const [incomeRow, expensesRow, netRow] = rows
+  const augTotals = totals[2]
+
+  expect(within(incomeRow).getByText(moneyFormat(augTotals.effectiveIncome, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
+  expect(within(incomeRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(incomeRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
+
+  expect(within(expensesRow).getByText(moneyFormat(augTotals.effectiveExpense, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
+  expect(within(expensesRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(expensesRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
+
+  expect(within(netRow).getByText(moneyFormat(augTotals.effectiveNet, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
+  expect(within(netRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(netRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
+
+  const expected = moneyFormat(balance[3], fixtureUsd, { showCurrency: false, useNativePrecision: false })
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
 

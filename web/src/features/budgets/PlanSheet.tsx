@@ -524,14 +524,13 @@ function FolderRows({
 
 interface TotalsRowSpec {
   key: 'income' | 'expenses' | 'net'
-  actual: (t: PlanMonthTotals) => string
-  planned: (t: PlanMonthTotals) => string
+  value: (t: PlanMonthTotals) => string
 }
 
 const TOTALS_ROWS: TotalsRowSpec[] = [
-  { key: 'income', actual: (t) => t.incomeActual, planned: (t) => t.incomePlanned },
-  { key: 'expenses', actual: (t) => t.expenseActual, planned: (t) => t.expensePlanned },
-  { key: 'net', actual: (t) => t.netActual, planned: (t) => t.netPlanned },
+  { key: 'income', value: (t) => t.effectiveIncome },
+  { key: 'expenses', value: (t) => t.effectiveExpense },
+  { key: 'net', value: (t) => t.effectiveNet },
 ]
 
 function TotalsFooter({
@@ -561,12 +560,9 @@ function TotalsFooter({
             const idx = monthIndex(m)
             const row = idx >= 0 ? totals[idx] : undefined
             return (
-              <div key={m} className={`flex flex-col items-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
-                <span className="text-xs text-muted-foreground">
-                  {row ? moneyFormat(spec.actual(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-                </span>
+              <div key={m} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
                 <span className="text-sm">
-                  {row ? moneyFormat(spec.planned(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+                  {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
                 </span>
               </div>
             )

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
+import { sub } from '@/lib/decimal'
 import {
   addMonths,
   balanceRow,
@@ -315,6 +316,55 @@ describe('totals + balance', () => {
     expect(totals[1].effectiveNet).toBe('830')
   })
 
+  it('exposes effectiveIncome/effectiveExpense; net is their difference', () => {
+    const over = mkEl({
+      id: 'exp-over',
+      type: 1,
+      name: 'Over',
+      cells: [
+        { actual: '50', planned: '50' },
+        { actual: '120', planned: '100' }, // overspend: actual 120 > planned 100 -> counts 120
+      ],
+    })
+    const under = mkEl({
+      id: 'exp-under',
+      type: 1,
+      name: 'Under',
+      cells: [
+        { actual: '10', planned: '10' },
+        { actual: '10', planned: '50' }, // underspend: actual 10 < planned 50 -> counts 50
+      ],
+    })
+    const income = mkEl({
+      id: 'inc-1',
+      type: 3,
+      name: 'Income',
+      cells: [
+        { actual: '500', planned: '500' },
+        { actual: '900', planned: '1000' }, // underspend: actual 900 < planned 1000 -> counts 1000
+      ],
+    })
+    const plan = mkPlan({
+      months: ['2026-07-01', '2026-08-01'],
+      structure: { folders: [], elements: [over, under, income] },
+    })
+    const ex = makePlanExchange(plan, [usd])
+    const now = new Date(2026, 7, 15) // currentMonth '2026-08-01' -> month 0 is past, month 1 is current
+
+    const totals = planTotals(plan, ex, now)
+
+    // month 0 (past): effective = actual for both sides
+    expect(totals[0].effectiveIncome).toBe('500')
+    expect(totals[0].effectiveExpense).toBe('60')
+    // month 1 (current): per-cell max sums -> income max(900,1000)=1000; expense max(120,100)+max(10,50)=170
+    expect(totals[1].effectiveIncome).toBe('1000')
+    expect(totals[1].effectiveExpense).toBe('170')
+
+    for (const t of totals) {
+      expect(sub(t.effectiveIncome, t.effectiveExpense)).toBe(t.effectiveNet)
+    }
+  })
+
   it('balanceRow chains: seed(+FX) + effectiveNet cumulative', () => {
     const over = mkEl({
       id: 'exp-over',
@@ -412,6 +462,8 @@ describe('totals + balance', () => {
       expensePlanned: '0',
       netActual: '0',
       netPlanned: '0',
+      effectiveIncome: '0',
+      effectiveExpense: '0',
       effectiveNet: '0',
     })
     // actual includes the archived row's 30; planned excludes it entirely (normal's empty planned is '0')
