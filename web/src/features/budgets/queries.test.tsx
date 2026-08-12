@@ -233,7 +233,7 @@ it('useFillPlannedCells posts one set-limit per target, patches all cells, fires
   expect(trackEventMock.mock.calls.filter((c) => c[0] === METRICS.BUDGET_PLAN_FILL_RIGHT)).toHaveLength(1)
 })
 
-it('useFillPlannedCells invalidates the plan on any failure (server truth resyncs)', async () => {
+it('useFillPlannedCells invalidates the plan AND every target budget-month cache on any failure (server truth resyncs)', async () => {
   server.use(
     http.post('*/api/v1/budget/set-limit', () =>
       HttpResponse.json({ success: false, message: 'boom', code: 400, errors: {} }, { status: 400 }),
@@ -245,8 +245,15 @@ it('useFillPlannedCells invalidates the plan on any failure (server truth resync
     budgetId: 'b1',
     elementId: 'pe1',
     amount: '250',
-    targets: [{ period: '2026-06-01', monthIndex: 1 }],
+    targets: [
+      { period: '2026-06-01', monthIndex: 1 },
+      { period: '2026-07-01', monthIndex: 2 },
+    ],
   })
   await waitFor(() => expect(result.current.isError).toBe(true))
+  // onSettled resyncs even on a partial/total failure: both target months' budget-page
+  // caches, not just the plan cache.
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-06-01'] })
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-07-01'] })
   expect(spy).toHaveBeenCalledWith({ queryKey: planKey })
 })

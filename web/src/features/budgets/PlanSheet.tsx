@@ -397,7 +397,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   data-testid="fill-handle"
                   role="button"
                   aria-label={t('budgets.page.plan.fill.handle_aria')}
-                  className="absolute -right-0.5 -bottom-0.5 z-10 size-2 cursor-crosshair rounded-[1px] border border-background bg-ring"
+                  className="absolute -right-0.5 -bottom-0.5 z-10 size-2 touch-none cursor-crosshair rounded-[1px] border border-background bg-ring"
                   onPointerDown={(e) => ctx.fill.start(rk, el, i, e)}
                   onPointerMove={(e) => ctx.fill.move(e)}
                   onPointerUp={() => ctx.fill.end()}
@@ -741,7 +741,11 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
       const colWidth = (e.currentTarget.closest('[role="gridcell"]') as HTMLElement | null)?.getBoundingClientRect().width ?? 0
       e.currentTarget.setPointerCapture(e.pointerId)
       e.preventDefault()
-      e.stopPropagation()
+      // no stopPropagation here: the native pointerdown must still reach Radix's
+      // document-level DismissableLayer listener, so an open LimitEditor popover
+      // on this cell dismisses through the fill drag, same as any other outside
+      // click. Cell-selection clicks are guarded separately by the handle's own
+      // onClick stopPropagation below.
       const month = visibleMonths[col]
       const idx = month !== undefined ? monthIndex(month) : -1
       const amount = idx >= 0 ? (el.cells[idx]?.planned ?? '') : ''
@@ -939,8 +943,18 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
-    if (e.key === 'Escape' && fillDrag) {
-      setFillDrag(null)
+    if (fillDrag) {
+      if (e.key === 'Escape') {
+        setFillDrag(null)
+        return
+      }
+      // A fill drag is pointer-driven and modal-ish: any grid-navigation key arriving
+      // mid-drag (e.g. ArrowRight before pointerup) must be a no-op, or the selection/
+      // window shifts under the still-in-flight drag and desyncs the eventual commit's
+      // target columns from what's visually covered.
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter') {
+        e.preventDefault()
+      }
       return
     }
     // Radix portals render popover/dialog/drawer/dropdown-menu content outside the

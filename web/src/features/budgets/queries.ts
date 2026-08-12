@@ -249,13 +249,15 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
         }
       })
     },
-    // No partial rollback: any failure means some months may have landed —
-    // resync from the server rather than pretending nothing happened.
-    onError: () => {
-      void queryClient.invalidateQueries({ queryKey: planKey })
-    },
-    onSuccess: (_res, form) => {
+    onSuccess: () => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
+    },
+    // No partial rollback: any failure means some months may have landed, so both a
+    // success and a failure need the same resync — the budget-page caches for every
+    // target month plus the plan cache — from the server rather than trusting the
+    // optimistic patch. Invalidating here (not split across onSuccess/onError) also
+    // means it happens exactly once regardless of outcome.
+    onSettled: (_res, _err, form) => {
       for (const t of form.targets) {
         void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, t.period] })
       }

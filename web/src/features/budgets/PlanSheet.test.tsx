@@ -28,6 +28,12 @@ function mockViewport() {
   }))
 }
 
+function mockCompactViewport() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter([{ path: '/budget', element: <BudgetPage /> }], { initialEntries: ['/budget'] })
@@ -808,6 +814,148 @@ describe('fill handle', () => {
 
     fireEvent.pointerUp(handle, { clientX: 210, pointerId: 1 })
     expect(bodies).toHaveLength(0)
+  })
+
+  it('ArrowRight mid-drag is swallowed: selection/window do not shift, drag state survives', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const grid = screen.getByTestId('plan-sheet')
+    grid.focus()
+    const handle = screen.getByTestId('fill-handle')
+
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 210, pointerId: 1 })
+    expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
+
+    fireEvent.keyDown(grid, { key: 'ArrowRight' })
+    // still mid-drag: the covered range is unchanged and the window has not paged
+    expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
+    expect(screen.getByTestId('plan-cell-pe1:2').className).not.toContain('fill-covered')
+    expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+
+    fireEvent.pointerUp(handle, { clientX: 210, pointerId: 1 })
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toMatchObject({ budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' })
+  })
+
+  it('drag far right clamps at the last visible column and posts exactly that many requests', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    // window is Jun/Jul/Aug (3 visible columns, jsdom floors to the width=0 case);
+    // drag pe1's col0 with a huge deltaX that would target far past the last column
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const handle = screen.getByTestId('fill-handle')
+
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 100_000, pointerId: 1 })
+    const jul = screen.getByTestId('plan-cell-pe1:1')
+    const aug = screen.getByTestId('plan-cell-pe1:2')
+    expect(jul.className).toContain('fill-covered')
+    expect(aug.className).toContain('fill-covered')
+    fireEvent.pointerUp(handle, { clientX: 100_000, pointerId: 1 })
+
+    // lastVisibleCol (2) - startCol (0) = 2 requests, not one per pixel of drag
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' },
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '200' },
+      ]),
+    )
+  })
+
+  it('opening the LimitEditor popover then dragging the fill handle dismisses it, and the drag still commits', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    const cell = screen.getByTestId('plan-cell-pe1:0')
+    await user.click(cell)
+    await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
+    expect(document.querySelector('[data-slot="popover-content"]')).toBeInTheDocument()
+    // Radix's DismissableLayer registers its document-level pointerdown listener in a
+    // setTimeout(0) after the layer mounts, so the very next synchronous event misses it
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const handle = screen.getByTestId('fill-handle')
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 320, pointerId: 1 })
+    expect(screen.getByTestId('plan-cell-pe1:1').className).toContain('fill-covered')
+    fireEvent.pointerUp(handle, { clientX: 320, pointerId: 1 })
+    // Popover defers outside-pointerdown dismissal to the click that follows it (so a
+    // drag-select doesn't dismiss mid-gesture) — that detection needs the pointerdown to
+    // actually reach Radix's document listener, which the deleted stopPropagation used to
+    // block. A neutral click (not on a grid cell, so this assertion isn't riding on the
+    // unrelated cell-focus side effect of ctx.select) stands in for wherever the drag's
+    // real mouseup/click ultimately lands.
+    fireEvent.click(document.body)
+    // Radix's DismissableLayer dismisses the popover through this sequence — it must not
+    // be swallowed by a stopPropagation on the handle's pointerdown listener
+    await waitFor(() => expect(document.querySelector('[data-slot="popover-content"]')).not.toBeInTheDocument())
+
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' },
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '200' },
+      ]),
+    )
+  })
+
+  it('compact mode: the fill handle does not render on a selected editable cell', async () => {
+    mockCompactViewport()
+    usePlanHandlers()
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    // window is Jun/Jul/Aug; pe1's col0 (Jun) has planned '200' — the exact cell
+    // that shows the handle in wide mode
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
   })
 })
 
