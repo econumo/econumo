@@ -56,6 +56,15 @@ export interface PlanRows {
 
 const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
 
+// Shared by the folder section renderer and the keyboard grid's flat row list, so
+// which rows are on screen and which rows Up/Down can reach can never diverge.
+export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: boolean, revealed: boolean): PlanRow[] {
+  if (folded) {
+    return []
+  }
+  return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
+}
+
 type Side = 'income' | 'expense'
 const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' : 'expense')
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -45,6 +45,7 @@ import {
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
+  visibleSectionRows,
 } from './planMath'
 import type { FolderSide, PlanFolderSection, PlanMonthTotals, PlanRow } from './planMath'
 
@@ -75,6 +76,18 @@ interface PlanLimitTarget {
   monthIndex: number
 }
 
+/** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells */
+export interface PlanSelection {
+  rowKey: string
+  col: number
+}
+
+/** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
+ *  with a fetched cell and update rights for that month — children never carry limits. */
+function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, meta: BudgetMetaDto, userId: Id | undefined): boolean {
+  return el.id !== UNCATEGORIZED_ID && el.isArchived === 0 && monthIndex >= 0 && canUpdateLimits(meta, userId, month)
+}
+
 interface GridCtx {
   visibleMonths: string[]
   monthIndex: (m: string) => number
@@ -84,11 +97,14 @@ interface GridCtx {
   meta: BudgetMetaDto
   userId: Id | undefined
   isCompact: boolean
+  monthFmt: Intl.DateTimeFormat
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
   canEdit: boolean
   onEditEnvelope: (el: PlanElementDto) => void
   onMoveToFolder: (el: PlanElementDto) => void
+  selection: PlanSelection | null
+  select: (rowKey: string, col: number) => void
 }
 
 // Every non-uncategorized, non-child parent row gets this menu; envelope
@@ -169,28 +185,40 @@ function MoveToFolderDialog({
 function ChildRow({ child, parentCurrency, ctx }: { child: PlanChildDto; parentCurrency: CurrencyDto | undefined; ctx: GridCtx }) {
   const { t } = useTranslation()
   const displayName = elementDisplayName(child.id, child.name, t)
+  const rk = `${child.id}:${child.type}`
   return (
     <div
       role="row"
-      data-row-id={`${child.id}:${child.type}`}
+      data-row-id={rk}
       className="grid items-center gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
       style={{ gridTemplateColumns: ctx.gridCols }}
     >
-      <span className="flex min-w-0 items-center gap-1.5 truncate" title={displayName}>
+      <span
+        role="gridcell"
+        aria-selected={ctx.selection?.rowKey === rk && ctx.selection.col === -1}
+        className="flex min-w-0 items-center gap-1.5 truncate"
+        title={displayName}
+        onClick={() => ctx.select(rk, -1)}
+      >
         <EntityIcon name={child.icon} className="text-base" />
         <span className="truncate">{displayName}</span>
       </span>
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
+        const actualText = renderActual(cell?.actual, m, ctx.cur, parentCurrency)
         return (
           <div
             key={m}
+            role="gridcell"
+            aria-selected={ctx.selection?.rowKey === rk && ctx.selection.col === i}
+            aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(new Date(m)), actual: actualText, planned: '—' })}
             data-month={m}
             data-testid={`plan-cell-${child.id}:${i}`}
             className={`flex items-end justify-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}`}
+            onClick={() => ctx.select(rk, i)}
           >
-            <span data-testid="cell-actual">{renderActual(cell?.actual, m, ctx.cur, parentCurrency)}</span>
+            <span data-testid="cell-actual">{actualText}</span>
           </div>
         )
       })}
@@ -208,8 +236,8 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
   const isUncategorized = el.id === UNCATEGORIZED_ID
   const expandable = el.children.length > 0
   const Chevron = unfolded ? ChevronDown : ChevronRight
-  // children/uncategorized/archived rows never carry their own limit; canUpdateLimits below adds the role + start-date gate per cell
-  const editableRow = !isUncategorized && el.isArchived === 0
+  const rk = `${el.id}:${el.type}`
+  const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
 
   const name = (
     <>
@@ -221,13 +249,18 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
   )
 
   return (
-    <div data-row-id={`${el.id}:${el.type}`}>
+    <div data-row-id={rk}>
       <div
         role="row"
         className="grid items-center gap-1 rounded-md px-2 py-1.5 hover:bg-accent/50"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
-        <div className="flex min-w-0 items-center justify-between gap-1">
+        <div
+          role="gridcell"
+          aria-selected={nameSelected}
+          className="flex min-w-0 items-center justify-between gap-1"
+          onClick={() => ctx.select(rk, -1)}
+        >
           {expandable ? (
             <button
               type="button"
@@ -250,21 +283,26 @@ function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
-          const editable = editableRow && idx >= 0 && canUpdateLimits(ctx.meta, ctx.userId, m)
+          const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           // overspend highlight: expense side only, current/future months, a set plan the actual has already cleared
           const overspend =
             !isIncomeType(el.type) && m >= ctx.cur && !!cell && cell.planned !== '' && cmp(cell.actual, cell.planned) > 0
           const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
           const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
+          const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
           return (
             <div
               key={m}
+              role="gridcell"
+              aria-selected={ctx.selection?.rowKey === rk && ctx.selection.col === i}
+              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(new Date(m)), actual: actualText, planned: plannedText })}
               data-month={m}
               data-testid={`plan-cell-${el.id}:${i}`}
               className={`flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}`}
+              onClick={() => ctx.select(rk, i)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
-                {renderActual(cell?.actual, m, ctx.cur, currency)}
+                {actualText}
               </span>
               <span data-testid="cell-planned" className="text-sm">
                 {editable && !ctx.isCompact ? (
@@ -378,9 +416,8 @@ function FolderRows({
   if (section.rows.length === 0) {
     return null
   }
-  const showEmpty = hideEmpty && !revealed
-  const visibleRows = folded ? [] : showEmpty ? section.rows.filter((r) => !r.hidden) : section.rows
-  const hiddenCount = !folded && showEmpty ? section.rows.filter((r) => r.hidden).length : 0
+  const visibleRows = visibleSectionRows(section.rows, folded, hideEmpty, revealed)
+  const hiddenCount = !folded && hideEmpty && !revealed ? section.rows.filter((r) => r.hidden).length : 0
   const Chevron = folded ? ChevronRight : ChevronDown
   return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
@@ -528,6 +565,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = (key: string): boolean => !!planFolds[key]
+  const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
+  const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const [selection, setSelection] = useState<PlanSelection | null>(null)
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
 
   const { data: plan, isPending, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)
@@ -570,33 +610,166 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
     meta: budget.meta,
     userId,
     isCompact,
+    monthFmt,
     commit,
     openDialog: setPlanLimitTarget,
     canEdit,
     onEditEnvelope: (el) =>
       setEnvelopeDialog({ open: true, envelope: el, folderId: el.folderId, side: isIncomeType(el.type) ? 'income' : 'expense' }),
     onMoveToFolder: setMoveFolderTarget,
+    selection,
+    select: (rk, col) => setSelection({ rowKey: rk, col }),
   }
   const dialogCell = planLimitTarget ? planLimitTarget.el.cells[planLimitTarget.monthIndex] : undefined
 
   // per-section hide-empty: a row belongs to exactly one bucket — a folder, or its
   // side's loose rows — so each bucket's count/reveal is independent of the others
-  const sectionVisibleRows = (sectionRows: PlanRow[], revealed: boolean) =>
-    hideEmpty && !revealed ? sectionRows.filter((r) => !r.hidden) : sectionRows
   const sectionHiddenCount = (sectionRows: PlanRow[], revealed: boolean) =>
     hideEmpty && !revealed ? sectionRows.filter((r) => r.hidden).length : 0
 
   const incomeFolded = folded('income')
   const incomeRevealed = revealedSections.has('income')
-  const incomeLoose = incomeFolded ? [] : sectionVisibleRows(rows.income.loose, incomeRevealed)
+  const incomeLoose = visibleSectionRows(rows.income.loose, incomeFolded, hideEmpty, incomeRevealed)
   const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(rows.income.loose, incomeRevealed)
 
   const expenseRevealed = revealedSections.has('expense')
-  const expenseLoose = sectionVisibleRows(rows.expense.loose, expenseRevealed)
+  const expenseLoose = visibleSectionRows(rows.expense.loose, false, hideEmpty, expenseRevealed)
   const expenseHiddenCount = sectionHiddenCount(rows.expense.loose, expenseRevealed)
 
+  // Same flattening the renderer walks below (folders -> loose -> uncategorized, income
+  // then expense, then archived), so Up/Down can never reach a row that isn't on screen.
+  interface FlatRow {
+    rowKey: string
+    el: PlanElementDto
+    child?: PlanChildDto
+  }
+  const flatRows: FlatRow[] = []
+  const pushRow = (r: PlanRow) => {
+    flatRows.push({ rowKey: rowKey(r), el: r.element })
+    if (r.element.children.length > 0 && unfoldedElements[r.element.id]) {
+      for (const child of r.element.children) {
+        flatRows.push({ rowKey: `${child.id}:${child.type}`, el: r.element, child })
+      }
+    }
+  }
+  if (!incomeFolded) {
+    for (const f of rows.income.folders) {
+      visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
+    }
+    incomeLoose.forEach(pushRow)
+    if (rows.income.uncategorized) {
+      pushRow(rows.income.uncategorized)
+    }
+  }
+  for (const f of rows.expense.folders) {
+    visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
+  }
+  expenseLoose.forEach(pushRow)
+  if (rows.expense.uncategorized) {
+    pushRow(rows.expense.uncategorized)
+  }
+  if (rows.archived.length > 0 && !folded('archived')) {
+    rows.archived.forEach(pushRow)
+  }
+
+  const select = (rk: string, col: number) => setSelection({ rowKey: rk, col })
+
+  function handleEnter(entry: FlatRow, col: number) {
+    if (col === -1) {
+      if (!entry.child && entry.el.children.length > 0) {
+        toggleElement(entry.el.id)
+      }
+      return
+    }
+    if (entry.child) {
+      return
+    }
+    const month = visibleMonths[col]
+    if (month === undefined) {
+      return
+    }
+    const idx = monthIndex(month)
+    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+      return
+    }
+    if (isCompact) {
+      setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+      return
+    }
+    const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
+      `[data-testid="plan-cell-${entry.el.id}:${col}"] [aria-label^="limit "]`,
+    )
+    trigger?.focus()
+    trigger?.click()
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (flatRows.length === 0) {
+      return
+    }
+    const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']
+    if (!selection || !flatRows.some((r) => r.rowKey === selection.rowKey)) {
+      if (arrowKeys.includes(e.key)) {
+        e.preventDefault()
+        setSelection({ rowKey: flatRows[0].rowKey, col: 0 })
+      }
+      return
+    }
+    const idx = flatRows.findIndex((r) => r.rowKey === selection.rowKey)
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault()
+        if (idx > 0) {
+          select(flatRows[idx - 1].rowKey, selection.col)
+        }
+        break
+      case 'ArrowDown':
+        e.preventDefault()
+        if (idx < flatRows.length - 1) {
+          select(flatRows[idx + 1].rowKey, selection.col)
+        }
+        break
+      case 'ArrowLeft':
+        e.preventDefault()
+        if (selection.col === -1) {
+          break
+        }
+        if (selection.col === 0) {
+          setPlanFirstMonth(addMonths(firstMonth, -1))
+          select(selection.rowKey, 0)
+        } else {
+          select(selection.rowKey, selection.col - 1)
+        }
+        break
+      case 'ArrowRight':
+        e.preventDefault()
+        if (selection.col === -1) {
+          select(selection.rowKey, 0)
+        } else if (selection.col >= visible - 1) {
+          setPlanFirstMonth(addMonths(firstMonth, 1))
+          select(selection.rowKey, visible - 1)
+        } else {
+          select(selection.rowKey, selection.col + 1)
+        }
+        break
+      case 'Enter':
+        e.preventDefault()
+        handleEnter(flatRows[idx], selection.col)
+        break
+      default:
+        break
+    }
+  }
+
   return (
-    <div ref={containerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto" data-testid="plan-sheet">
+    <div
+      ref={containerRef}
+      role="grid"
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      className="flex min-h-0 flex-1 flex-col overflow-y-auto"
+      data-testid="plan-sheet"
+    >
       <div className="flex items-center gap-2 border-b px-2 py-1.5">
         <Switch
           id="plan-hide-empty"

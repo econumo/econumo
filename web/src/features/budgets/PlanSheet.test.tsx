@@ -346,6 +346,100 @@ it('move-to-folder menu lists only same-side and neutral folders and calls move-
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'cat-food', folderId: 'bf3', afterId: null }))
 })
 
+it('arrow keys move the selection and shift the window at the edges', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+
+  // window is Jun/Jul/Aug; select pe1's first visible column (Jun)
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+  // ArrowLeft from column 0 shifts the window back a month, keeping the row+col selected
+  grid.focus()
+  await user.keyboard('{ArrowLeft}')
+  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  expect(await screen.findByTestId('plan-cell-pe1:0')).toHaveAttribute('data-month', '2026-05-01')
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+  // ArrowDown walks to the next data row (pe1 is the only row in the Essentials folder,
+  // so the flat list's next entry is the first loose expense row, Food)
+  grid.focus()
+  await user.keyboard('{ArrowDown}')
+  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'false')
+
+  // ArrowRight twice reaches the last visible column (col 2 of 3) without shifting
+  grid.focus()
+  await user.keyboard('{ArrowRight}{ArrowRight}')
+  expect(screen.getByTestId('plan-cell-cat-food:2')).toHaveAttribute('aria-selected', 'true')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01')
+
+  // a third ArrowRight from the last column shifts the window forward, keeping row+col
+  grid.focus()
+  await user.keyboard('{ArrowRight}')
+  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01'))
+  expect(await screen.findByTestId('plan-cell-cat-food:2')).toHaveAttribute('aria-selected', 'true')
+})
+
+it('Enter opens the editor on an editable cell and is inert on read-only cells', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:1'))
+  grid.focus()
+  await user.keyboard('{Enter}')
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument())
+
+  // uncategorized rows are never editable, regardless of role
+  const uncatCell = screen.getAllByTestId('plan-cell-uncategorized:1')[0]
+  await user.click(uncatCell)
+  grid.focus()
+  await user.keyboard('{Enter}')
+  expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
+
+  // children never carry their own limit
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  await user.click(within(pe1Row).getByText('Living'))
+  const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
+  await user.click(childCell)
+  grid.focus()
+  await user.keyboard('{Enter}')
+  expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
+})
+
+it('cells expose the aria label and aria-selected', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // window is Jun/Jul/Aug; pe1's second visible column is Jul (actual 45, planned 250)
+  const cell = screen.getByTestId('plan-cell-pe1:1')
+  expect(cell).toHaveAttribute('role', 'gridcell')
+  expect(cell).toHaveAttribute('aria-selected', 'false')
+  const monthLabel = new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit' }).format(new Date('2026-07-01'))
+  const actualLabel = moneyFormat('45', fixtureUsd, { showCurrency: false, useNativePrecision: false })
+  const plannedLabel = moneyFormat('250', fixtureUsd, { showCurrency: false, useNativePrecision: false })
+  expect(cell).toHaveAttribute('aria-label', `Living, ${monthLabel}: actual ${actualLabel}, planned ${plannedLabel}`)
+
+  await user.click(cell)
+  expect(cell).toHaveAttribute('aria-selected', 'true')
+})
+
 it('budget-mode envelope dialog still offers expense categories only', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
