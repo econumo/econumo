@@ -28,6 +28,9 @@ merge. No automatic duplicate detection. No merging across users.
 
 One PR, sequenced so the suite is green at each boundary:
 
+0. **Normalize stored `period` format (SQLite)** — see below. Independently valuable
+   and could ship separately, but it lands first so the budget merge is built on a
+   single canonical format.
 1. **Payee merge** — the simplest kind (no budget coupling), end to end: use case,
    route, MCP tool, tests. Establishes the pattern.
 2. **Category + tag merge** — adds the budget-element port, the `budget.MergeElements`
@@ -41,8 +44,48 @@ One PR, sequenced so the suite is green at each boundary:
 
 Phase 1 is the reference implementation; 2 and 3 are independent of each other.
 
-**No migration.** The feature adds no tables and no columns; it is entirely new
+Apart from phase 0, the feature adds no tables and no columns; it is entirely new
 queries over the existing schema.
+
+## Phase 0: one canonical period format
+
+**Target format: `2026-08-01 00:00:00`** (`datetime.Layout`) — already what the code
+writes, so this is about legacy rows, not new behaviour.
+
+**PostgreSQL needs nothing.** `period` is `TIMESTAMP(0) WITHOUT TIME ZONE`
+(`pgsql/20241103192302.sql:68`); format variance is not representable there. This is
+a SQLite-only cleanup.
+
+**SQLite** stores `period` as `DATETIME`, i.e. TEXT. Current writes are canonical —
+`engine.go:168` binds `p.Period.Format(datetime.Layout)` through a raw exec
+specifically to dodge the driver's RFC3339 serialization, guarded by
+`setlimit_roundtrip_test.go`. Rows written before that fix still hold
+`2026-08-01T00:00:00Z`.
+
+**A migration, not self-healing.** Self-healing on write cannot do the part that
+matters. Both forms normalize equal under `datetime()`, so a month holding one row of
+each is **already** returned twice by `ListBudgetLimitsForPeriod` — a latent
+double-count in the budget that a write-path fix would never encounter, because
+nothing rewrites a row that is never set again. Only a sweep repairs it.
+
+The migration follows the shape `20251214035500.sql` already used on this exact
+table: **dedupe first, then normalize.**
+
+1. Collapse rows that are duplicates only under normalization — same `element_id`,
+   same `datetime(period)` — keeping `MAX(id)`. Ids are UUIDv7 and therefore
+   time-ordered, so this keeps the most recent, matching the precedent.
+2. Rewrite every remaining `period` to `strftime('%Y-%m-%d %H:%M:%S', period)`.
+
+Order matters: normalizing first would collide on the textual unique index.
+
+**Duplicates are collapsed, not summed.** A duplicate pair is one limit recorded
+twice, not two limits — summing would silently inflate users' budgets.
+
+**Scope.** Only `period` is normalized, because it is the only column compared with
+`datetime()`. `created_at`/`updated_at` are never compared, so their form is
+inert (noted at `engine.go:162-163`); rewriting them across every table would be a
+large migration with no functional effect. A guard test asserts that no query
+compares any other datetime column with `datetime()`, so this stays true.
 
 ## What a merge moves
 
@@ -198,26 +241,32 @@ off the element. For every element whose `external_id` is the source:
 Scoped by `external_id` alone, so every budget the classification appears in —
 including budgets shared with connected users — stays consistent.
 
+#### Every period transfers, not just the current one
+
+The merge walks **all** of the source element's limits — every month it holds one,
+past and future alike, including months before the target existed and months the user
+has pre-budgeted ahead. There is no window and no "current period" special case.
+
 #### Periods must be compared with `datetime()`, never raw `=`
 
-`period` is stored as datetime TEXT **whose exact form varies** —
-`2026-08-01T00:00:00Z` from Go writes versus `2026-08-01 00:00:00` from older
-fixtures — which is why every existing query normalizes both sides
-(`budgets.sql:135-142`).
+On SQLite, `period` is a `DATETIME` column, i.e. **TEXT**, and legacy rows hold
+`2026-08-01T00:00:00Z` alongside the canonical `2026-08-01 00:00:00` — which is why
+every existing query normalizes both sides (`budgets.sql:135-142`).
 
-This is a live hazard for the merge, not a stylistic note. A self-join pairing the
-two elements' limits on `l1.period = l2.period` would silently **fail to pair** a
-Go-written limit with an older-format one. And nothing downstream catches it:
-`budgets_elements_limits` has no unique constraint on `(element_id, period)` — the
-primary key is `id`, and `UpsertBudgetLimit` conflicts on `id` as well — so the
-unpaired source limit would be inserted as a **second row for the same month**,
-double-counting in the budget. That is exactly the failure the summing rule exists to
-prevent.
+The unique index `element_period_uniq_budgets_elements_limits` does **not** save us
+here: on SQLite it compares the raw text, so the two forms are distinct keys and both
+rows coexist for the same month. A self-join pairing limits on `l1.period =
+l2.period` would therefore fail to pair across formats and insert a duplicate.
+
+On PostgreSQL none of this applies — `period` is `TIMESTAMP(0) WITHOUT TIME ZONE`
+(`pgsql/20241103192302.sql:68`), so the variance is not representable and the unique
+index is authoritative.
 
 The merge therefore resolves the target's limit per period through the normalizing
 read (`GetBudgetLimit`, which already wraps both sides in `datetime()`), then either
 updates that row by id or inserts a fresh one. It never matches periods by string
-equality.
+equality. Phase 0 removes the underlying variance; this rule is what keeps the merge
+correct regardless, and matches every sibling query.
 
 ### Labels are the one per-engine divergence
 
@@ -295,12 +344,19 @@ and `ru`, minus the two removed codes.
 - **Budget merge tests**: both branches (re-point when the target has no element;
   sum-and-delete when it does), including a period only the source has, a period only
   the target has, and a period both have.
-- **Mixed period formats**: a fixture where the source's limit is written
+- **All periods transfer**: a source with limits across several months — including a
+  future-dated one and one predating the target's first limit — moves every one.
+- **Mixed period formats** (SQLite): a fixture where the source's limit is written
   `2026-08-01 00:00:00` and the target's `2026-08-01T00:00:00Z` for the same month
-  must produce **one** summed limit row, not two. Without this test the
-  double-counting bug described above is invisible — every limit written by the
-  current Go code shares one format, so a naive implementation passes an
-  all-Go-fixture suite.
+  must produce **one** summed limit row, not two. Phase 0 should make this
+  unreachable in a migrated database, which is exactly why the test is worth keeping:
+  every limit the current code writes shares one format, so a naive implementation
+  passes an all-Go-fixture suite and fails only on real legacy data.
+- **Phase 0 migration tests**: a pre-migration fixture holding both format variants
+  for one element-month collapses to a single row with the **later** id's amount
+  (not the sum), every remaining `period` matches `Y-m-d H:i:s`, and the unique index
+  survives. Plus the guard test that no other datetime column is compared with
+  `datetime()`.
 - **Repo integration tests** on sqlite, rerun against PostgreSQL via
   `make test-repo-pgsql`.
 - **`apiparity`**: four new scenarios plus goldens; the `delete-category` replace
@@ -329,6 +385,10 @@ Coverage gate stays at `GO_COVER_MIN=80`.
 | Per-feature routes, not one generic `classification/merge` | No such backend module exists, and an orchestrating package would have to import all four features, which `archtest` forbids |
 | `sourceId`/`targetId` over `id`/`targetId` | Self-describing for MCP callers, where the destructive side must be unambiguous |
 | Re-point the element when the target has none | Preserves the budget row's folder and sort position; same arithmetic as delete-and-recreate |
-| Pair limits via the normalizing `datetime()` read, never raw `=` | Stored period formats vary, and no unique constraint on `(element_id, period)` would catch a mispair — it would double-count silently |
+| Transfer limits for every period, with no window | A merge that dropped future or old months would quietly discard budget the user had set |
+| Pair limits via the normalizing `datetime()` read, never raw `=` | SQLite's unique index on `(element_id, period)` is textual, so it cannot see two format variants of one month as duplicates |
+| Normalize legacy `period` by migration, not self-healing | Duplicate-format rows are already double-read today; nothing rewrites a row that is never set again, so only a sweep repairs them |
+| Collapse duplicate limits rather than summing them | A duplicate pair is one limit recorded twice; summing would inflate users' budgets |
+| Normalize `period` only, not every datetime column | `period` is the only column compared with `datetime()`; the rest are inert, and a guard test keeps it that way |
 | Remove `mode=replace` outright | Redundant with merge, and incomplete today (misses recurring transactions); removal fails loudly rather than degrading silently |
 | No undo, no bulk merge, no duplicate detection | YAGNI; the confirm dialog states irreversibility plainly |
