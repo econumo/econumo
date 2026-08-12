@@ -15,6 +15,16 @@ Two plan-sheet refinements:
    labeled "Expenses" section header symmetric to the existing "Income" one,
    subtle distinct background tints per area, and a strong divider between
    them.
+3. **Compact totals footer** — Income/Expenses/Net show ONE number per cell
+   instead of the actual|planned pair: the actual for fully elapsed months, the
+   per-cell-effective value (`max(actual, planned)` summed per element — the
+   same numbers that feed the Balance row) for the current and future months.
+   The Balance row is unchanged.
+4. **Hide zero Uncategorized rows** — an Uncategorized row that shows only
+   zeros is noise: in PLAN mode, drop an uncategorized row when every VISIBLE
+   cell's actual is zero (re-evaluated as the window moves); in BUDGET mode,
+   drop the Uncategorized section when the selected month's uncategorized
+   spend is zero (past months' spend no longer props it up).
 
 ## Decisions
 
@@ -89,6 +99,31 @@ already gated the source).
 - Rendering-only: no wire, store-shape, or bucketing changes beyond reading
   the new `'expense'` fold key. The income-above-expense DOM-order invariant
   and its test are unchanged.
+
+## Compact totals footer
+
+- `planMath.planTotals` additionally exposes per-month `effectiveIncome` and
+  `effectiveExpense` (already computed internally for `effectiveNet`; the net
+  is their difference).
+- The footer's Income / Expenses / Net rows render ONE value per cell:
+  `effectiveIncome` / `effectiveExpense` / `effectiveNet`. No actual|planned
+  stacking. The Balance row and its styling are unchanged.
+- Rationale: for totals, the elapsed months' truth is the actual, and the
+  forward-looking figure users plan against is the effective (max) value —
+  the same convention the Balance projection already uses, so the four footer
+  rows finally agree with each other.
+
+## Hidden zero Uncategorized rows
+
+- PLAN mode: `PlanSheet` drops an uncategorized row when every VISIBLE
+  column's actual is zero (the backend only emits the row when the FETCHED
+  window has spend, so a buffer-month-only actual could otherwise surface an
+  all-zero visible row). Keyboard navigation and totals follow automatically
+  (flat rows derive from the rendered buckets; totals iterate raw elements and
+  zeros contribute nothing).
+- BUDGET mode: `bucketElements` drops the Uncategorized element when its
+  selected-month `spent` is zero (the backend emits it whenever spend exists
+  in ANY month since the budget start). Frontend-only; the wire is untouched.
 
 ## Testing
 
