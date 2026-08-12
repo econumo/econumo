@@ -39,3 +39,11 @@ func (pgsqlQuerier) UpsertPayee(ctx context.Context, db backend.DBTX, p upsertPa
 func (pgsqlQuerier) DeletePayee(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeletePayee(ctx, id)
 }
+
+func (pgsqlQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return pgsqlgen.New(db).ReassignPayeeTransactions(ctx, pgsqlgen.ReassignPayeeTransactionsParams(p))
+}
+
+func (pgsqlQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return pgsqlgen.New(db).ReassignPayeeRecurring(ctx, pgsqlgen.ReassignPayeeRecurringParams(p))
+}

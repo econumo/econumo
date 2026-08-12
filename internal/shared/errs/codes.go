@@ -45,6 +45,7 @@ const (
 	CodeCategoryReplaceIDRequired = "category.replace_id_required"
 	CodeCategoryNotFound          = "category.not_found"
 	CodeCategoryCannotBeReplaced  = "category.cannot_be_replaced"
+	CodeCategoryCannotBeMerged    = "category.cannot_be_merged"
 	CodeCategoryListEmpty         = "category.list_empty"
 
 	CodeConnectionInvalidUUID      = "connection.invalid_uuid"
@@ -53,16 +54,19 @@ const (
 	CodeConnectionInvitingYourself = "connection.inviting_yourself"
 	CodeConnectionDeletingYourself = "connection.deleting_yourself"
 
-	CodePayeeNameLength    = "payee.name_length"
-	CodePayeeAlreadyExists = "payee.already_exists"
-	CodePayeeListEmpty     = "payee.list_empty"
+	CodePayeeNameLength     = "payee.name_length"
+	CodePayeeAlreadyExists  = "payee.already_exists"
+	CodePayeeCannotBeMerged = "payee.cannot_be_merged"
+	CodePayeeListEmpty      = "payee.list_empty"
 
-	CodeTagNameLength    = "tag.name_length"
-	CodeTagAlreadyExists = "tag.already_exists"
-	CodeTagListEmpty     = "tag.list_empty"
+	CodeTagNameLength     = "tag.name_length"
+	CodeTagAlreadyExists  = "tag.already_exists"
+	CodeTagCannotBeMerged = "tag.cannot_be_merged"
+	CodeTagListEmpty      = "tag.list_empty"
 
-	CodeLabelNameLength = "label.name_length"
-	CodeLabelListEmpty  = "label.list_empty"
+	CodeLabelNameLength     = "label.name_length"
+	CodeLabelCannotBeMerged = "label.cannot_be_merged"
+	CodeLabelListEmpty      = "label.list_empty"
 
 	CodeCurrencyAlreadyExists       = "currency.already_exists"
 	CodeCurrencyNameLength          = "currency.name_length"
@@ -134,6 +138,7 @@ var AllCodes = []string{
 	CodeCategoryReplaceIDRequired,
 	CodeCategoryNotFound,
 	CodeCategoryCannotBeReplaced,
+	CodeCategoryCannotBeMerged,
 	CodeCategoryListEmpty,
 
 	CodeConnectionInvalidUUID,
@@ -144,13 +149,16 @@ var AllCodes = []string{
 
 	CodePayeeNameLength,
 	CodePayeeAlreadyExists,
+	CodePayeeCannotBeMerged,
 	CodePayeeListEmpty,
 
 	CodeTagNameLength,
 	CodeTagAlreadyExists,
+	CodeTagCannotBeMerged,
 	CodeTagListEmpty,
 
 	CodeLabelNameLength,
+	CodeLabelCannotBeMerged,
 	CodeLabelListEmpty,
 
 	CodeCurrencyAlreadyExists,

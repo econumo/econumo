@@ -24,4 +24,9 @@ type Repository interface {
 	// Delete removes a payee. Transactions referencing it have payee_id set to
 	// NULL via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error
+
+	// ReassignTransactions / ReassignRecurring point every row on oldID at newID
+	// (merge), before the old payee is deleted.
+	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error
+	ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error
 }

@@ -1370,6 +1370,7 @@
       "replace_id_required": "Przy mode=replace wymagane jest replaceId.",
       "not_found": "Nie znaleziono kategorii.",
       "cannot_be_replaced": "Kategorii nie można zastąpić.",
+      "cannot_be_merged": "Nie można scalić kategorii.",
       "list_empty": "Lista kategorii jest pusta."
     },
     "connection": {
@@ -1392,16 +1393,19 @@
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "cannot_be_merged": "Nie można scalić tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
+      "cannot_be_merged": "Nie można scalić odbiorców.",
       "list_empty": "Lista odbiorców jest pusta."
     },
     "tag": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki tag już istnieje.",
+      "cannot_be_merged": "Nie można scalić tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
     "token": {

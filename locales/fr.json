@@ -1370,6 +1370,7 @@
       "replace_id_required": "replaceId est requis lorsque mode=replace.",
       "not_found": "Catégorie introuvable.",
       "cannot_be_replaced": "Les catégories ne peuvent pas être remplacées.",
+      "cannot_be_merged": "Les catégories ne peuvent pas être fusionnées.",
       "list_empty": "La liste des catégories est vide."
     },
     "connection": {
@@ -1392,16 +1393,19 @@
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
+      "cannot_be_merged": "Les tags ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",
+      "cannot_be_merged": "Les bénéficiaires ne peuvent pas être fusionnés.",
       "list_empty": "La liste des bénéficiaires est vide."
     },
     "tag": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce tag existe déjà.",
+      "cannot_be_merged": "Les tags ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
     "token": {

@@ -1370,6 +1370,7 @@
       "replace_id_required": "O replaceId é obrigatório quando mode=replace.",
       "not_found": "Categoria não encontrada.",
       "cannot_be_replaced": "As categorias não podem ser substituídas.",
+      "cannot_be_merged": "As categorias não podem ser mescladas.",
       "list_empty": "A lista de categorias está vazia."
     },
     "connection": {
@@ -1392,16 +1393,19 @@
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
+      "cannot_be_merged": "As etiquetas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",
+      "cannot_be_merged": "Os beneficiários não podem ser mesclados.",
       "list_empty": "A lista de beneficiários está vazia."
     },
     "tag": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "already_exists": "A etiqueta já existe.",
+      "cannot_be_merged": "As etiquetas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
     "token": {

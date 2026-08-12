@@ -1370,6 +1370,7 @@
       "replace_id_required": "replaceId ist für mode=replace erforderlich",
       "not_found": "Kategorie nicht gefunden",
       "cannot_be_replaced": "Kategorien können nicht ersetzt werden",
+      "cannot_be_merged": "Kategorien können nicht zusammengeführt werden.",
       "list_empty": "Die Kategorienliste ist leer"
     },
     "connection": {
@@ -1392,16 +1393,19 @@
     },
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
+      "cannot_be_merged": "Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer"
     },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
       "already_exists": "Der Zahlungsempfänger existiert bereits.",
+      "cannot_be_merged": "Zahlungsempfänger können nicht zusammengeführt werden.",
       "list_empty": "Die Liste der Zahlungsempfänger ist leer"
     },
     "tag": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",
       "already_exists": "Das Tag existiert bereits.",
+      "cannot_be_merged": "Tags können nicht zusammengeführt werden.",
       "list_empty": "Die Tag-Liste ist leer"
     },
     "token": {

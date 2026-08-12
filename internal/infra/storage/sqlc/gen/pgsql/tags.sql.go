@@ -96,6 +96,34 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 	return items, nil
 }
 
+const reassignTagRecurring = `-- name: ReassignTagRecurring :exec
+UPDATE recurring_transactions SET tag_id = $1 WHERE tag_id = $2
+`
+
+type ReassignTagRecurringParams struct {
+	TagID   *string
+	TagID_2 *string
+}
+
+func (q *Queries) ReassignTagRecurring(ctx context.Context, arg ReassignTagRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTagRecurring, arg.TagID, arg.TagID_2)
+	return err
+}
+
+const reassignTagTransactions = `-- name: ReassignTagTransactions :exec
+UPDATE transactions SET tag_id = $1 WHERE tag_id = $2
+`
+
+type ReassignTagTransactionsParams struct {
+	TagID   *string
+	TagID_2 *string
+}
+
+func (q *Queries) ReassignTagTransactions(ctx context.Context, arg ReassignTagTransactionsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTagTransactions, arg.TagID, arg.TagID_2)
+	return err
+}
+
 const upsertTag = `-- name: UpsertTag :exec
 INSERT INTO tags (id, user_id, name, is_archived, created_at, updated_at, sort_key, icon)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

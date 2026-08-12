@@ -406,9 +406,29 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	// The operation_requests_ids idempotency queries moved to operations.sql (shared
+	// across modules that take a client-supplied operation id).
+	// The recurring half of ReassignCategoryTransactions. Its absence is what made
+	// the old delete-category replace mode lossy: templates were left pointing at a
+	// category about to be deleted, and the FK silently nulled them.
+	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
+	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error
+	// Merge: point every transaction on the old payee at the new one before the old
+	// payee is deleted. Deliberately not scoped by user, because a shared account
+	// carries the account owner payee and those rows must follow it too.
+	ReassignPayeeTransactions(ctx context.Context, arg ReassignPayeeTransactionsParams) error
+	ReassignRecurringLabels(ctx context.Context, arg ReassignRecurringLabelsParams) error
+	ReassignTagRecurring(ctx context.Context, arg ReassignTagRecurringParams) error
+	// Merge: see ReassignPayeeTransactions for why this is not scoped by user.
+	ReassignTagTransactions(ctx context.Context, arg ReassignTagTransactionsParams) error
+	// Merge: transactions_labels is many-to-many, so a transaction may ALREADY hold
+	// both labels. Re-pointing has to dedupe rather than overwrite, or the pair
+	// collides on the (transaction_id, label_id) primary key. The source rows
+	// themselves cascade away when the label is deleted.
+	ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
