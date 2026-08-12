@@ -124,9 +124,13 @@ func TestBudgetRepo_GetLimit_MatchesAcrossPeriodFormats(t *testing.T) {
 	saveMergeElement(t, repo, ctx, elemID, mergeSrcExternal, nil)
 
 	// Write the legacy RFC3339 form directly; the repo can no longer produce it.
+	// Rebind because raw test SQL is authored with sqlite '?' placeholders.
+	// PostgreSQL is immune to this class of bug anyway (period is TIMESTAMP(0),
+	// so the textual variance is not representable) — running it on both engines
+	// just proves the lookup stays correct either way.
 	limitID := vo.NewId().String()
-	db.Exec(t, `INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)
-		VALUES (?, ?, ?, ?, ?, ?)`,
+	db.Exec(t, db.Rebind(`INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)
+		VALUES (?, ?, ?, ?, ?, ?)`),
 		limitID, elemID, "2024-04-01T00:00:00Z", fixedTime, fixedTime, "250")
 
 	got, err := repo.GetLimit(ctx, vo.MustParseId(elemID), aprPeriod)
