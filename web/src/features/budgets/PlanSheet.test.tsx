@@ -359,10 +359,18 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
 
-  // ArrowLeft from column 0 shifts the window back a month, keeping the row+col selected
+  // ArrowLeft from column 0 selects the name cell (col -1) first — see the dedicated
+  // name-cell-reachability test for that step in isolation; ArrowLeft again, now at
+  // -1, shifts the window back a month, keeping the row selected
   grid.focus()
-  await user.keyboard('{ArrowLeft}')
+  await user.keyboard('{ArrowLeft}{ArrowLeft}')
   await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+
+  // ArrowRight returns to the first month column of the now-shifted window
+  grid.focus()
+  await user.keyboard('{ArrowRight}')
   expect(await screen.findByTestId('plan-cell-pe1:0')).toHaveAttribute('data-month', '2026-05-01')
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
 
@@ -438,6 +446,73 @@ it('cells expose the aria label and aria-selected', async () => {
 
   await user.click(cell)
   expect(cell).toHaveAttribute('aria-selected', 'true')
+})
+
+it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves the caret and Enter commits set-limit', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      body = await request.json()
+      await delay('infinite')
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+
+  // pe1's second visible column (Jun/Jul/Aug window -> Jul)
+  await user.click(screen.getByTestId('plan-cell-pe1:1'))
+  grid.focus()
+  await user.keyboard('{Enter}')
+  const input = await screen.findByLabelText('Budget')
+
+  // ArrowLeft while the popover input has focus must move the caret, not the
+  // grid's window/selection — the grid must not intercept it.
+  const monthBefore = useBudgetPeriodStore.getState().planFirstMonth
+  await user.clear(input)
+  await user.type(input, '12{ArrowLeft}3')
+  expect(input).toHaveValue('132')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe(monthBefore)
+
+  // Enter inside the input must submit the form (commit), not be swallowed by
+  // the grid's own Enter handling.
+  await user.keyboard('{Enter}')
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '132' }))
+})
+
+it('ArrowLeft reaches the name cell (col -1) by keyboard, Enter there toggles expansion, and ArrowLeft again shifts the window', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  grid.focus()
+  await user.keyboard('{ArrowLeft}')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  const nameCell = within(pe1Row).getByTitle('Living').closest('[role="gridcell"]') as HTMLElement
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+
+  // Enter on the name cell toggles the row's expansion (pe1/Living has children)
+  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
+  await user.keyboard('{Enter}')
+  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+
+  // ArrowLeft again, still at -1, shifts the window back a month and keeps the selection at -1
+  await user.keyboard('{ArrowLeft}')
+  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 })
 
 it('budget-mode envelope dialog still offers expense categories only', async () => {

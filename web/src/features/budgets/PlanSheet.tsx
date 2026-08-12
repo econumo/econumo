@@ -76,7 +76,10 @@ interface PlanLimitTarget {
   monthIndex: number
 }
 
-/** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells */
+/** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells.
+ *  -1 is the leftmost reachable column: ArrowRight there goes to 0, ArrowLeft at 0
+ *  goes to -1, and ArrowLeft AT -1 shifts the window back a month (selection stays
+ *  at -1) — the name cell is always reachable by keyboard alone. */
 export interface PlanSelection {
   rowKey: string
   col: number
@@ -704,6 +707,15 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
 
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    // Radix portals render popover/dialog/drawer content outside the grid's DOM
+    // subtree, but React re-dispatches the event through the component tree, so
+    // it still reaches this handler. Without this guard, typing in the LimitEditor
+    // popover or any dialog gets its Arrow/Enter keys hijacked by grid navigation
+    // (Enter closing the popover without committing, ArrowLeft not moving the caret).
+    const target = e.target as HTMLElement
+    if (target.closest('input, textarea, [data-slot="popover-content"], [data-slot="dialog-content"], [data-slot="drawer-content"]')) {
+      return
+    }
     if (flatRows.length === 0) {
       return
     }
@@ -732,11 +744,13 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
       case 'ArrowLeft':
         e.preventDefault()
         if (selection.col === -1) {
-          break
-        }
-        if (selection.col === 0) {
+          // -1 is the leftmost reachable column, so ArrowLeft here shifts the window
+          // instead of going nowhere — keeps the name cell reachable while the window
+          // can still be paged from it.
           setPlanFirstMonth(addMonths(firstMonth, -1))
-          select(selection.rowKey, 0)
+          select(selection.rowKey, -1)
+        } else if (selection.col === 0) {
+          select(selection.rowKey, -1)
         } else {
           select(selection.rowKey, selection.col - 1)
         }
