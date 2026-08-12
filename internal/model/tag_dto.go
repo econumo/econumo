@@ -101,8 +101,8 @@ func (r UnarchiveTagRequest) Validate() error {
 
 type UnarchiveTagResult struct{}
 
-// DeleteTagRequest is the delete-tag request body. Tag delete is unconditional —
-// there is no mode/replaceId.
+// DeleteTagRequest is the delete-tag request body. Delete is unconditional; to
+// keep the rows pointing at the tag, use merge-tag instead.
 type DeleteTagRequest struct {
 	Id string `json:"id"`
 }

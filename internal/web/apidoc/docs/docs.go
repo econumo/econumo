@@ -10230,9 +10230,6 @@ const docTemplate = `{
                 },
                 "mode": {
                     "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
                 }
             }
         },

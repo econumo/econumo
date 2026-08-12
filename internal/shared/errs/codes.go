@@ -40,13 +40,11 @@ const (
 	CodeBudgetInvalidRoleAlias          = "budget.invalid_role_alias"
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
 
-	CodeCategoryNameLength        = "category.name_length"
-	CodeCategoryTypeInvalid       = "category.type_invalid"
-	CodeCategoryReplaceIDRequired = "category.replace_id_required"
-	CodeCategoryNotFound          = "category.not_found"
-	CodeCategoryCannotBeReplaced  = "category.cannot_be_replaced"
-	CodeCategoryCannotBeMerged    = "category.cannot_be_merged"
-	CodeCategoryListEmpty         = "category.list_empty"
+	CodeCategoryNameLength     = "category.name_length"
+	CodeCategoryTypeInvalid    = "category.type_invalid"
+	CodeCategoryNotFound       = "category.not_found"
+	CodeCategoryCannotBeMerged = "category.cannot_be_merged"
+	CodeCategoryListEmpty      = "category.list_empty"
 
 	CodeConnectionInvalidUUID      = "connection.invalid_uuid"
 	CodeConnectionInvalidRoleAlias = "connection.invalid_role_alias"
@@ -135,9 +133,7 @@ var AllCodes = []string{
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
-	CodeCategoryReplaceIDRequired,
 	CodeCategoryNotFound,
-	CodeCategoryCannotBeReplaced,
 	CodeCategoryCannotBeMerged,
 	CodeCategoryListEmpty,
 

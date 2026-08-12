@@ -763,8 +763,6 @@ definitions:
         type: string
       mode:
         type: string
-      replaceId:
-        type: string
     type: object
   model.DeleteCategoryResult:
     type: object

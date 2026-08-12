@@ -1367,9 +1367,7 @@
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
       "type_invalid": "Podany typ kategorii nie istnieje.",
-      "replace_id_required": "Przy mode=replace wymagane jest replaceId.",
       "not_found": "Nie znaleziono kategorii.",
-      "cannot_be_replaced": "Kategorii nie można zastąpić.",
       "cannot_be_merged": "Nie można scalić kategorii.",
       "list_empty": "Lista kategorii jest pusta."
     },

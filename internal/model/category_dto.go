@@ -126,22 +126,21 @@ func (r UnarchiveCategoryRequest) Validate() error {
 // ({"data":{}}).
 type UnarchiveCategoryResult struct{}
 
-// Delete modes.
+// Delete modes. "replace" was removed in favour of merge-category, which does
+// the same job completely (it also moves recurring templates and budget limits);
+// it now falls through to the invalid-choice branch below rather than silently
+// degrading into a destructive plain delete.
 const (
-	ModeDelete  = "delete"
-	ModeReplace = "replace"
+	ModeDelete = "delete"
 )
 
-// DeleteCategoryRequest is the delete-category request body. replaceId is
-// nullable; it is required when mode == replace.
+// DeleteCategoryRequest is the delete-category request body.
 type DeleteCategoryRequest struct {
-	Id        string  `json:"id"`
-	Mode      string  `json:"mode"`
-	ReplaceId *string `json:"replaceId"`
+	Id   string `json:"id"`
+	Mode string `json:"mode"`
 }
 
-// Validate enforces id NotBlank, mode NotBlank + one of delete|replace, and
-// replaceId present when mode == replace.
+// Validate enforces id NotBlank and mode NotBlank + "delete".
 func (r DeleteCategoryRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
@@ -149,10 +148,6 @@ func (r DeleteCategoryRequest) Validate() error {
 	}
 	switch r.Mode {
 	case ModeDelete:
-	case ModeReplace:
-		if r.ReplaceId == nil || strings.TrimSpace(*r.ReplaceId) == "" {
-			fields = append(fields, errs.FieldError{Key: "replaceId", Message: "replaceId is required for mode=replace", Code: errs.CodeCategoryReplaceIDRequired})
-		}
 	case "":
 		fields = append(fields, errs.FieldError{Key: "mode", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	default:

@@ -10223,9 +10223,6 @@
                 },
                 "mode": {
                     "type": "string"
-                },
-                "replaceId": {
-                    "type": "string"
                 }
             }
         },

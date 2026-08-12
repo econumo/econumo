@@ -1367,9 +1367,7 @@
     "category": {
       "name_length": "Назва категорії має містити від {min} до {max} символів.",
       "type_invalid": "Указаний тип категорії не існує.",
-      "replace_id_required": "Для mode=replace потрібно вказати replaceId.",
       "not_found": "Категорію не знайдено.",
-      "cannot_be_replaced": "Категорії не можна замінити.",
       "cannot_be_merged": "Категорії не можна об'єднати.",
       "list_empty": "Список категорій порожній."
     },

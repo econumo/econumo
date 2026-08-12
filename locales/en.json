@@ -1367,9 +1367,7 @@
     "category": {
       "name_length": "Category name must be {min}-{max} characters",
       "type_invalid": "CategoryType not exists",
-      "replace_id_required": "replaceId is required for mode=replace",
       "not_found": "Category not found",
-      "cannot_be_replaced": "Categories cannot be replaced",
       "cannot_be_merged": "Categories cannot be merged",
       "list_empty": "Categories list is empty"
     },

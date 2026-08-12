@@ -99,7 +99,7 @@ func (r UnarchivePayeeRequest) Validate() error {
 type UnarchivePayeeResult struct{}
 
 // DeletePayeeRequest is the delete-payee request body. Payee delete is
-// unconditional — there is no mode/replaceId.
+// unconditional; to keep the rows pointing at the payee, use merge-payee.
 type DeletePayeeRequest struct {
 	Id string `json:"id"`
 }

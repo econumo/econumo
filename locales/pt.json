@@ -1367,9 +1367,7 @@
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",
       "type_invalid": "O tipo de categoria não existe.",
-      "replace_id_required": "O replaceId é obrigatório quando mode=replace.",
       "not_found": "Categoria não encontrada.",
-      "cannot_be_replaced": "As categorias não podem ser substituídas.",
       "cannot_be_merged": "As categorias não podem ser mescladas.",
       "list_empty": "A lista de categorias está vazia."
     },
