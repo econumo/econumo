@@ -262,6 +262,10 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
     planHandler(),
   )
+  // window May/Jun/Jul: both uncategorized rows have their spend inside it (income
+  // actual at Jun, expense actual at May and Jul), so the assertions below actually
+  // exercise both rows instead of silently matching zero or one of them
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('tab', { name: /plan/i }))
@@ -277,8 +281,11 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
   expect(within(childCell).queryByRole('button')).not.toBeInTheDocument()
 
-  // uncategorized rows are never editable, regardless of role
-  for (const cell of screen.getAllByTestId('plan-cell-uncategorized:1')) {
+  // uncategorized rows are never editable, regardless of role — both the income and
+  // expense rows must be present, or this loop would silently check fewer than 2 cells
+  const uncatCells = screen.getAllByTestId('plan-cell-uncategorized:1')
+  expect(uncatCells).toHaveLength(2)
+  for (const cell of uncatCells) {
     expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
   }
 })

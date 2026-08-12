@@ -51,6 +51,12 @@ it('drops the Uncategorized bucket when the selected month has no uncategorized 
   spentBudget.structure.elements.push({ ...uncatEl, spent: '5' })
   const spentBuckets = bucketElements(spentBudget, exch)
   expect(spentBuckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
+
+  // spent '-5' (a refund) -> still present: the filter is cmp !== 0, not > 0
+  const refundBudget: BudgetDto = JSON.parse(JSON.stringify(budget))
+  refundBudget.structure.elements.push({ ...uncatEl, spent: '-5' })
+  const refundBuckets = bucketElements(refundBudget, exch)
+  expect(refundBuckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
 })
 
 it('zero folders puts every active element into the no-folder bucket', () => {
