@@ -332,9 +332,15 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
+	// Every budget in which this category/tag appears. A merge must touch them all,
+	// including budgets shared with connected users.
+	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	// Every period this element holds a limit for. A merge transfers all of them,
+	// past and future alike, so there is deliberately no period filter.
+	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error)
 	// period is stored as a datetime TEXT whose exact form varies (RFC3339
 	// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
 	// time.Time does NOT compare equal to either via raw "=", so normalize both
@@ -407,6 +413,11 @@ type Querier interface {
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	// Merge, no-conflict branch: hand the element to another classification instead
+	// of deleting and recreating it, which keeps its folder and sort position so the
+	// budget row stays where the user put it. UpsertBudgetElement deliberately does
+	// not update external_id, hence this dedicated statement.
+	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
