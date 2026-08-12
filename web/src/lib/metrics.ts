@@ -84,6 +84,7 @@ export const METRICS = {
   BUDGET_PLAN_OPEN: 'appBudgetPlanOpen',
   BUDGET_PLAN_CHANGE_WINDOW: 'appBudgetPlanChangeWindow',
   BUDGET_PLAN_HIDE_EMPTY_TOGGLE: 'appBudgetPlanHideEmptyToggle',
+  BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   TAG_CREATE: 'appTagCreate',
   TAG_UPDATE: 'appTagUpdate',
   TAG_ORDER_LIST: 'appTagOrderList',

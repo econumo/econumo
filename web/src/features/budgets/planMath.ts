@@ -48,6 +48,17 @@ export function clampFirstMonth(firstMonth: string, startedAt: string): string {
   return firstMonth < startMonth ? startMonth : firstMonth
 }
 
+/** Excel fill: the column the drag currently targets. Right-only — never
+ *  before startCol; clamped to the last visible column; a degenerate
+ *  colWidth (<= 0) stays on the source. */
+export function fillTargetCol(startCol: number, deltaX: number, colWidth: number, lastCol: number): number {
+  if (colWidth <= 0) {
+    return startCol
+  }
+  const target = startCol + Math.round(deltaX / colWidth)
+  return Math.min(Math.max(target, startCol), lastCol)
+}
+
 export function planInitialFirstMonth(persisted: string | null, startedAt: string, visible: number, now?: Date): string {
   const base = persisted !== null ? persisted : visible === 1 ? currentMonth(now) : addMonths(currentMonth(now), -1)
   return clampFirstMonth(base, startedAt)

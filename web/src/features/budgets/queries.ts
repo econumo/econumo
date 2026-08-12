@@ -220,6 +220,50 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
   })
 }
 
+export function useFillPlannedCells(planKey: readonly unknown[]) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; elementId: Id; amount: string; targets: { period: string; monthIndex: number }[] }) =>
+      Promise.all(
+        form.targets.map((t) =>
+          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount }),
+        ),
+      ),
+    onMutate: async (form) => {
+      await queryClient.cancelQueries({ queryKey: planKey })
+      const covered = new Set(form.targets.map((t) => t.monthIndex))
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        return {
+          ...prev,
+          structure: {
+            ...prev.structure,
+            elements: prev.structure.elements.map((el) =>
+              el.id === form.elementId
+                ? { ...el, cells: el.cells.map((c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)) }
+                : el,
+            ),
+          },
+        }
+      })
+    },
+    // No partial rollback: any failure means some months may have landed —
+    // resync from the server rather than pretending nothing happened.
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: planKey })
+    },
+    onSuccess: (_res, form) => {
+      trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
+      for (const t of form.targets) {
+        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, t.period] })
+      }
+      void queryClient.invalidateQueries({ queryKey: planKey })
+    },
+  })
+}
+
 function useInvalidateBudget() {
   const queryClient = useQueryClient()
   return () => {

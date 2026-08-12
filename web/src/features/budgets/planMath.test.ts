@@ -6,6 +6,7 @@ import {
   balanceRow,
   bucketPlanRows,
   clampFirstMonth,
+  fillTargetCol,
   folderSides,
   formatPlanMonth,
   makePlanExchange,
@@ -418,5 +419,22 @@ describe('totals + balance', () => {
     expect(totals[1].expensePlanned).toBe('0')
     // effectiveNet uses the archived row's actual (30), never max(actual, planned) = max(30, 999)
     expect(totals[1].effectiveNet).toBe('-30')
+  })
+})
+
+describe('fillTargetCol', () => {
+  it('rounds the pointer delta to whole columns', () => {
+    expect(fillTargetCol(1, 0, 110, 5)).toBe(1)
+    expect(fillTargetCol(1, 54, 110, 5)).toBe(1) // < half a column
+    expect(fillTargetCol(1, 56, 110, 5)).toBe(2) // past half
+    expect(fillTargetCol(1, 275, 110, 5)).toBe(4) // 2.5 -> round -> 3 cols right
+  })
+  it('never goes left of the source and clamps at the last visible column', () => {
+    expect(fillTargetCol(2, -500, 110, 5)).toBe(2)
+    expect(fillTargetCol(2, 5000, 110, 5)).toBe(5)
+  })
+  it('degrades to the source column on zero/negative width', () => {
+    expect(fillTargetCol(1, 300, 0, 5)).toBe(1)
+    expect(fillTargetCol(1, 300, -10, 5)).toBe(1)
   })
 })
