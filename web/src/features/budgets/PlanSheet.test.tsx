@@ -787,3 +787,84 @@ describe('fill handle', () => {
     expect(bodies).toHaveLength(0)
   })
 })
+
+describe('income/expense split', () => {
+  it('renders a foldable Expenses header that collapses the whole expense area', async () => {
+    usePlanHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    const expenseSection = screen.getByTestId('plan-section-expense')
+    const expensesButton = within(expenseSection).getByRole('button', { name: 'Expenses' })
+
+    // expense rows present before folding: a folder row, a loose row, uncategorized
+    expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="cat-food:1"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
+    // income rows present too
+    expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
+
+    await user.click(expensesButton)
+    expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="cat-food:1"]')).not.toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="uncategorized:1"]')).not.toBeInTheDocument()
+    // income unaffected by the expense fold
+    expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
+
+    await user.click(expensesButton)
+    expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="cat-food:1"]')).toBeInTheDocument()
+
+    // keyboard nav must match: with the expense section folded, ArrowDown from the
+    // last income row must not reach the (now excluded) expense rows
+    const lastIncomeRow = document.querySelector('[data-row-id="uncategorized:3"]') as HTMLElement
+    const lastIncomeCell = within(lastIncomeRow).getByTestId('plan-cell-uncategorized:0')
+    await user.click(lastIncomeCell)
+    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'true')
+
+    await user.click(expensesButton)
+    const grid = screen.getByTestId('plan-sheet')
+    grid.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'true')
+    expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  })
+
+  it('hide-empty count for expense loose rows sits on the Expenses header', async () => {
+    usePlanHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+    expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
+
+    const expenseSection = screen.getByTestId('plan-section-expense')
+    const header = within(expenseSection).getByRole('button', { name: 'Expenses' }).parentElement as HTMLElement
+    const hiddenNotice = within(header).getByText('1 hidden')
+
+    // it sits in the header, not as a trailing line after the last visible row
+    const lastRow = within(expenseSection).getByTestId('plan-cell-uncategorized:0')
+    expect(hiddenNotice.compareDocumentPosition(lastRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    await user.click(within(header).getByRole('button', { name: 'Show' }))
+    expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
+    expect(within(expenseSection).queryByText('1 hidden')).not.toBeInTheDocument()
+  })
+
+  it('bands and divider are distinguishable', async () => {
+    usePlanHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    expect(screen.getByTestId('plan-section-income').classList.contains('plan-band-income')).toBe(true)
+    const expenseSection = screen.getByTestId('plan-section-expense')
+    expect(expenseSection.classList.contains('plan-band-expense')).toBe(true)
+    expect(expenseSection.classList.contains('border-t-2')).toBe(true)
+  })
+})

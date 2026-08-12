@@ -979,6 +979,7 @@
         },
         "section": {
           "income": "Receitas",
+          "expenses": "Despesas",
           "archived": "Em arquivo"
         },
         "nav": {

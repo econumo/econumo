@@ -637,12 +637,15 @@ function buildFlatRows(
       pushRow(rows.income.uncategorized)
     }
   }
-  for (const f of rows.expense.folders) {
-    visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
-  }
-  visibleSectionRows(rows.expense.loose, false, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
-  if (rows.expense.uncategorized) {
-    pushRow(rows.expense.uncategorized)
+  const expenseFolded = folded('expense')
+  if (!expenseFolded) {
+    for (const f of rows.expense.folders) {
+      visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
+    }
+    visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
+    if (rows.expense.uncategorized) {
+      pushRow(rows.expense.uncategorized)
+    }
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -882,9 +885,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const incomeLoose = visibleSectionRows(rows.income.loose, incomeFolded, hideEmpty, incomeRevealed)
   const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(rows.income.loose, incomeRevealed)
 
+  const expenseFolded = folded('expense')
   const expenseRevealed = revealedSections.has('expense')
-  const expenseLoose = visibleSectionRows(rows.expense.loose, false, hideEmpty, expenseRevealed)
-  const expenseHiddenCount = sectionHiddenCount(rows.expense.loose, expenseRevealed)
+  const expenseLoose = visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
+  const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(rows.expense.loose, expenseRevealed)
 
   function handleEnter(entry: FlatRow, col: number) {
     if (col === -1) {
@@ -1052,7 +1056,11 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"
       >
-        <section role="rowgroup" data-testid="plan-section-income" className="flex flex-col gap-1 px-1 py-1">
+        <section
+          role="rowgroup"
+          data-testid="plan-section-income"
+          className="plan-band-income flex flex-col gap-1 rounded-md bg-emerald-500/[0.06] px-1 py-1 dark:bg-emerald-400/[0.06]"
+        >
           <SectionHeader
             label={t('budgets.page.plan.section.income')}
             foldKey="income"
@@ -1098,27 +1106,38 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           ) : null}
         </section>
 
-        <section role="rowgroup" data-testid="plan-section-expense" className="flex flex-col gap-1 px-1 py-1">
-          {rows.expense.folders.map((f) => (
-            <FolderRows
-              key={f.folder.id}
-              section={f}
-              ctx={ctx}
-              hideEmpty={hideEmpty}
-              folded={folded(f.folder.id)}
-              revealed={revealedSections.has(f.folder.id)}
-              onToggleFold={togglePlanFold}
-              onReveal={() => revealSection(f.folder.id)}
-            />
-          ))}
-          {expenseLoose.map((r) => (
-            <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-          ))}
-          {rows.expense.uncategorized ? <ElementRow key={rowKey(rows.expense.uncategorized)} row={rows.expense.uncategorized} ctx={ctx} /> : null}
-          {expenseHiddenCount > 0 ? (
-            <div className="px-2 pb-1">
-              <HiddenRowsNotice count={expenseHiddenCount} onShow={() => revealSection('expense')} />
-            </div>
+        <section
+          role="rowgroup"
+          data-testid="plan-section-expense"
+          className="plan-band-expense mt-2 flex flex-col gap-1 rounded-md border-t-2 border-border bg-rose-500/[0.04] px-1 py-1 dark:bg-rose-400/[0.04]"
+        >
+          <SectionHeader
+            label={t('budgets.page.plan.section.expenses')}
+            foldKey="expense"
+            folded={expenseFolded}
+            onToggleFold={togglePlanFold}
+            hiddenCount={expenseHiddenCount}
+            onShow={() => revealSection('expense')}
+          />
+          {!expenseFolded ? (
+            <>
+              {rows.expense.folders.map((f) => (
+                <FolderRows
+                  key={f.folder.id}
+                  section={f}
+                  ctx={ctx}
+                  hideEmpty={hideEmpty}
+                  folded={folded(f.folder.id)}
+                  revealed={revealedSections.has(f.folder.id)}
+                  onToggleFold={togglePlanFold}
+                  onReveal={() => revealSection(f.folder.id)}
+                />
+              ))}
+              {expenseLoose.map((r) => (
+                <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+              ))}
+              {rows.expense.uncategorized ? <ElementRow key={rowKey(rows.expense.uncategorized)} row={rows.expense.uncategorized} ctx={ctx} /> : null}
+            </>
           ) : null}
         </section>
 

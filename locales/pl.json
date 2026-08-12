@@ -979,6 +979,7 @@
         },
         "section": {
           "income": "Przychody",
+          "expenses": "Wydatki",
           "archived": "W archiwum"
         },
         "nav": {

@@ -979,6 +979,7 @@
         },
         "section": {
           "income": "Income",
+          "expenses": "Expenses",
           "archived": "Archived"
         },
         "nav": {

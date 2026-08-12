@@ -979,6 +979,7 @@
         },
         "section": {
           "income": "Доходы",
+          "expenses": "Расходы",
           "archived": "В архиве"
         },
         "nav": {

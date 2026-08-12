@@ -979,6 +979,7 @@
         },
         "section": {
           "income": "Доходи",
+          "expenses": "Витрати",
           "archived": "В архіві"
         },
         "nav": {
