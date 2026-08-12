@@ -46,3 +46,7 @@ func (sqliteQuerier) InsertOperationId(ctx context.Context, db backend.DBTX, p i
 func (sqliteQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error {
 	return sqlitegen.New(db).MarkOperationHandled(ctx, p)
 }
+
+func (sqliteQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return sqlitegen.New(db).ReassignCategoryRecurring(ctx, p)
+}

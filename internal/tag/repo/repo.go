@@ -19,8 +19,10 @@ import (
 )
 
 type (
-	tagRow       = sqlitegen.Tag
-	upsertParams = sqlitegen.UpsertTagParams
+	tagRow            = sqlitegen.Tag
+	upsertParams      = sqlitegen.UpsertTagParams
+	reassignTxParams  = sqlitegen.ReassignTagTransactionsParams
+	reassignRecParams = sqlitegen.ReassignTagRecurringParams
 )
 
 type querier interface {
@@ -28,6 +30,8 @@ type querier interface {
 	ListTagsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]tagRow, error)
 	UpsertTag(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteTag(ctx context.Context, db backend.DBTX, id string) error
+	ReassignTagTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
+	ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
 
 type Repo struct {
@@ -116,4 +120,16 @@ func hydrate(row tagRow) (*model.Tag, error) {
 	}
 	return &model.Tag{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+// ReassignTransactions points every transaction on oldID at newID.
+func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
+	newStr, oldStr := newID.String(), oldID.String()
+	return r.q.ReassignTagTransactions(ctx, r.db(ctx), reassignTxParams{TagID: &newStr, TagID_2: &oldStr})
+}
+
+// ReassignRecurring points every recurring template on oldID at newID.
+func (r *Repo) ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error {
+	newStr, oldStr := newID.String(), oldID.String()
+	return r.q.ReassignTagRecurring(ctx, r.db(ctx), reassignRecParams{TagID: &newStr, TagID_2: &oldStr})
 }

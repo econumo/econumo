@@ -229,3 +229,28 @@ type MoveCategoryResult struct {
 type GetCategoryListResult struct {
 	Items []CategoryResult `json:"items"`
 }
+
+// MergeCategoryRequest is the merge-category request body: sourceId is absorbed into
+// targetId and then deleted. The fields are named rather than reusing the usual
+// "id" because this also ships as an MCP tool, where which side gets destroyed
+// must be unambiguous to a model choosing arguments.
+type MergeCategoryRequest struct {
+	SourceId string `json:"sourceId"`
+	TargetId string `json:"targetId"`
+}
+
+func (r MergeCategoryRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.SourceId) == "" {
+		fields = append(fields, errs.FieldError{Key: "sourceId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.TargetId) == "" {
+		fields = append(fields, errs.FieldError{Key: "targetId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type MergeCategoryResult struct{}

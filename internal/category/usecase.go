@@ -23,6 +23,7 @@ type Service struct {
 	clock  port.Clock
 	read   ReadModel
 	access AccountAccess
+	budget BudgetElementMerger
 }
 
 // NewService wires the category service. read is the own+shared category view
@@ -30,8 +31,8 @@ type Service struct {
 // full available list (own + shared, NOT owner-only). access resolves
 // shared-account ownership for create-category-for-account. ops backs
 // create-category's request-id idempotency (see CreateCategory).
-func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
+func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess, budget BudgetElementMerger) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access, budget: budget}
 }
 
 // resolveAccountOwner returns the user a category created in the context of

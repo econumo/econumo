@@ -192,9 +192,15 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// used by the category/tag create-for-account paths.
 	accountAccessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(cfg.DatabaseDriver, txm))
 
+	// budgetRepo is built here rather than beside budgetSvc below because the
+	// classification services take a merger over it; budgetSvc itself still needs
+	// the later dependencies.
+	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
+	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, clk)}
+
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver)
+	categorySvc := appcategory.NewService(categoryRepo, txm, categoryRepo, clk, categoryReadRepo, accountAccessResolver, classificationMerger)
 	categoryReadSvc := appcategory.NewReadService(categoryReadRepo)
 	categoryHandlers := handlercategory.NewHandlers(categorySvc, categoryReadSvc)
 
@@ -202,7 +208,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
 	tagRepo := tagrepo.NewRepo(cfg.DatabaseDriver, txm)
 	tagReadRepo := tagrepo.NewReadRepo(cfg.DatabaseDriver, txm)
-	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver)
+	tagSvc := apptag.NewService(tagRepo, txm, opGuard, clk, tagReadRepo, accountAccessResolver, classificationMerger)
 	tagReadSvc := apptag.NewReadService(tagReadRepo)
 	tagHandlers := handlertag.NewHandlers(tagSvc, tagReadSvc)
 
@@ -272,7 +278,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	// Budget service is built before connection: delete-connection's unwind
 	// removes budget memberships (access + seeded records) via RemoveMember.
-	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
 	budgetReadRepo := budgetrepo.NewReadRepo(cfg.DatabaseDriver, txm)
 	rateProvider := currencyrepo.NewRateProvider(cfg.DatabaseDriver, txm, currencyLookup, base.ID)
 	convertor := appcurrency.NewConvertor(rateProvider)

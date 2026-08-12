@@ -39,3 +39,11 @@ func (pgsqlQuerier) UpsertTag(ctx context.Context, db backend.DBTX, p upsertPara
 func (pgsqlQuerier) DeleteTag(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteTag(ctx, id)
 }
+
+func (pgsqlQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return pgsqlgen.New(db).ReassignTagTransactions(ctx, pgsqlgen.ReassignTagTransactionsParams(p))
+}
+
+func (pgsqlQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return pgsqlgen.New(db).ReassignTagRecurring(ctx, pgsqlgen.ReassignTagRecurringParams(p))
+}

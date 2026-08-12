@@ -30,3 +30,11 @@ func (sqliteQuerier) UpsertTag(ctx context.Context, db backend.DBTX, p upsertPar
 func (sqliteQuerier) DeleteTag(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteTag(ctx, id)
 }
+
+func (sqliteQuerier) ReassignTagTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return sqlitegen.New(db).ReassignTagTransactions(ctx, p)
+}
+
+func (sqliteQuerier) ReassignTagRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return sqlitegen.New(db).ReassignTagRecurring(ctx, p)
+}

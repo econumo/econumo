@@ -28,4 +28,6 @@ type Repository interface {
 	// ReassignTransactions points every transaction on oldID at newID (replace
 	// mode), before the old category is deleted.
 	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error
+	// ReassignRecurring is its recurring-template counterpart (merge).
+	ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error
 }

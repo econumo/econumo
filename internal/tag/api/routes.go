@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 7 tag endpoints, each wrapped in the auth middleware.
+// RegisterAPI mounts the 8 tag endpoints, each wrapped in the auth middleware.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn)
@@ -18,6 +18,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/tag/archive-tag", auth(h.ArchiveTag))
 		mux.Handle("POST /api/v1/tag/unarchive-tag", auth(h.UnarchiveTag))
 		mux.Handle("POST /api/v1/tag/delete-tag", auth(h.DeleteTag))
+		mux.Handle("POST /api/v1/tag/merge-tag", auth(h.MergeTag))
 		mux.Handle("POST /api/v1/tag/move-tag", auth(h.MoveTag))
 		mux.Handle("POST /api/v1/tag/sort-tag-list", auth(h.SortTagList))
 		mux.Handle("GET /api/v1/tag/get-tag-list", auth(h.GetTagList))

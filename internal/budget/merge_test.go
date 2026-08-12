@@ -133,7 +133,7 @@ func (f *fakeLimits) DeleteLimit(ctx context.Context, id vo.Id) error { return n
 func (f *fakeLimits) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error { return nil }
 
 type mergeEnv struct {
-	svc      *Service
+	svc      *MergeService
 	elements *fakeElements
 	limits   *fakeLimits
 	now      time.Time
@@ -143,7 +143,7 @@ func newMergeEnv() *mergeEnv {
 	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
 	els, lims := newFakeElements(), &fakeLimits{}
 	return &mergeEnv{
-		svc:      &Service{elements: els, limits: lims, clock: mergeClock{t: now}},
+		svc:      NewMergeService(els, lims, mergeClock{t: now}),
 		elements: els,
 		limits:   lims,
 		now:      now,

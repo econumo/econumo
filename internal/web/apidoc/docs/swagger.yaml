@@ -1116,6 +1116,42 @@ definitions:
       result:
         type: string
     type: object
+  model.MergeCategoryRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeCategoryResult:
+    type: object
+  model.MergeLabelRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeLabelResult:
+    type: object
+  model.MergePayeeRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergePayeeResult:
+    type: object
+  model.MergeTagRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeTagResult:
+    type: object
   model.MetaResult:
     properties:
       access:
@@ -3925,6 +3961,53 @@ paths:
       summary: Get the category list
       tags:
       - Category
+  /api/v1/category/merge-category:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two categorys
+      tags:
+      - Category
   /api/v1/category/move-category:
     post:
       consumes:
@@ -4834,6 +4917,53 @@ paths:
       summary: Get the label list
       tags:
       - Label
+  /api/v1/label/merge-label:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two labels
+      tags:
+      - Label
   /api/v1/label/move-label:
     post:
       consumes:
@@ -5181,6 +5311,53 @@ paths:
       security:
       - Bearer: []
       summary: Get the payee list
+      tags:
+      - Payee
+  /api/v1/payee/merge-payee:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two payees
       tags:
       - Payee
   /api/v1/payee/move-payee:
@@ -5817,6 +5994,53 @@ paths:
       security:
       - Bearer: []
       summary: Get the tag list
+      tags:
+      - Tag
+  /api/v1/tag/merge-tag:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two tags
       tags:
       - Tag
   /api/v1/tag/move-tag:
