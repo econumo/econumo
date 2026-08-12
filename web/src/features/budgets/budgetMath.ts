@@ -53,8 +53,11 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
   // The uncategorized element is presentation-only (no persisted row to move or
-  // budget), so it is pulled out before bucketing and never joins a folder.
-  const uncategorizedElements = elements.filter((el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0)
+  // budget), so it is pulled out before bucketing and never joins a folder. It
+  // only earns a place when the selected month has uncategorized spend.
+  const uncategorizedElements = elements.filter(
+    (el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0 && cmp(el.spent, '0') !== 0,
+  )
   const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const byPosition = (a: BudgetElementDto, b: BudgetElementDto) => a.position - b.position
 

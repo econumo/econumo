@@ -807,6 +807,9 @@ describe('fill handle', () => {
 describe('income/expense split', () => {
   it('renders a foldable Expenses header that collapses the whole expense area', async () => {
     usePlanHandlers()
+    // window Jun/Jul/Aug: both uncategorized rows have their spend inside it (income
+    // actual at Jun, expense actual at Jul), so neither is hidden by the zero-spend filter
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
     await user.click(await screen.findByRole('tab', { name: /plan/i }))
@@ -882,5 +885,44 @@ describe('income/expense split', () => {
     const expenseSection = screen.getByTestId('plan-section-expense')
     expect(expenseSection.classList.contains('plan-band-expense')).toBe(true)
     expect(expenseSection.classList.contains('border-t-2')).toBe(true)
+  })
+
+  it('hides an uncategorized row whose visible cells are all zero, and it returns when the window covers its spend', async () => {
+    const plan: BudgetPlanDto = JSON.parse(JSON.stringify(fixtureWirePlan))
+    const incomeUncat = plan.structure.elements.find((el) => el.id === 'uncategorized' && el.type === 3)!
+    incomeUncat.cells = [
+      { actual: '8', planned: '' },
+      { actual: '0', planned: '' },
+      { actual: '0', planned: '' },
+      { actual: '0', planned: '' },
+    ]
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(plan),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-07-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    // window Jul/Aug/Sep: income-uncat's only nonzero actual is month 0 (May), out of
+    // view -> hidden
+    expect(document.querySelector('[data-row-id="uncategorized:3"]')).not.toBeInTheDocument()
+
+    // keyboard flat rows must skip it too: ArrowDown from the last income loose row
+    // (Freelance) lands on the first expense row, never on the hidden uncategorized row
+    await user.click(screen.getByTestId('plan-cell-cat-freelance:0'))
+    grid.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+    // navigate back two months so 2026-05 enters the window -> row reappears
+    await user.click(screen.getByRole('button', { name: 'Earlier months' }))
+    await user.click(screen.getByRole('button', { name: 'Earlier months' }))
+    await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+    expect(document.querySelector('[data-row-id="uncategorized:3"]')).toBeInTheDocument()
   })
 })

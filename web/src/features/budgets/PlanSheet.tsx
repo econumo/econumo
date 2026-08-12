@@ -785,6 +785,29 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const rows = useMemo(() => (plan ? bucketPlanRows(plan, false) : null), [plan])
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
+  // An uncategorized row is dropped when every VISIBLE column's actual is zero — it
+  // can still have spend outside the current window, so it reappears once navigation
+  // brings that month into view. Derived once here (not per-section, not in
+  // buildFlatRows) so the render sections and the keyboard flat-row list can never
+  // disagree on which rows are on screen.
+  const shownRows = useMemo(() => {
+    if (!rows) {
+      return null
+    }
+    const visibleUncat = (r: PlanRow | null): PlanRow | null =>
+      r && visibleMonths.some((m) => {
+        const i = monthIndex(m)
+        return i >= 0 && !isZero(r.element.cells[i]?.actual ?? '0')
+      })
+        ? r
+        : null
+    return {
+      ...rows,
+      income: { ...rows.income, uncategorized: visibleUncat(rows.income.uncategorized) },
+      expense: { ...rows.expense, uncategorized: visibleUncat(rows.expense.uncategorized) },
+    }
+  }, [rows, visibleMonths, monthIndex])
+
   // the expensive per-render work the arrow keys used to re-trigger on every keystroke:
   // FX conversion, totals, running balance, and the flattened keyboard-nav row list all
   // depend on the plan/currencies/fold state, never on `selection` — memoizing them means
@@ -793,8 +816,8 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const totals = useMemo(() => (plan && ex ? planTotals(plan, ex) : []), [plan, ex])
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
   const flatRows = useMemo(
-    () => (rows ? buildFlatRows(rows, unfoldedElements, hideEmpty, revealedSections, folded) : []),
-    [rows, unfoldedElements, hideEmpty, revealedSections, folded],
+    () => (shownRows ? buildFlatRows(shownRows, unfoldedElements, hideEmpty, revealedSections, folded) : []),
+    [shownRows, unfoldedElements, hideEmpty, revealedSections, folded],
   )
 
   const ctx: GridCtx | null = useMemo(() => {
@@ -850,7 +873,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
     fillCancel,
   ])
 
-  if (!plan || !rows || !ctx || !ex) {
+  if (!plan || !shownRows || !ctx || !ex) {
     if (isError) {
       return (
         <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center" data-testid="plan-error">
@@ -878,13 +901,13 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
 
   const incomeFolded = folded('income')
   const incomeRevealed = revealedSections.has('income')
-  const incomeLoose = visibleSectionRows(rows.income.loose, incomeFolded, hideEmpty, incomeRevealed)
-  const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(rows.income.loose, incomeRevealed)
+  const incomeLoose = visibleSectionRows(shownRows.income.loose, incomeFolded, hideEmpty, incomeRevealed)
+  const incomeHiddenCount = incomeFolded ? 0 : sectionHiddenCount(shownRows.income.loose, incomeRevealed)
 
   const expenseFolded = folded('expense')
   const expenseRevealed = revealedSections.has('expense')
-  const expenseLoose = visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
-  const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(rows.expense.loose, expenseRevealed)
+  const expenseLoose = visibleSectionRows(shownRows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
+  const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(shownRows.expense.loose, expenseRevealed)
 
   function handleEnter(entry: FlatRow, col: number) {
     if (col === -1) {
@@ -1082,7 +1105,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           />
           {!incomeFolded ? (
             <>
-              {rows.income.folders.map((f) => (
+              {shownRows.income.folders.map((f) => (
                 <FolderRows
                   key={f.folder.id}
                   section={f}
@@ -1097,7 +1120,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
               {incomeLoose.map((r) => (
                 <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
               ))}
-              {rows.income.uncategorized ? <ElementRow key={rowKey(rows.income.uncategorized)} row={rows.income.uncategorized} ctx={ctx} /> : null}
+              {shownRows.income.uncategorized ? (
+                <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
+              ) : null}
             </>
           ) : null}
         </section>
@@ -1117,7 +1142,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           />
           {!expenseFolded ? (
             <>
-              {rows.expense.folders.map((f) => (
+              {shownRows.expense.folders.map((f) => (
                 <FolderRows
                   key={f.folder.id}
                   section={f}
@@ -1132,12 +1157,14 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
               {expenseLoose.map((r) => (
                 <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
               ))}
-              {rows.expense.uncategorized ? <ElementRow key={rowKey(rows.expense.uncategorized)} row={rows.expense.uncategorized} ctx={ctx} /> : null}
+              {shownRows.expense.uncategorized ? (
+                <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+              ) : null}
             </>
           ) : null}
         </section>
 
-        {rows.archived.length > 0 ? (
+        {shownRows.archived.length > 0 ? (
           <section role="rowgroup" data-testid="plan-section-archived" className="flex flex-col gap-1 px-1 py-1">
             <SectionHeader
               label={t('budgets.page.plan.section.archived')}
@@ -1148,7 +1175,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
               onShow={() => {}}
             />
             {!folded('archived')
-              ? rows.archived.map((r) => <ElementRow key={rowKey(r)} row={r} ctx={ctx} />)
+              ? shownRows.archived.map((r) => <ElementRow key={rowKey(r)} row={r} ctx={ctx} />)
               : null}
           </section>
         ) : null}

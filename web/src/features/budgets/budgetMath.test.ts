@@ -31,6 +31,28 @@ it('archive keeps elements with a nonzero budget, spent or available, name-sorte
   expect(buckets.archive.elements.map((e) => e.id)).toEqual(['tag-spent', 'tag-limit', 'tag-carry'])
 })
 
+it('drops the Uncategorized bucket when the selected month has no uncategorized spend', () => {
+  const uncatEl: BudgetElementDto = {
+    id: 'uncategorized', type: 1, name: 'Uncategorized', icon: 'question_mark', currencyId: null, isArchived: 0,
+    folderId: null, position: 9, budgeted: '0', available: '0', spent: '0', budgetSpent: '0',
+    ownerUserId: null, children: [],
+  }
+
+  // spent '0' (carried by prior-month spend server-side) -> the bucket is empty and
+  // budgetTotals is unaffected
+  const zeroBudget: BudgetDto = JSON.parse(JSON.stringify(budget))
+  zeroBudget.structure.elements.push({ ...uncatEl })
+  const zeroBuckets = bucketElements(zeroBudget, exch)
+  expect(zeroBuckets.uncategorized.elements).toEqual([])
+  expect(budgetTotals(zeroBuckets)).toEqual(budgetTotals(bucketElements(budget, exch)))
+
+  // spent '5' -> present
+  const spentBudget: BudgetDto = JSON.parse(JSON.stringify(budget))
+  spentBudget.structure.elements.push({ ...uncatEl, spent: '5' })
+  const spentBuckets = bucketElements(spentBudget, exch)
+  expect(spentBuckets.uncategorized.elements.map((e) => e.id)).toEqual(['uncategorized'])
+})
+
 it('zero folders puts every active element into the no-folder bucket', () => {
   const noFolders: BudgetDto = { ...budget, structure: { folders: [], elements: budget.structure.elements, labels: budget.structure.labels } }
   const buckets = bucketElements(noFolders, exch)
