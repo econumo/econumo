@@ -55,6 +55,15 @@ queries over the existing schema.
 
 The source row is then deleted, inside the same transaction.
 
+### What a period is
+
+A **period is a budget month**. `budgets_elements_limits` holds at most one row per
+element per month — "the limit for *Groceries* in August 2026" — with the date
+snapped to first-of-month on the way in (`model.FirstOfMonth`, `internal/budget/read.go:66`).
+
+"Summed per period" therefore means: for every month in which the source element had
+a limit, add that amount into the target element's limit for that same month.
+
 ### Why limits are summed
 
 Limits are money, and the merge is already summing the *spending* side by re-pointing
@@ -189,6 +198,27 @@ off the element. For every element whose `external_id` is the source:
 Scoped by `external_id` alone, so every budget the classification appears in —
 including budgets shared with connected users — stays consistent.
 
+#### Periods must be compared with `datetime()`, never raw `=`
+
+`period` is stored as datetime TEXT **whose exact form varies** —
+`2026-08-01T00:00:00Z` from Go writes versus `2026-08-01 00:00:00` from older
+fixtures — which is why every existing query normalizes both sides
+(`budgets.sql:135-142`).
+
+This is a live hazard for the merge, not a stylistic note. A self-join pairing the
+two elements' limits on `l1.period = l2.period` would silently **fail to pair** a
+Go-written limit with an older-format one. And nothing downstream catches it:
+`budgets_elements_limits` has no unique constraint on `(element_id, period)` — the
+primary key is `id`, and `UpsertBudgetLimit` conflicts on `id` as well — so the
+unpaired source limit would be inserted as a **second row for the same month**,
+double-counting in the budget. That is exactly the failure the summing rule exists to
+prevent.
+
+The merge therefore resolves the target's limit per period through the normalizing
+read (`GetBudgetLimit`, which already wraps both sides in `datetime()`), then either
+updates that row by id or inserts a fresh one. It never matches periods by string
+equality.
+
 ### Labels are the one per-engine divergence
 
 `transactions_labels` and `recurring_transactions_labels` are many-to-many, so a
@@ -265,6 +295,12 @@ and `ru`, minus the two removed codes.
 - **Budget merge tests**: both branches (re-point when the target has no element;
   sum-and-delete when it does), including a period only the source has, a period only
   the target has, and a period both have.
+- **Mixed period formats**: a fixture where the source's limit is written
+  `2026-08-01 00:00:00` and the target's `2026-08-01T00:00:00Z` for the same month
+  must produce **one** summed limit row, not two. Without this test the
+  double-counting bug described above is invisible — every limit written by the
+  current Go code shares one format, so a naive implementation passes an
+  all-Go-fixture suite.
 - **Repo integration tests** on sqlite, rerun against PostgreSQL via
   `make test-repo-pgsql`.
 - **`apiparity`**: four new scenarios plus goldens; the `delete-category` replace
@@ -293,5 +329,6 @@ Coverage gate stays at `GO_COVER_MIN=80`.
 | Per-feature routes, not one generic `classification/merge` | No such backend module exists, and an orchestrating package would have to import all four features, which `archtest` forbids |
 | `sourceId`/`targetId` over `id`/`targetId` | Self-describing for MCP callers, where the destructive side must be unambiguous |
 | Re-point the element when the target has none | Preserves the budget row's folder and sort position; same arithmetic as delete-and-recreate |
+| Pair limits via the normalizing `datetime()` read, never raw `=` | Stored period formats vary, and no unique constraint on `(element_id, period)` would catch a mispair — it would double-count silently |
 | Remove `mode=replace` outright | Redundant with merge, and incomplete today (misses recurring transactions); removal fails loudly rather than degrading silently |
 | No undo, no bulk merge, no duplicate detection | YAGNI; the confirm dialog states irreversibility plainly |
