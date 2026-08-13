@@ -1155,3 +1155,20 @@ it('tracks the hovered month column on the grid container', async () => {
   await user.unhover(cell)
   expect(grid).not.toHaveAttribute('data-hover-col')
 })
+
+it('gives expanded child rows the same row-hover treatment as their parents', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // pe1/Living has children; expanding it reveals cat-rent as a ChildRow
+  await user.click(within(document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).getByTitle('Living'))
+  const childCell = await screen.findByTestId('plan-cell-cat-rent:0')
+  const childRow = childCell.closest('[role="row"]') as HTMLElement
+
+  // budget mode tints child rows on hover just like parents (BudgetTable.tsx);
+  // plan mode must not diverge
+  expect(childRow.className).toContain('plan-row')
+})

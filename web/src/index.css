@@ -148,6 +148,11 @@
     --muted: #F5F5F5;
     --muted-foreground: #808080;
     --accent: #F5F5F5;
+    /* Plan grid hover wash. Tinting toward --accent works in light mode but not in
+       dark, where --accent is DARKER than the surface, so the wash would darken an
+       already-dark row into invisibility (measured: 1.03 vs 1.37 luminance ratio).
+       Each theme therefore tints toward its own contrasting end. */
+    --plan-hover: oklch(0.55 0 0);
     --accent-foreground: #333333;
     --destructive: #D34949;
     --border: #E6E6E6;
@@ -183,6 +188,7 @@
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
+    --plan-hover: oklch(0.985 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
@@ -322,8 +328,8 @@
   @media (hover: hover) {
     .plan-row:hover {
       background-image: linear-gradient(
-        color-mix(in srgb, var(--accent), transparent 40%),
-        color-mix(in srgb, var(--accent), transparent 40%)
+        color-mix(in srgb, var(--plan-hover), transparent 88%),
+        color-mix(in srgb, var(--plan-hover), transparent 88%)
       );
     }
 
@@ -340,8 +346,8 @@
     [data-hover-col='10'] [data-col='10'],
     [data-hover-col='11'] [data-col='11'] {
       background-image: linear-gradient(
-        color-mix(in srgb, var(--accent), transparent 85%),
-        color-mix(in srgb, var(--accent), transparent 85%)
+        color-mix(in srgb, var(--plan-hover), transparent 96%),
+        color-mix(in srgb, var(--plan-hover), transparent 96%)
       );
     }
   }

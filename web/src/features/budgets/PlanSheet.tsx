@@ -246,7 +246,7 @@ const ChildRow = memo(function ChildRow({
     <div
       role="row"
       data-row-id={rk}
-      className="grid items-center gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
+      className="plan-row grid items-center gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
       style={{ gridTemplateColumns: ctx.gridCols }}
     >
       <span
