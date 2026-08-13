@@ -311,7 +311,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
     <div data-row-id={rk}>
       <div
         role="row"
-        className="grid items-center gap-1 rounded-md px-2 py-1.5 hover:bg-accent/50"
+        className="grid items-center gap-1 border-b border-border/60 px-2 py-1.5"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
         <div
@@ -1102,7 +1102,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         <section
           role="rowgroup"
           data-testid="plan-section-income"
-          className="plan-band-income flex flex-col gap-1 rounded-md bg-emerald-500/[0.06] px-1 py-1 dark:bg-emerald-400/[0.06]"
+          className="plan-band-income flex flex-col rounded-md bg-emerald-500/[0.06] px-1 py-1 dark:bg-emerald-400/[0.06]"
         >
           <SectionHeader
             label={t('budgets.page.plan.section.income')}
@@ -1154,7 +1154,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         <section
           role="rowgroup"
           data-testid="plan-section-expense"
-          className="plan-band-expense mt-2 flex flex-col gap-1 rounded-md border-t-2 border-border bg-rose-500/[0.04] px-1 py-1 dark:bg-rose-400/[0.04]"
+          className="plan-band-expense mt-2 flex flex-col rounded-md border-t-2 border-border bg-rose-500/[0.04] px-1 py-1 dark:bg-rose-400/[0.04]"
         >
           <SectionHeader
             label={t('budgets.page.plan.section.expenses')}

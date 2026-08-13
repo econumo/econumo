@@ -1111,3 +1111,20 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(within(totals).getByText('Net')).toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
 })
+
+it('rules element rows flush with hairline dividers', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // bands no longer space their children apart
+  const income = screen.getByTestId('plan-section-income')
+  expect(income.className).not.toContain('gap-1')
+
+  // rows carry a hairline divider and are no longer rounded cards
+  const row = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]') as HTMLElement
+  expect(row.className).toContain('border-b')
+  expect(row.className).not.toContain('rounded-md')
+})

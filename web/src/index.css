@@ -290,3 +290,12 @@
     animation: none;
   }
 }
+
+/* Plan grid: rows sit flush and share hairline dividers, so the last row in a
+   band must not draw a line across the band's rounded edge. */
+.plan-band-income > :last-child,
+.plan-band-expense > :last-child,
+.plan-band-income [role='row']:last-child,
+.plan-band-expense [role='row']:last-child {
+  border-bottom: 0;
+}
