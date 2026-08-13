@@ -152,7 +152,8 @@
        would fail in dark mode, where --accent is DARKER than the surface and the fill
        would darken an already-dark row into invisibility (measured: 1.03 vs 1.37
        luminance ratio), so each theme tints toward its own contrasting end.
-       The hovered COLUMN uses the same token at a much lower alpha. */
+       The hovered COLUMN uses the same token at the same alpha, so the crosshair's
+       two arms read as one weight. */
     --plan-hover: oklch(0.55 0 0);
     --accent-foreground: #333333;
     --destructive: #D34949;
@@ -344,8 +345,8 @@
     [data-hover-col='10'] [data-col='10'],
     [data-hover-col='11'] [data-col='11'] {
       background-image: linear-gradient(
-        color-mix(in srgb, var(--plan-hover), transparent 93%),
-        color-mix(in srgb, var(--plan-hover), transparent 93%)
+        color-mix(in srgb, var(--plan-hover), transparent 88%),
+        color-mix(in srgb, var(--plan-hover), transparent 88%)
       );
     }
   }
