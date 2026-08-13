@@ -151,9 +151,7 @@
     /* Plan grid hover. --plan-hover fills the hovered ROW; tinting toward --accent
        would fail in dark mode, where --accent is DARKER than the surface and the fill
        would darken an already-dark row into invisibility (measured: 1.03 vs 1.37
-       luminance ratio), so each theme tints toward its own contrasting end.
-       The hovered COLUMN uses the same token at the same alpha, so the crosshair's
-       two arms read as one weight. */
+       luminance ratio), so each theme tints toward its own contrasting end. */
     --plan-hover: oklch(0.55 0 0);
     --accent-foreground: #333333;
     --destructive: #D34949;
@@ -312,12 +310,6 @@
   border-bottom: 0;
 }
 
-/* The current-month column reads at the same weight as a hovered row, so the
-   grid's vertical and horizontal emphasis match. It is a background-color (not
-   the hover's background-image) so a hover on top of it still composites. */
-.plan-current-month {
-  background-color: color-mix(in srgb, var(--plan-hover), transparent 88%);
-}
 
 /* Plan grid hover. The hovered ROW and the single hovered CELL both wash at the
    same weight; nothing else in the column reacts.

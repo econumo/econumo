@@ -298,42 +298,6 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   }
 })
 
-it('income + opens the envelope dialog constrained to income categories and submits side=income', async () => {
-  let body: unknown
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(),
-    http.post('*/api/v1/budget/create-envelope', async ({ request }) => {
-      body = await request.json()
-      return HttpResponse.json({
-        success: true,
-        message: '',
-        data: {
-          item: {
-            id: 'env-new', type: 4, name: 'Bonuses', icon: 'payments', currencyId: 'cur-usd', folderId: null,
-            position: 9, budgeted: '0', available: '0', spent: '0', budgetSpent: '0', ownerUserId: null, isArchived: 0, children: [],
-          },
-        },
-      })
-    }),
-  )
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
-  await screen.findByTestId('plan-sheet')
-
-  await user.click(screen.getByRole('button', { name: 'create income envelope' }))
-  const dialog = await screen.findByRole('dialog', { name: 'New envelope' })
-  expect(within(dialog).getByText('Salary')).toBeInTheDocument()
-  expect(within(dialog).queryByText('Food')).not.toBeInTheDocument()
-
-  await user.type(within(dialog).getByLabelText('Name'), 'Bonuses')
-  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
-
-  await waitFor(() => expect(body).toMatchObject({ name: 'Bonuses', side: 'income' }))
-})
-
 it('arrow keys move the selection and shift the window at the edges', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
@@ -1106,7 +1070,7 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper).toContainElement(row)
 })
 
-it('marks the current month column at the same weight as a hovered row', async () => {
+it('leaves the current month column unmarked in the grid body, bold in the header only', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
@@ -1119,10 +1083,13 @@ it('marks the current month column at the same weight as a hovered row', async (
   expect(sheet.parentElement).not.toHaveAttribute('data-hover-col')
   expect(document.querySelector('[data-hover-col]')).toBeNull()
 
-  // the current month is a class sharing the row-hover token, not a heavier accent tint
-  const currentCells = sheet.querySelectorAll('.plan-current-month')
-  expect(currentCells.length).toBeGreaterThan(0)
-  currentCells.forEach((c) => expect(c.className).not.toContain('bg-accent/40'))
+  // nothing in the body singles the current month out — no tint, no rules
+  expect(document.querySelectorAll('.plan-current-month')).toHaveLength(0)
+  sheet.querySelectorAll('[data-col]').forEach((c) => expect(c.className).not.toContain('bg-accent/40'))
+
+  // the bold month name in the header is the only current-month cue
+  const header = [...document.querySelectorAll('[role="columnheader"]')].find((h) => h.className.includes('font-bold'))
+  expect(header).toBeDefined()
 })
 
 it('gives expanded child rows the same row-hover treatment as their parents', async () => {

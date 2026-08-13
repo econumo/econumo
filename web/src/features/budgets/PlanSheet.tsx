@@ -1,8 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { v7 as uuidv7 } from 'uuid'
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
@@ -16,18 +15,14 @@ import { useIsCompact } from '@/hooks/useIsCompact'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
-  canConfigureBudget,
   canEditBudget,
   canUpdateLimits,
   useBudgetPlan,
-  useCreateEnvelope,
   useFillPlannedCells,
   usePlanSetLimit,
-  useUpdateEnvelope,
 } from './queries'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
-import { EnvelopeDialog } from './EnvelopeDialog'
 import {
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
@@ -194,7 +189,7 @@ const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className={`flex items-end justify-end px-2 py-1 ${m === ctx.cur ? 'plan-current-month' : ''}${selectedClass(selected)}`}
+            className={`flex items-end justify-end px-2 py-1 ${selectedClass(selected)}`}
             onClick={(e) => ctx.select(rk, i, e)}
           >
             <span data-testid="cell-actual">{actualText}</span>
@@ -284,7 +279,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'plan-current-month' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`relative flex flex-col items-end px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -362,7 +357,6 @@ function SectionHeader({
   onToggleFold,
   hiddenCount,
   onShow,
-  action,
 }: {
   label: string
   foldKey: string
@@ -370,7 +364,6 @@ function SectionHeader({
   onToggleFold: (key: string) => void
   hiddenCount: number
   onShow: () => void
-  action?: ReactNode
 }) {
   const { t } = useTranslation()
   const Chevron = folded ? ChevronRight : ChevronDown
@@ -387,7 +380,6 @@ function SectionHeader({
         {label}
       </button>
       <span className="flex items-center gap-1.5">
-        {action}
         <HiddenRowsNotice count={hiddenCount} onShow={onShow} />
       </span>
     </div>
@@ -456,14 +448,12 @@ const TOTALS_ROWS: TotalsRowSpec[] = [
 function PlanTotals({
   visibleMonths,
   monthIndex,
-  cur,
   gridCols,
   totals,
   currency,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
-  cur: string
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
@@ -478,7 +468,7 @@ function PlanTotals({
             const idx = monthIndex(m)
             const row = idx >= 0 ? totals[idx] : undefined
             return (
-              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'plan-current-month' : ''}`}>
+              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 `}>
                 <span className="text-sm">
                   {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
                 </span>
@@ -494,14 +484,12 @@ function PlanTotals({
 function PlanBalanceRow({
   visibleMonths,
   monthIndex,
-  cur,
   gridCols,
   balance,
   currency,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
-  cur: string
   gridCols: string
   balance: string[]
   currency: CurrencyDto | undefined
@@ -524,7 +512,7 @@ function PlanBalanceRow({
               key={m}
               data-col={i}
               data-testid={`plan-balance-${i}`}
-              className={`px-2 py-1 text-right text-sm ${m === cur ? 'plan-current-month' : ''} ${negative ? 'text-destructive' : ''}`}
+              className={`px-2 py-1 text-right text-sm  ${negative ? 'text-destructive' : ''}`}
             >
               {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
             </div>
@@ -535,14 +523,6 @@ function PlanBalanceRow({
   )
 }
 
-interface EnvelopeDialogState {
-  open: boolean
-  envelope: PlanElementDto | null
-  folderId: Id | null
-  side: 'expense' | 'income'
-}
-
-const CLOSED_ENVELOPE_DIALOG: EnvelopeDialogState = { open: false, envelope: null, folderId: null, side: 'expense' }
 
 // Same flattening the renderer walks (folders -> loose -> uncategorized, income then
 // expense, then archived), so Up/Down can never reach a row that isn't on screen.
@@ -600,10 +580,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
-  const [envelopeDialog, setEnvelopeDialog] = useState<EnvelopeDialogState>(CLOSED_ENVELOPE_DIALOG)
-  const closeEnvelopeDialog = () => setEnvelopeDialog(CLOSED_ENVELOPE_DIALOG)
-  const createEnvelope = useCreateEnvelope()
-  const updateEnvelope = useUpdateEnvelope()
   const containerRef = useRef<HTMLDivElement | null>(null)
   const [width, setWidth] = useState(0)
   useEffect(() => {
@@ -664,7 +640,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const monthFmt = useMemo(() => new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }), [i18n.language])
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
   const canEdit = canEditBudget(budget.meta, userId)
-  const configure = canConfigureBudget(budget.meta, userId)
 
   const fillStart = useCallback(
     (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
@@ -1019,21 +994,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
             onToggleFold={togglePlanFold}
             hiddenCount={incomeHiddenCount}
             onShow={() => revealSection('income')}
-            action={
-              configure ? (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  aria-label="create income envelope"
-                  title={t('budgets.modal.create_envelope_form.header')}
-                  onClick={() => setEnvelopeDialog({ open: true, envelope: null, folderId: null, side: 'income' })}
-                >
-                  <Plus className="size-4" />
-                </Button>
-              ) : null
-            }
           />
           {!incomeFolded ? (
             <>
@@ -1115,7 +1075,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         <PlanTotals
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
-          cur={cur}
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
@@ -1124,7 +1083,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         <PlanBalanceRow
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
-          cur={cur}
           gridCols={gridCols}
           balance={balance}
           currency={planCurrency}
@@ -1149,43 +1107,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         }}
       />
 
-      <EnvelopeDialog
-        open={envelopeDialog.open}
-        envelope={envelopeDialog.envelope}
-        budgetCurrencyId={budget.meta.currencyId}
-        side={envelopeDialog.side}
-        onClose={closeEnvelopeDialog}
-        onSubmit={(form) => {
-          if (envelopeDialog.envelope) {
-            updateEnvelope.mutate(
-              {
-                budgetId: budget.meta.id,
-                id: envelopeDialog.envelope.id,
-                name: form.name,
-                icon: form.icon,
-                currencyId: form.currencyId,
-                isArchived: form.isArchived,
-                categories: form.categories,
-              },
-              { onSuccess: closeEnvelopeDialog },
-            )
-          } else {
-            createEnvelope.mutate(
-              {
-                budgetId: budget.meta.id,
-                id: uuidv7(),
-                name: form.name,
-                icon: form.icon,
-                currencyId: form.currencyId,
-                folderId: envelopeDialog.folderId,
-                categories: form.categories,
-                ...(envelopeDialog.side === 'income' ? { side: 'income' as const } : {}),
-              },
-              { onSuccess: closeEnvelopeDialog },
-            )
-          }
-        }}
-      />
 
     </div>
   )
