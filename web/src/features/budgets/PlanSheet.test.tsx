@@ -650,7 +650,7 @@ describe('fill handle', () => {
     } as DOMRect)
   })
 
-  it('renders only on the selected editable non-empty cell', async () => {
+  it('renders on any selected editable cell, including one with no limit set', async () => {
     usePlanHandlers()
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
@@ -667,9 +667,40 @@ describe('fill handle', () => {
     await user.click(uncatCell)
     expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
 
-    // pe1's col2 (Aug) has planned ''
+    // pe1's col2 (Aug) has planned '' — it still renders (and edits) as 0.00, so it
+    // is draggable too; gating on a set limit hid the handle on every 0.00 cell
     await user.click(screen.getByTestId('plan-cell-pe1:2'))
-    expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
+    expect(screen.getByTestId('plan-cell-pe1:2')).toContainElement(screen.getByTestId('fill-handle'))
+  })
+
+  it('dragging a cell with no limit set copies an explicit 0, not an empty amount', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        await delay('infinite')
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    // window is May/Jun/Jul; tag1's col0 (May) has planned '' — it displays 0.00
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    await screen.findByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-tag1:0'))
+    const handle = screen.getByTestId('fill-handle')
+
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 210, pointerId: 1 })
+    fireEvent.pointerUp(handle, { pointerId: 1 })
+
+    await waitFor(() => expect(bodies.length).toBeGreaterThan(0))
+    bodies.forEach((b) => expect(b).toMatchObject({ amount: '0' }))
   })
 
   it('drag right copies the value into covered months, one set-limit per month', async () => {

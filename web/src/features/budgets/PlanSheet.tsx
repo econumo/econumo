@@ -271,7 +271,9 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
-          const showFillHandle = selected && editable && !!cell && cell.planned !== '' && !ctx.isCompact && ctx.visibleMonths.length > 1
+          // an unset cell still shows (and edits as) 0, so it is draggable too —
+          // gating on a set limit would hide the handle on every 0.00 cell
+          const showFillHandle = selected && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
           return (
             <div
               key={m}
@@ -686,7 +688,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
       // onClick stopPropagation below.
       const month = visibleMonths[col]
       const idx = month !== undefined ? monthIndex(month) : -1
-      const amount = idx >= 0 ? (el.cells[idx]?.planned ?? '') : ''
+      // an unset cell reads as 0 everywhere else in the grid, so dragging it
+      // copies an explicit 0 rather than an empty limit
+      const planned = idx >= 0 ? (el.cells[idx]?.planned ?? '') : ''
+      const amount = planned === '' ? '0' : planned
       setFillDrag({ rowKey: rk, elementId: el.id, amount, startCol: col, targetCol: col, startX: e.clientX, colWidth })
     },
     [visibleMonths, monthIndex],
