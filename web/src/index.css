@@ -148,10 +148,11 @@
     --muted: #F5F5F5;
     --muted-foreground: #808080;
     --accent: #F5F5F5;
-    /* Plan grid hover wash. Tinting toward --accent works in light mode but not in
-       dark, where --accent is DARKER than the surface, so the wash would darken an
-       already-dark row into invisibility (measured: 1.03 vs 1.37 luminance ratio).
-       Each theme therefore tints toward its own contrasting end. */
+    /* Plan grid hover. --plan-hover fills the hovered ROW; tinting toward --accent
+       would fail in dark mode, where --accent is DARKER than the surface and the fill
+       would darken an already-dark row into invisibility (measured: 1.03 vs 1.37
+       luminance ratio), so each theme tints toward its own contrasting end.
+       The hovered COLUMN uses the same token at a much lower alpha. */
     --plan-hover: oklch(0.55 0 0);
     --accent-foreground: #333333;
     --destructive: #D34949;
@@ -313,21 +314,14 @@
 /* Plan grid hover crosshair. Each row is its own CSS grid, so a column has no
    element to hover — the container publishes the hovered index and cells match
    it by position. Twelve rules covers the widest month window.
-   Hover must be the WEAKEST tint — it has to yield to keyboard selection, the
-   fill-drag wash (bg-ring/15) and the current-month column (bg-accent/40).
-   Those are Tailwind utilities, which `@import "tailwindcss"` places in
-   `@layer utilities`; unlayered rules (which this block would be, appended
-   plain at the end of the file) always beat layered ones regardless of
-   specificity, so wrapping alone doesn't help either — `@layer utilities`
-   would not save us either: inside one layer the hover rules WIN on
-   specificity ((0,2,0) attribute pairs beat a (0,1,0) utility class), which is
-   the bug. So instead of fighting on
-   `background-color`, the hover wash paints via `background-image` — a
-   different property that composites on top of a utility's `background-color`
-   instead of replacing it, so no specificity/layering contest is needed. Row
-   hover uses the same technique for consistency, though it never conflicted
-   (it paints a different box than the cell). Do not "simplify" this back to
-   `background:` — see the ordering proof in the Task 4 report. */
+   Both row and column paint via `background-image` — a
+   different property from the utilities' `background-color`, so it composites
+   on top instead of replacing them. That sidesteps a cascade fight it would
+   otherwise lose: Tailwind utilities live in `@layer utilities` (declared by
+   `@import "tailwindcss"`), unlayered rules beat layered ones outright, and
+   inside one layer the hover rule still wins on specificity ((0,2,0) attribute
+   pairs beat a (0,1,0) class). Do not "simplify" the row rule back to
+   `background:` — it would erase bg-accent/40 and bg-ring/15. */
 @layer utilities {
   @media (hover: hover) {
     .plan-row:hover {
@@ -350,8 +344,8 @@
     [data-hover-col='10'] [data-col='10'],
     [data-hover-col='11'] [data-col='11'] {
       background-image: linear-gradient(
-        color-mix(in srgb, var(--plan-hover), transparent 96%),
-        color-mix(in srgb, var(--plan-hover), transparent 96%)
+        color-mix(in srgb, var(--plan-hover), transparent 93%),
+        color-mix(in srgb, var(--plan-hover), transparent 93%)
       );
     }
   }

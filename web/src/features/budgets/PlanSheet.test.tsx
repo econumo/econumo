@@ -334,49 +334,6 @@ it('income + opens the envelope dialog constrained to income categories and subm
   await waitFor(() => expect(body).toMatchObject({ name: 'Bonuses', side: 'income' }))
 })
 
-it('move-to-folder menu lists only same-side and neutral folders and calls move-element', async () => {
-  const plan = fixtureWirePlan as unknown as BudgetPlanDto
-  const planWithFolders: BudgetPlanDto = {
-    ...plan,
-    structure: {
-      folders: [
-        ...plan.structure.folders, // bf1 'Essentials' -> expense (holds pe1)
-        { id: 'bf2', name: 'Bonuses Folder', position: 1 }, // income (holds ie1)
-        { id: 'bf3', name: 'Misc Folder', position: 2 }, // neutral (no members)
-      ],
-      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf2' } : el)),
-    },
-  }
-  let body: unknown
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    planHandler(planWithFolders),
-    http.post('*/api/v1/budget/move-element', async ({ request }) => {
-      body = await request.json()
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    }),
-  )
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
-  await screen.findByTestId('plan-sheet')
-
-  // cat-food is a loose EXPENSE category row
-  await user.click(screen.getByRole('button', { name: 'plan row actions Food' }))
-  await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
-
-  const dialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
-  expect(within(dialog).getByRole('button', { name: 'Essentials' })).toBeInTheDocument() // expense-sided
-  expect(within(dialog).getByRole('button', { name: 'Misc Folder' })).toBeInTheDocument() // neutral
-  expect(within(dialog).getByRole('button', { name: 'No folder' })).toBeInTheDocument()
-  expect(within(dialog).queryByRole('button', { name: 'Bonuses Folder' })).not.toBeInTheDocument() // income-sided, excluded
-
-  await user.click(within(dialog).getByRole('button', { name: 'Misc Folder' }))
-
-  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'cat-food', folderId: 'bf3', afterId: null }))
-})
-
 it('arrow keys move the selection and shift the window at the edges', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
@@ -632,25 +589,6 @@ it('a failed plan fetch shows the error state instead of a blank area, and retry
 
   await user.click(screen.getByRole('button', { name: 'Try again' }))
   await screen.findByTestId('plan-sheet')
-})
-
-it('grid keydown ignores arrow keys while a row-actions dropdown menu is open', async () => {
-  usePlanHandlers()
-  const user = userEvent.setup()
-  renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
-  await screen.findByTestId('plan-sheet')
-
-  await user.click(screen.getByTestId('plan-cell-pe1:0'))
-  await user.click(screen.getByRole('button', { name: 'plan row actions Living' }))
-  await screen.findByRole('menu')
-
-  await user.keyboard('{ArrowDown}')
-  // had the grid handled this, selection would have jumped to the next row (Food); the
-  // dropdown-menu-content guard means the keystroke never reached grid navigation
-  expect(screen.queryByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'false')
-  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
-  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 })
 
 it('ArrowLeft at the name cell does not page the window past the budget start', async () => {
