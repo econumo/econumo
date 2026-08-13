@@ -533,13 +533,12 @@ const TOTALS_ROWS: TotalsRowSpec[] = [
   { key: 'net', value: (t) => t.effectiveNet },
 ]
 
-function TotalsFooter({
+function PlanTotals({
   visibleMonths,
   monthIndex,
   cur,
   gridCols,
   totals,
-  balance,
   currency,
 }: {
   visibleMonths: string[]
@@ -547,20 +546,19 @@ function TotalsFooter({
   cur: string
   gridCols: string
   totals: PlanMonthTotals[]
-  balance: string[]
   currency: CurrencyDto | undefined
 }) {
   const { t } = useTranslation()
   return (
-    <div role="rowgroup" className="sticky bottom-0 z-10 flex flex-col border-t bg-background" data-testid="plan-totals">
+    <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
       {TOTALS_ROWS.map((spec) => (
         <div key={spec.key} role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
           <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
-          {visibleMonths.map((m) => {
+          {visibleMonths.map((m, i) => {
             const idx = monthIndex(m)
             const row = idx >= 0 ? totals[idx] : undefined
             return (
-              <div key={m} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
+              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
                 <span className="text-sm">
                   {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
                 </span>
@@ -569,7 +567,33 @@ function TotalsFooter({
           })}
         </div>
       ))}
-      <div role="row" className="grid items-center gap-1 border-t px-2 py-1.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
+    </div>
+  )
+}
+
+function PlanBalanceRow({
+  visibleMonths,
+  monthIndex,
+  cur,
+  gridCols,
+  balance,
+  currency,
+}: {
+  visibleMonths: string[]
+  monthIndex: (m: string) => number
+  cur: string
+  gridCols: string
+  balance: string[]
+  currency: CurrencyDto | undefined
+}) {
+  const { t } = useTranslation()
+  return (
+    <div
+      role="rowgroup"
+      className="sticky bottom-0 z-10 border-t bg-background"
+      data-testid="plan-balance-row"
+    >
+      <div role="row" className="grid items-center gap-1 px-2 py-1.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
         <span className="truncate text-xs">{t('budgets.page.plan.totals.balance')}</span>
         {visibleMonths.map((m, i) => {
           const idx = monthIndex(m)
@@ -578,6 +602,7 @@ function TotalsFooter({
           return (
             <div
               key={m}
+              data-col={i}
               data-testid={`plan-balance-${i}`}
               className={`px-2 py-1 text-right text-sm ${m === cur ? 'bg-accent/40' : ''} ${negative ? 'text-destructive' : ''}`}
             >
@@ -1194,12 +1219,20 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           </section>
         ) : null}
 
-        <TotalsFooter
+        <PlanTotals
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
           cur={cur}
           gridCols={gridCols}
           totals={totals}
+          currency={planCurrency}
+        />
+
+        <PlanBalanceRow
+          visibleMonths={visibleMonths}
+          monthIndex={monthIndex}
+          cur={cur}
+          gridCols={gridCols}
           balance={balance}
           currency={planCurrency}
         />

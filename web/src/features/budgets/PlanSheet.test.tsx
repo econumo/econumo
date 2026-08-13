@@ -177,7 +177,7 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   expect(within(totalsBlock).getByText('Income')).toBeInTheDocument()
   expect(within(totalsBlock).getByText('Expenses')).toBeInTheDocument()
   expect(within(totalsBlock).getByText('Net')).toBeInTheDocument()
-  expect(within(totalsBlock).getByText('Balance')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
 
   // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
   // visible column (index 2) is Aug, the fixture's last fetched month (index 3).
@@ -1080,4 +1080,31 @@ describe('income/expense split', () => {
     await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
     expect(document.querySelector('[data-row-id="uncategorized:3"]')).toBeInTheDocument()
   })
+})
+
+it('scrolls the income/expenses/net trio and pins only the balance row', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const totals = screen.getByTestId('plan-totals')
+  const balance = screen.getByTestId('plan-balance-row')
+
+  // the trio and the balance are separate elements; neither contains the other
+  expect(totals).not.toContainElement(balance)
+  expect(balance).not.toContainElement(totals)
+
+  // only the balance row is pinned
+  expect(balance.className).toContain('sticky')
+  expect(totals.className).not.toContain('sticky')
+
+  // the trio keeps exactly its three rows
+  expect(within(totals).getAllByRole('row')).toHaveLength(3)
+  expect(within(totals).getByText('Income')).toBeInTheDocument()
+  expect(within(totals).getByText('Expenses')).toBeInTheDocument()
+  expect(within(totals).getByText('Net')).toBeInTheDocument()
+  expect(within(balance).getByText('Balance')).toBeInTheDocument()
 })
