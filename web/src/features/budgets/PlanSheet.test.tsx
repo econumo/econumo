@@ -1106,30 +1106,23 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper).toContainElement(row)
 })
 
-it('tracks the hovered month column on the grid container', async () => {
+it('marks the current month column at the same weight as a hovered row', async () => {
   usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('tab', { name: /plan/i }))
-  // the attribute sits on the wrapper ABOVE the scroller, so the crosshair also
-  // reaches the month header (a sibling of the scroller, not a descendant)
-  const sheet = await screen.findByTestId('plan-sheet')
-  const host = sheet.parentElement as HTMLElement
-  expect(host).not.toHaveAttribute('data-hover-col')
+  await screen.findByTestId('plan-sheet')
 
-  const cell = screen.getByTestId('plan-cell-pe1:1')
-  expect(cell).toHaveAttribute('data-col', '1')
-  expect(host).toContainElement(document.querySelector('[role="columnheader"][data-col="1"]'))
+  // hover marks the single cell, never the whole column: no cross-cell attribute
+  const sheet = screen.getByTestId('plan-sheet')
+  expect(sheet.parentElement).not.toHaveAttribute('data-hover-col')
+  expect(document.querySelector('[data-hover-col]')).toBeNull()
 
-  await user.hover(cell)
-  expect(host).toHaveAttribute('data-hover-col', '1')
-
-  await user.unhover(cell)
-  expect(host).not.toHaveAttribute('data-hover-col')
-
-  // column 0 is falsy — the implementation must use `?? undefined`, not `||`
-  await user.hover(screen.getByTestId('plan-cell-pe1:0'))
-  expect(host).toHaveAttribute('data-hover-col', '0')
+  // the current month is a class sharing the row-hover token, not a heavier accent tint
+  const currentCells = sheet.querySelectorAll('.plan-current-month')
+  expect(currentCells.length).toBeGreaterThan(0)
+  currentCells.forEach((c) => expect(c.className).not.toContain('bg-accent/40'))
 })
 
 it('gives expanded child rows the same row-hover treatment as their parents', async () => {

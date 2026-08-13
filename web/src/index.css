@@ -312,38 +312,25 @@
   border-bottom: 0;
 }
 
-/* Plan grid hover crosshair. Each row is its own CSS grid, so a column has no
-   element to hover — the container publishes the hovered index and cells match
-   it by position. Twelve rules covers the widest month window.
-   Both row and column paint via `background-image` — a
-   different property from the utilities' `background-color`, so it composites
-   on top instead of replacing them. That sidesteps a cascade fight it would
-   otherwise lose: Tailwind utilities live in `@layer utilities` (declared by
-   `@import "tailwindcss"`), unlayered rules beat layered ones outright, and
-   inside one layer the hover rule still wins on specificity ((0,2,0) attribute
-   pairs beat a (0,1,0) class). Do not "simplify" the row rule back to
-   `background:` — it would erase bg-accent/40 and bg-ring/15. */
+/* The current-month column reads at the same weight as a hovered row, so the
+   grid's vertical and horizontal emphasis match. It is a background-color (not
+   the hover's background-image) so a hover on top of it still composites. */
+.plan-current-month {
+  background-color: color-mix(in srgb, var(--plan-hover), transparent 88%);
+}
+
+/* Plan grid hover. The hovered ROW and the single hovered CELL both wash at the
+   same weight; nothing else in the column reacts.
+   Both paint via `background-image` — a different property from the utilities'
+   `background-color`, so the wash composites on top instead of replacing it.
+   That sidesteps a cascade fight it would otherwise lose: Tailwind utilities
+   live in `@layer utilities` (declared by `@import "tailwindcss"`), and
+   unlayered rules beat layered ones outright. Do not "simplify" these back to
+   `background:` — it would erase the current-month and fill-drag tints. */
 @layer utilities {
   @media (hover: hover) {
-    .plan-row:hover {
-      background-image: linear-gradient(
-        color-mix(in srgb, var(--plan-hover), transparent 88%),
-        color-mix(in srgb, var(--plan-hover), transparent 88%)
-      );
-    }
-
-    [data-hover-col='0'] [data-col='0'],
-    [data-hover-col='1'] [data-col='1'],
-    [data-hover-col='2'] [data-col='2'],
-    [data-hover-col='3'] [data-col='3'],
-    [data-hover-col='4'] [data-col='4'],
-    [data-hover-col='5'] [data-col='5'],
-    [data-hover-col='6'] [data-col='6'],
-    [data-hover-col='7'] [data-col='7'],
-    [data-hover-col='8'] [data-col='8'],
-    [data-hover-col='9'] [data-col='9'],
-    [data-hover-col='10'] [data-col='10'],
-    [data-hover-col='11'] [data-col='11'] {
+    .plan-row:hover,
+    .plan-row [role='gridcell'][data-col]:hover {
       background-image: linear-gradient(
         color-mix(in srgb, var(--plan-hover), transparent 88%),
         color-mix(in srgb, var(--plan-hover), transparent 88%)

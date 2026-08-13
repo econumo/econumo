@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -194,7 +194,7 @@ const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className={`flex items-end justify-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}`}
+            className={`flex items-end justify-end px-2 py-1 ${m === ctx.cur ? 'plan-current-month' : ''}${selectedClass(selected)}`}
             onClick={(e) => ctx.select(rk, i, e)}
           >
             <span data-testid="cell-actual">{actualText}</span>
@@ -284,7 +284,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`relative flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'plan-current-month' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -478,7 +478,7 @@ function PlanTotals({
             const idx = monthIndex(m)
             const row = idx >= 0 ? totals[idx] : undefined
             return (
-              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'bg-accent/40' : ''}`}>
+              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 ${m === cur ? 'plan-current-month' : ''}`}>
                 <span className="text-sm">
                   {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
                 </span>
@@ -524,7 +524,7 @@ function PlanBalanceRow({
               key={m}
               data-col={i}
               data-testid={`plan-balance-${i}`}
-              className={`px-2 py-1 text-right text-sm ${m === cur ? 'bg-accent/40' : ''} ${negative ? 'text-destructive' : ''}`}
+              className={`px-2 py-1 text-right text-sm ${m === cur ? 'plan-current-month' : ''} ${negative ? 'text-destructive' : ''}`}
             >
               {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
             </div>
@@ -630,16 +630,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
-  const [hoverCol, setHoverCol] = useState<number | null>(null)
-  // One listener on the container instead of per-cell handlers. The rows survive
-  // a hover because `ctx` deliberately excludes hoverCol and the row components
-  // are memo'd — keep hover-derived values OUT of ctx or every pointer move
-  // re-renders the whole grid.
-  const handleHover = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
-    const cell = (e.target as HTMLElement).closest('[data-col]')
-    const raw = cell?.getAttribute('data-col')
-    setHoverCol(raw === null || raw === undefined ? null : Number(raw))
-  }, [])
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
@@ -970,14 +960,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
 
   return (
-    // the hovered-column attribute lives here, not on the scroller: the month
-    // header is the scroller's SIBLING, and the crosshair has to reach it too
-    <div
-      className="flex min-h-0 flex-1 flex-col"
-      data-hover-col={hoverCol ?? undefined}
-      onMouseOver={handleHover}
-      onMouseLeave={() => setHoverCol(null)}
-    >
+    <div className="flex min-h-0 flex-1 flex-col">
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">
