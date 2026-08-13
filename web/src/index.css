@@ -300,3 +300,27 @@
 .plan-band-expense > [data-row-id]:last-child {
   border-bottom: 0;
 }
+
+/* Plan grid hover crosshair. Each row is its own CSS grid, so a column has no
+   element to hover — the container publishes the hovered index and cells match
+   it by position. Twelve rules covers the widest month window. */
+@media (hover: hover) {
+  .plan-row:hover {
+    background: color-mix(in srgb, var(--accent), transparent 40%);
+  }
+
+  [data-hover-col='0'] [data-col='0'],
+  [data-hover-col='1'] [data-col='1'],
+  [data-hover-col='2'] [data-col='2'],
+  [data-hover-col='3'] [data-col='3'],
+  [data-hover-col='4'] [data-col='4'],
+  [data-hover-col='5'] [data-col='5'],
+  [data-hover-col='6'] [data-col='6'],
+  [data-hover-col='7'] [data-col='7'],
+  [data-hover-col='8'] [data-col='8'],
+  [data-hover-col='9'] [data-col='9'],
+  [data-hover-col='10'] [data-col='10'],
+  [data-hover-col='11'] [data-col='11'] {
+    background: color-mix(in srgb, var(--accent), transparent 85%);
+  }
+}

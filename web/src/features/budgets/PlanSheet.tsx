@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, MouseEvent as ReactMouseEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
@@ -273,6 +273,7 @@ const ChildRow = memo(function ChildRow({
             aria-selected={selected}
             aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(monthDate(m)), actual: actualText, planned: '—' })}
             data-month={m}
+            data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
             className={`flex items-end justify-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}`}
             onClick={(e) => ctx.select(rk, i, e)}
@@ -311,7 +312,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
     <div data-row-id={rk} className="border-b border-border/60">
       <div
         role="row"
-        className="grid items-center gap-1 px-2 py-1.5"
+        className="plan-row grid items-center gap-1 px-2 py-1.5"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
         <div
@@ -361,6 +362,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               aria-selected={selected}
               aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(monthDate(m)), actual: actualText, planned: plannedText })}
               data-month={m}
+              data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
               className={`relative flex flex-col items-end px-2 py-1 ${m === ctx.cur ? 'bg-accent/40' : ''}${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
@@ -718,6 +720,14 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
+  const [hoverCol, setHoverCol] = useState<number | null>(null)
+  // One listener on the container instead of per-cell handlers: hovering only
+  // rewrites an attribute, so the crosshair costs no re-render of the rows.
+  const handleHover = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    const cell = (e.target as HTMLElement).closest('[data-col]')
+    const raw = cell?.getAttribute('data-col')
+    setHoverCol(raw === null || raw === undefined ? null : Number(raw))
+  }, [])
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
@@ -1077,11 +1087,12 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
               <ChevronRight className="size-4" />
             </Button>
           </div>
-          {visibleMonths.map((m) => (
+          {visibleMonths.map((m, i) => (
             <div
               key={m}
               role="columnheader"
               data-month={m}
+              data-col={i}
               className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
             >
               {monthFmt.format(monthDate(m))}
@@ -1098,6 +1109,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         aria-activedescendant={selection ? cellDomId(selection.rowKey, selection.col) : undefined}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"
+        data-hover-col={hoverCol ?? undefined}
+        onMouseOver={handleHover}
+        onMouseLeave={() => setHoverCol(null)}
       >
         <section
           role="rowgroup"

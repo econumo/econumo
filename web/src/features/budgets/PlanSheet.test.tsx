@@ -1136,3 +1136,22 @@ it('rules element rows flush with hairline dividers', async () => {
   expect(wrapper.className).toContain('border-b')
   expect(wrapper).toContainElement(row)
 })
+
+it('tracks the hovered month column on the grid container', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  const grid = await screen.findByTestId('plan-sheet')
+
+  expect(grid).not.toHaveAttribute('data-hover-col')
+
+  const cell = screen.getByTestId('plan-cell-pe1:1')
+  expect(cell).toHaveAttribute('data-col', '1')
+
+  await user.hover(cell)
+  expect(grid).toHaveAttribute('data-hover-col', '1')
+
+  await user.unhover(cell)
+  expect(grid).not.toHaveAttribute('data-hover-col')
+})
