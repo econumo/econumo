@@ -308,10 +308,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
   )
 
   return (
-    <div data-row-id={rk}>
+    <div data-row-id={rk} className="border-b border-border/60">
       <div
         role="row"
-        className="grid items-center gap-1 border-b border-border/60 px-2 py-1.5"
+        className="grid items-center gap-1 px-2 py-1.5"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
         <div

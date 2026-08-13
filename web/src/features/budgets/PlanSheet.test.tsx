@@ -1125,6 +1125,14 @@ it('rules element rows flush with hairline dividers', async () => {
 
   // rows carry a hairline divider and are no longer rounded cards
   const row = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]') as HTMLElement
-  expect(row.className).toContain('border-b')
+  expect(row.className).not.toContain('border-b')
   expect(row.className).not.toContain('rounded-md')
+
+  // the divider lives on the [data-row-id] wrapper (a direct child of the band), not
+  // the inner [role="row"] grid — that's what lets the last-child CSS rule in
+  // index.css suppress the trailing hairline without touching FolderRows' own border.
+  // jsdom does not apply index.css, so the suppression itself is not checkable here.
+  const wrapper = screen.getByTestId('plan-cell-pe1:0').closest('[data-row-id]') as HTMLElement
+  expect(wrapper.className).toContain('border-b')
+  expect(wrapper).toContainElement(row)
 })

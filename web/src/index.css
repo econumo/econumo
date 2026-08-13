@@ -292,10 +292,11 @@
 }
 
 /* Plan grid: rows sit flush and share hairline dividers, so the last row in a
-   band must not draw a line across the band's rounded edge. */
-.plan-band-income > :last-child,
-.plan-band-expense > :last-child,
-.plan-band-income [role='row']:last-child,
-.plan-band-expense [role='row']:last-child {
+   band must not draw a line across the band's rounded edge. The divider lives
+   on the row's [data-row-id] wrapper (a direct child of the band); scoping to
+   that attribute (rather than every last child) leaves FolderRows' own card
+   border untouched when a folder is the last thing in the band. */
+.plan-band-income > [data-row-id]:last-child,
+.plan-band-expense > [data-row-id]:last-child {
   border-bottom: 0;
 }
