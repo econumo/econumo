@@ -1142,18 +1142,25 @@ it('tracks the hovered month column on the grid container', async () => {
   const user = userEvent.setup()
   renderPage()
   await user.click(await screen.findByRole('tab', { name: /plan/i }))
-  const grid = await screen.findByTestId('plan-sheet')
-
-  expect(grid).not.toHaveAttribute('data-hover-col')
+  // the attribute sits on the wrapper ABOVE the scroller, so the crosshair also
+  // reaches the month header (a sibling of the scroller, not a descendant)
+  const sheet = await screen.findByTestId('plan-sheet')
+  const host = sheet.parentElement as HTMLElement
+  expect(host).not.toHaveAttribute('data-hover-col')
 
   const cell = screen.getByTestId('plan-cell-pe1:1')
   expect(cell).toHaveAttribute('data-col', '1')
+  expect(host).toContainElement(document.querySelector('[role="columnheader"][data-col="1"]'))
 
   await user.hover(cell)
-  expect(grid).toHaveAttribute('data-hover-col', '1')
+  expect(host).toHaveAttribute('data-hover-col', '1')
 
   await user.unhover(cell)
-  expect(grid).not.toHaveAttribute('data-hover-col')
+  expect(host).not.toHaveAttribute('data-hover-col')
+
+  // column 0 is falsy — the implementation must use `?? undefined`, not `||`
+  await user.hover(screen.getByTestId('plan-cell-pe1:0'))
+  expect(host).toHaveAttribute('data-hover-col', '0')
 })
 
 it('gives expanded child rows the same row-hover treatment as their parents', async () => {

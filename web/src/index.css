@@ -297,13 +297,16 @@
   }
 }
 
-/* Plan grid: rows sit flush and share hairline dividers, so the last row in a
-   band must not draw a line across the band's rounded edge. The divider lives
-   on the row's [data-row-id] wrapper (a direct child of the band); scoping to
-   that attribute (rather than every last child) leaves FolderRows' own card
-   border untouched when a folder is the last thing in the band. */
+/* Plan grid: rows sit flush and share hairline dividers, so the last row of any
+   grouping must not draw a line across that grouping's bottom edge. The divider
+   lives on the row's [data-row-id] wrapper; scoping to that attribute (rather
+   than every last child) leaves FolderRows' own card border untouched when a
+   folder is the last thing in a band. A folder is a nested card with its own
+   border, so its terminal row needs suppressing too or the two lines double up. */
 .plan-band-income > [data-row-id]:last-child,
-.plan-band-expense > [data-row-id]:last-child {
+.plan-band-expense > [data-row-id]:last-child,
+.plan-band-archived > [data-row-id]:last-child,
+[data-testid^='plan-folder-'] [data-row-id]:last-child {
   border-bottom: 0;
 }
 
@@ -316,8 +319,9 @@
    `@layer utilities`; unlayered rules (which this block would be, appended
    plain at the end of the file) always beat layered ones regardless of
    specificity, so wrapping alone doesn't help either — `@layer utilities`
-   here still has to out-rank the two attribute-selector hover rules on
-   specificity, which it can't (0,2,0) > (0,1,0). So instead of fighting on
+   would not save us either: inside one layer the hover rules WIN on
+   specificity ((0,2,0) attribute pairs beat a (0,1,0) utility class), which is
+   the bug. So instead of fighting on
    `background-color`, the hover wash paints via `background-image` — a
    different property that composites on top of a utility's `background-color`
    instead of replacing it, so no specificity/layering contest is needed. Row

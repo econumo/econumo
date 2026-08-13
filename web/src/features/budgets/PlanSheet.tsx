@@ -721,8 +721,10 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
   const [hoverCol, setHoverCol] = useState<number | null>(null)
-  // One listener on the container instead of per-cell handlers: hovering only
-  // rewrites an attribute, so the crosshair costs no re-render of the rows.
+  // One listener on the container instead of per-cell handlers. The rows survive
+  // a hover because `ctx` deliberately excludes hoverCol and the row components
+  // are memo'd — keep hover-derived values OUT of ctx or every pointer move
+  // re-renders the whole grid.
   const handleHover = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
     const cell = (e.target as HTMLElement).closest('[data-col]')
     const raw = cell?.getAttribute('data-col')
@@ -1063,7 +1065,14 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    // the hovered-column attribute lives here, not on the scroller: the month
+    // header is the scroller's SIBLING, and the crosshair has to reach it too
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      data-hover-col={hoverCol ?? undefined}
+      onMouseOver={handleHover}
+      onMouseLeave={() => setHoverCol(null)}
+    >
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">
@@ -1109,9 +1118,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         aria-activedescendant={selection ? cellDomId(selection.rowKey, selection.col) : undefined}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"
-        data-hover-col={hoverCol ?? undefined}
-        onMouseOver={handleHover}
-        onMouseLeave={() => setHoverCol(null)}
       >
         <section
           role="rowgroup"
@@ -1203,7 +1209,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         </section>
 
         {shownRows.archived.length > 0 ? (
-          <section role="rowgroup" data-testid="plan-section-archived" className="flex flex-col gap-1 px-1 py-1">
+          <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col gap-1 px-1 py-1">
             <SectionHeader
               label={t('budgets.page.plan.section.archived')}
               foldKey="archived"
