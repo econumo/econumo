@@ -4,8 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Plus } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
@@ -713,7 +711,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const persisted = useBudgetPeriodStore((s) => s.planFirstMonth)
   const setPlanFirstMonth = useBudgetPeriodStore((s) => s.setPlanFirstMonth)
   const hideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
-  const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
@@ -1057,18 +1054,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 border-b px-2 py-1.5">
-        <Switch
-          id="plan-hide-empty"
-          size="sm"
-          checked={hideEmpty}
-          onCheckedChange={() => togglePlanHideEmpty()}
-          aria-label={t('budgets.page.plan.density.hide_empty')}
-        />
-        <Label htmlFor="plan-hide-empty" className="text-xs font-normal text-muted-foreground">
-          {t('budgets.page.plan.density.hide_empty')}
-        </Label>
-      </div>
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">

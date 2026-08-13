@@ -236,7 +236,8 @@ it('hide-empty removes dormant rows, shows the per-section count, Show reveals t
 
   expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
 
-  await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' }))
   expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
   expect(screen.getByText('1 hidden')).toBeInTheDocument()
 
@@ -253,7 +254,8 @@ it('the hide-empty toggle fires its metric once, not double-fired by the sheet',
   await screen.findByTestId('plan-sheet')
 
   vi.mocked(trackEvent).mockClear()
-  await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' }))
   expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_HIDE_EMPTY_TOGGLE)
   expect(trackEvent).toHaveBeenCalledTimes(1)
 })
@@ -1013,7 +1015,8 @@ describe('income/expense split', () => {
     await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
-    await user.click(screen.getByRole('switch', { name: 'Hide empty rows' }))
+    await user.click(screen.getByRole('button', { name: 'Configure' }))
+    await user.click(await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' }))
     expect(document.querySelector('[data-row-id="cat-dormant:1"]')).not.toBeInTheDocument()
 
     const expenseSection = screen.getByTestId('plan-section-expense')

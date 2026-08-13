@@ -43,7 +43,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, budgetMode: 'budget', planHideEmpty: false })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -310,4 +310,40 @@ it('a server error settles into a retryable error state instead of an endless lo
   failing = false
   await user.click(screen.getByRole('button', { name: 'Try again' }))
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
+})
+
+it('offers hide-empty in the settings menu only in plan mode', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByRole('tab', { name: /budget/i })
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  expect(screen.queryByRole('menuitemcheckbox', { name: 'Hide empty rows' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  await user.click(screen.getByRole('tab', { name: /plan/i }))
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  const item = await screen.findByRole('menuitemcheckbox', { name: 'Hide empty rows' })
+  expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(false)
+  await user.click(item)
+  expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(true)
+})
+
+it('shows the currency pills in budget mode and hides them in plan mode', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByRole('tab', { name: /budget/i })
+
+  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
+
+  await user.click(screen.getByRole('tab', { name: /plan/i }))
+  expect(screen.queryByRole('button', { name: /^currency /i })).not.toBeInTheDocument()
 })
