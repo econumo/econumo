@@ -160,7 +160,7 @@ const ChildRow = memo(function ChildRow({
     <div
       role="row"
       data-row-id={rk}
-      className="plan-row grid items-center gap-1 py-0 pr-2 pl-9 text-xs text-muted-foreground"
+      className="plan-row grid items-center gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
       style={{ gridTemplateColumns: ctx.gridCols }}
     >
       <span
@@ -189,7 +189,7 @@ const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className={`flex items-end justify-end px-2 py-0.5 ${selectedClass(selected)}`}
+            className={`flex items-end justify-end px-2 py-1 ${selectedClass(selected)}`}
             onClick={(e) => ctx.select(rk, i, e)}
           >
             <span data-testid="cell-actual">{actualText}</span>
@@ -226,7 +226,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
     <div data-row-id={rk} className="border-b border-border/60">
       <div
         role="row"
-        className="plan-row grid items-center gap-1 px-2 py-0"
+        className="plan-row grid items-center gap-1 px-2 py-1.5"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
         <div
@@ -279,7 +279,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end px-2 py-0.5${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`relative flex flex-col items-end px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -462,13 +462,13 @@ function PlanTotals({
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
       {TOTALS_ROWS.map((spec) => (
-        <div key={spec.key} role="row" className="grid items-center gap-1 px-2 py-0" style={{ gridTemplateColumns: gridCols }}>
+        <div key={spec.key} role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
           <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
           {visibleMonths.map((m, i) => {
             const idx = monthIndex(m)
             const row = idx >= 0 ? totals[idx] : undefined
             return (
-              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-0.5 `}>
+              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 `}>
                 <span className="text-sm">
                   {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
                 </span>
@@ -501,7 +501,7 @@ function PlanBalanceRow({
       className="sticky bottom-0 z-10 border-t bg-background"
       data-testid="plan-balance-row"
     >
-      <div role="row" className="grid items-center gap-1 px-2 py-0.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
+      <div role="row" className="grid items-center gap-1 px-2 py-1.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
         <span className="truncate text-xs">{t('budgets.page.plan.totals.balance')}</span>
         {visibleMonths.map((m, i) => {
           const idx = monthIndex(m)
@@ -512,7 +512,7 @@ function PlanBalanceRow({
               key={m}
               data-col={i}
               data-testid={`plan-balance-${i}`}
-              className={`px-2 py-0.5 text-right text-sm  ${negative ? 'text-destructive' : ''}`}
+              className={`px-2 py-1 text-right text-sm  ${negative ? 'text-destructive' : ''}`}
             >
               {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
             </div>
