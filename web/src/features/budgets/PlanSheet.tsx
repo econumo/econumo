@@ -1,5 +1,5 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -435,14 +435,18 @@ function FolderRows({
 }
 
 interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'net'
+  key: 'income' | 'expenses' | 'uncategorized' | 'net'
+  /** the totals.* key holds the label for every row but uncategorized, which reuses
+   *  the shared common.uncategorized string the element rows already render */
+  labelKey: string
   value: (t: PlanMonthTotals) => string
 }
 
 const TOTALS_ROWS: TotalsRowSpec[] = [
-  { key: 'income', value: (t) => t.effectiveIncome },
-  { key: 'expenses', value: (t) => t.effectiveExpense },
-  { key: 'net', value: (t) => t.effectiveNet },
+  { key: 'income', labelKey: 'budgets.page.plan.totals.income', value: (t) => t.effectiveIncome },
+  { key: 'expenses', labelKey: 'budgets.page.plan.totals.expenses', value: (t) => t.effectiveExpense },
+  { key: 'uncategorized', labelKey: 'common.uncategorized', value: (t) => t.uncategorizedActual },
+  { key: 'net', labelKey: 'budgets.page.plan.totals.net', value: (t) => t.effectiveNet },
 ]
 
 function PlanTotals({
@@ -451,16 +455,12 @@ function PlanTotals({
   gridCols,
   totals,
   currency,
-  afterExpenses,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
-  /** the uncategorized expense row, slotted between Expenses and Net so the
-   *  unassigned spend reads as part of the expense subtotal it feeds */
-  afterExpenses?: ReactNode
 }) {
   const { t } = useTranslation()
   return (
@@ -468,7 +468,7 @@ function PlanTotals({
       {TOTALS_ROWS.map((spec) => (
         <Fragment key={spec.key}>
           <div role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
-            <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
+            <span className="truncate text-xs font-medium text-muted-foreground">{t(spec.labelKey)}</span>
             {visibleMonths.map((m, i) => {
               const idx = monthIndex(m)
               const row = idx >= 0 ? totals[idx] : undefined
@@ -481,7 +481,6 @@ function PlanTotals({
               )
             })}
           </div>
-          {spec.key === 'expenses' ? afterExpenses : null}
         </Fragment>
       ))}
     </div>
@@ -532,8 +531,8 @@ function PlanBalanceRow({
 
 
 // Same flattening the renderer walks (folders -> loose, income then expense, then
-// archived, then the uncategorized expense row that sits in the totals block), so
-// Up/Down can never reach a row that isn't on screen.
+// archived), so Up/Down can never reach a row that isn't on screen. The uncategorized
+// expense figure is excluded: it renders as a totals line, not a selectable row.
 interface FlatRow {
   rowKey: string
   el: PlanElementDto
@@ -576,11 +575,8 @@ function buildFlatRows(
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
   }
-  // the uncategorized expense row renders inside the totals block, below every
-  // section, so it is last in the keyboard order and survives a folded expense band
-  if (rows.expense.uncategorized) {
-    pushRow(rows.expense.uncategorized)
-  }
+  // the uncategorized expense figure is a totals line now, not a selectable element
+  // row, so it stays out of the keyboard order entirely
   return flatRows
 }
 
@@ -1085,11 +1081,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
-          afterExpenses={
-            shownRows.expense.uncategorized ? (
-              <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
-            ) : null
-          }
         />
 
         <PlanBalanceRow

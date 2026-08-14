@@ -290,10 +290,10 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
   expect(within(childCell).queryByRole('button')).not.toBeInTheDocument()
 
-  // uncategorized rows are never editable, regardless of role — both the income and
-  // expense rows must be present, or this loop would silently check fewer than 2 cells
+  // the uncategorized INCOME row is still an element row and is never editable; the
+  // expense side is a totals line now, so only one element row carries this testid
   const uncatCells = screen.getAllByTestId('plan-cell-uncategorized:1')
-  expect(uncatCells).toHaveLength(2)
+  expect(uncatCells).toHaveLength(1)
   for (const cell of uncatCells) {
     expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
   }
@@ -909,19 +909,18 @@ describe('income/expense split', () => {
     const expenseSection = screen.getByTestId('plan-section-expense')
     const expensesButton = within(expenseSection).getByRole('button', { name: 'Expenses' })
 
-    // expense rows present before folding: a folder row, a loose row, uncategorized
+    // expense rows present before folding: a folder row and a loose row (the
+    // uncategorized expense figure is a totals line, not a row in this section)
     expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
     expect(document.querySelector('[data-row-id="cat-food:1"]')).toBeInTheDocument()
-    expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
     // income rows present too
     expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
 
     await user.click(expensesButton)
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
     expect(document.querySelector('[data-row-id="cat-food:1"]')).not.toBeInTheDocument()
-    // the uncategorized expense row lives in the totals block now, between Expenses
-    // and Net, so the section fold no longer hides it
-    expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
+    // the uncategorized expense figure is a totals line, unaffected by the fold
+    expect(within(screen.getByTestId('plan-totals')).getByText('Uncategorized')).toBeInTheDocument()
     // income unaffected by the expense fold
     expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
 
@@ -940,11 +939,7 @@ describe('income/expense split', () => {
     const grid = screen.getByTestId('plan-sheet')
     grid.focus()
     await user.keyboard('{ArrowDown}')
-    // the folded expense rows stay unreachable, but the uncategorized expense row
-    // renders in the totals block and is still on screen, so it takes the selection
-    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'false')
-    const uncatExpenseRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
-    expect(within(uncatExpenseRow).getByTestId('plan-cell-uncategorized:0')).toHaveAttribute('aria-selected', 'true')
+    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'true')
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   })
 
@@ -1056,10 +1051,12 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(within(totals).getByText('Net')).toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
 
-  // order: Income, Expenses, Uncategorized, Net
+  // order: Income, Expenses, Uncategorized, Net — all four are totals lines
   expect(totalRows[1]).toHaveTextContent('Expenses')
-  expect(totalRows[2].closest('[data-row-id]')?.getAttribute('data-row-id')).toBe('uncategorized:1')
+  expect(totalRows[2]).toHaveTextContent('Uncategorized')
   expect(totalRows[3]).toHaveTextContent('Net')
+  // it is a totals line, not a selectable element row
+  expect(totalRows[2].querySelector('[data-row-id]')).toBeNull()
 })
 
 it('rules element rows flush with hairline dividers', async () => {

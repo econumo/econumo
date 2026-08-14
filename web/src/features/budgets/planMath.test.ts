@@ -225,6 +225,40 @@ describe('folderSides', () => {
 })
 
 describe('totals + balance', () => {
+  it('planTotals reports uncategorized as actual expense less actual income, ignoring plans', () => {
+    const uncatExpense = mkEl({
+      id: 'uncategorized',
+      type: 1,
+      name: 'Uncategorized',
+      cells: [
+        { actual: '300', planned: '999' },
+        { actual: '50', planned: '' },
+      ],
+    })
+    const uncatIncome = mkEl({
+      id: 'uncategorized',
+      type: 3,
+      name: 'Uncategorized',
+      cells: [
+        { actual: '120', planned: '888' },
+        { actual: '80', planned: '' },
+      ],
+    })
+    // a normal categorized pair must not leak into the uncategorized figure
+    const normalExpense = mkEl({ id: 'cat-x', type: 1, name: 'X', cells: [{ actual: '1000', planned: '1000' }, { actual: '7', planned: '7' }] })
+    const plan = mkPlan({
+      months: ['2026-07-01', '2026-08-01'],
+      structure: { folders: [], elements: [uncatExpense, uncatIncome, normalExpense] },
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const totals = planTotals(plan, ex, new Date(2027, 0, 1))
+
+    // 300 spend - 120 income = 180; the 999/888 plans are ignored
+    expect(totals[0].uncategorizedActual).toBe('180')
+    // 50 - 80 = -30: more unassigned income than spend reads negative
+    expect(totals[1].uncategorizedActual).toBe('-30')
+  })
+
   it('planTotals converts each month with its own rates (2:1 then 4:1)', () => {
     const eurExpense = mkEl({
       id: 'cat-eur',
@@ -465,6 +499,7 @@ describe('totals + balance', () => {
       effectiveIncome: '0',
       effectiveExpense: '0',
       effectiveNet: '0',
+      uncategorizedActual: '0',
     })
     // actual includes the archived row's 30; planned excludes it entirely (normal's empty planned is '0')
     expect(totals[1].expenseActual).toBe('30')

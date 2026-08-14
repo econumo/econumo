@@ -184,6 +184,9 @@ export interface PlanMonthTotals {
   effectiveExpense: string
   /** per-element-cell max(actual, planned): the Balance row's contribution */
   effectiveNet: string
+  /** actual uncategorized expense less actual uncategorized income — unassigned
+   *  money is only ever real spend, so this line ignores plans entirely */
+  uncategorizedActual: string
 }
 
 export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
@@ -206,6 +209,8 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
     let expensePlanned = '0'
     let effIncome = '0'
     let effExpense = '0'
+    let uncatIncome = '0'
+    let uncatExpense = '0'
     for (const el of rows) {
       const cell = el.cells[i]
       if (!cell) {
@@ -220,10 +225,12 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         incomeActual = add(incomeActual, actual)
         if (el.isArchived === 0) incomePlanned = add(incomePlanned, planned)
         effIncome = add(effIncome, el.isArchived === 0 ? effective : actual)
+        if (el.id === UNCATEGORIZED_ID) uncatIncome = add(uncatIncome, actual)
       } else {
         expenseActual = add(expenseActual, actual)
         if (el.isArchived === 0) expensePlanned = add(expensePlanned, planned)
         effExpense = add(effExpense, el.isArchived === 0 ? effective : actual)
+        if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
     return {
@@ -236,6 +243,7 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
       effectiveNet: sub(effIncome, effExpense),
+      uncategorizedActual: sub(uncatExpense, uncatIncome),
     }
   })
 }
