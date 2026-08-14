@@ -546,6 +546,20 @@ export function BudgetPage() {
         <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
+        <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
+          {(['budget', 'plan'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              role="tab"
+              aria-selected={budgetMode === m}
+              className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
+              onClick={() => setBudgetMode(m)}
+            >
+              {t(m === 'budget' ? 'budgets.page.plan.toggle.budget' : 'budgets.page.plan.toggle.plan')}
+            </button>
+          ))}
+        </div>
         {budgetMode === 'budget' ? (
           <span className="flex shrink-0 items-center gap-1">
             {budgetCurrencyIds.map((currencyId) => {
@@ -567,20 +581,6 @@ export function BudgetPage() {
             })}
           </span>
         ) : null}
-        <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
-          {(['budget', 'plan'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="tab"
-              aria-selected={budgetMode === m}
-              className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-              onClick={() => setBudgetMode(m)}
-            >
-              {t(m === 'budget' ? 'budgets.page.plan.toggle.budget' : 'budgets.page.plan.toggle.plan')}
-            </button>
-          ))}
-        </div>
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
