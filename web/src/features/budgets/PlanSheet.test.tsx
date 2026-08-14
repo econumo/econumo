@@ -299,6 +299,33 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   }
 })
 
+it('scrolls a keyboard-selected row back into view, clearing the sticky balance row', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  const grid = await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+
+  // jsdom has no layout, so stage the geometry: a 200px-tall scroller whose sticky
+  // balance row occupies the bottom 40px, and a selected cell sitting below both
+  const rect = (top: number, bottom: number) => () => ({ top, bottom, height: bottom - top, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => {} }) as DOMRect
+  grid.getBoundingClientRect = rect(0, 200)
+  const balance = screen.getByTestId('plan-balance-row')
+  balance.getBoundingClientRect = rect(160, 200)
+  const target = screen.getByTestId('plan-cell-cat-food:0')
+  const targetCell = document.getElementById(target.id) as HTMLElement
+  targetCell.getBoundingClientRect = rect(230, 260)
+
+  grid.scrollTop = 0
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
+
+  // 260 (cell bottom) - 160 (top of the sticky footer) = 100px of scrolling
+  expect(grid.scrollTop).toBe(100)
+})
+
 it('arrow keys move the selection and shift the window at the edges', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })

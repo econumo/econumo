@@ -612,6 +612,29 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
+
+  // Keyboard navigation moves the selection without moving the scroller, so the
+  // cursor walks off screen. Scroll the minimum needed to bring it back, measuring
+  // against the sticky balance row that floats over the scroller's bottom edge.
+  useEffect(() => {
+    const scroller = containerRef.current
+    if (!selection || !scroller) {
+      return
+    }
+    const cell = scroller.querySelector<HTMLElement>(`#${CSS.escape(cellDomId(selection.rowKey, selection.col))}`)
+    if (!cell) {
+      return
+    }
+    const view = scroller.getBoundingClientRect()
+    const box = cell.getBoundingClientRect()
+    const footer = scroller.querySelector<HTMLElement>('[data-testid="plan-balance-row"]')
+    const bottomEdge = footer ? footer.getBoundingClientRect().top : view.bottom
+    if (box.top < view.top) {
+      scroller.scrollTop -= view.top - box.top
+    } else if (box.bottom > bottomEdge) {
+      scroller.scrollTop += box.bottom - bottomEdge
+    }
+  }, [selection])
   const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
