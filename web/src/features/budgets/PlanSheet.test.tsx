@@ -965,7 +965,7 @@ describe('income/expense split', () => {
     expect(within(expenseSection).queryByText('1 hidden')).not.toBeInTheDocument()
   })
 
-  it('bands and divider are distinguishable', async () => {
+  it('separates the bands with a gap, not a rule', async () => {
     usePlanHandlers()
     const user = userEvent.setup()
     renderPage()
@@ -975,7 +975,9 @@ describe('income/expense split', () => {
     expect(screen.getByTestId('plan-section-income').classList.contains('plan-band-income')).toBe(true)
     const expenseSection = screen.getByTestId('plan-section-expense')
     expect(expenseSection.classList.contains('plan-band-expense')).toBe(true)
-    expect(expenseSection.classList.contains('border-t-2')).toBe(true)
+    // whitespace separates the two sections; the old border-t-2 rule is gone
+    expect(expenseSection.classList.contains('mt-6')).toBe(true)
+    expect(expenseSection.classList.contains('border-t-2')).toBe(false)
   })
 
   it('hides an uncategorized row whose visible cells are all zero, and it returns when the window covers its spend', async () => {

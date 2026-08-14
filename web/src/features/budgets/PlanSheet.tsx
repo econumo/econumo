@@ -1022,7 +1022,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         <section
           role="rowgroup"
           data-testid="plan-section-expense"
-          className="plan-band-expense mt-2 flex flex-col border-t-2 border-border px-1 py-1"
+          className="plan-band-expense mt-6 flex flex-col px-1 py-1"
         >
           <SectionHeader
             label={t('budgets.page.plan.section.expenses')}
