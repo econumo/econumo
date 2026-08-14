@@ -188,8 +188,9 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   const totals = planTotals(plan, ex)
   const balance = balanceRow(plan, totals, ex)
 
+  // index 2 is the uncategorized expense row slotted between Expenses and Net
   const rows = within(totalsBlock).getAllByRole('row')
-  const [incomeRow, expensesRow, netRow] = rows
+  const [incomeRow, expensesRow, , netRow] = rows
   const augTotals = totals[2]
 
   expect(within(incomeRow).getByText(moneyFormat(augTotals.effectiveIncome, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
@@ -918,7 +919,9 @@ describe('income/expense split', () => {
     await user.click(expensesButton)
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
     expect(document.querySelector('[data-row-id="cat-food:1"]')).not.toBeInTheDocument()
-    expect(document.querySelector('[data-row-id="uncategorized:1"]')).not.toBeInTheDocument()
+    // the uncategorized expense row lives in the totals block now, between Expenses
+    // and Net, so the section fold no longer hides it
+    expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
     // income unaffected by the expense fold
     expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
 
@@ -937,7 +940,11 @@ describe('income/expense split', () => {
     const grid = screen.getByTestId('plan-sheet')
     grid.focus()
     await user.keyboard('{ArrowDown}')
-    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'true')
+    // the folded expense rows stay unreachable, but the uncategorized expense row
+    // renders in the totals block and is still on screen, so it takes the selection
+    expect(lastIncomeCell).toHaveAttribute('aria-selected', 'false')
+    const uncatExpenseRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
+    expect(within(uncatExpenseRow).getByTestId('plan-cell-uncategorized:0')).toHaveAttribute('aria-selected', 'true')
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
   })
 
@@ -957,7 +964,8 @@ describe('income/expense split', () => {
     const hiddenNotice = within(header).getByText('1 hidden')
 
     // it sits in the header, not as a trailing line after the last visible row
-    const lastRow = within(expenseSection).getByTestId('plan-cell-uncategorized:0')
+    // (uncategorized now renders in the totals block, so anchor on a loose row)
+    const lastRow = within(expenseSection).getByTestId('plan-cell-cat-food:0')
     expect(hiddenNotice.compareDocumentPosition(lastRow) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     await user.click(within(header).getByRole('button', { name: 'Show' }))
@@ -1039,12 +1047,19 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(balance.className).toContain('sticky')
   expect(totals.className).not.toContain('sticky')
 
-  // the trio keeps exactly its three rows
-  expect(within(totals).getAllByRole('row')).toHaveLength(3)
+  // the three totals rows, plus the uncategorized expense row slotted between
+  // Expenses and Net
+  const totalRows = within(totals).getAllByRole('row')
+  expect(totalRows).toHaveLength(4)
   expect(within(totals).getByText('Income')).toBeInTheDocument()
   expect(within(totals).getByText('Expenses')).toBeInTheDocument()
   expect(within(totals).getByText('Net')).toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
+
+  // order: Income, Expenses, Uncategorized, Net
+  expect(totalRows[1]).toHaveTextContent('Expenses')
+  expect(totalRows[2].closest('[data-row-id]')?.getAttribute('data-row-id')).toBe('uncategorized:1')
+  expect(totalRows[3]).toHaveTextContent('Net')
 })
 
 it('rules element rows flush with hairline dividers', async () => {

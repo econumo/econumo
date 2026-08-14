@@ -1,5 +1,5 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -160,14 +160,14 @@ const ChildRow = memo(function ChildRow({
     <div
       role="row"
       data-row-id={rk}
-      className="plan-row grid items-center gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
+      className="plan-row grid items-stretch gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
       style={{ gridTemplateColumns: ctx.gridCols }}
     >
       <span
         role="gridcell"
         id={cellDomId(rk, -1)}
         aria-selected={nameSelected}
-        className={`flex min-w-0 items-center gap-1.5 truncate${selectedClass(nameSelected)}`}
+        className={`flex h-full min-w-0 items-center gap-1.5 truncate${selectedClass(nameSelected)}`}
         title={displayName}
         onClick={(e) => ctx.select(rk, -1, e)}
       >
@@ -189,7 +189,7 @@ const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className={`flex items-end justify-end px-2 py-1 ${selectedClass(selected)}`}
+            className={`flex items-center justify-end px-2 py-1 ${selectedClass(selected)}`}
             onClick={(e) => ctx.select(rk, i, e)}
           >
             <span data-testid="cell-actual">{actualText}</span>
@@ -226,14 +226,14 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
     <div data-row-id={rk} className="border-b border-border/60">
       <div
         role="row"
-        className="plan-row grid items-center gap-1 px-2 py-1.5"
+        className="plan-row grid items-stretch gap-1 px-2 py-1.5"
         style={{ gridTemplateColumns: ctx.gridCols }}
       >
         <div
           role="gridcell"
           id={cellDomId(rk, -1)}
           aria-selected={nameSelected}
-          className={`flex min-w-0 items-center gap-1${selectedClass(nameSelected)}`}
+          className={`flex h-full min-w-0 items-center gap-1${selectedClass(nameSelected)}`}
           onClick={(e) => ctx.select(rk, -1, e)}
         >
           {expandable ? (
@@ -279,7 +279,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
               <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
@@ -451,31 +451,38 @@ function PlanTotals({
   gridCols,
   totals,
   currency,
+  afterExpenses,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
+  /** the uncategorized expense row, slotted between Expenses and Net so the
+   *  unassigned spend reads as part of the expense subtotal it feeds */
+  afterExpenses?: ReactNode
 }) {
   const { t } = useTranslation()
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
       {TOTALS_ROWS.map((spec) => (
-        <div key={spec.key} role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
-          <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
-          {visibleMonths.map((m, i) => {
-            const idx = monthIndex(m)
-            const row = idx >= 0 ? totals[idx] : undefined
-            return (
-              <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 `}>
-                <span className="text-sm">
-                  {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-                </span>
-              </div>
-            )
-          })}
-        </div>
+        <Fragment key={spec.key}>
+          <div role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
+            <span className="truncate text-xs font-medium text-muted-foreground">{t(`budgets.page.plan.totals.${spec.key}`)}</span>
+            {visibleMonths.map((m, i) => {
+              const idx = monthIndex(m)
+              const row = idx >= 0 ? totals[idx] : undefined
+              return (
+                <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 `}>
+                  <span className="text-sm">
+                    {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+          {spec.key === 'expenses' ? afterExpenses : null}
+        </Fragment>
       ))}
     </div>
   )
@@ -524,8 +531,9 @@ function PlanBalanceRow({
 }
 
 
-// Same flattening the renderer walks (folders -> loose -> uncategorized, income then
-// expense, then archived), so Up/Down can never reach a row that isn't on screen.
+// Same flattening the renderer walks (folders -> loose, income then expense, then
+// archived, then the uncategorized expense row that sits in the totals block), so
+// Up/Down can never reach a row that isn't on screen.
 interface FlatRow {
   rowKey: string
   el: PlanElementDto
@@ -564,12 +572,14 @@ function buildFlatRows(
       visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
     }
     visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
-    if (rows.expense.uncategorized) {
-      pushRow(rows.expense.uncategorized)
-    }
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
+  }
+  // the uncategorized expense row renders inside the totals block, below every
+  // section, so it is last in the keyboard order and survives a folded expense band
+  if (rows.expense.uncategorized) {
+    pushRow(rows.expense.uncategorized)
   }
   return flatRows
 }
@@ -1049,9 +1059,6 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
               {expenseLoose.map((r) => (
                 <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
               ))}
-              {shownRows.expense.uncategorized ? (
-                <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
-              ) : null}
             </>
           ) : null}
         </section>
@@ -1078,6 +1085,11 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
+          afterExpenses={
+            shownRows.expense.uncategorized ? (
+              <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+            ) : null
+          }
         />
 
         <PlanBalanceRow
