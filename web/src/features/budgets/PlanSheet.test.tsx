@@ -1578,7 +1578,7 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   expect(looseOrder()).toContain('cat-food:1')
 })
 
-it('shows the currency beside the name and keeps the actions slot aligned', async () => {
+it('shows the currency beside the name and closes the row with the actions column', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -1592,22 +1592,15 @@ it('shows the currency beside the name and keeps the actions slot aligned', asyn
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
-
-  // the menu is the name cell's LAST child, so it lands at a fixed offset instead of
-  // drifting with the name's length
   const menu = await screen.findByRole('button', { name: 'element actions Living' })
-  // re-query: entering edit mode re-rendered the row, so the earlier node is stale
-  // scope to the menu's OWN name cell: the fixture renders more than one pe1 row
-  const editNameCell = menu.closest('[role="gridcell"]')!
-  expect(editNameCell.textContent).toContain('Living')
-  expect(editNameCell.lastElementChild).toBe(menu)
 
-  // a child row carries no menu but still pads the slot, or its months drift out of
-  // line with its parent's
-  await user.click(within(editNameCell as HTMLElement).getByText('Living'))
-  const childCell = (await screen.findByTestId('plan-cell-cat-rent:0')).closest('[role="row"]')!.querySelector('[role="gridcell"]')!
-  expect(within(childCell as HTMLElement).queryByRole('button', { name: /element actions/ })).not.toBeInTheDocument()
-  expect((childCell.lastElementChild as HTMLElement).className).toContain('w-8')
+  // the menu closes the ROW (after the last month), not the name cell — the budget
+  // view's placement. Its grid track is shared by every row type, so the columns of
+  // the header, totals and balance stay aligned with it.
+  const row = menu.closest('[role="row"]')!
+  expect(row.lastElementChild).toContainElement(menu)
+  expect(menu.closest('[role="gridcell"]')).toBeNull()
+  expect(row.querySelector('[role="gridcell"]')!.textContent).toContain('Living')
 })
 
 it('collapses folder contents while a folder drag is in flight, and still drops correctly', async () => {
