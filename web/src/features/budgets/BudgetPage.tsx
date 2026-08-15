@@ -17,6 +17,7 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
@@ -215,6 +216,7 @@ export function BudgetPage() {
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
+  const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
@@ -508,11 +510,13 @@ export function BudgetPage() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {element.type !== BudgetElementType.ENVELOPE ? (
-          <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
-            {t('budgets.page.budget.structure.element.action.change_currency')}
-          </DropdownMenuItem>
-        ) : (
+        <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+          {t('budgets.page.budget.structure.element.action.change_currency')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setMoveFolderTarget(element)}>
+          {t('budgets.page.plan.menu.move_to_folder')}
+        </DropdownMenuItem>
+        {element.type === BudgetElementType.ENVELOPE ? (
           <>
             <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
               {t('common.button.edit.label')}
@@ -523,7 +527,7 @@ export function BudgetPage() {
               </DropdownMenuItem>
             ) : null}
           </>
-        )}
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -822,6 +826,49 @@ export function BudgetPage() {
             changeCurrency.mutate({ budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId }, { onSuccess: () => setCurrencyTarget(null) })
           }}
         />
+      ) : null}
+
+      {moveFolderTarget ? (
+        <ResponsiveDialog
+          open
+          onOpenChange={(o) => !o && setMoveFolderTarget(null)}
+          title={t('budgets.page.plan.menu.move_to_folder')}
+        >
+          <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
+            {budget.structure.folders.map((f) => (
+              <li key={f.id}>
+                <button
+                  type="button"
+                  className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+                  onClick={() => {
+                    moveElement.mutate({
+                      budgetId: budget.meta.id,
+                      item: { id: moveFolderTarget.id, folderId: f.id, position: 0, afterId: null },
+                    })
+                    setMoveFolderTarget(null)
+                  }}
+                >
+                  {f.name}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button
+                type="button"
+                className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+                onClick={() => {
+                  moveElement.mutate({
+                    budgetId: budget.meta.id,
+                    item: { id: moveFolderTarget.id, folderId: null, position: 0, afterId: null },
+                  })
+                  setMoveFolderTarget(null)
+                }}
+              >
+                {t('budgets.page.plan.menu.no_folder')}
+              </button>
+            </li>
+          </ul>
+        </ResponsiveDialog>
       ) : null}
 
       <SetLimitDialog

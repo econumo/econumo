@@ -368,3 +368,21 @@ it('keeps edit structure in the current view and clears it when the view switche
   await user.click(screen.getByRole('tab', { name: /budget/i }))
   expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument()
 })
+
+it('offers change currency on every element, and move to folder', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByRole('tab', { name: /budget/i })
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // an ENVELOPE previously had no Change currency item — only Edit/Delete
+  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Move to folder…' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+})
