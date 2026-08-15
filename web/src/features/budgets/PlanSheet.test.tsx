@@ -1149,3 +1149,80 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   // plan mode must not diverge
   expect(childRow.className).toContain('plan-row')
 })
+
+it('shows plan row actions only in edit mode, with side-filtered move-to-folder', async () => {
+  // pe1/Living (expense-sided) starts in 'bf1'/Essentials; ie1/Salaries (income) puts
+  // 'bf-bonus' on the income side, so the filter is exercised both ways
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      folders: [...plan.structure.folders, { id: 'bf-bonus', name: 'Bonuses Folder', position: 1 }],
+      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-bonus' } : el)),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithFolders),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // read-only by default: no row menus
+  expect(screen.queryByRole('button', { name: /element actions/i })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
+  await user.click(screen.getByRole('menuitem', { name: 'Move to folder…' }))
+
+  // pe1/Living is expense-sided: expense + neutral folders only, never income ones
+  const dialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
+  expect(within(dialog).getByRole('button', { name: 'Essentials' })).toBeInTheDocument()
+  expect(within(dialog).getByRole('button', { name: 'No folder' })).toBeInTheDocument()
+  expect(within(dialog).queryByRole('button', { name: 'Bonuses Folder' })).not.toBeInTheDocument()
+})
+
+it('picking a folder in the move dialog fires move-element with the right payload and closes the dialog', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      folders: [...plan.structure.folders, { id: 'bf-bonus', name: 'Bonuses Folder', position: 1 }],
+      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-bonus' } : el)),
+    },
+  }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithFolders),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Move to folder…' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Move to folder…' })
+  await user.click(within(dialog).getByRole('button', { name: 'Essentials' }))
+
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'pe1', folderId: 'bf1', afterId: null }))
+  expect(screen.queryByRole('dialog', { name: 'Move to folder…' })).not.toBeInTheDocument()
+})

@@ -1,13 +1,16 @@
 import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
+import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
-import type { BudgetDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -18,7 +21,9 @@ import {
   canEditBudget,
   canUpdateLimits,
   useBudgetPlan,
+  useChangeElementCurrency,
   useFillPlannedCells,
+  useMoveElement,
   usePlanSetLimit,
 } from './queries'
 import { LimitEditor } from './LimitEditor'
@@ -32,6 +37,7 @@ import {
   clampFirstMonth,
   currentMonth,
   fillTargetCol,
+  folderSides,
   makePlanExchange,
   monthDate,
   planInitialFirstMonth,
@@ -39,13 +45,14 @@ import {
   planVisibleCount,
   visibleSectionRows,
 } from './planMath'
-import type { MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
+import type { FolderSide, MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
 
 export interface PlanSheetProps {
   /** the ALREADY-LOADED budget (meta for permissions/currency); plan data is fetched inside */
   budget: BudgetDto
   currencies: CurrencyDto[]
   userId: Id | undefined
+  editMode: boolean
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
@@ -141,6 +148,79 @@ interface GridCtx {
     end: () => void
     cancel: () => void
   }
+  editMode: boolean
+  onChangeCurrency: (el: PlanElementDto) => void
+  onMoveToFolder: (el: PlanElementDto) => void
+}
+
+function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
+  const { t } = useTranslation()
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button type="button" variant="ghost" size="icon" className="size-5 shrink-0" aria-label={`element actions ${el.name}`}>
+          <MoreVertical className="size-3.5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onSelect={() => ctx.onChangeCurrency(el)}>
+          {t('budgets.page.budget.structure.element.action.change_currency')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
+          {t('budgets.page.plan.menu.move_to_folder')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  )
+}
+
+// Side-filtered folder picker: an income element may only land in an income or
+// neutral folder. The server enforces this too (CodeBudgetFolderSideMixed); the
+// filter keeps the user from ever seeing that error.
+function MoveToFolderDialog({
+  target,
+  folders,
+  folderSideMap,
+  onClose,
+  onPick,
+}: {
+  target: PlanElementDto | null
+  folders: BudgetFolderDto[]
+  folderSideMap: Map<Id, FolderSide>
+  onClose: () => void
+  onPick: (folderId: Id | null) => void
+}) {
+  const { t } = useTranslation()
+  if (!target) {
+    return null
+  }
+  const side: 'income' | 'expense' = isIncomeType(target.type) ? 'income' : 'expense'
+  const targets = folders.filter((f) => {
+    const s = folderSideMap.get(f.id) ?? 'neutral'
+    return s === side || s === 'neutral'
+  })
+  return (
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.page.plan.menu.move_to_folder')}>
+      <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
+        {targets.map((f) => (
+          <li key={f.id}>
+            <button
+              type="button"
+              className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+              onClick={() => onPick(f.id)}
+            >
+              {f.name}
+            </button>
+          </li>
+        ))}
+        <li>
+          <button type="button" className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover" onClick={() => onPick(null)}>
+            {t('budgets.page.plan.menu.no_folder')}
+          </button>
+        </li>
+      </ul>
+    </ResponsiveDialog>
+  )
 }
 
 const ChildRow = memo(function ChildRow({
@@ -253,6 +333,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               {name}
             </span>
           )}
+          {!isUncategorized && ctx.editMode ? <RowMenu el={el} ctx={ctx} /> : null}
         </div>
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
@@ -580,10 +661,14 @@ function buildFlatRows(
   return flatRows
 }
 
-export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
+export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
+  const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
+  const moveElement = useMoveElement()
+  const changeCurrency = useChangeElementCurrency()
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -759,6 +844,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
     () => (shownRows ? buildFlatRows(shownRows, unfoldedElements, hideEmpty, revealedSections, folded) : []),
     [shownRows, unfoldedElements, hideEmpty, revealedSections, folded],
   )
+  const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
   const ctx: GridCtx | null = useMemo(() => {
     if (!plan) {
@@ -786,6 +872,9 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         end: fillEnd,
         cancel: fillCancel,
       },
+      editMode,
+      onChangeCurrency: setCurrencyTarget,
+      onMoveToFolder: setMoveFolderTarget,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -808,6 +897,7 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
     fillMove,
     fillEnd,
     fillCancel,
+    editMode,
   ])
 
   if (!plan || !shownRows || !ctx || !ex) {
@@ -1133,7 +1223,36 @@ export function PlanSheet({ budget, currencies, userId }: PlanSheetProps) {
         }}
       />
 
+      <MoveToFolderDialog
+        target={moveFolderTarget}
+        folders={plan.structure.folders}
+        folderSideMap={folderSideMap}
+        onClose={() => setMoveFolderTarget(null)}
+        onPick={(folderId) => {
+          if (moveFolderTarget) {
+            moveElement.mutate({
+              budgetId: budget.meta.id,
+              item: { id: moveFolderTarget.id, folderId, position: 0, afterId: null },
+            })
+          }
+          setMoveFolderTarget(null)
+        }}
+      />
 
+      {currencyTarget ? (
+        <CurrencyPickerDialog
+          open
+          title={t('budgets.modal.change_element_currency_form.header')}
+          value={currencyTarget.currencyId ?? budget.meta.currencyId}
+          onClose={() => setCurrencyTarget(null)}
+          onPick={(currencyId) => {
+            changeCurrency.mutate(
+              { budgetId: budget.meta.id, elementId: currencyTarget.id, currencyId },
+              { onSuccess: () => setCurrencyTarget(null) },
+            )
+          }}
+        />
+      ) : null}
     </div>
   )
 }

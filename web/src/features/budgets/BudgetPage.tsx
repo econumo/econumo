@@ -625,7 +625,7 @@ export function BudgetPage() {
       </header>
 
       {budgetMode === 'plan' ? (
-        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} />
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
       ) : (
         <>
           <PeriodStrip startedAt={budget.meta.startedAt} />
