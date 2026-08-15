@@ -916,7 +916,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!el) {
       return
     }
-    const ro = new ResizeObserver((entries) => setWidth(entries[0]?.contentRect.width ?? 0))
+    // clientWidth, not contentRect/getBoundingClientRect: this element scrolls
+    // vertically, and only clientWidth excludes the scrollbar gutter. Measuring the
+    // wider box overstates the space by ~15px, which is enough to push the last month
+    // past the edge and produce a horizontal scrollbar.
+    const measure = () => setWidth(el.clientWidth)
+    // measure straight away — waiting for the observer's first callback renders one
+    // frame at the fallback column count, so the sheet opened narrow then widened
+    measure()
+    const ro = new ResizeObserver(measure)
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
