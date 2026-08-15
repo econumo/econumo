@@ -41,7 +41,7 @@ import {
   usePlanSetLimit,
   useUpdateEnvelope,
 } from './queries'
-import { arrangementItem, moveElementInArrangement } from './elementMove'
+import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
@@ -870,6 +870,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
@@ -1022,7 +1023,16 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   // always the unfiltered structure (per-row `hidden` flags, nothing dropped) — hideEmpty
   // is applied per SECTION at render time so each header's reveal is independent
-  const rows = useMemo(() => (plan ? bucketPlanRows(plan, false) : null), [plan])
+  const rows = useMemo(() => {
+    if (!plan) {
+      return null
+    }
+    if (!dragArrangement) {
+      return bucketPlanRows(plan, false)
+    }
+    const structure = { ...plan.structure, elements: placeElements(plan.structure.elements, dragArrangement) }
+    return bucketPlanRows({ ...plan, structure }, false)
+  }, [plan, dragArrangement])
 
   // An uncategorized row is dropped when every VISIBLE column's actual is zero — it
   // can still have spend outside the current window, so it reappears once navigation
@@ -1211,7 +1221,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
       return
     }
-    moveElement.mutate({ budgetId: budget.meta.id, item })
+    // hold the dropped order locally: without it the row snaps back to its server
+    // position and jumps again when the refetch lands
+    setDragArrangement(moved)
+    moveElement.mutate({ budgetId: budget.meta.id, item }, { onSettled: () => setDragArrangement(null) })
   }
 
   function handleEnter(entry: FlatRow, col: number) {

@@ -103,7 +103,12 @@ export function arrangementItem(arrangement: ElementContainer[], activeId: strin
 
 // Patch element folderId + position to match the arrangement so bucketElements
 // (incl. per-folder stats) reproduces the preview; archived elements untouched.
-export function applyArrangement(budget: BudgetDto, arrangement: ElementContainer[]): BudgetDto {
+/** The arrangement carries only folderId + position, which both the budget and the
+ *  plan element shapes have — so the same optimistic re-placement serves both views. */
+export function placeElements<T extends { id: Id; folderId: Id | null; position: number }>(
+  elements: T[],
+  arrangement: ElementContainer[],
+): T[] {
   const placement = new Map<string, { folderId: Id | null; position: number }>()
   let position = 0
   for (const container of arrangement) {
@@ -112,14 +117,15 @@ export function applyArrangement(budget: BudgetDto, arrangement: ElementContaine
       position++
     }
   }
+  return elements.map((el) => {
+    const placed = placement.get(el.id)
+    return placed ? { ...el, folderId: placed.folderId, position: placed.position } : el
+  })
+}
+
+export function applyArrangement(budget: BudgetDto, arrangement: ElementContainer[]): BudgetDto {
   return {
     ...budget,
-    structure: {
-      ...budget.structure,
-      elements: budget.structure.elements.map((el) => {
-        const placed = placement.get(el.id)
-        return placed ? { ...el, folderId: placed.folderId, position: placed.position } : el
-      }),
-    },
+    structure: { ...budget.structure, elements: placeElements(budget.structure.elements, arrangement) },
   }
 }
