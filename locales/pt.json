@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Mover para pasta…",
           "no_folder": "Sem pasta"
+        },
+        "edit": {
+          "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
+          "no_access_category": "Não pode editar esta categoria — pertence a outro utilizador.",
+          "no_access_tag": "Não pode editar esta etiqueta — pertence a outro utilizador."
         }
       },
       "settings": {

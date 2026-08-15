@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Sposta nella cartella…",
           "no_folder": "Nessuna cartella"
+        },
+        "edit": {
+          "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
+          "no_access_category": "Non puoi modificare questa categoria: appartiene a un altro utente.",
+          "no_access_tag": "Non puoi modificare questo tag: appartiene a un altro utente."
         }
       },
       "settings": {

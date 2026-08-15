@@ -11,6 +11,7 @@ import type { SortableHandleProps } from '@/components/SortableList'
 import { afterIdFromDrop } from '@/lib/ordering'
 import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
+import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -22,9 +23,14 @@ import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { CategoryDialog } from '@/features/classifications/CategoryDialog'
+import { TagDialog } from '@/features/classifications/TagDialog'
+import type { TagDialogItem } from '@/features/classifications/TagDialog'
+import { useUpdateCategory } from '@/features/classifications/queries'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
@@ -900,12 +906,20 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const [envelopeTarget, setEnvelopeTarget] = useState<PlanElementDto | null>(null)
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<PlanElementDto | null>(null)
+  const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
+  const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
+  // A modal opened from the keyboard (Enter on the name cell) has no trigger for
+  // Radix to hand focus back to, so on close focus would fall to <body> and the
+  // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
+  // closes; mouse-opened dialogs (row menu) leave focus alone as before.
+  const editorFromGrid = useRef(false)
   const moveElement = useMoveElement()
   const orderFolders = useMoveBudgetFolder()
   const changeCurrency = useChangeElementCurrency()
   const createFolder = useCreateBudgetFolder()
   const updateEnvelope = useUpdateEnvelope()
   const deleteEnvelope = useDeleteEnvelope()
+  const updateCategory = useUpdateCategory()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
@@ -934,6 +948,13 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     observerRef.current = ro
   }, [])
   useEffect(() => () => observerRef.current?.disconnect(), [])
+  const editorOpen = envelopeTarget !== null || categoryTarget !== null || tagTarget !== null
+  useEffect(() => {
+    if (!editorOpen && editorFromGrid.current) {
+      editorFromGrid.current = false
+      containerRef.current?.focus()
+    }
+  }, [editorOpen])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
   const visible = width > 0 ? planVisibleCount(width, editMode) : 3
@@ -1300,11 +1321,45 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     )
   }
 
+  // Enter on the highlighted name cell opens the element's own edit dialog (the one
+  // the row menu / settings pages use), gated by the right the backend enforces on
+  // the matching update endpoint: budget role for an envelope (owner|admin|user),
+  // row ownership for a category or tag — update-category/update-tag answer anyone
+  // but the owner with NotFound, so a shared row must not offer the dialog at all.
+  function openElementEditor(entry: FlatRow) {
+    const target = entry.child ?? entry.el
+    if (target.id === UNCATEGORIZED_ID) {
+      return
+    }
+    // no right to edit: say why instead of silently ignoring the keystroke; a fixed
+    // toast id so hammering Enter does not stack copies
+    if (isEnvelopeType(target.type)) {
+      if (canEdit) {
+        editorFromGrid.current = true
+        setEnvelopeTarget(entry.el)
+      } else {
+        toast.error(t('budgets.page.plan.edit.no_access_envelope'), { id: 'plan-edit-no-access' })
+      }
+      return
+    }
+    if (!userId || target.ownerUserId !== userId) {
+      toast.error(
+        target.type === BudgetElementType.TAG ? t('budgets.page.plan.edit.no_access_tag') : t('budgets.page.plan.edit.no_access_category'),
+        { id: 'plan-edit-no-access' },
+      )
+      return
+    }
+    editorFromGrid.current = true
+    if (target.type === BudgetElementType.TAG) {
+      setTagTarget({ id: target.id, name: target.name, kind: 'tag', icon: target.icon })
+      return
+    }
+    setCategoryTarget({ id: target.id, name: target.name, icon: target.icon, type: isIncomeType(target.type) ? 'income' : 'expense' })
+  }
+
   function handleEnter(entry: FlatRow, col: number) {
     if (col === -1) {
-      if (!entry.child && entry.el.children.length > 0) {
-        toggleElement(entry.el.id)
-      }
+      openElementEditor(entry)
       return
     }
     if (entry.child) {
@@ -1411,6 +1466,17 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       case 'Enter':
         e.preventDefault()
         handleEnter(flatRows[idx], selection.col)
+        break
+      case ' ':
+        // Space on the name cell folds/unfolds the element's children (Enter is the
+        // edit shortcut); preventDefault so the scroller does not page down.
+        if (selection.col === -1) {
+          e.preventDefault()
+          const entry = flatRows[idx]
+          if (!entry.child && entry.el.children.length > 0) {
+            toggleElement(entry.el.id)
+          }
+        }
         break
       default:
         break
@@ -1697,6 +1763,22 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           }
         }}
       />
+
+      <CategoryDialog
+        open={categoryTarget !== null}
+        category={categoryTarget}
+        onClose={() => setCategoryTarget(null)}
+        onSubmit={(form) => {
+          if (categoryTarget) {
+            updateCategory.mutate(
+              { id: categoryTarget.id, name: form.name, icon: form.icon },
+              { onSuccess: () => setCategoryTarget(null) },
+            )
+          }
+        }}
+      />
+
+      <TagDialog open={tagTarget !== null} item={tagTarget} onClose={() => setTagTarget(null)} />
 
       <ConfirmDialog
         open={deleteEnvelopeTarget !== null}

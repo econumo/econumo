@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "移动到文件夹…",
           "no_folder": "无文件夹"
+        },
+        "edit": {
+          "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
+          "no_access_category": "无法编辑此分类——它属于其他用户。",
+          "no_access_tag": "无法编辑此标签——它属于其他用户。"
         }
       },
       "settings": {

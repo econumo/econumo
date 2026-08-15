@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Mover a carpeta…",
           "no_folder": "Sin carpeta"
+        },
+        "edit": {
+          "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
+          "no_access_category": "No puedes editar esta categoría: pertenece a otro usuario.",
+          "no_access_tag": "No puedes editar esta etiqueta: pertenece a otro usuario."
         }
       },
       "settings": {

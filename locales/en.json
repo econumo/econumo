@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Move to folder…",
           "no_folder": "No folder"
+        },
+        "edit": {
+          "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",
+          "no_access_category": "You can't edit this category — it belongs to another user.",
+          "no_access_tag": "You can't edit this tag — it belongs to another user."
         }
       },
       "settings": {

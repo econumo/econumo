@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Naar map verplaatsen…",
           "no_folder": "Geen map"
+        },
+        "edit": {
+          "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
+          "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
+          "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
         }
       },
       "settings": {

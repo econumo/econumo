@@ -10,6 +10,7 @@ import type { BudgetPlanDto } from '@/api/dto/budget'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { toast } from 'sonner'
 import { balanceRow, formatPlanMonth, makePlanExchange, planTotals } from './planMath'
 import { moneyFormat } from '@/lib/money'
 
@@ -17,6 +18,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
   return { ...actual, trackEvent: vi.fn() }
 })
+vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
 // jsdom cannot drive real dnd-kit pointer drags (no layout), so onDragEnd is
 // captured here and fired directly with a synthetic {active, over} pair — the
@@ -503,7 +505,7 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '132' }))
 })
 
-it('ArrowLeft reaches the name cell (col -1) by keyboard, Enter there toggles expansion, and ArrowLeft again shifts the window', async () => {
+it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles expansion, and ArrowLeft again shifts the window', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
@@ -520,15 +522,157 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Enter there toggles ex
   expect(nameCell).toHaveAttribute('aria-selected', 'true')
   expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
 
-  // Enter on the name cell toggles the row's expansion (pe1/Living has children)
+  // Space on the name cell toggles the row's expansion (pe1/Living has children)
   expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
-  await user.keyboard('{Enter}')
+  await user.keyboard(' ')
   expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+  await user.keyboard(' ')
+  await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
 
   // ArrowLeft again, still at -1, shifts the window back a month and keeps the selection at -1
   await user.keyboard('{ArrowLeft}')
   await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+})
+
+// Enter on the highlighted name cell opens the element's own edit dialog — the same
+// one the settings pages / row menu use — gated by the right the backend checks:
+// budget role for envelopes, ownership for categories and tags.
+async function selectNameCell(user: ReturnType<typeof userEvent.setup>, rowId: string) {
+  const grid = screen.getByTestId('plan-sheet')
+  const row = document.querySelector(`[data-row-id="${rowId}"]`) as HTMLElement
+  const [nameCell, firstMonthCell] = within(row).getAllByRole('gridcell')
+  // click a month cell first: ArrowLeft from the name cell would page the window instead
+  await user.click(firstMonthCell)
+  grid.focus()
+  await user.keyboard('{ArrowLeft}')
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+}
+
+it('Enter on a highlighted envelope, category, or tag opens its edit dialog when the user may edit it', async () => {
+  let envelopeBody: unknown
+  let categoryBody: unknown
+  let tagBody: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/update-envelope', async ({ request }) => {
+      envelopeBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/category/update-category', async ({ request }) => {
+      categoryBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/tag/update-tag', async ({ request }) => {
+      tagBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // envelope (owner role) -> the envelope dialog, prefilled, and it saves through update-envelope
+  await selectNameCell(user, 'pe1:0')
+  await user.keyboard('{Enter}')
+  const envelopeDialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
+  expect(within(envelopeDialog).getByDisplayValue('Living')).toBeInTheDocument()
+  await user.click(within(envelopeDialog).getByRole('button', { name: 'Save' }))
+  await waitFor(() => expect(envelopeBody).toMatchObject({ budgetId: 'b1', id: 'pe1', name: 'Living' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit envelope' })).not.toBeInTheDocument())
+
+  // Enter must not also toggle the envelope's expansion
+  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
+
+  // a modal opened from the keyboard has no trigger to hand focus back to, so the
+  // sheet must reclaim it itself — otherwise the arrow keys are dead after closing
+  await waitFor(() => expect(screen.getByTestId('plan-sheet')).toHaveFocus())
+  await user.keyboard('{ArrowDown}')
+  const foodRow = document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement
+  expect(within(foodRow).getAllByRole('gridcell')[0]).toHaveAttribute('aria-selected', 'true')
+
+  // own category -> the category dialog, prefilled, saving through update-category
+  await selectNameCell(user, 'cat-food:1')
+  await user.keyboard('{Enter}')
+  const categoryDialog = await screen.findByRole('dialog', { name: 'Edit category' })
+  const nameInput = within(categoryDialog).getByDisplayValue('Food')
+  await user.clear(nameInput)
+  await user.type(nameInput, 'Groceries')
+  await user.click(within(categoryDialog).getByRole('button', { name: /update/i }))
+  await waitFor(() => expect(categoryBody).toMatchObject({ id: 'cat-food', name: 'Groceries', icon: 'restaurant' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit category' })).not.toBeInTheDocument())
+
+  // own tag -> the tag dialog, saving through update-tag
+  await selectNameCell(user, 'tag1:2')
+  await user.keyboard('{Enter}')
+  const tagDialog = await screen.findByRole('dialog', { name: 'Edit tag' })
+  expect(within(tagDialog).getByDisplayValue('vacation')).toBeInTheDocument()
+  await user.click(within(tagDialog).getByRole('button', { name: /update/i }))
+  await waitFor(() => expect(tagBody).toMatchObject({ id: 'tag1', name: 'vacation' }))
+})
+
+it('Enter on a highlighted child category opens the category dialog too', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-cell-cat-rent:0')
+
+  await selectNameCell(user, 'cat-rent:1')
+  await user.keyboard('{Enter}')
+  const dialog = await screen.findByRole('dialog', { name: 'Edit category' })
+  expect(within(dialog).getByDisplayValue('Rent')).toBeInTheDocument()
+})
+
+it('Enter without the right to edit explains why in a toast instead of opening a dialog: guest role for envelopes, foreign owner for categories/tags; uncategorized stays silent', async () => {
+  const guestAccess = [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }]
+  const guestBudget = { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, access: guestAccess } }
+  const guestPlan = {
+    ...fixtureWirePlan,
+    meta: { ...fixtureWirePlan.meta, access: guestAccess },
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: fixtureWirePlan.structure.elements.map((el) =>
+        el.id === 'cat-food' || el.id === 'tag1' ? { ...el, ownerUserId: 'u2' } : el,
+      ),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: guestBudget } })),
+    planHandler(guestPlan),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const expected: [string, string | null][] = [
+    ['pe1:0', "You can't edit this envelope — your role in this budget is read-only."],
+    ['cat-food:1', "You can't edit this category — it belongs to another user."],
+    ['tag1:2', "You can't edit this tag — it belongs to another user."],
+    ['uncategorized:3', null],
+  ]
+  for (const [rowId, message] of expected) {
+    vi.mocked(toast.error).mockClear()
+    await selectNameCell(user, rowId)
+    await user.keyboard('{Enter}')
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    if (message) {
+      // a fixed id so repeated Enter presses replace the toast instead of stacking
+      expect(toast.error).toHaveBeenCalledWith(message, { id: 'plan-edit-no-access' })
+    } else {
+      expect(toast.error).not.toHaveBeenCalled()
+    }
+  }
+  // and Enter did not fall back to toggling the envelope's expansion either
+  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
 })
 
 it('budget-mode envelope dialog still offers expense categories only', async () => {

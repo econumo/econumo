@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Przenieś do folderu…",
           "no_folder": "Brak folderu"
+        },
+        "edit": {
+          "no_access_envelope": "Nie możesz edytować tej koperty — Twoja rola w tym budżecie jest tylko do odczytu.",
+          "no_access_category": "Nie możesz edytować tej kategorii — należy do innego użytkownika.",
+          "no_access_tag": "Nie możesz edytować tego tagu — należy do innego użytkownika."
         }
       },
       "settings": {

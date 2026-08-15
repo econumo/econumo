@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "Déplacer vers un dossier…",
           "no_folder": "Aucun dossier"
+        },
+        "edit": {
+          "no_access_envelope": "Vous ne pouvez pas modifier cette enveloppe — votre rôle dans ce budget est en lecture seule.",
+          "no_access_category": "Vous ne pouvez pas modifier cette catégorie — elle appartient à un autre utilisateur.",
+          "no_access_tag": "Vous ne pouvez pas modifier ce tag — il appartient à un autre utilisateur."
         }
       },
       "settings": {

@@ -1006,6 +1006,11 @@
         "menu": {
           "move_to_folder": "In Ordner verschieben…",
           "no_folder": "Kein Ordner"
+        },
+        "edit": {
+          "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
+          "no_access_category": "Sie können diese Kategorie nicht bearbeiten — sie gehört einem anderen Benutzer.",
+          "no_access_tag": "Sie können diesen Tag nicht bearbeiten — er gehört einem anderen Benutzer."
         }
       },
       "settings": {

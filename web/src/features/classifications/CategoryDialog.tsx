@@ -11,7 +11,9 @@ import type { CategoryDto, CategoryType } from '@/api/dto/category'
 
 interface CategoryDialogProps {
   open: boolean
-  category?: CategoryDto | null
+  /** the row being edited; only its name/type/icon are read, so a caller that
+   *  holds a category by another shape (a budget plan element) can prefill too */
+  category?: Pick<CategoryDto, 'name' | 'type' | 'icon'> | null
   onClose: () => void
   onSubmit: (form: { name: string; type: CategoryType; icon: string }) => void
 }
