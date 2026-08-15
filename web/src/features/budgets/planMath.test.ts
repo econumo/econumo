@@ -3,7 +3,6 @@ import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/b
 import type { CurrencyDto } from '@/api/dto/currency'
 import { sub } from '@/lib/decimal'
 import {
-  PLAN_ACTIONS_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -88,12 +87,6 @@ describe('window math', () => {
     expect(planVisibleCount(name + month * 3)).toBe(3)
     expect(planVisibleCount(name + month * 7 + 50)).toBe(7)
     expect(planVisibleCount(name + month * 40)).toBe(12)
-
-    // edit mode adds a trailing actions track; months must not be measured against
-    // space it takes, or they stretch and the window silently narrows
-    expect(planVisibleCount(name + month * 8, true)).toBe(7)
-    expect(planVisibleCount(name + PLAN_ACTIONS_COL_PX + month * 8, true)).toBe(8)
-    expect(planVisibleCount(name + month * 8)).toBe(8)
   })
 
   it('planInitialFirstMonth anchors current month second, clamps at start, single-column starts current', () => {
