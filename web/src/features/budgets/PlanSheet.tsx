@@ -20,7 +20,7 @@ import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
-import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -941,6 +941,20 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
 
+  // The optimistic drop order is released only when genuinely fresh plan data arrives:
+  // a refetch yields a new object, so keying on identity hands over in one frame with
+  // no window where the stale server order is rendered.
+  const arrangedFrom = useRef<BudgetPlanDto | null | undefined>(undefined)
+  useEffect(() => {
+    if (arrangedFrom.current === undefined) {
+      return
+    }
+    if (plan !== arrangedFrom.current) {
+      arrangedFrom.current = undefined
+      setDragArrangement(null)
+    }
+  }, [plan])
+
   // clicking a cell must land keyboard focus on the grid too, or the arrow keys that
   // follow a click are dead until the user tabs in manually (F2). A cell click also
   // bubbles from any interactive descendant it contains (the LimitEditor popover
@@ -1221,10 +1235,21 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
       return
     }
-    // hold the dropped order locally: without it the row snaps back to its server
-    // position and jumps again when the refetch lands
+    // Hold the dropped order locally or the row snaps back to its server position.
+    // The mutation's own callbacks are too early to clear it: invalidate() only kicks
+    // off a refetch, so clearing on settle renders the STALE list for a frame and the
+    // row visibly bounces. An effect on the plan data drops it once the new data is in.
+    arrangedFrom.current = plan
     setDragArrangement(moved)
-    moveElement.mutate({ budgetId: budget.meta.id, item }, { onSettled: () => setDragArrangement(null) })
+    moveElement.mutate(
+      { budgetId: budget.meta.id, item },
+      {
+        onError: () => {
+          arrangedFrom.current = undefined
+          setDragArrangement(null)
+        },
+      },
+    )
   }
 
   function handleEnter(entry: FlatRow, col: number) {

@@ -1561,6 +1561,50 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   expect(looseOrder()).toContain('cat-food:1')
 })
 
+it('does not bounce after the move resolves but before the refetch returns', async () => {
+  let planRequests = 0
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    // the FIRST plan fetch resolves normally; the refetch triggered by the move never
+    // returns, holding open the exact window where the old code cleared the local order
+    // and rendered the stale server list for a frame
+    http.get('*/api/v1/budget/get-budget-plan', async () => {
+      planRequests += 1
+      if (planRequests > 1) {
+        await delay('infinite')
+      }
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureWirePlan } })
+    }),
+    // resolves immediately, so onSuccess/onSettled both fire while the refetch is pending
+    http.post('*/api/v1/budget/move-element', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await screen.findByRole('button', { name: 'move Food' })
+
+  const looseOrder = () =>
+    [...document.querySelectorAll('[data-testid="plan-section-expense"] [data-row-id]')]
+      .map((r) => r.getAttribute('data-row-id'))
+      .filter((id) => id === 'cat-food:1' || id === 'tag1:2' || id === 'env-eur:0')
+  expect(looseOrder()[0]).toBe('cat-food:1')
+
+  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
+  expenseDragEnd({ active: { id: 'cat-food' }, over: { id: 'env-eur' } })
+
+  await waitFor(() => expect(looseOrder()[0]).not.toBe('cat-food:1'))
+
+  // the mutation has settled and its refetch is in flight; the dropped order must hold
+  await waitFor(() => expect(planRequests).toBeGreaterThan(1))
+  const settled = looseOrder()
+  expect(settled[0]).not.toBe('cat-food:1')
+  expect(settled).toContain('cat-food:1')
+})
+
 it('a row can be dragged out of a folder onto the band loose container even when the loose list is empty', async () => {
   // pe1/Living is the sole member of the "Essentials" folder in the base fixture, and
   // the expense band's loose rows are non-empty there — so make them empty by moving
