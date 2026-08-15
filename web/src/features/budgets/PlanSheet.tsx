@@ -1,7 +1,7 @@
 import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 // aliased: a bare `CSS` import would shadow the global CSS object, whose
@@ -239,11 +239,12 @@ function MoveToFolderDialog({
 
 // Rows nest inside their folder section, and the dragged row travels under the
 // pointer (its own rect always wins a pointer test) — so ignore the active row,
-// prefer whatever OTHER row the pointer is inside, and fall back to sections.
+// prefer whatever OTHER row the pointer is inside, and fall back to sections
+// (folder headers, or the loose-area container droppable for an empty band).
 const preferRowCollisions: CollisionDetection = (args) => {
   const collisions = pointerWithin(args)
   const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
-  const row = candidates.find((c) => !String(c.id).startsWith('pfolder:'))
+  const row = candidates.find((c) => !String(c.id).startsWith('pfolder:') && !String(c.id).startsWith('bfolder:'))
   return row ? [row] : candidates
 }
 
@@ -532,6 +533,21 @@ function PlanRowList({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
         ),
       )}
     </SortableContext>
+  )
+}
+
+// A band's loose rows have no bordered wrapper the way a folder does (FolderRows
+// supplies one), so an empty loose list leaves no droppable surface at all —
+// a row could never leave a folder unless it happened to land exactly on another
+// loose row. This container droppable gives that empty space a drop target,
+// mirroring BudgetPage's per-bucket `bfolder:<key>` droppable so the existing
+// `bfolder:null` branch in moveElementInArrangement (elementMove.ts) becomes reachable.
+function LooseRowsContainer({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
+  const { setNodeRef } = useDroppable({ id: 'bfolder:null' })
+  return (
+    <div ref={setNodeRef} data-testid="plan-loose-drop" className="min-h-2">
+      <PlanRowList rows={rows} ctx={ctx} />
+    </div>
   )
 }
 
@@ -1104,14 +1120,24 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
   // rows are excluded — they carry no position the server would honour.
+  //
+  // Mirrors the RENDER-side filtering exactly (FolderRows' visibleSectionRows call
+  // per folder, and the incomeLoose/expenseLoose above for the loose bucket): only
+  // rows actually on screen can be under the pointer during a drag, so afterId must
+  // be read from that same filtered set — anchoring to a hideEmpty-hidden or
+  // folded-away row would silently place the moved element after something the
+  // user never saw.
   function bandArrangement(side: 'income' | 'expense'): ElementContainer[] {
     const band = shownRows![side]
+    const loose = side === 'income' ? incomeLoose : expenseLoose
     return [
       ...band.folders.map((f) => ({
         folderId: f.folder.id as Id | null,
-        ids: f.rows.filter(isDraggableRow).map((r) => r.element.id),
+        ids: visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id))
+          .filter(isDraggableRow)
+          .map((r) => r.element.id),
       })),
-      { folderId: null as Id | null, ids: band.loose.filter(isDraggableRow).map((r) => r.element.id) },
+      { folderId: null as Id | null, ids: loose.filter(isDraggableRow).map((r) => r.element.id) },
     ]
   }
 
@@ -1363,7 +1389,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
-              <PlanRowList rows={incomeLoose} ctx={ctx} />
+              {editMode ? <LooseRowsContainer rows={incomeLoose} ctx={ctx} /> : <PlanRowList rows={incomeLoose} ctx={ctx} />}
               {shownRows.income.uncategorized ? (
                 <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
               ) : null}
@@ -1411,7 +1437,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                   <Fragment key={f.folder.id}>{section}</Fragment>
                 )
               })}
-              <PlanRowList rows={expenseLoose} ctx={ctx} />
+              {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
             </PlanBand>
           ) : null}
         </section>

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -15,6 +16,25 @@ import { moneyFormat } from '@/lib/money'
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
   return { ...actual, trackEvent: vi.fn() }
+})
+
+// jsdom cannot drive real dnd-kit pointer drags (no layout), so onDragEnd is
+// captured here and fired directly with a synthetic {active, over} pair — the
+// same shape dnd-kit itself would report. PlanSheet mounts one DndContext per
+// band, income before expense, on every render — so this array only grows
+// (never resets), but its LAST entry is always the current expense band's
+// handler and the one before it the current income band's, regardless of how
+// many renders happened first.
+let capturedDragEnds: ((event: { active: { id: string }; over: { id: string } | null }) => void)[] = []
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>()
+  return {
+    ...actual,
+    DndContext: ({ onDragEnd, children }: { onDragEnd: (event: never) => void; children: ReactNode }) => {
+      capturedDragEnds.push(onDragEnd as never)
+      return children
+    },
+  }
 })
 
 const userWithBudget = {
@@ -58,6 +78,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
+  capturedDragEnds = []
   useBudgetPeriodStore.setState({
     selectedDate: '2026-07-01',
     unfoldedElements: {},
@@ -1419,4 +1440,118 @@ it('a fill drag past the sortable activation distance never starts a row drag, a
 
   // and the fill itself still commits, so the guard did not break the gesture
   await waitFor(() => expect(fillBody).toMatchObject({ elementId: 'pe1' }))
+})
+
+it('the arrangement a drag anchors to matches the filtered (hideEmpty) rows actually on screen, never a hidden one', async () => {
+  // Expense loose order: cat-food (hidden by hideEmpty — zeroed out below) -> tag1
+  // (visible, the drop target) -> env-eur (visible, the dragged row, sits after tag1).
+  // Dragging env-eur onto tag1 is the backward-drag case that exposes the bug: an
+  // arrangement built from the UNFILTERED rows still has cat-food at index 0, and
+  // moveElementInArrangement's insert-at-target-index math (elementMove.ts) lands the
+  // moved row right after whatever preceded the target in that unfiltered list — here,
+  // cat-food, a row hideEmpty has hidden from the user entirely. With the fix, cat-food
+  // is excluded from the arrangement, so env-eur can only ever land first (afterId: null).
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithHiddenLeadRow: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      elements: plan.structure.elements.map((el) => {
+        if (el.id === 'cat-food') {
+          return { ...el, cells: el.cells.map(() => ({ actual: '0', planned: '' })) }
+        }
+        return el
+      }),
+    },
+  }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithHiddenLeadRow),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planHideEmpty: true })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await screen.findByRole('button', { name: 'move vacation' })
+
+  // cat-food is hidden (hideEmpty is on and it has no activity/plan anywhere in this
+  // variant) — it must not be reachable by row queries, confirming the drag below truly
+  // has no way to land on it through the DOM, yet the bug reaches it anyway internally.
+  expect(screen.queryByRole('button', { name: 'move Food' })).not.toBeInTheDocument()
+
+  // PlanSheet renders the income band's DndContext before the expense band's on every
+  // commit, so regardless of how many renders happened while the page settled, the LAST
+  // captured handler is always the current expense band's onDragEnd.
+  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
+  expenseDragEnd({ active: { id: 'env-eur' }, over: { id: 'tag1' } })
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body).toMatchObject({ id: 'env-eur' })
+  const afterId = (body as { afterId: string | null }).afterId
+  expect(afterId).not.toBe('cat-food')
+  expect(afterId).toBeNull()
+})
+
+it('a row can be dragged out of a folder onto the band loose container even when the loose list is empty', async () => {
+  // pe1/Living is the sole member of the "Essentials" folder in the base fixture, and
+  // the expense band's loose rows are non-empty there — so make them empty by moving
+  // every loose expense element into the folder too, isolating the empty-loose-list case
+  // Finding 2 covers: BudgetPage gives every bucket (including "no folder") a container
+  // droppable, so a row can always be dragged out even onto empty space; PlanSheet lacked
+  // that droppable entirely, making the gesture silently inert whenever loose was empty.
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithEmptyLoose: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      elements: plan.structure.elements.map((el) =>
+        el.id === 'cat-food' || el.id === 'tag1' || el.id === 'env-eur' || el.id === 'cat-dormant'
+          ? { ...el, folderId: 'bf1' }
+          : el,
+      ),
+    },
+  }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithEmptyLoose),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await screen.findByRole('button', { name: 'move Food' })
+
+  // the expense band's loose list is empty (every loose element was moved into the
+  // folder above) — a working escape hatch needs a drop TARGET to exist even with
+  // nothing rendered in it. Without Finding 2's fix there is no such element at all.
+  const expenseSection = screen.getByTestId('plan-section-expense')
+  expect(within(expenseSection).getByTestId('plan-loose-drop')).toBeInTheDocument()
+
+  expect(capturedDragEnds.length).toBeGreaterThanOrEqual(2)
+  // see the sibling test above: the last captured handler is always the current
+  // expense band's onDragEnd, since income always renders first within a commit.
+  const expenseDragEnd = capturedDragEnds[capturedDragEnds.length - 1]
+  // dropping directly on the loose-area container droppable (empty space, no row to
+  // land on) — this id only exists once LooseRowsContainer's useDroppable is wired up
+  expenseDragEnd({ active: { id: 'cat-food' }, over: { id: 'bfolder:null' } })
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body).toMatchObject({ id: 'cat-food', folderId: null })
 })
