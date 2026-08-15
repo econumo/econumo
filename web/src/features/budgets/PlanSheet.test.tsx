@@ -1278,9 +1278,11 @@ it('creates a plan folder with members, switching sides clears the selection', a
   await user.type(within(dialog).getByLabelText('Folder name'), 'Employment')
   expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled()
 
-  // default side is expense; switch to income and pick an income element
-  // (ie1's top-level name in the fixture is "Salaries" — its child category is "Salary")
-  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
+  // income is the default side: grouping income is the reason this dialog exists
+  expect(within(dialog).getByRole('tab', { name: 'Income' })).toHaveAttribute('aria-selected', 'true')
+  expect(within(dialog).getByRole('tab', { name: 'Expenses' })).toHaveAttribute('aria-selected', 'false')
+
+  // pick an income element (ie1's top-level name is "Salaries"; its child is "Salary")
   await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
   expect(within(dialog).getByRole('button', { name: 'Create' })).toBeEnabled()
 

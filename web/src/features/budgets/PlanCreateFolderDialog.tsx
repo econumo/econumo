@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { EntityIcon } from '@/components/EntityIcon'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -42,7 +44,7 @@ function CreateFolderForm({
 }) {
   const { t } = useTranslation()
   const [name, setName] = useState('')
-  const [side, setSide] = useState<Side>('expense')
+  const [side, setSide] = useState<Side>('income')
   const [picked, setPicked] = useState<Id[]>([])
   const [error, setError] = useState<string | null>(null)
 
@@ -67,9 +69,25 @@ function CreateFolderForm({
     setPicked([])
   }
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.create_folder_form.header')}>
+    <ResponsiveDialog
+      open
+      caps
+      onOpenChange={(o) => !o && onClose()}
+      title={t('budgets.modal.create_folder_form.header')}
+      footer={
+        <div className={dialogActionsClass}>
+          <Button type="button" variant="secondary" onClick={onClose}>
+            {t('common.button.cancel.label')}
+          </Button>
+          <Button type="submit" form="plan-create-folder-form" disabled={picked.length === 0}>
+            {t('common.button.create.label')}
+          </Button>
+        </div>
+      }
+    >
       <form
-        className="flex flex-col gap-3"
+        id="plan-create-folder-form"
+        className="flex flex-col gap-4"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
@@ -84,10 +102,11 @@ function CreateFolderForm({
           }
         }}
       >
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="plan-folder-name">{t('budgets.form.budget.folder_name.label')}</Label>
+        <CardField label={t('budgets.form.budget.folder_name.label')} htmlFor="plan-folder-name" error={error}>
           <Input
             id="plan-folder-name"
+            className={cardFieldControlClass}
+            maxLength={64}
             value={name}
             aria-invalid={error !== null}
             onChange={(e) => {
@@ -95,50 +114,56 @@ function CreateFolderForm({
               setError(null)
             }}
           />
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        </div>
+        </CardField>
 
-        <div role="tablist" aria-label="folder side" className="flex w-fit rounded-md border p-0.5">
-          {(['expense', 'income'] as const).map((s) => (
-            <button
-              key={s}
-              type="button"
-              role="tab"
-              aria-selected={side === s}
-              className={`rounded px-3 py-1 text-sm ${side === s ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-              onClick={() => switchSide(s)}
-            >
-              {t(s === 'income' ? 'budgets.page.plan.section.income' : 'budgets.page.plan.section.expenses')}
-            </button>
-          ))}
-        </div>
+        <div className="flex flex-col gap-0.5 rounded-lg bg-econumo-card px-4 py-2.5">
+          <span className="flex items-baseline justify-between">
+            <Label className="text-[11px] font-normal text-muted-foreground">
+              {t('budgets.form.budget_envelope.categories.label')}
+            </Label>
+            <span className="text-[11px] text-muted-foreground">
+              {t('budgets.form.budget_envelope.categories.selected', { count: String(picked.length) })}
+            </span>
+          </span>
 
-        <ul className="flex max-h-64 flex-col gap-1 overflow-y-auto scrollbar-slim">
-          {options.map((el) => {
-            const label = elementDisplayName(el.id, el.name, t)
-            return (
-              <li key={el.id} className="flex items-center gap-2">
-                <Checkbox
-                  id={`plan-folder-member-${el.id}`}
-                  aria-label={label}
-                  checked={picked.includes(el.id)}
-                  onCheckedChange={(v) => setPicked((prev) => (v ? [...prev, el.id] : prev.filter((p) => p !== el.id)))}
-                />
-                <Label htmlFor={`plan-folder-member-${el.id}`} className="truncate font-normal">
-                  {label}
-                </Label>
-              </li>
-            )
-          })}
-        </ul>
+          <div role="tablist" aria-label="folder side" className="mt-1 flex rounded-md bg-background p-0.5">
+            {(['income', 'expense'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                role="tab"
+                aria-selected={side === s}
+                className={`flex-1 rounded px-3 py-1 text-sm ${side === s ? 'bg-accent font-medium' : 'text-muted-foreground'}`}
+                onClick={() => switchSide(s)}
+              >
+                {t(s === 'income' ? 'budgets.page.plan.section.income' : 'budgets.page.plan.section.expenses')}
+              </button>
+            ))}
+          </div>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onClose}>
-            {t('common.button.cancel.label')}
-          </Button>
-          <Button type="submit" disabled={name.trim() === '' || picked.length === 0}>
-            {t('common.button.create.label')}
-          </Button>
+          <ul className="mt-1 flex max-h-56 flex-col overflow-x-hidden overflow-y-auto scrollbar-slim">
+            {options.map((el) => {
+              const label = elementDisplayName(el.id, el.name, t)
+              return (
+                <li key={el.id}>
+                  <Label
+                    htmlFor={`plan-folder-member-${el.id}`}
+                    className="flex items-center gap-2.5 rounded-md py-2 font-normal hover:bg-econumo-hover"
+                  >
+                    <EntityIcon name={el.icon} className="text-lg text-muted-foreground" />
+                    <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
+                    <Checkbox
+                      id={`plan-folder-member-${el.id}`}
+                      className="bg-background"
+                      aria-label={label}
+                      checked={picked.includes(el.id)}
+                      onCheckedChange={(v) => setPicked((prev) => (v ? [...prev, el.id] : prev.filter((p) => p !== el.id)))}
+                    />
+                  </Label>
+                </li>
+              )
+            })}
+          </ul>
         </div>
       </form>
     </ResponsiveDialog>
