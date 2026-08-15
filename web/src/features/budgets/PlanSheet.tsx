@@ -49,6 +49,7 @@ import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
 import { SetLimitDialog } from './SetLimitDialog'
 import {
   PLAN_ACTIONS_COL_PX,
+  PLAN_CURRENCY_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -395,7 +396,7 @@ const ChildRow = memo(function ChildRow({
           </div>
         )
       })}
-      {ctx.editMode ? <span /> : null}
+      <span />
     </div>
   )
 })
@@ -419,10 +420,6 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
       <span className="truncate text-sm" title={displayName}>
         {displayName}
       </span>
-      {/* the element's own currency reads as part of its name — matching the budget view */}
-      {!isUncategorized && currency?.symbol ? (
-        <span className="shrink-0 text-xs text-muted-foreground">{currency.symbol}</span>
-      ) : null}
     </>
   )
 
@@ -527,13 +524,14 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
             </div>
           )
         })}
-        {/* trailing actions track: the menu closes the row like the budget view's does.
-            Uncategorized has no menu but still occupies the track. */}
-        {ctx.editMode ? (
-          <div className="flex items-center justify-center">
-            {isUncategorized ? null : <RowMenu el={el} ctx={ctx} />}
-          </div>
-        ) : null}
+        {/* trailing track: currency, then the actions menu in edit mode — the budget
+            table's geometry. Uncategorized has neither but still occupies the track. */}
+        <div className="flex items-center justify-end gap-1">
+          <span className="w-6 text-center text-xs text-muted-foreground">
+            {isUncategorized ? null : currency?.symbol}
+          </span>
+          {ctx.editMode && !isUncategorized ? <RowMenu el={el} ctx={ctx} /> : null}
+        </div>
       </div>
       {expandable && unfolded ? (
         <div>
@@ -721,14 +719,12 @@ function PlanTotals({
   gridCols,
   totals,
   currency,
-  editMode,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
-  editMode: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -748,7 +744,7 @@ function PlanTotals({
                 </div>
               )
             })}
-            {editMode ? <span /> : null}
+            <span />
           </div>
         </Fragment>
       ))}
@@ -762,14 +758,12 @@ function PlanBalanceRow({
   gridCols,
   balance,
   currency,
-  editMode,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   balance: string[]
   currency: CurrencyDto | undefined
-  editMode: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -795,7 +789,7 @@ function PlanBalanceRow({
             </div>
           )
         })}
-        {editMode ? <span /> : null}
+        <span />
       </div>
     </div>
   )
@@ -1010,10 +1004,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   const cur = currentMonth()
   const monthFmt = useMemo(() => new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }), [i18n.language])
-  // edit mode appends a trailing actions track. Every grid consumer (rows, month
-  // header, totals, balance) shares this string, so they all gain the column together
-  // and stay aligned.
-  const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))${editMode ? ` ${PLAN_ACTIONS_COL_PX}px` : ''}`
+  // A trailing track closes every row with the element's currency and, in edit mode,
+  // its actions menu — the budget table's geometry. Every grid consumer (rows, month
+  // header, totals, balance) shares this string, so they gain the column together and
+  // stay aligned.
+  const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
+  const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
 
@@ -1450,7 +1446,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               {monthFmt.format(monthDate(m))}
             </div>
           ))}
-          {editMode ? <span /> : null}
+          <span />
         </div>
       </div>
 
@@ -1584,7 +1580,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
-          editMode={editMode}
         />
 
         <PlanBalanceRow
@@ -1593,7 +1588,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           balance={balance}
           currency={planCurrency}
-          editMode={editMode}
         />
       </div>
 

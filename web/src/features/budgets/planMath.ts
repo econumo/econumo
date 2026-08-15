@@ -37,13 +37,15 @@ export function formatPlanMonth(m: string, lang: string): string {
 
 export const PLAN_NAME_COL_PX = 210
 export const PLAN_MIN_MONTH_COL_PX = 110
-/** the trailing actions track edit mode adds (2rem); months must not be measured
- *  against space it occupies, or they stretch and the window silently narrows */
+/** the trailing track closing every row: the currency symbol always, plus the actions
+ *  menu in edit mode. Months must not be measured against space it occupies, or they
+ *  stretch and the visible window silently narrows. */
+export const PLAN_CURRENCY_COL_PX = 24
 export const PLAN_ACTIONS_COL_PX = 32
 
 export function planVisibleCount(containerWidthPx: number, editMode = false): number {
-  const usable = containerWidthPx - PLAN_NAME_COL_PX - (editMode ? PLAN_ACTIONS_COL_PX : 0)
-  const fit = Math.floor(usable / PLAN_MIN_MONTH_COL_PX)
+  const tail = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
+  const fit = Math.floor((containerWidthPx - PLAN_NAME_COL_PX - tail) / PLAN_MIN_MONTH_COL_PX)
   return fit < 3 ? 1 : Math.min(fit, 12)
 }
 
