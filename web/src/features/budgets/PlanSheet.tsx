@@ -2,6 +2,7 @@ import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } fro
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
@@ -22,11 +23,13 @@ import {
   canUpdateLimits,
   useBudgetPlan,
   useChangeElementCurrency,
+  useCreateBudgetFolder,
   useFillPlannedCells,
   useMoveElement,
   usePlanSetLimit,
 } from './queries'
 import { LimitEditor } from './LimitEditor'
+import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
 import { SetLimitDialog } from './SetLimitDialog'
 import {
   PLAN_MIN_MONTH_COL_PX,
@@ -667,8 +670,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
+  const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
+  const createFolder = useCreateBudgetFolder()
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -1055,6 +1060,13 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
+      {editMode ? (
+        <div className="flex items-center gap-2 px-2 pb-1">
+          <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
+            {t('budgets.page.budget.structure.action.create_folder')}
+          </Button>
+        </div>
+      ) : null}
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">
@@ -1253,6 +1265,26 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           }}
         />
       ) : null}
+
+      <PlanCreateFolderDialog
+        open={createFolderOpen}
+        elements={plan.structure.elements}
+        onClose={() => setCreateFolderOpen(false)}
+        onSubmit={({ name, memberIds }) => {
+          const id = uuidv7()
+          createFolder.mutate(
+            { budgetId: budget.meta.id, id, name },
+            {
+              onSuccess: () => {
+                for (const memberId of memberIds) {
+                  moveElement.mutate({ budgetId: budget.meta.id, item: { id: memberId, folderId: id, position: 0, afterId: null } })
+                }
+                setCreateFolderOpen(false)
+              },
+            },
+          )
+        }}
+      />
     </div>
   )
 }

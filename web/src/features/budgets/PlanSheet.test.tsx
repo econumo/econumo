@@ -1226,3 +1226,55 @@ it('picking a folder in the move dialog fires move-element with the right payloa
   await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'pe1', folderId: 'bf1', afterId: null }))
   expect(screen.queryByRole('dialog', { name: 'Move to folder…' })).not.toBeInTheDocument()
 })
+
+it('creates a plan folder with members, switching sides clears the selection', async () => {
+  let folderBody: unknown
+  const moves: unknown[] = []
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/create-folder', async ({ request }) => {
+      folderBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'nf1', name: 'Employment', position: 9 } } })
+    }),
+    http.post('*/api/v1/budget/move-element', async ({ request }) => {
+      moves.push(await request.json())
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  const dialog = await screen.findByRole('dialog', { name: 'New folder' })
+
+  // submit is blocked with no members
+  await user.type(within(dialog).getByLabelText('Folder name'), 'Employment')
+  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled()
+
+  // default side is expense; switch to income and pick an income element
+  // (ie1's top-level name in the fixture is "Salaries" — its child category is "Salary")
+  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
+  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeEnabled()
+
+  // flipping back to expense clears the income selection
+  await user.click(within(dialog).getByRole('tab', { name: 'Expenses' }))
+  expect(within(dialog).getByRole('button', { name: 'Create' })).toBeDisabled()
+
+  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
+  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(folderBody).toMatchObject({ name: 'Employment' }))
+  await waitFor(() => expect(moves).toHaveLength(1))
+  // the folder id is client-generated (uuidv7) and sent as-is on create-folder; the
+  // move must target that same id, not whatever id the (irrelevant, mocked) response echoes back
+  const clientFolderId = (folderBody as { id: string }).id
+  expect(moves[0]).toMatchObject({ id: 'ie1', folderId: clientFolderId })
+})
