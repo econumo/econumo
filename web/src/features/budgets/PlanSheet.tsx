@@ -2,7 +2,7 @@ import { createContext, Fragment, memo, useCallback, useContext, useEffect, useM
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
-import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 // aliased: a bare `CSS` import would shadow the global CSS object, whose
 // CSS.escape the selection scroll-into-view effect below depends on
@@ -644,6 +644,7 @@ function FolderRows({
   ctx,
   hideEmpty,
   folded,
+  collapsed,
   revealed,
   onToggleFold,
   onReveal,
@@ -652,12 +653,16 @@ function FolderRows({
   ctx: GridCtx
   hideEmpty: boolean
   folded: boolean
+  /** a folder drag is in flight: hide every folder's rows so the headers reorder as
+   *  compact blocks. Distinct from `folded`, which is the user's own fold state and
+   *  still drives the chevron and aria-expanded. */
+  collapsed: boolean
   revealed: boolean
   onToggleFold: (key: string) => void
   onReveal: () => void
 }) {
   const { t } = useTranslation()
-  const visibleRows = visibleSectionRows(section.rows, folded, hideEmpty, revealed)
+  const visibleRows = collapsed ? [] : visibleSectionRows(section.rows, folded, hideEmpty, revealed)
   const hiddenCount = !folded && hideEmpty && !revealed ? section.rows.filter((r) => r.hidden).length : 0
   const Chevron = folded ? ChevronRight : ChevronDown
   return (
@@ -840,13 +845,17 @@ function PlanBand({
   editMode,
   sensors,
   folderIds,
+  onDragStart,
   onDragEnd,
+  onDragCancel,
   children,
 }: {
   editMode: boolean
   sensors: ReturnType<typeof useSensors>
   folderIds: string[]
+  onDragStart: (event: DragStartEvent) => void
   onDragEnd: (event: DragEndEvent) => void
+  onDragCancel: () => void
   children: ReactNode
 }) {
   if (!editMode) {
@@ -857,7 +866,9 @@ function PlanBand({
       sensors={sensors}
       collisionDetection={preferRowCollisions}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      onDragStart={onDragStart}
       onDragEnd={onDragEnd}
+      onDragCancel={onDragCancel}
     >
       <SortableContext items={folderIds.map((id) => `pfolder:${id}`)} strategy={verticalListSortingStrategy}>
         {children}
@@ -871,6 +882,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const isCompact = useIsCompact()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
+  const [draggingFolder, setDraggingFolder] = useState(false)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
@@ -1202,7 +1214,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     ]
   }
 
+  function handleBandDragStart(event: DragStartEvent) {
+    setDraggingFolder(String(event.active.id).startsWith('pfolder:'))
+  }
+
   function handleBandDragEnd(side: 'income' | 'expense', event: DragEndEvent) {
+    setDraggingFolder(false)
     const { active, over } = event
     if (!over || active.id === over.id) {
       return
@@ -1442,7 +1459,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               editMode={editMode}
               sensors={sensors}
               folderIds={shownRows.income.folders.map((f) => f.folder.id)}
+              onDragStart={handleBandDragStart}
               onDragEnd={(e) => handleBandDragEnd('income', e)}
+              onDragCancel={() => setDraggingFolder(false)}
             >
               {shownRows.income.folders.map((f) => {
                 const section = (
@@ -1451,6 +1470,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                     ctx={ctx}
                     hideEmpty={hideEmpty}
                     folded={folded(f.folder.id)}
+                    collapsed={draggingFolder}
                     revealed={revealedSections.has(f.folder.id)}
                     onToggleFold={togglePlanFold}
                     onReveal={() => revealSection(f.folder.id)}
@@ -1490,7 +1510,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               editMode={editMode}
               sensors={sensors}
               folderIds={shownRows.expense.folders.map((f) => f.folder.id)}
+              onDragStart={handleBandDragStart}
               onDragEnd={(e) => handleBandDragEnd('expense', e)}
+              onDragCancel={() => setDraggingFolder(false)}
             >
               {shownRows.expense.folders.map((f) => {
                 const section = (
@@ -1499,6 +1521,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                     ctx={ctx}
                     hideEmpty={hideEmpty}
                     folded={folded(f.folder.id)}
+                    collapsed={draggingFolder}
                     revealed={revealedSections.has(f.folder.id)}
                     onToggleFold={togglePlanFold}
                     onReveal={() => revealSection(f.folder.id)}

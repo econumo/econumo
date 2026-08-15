@@ -26,12 +26,26 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 // handler and the one before it the current income band's, regardless of how
 // many renders happened first.
 let capturedDragEnds: ((event: { active: { id: string }; over: { id: string } | null }) => void)[] = []
+interface CapturedDragContext {
+  onDragStart: (event: { active: { id: string } }) => void
+  onDragEnd: (event: { active: { id: string }; over: { id: string } | null }) => void
+}
+let capturedDragContexts: CapturedDragContext[] = []
 vi.mock('@dnd-kit/core', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@dnd-kit/core')>()
   return {
     ...actual,
-    DndContext: ({ onDragEnd, children }: { onDragEnd: (event: never) => void; children: ReactNode }) => {
+    DndContext: ({
+      onDragStart,
+      onDragEnd,
+      children,
+    }: {
+      onDragStart: (event: never) => void
+      onDragEnd: (event: never) => void
+      children: ReactNode
+    }) => {
       capturedDragEnds.push(onDragEnd as never)
+      capturedDragContexts.push({ onDragStart, onDragEnd } as never)
       return children
     },
   }
@@ -79,6 +93,7 @@ beforeEach(() => {
   window.econumoConfig = {}
   mockViewport()
   capturedDragEnds = []
+  capturedDragContexts = []
   useBudgetPeriodStore.setState({
     selectedDate: '2026-07-01',
     unfoldedElements: {},
@@ -1561,6 +1576,47 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   // the reorder shows immediately, while the move-element call is still in flight
   await waitFor(() => expect(looseOrder()[0]).not.toBe('cat-food:1'))
   expect(looseOrder()).toContain('cat-food:1')
+})
+
+it('collapses folder contents while a folder drag is in flight, and still drops correctly', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/order-folders', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // pe1/Living sits inside the "Essentials" folder and is visible at rest
+  expect(screen.getByTestId('plan-cell-pe1:0')).toBeInTheDocument()
+  const folderHeader = screen.getByRole('button', { name: 'Essentials' })
+  expect(folderHeader).toHaveAttribute('aria-expanded', 'true')
+
+  const expenseCtx = capturedDragContexts[capturedDragContexts.length - 1]
+  expenseCtx.onDragStart({ active: { id: 'pfolder:bf1' } })
+
+  // rows hide so the headers reorder as compact blocks, but the folder's own fold
+  // state is untouched — the chevron must not claim the user collapsed it
+  await waitFor(() => expect(screen.queryByTestId('plan-cell-pe1:0')).not.toBeInTheDocument())
+  expect(screen.getByRole('button', { name: 'Essentials' })).toHaveAttribute('aria-expanded', 'true')
+
+  // the plan fixture ships a single folder, so there is nothing to reorder against —
+  // this covers the collapse lifecycle, not the reorder itself (which
+  // 'reorders folders within a band' already covers)
+  expenseCtx.onDragEnd({ active: { id: 'pfolder:bf1' }, over: null })
+
+  // contents come back once the drag ends
+  await waitFor(() => expect(screen.getByTestId('plan-cell-pe1:0')).toBeInTheDocument())
+  expect(body).toBeUndefined()
 })
 
 it('does not bounce after the move resolves but before the refetch returns', async () => {
