@@ -141,14 +141,16 @@ function CreateFolderForm({
             ))}
           </div>
 
-          <ul className="mt-1 flex max-h-56 flex-col overflow-x-hidden overflow-y-auto scrollbar-slim">
+          {/* -mx-4 + px-4: the rows bleed to the card's edges so the hover band spans
+              its full width, while the text stays aligned with the label above */}
+          <ul className="mt-1 -mx-4 flex max-h-56 flex-col overflow-x-hidden overflow-y-auto scrollbar-slim">
             {options.map((el) => {
               const label = elementDisplayName(el.id, el.name, t)
               return (
                 <li key={el.id}>
                   <Label
                     htmlFor={`plan-folder-member-${el.id}`}
-                    className="flex items-center gap-2.5 rounded-md py-2 font-normal hover:bg-econumo-hover"
+                    className="flex items-center gap-2.5 px-4 py-2 font-normal hover:bg-econumo-hover"
                   >
                     <EntityIcon name={el.icon} className="text-lg text-muted-foreground" />
                     <span className="min-w-0 flex-1 truncate text-sm">{label}</span>
