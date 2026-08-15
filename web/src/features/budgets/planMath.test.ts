@@ -3,6 +3,8 @@ import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/b
 import type { CurrencyDto } from '@/api/dto/currency'
 import { sub } from '@/lib/decimal'
 import {
+  PLAN_MIN_MONTH_COL_PX,
+  PLAN_NAME_COL_PX,
   addMonths,
   balanceRow,
   bucketPlanRows,
@@ -78,10 +80,13 @@ describe('window math', () => {
   })
 
   it('planVisibleCount: 3..12 fit, collapse below 3, cap at 12', () => {
-    expect(planVisibleCount(180 + 110 * 2)).toBe(1) // only 2 fit -> mobile collapse
-    expect(planVisibleCount(180 + 110 * 3)).toBe(3)
-    expect(planVisibleCount(180 + 110 * 7 + 50)).toBe(7)
-    expect(planVisibleCount(180 + 110 * 40)).toBe(12)
+    // derived from the constants so widening the name column cannot silently drift
+    const name = PLAN_NAME_COL_PX
+    const month = PLAN_MIN_MONTH_COL_PX
+    expect(planVisibleCount(name + month * 2)).toBe(1) // only 2 fit -> mobile collapse
+    expect(planVisibleCount(name + month * 3)).toBe(3)
+    expect(planVisibleCount(name + month * 7 + 50)).toBe(7)
+    expect(planVisibleCount(name + month * 40)).toBe(12)
   })
 
   it('planInitialFirstMonth anchors current month second, clamps at start, single-column starts current', () => {

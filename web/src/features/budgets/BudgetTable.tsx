@@ -190,6 +190,9 @@ function ElementRow({
       <span className="truncate text-[15px]" title={displayName}>
         {displayName}
       </span>
+      {/* the element's own currency reads as part of its name, not as a far-right
+          column detached from what it qualifies */}
+      {currency?.symbol ? <span className="shrink-0 text-xs text-muted-foreground">{currency.symbol}</span> : null}
       {isUncategorized ? <InfoNote text={t('budgets.page.budget.structure.uncategorized.info')} testId="budget-uncategorized-info-note" /> : null}
     </>
   )
@@ -243,7 +246,6 @@ function ElementRow({
             <AvailablePill available={available} currency={currency} testId="cell-available" />
           )}
         </span>
-        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
       {expandable && unfolded ? (
@@ -351,6 +353,9 @@ function LabelRow({
       <span className={`truncate text-[15px] ${label.isArchived === 1 ? 'text-muted-foreground' : ''}`} title={label.name}>
         {label.name}
       </span>
+      {/* the element's own currency reads as part of its name, not as a far-right
+          column detached from what it qualifies */}
+      {currency?.symbol ? <span className="shrink-0 text-xs text-muted-foreground">{currency.symbol}</span> : null}
     </>
   )
 
@@ -375,7 +380,6 @@ function LabelRow({
           {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent)}
         </span>
         <span className="flex w-20 justify-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
-        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">

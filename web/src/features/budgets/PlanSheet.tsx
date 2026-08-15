@@ -187,8 +187,8 @@ function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="size-5 shrink-0" aria-label={`element actions ${el.name}`}>
-          <MoreVertical className="size-3.5" />
+        <Button type="button" variant="ghost" size="icon" className="w-8 shrink-0" aria-label={`element actions ${el.name}`}>
+          <MoreVertical className="size-4" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -370,7 +370,10 @@ const ChildRow = memo(function ChildRow({
         onClick={(e) => ctx.select(rk, -1, e)}
       >
         <EntityIcon name={child.icon} className="text-base" />
-        <span className="truncate">{displayName}</span>
+        <span className="min-w-0 flex-1 truncate">{displayName}</span>
+        {/* children never carry a menu but must still pad the slot, or their months
+            drift out of line with their parent's */}
+        {ctx.editMode ? <span className="w-8 shrink-0" /> : null}
       </span>
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
@@ -417,6 +420,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
       <span className="truncate text-sm" title={displayName}>
         {displayName}
       </span>
+      {/* the element's own currency reads as part of its name — matching the budget view */}
+      {!isUncategorized && currency?.symbol ? (
+        <span className="shrink-0 text-xs text-muted-foreground">{currency.symbol}</span>
+      ) : null}
     </>
   )
 
@@ -437,7 +444,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           {expandable ? (
             <button
               type="button"
-              className="flex min-w-0 items-center gap-1.5 text-left"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
               aria-expanded={unfolded}
               title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
               onClick={() => toggleElement(el.id)}
@@ -446,12 +453,16 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               {name}
             </button>
           ) : (
-            <span className="flex min-w-0 items-center gap-1.5">
+            <span className="flex min-w-0 flex-1 items-center gap-1.5">
               {isUncategorized ? null : <span className="w-3.5 shrink-0" />}
               {name}
             </span>
           )}
-          {!isUncategorized && ctx.editMode ? <RowMenu el={el} ctx={ctx} /> : null}
+          {/* the actions slot is a fixed tail column so every menu lands on one vertical
+              line; rows without a menu still pad it or their months drift */}
+          {ctx.editMode ? (
+            !isUncategorized ? <RowMenu el={el} ctx={ctx} /> : <span className="w-8 shrink-0" />
+          ) : null}
         </div>
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)

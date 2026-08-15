@@ -1578,6 +1578,38 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   expect(looseOrder()).toContain('cat-food:1')
 })
 
+it('shows the currency beside the name and keeps the actions slot aligned', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // the currency reads as part of the name, and shows at rest rather than only in edit mode
+  const nameCell = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]')!.querySelector('[role="gridcell"]')!
+  expect(nameCell.textContent).toContain('Living')
+  expect(nameCell.textContent).toContain('$')
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // the menu is the name cell's LAST child, so it lands at a fixed offset instead of
+  // drifting with the name's length
+  const menu = await screen.findByRole('button', { name: 'element actions Living' })
+  // re-query: entering edit mode re-rendered the row, so the earlier node is stale
+  // scope to the menu's OWN name cell: the fixture renders more than one pe1 row
+  const editNameCell = menu.closest('[role="gridcell"]')!
+  expect(editNameCell.textContent).toContain('Living')
+  expect(editNameCell.lastElementChild).toBe(menu)
+
+  // a child row carries no menu but still pads the slot, or its months drift out of
+  // line with its parent's
+  await user.click(within(editNameCell as HTMLElement).getByText('Living'))
+  const childCell = (await screen.findByTestId('plan-cell-cat-rent:0')).closest('[role="row"]')!.querySelector('[role="gridcell"]')!
+  expect(within(childCell as HTMLElement).queryByRole('button', { name: /element actions/ })).not.toBeInTheDocument()
+  expect((childCell.lastElementChild as HTMLElement).className).toContain('w-8')
+})
+
 it('collapses folder contents while a folder drag is in flight, and still drops correctly', async () => {
   let body: unknown
   server.use(

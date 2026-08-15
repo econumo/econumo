@@ -35,7 +35,7 @@ export function formatPlanMonth(m: string, lang: string): string {
   return new Intl.DateTimeFormat(lang, { month: 'short', year: '2-digit' }).format(monthDate(m))
 }
 
-export const PLAN_NAME_COL_PX = 180
+export const PLAN_NAME_COL_PX = 210
 export const PLAN_MIN_MONTH_COL_PX = 110
 
 export function planVisibleCount(containerWidthPx: number): number {
