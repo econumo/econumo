@@ -8,17 +8,34 @@ import { Label } from '@/components/ui/label'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { PlanElementDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
+import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import { elementDisplayName } from './budgetMath'
 
 type Side = 'income' | 'expense'
 
-export function PlanCreateFolderDialog({
-  open,
+// The form's state lives in a CHILD of the `!open` early return, so closing unmounts
+// it and React discards every field. Co-locating that state with the early return
+// would instead let it survive a close (the component itself never unmounts), and a
+// re-open would restore the just-created folder's name and members — a second submit
+// then duplicates it. The reset must not depend on a local callback: the success path
+// closes from the parent, so only unmounting covers every close path.
+export function PlanCreateFolderDialog(props: {
+  open: boolean
+  elements: PlanElementDto[]
+  onClose: () => void
+  onSubmit: (form: { name: string; memberIds: Id[] }) => void
+}) {
+  if (!props.open) {
+    return null
+  }
+  return <CreateFolderForm {...props} />
+}
+
+function CreateFolderForm({
   elements,
   onClose,
   onSubmit,
 }: {
-  open: boolean
   elements: PlanElementDto[]
   onClose: () => void
   onSubmit: (form: { name: string; memberIds: Id[] }) => void
@@ -27,6 +44,17 @@ export function PlanCreateFolderDialog({
   const [name, setName] = useState('')
   const [side, setSide] = useState<Side>('expense')
   const [picked, setPicked] = useState<Id[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  const validate = (value: string): string | null => {
+    if (!isNotEmpty(value)) {
+      return t('budgets.form.budget.folder_name.validation.required_field')
+    }
+    if (!isValidBudgetFolderName(value)) {
+      return t('budgets.form.budget.folder_name.validation.invalid_name')
+    }
+    return null
+  }
 
   // A folder's side is derived from its members, and a memberless folder renders
   // in the expense band whatever the user intended — so a member is required, and
@@ -38,30 +66,36 @@ export function PlanCreateFolderDialog({
     setSide(next)
     setPicked([])
   }
-  const close = () => {
-    setName('')
-    setSide('expense')
-    setPicked([])
-    onClose()
-  }
-  if (!open) {
-    return null
-  }
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && close()} title={t('budgets.modal.create_folder_form.header')}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.create_folder_form.header')}>
       <form
         className="flex flex-col gap-3"
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
-          if (name.trim() !== '' && picked.length > 0) {
-            onSubmit({ name: name.trim(), memberIds: picked })
+          const trimmed = name.trim()
+          const message = validate(trimmed)
+          if (message !== null) {
+            setError(message)
+            return
+          }
+          if (picked.length > 0) {
+            onSubmit({ name: trimmed, memberIds: picked })
           }
         }}
       >
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="plan-folder-name">{t('budgets.form.budget.folder_name.label')}</Label>
-          <Input id="plan-folder-name" value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            id="plan-folder-name"
+            value={name}
+            aria-invalid={error !== null}
+            onChange={(e) => {
+              setName(e.target.value)
+              setError(null)
+            }}
+          />
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
         </div>
 
         <div role="tablist" aria-label="folder side" className="flex w-fit rounded-md border p-0.5">
@@ -99,7 +133,7 @@ export function PlanCreateFolderDialog({
         </ul>
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={close}>
+          <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
           </Button>
           <Button type="submit" disabled={name.trim() === '' || picked.length === 0}>

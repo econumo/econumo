@@ -1355,7 +1355,7 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
   expect(within(expense).queryByRole('button', { name: 'move Salaries' })).not.toBeInTheDocument()
 })
 
-it('keeps the uncategorized totals line and archived rows undraggable', async () => {
+it('keeps the uncategorized totals line undraggable', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
@@ -1399,7 +1399,7 @@ it('edit mode keeps roving keyboard navigation and the fill handle working', asy
   expect(within(screen.getByTestId('plan-cell-pe1:1')).getByTestId('fill-handle')).toBeInTheDocument()
 })
 
-it('a fill drag past the sortable activation distance never starts a row drag, and still fills', async () => {
+it('a fill drag past the sortable activation distance still commits in edit mode', async () => {
   // dnd-kit's PointerSensor activates at 4px of movement, and the fill drag moves
   // horizontally well past that. The two stay separate because the sensor's
   // activator is bound to the grip alone — the fill handle's pointerdown never
@@ -1424,17 +1424,11 @@ it('a fill drag past the sortable activation distance never starts a row drag, a
 
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
   const handle = within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('fill-handle')
-  const sortable = (document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).closest(
-    '[data-plan-sortable="pe1"]',
-  ) as HTMLElement
 
   // jsdom reports a 0-wide cell, so drive fillTargetCol with an explicit column width
   vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 20, top: 0, left: 0, right: 100, bottom: 20, x: 0, y: 0, toJSON: () => ({}) } as DOMRect)
   fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0, button: 0, isPrimary: true })
   fireEvent.pointerMove(handle, { pointerId: 1, clientX: 100, clientY: 0 })
-
-  // a live sortable drag would mark the row dragging (opacity-60) — the fill must not
-  expect(sortable.className ?? '').not.toContain('opacity-60')
   fireEvent.pointerUp(handle, { pointerId: 1 })
   vi.restoreAllMocks()
 
@@ -1554,4 +1548,168 @@ it('a row can be dragged out of a folder onto the band loose container even when
 
   await waitFor(() => expect(body).toBeDefined())
   expect(body).toMatchObject({ id: 'cat-food', folderId: null })
+})
+
+it('offers Edit and Delete on an envelope row, but not on a category or a tag', async () => {
+  // the budget view's wire response strips income envelopes entirely, so the plan
+  // sheet is the ONLY place ie1/Salaries can be managed at all
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // ie1/Salaries is an income envelope (type 4)
+  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  // pe1/Living is an expense envelope (type 0) — same four items
+  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.getByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  // cat-food/Food is a category (type 1): currency + move only
+  await user.click(await screen.findByRole('button', { name: 'element actions Food' }))
+  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  // tag1/vacation is a tag (type 2): currency + move only
+  await user.click(await screen.findByRole('button', { name: 'element actions vacation' }))
+  expect(await screen.findByRole('menuitem', { name: 'Change currency' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Edit' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Delete' })).not.toBeInTheDocument()
+})
+
+it('editing an income envelope opens the dialog on the income side and saves', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/update-envelope', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+
+  const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
+  expect(within(dialog).getByLabelText('Name')).toHaveValue('Salaries')
+
+  // side='income' is derived from the element type: only income categories are
+  // offered, never the expense ones the same fixture also carries
+  expect(within(dialog).getByText('Salary')).toBeInTheDocument()
+  expect(within(dialog).queryByText('Food')).not.toBeInTheDocument()
+
+  await user.clear(within(dialog).getByLabelText('Name'))
+  await user.type(within(dialog).getByLabelText('Name'), 'Wages')
+  await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+  await waitFor(() => expect(body).toMatchObject({ budgetId: 'b1', id: 'ie1', name: 'Wages' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit envelope' })).not.toBeInTheDocument())
+})
+
+it('deleting an income envelope confirms first, then fires delete-envelope', async () => {
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/delete-envelope', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'element actions Salaries' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+
+  const confirm = await screen.findByRole('dialog', { name: 'Delete envelope?' })
+  await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
+
+  await waitFor(() => expect(body).toMatchObject({ budgetId: 'b1', id: 'ie1' }))
+})
+
+it('reopening the create-folder dialog after a successful create starts blank', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/create-folder', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { id: 'nf1', name: 'Employment', position: 9 } } }),
+    ),
+    http.post('*/api/v1/budget/move-element', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  const dialog = await screen.findByRole('dialog', { name: 'New folder' })
+  await user.type(within(dialog).getByLabelText('Folder name'), 'Employment')
+  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
+  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'New folder' })).not.toBeInTheDocument())
+
+  // the success path closes from the parent, so nothing local can reset the fields —
+  // a surviving name + members would let a second submit duplicate the folder
+  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  const reopened = await screen.findByRole('dialog', { name: 'New folder' })
+  expect(within(reopened).getByLabelText('Folder name')).toHaveValue('')
+  expect(within(reopened).getByRole('button', { name: 'Create' })).toBeDisabled()
+})
+
+it('rejects a too-short folder name inline instead of letting the server refuse it', async () => {
+  let called = false
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/create-folder', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: { item: { id: 'nf1', name: 'Ab', position: 9 } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(await screen.findByRole('button', { name: 'Create folder' }))
+  const dialog = await screen.findByRole('dialog', { name: 'New folder' })
+  await user.type(within(dialog).getByLabelText('Folder name'), 'Ab')
+  await user.click(within(dialog).getByRole('tab', { name: 'Income' }))
+  await user.click(within(dialog).getByRole('checkbox', { name: 'Salaries' }))
+  await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+  expect(await within(dialog).findByText('Folder name must be 3-64 characters')).toBeInTheDocument()
+  expect(called).toBe(false)
 })

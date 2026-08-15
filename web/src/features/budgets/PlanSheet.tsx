@@ -15,30 +15,35 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { elementDisplayName } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
+  canDeleteEnvelope,
   canEditBudget,
   canUpdateLimits,
   useBudgetPlan,
   useChangeElementCurrency,
   useCreateBudgetFolder,
+  useDeleteEnvelope,
   useFillPlannedCells,
   useMoveBudgetFolder,
   useMoveElement,
   usePlanSetLimit,
+  useUpdateEnvelope,
 } from './queries'
 import { arrangementItem, moveElementInArrangement } from './elementMove'
 import type { ElementContainer } from './elementMove'
+import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -165,7 +170,17 @@ interface GridCtx {
   editMode: boolean
   onChangeCurrency: (el: PlanElementDto) => void
   onMoveToFolder: (el: PlanElementDto) => void
+  onEditEnvelope: (el: PlanElementDto) => void
+  onDeleteEnvelope: (el: PlanElementDto) => void
+  canDeleteEnvelopes: boolean
 }
+
+// The budget view's wire response strips income envelopes and income-sided folders
+// (internal/budget/builder_structure_build.go), so the plan sheet is the only surface
+// where an income envelope is reachable — Edit/Delete must live here or an existing
+// one could never be renamed, archived, re-scoped, or removed through any UI.
+const isEnvelopeType = (type: BudgetElementType): boolean =>
+  type === BudgetElementType.ENVELOPE || type === BudgetElementType.INCOME_ENVELOPE
 
 function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
   const { t } = useTranslation()
@@ -183,6 +198,16 @@ function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
         <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
           {t('budgets.page.plan.menu.move_to_folder')}
         </DropdownMenuItem>
+        {isEnvelopeType(el.type) ? (
+          <>
+            <DropdownMenuItem onSelect={() => ctx.onEditEnvelope(el)}>{t('common.button.edit.label')}</DropdownMenuItem>
+            {ctx.canDeleteEnvelopes ? (
+              <DropdownMenuItem variant="destructive" onSelect={() => ctx.onDeleteEnvelope(el)}>
+                {t('common.button.delete.label')}
+              </DropdownMenuItem>
+            ) : null}
+          </>
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -845,10 +870,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
+  const [envelopeTarget, setEnvelopeTarget] = useState<PlanElementDto | null>(null)
+  const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<PlanElementDto | null>(null)
   const moveElement = useMoveElement()
   const orderFolders = useMoveBudgetFolder()
   const changeCurrency = useChangeElementCurrency()
   const createFolder = useCreateBudgetFolder()
+  const updateEnvelope = useUpdateEnvelope()
+  const deleteEnvelope = useDeleteEnvelope()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
@@ -935,6 +964,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const monthFmt = useMemo(() => new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }), [i18n.language])
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
   const canEdit = canEditBudget(budget.meta, userId)
+  const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
 
   const fillStart = useCallback(
     (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
@@ -1056,6 +1086,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       editMode,
       onChangeCurrency: setCurrencyTarget,
       onMoveToFolder: setMoveFolderTarget,
+      onEditEnvelope: setEnvelopeTarget,
+      onDeleteEnvelope: setDeleteEnvelopeTarget,
+      canDeleteEnvelopes,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1079,6 +1112,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     fillEnd,
     fillCancel,
     editMode,
+    canDeleteEnvelopes,
   ])
 
   if (!plan || !shownRows || !ctx || !ex) {
@@ -1542,6 +1576,45 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             },
           )
         }}
+      />
+
+      <EnvelopeDialog
+        open={envelopeTarget !== null}
+        envelope={envelopeTarget}
+        budgetCurrencyId={budget.meta.currencyId}
+        side={envelopeTarget && isIncomeType(envelopeTarget.type) ? 'income' : 'expense'}
+        onClose={() => setEnvelopeTarget(null)}
+        onSubmit={(form) => {
+          if (envelopeTarget) {
+            updateEnvelope.mutate(
+              {
+                budgetId: budget.meta.id,
+                id: envelopeTarget.id,
+                name: form.name,
+                icon: form.icon,
+                currencyId: form.currencyId,
+                isArchived: form.isArchived,
+                categories: form.categories,
+              },
+              { onSuccess: () => setEnvelopeTarget(null) },
+            )
+          }
+        }}
+      />
+
+      <ConfirmDialog
+        open={deleteEnvelopeTarget !== null}
+        onClose={() => setDeleteEnvelopeTarget(null)}
+        onConfirm={() => {
+          if (deleteEnvelopeTarget) {
+            deleteEnvelope.mutate({ budgetId: budget.meta.id, id: deleteEnvelopeTarget.id }, { onSettled: () => setDeleteEnvelopeTarget(null) })
+          }
+        }}
+        title={t('budgets.modal.delete_envelope.header')}
+        question={t('budgets.modal.delete_envelope.question')}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
       />
     </div>
   )
