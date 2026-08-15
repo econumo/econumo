@@ -1,7 +1,15 @@
-import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDown, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useSensor, useSensors } from '@dnd-kit/core'
+import type { CollisionDetection, DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
+// aliased: a bare `CSS` import would shadow the global CSS object, whose
+// CSS.escape the selection scroll-into-view effect below depends on
+import { CSS as DndCSS } from '@dnd-kit/utilities'
+import type { SortableHandleProps } from '@/components/SortableList'
+import { afterIdFromDrop } from '@/lib/ordering'
+import { ChevronDown, ChevronLeft, ChevronRight, GripVertical, MoreVertical } from 'lucide-react'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -25,9 +33,12 @@ import {
   useChangeElementCurrency,
   useCreateBudgetFolder,
   useFillPlannedCells,
+  useMoveBudgetFolder,
   useMoveElement,
   usePlanSetLimit,
 } from './queries'
+import { arrangementItem, moveElementInArrangement } from './elementMove'
+import type { ElementContainer } from './elementMove'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -226,6 +237,81 @@ function MoveToFolderDialog({
   )
 }
 
+// Rows nest inside their folder section, and the dragged row travels under the
+// pointer (its own rect always wins a pointer test) — so ignore the active row,
+// prefer whatever OTHER row the pointer is inside, and fall back to sections.
+const preferRowCollisions: CollisionDetection = (args) => {
+  const collisions = pointerWithin(args)
+  const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
+  const row = candidates.find((c) => !String(c.id).startsWith('pfolder:'))
+  return row ? [row] : candidates
+}
+
+// The grip is the activation handle; the whole row travels with the transform.
+// items-start + a fixed grip offset keeps the grip centered on the ROOT row even
+// when an unfolded element grows downwards with its children.
+function PlanSortableRow({ id, name, children }: { id: string; name: string; children: ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  return (
+    <div
+      ref={setNodeRef}
+      data-plan-sortable={id}
+      style={{ transform: DndCSS.Transform.toString(transform), transition }}
+      className={isDragging ? 'opacity-60' : undefined}
+    >
+      <div className="flex items-start gap-1">
+        <button
+          type="button"
+          aria-label={`move ${name}`}
+          className="mt-2 cursor-grab touch-none text-muted-foreground"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="size-4" />
+        </button>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
+    </div>
+  )
+}
+
+// The folder is a sortable item itself; its grip lives in the header rendered by
+// FolderRows, so the handle props travel via context rather than another prop hop.
+const PlanFolderHandleContext = createContext<SortableHandleProps | null>(null)
+
+function PlanFolderGrip({ name }: { name: string }) {
+  const handle = useContext(PlanFolderHandleContext)
+  if (!handle) {
+    return null
+  }
+  return (
+    <button
+      type="button"
+      aria-label={`move folder ${name}`}
+      className="cursor-grab touch-none text-muted-foreground"
+      {...handle.attributes}
+      {...(handle.listeners ?? {})}
+    >
+      <GripVertical className="size-4" />
+    </button>
+  )
+}
+
+function PlanSortableFolder({ section, children }: { section: PlanFolderSection; children: ReactNode }) {
+  const sortable = useSortable({ id: `pfolder:${section.folder.id}` })
+  return (
+    <div
+      ref={sortable.setNodeRef}
+      style={{ transform: DndCSS.Transform.toString(sortable.transform), transition: sortable.transition }}
+      className={sortable.isDragging ? 'opacity-60' : undefined}
+    >
+      <PlanFolderHandleContext.Provider value={{ attributes: sortable.attributes, listeners: sortable.listeners }}>
+        {children}
+      </PlanFolderHandleContext.Provider>
+    </div>
+  )
+}
+
 const ChildRow = memo(function ChildRow({
   child,
   parentCurrency,
@@ -419,6 +505,40 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
   )
 })
 
+// One sortable list per bucket (a folder's members, or a band's loose rows).
+// Outside edit mode this is a plain map, so the read-only sheet keeps its exact
+// DOM. The wrapper always sits OUTSIDE the row's own [data-row-id] element, so
+// selection, keyboard navigation and the fill handle are untouched by it.
+function PlanRowList({ rows, ctx }: { rows: PlanRow[]; ctx: GridCtx }) {
+  const { t } = useTranslation()
+  if (!ctx.editMode) {
+    return (
+      <>
+        {rows.map((r) => (
+          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+        ))}
+      </>
+    )
+  }
+  return (
+    <SortableContext items={rows.filter(isDraggableRow).map((r) => r.element.id)} strategy={verticalListSortingStrategy}>
+      {rows.map((r) =>
+        isDraggableRow(r) ? (
+          <PlanSortableRow key={rowKey(r)} id={r.element.id} name={elementDisplayName(r.element.id, r.element.name, t)}>
+            <ElementRow row={r} ctx={ctx} />
+          </PlanSortableRow>
+        ) : (
+          <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+        ),
+      )}
+    </SortableContext>
+  )
+}
+
+// Uncategorized is a synthetic bucket with no stored position, and an archived row
+// is out of the ordering entirely — neither can be dropped anywhere meaningful.
+const isDraggableRow = (r: PlanRow): boolean => r.element.id !== UNCATEGORIZED_ID && r.element.isArchived === 0
+
 function HiddenRowsNotice({ count, onShow }: { count: number; onShow: () => void }) {
   const { t } = useTranslation()
   if (count <= 0) {
@@ -499,21 +619,22 @@ function FolderRows({
   return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
       <div className="flex flex-wrap items-center justify-between gap-x-2 pb-1">
-        <button
-          type="button"
-          className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
-          aria-expanded={!folded}
-          title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-          onClick={() => onToggleFold(section.folder.id)}
-        >
-          <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-          <span className="truncate">{section.folder.name}</span>
-        </button>
+        <span className="flex min-w-0 items-center gap-1">
+          {ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
+          <button
+            type="button"
+            className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
+            aria-expanded={!folded}
+            title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
+            onClick={() => onToggleFold(section.folder.id)}
+          >
+            <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="truncate">{section.folder.name}</span>
+          </button>
+        </span>
         <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
       </div>
-      {visibleRows.map((r) => (
-        <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-      ))}
+      <PlanRowList rows={visibleRows} ctx={ctx} />
     </div>
   )
 }
@@ -664,6 +785,43 @@ function buildFlatRows(
   return flatRows
 }
 
+// Each band gets its own DndContext, and that is what enforces the two hard
+// constraints: an element's side comes from its type and a folder's from its
+// members, so neither may cross the divider. A drag started in one band simply
+// has no droppable in the other — the invalid drop cannot be expressed, rather
+// than being rejected after the fact (the server would answer
+// CodeBudgetFolderSideMixed for elements, and order-folders persists position
+// only, so a cross-band folder move would silently snap back on reload).
+function PlanBand({
+  editMode,
+  sensors,
+  folderIds,
+  onDragEnd,
+  children,
+}: {
+  editMode: boolean
+  sensors: ReturnType<typeof useSensors>
+  folderIds: string[]
+  onDragEnd: (event: DragEndEvent) => void
+  children: ReactNode
+}) {
+  if (!editMode) {
+    return <>{children}</>
+  }
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={preferRowCollisions}
+      measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+      onDragEnd={onDragEnd}
+    >
+      <SortableContext items={folderIds.map((id) => `pfolder:${id}`)} strategy={verticalListSortingStrategy}>
+        {children}
+      </SortableContext>
+    </DndContext>
+  )
+}
+
 export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
@@ -672,8 +830,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [currencyTarget, setCurrencyTarget] = useState<PlanElementDto | null>(null)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
   const moveElement = useMoveElement()
+  const orderFolders = useMoveBudgetFolder()
   const changeCurrency = useChangeElementCurrency()
   const createFolder = useCreateBudgetFolder()
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -941,6 +1101,56 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const expenseLoose = visibleSectionRows(shownRows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
   const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(shownRows.expense.loose, expenseRevealed)
 
+  // The band's element buckets as the arrangement elementMove.ts operates on:
+  // one container per folder plus the loose rows. Uncategorized and archived
+  // rows are excluded — they carry no position the server would honour.
+  function bandArrangement(side: 'income' | 'expense'): ElementContainer[] {
+    const band = shownRows![side]
+    return [
+      ...band.folders.map((f) => ({
+        folderId: f.folder.id as Id | null,
+        ids: f.rows.filter(isDraggableRow).map((r) => r.element.id),
+      })),
+      { folderId: null as Id | null, ids: band.loose.filter(isDraggableRow).map((r) => r.element.id) },
+    ]
+  }
+
+  function handleBandDragEnd(side: 'income' | 'expense', event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      return
+    }
+    const activeId = String(active.id)
+    const overId = String(over.id)
+
+    if (activeId.startsWith('pfolder:')) {
+      // order-folders takes one global sequence, so the anchor is read from the
+      // full position-sorted folder list, not just this band's slice.
+      const draggedId = activeId.slice('pfolder:'.length)
+      const targetId = overId.startsWith('pfolder:') ? overId.slice('pfolder:'.length) : null
+      const folderIds = [...plan!.structure.folders].sort((a, b) => a.position - b.position).map((f) => f.id)
+      const from = folderIds.indexOf(draggedId)
+      const to = targetId ? folderIds.indexOf(targetId) : -1
+      if (from === -1 || to === -1 || from === to) {
+        return
+      }
+      const reordered = arrayMove(folderIds, from, to)
+      orderFolders.mutate({ budgetId: budget.meta.id, id: draggedId, afterId: afterIdFromDrop(reordered, draggedId) })
+      return
+    }
+
+    // a row dropped on a folder header lands in that folder, appended
+    const target = overId.startsWith('pfolder:') ? `bfolder:${overId.slice('pfolder:'.length)}` : overId
+    const base = bandArrangement(side)
+    const moved = moveElementInArrangement(base, activeId, target)
+    const item = arrangementItem(moved, activeId)
+    const before = arrangementItem(base, activeId)
+    if (!item || (before && before.folderId === item.folderId && before.position === item.position)) {
+      return
+    }
+    moveElement.mutate({ budgetId: budget.meta.id, item })
+  }
+
   function handleEnter(entry: FlatRow, col: number) {
     if (col === -1) {
       if (!entry.child && entry.el.children.length > 0) {
@@ -1127,26 +1337,37 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             onShow={() => revealSection('income')}
           />
           {!incomeFolded ? (
-            <>
-              {shownRows.income.folders.map((f) => (
-                <FolderRows
-                  key={f.folder.id}
-                  section={f}
-                  ctx={ctx}
-                  hideEmpty={hideEmpty}
-                  folded={folded(f.folder.id)}
-                  revealed={revealedSections.has(f.folder.id)}
-                  onToggleFold={togglePlanFold}
-                  onReveal={() => revealSection(f.folder.id)}
-                />
-              ))}
-              {incomeLoose.map((r) => (
-                <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-              ))}
+            <PlanBand
+              editMode={editMode}
+              sensors={sensors}
+              folderIds={shownRows.income.folders.map((f) => f.folder.id)}
+              onDragEnd={(e) => handleBandDragEnd('income', e)}
+            >
+              {shownRows.income.folders.map((f) => {
+                const section = (
+                  <FolderRows
+                    section={f}
+                    ctx={ctx}
+                    hideEmpty={hideEmpty}
+                    folded={folded(f.folder.id)}
+                    revealed={revealedSections.has(f.folder.id)}
+                    onToggleFold={togglePlanFold}
+                    onReveal={() => revealSection(f.folder.id)}
+                  />
+                )
+                return editMode ? (
+                  <PlanSortableFolder key={f.folder.id} section={f}>
+                    {section}
+                  </PlanSortableFolder>
+                ) : (
+                  <Fragment key={f.folder.id}>{section}</Fragment>
+                )
+              })}
+              <PlanRowList rows={incomeLoose} ctx={ctx} />
               {shownRows.income.uncategorized ? (
                 <ElementRow key={rowKey(shownRows.income.uncategorized)} row={shownRows.income.uncategorized} ctx={ctx} />
               ) : null}
-            </>
+            </PlanBand>
           ) : null}
         </section>
 
@@ -1164,23 +1385,34 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             onShow={() => revealSection('expense')}
           />
           {!expenseFolded ? (
-            <>
-              {shownRows.expense.folders.map((f) => (
-                <FolderRows
-                  key={f.folder.id}
-                  section={f}
-                  ctx={ctx}
-                  hideEmpty={hideEmpty}
-                  folded={folded(f.folder.id)}
-                  revealed={revealedSections.has(f.folder.id)}
-                  onToggleFold={togglePlanFold}
-                  onReveal={() => revealSection(f.folder.id)}
-                />
-              ))}
-              {expenseLoose.map((r) => (
-                <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
-              ))}
-            </>
+            <PlanBand
+              editMode={editMode}
+              sensors={sensors}
+              folderIds={shownRows.expense.folders.map((f) => f.folder.id)}
+              onDragEnd={(e) => handleBandDragEnd('expense', e)}
+            >
+              {shownRows.expense.folders.map((f) => {
+                const section = (
+                  <FolderRows
+                    section={f}
+                    ctx={ctx}
+                    hideEmpty={hideEmpty}
+                    folded={folded(f.folder.id)}
+                    revealed={revealedSections.has(f.folder.id)}
+                    onToggleFold={togglePlanFold}
+                    onReveal={() => revealSection(f.folder.id)}
+                  />
+                )
+                return editMode ? (
+                  <PlanSortableFolder key={f.folder.id} section={f}>
+                    {section}
+                  </PlanSortableFolder>
+                ) : (
+                  <Fragment key={f.folder.id}>{section}</Fragment>
+                )
+              })}
+              <PlanRowList rows={expenseLoose} ctx={ctx} />
+            </PlanBand>
           ) : null}
         </section>
 

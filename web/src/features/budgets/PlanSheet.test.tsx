@@ -1278,3 +1278,145 @@ it('creates a plan folder with members, switching sides clears the selection', a
   const clientFolderId = (folderBody as { id: string }).id
   expect(moves[0]).toMatchObject({ id: 'ie1', folderId: clientFolderId })
 })
+
+it('shows drag handles only in edit mode', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  expect(screen.queryByRole('button', { name: /^move / })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  expect(screen.getAllByRole('button', { name: /^move / }).length).toBeGreaterThan(0)
+})
+
+it('scopes every drag handle to its own band, so no drag can cross the income/expense divider', async () => {
+  // An element's side comes from its TYPE and a folder's from its members, and
+  // order-folders persists position only — so a cross-band drop would either be
+  // rejected by the server (CodeBudgetFolderSideMixed) or silently snap back on
+  // reload. Per-band SortableContexts are what make the drop impossible at all.
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      folders: [...plan.structure.folders, { id: 'bf-bonus', name: 'Bonuses Folder', position: 1 }],
+      elements: plan.structure.elements.map((el) => (el.id === 'ie1' ? { ...el, folderId: 'bf-bonus' } : el)),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithFolders),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  const income = screen.getByTestId('plan-section-income')
+  const expense = screen.getByTestId('plan-section-expense')
+
+  // income handles: the Salaries row and its Bonuses folder — and nothing expense-sided
+  expect(within(income).getByRole('button', { name: 'move Salaries' })).toBeInTheDocument()
+  expect(within(income).getByRole('button', { name: 'move folder Bonuses Folder' })).toBeInTheDocument()
+  expect(within(income).queryByRole('button', { name: 'move Living' })).not.toBeInTheDocument()
+
+  // expense handles live in the other band entirely
+  expect(within(expense).getByRole('button', { name: 'move Living' })).toBeInTheDocument()
+  expect(within(expense).getByRole('button', { name: 'move folder Essentials' })).toBeInTheDocument()
+  expect(within(expense).queryByRole('button', { name: 'move Salaries' })).not.toBeInTheDocument()
+})
+
+it('keeps the uncategorized totals line and archived rows undraggable', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // uncategorized is a synthetic bucket with no position of its own
+  expect(screen.queryByRole('button', { name: 'move Uncategorized' })).not.toBeInTheDocument()
+})
+
+it('edit mode keeps roving keyboard navigation and the fill handle working', async () => {
+  // the sortable wrapper adds DOM depth around each row: selection, arrow-key
+  // navigation and the Excel-style fill handle must all survive it
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+  await user.keyboard('{ArrowRight}')
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+
+  // the row is still reachable by its data-row-id anchor, unchanged by the wrapper:
+  // the grip lives on the sortable OUTSIDE it, which is what keeps every existing
+  // [data-row-id] query working
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(pe1Row).toBeInTheDocument()
+  expect(within(pe1Row).queryByRole('button', { name: 'move Living' })).not.toBeInTheDocument()
+  const sortable = pe1Row.closest('[data-plan-sortable="pe1"]') as HTMLElement
+  expect(within(sortable).getByRole('button', { name: 'move Living' })).toBeInTheDocument()
+
+  // the fill handle still renders on the selected editable cell
+  expect(within(screen.getByTestId('plan-cell-pe1:1')).getByTestId('fill-handle')).toBeInTheDocument()
+})
+
+it('a fill drag past the sortable activation distance never starts a row drag, and still fills', async () => {
+  // dnd-kit's PointerSensor activates at 4px of movement, and the fill drag moves
+  // horizontally well past that. The two stay separate because the sensor's
+  // activator is bound to the grip alone — the fill handle's pointerdown never
+  // reaches it — so the row must not tear loose from the grid mid-fill.
+  let fillBody: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+    http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      fillBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  const handle = within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('fill-handle')
+  const sortable = (document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).closest(
+    '[data-plan-sortable="pe1"]',
+  ) as HTMLElement
+
+  // jsdom reports a 0-wide cell, so drive fillTargetCol with an explicit column width
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockReturnValue({ width: 100, height: 20, top: 0, left: 0, right: 100, bottom: 20, x: 0, y: 0, toJSON: () => ({}) } as DOMRect)
+  fireEvent.pointerDown(handle, { pointerId: 1, clientX: 0, clientY: 0, button: 0, isPrimary: true })
+  fireEvent.pointerMove(handle, { pointerId: 1, clientX: 100, clientY: 0 })
+
+  // a live sortable drag would mark the row dragging (opacity-60) — the fill must not
+  expect(sortable.className ?? '').not.toContain('opacity-60')
+  fireEvent.pointerUp(handle, { pointerId: 1 })
+  vi.restoreAllMocks()
+
+  // and the fill itself still commits, so the guard did not break the gesture
+  await waitFor(() => expect(fillBody).toMatchObject({ elementId: 'pe1' }))
+})
