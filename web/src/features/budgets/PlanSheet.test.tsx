@@ -1578,6 +1578,36 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   expect(looseOrder()).toContain('cat-food:1')
 })
 
+it('measures the grid with a callback ref so the loader cannot skip the measurement', async () => {
+  // The sheet early-returns a loader while the plan fetches, so the grid node does not
+  // exist on first commit. A mount effect ran against a null ref and never re-ran,
+  // leaving the window stuck at the fallback column count until a later resize.
+  // jsdom reports clientWidth 0, so the column count cannot be asserted here — instead
+  // pin the mechanism: the observer must be attached when the NODE mounts.
+  const observed: Element[] = []
+  const RealRO = globalThis.ResizeObserver
+  class SpyRO extends RealRO {
+    observe(target: Element) {
+      observed.push(target)
+      super.observe(target)
+    }
+  }
+  globalThis.ResizeObserver = SpyRO as unknown as typeof ResizeObserver
+  try {
+    usePlanHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('tab', { name: /plan/i }))
+    const grid = await screen.findByTestId('plan-sheet')
+
+    // the grid itself must be observed. With a mount effect it never is: the effect
+    // runs on the loader commit, when containerRef.current is still null.
+    expect(observed).toContain(grid)
+  } finally {
+    globalThis.ResizeObserver = RealRO
+  }
+})
+
 it('closes every row with the currency, then the actions menu in edit mode', async () => {
   usePlanHandlers()
   const user = userEvent.setup()

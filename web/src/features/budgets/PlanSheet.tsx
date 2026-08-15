@@ -910,24 +910,30 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const observerRef = useRef<ResizeObserver | null>(null)
   const [width, setWidth] = useState(0)
-  useEffect(() => {
-    const el = containerRef.current
+
+  // A CALLBACK ref, not an effect: the component early-returns a loader while the plan
+  // is fetching, so the grid node does not exist on first commit. A mount effect would
+  // run against a null ref, never re-run, and leave the sheet stuck at the fallback
+  // column count until something else forced a resize.
+  //
+  // clientWidth, not contentRect/getBoundingClientRect: this element scrolls
+  // vertically, and only clientWidth excludes the scrollbar gutter — the wider box
+  // overstates the space by ~15px, enough to push the last month past the edge.
+  const attachContainer = useCallback((el: HTMLDivElement | null) => {
+    containerRef.current = el
+    observerRef.current?.disconnect()
+    observerRef.current = null
     if (!el) {
       return
     }
-    // clientWidth, not contentRect/getBoundingClientRect: this element scrolls
-    // vertically, and only clientWidth excludes the scrollbar gutter. Measuring the
-    // wider box overstates the space by ~15px, which is enough to push the last month
-    // past the edge and produce a horizontal scrollbar.
-    const measure = () => setWidth(el.clientWidth)
-    // measure straight away — waiting for the observer's first callback renders one
-    // frame at the fallback column count, so the sheet opened narrow then widened
-    measure()
-    const ro = new ResizeObserver(measure)
+    setWidth(el.clientWidth)
+    const ro = new ResizeObserver(() => setWidth(el.clientWidth))
     ro.observe(el)
-    return () => ro.disconnect()
+    observerRef.current = ro
   }, [])
+  useEffect(() => () => observerRef.current?.disconnect(), [])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
   const visible = width > 0 ? planVisibleCount(width, editMode) : 3
@@ -1459,7 +1465,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       </div>
 
       <div
-        ref={containerRef}
+        ref={attachContainer}
         role="grid"
         tabIndex={0}
         onKeyDown={handleKeyDown}
