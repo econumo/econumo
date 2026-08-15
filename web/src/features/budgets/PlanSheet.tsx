@@ -274,8 +274,11 @@ const preferRowCollisions: CollisionDetection = (args) => {
 }
 
 // The grip is the activation handle; the whole row travels with the transform.
-// items-start + a fixed grip offset keeps the grip centered on the ROOT row even
-// when an unfolded element grows downwards with its children.
+// items-start is required because an unfolded element renders its children inside
+// this same wrapper — centering would drag the grip down to the middle of the whole
+// expanded block. So the grip gets its own box matching the root row's height
+// (py-1.5, mirroring ElementRow) and centers inside that, rather than carrying a
+// hand-tuned top margin that silently drifts whenever row padding changes.
 function PlanSortableRow({ id, name, children }: { id: string; name: string; children: ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
@@ -285,17 +288,17 @@ function PlanSortableRow({ id, name, children }: { id: string; name: string; chi
       style={{ transform: DndCSS.Transform.toString(transform), transition }}
       className={isDragging ? 'opacity-60' : undefined}
     >
-      <div className="flex items-start gap-1">
+      <div className="grid grid-cols-[auto_minmax(0,1fr)] items-start gap-1">
         <button
           type="button"
           aria-label={`move ${name}`}
-          className="mt-2 cursor-grab touch-none text-muted-foreground"
+          className="row-start-1 flex h-full cursor-grab touch-none items-center text-muted-foreground"
           {...attributes}
           {...listeners}
         >
           <GripVertical className="size-4" />
         </button>
-        <div className="min-w-0 flex-1">{children}</div>
+        <div className="row-start-1 min-w-0">{children}</div>
       </div>
     </div>
   )

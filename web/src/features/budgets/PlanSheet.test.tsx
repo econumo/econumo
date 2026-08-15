@@ -1355,6 +1355,36 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
   expect(within(expense).queryByRole('button', { name: 'move Salaries' })).not.toBeInTheDocument()
 })
 
+it('keeps the drag grip on its own root row, not stretched by expanded children', async () => {
+  usePlanHandlers()
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  const grip = screen.getByRole('button', { name: 'move Living' })
+  const wrapper = grip.closest('[data-plan-sortable]') as HTMLElement
+
+  // grip and row share grid row 1, so the grip's h-full resolves against the ROOT
+  // row's height. jsdom has no layout, so assert the mechanism rather than pixels:
+  // a stretched grip would be the old flex + hand-tuned margin arrangement.
+  expect(grip.className).toContain('row-start-1')
+  expect(grip.className).toContain('h-full')
+  expect(grip.className).not.toMatch(/\bmt-\d/)
+
+  // expanding pe1/Living adds child rows INSIDE the same wrapper; the grip must not
+  // be pulled to the middle of the whole expanded block
+  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
+  await user.click(within(wrapper).getByText('Living'))
+  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+  const rootRow = wrapper.querySelector('[role="row"]') as HTMLElement
+  expect(rootRow).toContainElement(screen.getByTestId('plan-cell-pe1:0'))
+  expect(rootRow).not.toContainElement(screen.getByTestId('plan-cell-cat-rent:0'))
+  expect(grip.parentElement).toBe(wrapper.firstElementChild)
+})
+
 it('keeps the uncategorized totals line undraggable', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
