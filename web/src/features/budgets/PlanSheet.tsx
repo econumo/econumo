@@ -48,6 +48,7 @@ import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
 import { SetLimitDialog } from './SetLimitDialog'
 import {
+  PLAN_ACTIONS_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -371,9 +372,6 @@ const ChildRow = memo(function ChildRow({
       >
         <EntityIcon name={child.icon} className="text-base" />
         <span className="min-w-0 flex-1 truncate">{displayName}</span>
-        {/* children never carry a menu but must still pad the slot, or their months
-            drift out of line with their parent's */}
-        {ctx.editMode ? <span className="w-8 shrink-0" /> : null}
       </span>
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
@@ -397,6 +395,7 @@ const ChildRow = memo(function ChildRow({
           </div>
         )
       })}
+      {ctx.editMode ? <span /> : null}
     </div>
   )
 })
@@ -458,11 +457,6 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               {name}
             </span>
           )}
-          {/* the actions slot is a fixed tail column so every menu lands on one vertical
-              line; rows without a menu still pad it or their months drift */}
-          {ctx.editMode ? (
-            !isUncategorized ? <RowMenu el={el} ctx={ctx} /> : <span className="w-8 shrink-0" />
-          ) : null}
         </div>
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
@@ -533,6 +527,13 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
             </div>
           )
         })}
+        {/* trailing actions track: the menu closes the row like the budget view's does.
+            Uncategorized has no menu but still occupies the track. */}
+        {ctx.editMode ? (
+          <div className="flex items-center justify-center">
+            {isUncategorized ? null : <RowMenu el={el} ctx={ctx} />}
+          </div>
+        ) : null}
       </div>
       {expandable && unfolded ? (
         <div>
@@ -720,12 +721,14 @@ function PlanTotals({
   gridCols,
   totals,
   currency,
+  editMode,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
+  editMode: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -745,6 +748,7 @@ function PlanTotals({
                 </div>
               )
             })}
+            {editMode ? <span /> : null}
           </div>
         </Fragment>
       ))}
@@ -758,12 +762,14 @@ function PlanBalanceRow({
   gridCols,
   balance,
   currency,
+  editMode,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   balance: string[]
   currency: CurrencyDto | undefined
+  editMode: boolean
 }) {
   const { t } = useTranslation()
   return (
@@ -789,6 +795,7 @@ function PlanBalanceRow({
             </div>
           )
         })}
+        {editMode ? <span /> : null}
       </div>
     </div>
   )
@@ -921,7 +928,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   }, [])
   // ResizeObserver never fires in jsdom, so width stays 0 there — the same
   // floor a real narrow viewport would collapse to (planVisibleCount<3 -> 1).
-  const visible = width > 0 ? planVisibleCount(width) : 3
+  const visible = width > 0 ? planVisibleCount(width, editMode) : 3
 
   const startedAt = budget.meta.startedAt
   const persisted = useBudgetPeriodStore((s) => s.planFirstMonth)
@@ -1003,7 +1010,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   const cur = currentMonth()
   const monthFmt = useMemo(() => new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }), [i18n.language])
-  const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))`
+  // edit mode appends a trailing actions track. Every grid consumer (rows, month
+  // header, totals, balance) shares this string, so they all gain the column together
+  // and stay aligned.
+  const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr))${editMode ? ` ${PLAN_ACTIONS_COL_PX}px` : ''}`
   const canEdit = canEditBudget(budget.meta, userId)
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
 
@@ -1440,6 +1450,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               {monthFmt.format(monthDate(m))}
             </div>
           ))}
+          {editMode ? <span /> : null}
         </div>
       </div>
 
@@ -1573,6 +1584,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
+          editMode={editMode}
         />
 
         <PlanBalanceRow
@@ -1581,6 +1593,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           balance={balance}
           currency={planCurrency}
+          editMode={editMode}
         />
       </div>
 
