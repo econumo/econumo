@@ -218,13 +218,6 @@ export function BudgetPage() {
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
-  // edit-structure mode is a budget-mode-only affair; entering it always
-  // shows the budget table, never the plan sheet
-  useEffect(() => {
-    if (editMode) {
-      setBudgetMode('budget')
-    }
-  }, [editMode, setBudgetMode])
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -554,7 +547,10 @@ export function BudgetPage() {
               role="tab"
               aria-selected={budgetMode === m}
               className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-              onClick={() => setBudgetMode(m)}
+              onClick={() => {
+                setEditMode(false)
+                setBudgetMode(m)
+              }}
             >
               {t(m === 'budget' ? 'budgets.page.plan.toggle.budget' : 'budgets.page.plan.toggle.plan')}
             </button>
