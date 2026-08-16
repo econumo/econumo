@@ -582,27 +582,26 @@ export function BudgetPage() {
             ))}
           </div>
         )}
-        {budgetMode === 'budget' ? (
-          <span className="flex shrink-0 items-center gap-1">
-            {budgetCurrencyIds.map((currencyId) => {
-              const currency = currencies.find((c) => c.id === currencyId)
-              const active = selectedCurrencyId === currencyId
-              return (
-                <button
-                  key={currencyId}
-                  type="button"
-                  aria-label={`currency ${currency?.code ?? currencyId}`}
-                  aria-pressed={active}
-                  title={currency?.name}
-                  className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-econumo-magenta bg-econumo-magenta text-white' : 'text-muted-foreground hover:bg-accent'}`}
-                  onClick={() => setSelectedCurrencyId(active ? null : currencyId)}
-                >
-                  {currency?.symbol ?? '?'}
-                </button>
-              )
-            })}
-          </span>
-        ) : null}
+        {/* both views: the pills toggle the period widget above the table / the sheet */}
+        <span className="flex shrink-0 items-center gap-1">
+          {budgetCurrencyIds.map((currencyId) => {
+            const currency = currencies.find((c) => c.id === currencyId)
+            const active = selectedCurrencyId === currencyId
+            return (
+              <button
+                key={currencyId}
+                type="button"
+                aria-label={`currency ${currency?.code ?? currencyId}`}
+                aria-pressed={active}
+                title={currency?.name}
+                className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-econumo-magenta bg-econumo-magenta text-white' : 'text-muted-foreground hover:bg-accent'}`}
+                onClick={() => setSelectedCurrencyId(active ? null : currencyId)}
+              >
+                {currency?.symbol ?? '?'}
+              </button>
+            )
+          })}
+        </span>
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -659,7 +658,11 @@ export function BudgetPage() {
       </header>
 
       {budgetMode === 'plan' ? (
-        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+        <>
+          {/* the same period widget as the budget view, for the page's selected period */}
+          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+          <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+        </>
       ) : (
         <>
           <PeriodStrip startedAt={budget.meta.startedAt} />

@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { act } from 'react'
-import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
 import { BudgetPage } from './BudgetPage'
 import { HomePage } from '@/features/home/HomePage'
 import { useBudgetPeriodStore } from './budgetStore'
@@ -333,10 +333,11 @@ it('offers hide-empty in the settings menu only in plan mode', async () => {
   expect(useBudgetPeriodStore.getState().planHideEmpty).toBe(true)
 })
 
-it('shows the currency pills in budget mode and hides them in plan mode', async () => {
+it('shows the currency pills in both views; in plan mode a pill toggles the same period widget above the sheet', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
   )
   const user = userEvent.setup()
   renderPage()
@@ -345,7 +346,23 @@ it('shows the currency pills in budget mode and hides them in plan mode', async 
   expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
 
   await user.click(screen.getByRole('tab', { name: /plan/i }))
-  expect(screen.queryByRole('button', { name: /^currency /i })).not.toBeInTheDocument()
+  await screen.findByTestId('plan-sheet')
+  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
+  expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'currency USD' }))
+  const widget = await screen.findByTestId('expense-widget')
+  // the page's selected period (the store's 2026-07-01), not a plan column
+  expect(widget).toHaveTextContent('Jul 2026')
+  expect(screen.getByTestId('plan-sheet')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'currency USD' }))
+  expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
+
+  // the choice survives a view switch: it is page state, not view state
+  await user.click(screen.getByRole('button', { name: 'currency USD' }))
+  await user.click(screen.getByRole('tab', { name: /budget/i }))
+  expect(await screen.findByTestId('expense-widget')).toBeInTheDocument()
 })
 
 it('keeps edit structure in the current view and clears it when the view switches', async () => {
@@ -386,7 +403,8 @@ it('compact viewport: the mode toggle leaves the header and moves into the setti
   expect(await screen.findByRole('menuitemradio', { name: 'Budget' })).toHaveAttribute('aria-checked', 'true')
   await user.click(screen.getByRole('menuitemradio', { name: 'Plan' }))
   expect(useBudgetPeriodStore.getState().budgetMode).toBe('plan')
-  expect(screen.queryByRole('button', { name: /^currency /i })).not.toBeInTheDocument()
+  // the currency pills stay in the header in plan mode too
+  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitemradio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
