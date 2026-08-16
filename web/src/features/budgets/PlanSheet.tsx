@@ -17,10 +17,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { EntityIcon } from '@/components/EntityIcon'
 import { CoinLoader } from '@/components/CoinLoader'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { PromptDialog } from '@/components/PromptDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
+import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
@@ -40,11 +42,13 @@ import {
   useBudgetPlan,
   useChangeElementCurrency,
   useCreateBudgetFolder,
+  useDeleteBudgetFolder,
   useDeleteEnvelope,
   useFillPlannedCells,
   useMoveBudgetFolder,
   useMoveElement,
   usePlanSetLimit,
+  useUpdateBudgetFolder,
   useUpdateEnvelope,
 } from './queries'
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
@@ -181,6 +185,8 @@ interface GridCtx {
   onEditEnvelope: (el: PlanElementDto) => void
   onDeleteEnvelope: (el: PlanElementDto) => void
   canDeleteEnvelopes: boolean
+  onRenameFolder: (folder: BudgetFolderDto) => void
+  onDeleteFolder: (folder: BudgetFolderDto) => void
 }
 
 // The budget view's wire response strips income envelopes and income-sided folders
@@ -685,11 +691,13 @@ function FolderRows({
   return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
       {/* the whole header row is the fold target, not just the name — its own controls
-          (the drag grip, the hidden-rows "Show") keep their action and don't fold */}
+          (the drag grip, the hidden-rows "Show", the actions menu and its portalled
+          items, whose clicks re-dispatch through this tree) keep their action and
+          don't fold */}
       <div
         className="flex cursor-pointer flex-wrap items-center justify-between gap-x-2 pb-1"
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest('button')) {
+          if ((e.target as HTMLElement).closest(CLICK_ESCAPE_SELECTOR)) {
             return
           }
           onToggleFold(section.folder.id)
@@ -708,7 +716,28 @@ function FolderRows({
             <span className="truncate">{section.folder.name}</span>
           </button>
         </span>
-        <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
+        <span className="flex items-center gap-2">
+          <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
+          {ctx.editMode ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button type="button" variant="ghost" size="icon" className="size-8" aria-label={`budget folder actions ${section.folder.name}`}>
+                  <MoreVertical className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => ctx.onRenameFolder(section.folder)}>{t('common.button.edit.label')}</DropdownMenuItem>
+                {/* same rule as the budget view: only a member-less folder is deletable here —
+                    the server would drop a populated one and strand its members */}
+                {section.rows.length === 0 ? (
+                  <DropdownMenuItem variant="destructive" onSelect={() => ctx.onDeleteFolder(section.folder)}>
+                    {t('budgets.page.budget.structure.action.delete_folder')}
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
+        </span>
       </div>
       {!folded && !collapsed && section.rows.length === 0 ? (
         <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
@@ -923,6 +952,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<PlanElementDto | null>(null)
   const [categoryTarget, setCategoryTarget] = useState<Pick<CategoryDto, 'id' | 'name' | 'type' | 'icon'> | null>(null)
   const [tagTarget, setTagTarget] = useState<TagDialogItem | null>(null)
+  const [renameFolderTarget, setRenameFolderTarget] = useState<BudgetFolderDto | null>(null)
+  const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
   // A modal opened from the keyboard (Enter on the name cell) has no trigger for
   // Radix to hand focus back to, so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
@@ -935,6 +966,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const updateEnvelope = useUpdateEnvelope()
   const deleteEnvelope = useDeleteEnvelope()
   const updateCategory = useUpdateCategory()
+  const updateFolder = useUpdateBudgetFolder()
+  const deleteFolder = useDeleteBudgetFolder()
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
@@ -1062,6 +1095,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
+  const folderNameValidator = (value: string): string | null => {
+    if (!isNotEmpty(value)) {
+      return t('budgets.form.budget.folder_name.validation.required_field')
+    }
+    if (!isValidBudgetFolderName(value)) {
+      return t('budgets.form.budget.folder_name.validation.invalid_name')
+    }
+    return null
+  }
 
   const fillStart = useCallback(
     (rk: string, el: PlanElementDto, col: number, e: ReactPointerEvent<HTMLElement>) => {
@@ -1195,6 +1237,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       onEditEnvelope: setEnvelopeTarget,
       onDeleteEnvelope: setDeleteEnvelopeTarget,
       canDeleteEnvelopes,
+      onRenameFolder: setRenameFolderTarget,
+      onDeleteFolder: setDeleteFolderTarget,
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -1796,6 +1840,37 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             },
           )
         }}
+      />
+
+      <PromptDialog
+        open={renameFolderTarget !== null}
+        onClose={() => setRenameFolderTarget(null)}
+        onSubmit={(name) => {
+          if (renameFolderTarget) {
+            updateFolder.mutate({ budgetId: budget.meta.id, id: renameFolderTarget.id, name }, { onSuccess: () => setRenameFolderTarget(null) })
+          }
+        }}
+        title={t('budgets.modal.update_folder_form.header')}
+        inputLabel={t('budgets.form.budget.folder_name.label')}
+        initialValue={renameFolderTarget?.name ?? ''}
+        validate={folderNameValidator}
+        submitLabel={t('common.button.update.label')}
+        cancelLabel={t('common.button.cancel.label')}
+      />
+
+      <ConfirmDialog
+        open={deleteFolderTarget !== null}
+        onClose={() => setDeleteFolderTarget(null)}
+        onConfirm={() => {
+          if (deleteFolderTarget) {
+            deleteFolder.mutate({ budgetId: budget.meta.id, id: deleteFolderTarget.id }, { onSettled: () => setDeleteFolderTarget(null) })
+          }
+        }}
+        title={t('budgets.modal.delete_folder.header')}
+        question={t('budgets.modal.delete_folder.question', { name: deleteFolderTarget?.name ?? '' })}
+        confirmLabel={t('common.button.delete.label')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
       />
 
       <EnvelopeDialog

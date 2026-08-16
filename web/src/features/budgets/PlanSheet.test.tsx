@@ -316,6 +316,62 @@ it('clicking anywhere on a folder header row toggles the fold, but its own contr
   expect(within(screen.getByTestId('plan-folder-bf1')).getByRole('button', { name: 'Essentials' })).toHaveAttribute('aria-expanded', 'true')
 })
 
+it('edit mode: a folder header menu renames the folder, and deletes it only when it has no members', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithEmptyFolder: BudgetPlanDto = {
+    ...plan,
+    structure: { ...plan.structure, folders: [...plan.structure.folders, { id: 'bf-empty', name: 'Fun', position: 5 }] },
+  }
+  let renameBody: unknown
+  let deleteBody: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithEmptyFolder),
+    http.post('*/api/v1/budget/update-folder', async ({ request }) => {
+      renameBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+    http.post('*/api/v1/budget/delete-folder', async ({ request }) => {
+      deleteBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // read-only: no folder menus
+  expect(screen.queryByRole('button', { name: /budget folder actions/ })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // Essentials has a member: rename offered, delete not
+  await user.click(await screen.findByRole('button', { name: 'budget folder actions Essentials' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Delete folder' })).not.toBeInTheDocument()
+  await user.click(screen.getByRole('menuitem', { name: 'Edit' }))
+  const rename = await screen.findByRole('dialog', { name: 'Rename folder' })
+  const input = within(rename).getByDisplayValue('Essentials')
+  await user.clear(input)
+  await user.type(input, 'Basics')
+  await user.click(within(rename).getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(renameBody).toEqual({ budgetId: 'b1', id: 'bf1', name: 'Basics' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Rename folder' })).not.toBeInTheDocument())
+  // opening the menu / picking an item must not have folded the folder
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+
+  // the empty folder offers delete, behind a confirmation
+  await user.click(screen.getByRole('button', { name: 'budget folder actions Fun' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Delete folder' }))
+  expect(deleteBody).toBeUndefined()
+  const confirm = await screen.findByRole('dialog', { name: 'Delete folder?' })
+  expect(within(confirm).getByText('Are you sure you want to delete the folder “Fun”?')).toBeInTheDocument()
+  await user.click(within(confirm).getByRole('button', { name: 'Delete' }))
+  await waitFor(() => expect(deleteBody).toEqual({ budgetId: 'b1', id: 'bf-empty' }))
+})
+
 it('hide-empty removes dormant rows, shows the per-section count, Show reveals them', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
