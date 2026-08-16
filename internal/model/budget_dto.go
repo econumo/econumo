@@ -380,8 +380,9 @@ type CreateEnvelopeRequest struct {
 	CurrencyId string   `json:"currencyId"`
 	FolderId   *string  `json:"folderId"`
 	Categories []string `json:"categories"`
-	// Side selects the envelope's (immutable) side: "" or "expense" (default),
-	// or "income". Income envelopes exist only in the plan view.
+	// Side selects the envelope's (immutable) side: "" or "expense" (default).
+	// "income" is reserved for the plan view's income envelopes and currently
+	// rejected (see EnvelopeTypeFromSide).
 	Side string `json:"side"`
 }
 

@@ -503,8 +503,9 @@ definitions:
         type: string
       side:
         description: |-
-          Side selects the envelope's (immutable) side: "" or "expense" (default),
-          or "income". Income envelopes exist only in the plan view.
+          Side selects the envelope's (immutable) side: "" or "expense" (default).
+          "income" is reserved for the plan view's income envelopes and currently
+          rejected (see EnvelopeTypeFromSide).
         type: string
     type: object
   model.CreateEnvelopeResult:

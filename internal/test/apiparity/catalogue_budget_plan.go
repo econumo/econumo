@@ -1,10 +1,13 @@
 package apiparity
 
 // get-budget-plan scenario: a fixed 2024 window over explicitly-dated data —
-// an income envelope with planned income, an expense limit, transactions in
-// distinct months on both sides (including category-less rows for the two
-// Uncategorized cells) — plus the months-bounds validation error and a
-// closing get-budget re-proof that none of it leaks into the budget view.
+// the seeded income category (CatSalary, type=3) with planned income, an
+// expense limit, transactions in distinct months on both sides (including
+// category-less rows for the two Uncategorized cells) — plus the months-bounds
+// validation error and a closing get-budget re-proof that none of it leaks
+// into the budget view. Income ENVELOPE creation is switched off for now
+// (side=income is rejected — budget_income_elements carries that rejection),
+// so planned income here lives on the standalone income category.
 //
 // The fixture's dirty Envelope1<-CatSalary link (an expense envelope holding
 // an income-category child, re-seeded AFTER migrations run — a state
@@ -36,7 +39,6 @@ func init() {
 	register(Scenario{Name: "budget_plan", Calls: func() []Call {
 		const (
 			planBudget    = "b0000000-0000-0000-0000-0000000000ef"
-			incomeEnv     = "be000000-0000-0000-0000-0000000000ef"
 			txAprFood     = "d0000000-0000-0000-0000-0000000000e1"
 			txMayFood     = "d0000000-0000-0000-0000-0000000000e2"
 			txMayNoCat    = "d0000000-0000-0000-0000-0000000000e3"
@@ -46,13 +48,10 @@ func init() {
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
 				Body: map[string]any{"id": planBudget, "name": "Plan", "currencyId": USD, "startDate": "2024-04-01"}},
-			{Label: "create-income-envelope", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
-				Body: map[string]any{"budgetId": planBudget, "id": incomeEnv, "name": "Salaries", "icon": "payments",
-					"currencyId": USD, "folderId": nil, "side": "income", "categories": []string{CatSalary}}},
 			{Label: "set-expense-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": planBudget, "elementId": CatFood, "period": "2024-05-01", "amount": "300"}},
 			{Label: "set-income-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
-				Body: map[string]any{"budgetId": planBudget, "elementId": incomeEnv, "period": "2024-05-01", "amount": "1500"}},
+				Body: map[string]any{"budgetId": planBudget, "elementId": CatSalary, "period": "2024-05-01", "amount": "1500"}},
 			// Explicitly-dated transactions — the seeded fixture rows sit at the
 			// wall-clock ClockTime, outside this fixed window. Body shape copied
 			// from catalogue_transaction.go's create-with-labels call (the "id"

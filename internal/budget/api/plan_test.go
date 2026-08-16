@@ -407,13 +407,7 @@ func TestGetBudgetPlan_IncomeRows(t *testing.T) {
 		map[string]any{"id": budgetID1, "name": "Income Plan Budget", "currencyId": usdID, "startDate": "2024-04-01"})
 
 	const incomeEnvID = "beee2222-0000-7000-8000-0000000000c1"
-	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
-		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
-		"currencyId": usdID, "folderId": nil, "side": "income", "categories": []string{salaryCatID},
-	})
-	if st != http.StatusOK {
-		t.Fatalf("create income envelope = %d; body=%s", st, env.raw)
-	}
+	seedIncomeEnvelope(t, h, tok, budgetID1, incomeEnvID, "Salaries", []string{salaryCatID})
 
 	// Income transactions: salary Apr+May, bonus May, category-less June.
 	f.Transaction(fixture.Transaction{ID: "d0003222-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
@@ -426,6 +420,8 @@ func TestGetBudgetPlan_IncomeRows(t *testing.T) {
 		Type: 1, Amount: "50.00000000", SpentAt: "2024-06-06 08:00:00"})
 
 	// Planned income: envelope May=1500, standalone bonus May=250.
+	var st int
+	var env envelope
 	for _, l := range []struct{ id, amount string }{{incomeEnvID, "1500"}, {bonusCatID, "250"}} {
 		st, env = h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
 			"budgetId": budgetID1, "elementId": l.id, "period": "2024-05-01", "amount": l.amount,

@@ -9610,7 +9610,7 @@
                     "type": "string"
                 },
                 "side": {
-                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default),\nor \"income\". Income envelopes exist only in the plan view.",
+                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default).\n\"income\" is reserved for the plan view's income envelopes and currently\nrejected (see EnvelopeTypeFromSide).",
                     "type": "string"
                 }
             }

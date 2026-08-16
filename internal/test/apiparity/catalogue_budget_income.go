@@ -1,9 +1,11 @@
 package apiparity
 
-// Income-element scenario: seeding, the income envelope lifecycle, both coded
-// side backstops, planned income via set-limit — and the frozen-contract proof
-// that get-budget shows none of it. The fixture's CatSalary (income) is seeded
-// as a type=3 element by create-budget.
+// Income-element scenario: seeding, the create-envelope side=income rejection
+// (income envelope creation is switched off for now), both coded side
+// backstops driven through the seeded income category, planned income via
+// set-limit — and the frozen-contract proof that get-budget shows none of it.
+// The fixture's CatSalary (income) is seeded as a type=3 element by
+// create-budget.
 
 func init() {
 	register(Scenario{Name: "budget_income_elements", Calls: func() []Call {
@@ -26,17 +28,16 @@ func init() {
 			{Label: "err:expense-envelope-income-child", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
 				Body: map[string]any{"budgetId": incomeBudget, "id": incomeEnvelope, "name": "Wrong Side", "icon": "cart",
 					"currencyId": USD, "folderId": nil, "categories": []string{CatSalary}}},
-			{Label: "create-income-envelope", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
+			// Income envelope creation is switched off: side=income is an invalid
+			// choice on the side field, and nothing is written.
+			{Label: "err:income-envelope-not-allowed", Method: "POST", Path: "/api/v1/budget/create-envelope", Auth: "owner",
 				Body: map[string]any{"budgetId": incomeBudget, "id": incomeEnvelope, "name": "Salaries", "icon": "payments",
 					"currencyId": USD, "folderId": nil, "side": "income", "categories": []string{CatSalary}}},
-			{Label: "err:income-envelope-expense-child", Method: "POST", Path: "/api/v1/budget/update-envelope", Auth: "owner",
-				Body: map[string]any{"budgetId": incomeBudget, "id": incomeEnvelope, "name": "Salaries", "icon": "payments",
-					"currencyId": USD, "isArchived": 0, "categories": []string{CatFood}}},
 			{Label: "err:income-into-expense-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
-				Body: map[string]any{"budgetId": incomeBudget, "id": incomeEnvelope, "folderId": expenseFolder, "afterId": nil}},
-			// Planned income is a plain limit on the income envelope.
+				Body: map[string]any{"budgetId": incomeBudget, "id": CatSalary, "folderId": expenseFolder, "afterId": nil}},
+			// Planned income is a plain limit on the income category.
 			{Label: "set-income-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
-				Body: map[string]any{"budgetId": incomeBudget, "elementId": incomeEnvelope, "period": "2024-05-01", "amount": "1500"}},
+				Body: map[string]any{"budgetId": incomeBudget, "elementId": CatSalary, "period": "2024-05-01", "amount": "1500"}},
 			// Frozen-contract proof: none of the income structure or its limit is
 			// visible in the budget view.
 			{Label: "get-budget-after", Method: "GET", Path: "/api/v1/budget/get-budget?id=" + incomeBudget + "&date=2024-05-15", Auth: "owner"},

@@ -74,13 +74,14 @@ func (t ElementType) IsIncomeSide() bool {
 
 // EnvelopeTypeFromSide maps a create-envelope side alias to the element type
 // that stores it. Absent ("") means expense, keeping the wire contract for
-// existing clients.
+// existing clients. Creating income envelopes is deliberately switched off for
+// now: "income" is rejected like any unknown alias, so no client can mint an
+// ElementIncomeEnvelope row until the feature ships end-to-end. Existing rows
+// of that type stay first-class everywhere else (plan view, update, move).
 func EnvelopeTypeFromSide(side string) (ElementType, error) {
 	switch side {
 	case "", "expense":
 		return ElementEnvelope, nil
-	case "income":
-		return ElementIncomeEnvelope, nil
 	}
 	return 0, errs.NewValidation("Validation failed", errs.FieldError{
 		Key: "side", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
