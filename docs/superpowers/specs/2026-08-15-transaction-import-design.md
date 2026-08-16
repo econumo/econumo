@@ -97,6 +97,18 @@ the provider as swappable from day one.
   first-class: the user can see every source of a resulting transaction.
 - **Deleting a transaction does not delete its import mappings** (tombstones),
   so deletions survive re-sync — from every source that ever saw it.
+- **Rules cover all four classification axes** — category, payee, tag, and
+  label (the reporting-labels second classification).
+- **An optional LLM assists rule authoring — it never imports.** Imports stay
+  deterministic; the model is invoked offline ("suggest rules"), reads the
+  user's already-classified transactions, and proposes rule rows the user
+  reviews/edits/accepts through the normal rules UI. Configured by
+  `ECONUMO_AI_DSN` (instance-level, `MAILER_DSN` pattern); unset hides the
+  feature entirely.
+- **Queue triage is per-event as well as per-account.** A queued transaction
+  opens the standard transaction dialog pre-filled for one-off import (no
+  account link required), or can be skipped — durably: a skipped event counts
+  as seen and never re-queues.
 
 ### Threat model — what this does and does not protect
 
@@ -312,14 +324,15 @@ id, source_id, run_id NULL → import_runs(id),
 event_id NULL → import_events(id),
 external_account_id, external_transaction_id,
 transaction_id TEXT NULL REFERENCES transactions(id) ON DELETE SET NULL,
-status TEXT NOT NULL ('linked'|'queued'),
+status TEXT NOT NULL ('linked'|'queued'|'skipped'),
 
 -- what the provider actually said (audit + rule debugging)
 external_payee, external_description, external_amount, external_currency NULL,
 external_posted_at,
 
 -- what the import assigned / observed at link time (diff base for rule learning)
-applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id NULL,
+applied_category_id, applied_payee_id, applied_tag_id, applied_label_id,
+applied_rule_id NULL,
 
 imported_at
 
@@ -340,6 +353,9 @@ Row states:
   `transaction_id` but cannot touch `status`, which is exactly why the
   tombstone must stay a derived state — it requires zero Go coupling on the
   delete path.
+- `status='skipped'`, `transaction_id NULL` — the user triaged the queued
+  event away without importing it. Counts as **seen** in the matcher, so it
+  never re-queues on a future sync.
 
 The composite unique is **required, not stylistic**: SimpleFIN transaction ids
 are unique *within an account*, not globally.
@@ -388,7 +404,7 @@ to no run — their link's `run_id` is NULL.
 
 ### `import_rules`
 
-Category/payee/tag mapping.
+Category/payee/tag/label mapping.
 
 ```
 id, user_id, source_id NULL,       -- NULL = applies to every source
@@ -396,6 +412,7 @@ match_field ('description'|'external_payee'|'external_category'),
 match_type  ('exact'|'contains'|'prefix'),
 match_value, is_case_sensitive,
 target_category_id NULL, target_payee_id NULL, target_tag_id NULL,
+target_label_id NULL,
 priority, created_at, updated_at
 ```
 
@@ -528,9 +545,10 @@ stages; only stages 0–1 have provider-specific code:
 Runs for every batch source (pull sync, CSV, queue conversion), per event:
 
 1. **Exact** — `(source_id, external_account_id, external_transaction_id)`
-   already present in links with `status='linked'` → skip. **Tombstones count
-   as seen**, which is what makes deletions stick. (`status='queued'` rows are
-   not "seen" — they are the queue.)
+   already present in links with `status='linked'` or `'skipped'` → skip.
+   **Tombstones and user-skips count as seen**, which is what makes deletions
+   and triage decisions stick. (`status='queued'` rows are not "seen" — they
+   are the queue.)
 2. **Fuzzy adopt** — no link, but an existing transaction in the same account
    has the same amount within ±3 days. Do not create a duplicate; **add a link
    to the existing transaction** and count it as `matched`. This is what makes
@@ -660,6 +678,15 @@ naturally: the first source's conversion creates the transaction, the second
 source's conversion adopts it (stage 2 or 3), ending with one transaction,
 two links.
 
+**Per-event triage.** Tapping a queued transaction opens the **standard
+transaction dialog pre-filled** from the parsed values, with rules
+pre-applied as defaults — every field editable, including the account picker,
+so a one-off import needs **no account link at all**. Saving imports that
+single event through the matcher (its link becomes `linked`, run-less;
+`applied_*` snapshot = what the user saved). **Skip** flips the link to
+`status='skipped'` — seen forever, never re-queued; visible under the run/
+source detail with an "un-skip" (back to queued) escape hatch.
+
 **At-rest note:** queued pull events keep bank amounts/payees for accounts
 the user may never map. Accepted for v1 (simplicity, and the user sees and
 controls the queue); revisit if it proves objectionable.
@@ -672,8 +699,8 @@ sync. This is the loop that populates `import_rules`.
 **Detection is client-side.** The SPA knows a transaction is imported (it has
 `isImported`), fetches its links on open (`get-transaction-import-list`), and
 on save diffs the current values against the **most recent** link's
-`applied_category_id` / `applied_payee_id` / `applied_tag_id` snapshot. If a
-target changed, it offers a rule.
+`applied_category_id` / `applied_payee_id` / `applied_tag_id` /
+`applied_label_id` snapshot. If a target changed, it offers a rule.
 
 This deliberately leaves `update-transaction` untouched — no change to a frozen
 contract, and an advisory suggestion does not belong in a write path.
@@ -722,6 +749,43 @@ Flow: save edit → *"You changed the category to Coffee. Create a rule?"* →
 editable match value + live match count → *"Apply to 7 matching transactions in
 this import?"* → apply, or save for future syncs only.
 
+### LLM-suggested rules
+
+Edit-driven learning captures corrections one at a time; an optional LLM
+bootstraps a whole ruleset at once from what the user has already
+classified — manually added transactions and import-corrected ones alike.
+
+**The model authors rules; it never imports.** The import path stays fully
+deterministic. `POST /api/v1/import/suggest-rules` gathers the user's
+classification history (external payee/description strings paired with the
+category/payee/tag/label the user chose, plus the names of the user's
+existing categories/payees/tags/labels), sends **one** completion request,
+and returns proposed rule rows. The suggestions are **transient** — nothing
+persists until the user accepts a row, which goes through the ordinary
+`create-rule`; accepted, edited, or discarded per row in the rules UI, with
+the same live match-count preview as edit-driven rules. There is no
+"suggested" state in the schema and no path for unreviewed model output to
+touch data. The server validates every proposed rule before returning it:
+target ids must belong to the user (models hallucinate ids — invalid rows
+are dropped), match types must be in the `exact`/`contains`/`prefix` set.
+
+Configuration is a boot-parsed DSN, exactly the `MAILER_DSN` pattern:
+`ECONUMO_AI_DSN` — e.g. `openai://<api-key>@api.openai.com?model=gpt-5-mini`.
+The transport speaks the OpenAI-compatible chat-completions API, so hosted
+providers and local models (Ollama, LM Studio — keyless
+`openai://localhost:11434?model=…`) both work; a bad scheme fails at boot;
+unset (default) disables the feature and hides its UI (an `AI_ENABLED` flag
+merged into the served `econumo-config.js`, same mechanism as
+`BILLING_URL`). Privacy is explicit and structural: payee/description
+strings leave the instance only when the admin configured an endpoint AND
+the user pressed the button — never in the background.
+
+**Rejected alternative: per-transaction LLM classification at import time.**
+Non-deterministic imports, per-sync cost and latency, an unauditable
+decision trail, and a hard dependency of the core flow on an external
+service. Ruleset generation delivers the same categorization benefit while
+keeping the model out of the data path.
+
 ## Part 8 — Endpoints
 
 All under `/api/v1/import/`, following the `{module}/{action}-{subject}`
@@ -739,8 +803,11 @@ convention. `GET` for reads, `POST` for every write.
 | POST | `sync` | The pull flow. Client supplies access URL. |
 | POST | `ingest-apple-wallet-event` | Push ingest (Part 6). Requires `'ingest'`-or-full scope. |
 | GET  | `get-queued-event-list` | Queued links + failed events for the queue page. |
+| POST | `import-queued-event` | One-off import of a single queued event via the pre-filled dialog (no account link required). |
+| POST | `skip-queued-event` | Durable skip (`status='skipped'`); `unskip-queued-event` reverses. |
 | POST | `retry-event` | Re-run the pipeline for a failed event. |
 | POST | `discard-event` | Mark a failed event discarded. |
+| POST | `suggest-rules` | LLM ruleset proposal (Part 7); 501-style 400 when `ECONUMO_AI_DSN` is unset. |
 | GET  | `get-run-list` | Import history (syncs, CSV uploads, conversions). |
 | GET  | `get-run` | Run detail: links, including tombstones. |
 | GET  | `get-transaction-import-list` | All links for one transaction (provenance + rule-learning base). |
@@ -761,10 +828,11 @@ already claimed or never existed.
 
 ### Rate limiting
 
-`claim-setup-token` and `sync` are outbound-request endpoints;
-`ingest-apple-wallet-event` is an unattended write. All three carry per-user
-caps in the existing `ECONUMO_RATE_LIMIT_*` family, following the
-`accept-invite` precedent.
+`claim-setup-token`, `sync`, and `suggest-rules` are outbound-request
+endpoints; `ingest-apple-wallet-event` is an unattended write. All four
+carry per-user caps in the existing `ECONUMO_RATE_LIMIT_*` family, following
+the `accept-invite` precedent (`suggest-rules` deserves a tight cap — each
+call is a paid completion).
 
 ## Part 9 — Frontend
 
@@ -809,7 +877,11 @@ link (external dependency, documented).
   provider badge, grouped **client-side** when they plausibly describe the
   same purchase across providers (amount + date proximity + merchant-token
   overlap; the shared normalizer). Per external account: "map this account"
-  → link dialog → conversion run → result summary.
+  → link dialog → conversion run → result summary. Per row: **tap → the
+  standard transaction dialog pre-filled** (parsed values, rules as
+  defaults, account picker free) → save = one-off import; or **skip**
+  (durable, un-skippable from source detail). A "needs attention" section
+  lists parse-failed events with raw payload, retry, discard.
 
 ### Other surfaces
 
@@ -821,7 +893,10 @@ link (external dependency, documented).
   sources reads as e.g. "Apple Wallet 08-15 · SimpleFIN 08-17, amount updated
   4.50 → 5.40").
 - **Rule prompt** — the Part 7 flow.
-- **Rules management** — list, edit, reorder by priority.
+- **Rules management** — list, edit, reorder by priority; a **"Suggest
+  rules"** action (visible only when the instance advertises `AI_ENABLED`)
+  runs the Part 7 LLM flow and presents proposals for per-row
+  accept/edit/discard with live match counts.
 
 Crypto lives in `web/src/lib/importCrypto.ts`: PBKDF2 (Web Crypto native) or
 Argon2id (WASM) → wrapping key → unwrap a random AES-GCM data key → store
@@ -845,8 +920,9 @@ not data loss.
 
 Per the repository rule, every new user-facing action fires an event. New
 `METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`,
-`IMPORT_SYNC`, `IMPORT_QUEUE_MAP`, `IMPORT_SHORTCUT_DOWNLOAD`,
-`IMPORT_RUN_DELETE`, `IMPORT_RULE_CREATE`, `IMPORT_RULE_APPLY`. Fired at the
+`IMPORT_SYNC`, `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
+`IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_RUN_DELETE`,
+`IMPORT_RULE_CREATE`, `IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
 shared hook choke point so every surface is covered once. (Server-side ingest
 hits are not SPA metrics.) `metrics-coverage.test.ts` fails the suite if a
 key is never fired.
@@ -874,6 +950,9 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   across engines.
 - Auth: scoped-token enforcement (ingest token on a non-ingest route → the
   exact 401 envelope; full token on ingest → allowed; readonly user → 402).
+- LLM seam: the completion transport is an interface, stubbed in tests (no
+  network); suggestion validation (hallucinated target ids dropped, match
+  types constrained, malformed model output → clean error, never a 500).
 - Security regression: the access URL must never appear in logs or in any
   persisted column; ingest bodies never logged; production SQLite
   `foreign_keys = ON` assertion.
@@ -901,6 +980,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
    transaction across all providers. Keep forever (full audit) vs purge
    processed events after N days (a `token:purge`-style CLI command). Ship
    v1 keeping everything; decide before the table gets big.
+7. **Suggest-rules prompt shape** — how much history fits one completion
+   (cap the sample; most-frequent payee strings first), and whether the
+   proposal quality justifies a second "refine" round-trip. Needs
+   experimentation with a real catalogue; the seam isolates it.
 
 ## Deferred / follow-up
 
