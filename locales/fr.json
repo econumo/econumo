@@ -12,7 +12,7 @@
       "active_only": "Actifs uniquement"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget et plan",
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Revenus",
+          "expenses": "Dépenses",
+          "archived": "Archivés"
+        },
+        "nav": {
+          "prev": "Mois précédents",
+          "next": "Mois suivants"
+        },
+        "cell": {
+          "aria": "{name}, {month} : réel {actual}, prévu {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copier le budget sur les mois suivants"
+        },
+        "totals": {
+          "income": "Revenus",
+          "expenses": "Dépenses",
+          "transfers": "Virements",
+          "transfers_tooltip": "Entrées {in} · Sorties {out}",
+          "show_transactions": "Afficher les transactions",
+          "net": "Net",
+          "balance": "Solde"
+        },
+        "density": {
+          "hide_empty": "Masquer les lignes vides",
+          "hidden": "{count} masquées",
+          "show": "Afficher"
+        },
+        "menu": {
+          "move_to_folder": "Déplacer vers un dossier…",
+          "no_folder": "Aucun dossier"
+        },
+        "edit": {
+          "no_access_envelope": "Vous ne pouvez pas modifier cette enveloppe — votre rôle dans ce budget est en lecture seule.",
+          "no_access_category": "Vous ne pouvez pas modifier cette catégorie — elle appartient à un autre utilisateur.",
+          "no_access_tag": "Vous ne pouvez pas modifier ce tag — il appartient à un autre utilisateur."
+        }
+      },
       "settings": {
-        "menu_item": "Budgets",
-        "header": "Budgets",
-        "info": "Tous vos budgets sont ici. Créez des budgets distincts pour différents objectifs et partagez-les avec votre famille.",
+        "menu_item": "Budgets et plans",
+        "header": "Budgets et plans",
+        "info": "Tous vos budgets sont ici. Créez des budgets pour différents objectifs, partagez-les avec votre famille et planifiez votre budget pour les mois à venir.",
         "create_budget": "Créer un budget",
         "edit_modal": {
           "header": "Modifier le budget"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "Le nom de l’enveloppe doit contenir de {min} à {max} caractères.",
       "invalid_element_type_alias": "Le type d’élément de budget avec l’alias {alias} n’existe pas.",
       "invalid_role_alias": "Le rôle d’utilisateur de budget avec l’alias {alias} n’existe pas.",
-      "transaction_filter_required": "La validation a échoué."
+      "transaction_filter_required": "La validation a échoué.",
+      "envelope_side_mixed": "Une enveloppe ne peut pas contenir à la fois des catégories de revenus et de dépenses.",
+      "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses."
     },
     "category": {
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",

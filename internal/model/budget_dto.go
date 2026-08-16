@@ -205,6 +205,119 @@ type GetBudgetListResult struct {
 	Items []MetaResult `json:"items"`
 }
 
+// GetBudgetPlanRequest selects a budget + a month window for the plan read.
+// From and Months arrive as raw query strings; the service parses them.
+type GetBudgetPlanRequest struct {
+	Id     string `json:"id"`
+	From   string `json:"from"`
+	Months string `json:"months"`
+}
+
+func (r GetBudgetPlanRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+// PlanCellResult is one (element, month) plan cell. Planned is "" when no
+// limit row exists for that month — the frozen empty-cell encoding.
+type PlanCellResult struct {
+	Actual  string `json:"actual"`
+	Planned string `json:"planned"`
+}
+
+// PlanChildCellResult is one (envelope child, month) cell — actual only;
+// planned lives on the parent, exactly like budgeted on the budget page.
+type PlanChildCellResult struct {
+	Actual string `json:"actual"`
+}
+
+// PlanChildResult is a category nested under an envelope in the plan sheet.
+// Cells align index-for-index with BudgetPlanResult.Months.
+type PlanChildResult struct {
+	Id          string                `json:"id"`
+	Type        int                   `json:"type"`
+	Name        string                `json:"name"`
+	Icon        string                `json:"icon"`
+	IsArchived  int                   `json:"isArchived"`
+	OwnerUserId string                `json:"ownerUserId"`
+	Cells       []PlanChildCellResult `json:"cells"`
+}
+
+// PlanElementResult is one plan-sheet row (income and expense alike; the
+// element type encodes the side). Cells align with BudgetPlanResult.Months.
+type PlanElementResult struct {
+	Id          string            `json:"id"`
+	Type        int               `json:"type"`
+	Name        string            `json:"name"`
+	Icon        string            `json:"icon"`
+	CurrencyId  string            `json:"currencyId"`
+	IsArchived  int               `json:"isArchived"`
+	FolderId    *string           `json:"folderId"`
+	Position    int               `json:"position"`
+	OwnerUserId *string           `json:"ownerUserId"`
+	Cells       []PlanCellResult  `json:"cells"`
+	Children    []PlanChildResult `json:"children"`
+}
+
+// OpeningBalanceResult is one currency's real account balance strictly
+// BEFORE the window start (transactions dated < months[0]) — the client-side
+// Balance row's seed. This deliberately differs from the budget page's
+// startBalance bound (<=): the plan's Balance row arithmetically chains this
+// seed to the per-month nets (seed + net(month0) + ...), and month 0's
+// actual cells already cover [months[0], months[0]+1mo), so the boundary
+// instant must not appear in both or it is double-counted.
+type OpeningBalanceResult struct {
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanTransferResult is one currency's transfers across the budget boundary
+// in one window month: In = moved into included accounts (recipient side's
+// amount and currency), Out = moved out of them (source side's). Neither is
+// planned; the client nets them into the month's Net and Balance.
+type PlanTransferResult struct {
+	CurrencyId string `json:"currencyId"`
+	In         string `json:"in"`
+	Out        string `json:"out"`
+}
+
+// PlanMonthTransfersResult is one window month's boundary transfers; Items is
+// [] (never null) for a month nothing crossed, ordered budget currency first
+// then by currency id.
+type PlanMonthTransfersResult struct {
+	Period string               `json:"period"`
+	Items  []PlanTransferResult `json:"items"`
+}
+
+// PlanMonthRatesResult is one window month's average currency rates. Period is
+// the REQUESTED month; each rate row reports its own snapped period, exactly
+// as the budget page's currencyRates block does.
+type PlanMonthRatesResult struct {
+	Period string                      `json:"period"`
+	Rates  []AverageCurrencyRateResult `json:"rates"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult `json:"folders"`
+	Elements []PlanElementResult  `json:"elements"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape.
+type BudgetPlanResult struct {
+	Meta            MetaResult                 `json:"meta"`
+	Months          []string                   `json:"months"`
+	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
+	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers       []PlanMonthTransfersResult `json:"transfers"`
+	Structure       PlanStructureResult        `json:"structure"`
+}
+
+// GetBudgetPlanResult is {item: BudgetPlanResult}.
+type GetBudgetPlanResult struct {
+	Item BudgetPlanResult `json:"item"`
+}
+
 // CreateBudgetFolderRequest / UpdateBudgetFolderRequest bodies.
 type CreateBudgetFolderRequest struct {
 	BudgetId string `json:"budgetId"`
@@ -286,6 +399,10 @@ type CreateEnvelopeRequest struct {
 	CurrencyId string   `json:"currencyId"`
 	FolderId   *string  `json:"folderId"`
 	Categories []string `json:"categories"`
+	// Side selects the envelope's (immutable) side: "" or "expense" (default).
+	// "income" is reserved for the plan view's income envelopes and currently
+	// rejected (see EnvelopeTypeFromSide).
+	Side string `json:"side"`
 }
 
 func (r CreateEnvelopeRequest) Validate() error {
@@ -489,6 +606,10 @@ type BudgetTransactionListRequest struct {
 	EnvelopeId    *string `json:"envelopeId"`
 	LabelId       *string `json:"labelId"`
 	Uncategorized bool    `json:"uncategorized,omitempty"`
+	// Transfers selects the transfers that crossed the budget boundary (one
+	// side included, the other not) — the plan sheet's Transfers drill-down.
+	// Mutually exclusive with every other selector.
+	Transfers bool `json:"transfers,omitempty"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -521,6 +642,11 @@ type BudgetTransactionResult struct {
 	// transaction feature's own wire.
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
+	// Direction is present only on rows of the transfers selector: "out" when
+	// the included account is the source, "in" when it is the recipient —
+	// Amount/CurrencyId are that side's. Omitted on every other list so their
+	// bytes are unchanged.
+	Direction string `json:"direction,omitempty"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.

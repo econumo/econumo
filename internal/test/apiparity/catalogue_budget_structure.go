@@ -29,7 +29,10 @@ func init() {
 					"currencyId": USD, "folderId": newFolder, "categories": []string{}}},
 			{Label: "update-envelope", Method: "POST", Path: "/api/v1/budget/update-envelope", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": Envelope1, "name": "Envelope 2", "icon": "cart",
-					"currencyId": USD, "isArchived": 0, "categories": []string{CatSalary}}},
+					// CatSalary (income) was silently ignored here for years; envelope
+					// homogeneity now rejects it. An empty set produces byte-identical
+					// response bytes (the income child never rendered).
+					"currencyId": USD, "isArchived": 0, "categories": []string{}}},
 			{Label: "move-element", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": Budget, "id": CatFood, "folderId": BudgetFolder1, "afterId": nil}},
 			// Anchored on the element moved above. Elements are addressed by their

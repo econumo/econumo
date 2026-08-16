@@ -12,7 +12,7 @@
       "active_only": "Solo activos"
     },
     "nav": {
-      "budget": "Presupuesto",
+      "budget": "Presupuesto y plan",
       "onboarding": "Primeros pasos",
       "create_account": "Añadir cuenta",
       "collapse_menu": "Contraer el menú",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Presupuesto",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Ingresos",
+          "expenses": "Gastos",
+          "archived": "Archivado"
+        },
+        "nav": {
+          "prev": "Meses anteriores",
+          "next": "Meses siguientes"
+        },
+        "cell": {
+          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copiar el presupuesto a los meses siguientes"
+        },
+        "totals": {
+          "income": "Ingresos",
+          "expenses": "Gastos",
+          "transfers": "Transferencias",
+          "transfers_tooltip": "Entradas {in} · Salidas {out}",
+          "show_transactions": "Mostrar las transacciones",
+          "net": "Neto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Ocultar filas vacías",
+          "hidden": "{count} ocultas",
+          "show": "Mostrar"
+        },
+        "menu": {
+          "move_to_folder": "Mover a carpeta…",
+          "no_folder": "Sin carpeta"
+        },
+        "edit": {
+          "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
+          "no_access_category": "No puedes editar esta categoría: pertenece a otro usuario.",
+          "no_access_tag": "No puedes editar esta etiqueta: pertenece a otro usuario."
+        }
+      },
       "settings": {
-        "menu_item": "Presupuestos",
-        "header": "Presupuestos",
-        "info": "Aquí están todos tus presupuestos. Crea presupuestos separados para objetivos distintos y compártelos con tu familia.",
+        "menu_item": "Presupuestos y planes",
+        "header": "Presupuestos y planes",
+        "info": "Aquí están todos tus presupuestos. Crea presupuestos para objetivos distintos, compártelos con tu familia y planifica tu presupuesto para los próximos meses.",
         "create_budget": "Crear presupuesto",
         "edit_modal": {
           "header": "Editar el presupuesto"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "El nombre del sobre debe tener entre {min} y {max} caracteres.",
       "invalid_element_type_alias": "No existe ningún tipo de elemento de presupuesto con el alias {alias}.",
       "invalid_role_alias": "No existe ningún rol de usuario de presupuesto con el alias {alias}.",
-      "transaction_filter_required": "La validación falló."
+      "transaction_filter_required": "La validación falló.",
+      "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
+      "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos."
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",

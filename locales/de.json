@@ -12,7 +12,7 @@
       "active_only": "Nur aktive"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & Plan",
       "onboarding": "Erste Schritte",
       "create_account": "Konto hinzufügen",
       "collapse_menu": "Menü einklappen",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Einnahmen",
+          "expenses": "Ausgaben",
+          "archived": "Archiviert"
+        },
+        "nav": {
+          "prev": "Frühere Monate",
+          "next": "Spätere Monate"
+        },
+        "cell": {
+          "aria": "{name}, {month}: Ist {actual}, geplant {planned}"
+        },
+        "fill": {
+          "handle_aria": "Budget auf die folgenden Monate kopieren"
+        },
+        "totals": {
+          "income": "Einnahmen",
+          "expenses": "Ausgaben",
+          "transfers": "Überweisungen",
+          "transfers_tooltip": "Eingang {in} · Ausgang {out}",
+          "show_transactions": "Transaktionen anzeigen",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Leere Zeilen ausblenden",
+          "hidden": "{count} ausgeblendet",
+          "show": "Einblenden"
+        },
+        "menu": {
+          "move_to_folder": "In Ordner verschieben…",
+          "no_folder": "Kein Ordner"
+        },
+        "edit": {
+          "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
+          "no_access_category": "Sie können diese Kategorie nicht bearbeiten — sie gehört einem anderen Benutzer.",
+          "no_access_tag": "Sie können diesen Tag nicht bearbeiten — er gehört einem anderen Benutzer."
+        }
+      },
       "settings": {
-        "menu_item": "Budgets",
-        "header": "Budgets",
-        "info": "Alle Ihre Budgets finden Sie hier. Erstellen Sie separate Budgets für verschiedene Ziele und teilen Sie sie mit Ihrer Familie.",
+        "menu_item": "Budgets & Pläne",
+        "header": "Budgets & Pläne",
+        "info": "Alle Ihre Budgets finden Sie hier. Erstellen Sie Budgets für verschiedene Ziele, teilen Sie sie mit Ihrer Familie und planen Sie Ihr Budget für die kommenden Monate.",
         "create_budget": "Budget erstellen",
         "edit_modal": {
           "header": "Budget bearbeiten"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "Der Umschlagname muss {min}-{max} Zeichen lang sein",
       "invalid_element_type_alias": "BudgetElementType mit dem Alias {alias} existiert nicht",
       "invalid_role_alias": "BudgetUserRole mit dem Alias {alias} existiert nicht",
-      "transaction_filter_required": "Validierung fehlgeschlagen"
+      "transaction_filter_required": "Validierung fehlgeschlagen",
+      "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
+      "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",

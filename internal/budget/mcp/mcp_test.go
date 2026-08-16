@@ -547,6 +547,62 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 	}
 }
 
+func TestGetBudgetPlanTool(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	budgetID := f.Budget(fixture.Budget{UserID: userID, Name: "Plan Household"})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "from_month": "2024-04", "months": 3},
+	})
+	if err != nil {
+		t.Fatalf("get_budget_plan: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("get_budget_plan errored: %#v", res.Content)
+	}
+	item, ok := structured(t, res)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("no item in structured result: %#v", res.StructuredContent)
+	}
+	months, ok := item["months"].([]any)
+	if !ok || len(months) != 3 || months[0] != "2024-04-01" {
+		t.Fatalf("months = %#v", item["months"])
+	}
+
+	// Malformed from_month is rejected before the service runs.
+	res, err = cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "from_month": "junk"},
+	})
+	if err != nil {
+		t.Fatalf("bad from_month transport error: %v", err)
+	}
+	badText, ok := res.Content[0].(*sdk.TextContent)
+	if !res.IsError || !ok || !strings.Contains(badText.Text, "from_month must be YYYY-MM") {
+		t.Fatalf("bad from_month: IsError=%v content=%#v", res.IsError, res.Content)
+	}
+
+	// Out-of-range months surfaces the REST read's invalid-choice validation.
+	res, err = cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "months": 40},
+	})
+	if err != nil {
+		t.Fatalf("bad months transport error: %v", err)
+	}
+	badText, ok = res.Content[0].(*sdk.TextContent)
+	if !res.IsError || !ok || !strings.Contains(badText.Text, "not a valid choice") {
+		t.Fatalf("bad months: IsError=%v content=%#v", res.IsError, res.Content)
+	}
+}
+
 func TestBudgetTools_SetLimitBeforeStart_IsError(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)

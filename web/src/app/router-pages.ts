@@ -5,6 +5,7 @@ export const RouterPage = {
   HOME: '/',
   ACCOUNT: (id: string) => `/account/${id}`,
   BUDGET: '/budget',
+  PLAN: '/plan',
   ONBOARDING: '/onboarding',
   SETTINGS: '/settings',
   SETTINGS_PROFILE: '/settings/profile',

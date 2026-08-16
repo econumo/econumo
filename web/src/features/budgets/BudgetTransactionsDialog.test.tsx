@@ -7,7 +7,7 @@ import { coreHandlers, fixtureOwner, fixtureWireBudget } from '@/test/fixtures'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
-import { BudgetTransactionsDialog, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
+import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
 
 const target: BudgetTransactionsTarget = { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null }
@@ -256,4 +256,64 @@ it("a partner's row previews with its reporting tags", async () => {
   await user.click(await screen.findByRole('button', { name: /partner spend/ }))
   // 'health' is the fixture label behind label1
   expect(await screen.findByText('health')).toBeInTheDocument()
+})
+
+it('a transfers target requests transfers=1 alone, and periodStart overrides the store period', async () => {
+  const getUrl = captureTransactionListUrl()
+  const budget = coerceBudgetFixture(fixtureWireBudget)
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+      <BudgetTransactionsDialog
+        budget={budget}
+        element={{ id: TRANSFERS_TARGET_ID, type: 'transfers', name: 'Transfers', icon: 'sync_alt', currencyId: null }}
+        periodStart="2026-06-01"
+        onClose={() => {}}
+      />
+    </QueryClientProvider>,
+  )
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('transfers')).toBe('1')
+  expect(params.get('periodStart')).toBe('2026-06-01') // not the store's 2026-07-01
+  for (const key of ['categoryId', 'tagId', 'envelopeId', 'labelId', 'uncategorized']) {
+    expect(params.has(key)).toBe(false)
+  }
+})
+
+it('transfer rows are signed by direction: out negative, in positive; a foreign transfer previews as a transfer', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: {
+          items: [
+            {
+              id: 'tx-out', author: fixtureOwner, currencyId: 'cur-usd', amount: '150', description: 'to savings',
+              category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-06-03 09:00:00', direction: 'out',
+            },
+            {
+              id: 'tx-in', author: fixtureOwner, currencyId: 'cur-usd', amount: '50', description: 'from savings',
+              category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-06-02 09:00:00', direction: 'in',
+            },
+          ],
+        },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog({ id: TRANSFERS_TARGET_ID, type: 'transfers', name: 'Transfers', icon: 'sync_alt', currencyId: null })
+  const out = await screen.findByTestId('budget-tx-tx-out')
+  const inn = screen.getByTestId('budget-tx-tx-in')
+  expect(out).toHaveTextContent('-150.00')
+  expect(inn).toHaveTextContent('50.00')
+  expect(inn).not.toHaveTextContent('-50.00')
+
+  // neither row is in the user's own list -> the read-only preview is a transfer
+  // (sender AND recipient cards), not an expense
+  await user.click(out)
+  await screen.findByRole('button', { name: 'Edit' })
+  expect(screen.getByText('Sender')).toBeInTheDocument()
+  expect(screen.getByText('Recipient')).toBeInTheDocument()
 })

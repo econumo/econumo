@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -53,6 +54,10 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 			moved = e
 			break
 		}
+	}
+
+	if moved != nil && folderID != nil && sideMixed(b.elements, *folderID, moved.Type) {
+		return nil, folderSideMixedErr()
 	}
 
 	now := s.clock.Now()
@@ -110,19 +115,56 @@ func inFolder(e *model.BudgetElement, folderID *vo.Id) bool {
 	return e.FolderID != nil && e.FolderID.Equal(*folderID)
 }
 
+// folderSide reports the folder's derived side over its member elements: no
+// members = neutral (both false). Archived members count — a folder holding
+// only an archived income category is still income-sided.
+func folderSide(elements []*model.BudgetElement, folderID vo.Id) (income, expense bool) {
+	for _, e := range elements {
+		if e.FolderID == nil || !e.FolderID.Equal(folderID) {
+			continue
+		}
+		if e.Type.IsIncomeSide() {
+			income = true
+		} else {
+			expense = true
+		}
+	}
+	return income, expense
+}
+
+// sideMixed reports whether placing an element of type typ into the folder
+// would mix income and expense sides. Same-side members never conflict, so the
+// element being re-placed inside its own folder needs no exclusion.
+func sideMixed(elements []*model.BudgetElement, folderID vo.Id, typ model.ElementType) bool {
+	income, expense := folderSide(elements, folderID)
+	if typ.IsIncomeSide() {
+		return expense
+	}
+	return income
+}
+
+func folderSideMixedErr() error {
+	return errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "folderId", Message: "A folder cannot contain both income and expenses", Code: errs.CodeBudgetFolderSideMixed,
+	})
+}
+
 // syncElements reconciles the budgets_elements rows with the entities that
 // currently participate in the budget. Ordering is NOT its job -- keys are set
 // by MoveElement and by envelope creation, and removing a row leaves its
 // siblings correctly ordered. What remains is the bookkeeping that has to happen
 // after any element-mutating use case:
 //
-//   - create a row for every participant envelope / expense category / tag that
-//     lacks one, appended to the end of the no-folder group;
+//   - create a row for every participant envelope / category (both sides) / tag
+//     that lacks one, appended to the end of the no-folder group;
 //   - force archived elements and envelope-child categories to the unset key
 //     (and, for children, no folder) so they drop out of the listing;
 //   - give a live element that has no key one, which is how an unarchived
 //     element re-enters the listing;
 //   - delete rows whose entity no longer participates.
+//
+// Types are reconciled in place by external id -- a side change never deletes
+// a row (limits cascade).
 //
 // All budget element-mutating use cases (move, envelope create/update/delete)
 // run this as their last step.
@@ -139,10 +181,17 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		}
 	}
 
-	// Index existing elements by "<externalId>-<typeAlias>".
+	// Index existing elements by "<externalId>-<typeAlias>" AND by external id.
+	// The external index is what makes a type (side) change an in-place update:
+	// one row per external id (UNIQUE(budget_id, external_id)), and a
+	// delete+recreate would cascade the row's limits away -- while the recreate
+	// would trip the unique constraint, because saves run before the
+	// delete-unseen pass below.
 	byKey := map[string]*model.BudgetElement{}
+	byExternal := map[string]*model.BudgetElement{}
 	for _, e := range b.elements {
 		byKey[elementKey(e.ExternalID.String(), e.Type)] = e
+		byExternal[e.ExternalID.String()] = e
 	}
 	seen := map[string]bool{}
 	created := map[string]*model.BudgetElement{}
@@ -151,7 +200,15 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	// participant element that is not an envelope-child category.
 	live := map[string]bool{}
 
+	mark := func(e *model.BudgetElement) { dirty[e.ID.String()] = e }
+
 	ensure := func(externalID vo.Id, typ model.ElementType) (*model.BudgetElement, string) {
+		if e, ok := byExternal[externalID.String()]; ok && e.Type != typ {
+			delete(byKey, elementKey(externalID.String(), e.Type))
+			e.UpdateType(typ, now)
+			byKey[elementKey(externalID.String(), typ)] = e
+			mark(e)
+		}
 		key := elementKey(externalID.String(), typ)
 		seen[key] = true
 		if e, ok := byKey[key]; ok {
@@ -161,10 +218,10 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		// end of the no-folder group.
 		e := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, externalID, typ, nil, nil, now)
 		byKey[key] = e
+		byExternal[externalID.String()] = e
 		created[key] = e
 		return e, key
 	}
-	mark := func(e *model.BudgetElement) { dirty[e.ID.String()] = e }
 	forceUnset := func(e *model.BudgetElement) {
 		if !e.IsSortKeyUnset() {
 			e.UpdateSortKey("", now)
@@ -175,7 +232,13 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 	// --- envelopes (+ collect child categories) ---
 	childCategories := map[string]bool{}
 	for _, env := range b.envelopes {
-		e, key := ensure(env.ID, model.ElementEnvelope)
+		// The element row stores the envelope's (immutable) side; default to
+		// expense only when no row exists yet.
+		typ := model.ElementEnvelope
+		if e, ok := byExternal[env.ID.String()]; ok && e.Type == model.ElementIncomeEnvelope {
+			typ = model.ElementIncomeEnvelope
+		}
+		e, key := ensure(env.ID, typ)
 		if env.IsArchived {
 			forceUnset(e)
 		} else {
@@ -190,20 +253,21 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		}
 	}
 
-	// --- expense categories ---
+	// --- categories (both sides; the type encodes the side) ---
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
 	if err != nil {
 		return err
 	}
 	for _, c := range cats {
+		typ := model.ElementCategory
 		if c.IsIncome {
-			continue // expense categories only
+			typ = model.ElementIncomeCategory
 		}
 		cid, perr := vo.ParseId(c.ID)
 		if perr != nil {
 			return perr
 		}
-		e, key := ensure(cid, model.ElementCategory)
+		e, key := ensure(cid, typ)
 		if childCategories[c.ID] {
 			// A category that belongs to an envelope is hidden from the top level:
 			// unset key + no folder.

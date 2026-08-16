@@ -12,7 +12,7 @@
       "active_only": "仅显示启用中的项目"
     },
     "nav": {
-      "budget": "预算",
+      "budget": "预算与计划",
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "预算",
+          "plan": "计划"
+        },
+        "section": {
+          "income": "收入",
+          "expenses": "支出",
+          "archived": "已归档"
+        },
+        "nav": {
+          "prev": "更早的月份",
+          "next": "更晚的月份"
+        },
+        "cell": {
+          "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
+        },
+        "fill": {
+          "handle_aria": "将预算复制到后续月份"
+        },
+        "totals": {
+          "income": "收入",
+          "expenses": "支出",
+          "transfers": "转账",
+          "transfers_tooltip": "转入 {in} · 转出 {out}",
+          "show_transactions": "显示交易",
+          "net": "净额",
+          "balance": "余额"
+        },
+        "density": {
+          "hide_empty": "隐藏空行",
+          "hidden": "已隐藏 {count} 项",
+          "show": "显示"
+        },
+        "menu": {
+          "move_to_folder": "移动到文件夹…",
+          "no_folder": "无文件夹"
+        },
+        "edit": {
+          "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
+          "no_access_category": "无法编辑此分类——它属于其他用户。",
+          "no_access_tag": "无法编辑此标签——它属于其他用户。"
+        }
+      },
       "settings": {
-        "menu_item": "预算",
-        "header": "预算",
-        "info": "您的所有预算都在这里。为不同目标创建独立的预算，并与家人共享。",
+        "menu_item": "预算与计划",
+        "header": "预算与计划",
+        "info": "您的所有预算都在这里。为不同目标创建预算，与家人共享，并为未来几个月规划您的预算。",
         "create_budget": "创建预算",
         "edit_modal": {
           "header": "编辑预算"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "信封名称需为 {min}-{max} 个字符。",
       "invalid_element_type_alias": "别名为 {alias} 的预算元素类型不存在。",
       "invalid_role_alias": "别名为 {alias} 的预算用户角色不存在。",
-      "transaction_filter_required": "校验未通过。"
+      "transaction_filter_required": "校验未通过。",
+      "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
+      "folder_side_mixed": "文件夹中不能同时包含收入和支出。"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",

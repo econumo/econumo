@@ -6,29 +6,32 @@ import { amountCardInputClass, CardField } from '@/components/CardField'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { normalizeNumber } from '@/lib/money'
 import { isZero } from '@/lib/decimal'
-import type { BudgetElementDto } from '@/api/dto/budget'
 import { limitAmountFromInput } from './limitAmount'
 
 interface SetLimitDialogProps {
-  element: BudgetElementDto | null
+  target: { id: string; name: string; value: string } | null
   onClose: () => void
   onCommit: (elementId: string, amount: string | null) => void
 }
 
 // Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (element) {
-      setValue(isZero(element.budgeted) ? '' : normalizeNumber(element.budgeted))
+    if (target) {
+      setValue(isZero(target.value) ? '' : normalizeNumber(target.value))
       setError(null)
     }
-  }, [element])
+    // id/value only: both call sites build `target` as a fresh object literal every
+    // render, so keying on the object itself would reset a mid-edit value on any
+    // unrelated parent re-render (e.g. a background refetch while the dialog is open)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target?.id, target?.value])
 
-  if (!element) {
+  if (!target) {
     return null
   }
 
@@ -38,12 +41,12 @@ export function SetLimitDialog({ element, onClose, onCommit }: SetLimitDialogPro
       setError(t('common.validation.invalid_number'))
       return
     }
-    onCommit(element.id, result.amount)
+    onCommit(target.id, result.amount)
     onClose()
   }
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.set_limit_form.header')} description={element.name}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.set_limit_form.header')} description={target.name}>
       <form
         className="flex flex-col gap-4"
         noValidate

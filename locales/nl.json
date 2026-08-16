@@ -12,7 +12,7 @@
       "active_only": "Alleen actieve"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & plan",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Inkomsten",
+          "expenses": "Uitgaven",
+          "archived": "Gearchiveerd"
+        },
+        "nav": {
+          "prev": "Eerdere maanden",
+          "next": "Latere maanden"
+        },
+        "cell": {
+          "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
+        },
+        "fill": {
+          "handle_aria": "Budget naar de volgende maanden kopiëren"
+        },
+        "totals": {
+          "income": "Inkomsten",
+          "expenses": "Uitgaven",
+          "transfers": "Overboekingen",
+          "transfers_tooltip": "In {in} · Uit {out}",
+          "show_transactions": "Transacties tonen",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Lege rijen verbergen",
+          "hidden": "{count} verborgen",
+          "show": "Tonen"
+        },
+        "menu": {
+          "move_to_folder": "Naar map verplaatsen…",
+          "no_folder": "Geen map"
+        },
+        "edit": {
+          "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
+          "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
+          "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
+        }
+      },
       "settings": {
-        "menu_item": "Budgetten",
-        "header": "Budgetten",
-        "info": "Hier staan al uw budgetten. Maak aparte budgetten voor verschillende doelen en deel ze met uw gezin.",
+        "menu_item": "Budgetten & plannen",
+        "header": "Budgetten & plannen",
+        "info": "Hier staan al uw budgetten. Maak budgetten voor verschillende doelen, deel ze met uw gezin en plan uw budget voor de komende maanden.",
         "create_budget": "Budget aanmaken",
         "edit_modal": {
           "header": "Budget bewerken"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "Envelopnaam moet {min}-{max} tekens bevatten.",
       "invalid_element_type_alias": "Een budgetelementtype met alias {alias} bestaat niet.",
       "invalid_role_alias": "Een budgetgebruikersrol met alias {alias} bestaat niet.",
-      "transaction_filter_required": "Validatie mislukt."
+      "transaction_filter_required": "Validatie mislukt.",
+      "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
+      "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten."
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

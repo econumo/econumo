@@ -14,23 +14,35 @@ import { IconPicker } from '@/components/IconPicker'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { defaultEnvelopeIcon } from '@/lib/icons'
 import { isNotEmpty } from '@/lib/validation'
-import type { BudgetElementDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { useCategories } from '@/features/classifications/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 
+// A structural subset of BudgetElementDto/PlanElementDto — both the budget
+// table and the plan sheet can pass their own element straight through,
+// with no adapter object needed.
+export interface EnvelopeDialogTarget {
+  id: Id
+  name: string
+  icon: string
+  currencyId: Id | null
+  isArchived: 0 | 1
+  children: { id: Id }[]
+}
+
 interface EnvelopeDialogProps {
   open: boolean
-  envelope?: BudgetElementDto | null
+  envelope?: EnvelopeDialogTarget | null
   budgetCurrencyId: Id
+  side: 'expense' | 'income'
   onClose: () => void
   onSubmit: (form: { name: string; icon: string; currencyId: Id; categories: Id[]; isArchived: 0 | 1 }) => void
 }
 
 const isValidEnvelopeName = (v: string) => v.length >= 3 && v.length <= 64
 
-export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSubmit }: EnvelopeDialogProps) {
+export function EnvelopeDialog({ open, envelope, budgetCurrencyId, side, onClose, onSubmit }: EnvelopeDialogProps) {
   const { t } = useTranslation()
   const { data: user } = useUserData()
   const { data: categories = [] } = useCategories()
@@ -58,8 +70,9 @@ export function EnvelopeDialog({ open, envelope, budgetCurrencyId, onClose, onSu
     }
   }, [open, envelope, budgetCurrencyId, user])
 
-  // the Vue envelope form offers non-archived EXPENSE categories only
-  const options = categories.filter((c) => c.isArchived === 0 && c.type === 'expense')
+  // a single dialog never mixes sides: the category picker offers only the
+  // side it was opened for (non-archived, matching type)
+  const options = categories.filter((c) => c.isArchived === 0 && c.type === side)
   const shownOptions = options.filter((c) => !categorySearch || fuzzyMatch(c.name, categorySearch))
 
   const submit = () => {

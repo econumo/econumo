@@ -8,5 +8,5 @@ export function HomePage() {
   if (!user) {
     return <div data-testid="home-placeholder" />
   }
-  return isOnboardingCompleted(user) ? <BudgetPage /> : <OnboardingPage />
+  return isOnboardingCompleted(user) ? <BudgetPage mode="budget" /> : <OnboardingPage />
 }

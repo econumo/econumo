@@ -2014,6 +2014,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/budget/get-budget-plan": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Budget"
+                ],
+                "summary": "Multi-month budget plan sheet",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Budget id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Window start (Y-m-d, snapped to first of month; defaults to the current month)",
+                        "name": "from",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Window length in months (1-24, default 12)",
+                        "name": "months",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetBudgetPlanResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/budget/get-transaction-list": {
             "get": {
                 "security": [
@@ -2071,6 +2146,12 @@ const docTemplate = `{
                         "type": "boolean",
                         "description": "Uncategorized bucket (mutually exclusive with categoryId)",
                         "name": "uncategorized",
+                        "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Transfers across the budget boundary (mutually exclusive with every other selector)",
+                        "name": "transfers",
                         "in": "query"
                     }
                 ],
@@ -9078,6 +9159,41 @@ const docTemplate = `{
                 }
             }
         },
+        "model.BudgetPlanResult": {
+            "type": "object",
+            "properties": {
+                "currencyRates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanMonthRatesResult"
+                    }
+                },
+                "meta": {
+                    "$ref": "#/definitions/model.MetaResult"
+                },
+                "months": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "openingBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "structure": {
+                    "$ref": "#/definitions/model.PlanStructureResult"
+                },
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
+                    }
+                }
+            }
+        },
         "model.BudgetResult": {
             "type": "object",
             "properties": {
@@ -9120,6 +9236,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "Direction is present only on rows of the transfers selector: \"out\" when\nthe included account is the source, \"in\" when it is the recipient —\nAmount/CurrencyId are that side's. Omitted on every other list so their\nbytes are unchanged.",
                     "type": "string"
                 },
                 "id": {
@@ -9510,6 +9630,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "side": {
+                    "description": "Side selects the envelope's (immutable) side: \"\" or \"expense\" (default).\n\"income\" is reserved for the plan view's income envelopes and currently\nrejected (see EnvelopeTypeFromSide).",
                     "type": "string"
                 }
             }
@@ -10130,6 +10254,14 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetBudgetPlanResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.BudgetPlanResult"
+                }
+            }
+        },
         "model.GetBudgetResult": {
             "type": "object",
             "properties": {
@@ -10681,6 +10813,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.OpeningBalanceResult": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.OptionResult": {
             "type": "object",
             "properties": {
@@ -10785,6 +10928,157 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanCellResult": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "string"
+                },
+                "planned": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanChildCellResult": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanChildResult": {
+            "type": "object",
+            "properties": {
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanChildCellResult"
+                    }
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PlanElementResult": {
+            "type": "object",
+            "properties": {
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanCellResult"
+                    }
+                },
+                "children": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanChildResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "folderId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PlanMonthRatesResult": {
+            "type": "object",
+            "properties": {
+                "period": {
+                    "type": "string"
+                },
+                "rates": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.AverageCurrencyRateResult"
+                    }
+                }
+            }
+        },
+        "model.PlanMonthTransfersResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanTransferResult"
+                    }
+                },
+                "period": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PlanStructureResult": {
+            "type": "object",
+            "properties": {
+                "elements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanElementResult"
+                    }
+                },
+                "folders": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.BudgetFolderResult"
+                    }
+                }
+            }
+        },
+        "model.PlanTransferResult": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "in": {
+                    "type": "string"
+                },
+                "out": {
                     "type": "string"
                 }
             }

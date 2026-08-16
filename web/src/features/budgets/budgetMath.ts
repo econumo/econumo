@@ -53,8 +53,11 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
   const folders = [...budget.structure.folders].sort((a, b) => a.position - b.position)
   const elements = budget.structure.elements
   // The uncategorized element is presentation-only (no persisted row to move or
-  // budget), so it is pulled out before bucketing and never joins a folder.
-  const uncategorizedElements = elements.filter((el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0)
+  // budget), so it is pulled out before bucketing and never joins a folder. It
+  // only earns a place when the selected month has uncategorized spend.
+  const uncategorizedElements = elements.filter(
+    (el) => el.id === UNCATEGORIZED_ID && el.isArchived === 0 && cmp(el.spent, '0') !== 0,
+  )
   const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
   const byPosition = (a: BudgetElementDto, b: BudgetElementDto) => a.position - b.position
 
@@ -119,6 +122,15 @@ export interface PeriodItem {
 
 export const MONTHS_AROUND = 23
 
+// The one month-label rule for every budget surface (period strip, plan sheet):
+// this year's months by full name only, any other year as "Mon YYYY".
+export function periodLabeler(lang: string, now: Date = new Date()): (d: Date) => string {
+  const currentYear = now.getFullYear()
+  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
+  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
+  return (d) => (d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`)
+}
+
 export function periodRange(
   selectedDate: string,
   startedAt: string | null,
@@ -127,17 +139,15 @@ export function periodRange(
   lang = 'en',
 ): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
-  const currentYear = new Date().getFullYear()
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
-  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
-  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
+  const label = periodLabeler(lang)
   const items: PeriodItem[] = []
   for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
     const d = new Date(y, m - 1 + offset, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
     items.push({
       value,
-      label: d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`,
+      label: label(d),
       isActive: offset === 0,
       outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
     })

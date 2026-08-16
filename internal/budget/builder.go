@@ -24,6 +24,7 @@ type filters struct {
 	includedAccountIDs     []vo.Id
 	currencyIDs            []vo.Id
 	categories             map[string]model.CategoryMeta // expense-only, keyed by id
+	incomeCategories       map[string]model.CategoryMeta // income-only; read by the plan builder ONLY
 	tags                   map[string]model.TagMeta
 	labels                 map[string]model.LabelMeta
 }
@@ -166,8 +167,11 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		return filters{}, err
 	}
 	catMap := map[string]model.CategoryMeta{}
+	incomeCatMap := map[string]model.CategoryMeta{}
 	for _, c := range cats {
-		if !c.IsIncome { // expense categories only
+		if c.IsIncome {
+			incomeCatMap[c.ID] = c
+		} else {
 			catMap[c.ID] = c
 		}
 	}
@@ -192,7 +196,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		periodStart: periodStart, periodEnd: periodEnd,
 		userIDs: userIDs, excludedAccountIDs: excludedForUser,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
-		categories: catMap, tags: tagMap, labels: labels,
+		categories: catMap, incomeCategories: incomeCatMap, tags: tagMap, labels: labels,
 	}, nil
 }
 

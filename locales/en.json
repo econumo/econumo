@@ -12,7 +12,7 @@
       "active_only": "Active only"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & Plan",
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Income",
+          "expenses": "Expenses",
+          "archived": "Archived"
+        },
+        "nav": {
+          "prev": "Earlier months",
+          "next": "Later months"
+        },
+        "cell": {
+          "aria": "{name}, {month}: actual {actual}, planned {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copy budget to the following months"
+        },
+        "totals": {
+          "income": "Income",
+          "expenses": "Expenses",
+          "transfers": "Transfers",
+          "transfers_tooltip": "In {in} · Out {out}",
+          "show_transactions": "Show transactions",
+          "net": "Net",
+          "balance": "Balance"
+        },
+        "density": {
+          "hide_empty": "Hide empty rows",
+          "hidden": "{count} hidden",
+          "show": "Show"
+        },
+        "menu": {
+          "move_to_folder": "Move to folder…",
+          "no_folder": "No folder"
+        },
+        "edit": {
+          "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",
+          "no_access_category": "You can't edit this category — it belongs to another user.",
+          "no_access_tag": "You can't edit this tag — it belongs to another user."
+        }
+      },
       "settings": {
-        "menu_item": "Budgets",
-        "header": "Budgets",
-        "info": "All your budgets live here. Create separate budgets for different goals and share them with your family.",
+        "menu_item": "Budgets & Plans",
+        "header": "Budgets & Plans",
+        "info": "All your budgets live here. Create budgets for different goals, share them with your family, and plan your budget for the months ahead.",
         "create_budget": "Create budget",
         "edit_modal": {
           "header": "Edit budget"
@@ -1362,7 +1406,9 @@
       "envelope_name_length": "Envelope name must be {min}-{max} characters",
       "invalid_element_type_alias": "BudgetElementType with alias {alias} not exists",
       "invalid_role_alias": "BudgetUserRole with alias {alias} not exists",
-      "transaction_filter_required": "Validation failed"
+      "transaction_filter_required": "Validation failed",
+      "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
+      "folder_side_mixed": "A folder cannot contain both income and expenses"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",

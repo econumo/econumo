@@ -1,0 +1,314 @@
+import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto } from '@/api/dto/budget'
+import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { CurrencyDto } from '@/api/dto/currency'
+import type { Id } from '@/api/types'
+import { compareNames } from '@/lib/collate'
+import { add, cmp, isZero, sub } from '@/lib/decimal'
+import { exchange } from '@/lib/exchange'
+import { periodLabeler } from './budgetMath'
+
+export function addMonths(month: string, delta: number): string {
+  const [y, m] = month.split('-').map(Number)
+  const d = new Date(y, m - 1 + delta, 1)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+export function monthDiff(a: string, b: string): number {
+  const [ay, am] = a.split('-').map(Number)
+  const [by, bm] = b.split('-').map(Number)
+  return (by - ay) * 12 + (bm - am)
+}
+
+export function currentMonth(now: Date = new Date()): string {
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+}
+
+// A plain "YYYY-MM-01" parses as UTC midnight; formatting that directly in the
+// caller's local zone can render the WRONG month west of UTC (e.g. Jun 30 for
+// a "2026-07-01" input). Build the Date from local components instead, mirroring
+// budgetMath's periodRange, so month formatting is zone-safe everywhere.
+export function monthDate(m: string): Date {
+  const [y, mo] = m.split('-').map(Number)
+  return new Date(y, mo - 1, 1)
+}
+
+export function formatPlanMonth(m: string, lang: string, now?: Date): string {
+  return periodLabeler(lang, now)(monthDate(m))
+}
+
+export const PLAN_NAME_COL_PX = 210
+export const PLAN_MIN_MONTH_COL_PX = 110
+/** the trailing track closing every row: the currency symbol always, plus the actions
+ *  menu in edit mode. Months must not be measured against space it occupies, or they
+ *  stretch and the visible window silently narrows. */
+export const PLAN_CURRENCY_COL_PX = 24
+export const PLAN_ACTIONS_COL_PX = 32
+
+/** the row's own chrome the grid template does not describe: px-2 either side, plus a
+ *  gap-1 between every track. Ignoring it made the row wider than its container, which
+ *  is what produced a horizontal scrollbar once the currency track was added. */
+const PLAN_ROW_PADDING_PX = 16
+const PLAN_TRACK_GAP_PX = 4
+
+export function planVisibleCount(containerWidthPx: number, editMode = false): number {
+  const tail = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
+  const fixed = PLAN_NAME_COL_PX + tail + PLAN_ROW_PADDING_PX
+  // n months means n + 2 tracks (name + months + tail), so n + 1 gaps
+  const perMonth = PLAN_MIN_MONTH_COL_PX + PLAN_TRACK_GAP_PX
+  const fit = Math.floor((containerWidthPx - fixed - PLAN_TRACK_GAP_PX) / perMonth)
+  return fit < 3 ? 1 : Math.min(fit, 12)
+}
+
+export function clampFirstMonth(firstMonth: string, startedAt: string): string {
+  const startMonth = `${startedAt.slice(0, 7)}-01`
+  return firstMonth < startMonth ? startMonth : firstMonth
+}
+
+/** Excel fill: the column the drag currently targets. Right-only — never
+ *  before startCol; clamped to the last visible column; a degenerate
+ *  colWidth (<= 0) stays on the source. */
+export function fillTargetCol(startCol: number, deltaX: number, colWidth: number, lastCol: number): number {
+  if (colWidth <= 0) {
+    return startCol
+  }
+  const target = startCol + Math.round(deltaX / colWidth)
+  return Math.min(Math.max(target, startCol), lastCol)
+}
+
+export function planInitialFirstMonth(persisted: string | null, startedAt: string, visible: number, now?: Date): string {
+  const base = persisted !== null ? persisted : visible === 1 ? currentMonth(now) : addMonths(currentMonth(now), -1)
+  return clampFirstMonth(base, startedAt)
+}
+
+export interface PlanRow {
+  element: PlanElementDto
+  hidden: boolean
+}
+export interface PlanFolderSection {
+  folder: BudgetFolderDto
+  rows: PlanRow[]
+}
+export interface PlanRows {
+  income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  /** member-less folders: they belong to neither side yet, so they sit between the
+   *  two bands (header-only) until a move gives them one */
+  neutral: PlanFolderSection[]
+  expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  archived: PlanRow[]
+}
+
+const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')
+
+// Shared by the folder section renderer and the keyboard grid's flat row list, so
+// which rows are on screen and which rows Up/Down can reach can never diverge.
+export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: boolean, revealed: boolean): PlanRow[] {
+  if (folded) {
+    return []
+  }
+  return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
+}
+
+/** the overspend highlight: an expense actual past its plan, in ANY month — an
+ *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
+export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefined): boolean {
+  if (!cell || isIncomeType(type)) {
+    return false
+  }
+  return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
+}
+
+/** the underspend highlight: a PAST month whose plan the actual stayed under — the
+ *  current and future months are still open, so being under plan there means nothing
+ *  yet. Never true without a plan (unset = 0), and never on the income side. */
+export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
+  if (!cell || isIncomeType(type) || month >= cur) {
+    return false
+  }
+  return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
+}
+
+type Side = 'income' | 'expense'
+const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' : 'expense')
+
+export type FolderSide = Side | 'neutral'
+
+// A folder's side follows its members: any income member -> income, any
+// expense member -> expense, no members -> neutral. Archived members count
+// too, matching the backend's folderSide (internal/budget/move.go) — a
+// folder holding only an archived income category is still income-sided.
+// Shared with the row-menu "Move to folder…" target list so the two can't
+// diverge, and so plan-view bucketing agrees with what the server will accept.
+export function folderSides(plan: BudgetPlanDto): Map<Id, FolderSide> {
+  const members = plan.structure.elements.filter((el) => el.id !== UNCATEGORIZED_ID)
+  const sides = new Map<Id, FolderSide>()
+  for (const folder of plan.structure.folders) {
+    const inFolder = members.filter((el) => el.folderId === folder.id)
+    if (inFolder.length === 0) {
+      sides.set(folder.id, 'neutral')
+    } else {
+      sides.set(folder.id, inFolder.some((el) => sideOf(el) === 'income') ? 'income' : 'expense')
+    }
+  }
+  return sides
+}
+
+export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRows {
+  const folders = [...plan.structure.folders].sort((a, b) => a.position - b.position)
+  const elements = plan.structure.elements
+
+  const archived = elements
+    .filter((el) => el.isArchived === 1)
+    .map((el) => ({ element: el, hidden: false }))
+    .sort((a, b) => compareNames(a.element.name, b.element.name))
+
+  const active = elements.filter((el) => el.isArchived === 0 && el.id !== UNCATEGORIZED_ID)
+  const uncategorized = elements.filter((el) => el.isArchived === 0 && el.id === UNCATEGORIZED_ID)
+  const uncategorizedFor = (side: Side): PlanRow | null => {
+    const el = uncategorized.find((e) => sideOf(e) === side)
+    return el ? { element: el, hidden: false } : null
+  }
+
+  const folderSide = folderSides(plan)
+
+  const toRow = (el: PlanElementDto): PlanRow => ({ element: el, hidden: isRowHidden(el) })
+  const keep = (rows: PlanRow[]): PlanRow[] => (hideEmpty ? rows.filter((r) => !r.hidden) : rows)
+  const countHidden = (rows: PlanRow[]): number => rows.filter((r) => r.hidden).length
+
+  const sectionsFor = (side: Side): { folders: PlanFolderSection[]; loose: PlanRow[]; hiddenCount: number } => {
+    let hiddenCount = 0
+    const folderSections = folders
+      .filter((f) => folderSide.get(f.id) === side)
+      .map((folder) => {
+        const rows = active
+          .filter((el) => el.folderId === folder.id)
+          .sort((a, b) => a.position - b.position)
+          .map(toRow)
+        hiddenCount += countHidden(rows)
+        return { folder, rows: keep(rows) }
+      })
+    const looseRows = active
+      .filter((el) => el.folderId === null && sideOf(el) === side)
+      .sort((a, b) => a.position - b.position)
+      .map(toRow)
+    hiddenCount += countHidden(looseRows)
+    return { folders: folderSections, loose: keep(looseRows), hiddenCount }
+  }
+
+  const income = sectionsFor('income')
+  const expense = sectionsFor('expense')
+  const neutral = folders.filter((f) => folderSide.get(f.id) === 'neutral').map((folder) => ({ folder, rows: [] }))
+
+  return {
+    income: { ...income, uncategorized: uncategorizedFor('income') },
+    neutral,
+    expense: { ...expense, uncategorized: uncategorizedFor('expense') },
+    archived,
+  }
+}
+
+export interface PlanMonthTotals {
+  incomeActual: string
+  incomePlanned: string
+  expenseActual: string
+  expensePlanned: string
+  netActual: string
+  netPlanned: string
+  /** per-cell max(actual, planned) summed; past months = actual */
+  effectiveIncome: string
+  /** same accumulation as effectiveIncome, expense side */
+  effectiveExpense: string
+  /** per-element-cell max(actual, planned): the Balance row's contribution */
+  effectiveNet: string
+  /** actual uncategorized expense less actual uncategorized income — unassigned
+   *  money is only ever real spend, so this line ignores plans entirely */
+  uncategorizedActual: string
+  /** transfers that crossed the budget boundary this month, in budget currency:
+   *  in = moved into included accounts, out = moved out. Never planned. */
+  transfersIn: string
+  transfersOut: string
+  /** in − out: the Transfers line, and a term of Net / Balance */
+  transfersNet: string
+}
+
+export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
+
+export function makePlanExchange(plan: BudgetPlanDto, currencies: CurrencyDto[]): MonthExchange {
+  return (from, amount, i) => {
+    const monthRates = plan.currencyRates[i]
+    const rates = (monthRates?.rates ?? []).map((r) => ({ ...r, updatedAt: r.periodStart }))
+    return exchange(from, plan.meta.currencyId, amount, rates, currencies)
+  }
+}
+
+export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
+  const cur = currentMonth(now)
+  const rows = plan.structure.elements
+  const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
+  return plan.months.map((month, i) => {
+    let transfersIn = '0'
+    let transfersOut = '0'
+    for (const tr of transfersByMonth.get(month) ?? []) {
+      transfersIn = add(transfersIn, ex(tr.currencyId, tr.in, i))
+      transfersOut = add(transfersOut, ex(tr.currencyId, tr.out, i))
+    }
+    const transfersNet = sub(transfersIn, transfersOut)
+    let incomeActual = '0'
+    let incomePlanned = '0'
+    let expenseActual = '0'
+    let expensePlanned = '0'
+    let effIncome = '0'
+    let effExpense = '0'
+    let uncatIncome = '0'
+    let uncatExpense = '0'
+    for (const el of rows) {
+      const cell = el.cells[i]
+      if (!cell) {
+        continue
+      }
+      const actual = ex(el.currencyId, cell.actual, i)
+      const planned = ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i)
+      const isPast = month < cur
+      // per-cell effective value: overspend keeps its actual, underspend keeps its plan
+      const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
+      if (isIncomeType(el.type)) {
+        incomeActual = add(incomeActual, actual)
+        if (el.isArchived === 0) incomePlanned = add(incomePlanned, planned)
+        effIncome = add(effIncome, el.isArchived === 0 ? effective : actual)
+        if (el.id === UNCATEGORIZED_ID) uncatIncome = add(uncatIncome, actual)
+      } else {
+        expenseActual = add(expenseActual, actual)
+        if (el.isArchived === 0) expensePlanned = add(expensePlanned, planned)
+        effExpense = add(effExpense, el.isArchived === 0 ? effective : actual)
+        if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
+      }
+    }
+    // Net carries the boundary transfers so the Balance row (which chains on
+    // effectiveNet) reflects money that really left or entered the budget's
+    // accounts — and Balance[m] − Balance[m−1] stays exactly the Net line.
+    // Planned figures never include them: a transfer has no plan.
+    return {
+      incomeActual,
+      incomePlanned,
+      expenseActual,
+      expensePlanned,
+      netActual: add(sub(incomeActual, expenseActual), transfersNet),
+      netPlanned: sub(incomePlanned, expensePlanned),
+      effectiveIncome: effIncome,
+      effectiveExpense: effExpense,
+      effectiveNet: add(sub(effIncome, effExpense), transfersNet),
+      uncategorizedActual: sub(uncatExpense, uncatIncome),
+      transfersIn,
+      transfersOut,
+      transfersNet,
+    }
+  })
+}
+
+export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
+  void now
+  let running = plan.openingBalances.reduce((acc, b) => add(acc, ex(b.currencyId, b.amount, 0)), '0')
+  return totals.map((t) => {
+    running = add(running, t.effectiveNet)
+    return running
+  })
+}
