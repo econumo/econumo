@@ -106,10 +106,7 @@ export function TagsPage() {
         // same kind only: tags and labels are different entities with different
         // endpoints, and the two are interleaved in this one list
         candidates={rows.filter((row) => row.kind === mergeSource?.kind)}
-        warning={t(
-          mergeSource?.kind === 'label' ? 'classifications.common.merge.warning_label' : 'classifications.common.merge.warning',
-          { name: mergeSource?.name ?? '' },
-        )}
+        warning={t('classifications.common.merge.warning', { name: mergeSource?.name ?? '' })}
         info={mergeSource?.kind === 'tag' ? t('classifications.common.merge.envelope_info') : undefined}
         showIcon
         onClose={() => setMergeSource(null)}

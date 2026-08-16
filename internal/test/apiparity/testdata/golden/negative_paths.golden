@@ -17,10 +17,10 @@
 {"success":false,"message":"Form validation error","code":400,"errors":{"value":["This value is not a valid UUID."]}}
 
 == err:merge-category-into-itself POST /api/v1/category/merge-category [owner] -> 400
-{"success":false,"message":"Categories cannot be merged","code":400,"errors":{}}
+{"success":false,"message":"The selected categories cannot be merged","code":400,"errors":{}}
 
 == err:merge-category-across-types POST /api/v1/category/merge-category [owner] -> 400
-{"success":false,"message":"Categories cannot be merged","code":400,"errors":{}}
+{"success":false,"message":"The selected categories cannot be merged","code":400,"errors":{}}
 
 == err:merge-category-foreign-target POST /api/v1/category/merge-category [guest] -> 400
 {"success":false,"message":"Category not found","code":400,"errors":{}}

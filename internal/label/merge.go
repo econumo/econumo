@@ -30,7 +30,7 @@ func (s *Service) MergeLabel(ctx context.Context, userID vo.Id, req model.MergeL
 		return nil, err
 	}
 
-	cannotMerge := &errs.ValidationError{Msg: "Labels cannot be merged", MsgCode: errs.CodeLabelCannotBeMerged}
+	cannotMerge := &errs.ValidationError{Msg: "The selected tags cannot be merged", MsgCode: errs.CodeLabelCannotBeMerged}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		source, gerr := s.repo.GetByID(txCtx, sourceID)

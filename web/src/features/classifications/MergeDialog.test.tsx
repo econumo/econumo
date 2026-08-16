@@ -14,7 +14,7 @@ function renderDialog(props: Partial<Parameters<typeof MergeDialog>[0]> = {}) {
       open
       source={food}
       candidates={[food, groceries]}
-      warning="Everything moves. This cannot be undone."
+      warning="All transactions from “Food” will be moved, and “Food” will be deleted."
       onClose={onClose}
       onConfirm={onConfirm}
       {...props}
@@ -53,9 +53,11 @@ it('keeps the confirm disabled until a target is picked', async () => {
   expect(onConfirm).not.toHaveBeenCalled()
 })
 
-it('shows the warning about what the merge does', () => {
+// The copy names the deletion explicitly — that IS the irreversibility warning,
+// so it must survive any rewording of the string.
+it('shows the warning naming what moves and what is deleted', () => {
   renderDialog()
-  expect(screen.getByText(/cannot be undone/i)).toBeInTheDocument()
+  expect(screen.getByText(/will be moved.*will be deleted/i)).toBeInTheDocument()
 })
 
 it('filters candidates by the search field', async () => {

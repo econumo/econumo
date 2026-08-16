@@ -1010,9 +1010,8 @@
         "action": "合并到…",
         "title": "将“{name}”合并到",
         "confirm": "合并",
-        "warning": "使用“{name}”的所有交易和定期交易将转移到所选项目，并删除“{name}”。此操作无法撤销。",
-        "warning_label": "带有“{name}”标签的所有交易和定期交易将改用所选标签，并删除“{name}”。此操作无法撤销。",
-        "envelope_info": "预算限额会相加。如果两者位于不同的信封中，请先调整预算。"
+        "warning": "“{name}”的所有交易将被移动，并删除“{name}”。",
+        "envelope_info": "如果两者位于不同的信封中，请先更新预算，以免丢失已计划的金额，因为合并时限额会相加。"
       }
     },
     "categories": {
@@ -1378,7 +1377,7 @@
       "name_length": "分类名称需为 {min}-{max} 个字符。",
       "type_invalid": "指定的分类类型不存在。",
       "not_found": "未找到该分类。",
-      "cannot_be_merged": "无法合并分类。",
+      "cannot_be_merged": "无法合并所选分类。",
       "list_empty": "分类列表为空。"
     },
     "connection": {
@@ -1401,19 +1400,19 @@
     },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
-      "cannot_be_merged": "无法合并标签。",
+      "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
-      "cannot_be_merged": "无法合并收款人。",
+      "cannot_be_merged": "无法合并所选收款人。",
       "list_empty": "收款人列表为空。"
     },
     "tag": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "already_exists": "该标签已存在。",
-      "cannot_be_merged": "无法合并标签。",
+      "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
     "token": {

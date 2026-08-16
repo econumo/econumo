@@ -32,7 +32,7 @@ func (s *Service) MergeCategory(ctx context.Context, userID vo.Id, req model.Mer
 		return nil, err
 	}
 
-	cannotMerge := &errs.ValidationError{Msg: "Categories cannot be merged", MsgCode: errs.CodeCategoryCannotBeMerged}
+	cannotMerge := &errs.ValidationError{Msg: "The selected categories cannot be merged", MsgCode: errs.CodeCategoryCannotBeMerged}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		source, gerr := s.repo.GetByID(txCtx, sourceID)

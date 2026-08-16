@@ -29,7 +29,7 @@ func (s *Service) MergeTag(ctx context.Context, userID vo.Id, req model.MergeTag
 		return nil, err
 	}
 
-	cannotMerge := &errs.ValidationError{Msg: "Tags cannot be merged", MsgCode: errs.CodeTagCannotBeMerged}
+	cannotMerge := &errs.ValidationError{Msg: "The selected tags cannot be merged", MsgCode: errs.CodeTagCannotBeMerged}
 
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		source, gerr := s.repo.GetByID(txCtx, sourceID)

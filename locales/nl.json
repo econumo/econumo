@@ -1010,9 +1010,8 @@
         "action": "Samenvoegen met…",
         "title": "‘{name}’ samenvoegen met",
         "confirm": "Samenvoegen",
-        "warning": "Alle transacties en terugkerende transacties met ‘{name}’ gaan naar het gekozen item en ‘{name}’ wordt verwijderd. Dit kan niet ongedaan worden gemaakt.",
-        "warning_label": "Alle transacties en terugkerende transacties met de tag ‘{name}’ krijgen de gekozen tag en ‘{name}’ wordt verwijderd. Dit kan niet ongedaan worden gemaakt.",
-        "envelope_info": "Budgetlimieten worden bij elkaar opgeteld. Staan ze in verschillende enveloppen, pas dan eerst je budget aan."
+        "warning": "Alle transacties van ‘{name}’ worden verplaatst en ‘{name}’ wordt verwijderd.",
+        "envelope_info": "Staan beide in verschillende enveloppen, werk dan eerst je budget bij zodat je geplande bedragen niet verloren gaan — bij het samenvoegen worden de limieten opgeteld."
       }
     },
     "categories": {
@@ -1378,7 +1377,7 @@
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
       "type_invalid": "Het opgegeven categorietype bestaat niet.",
       "not_found": "Categorie niet gevonden.",
-      "cannot_be_merged": "Categorieën kunnen niet worden samengevoegd.",
+      "cannot_be_merged": "De geselecteerde categorieën kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met categorieën is leeg."
     },
     "connection": {
@@ -1401,19 +1400,19 @@
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
-      "cannot_be_merged": "Tags kunnen niet worden samengevoegd.",
+      "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
-      "cannot_be_merged": "Begunstigden kunnen niet worden samengevoegd.",
+      "cannot_be_merged": "De geselecteerde begunstigden kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met begunstigden is leeg."
     },
     "tag": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze tag bestaat al.",
-      "cannot_be_merged": "Tags kunnen niet worden samengevoegd.",
+      "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
     "token": {

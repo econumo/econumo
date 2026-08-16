@@ -42,14 +42,14 @@ func (s *Service) MergePayee(ctx context.Context, userID vo.Id, req model.MergeP
 			return errs.NewNotFound("Payee not found")
 		}
 		if sourceID.Equal(targetID) {
-			return &errs.ValidationError{Msg: "Payees cannot be merged", MsgCode: errs.CodePayeeCannotBeMerged}
+			return &errs.ValidationError{Msg: "The selected payees cannot be merged", MsgCode: errs.CodePayeeCannotBeMerged}
 		}
 		target, terr := s.repo.GetByID(txCtx, targetID)
 		if terr != nil {
 			return terr
 		}
 		if !target.UserID.Equal(userID) {
-			return &errs.ValidationError{Msg: "Payees cannot be merged", MsgCode: errs.CodePayeeCannotBeMerged}
+			return &errs.ValidationError{Msg: "The selected payees cannot be merged", MsgCode: errs.CodePayeeCannotBeMerged}
 		}
 
 		if rerr := s.repo.ReassignTransactions(txCtx, sourceID, targetID); rerr != nil {

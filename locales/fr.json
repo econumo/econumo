@@ -1010,9 +1010,8 @@
         "action": "Fusionner avec…",
         "title": "Fusionner « {name} » avec",
         "confirm": "Fusionner",
-        "warning": "Toutes les transactions et transactions récurrentes utilisant « {name} » seront transférées vers l’élément choisi, et « {name} » sera supprimé. Cette action est irréversible.",
-        "warning_label": "Toutes les transactions et transactions récurrentes portant le tag « {name} » recevront le tag choisi, et « {name} » sera supprimé. Cette action est irréversible.",
-        "envelope_info": "Les limites budgétaires sont additionnées. Si les deux se trouvent dans des enveloppes différentes, ajustez d’abord votre budget."
+        "warning": "Toutes les transactions de « {name} » seront déplacées, et « {name} » sera supprimé.",
+        "envelope_info": "Si les deux se trouvent dans des enveloppes différentes, mettez d’abord à jour votre budget pour ne pas perdre vos montants planifiés, car les limites sont additionnées lors de la fusion."
       }
     },
     "categories": {
@@ -1378,7 +1377,7 @@
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",
       "type_invalid": "Ce type de catégorie n’existe pas.",
       "not_found": "Catégorie introuvable.",
-      "cannot_be_merged": "Les catégories ne peuvent pas être fusionnées.",
+      "cannot_be_merged": "Les catégories sélectionnées ne peuvent pas être fusionnées.",
       "list_empty": "La liste des catégories est vide."
     },
     "connection": {
@@ -1401,19 +1400,19 @@
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
-      "cannot_be_merged": "Les tags ne peuvent pas être fusionnés.",
+      "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",
-      "cannot_be_merged": "Les bénéficiaires ne peuvent pas être fusionnés.",
+      "cannot_be_merged": "Les bénéficiaires sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des bénéficiaires est vide."
     },
     "tag": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce tag existe déjà.",
-      "cannot_be_merged": "Les tags ne peuvent pas être fusionnés.",
+      "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
     "token": {

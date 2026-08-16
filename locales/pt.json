@@ -1010,9 +1010,8 @@
         "action": "Mesclar com…",
         "title": "Mesclar “{name}” com",
         "confirm": "Mesclar",
-        "warning": "Todas as transações e transações recorrentes que usam “{name}” passarão para o item escolhido, e “{name}” será excluído. Não é possível desfazer.",
-        "warning_label": "Todas as transações e transações recorrentes com a etiqueta “{name}” receberão a etiqueta escolhida, e “{name}” será excluído. Não é possível desfazer.",
-        "envelope_info": "Os limites do orçamento são somados. Se os dois estiverem em envelopes diferentes, ajuste o orçamento primeiro."
+        "warning": "Todas as transações de “{name}” serão movidas e “{name}” será excluído.",
+        "envelope_info": "Se os dois estiverem em envelopes diferentes, atualize primeiro o seu orçamento para não perder os valores planejados, pois ao mesclar os limites são somados."
       }
     },
     "categories": {
@@ -1378,7 +1377,7 @@
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",
       "type_invalid": "O tipo de categoria não existe.",
       "not_found": "Categoria não encontrada.",
-      "cannot_be_merged": "As categorias não podem ser mescladas.",
+      "cannot_be_merged": "As categorias selecionadas não podem ser mescladas.",
       "list_empty": "A lista de categorias está vazia."
     },
     "connection": {
@@ -1401,19 +1400,19 @@
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
-      "cannot_be_merged": "As etiquetas não podem ser mescladas.",
+      "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",
-      "cannot_be_merged": "Os beneficiários não podem ser mesclados.",
+      "cannot_be_merged": "Os beneficiários selecionados não podem ser mesclados.",
       "list_empty": "A lista de beneficiários está vazia."
     },
     "tag": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "already_exists": "A etiqueta já existe.",
-      "cannot_be_merged": "As etiquetas não podem ser mescladas.",
+      "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
     "token": {
