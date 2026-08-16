@@ -12,7 +12,7 @@
       "active_only": "Apenas ativos"
     },
     "nav": {
-      "budget": "Orçamento",
+      "budget": "Orçamento e plano",
       "onboarding": "Primeiros passos",
       "create_account": "Adicionar conta",
       "collapse_menu": "Recolher menu",
@@ -1017,9 +1017,9 @@
         }
       },
       "settings": {
-        "menu_item": "Orçamentos",
-        "header": "Orçamentos",
-        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos separados para objetivos diferentes e partilhe-os com a sua família.",
+        "menu_item": "Orçamentos e planos",
+        "header": "Orçamentos e planos",
+        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos separados para objetivos diferentes, partilhe-os com a sua família e faça a gestão do plano de cada orçamento para os próximos meses.",
         "create_budget": "Criar orçamento",
         "edit_modal": {
           "header": "Editar orçamento"

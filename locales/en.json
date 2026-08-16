@@ -12,7 +12,7 @@
       "active_only": "Active only"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & Plan",
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",
@@ -1017,9 +1017,9 @@
         }
       },
       "settings": {
-        "menu_item": "Budgets",
-        "header": "Budgets",
-        "info": "All your budgets live here. Create separate budgets for different goals and share them with your family.",
+        "menu_item": "Budgets & Plans",
+        "header": "Budgets & Plans",
+        "info": "All your budgets live here. Create separate budgets for different goals, share them with your family, and manage each budget’s plan for the months ahead.",
         "create_budget": "Create budget",
         "edit_modal": {
           "header": "Edit budget"

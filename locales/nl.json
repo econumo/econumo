@@ -12,7 +12,7 @@
       "active_only": "Alleen actieve"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & plan",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -1017,9 +1017,9 @@
         }
       },
       "settings": {
-        "menu_item": "Budgetten",
-        "header": "Budgetten",
-        "info": "Hier staan al uw budgetten. Maak aparte budgetten voor verschillende doelen en deel ze met uw gezin.",
+        "menu_item": "Budgetten & plannen",
+        "header": "Budgetten & plannen",
+        "info": "Hier staan al uw budgetten. Maak aparte budgetten voor verschillende doelen, deel ze met uw gezin en beheer voor elk budget een plan voor de komende maanden.",
         "create_budget": "Budget aanmaken",
         "edit_modal": {
           "header": "Budget bewerken"

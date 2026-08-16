@@ -12,7 +12,7 @@
       "active_only": "Tylko aktywne"
     },
     "nav": {
-      "budget": "Budżet",
+      "budget": "Budżet i plan",
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
@@ -1017,9 +1017,9 @@
         }
       },
       "settings": {
-        "menu_item": "Budżety",
-        "header": "Budżety",
-        "info": "Tutaj znajdziesz wszystkie swoje budżety. Twórz osobne budżety na różne cele i udostępniaj je rodzinie.",
+        "menu_item": "Budżety i plany",
+        "header": "Budżety i plany",
+        "info": "Tutaj znajdziesz wszystkie swoje budżety. Twórz osobne budżety na różne cele, udostępniaj je rodzinie i zarządzaj planem każdego budżetu na kolejne miesiące.",
         "create_budget": "Utwórz budżet",
         "edit_modal": {
           "header": "Edytuj budżet"
