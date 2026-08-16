@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget",
+      "plan": "Plan",
       "onboarding": "Getting started",
       "create_account": "Add account",
       "collapse_menu": "Collapse menu",

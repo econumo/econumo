@@ -94,6 +94,7 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   // user block + nav
   expect(screen.getByText('Ada')).toBeInTheDocument()
   expect(screen.getByText('Budget')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Plan' })).toHaveAttribute('href', '/plan')
   expect(screen.getByText('Settings')).toBeInTheDocument()
 })
 
@@ -203,6 +204,18 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
   expect(await screen.findByText('Cash')).toBeInTheDocument()
   expect(screen.getByText('Ada')).toBeInTheDocument()
+})
+
+it('the icon rail carries Budget and Plan icon links', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Plan')).not.toBeInTheDocument()
+  expect(screen.getByTitle('Budget')).toHaveAttribute('href', '/budget')
+  expect(screen.getByTitle('Plan')).toHaveAttribute('href', '/plan')
 })
 
 it('compact viewport shows only the sidebar at / and only the workspace elsewhere', async () => {
