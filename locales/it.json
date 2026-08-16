@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Budget",
+      "plan": "Piano",
       "onboarding": "Per iniziare",
       "create_account": "Aggiungi conto",
       "collapse_menu": "Comprimi il menu",
@@ -973,10 +974,6 @@
         }
       },
       "plan": {
-        "toggle": {
-          "budget": "Budget",
-          "plan": "Piano"
-        },
         "section": {
           "income": "Entrate",
           "expenses": "Uscite",

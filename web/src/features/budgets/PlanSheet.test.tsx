@@ -70,9 +70,15 @@ function mockCompactViewport() {
   }))
 }
 
-function renderPage() {
+function renderPage(initialPath: '/plan' | '/budget' = '/plan') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const router = createMemoryRouter([{ path: '/budget', element: <BudgetPage /> }], { initialEntries: ['/budget'] })
+  const router = createMemoryRouter(
+    [
+      { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
+    ],
+    { initialEntries: [initialPath] },
+  )
   const result = render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -100,19 +106,15 @@ beforeEach(() => {
     selectedDate: '2026-07-01',
     unfoldedElements: {},
     foldBudgetId: null,
-    budgetMode: 'budget',
     planFirstMonth: null,
     planFolds: {},
     planHideEmpty: false,
   })
 })
 
-it('toggle switches to plan mode and renders the sheet: months, income on top, cells', async () => {
+it('/plan renders the sheet: months, income on top, cells', async () => {
   usePlanHandlers()
-  const user = userEvent.setup()
   renderPage()
-  await screen.findByRole('tablist', { name: 'period' })
-  await user.click(screen.getByRole('tab', { name: /plan/i }))
   await screen.findByText(/jul/i)
   const income = screen.getByTestId('plan-section-income')
   const firstExpense = screen.getByTestId('plan-section-expense')
@@ -129,7 +131,6 @@ it('arrows shift the window by one month, clamped at the budget start', async ()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByText(/jan/i)
   const prev = screen.getByRole('button', { name: 'Earlier months' })
   const next = screen.getByRole('button', { name: 'Later months' })
@@ -144,11 +145,10 @@ it('arrows shift the window by one month, clamped at the budget start', async ()
   expect(screen.getByRole('button', { name: 'Earlier months' })).toBeDisabled()
 })
 
-it('mode and first month persist in the store', async () => {
+it('the plan window position survives a remount', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   const { unmount } = renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Later months' }))
   const monthAfterNav = useBudgetPeriodStore.getState().planFirstMonth
@@ -156,17 +156,8 @@ it('mode and first month persist in the store', async () => {
   unmount()
 
   renderPage()
-  expect(useBudgetPeriodStore.getState().budgetMode).toBe('plan')
   expect(useBudgetPeriodStore.getState().planFirstMonth).toBe(monthAfterNav)
   await screen.findByTestId('plan-sheet')
-})
-
-it('setBudgetMode fires BUDGET_PLAN_OPEN once switching to plan, not on a no-op switch', () => {
-  useBudgetPeriodStore.getState().setBudgetMode('plan')
-  expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_OPEN)
-  expect(trackEvent).toHaveBeenCalledTimes(1)
-  useBudgetPeriodStore.getState().setBudgetMode('plan')
-  expect(trackEvent).toHaveBeenCalledTimes(1)
 })
 
 it('setPlanFirstMonth fires BUDGET_PLAN_CHANGE_WINDOW', () => {
@@ -190,7 +181,6 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // pe1's second visible column (Jul/Aug/Sep window -> Aug)
@@ -208,9 +198,7 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
 it('totals block renders one effective value per cell for income/expenses/net, and the running balance', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const totalsBlock = screen.getByTestId('plan-totals')
@@ -253,7 +241,6 @@ it('folding a section header collapses its rows and persists', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   const { unmount } = renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
@@ -263,7 +250,6 @@ it('folding a section header collapses its rows and persists', async () => {
 
   unmount()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
 })
@@ -286,7 +272,6 @@ it('clicking anywhere on a folder header row toggles the fold, but its own contr
   useBudgetPeriodStore.setState({ planHideEmpty: true })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const folder = screen.getByTestId('plan-folder-bf1')
@@ -339,7 +324,6 @@ it('edit mode: a folder header menu renames the folder, and deletes it only when
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // read-only: no folder menus
@@ -376,7 +360,6 @@ it('hide-empty removes dormant rows, shows the per-section count, Show reveals t
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
@@ -395,7 +378,6 @@ it('the hide-empty toggle fires its metric once, not double-fired by the sheet',
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   vi.mocked(trackEvent).mockClear()
@@ -421,7 +403,6 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // guest role: pe1 would normally be editable for the owner, but not here
@@ -448,7 +429,6 @@ it('scrolls a keyboard-selected row back into view, clearing the sticky balance 
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   const grid = await screen.findByTestId('plan-sheet')
 
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
@@ -475,7 +455,6 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   const grid = screen.getByTestId('plan-sheet')
 
@@ -523,7 +502,6 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   const grid = screen.getByTestId('plan-sheet')
 
@@ -556,7 +534,6 @@ it('cells expose the aria label and aria-selected', async () => {
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // window is Jun/Jul/Aug; pe1's second visible column is Jul (actual 45, planned 250)
@@ -587,7 +564,6 @@ it('keystrokes inside the popover editor reach it, not the grid: ArrowLeft moves
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   const grid = screen.getByTestId('plan-sheet')
 
@@ -616,7 +592,6 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles ex
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   const grid = screen.getByTestId('plan-sheet')
 
@@ -679,7 +654,6 @@ it('Enter on a highlighted envelope, category, or tag opens its edit dialog when
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // envelope (owner role) -> the envelope dialog, prefilled, and it saves through update-envelope
@@ -726,7 +700,6 @@ it('Enter on a highlighted child category opens the category dialog too', async 
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-cell-cat-rent:0')
 
   await selectNameCell(user, 'cat-rent:1')
@@ -756,7 +729,6 @@ it('Enter without the right to edit explains why in a toast instead of opening a
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const expected: [string, string | null][] = [
@@ -787,7 +759,7 @@ it('budget-mode envelope dialog still offers expense categories only', async () 
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
   )
   const user = userEvent.setup()
-  renderPage()
+  renderPage('/budget')
   await user.click(await screen.findByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
   await user.click(await screen.findByRole('button', { name: 'create envelope Default folder' }))
@@ -802,7 +774,6 @@ it('clicking a cell focuses the grid so arrow keys work immediately, no manual f
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   await user.click(screen.getByTestId('plan-cell-pe1:0'))
@@ -817,7 +788,6 @@ it('the selected cell gets a visible focus ring', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const cell = screen.getByTestId('plan-cell-pe1:0')
@@ -830,7 +800,6 @@ it('grid structure: sections are rowgroups, the month header sits outside the gr
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const grid = screen.getByTestId('plan-sheet')
@@ -862,7 +831,6 @@ it('a failed plan fetch shows the error state instead of a blank area, and retry
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-error')
 
   await user.click(screen.getByRole('button', { name: 'Try again' }))
@@ -874,7 +842,6 @@ it('ArrowLeft at the name cell does not page the window past the budget start', 
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   const grid = screen.getByTestId('plan-sheet')
 
@@ -904,7 +871,6 @@ it('a folder with no elements renders header-only in its own band between income
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const income = screen.getByTestId('plan-section-income')
@@ -952,7 +918,6 @@ it('in edit mode, empty folders reorder among themselves inside the neutral band
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -992,7 +957,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     // window is Jun/Jul/Aug; pe1's col0 (Jun) has planned '200'
@@ -1026,7 +990,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     await user.click(screen.getByTestId('plan-cell-tag1:0'))
@@ -1057,7 +1020,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     // window is Jun/Jul/Aug; drag pe1's col0 (Jun, planned '200') two columns right
@@ -1105,7 +1067,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     await user.click(screen.getByTestId('plan-cell-pe1:0'))
@@ -1138,7 +1099,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     await user.click(screen.getByTestId('plan-cell-pe1:0'))
@@ -1175,7 +1135,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     // window is Jun/Jul/Aug (3 visible columns, jsdom floors to the width=0 case);
@@ -1215,7 +1174,6 @@ describe('fill handle', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     const cell = screen.getByTestId('plan-cell-pe1:0')
@@ -1254,8 +1212,7 @@ describe('fill handle', () => {
   it('compact mode: the fill handle does not render on a selected editable cell', async () => {
     mockCompactViewport()
     usePlanHandlers()
-    // compact headers carry no Budget/Plan tabs — the mode switch sits in the settings menu
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', budgetMode: 'plan' })
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
     await screen.findByTestId('plan-sheet')
@@ -1275,7 +1232,6 @@ describe('income/expense split', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     const expenseSection = screen.getByTestId('plan-section-expense')
@@ -1319,7 +1275,6 @@ describe('income/expense split', () => {
     usePlanHandlers()
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     await user.click(screen.getByRole('button', { name: 'Configure' }))
@@ -1342,9 +1297,7 @@ describe('income/expense split', () => {
 
   it('separates the bands with a gap, not a rule', async () => {
     usePlanHandlers()
-    const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     expect(screen.getByTestId('plan-section-income').classList.contains('plan-band-income')).toBe(true)
@@ -1372,7 +1325,6 @@ describe('income/expense split', () => {
     useBudgetPeriodStore.setState({ planFirstMonth: '2026-07-01' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
     const grid = screen.getByTestId('plan-sheet')
 
@@ -1398,9 +1350,7 @@ describe('income/expense split', () => {
 it('scrolls the income/expenses/net trio and pins only the balance row', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   const totals = screen.getByTestId('plan-totals')
@@ -1436,9 +1386,7 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
 it('transfers line: signed net per month, a tooltip with the in/out split, and a link only where money crossed', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // window Jun/Jul/Aug; the fixture's June crossed 50 in / 150 out
@@ -1472,7 +1420,6 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', selectedDate: '2026-07-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // Transfers, June (column 0) — not the budget page's selected July period
@@ -1498,9 +1445,7 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
 
 it('rules element rows flush with hairline dividers', async () => {
   usePlanHandlers()
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // bands no longer space their children apart
@@ -1524,9 +1469,7 @@ it('rules element rows flush with hairline dividers', async () => {
 it('leaves the current month column unmarked in the grid body, bold in the header only', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
-  const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // hover marks the single cell, never the whole column: no cross-cell attribute
@@ -1547,7 +1490,6 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // pe1/Living has children; expanding it reveals cat-rent as a ChildRow
@@ -1579,7 +1521,6 @@ it('shows plan row actions only in edit mode, with side-filtered move-to-folder'
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // read-only by default: no row menus
@@ -1621,7 +1562,6 @@ it('picking a folder in the move dialog fires move-element with the right payloa
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
@@ -1655,7 +1595,6 @@ it('creates a plan folder with members, switching sides clears the selection', a
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1695,7 +1634,6 @@ it('shows drag handles only in edit mode', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   expect(screen.queryByRole('button', { name: /^move / })).not.toBeInTheDocument()
@@ -1727,7 +1665,6 @@ it('scopes every drag handle to its own band, so no drag can cross the income/ex
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1750,7 +1687,6 @@ it('keeps the drag grip on its own root row, not stretched by expanded children'
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1780,7 +1716,6 @@ it('keeps the uncategorized totals line undraggable', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1796,7 +1731,6 @@ it('edit mode keeps roving keyboard navigation and the fill handle working', asy
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1838,7 +1772,6 @@ it('a fill drag past the sortable activation distance still commits in edit mode
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1892,7 +1825,6 @@ it('the arrangement a drag anchors to matches the filtered (hideEmpty) rows actu
   useBudgetPeriodStore.setState({ planHideEmpty: true })
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1930,7 +1862,6 @@ it('holds the dropped order locally instead of snapping back until the refetch l
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -1969,9 +1900,7 @@ it('measures the grid with a callback ref so the loader cannot skip the measurem
   globalThis.ResizeObserver = SpyRO as unknown as typeof ResizeObserver
   try {
     usePlanHandlers()
-    const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     const grid = await screen.findByTestId('plan-sheet')
 
     // the grid itself must be observed. With a mount effect it never is: the effect
@@ -1986,7 +1915,6 @@ it('closes every row with the currency, then the actions menu in edit mode', asy
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
   // the currency closes the row at rest — the name cell no longer carries it
@@ -2018,7 +1946,6 @@ it('collapses folder contents while a folder drag is in flight, and still drops 
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2066,7 +1993,6 @@ it('does not bounce after the move resolves but before the refetch returns', asy
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2121,7 +2047,6 @@ it('a row can be dragged out of a folder onto the band loose container even when
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2151,7 +2076,6 @@ it('offers Edit and Delete on an envelope row, but not on a category or a tag', 
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2195,7 +2119,6 @@ it('editing an income envelope opens the dialog on the income side and saves', a
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2232,7 +2155,6 @@ it('deleting an income envelope confirms first, then fires delete-envelope', asy
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2258,7 +2180,6 @@ it('reopening the create-folder dialog after a successful create starts blank', 
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
@@ -2293,7 +2214,6 @@ it('rejects a too-short folder name inline instead of letting the server refuse 
   )
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))

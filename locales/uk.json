@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "Бюджет",
+      "plan": "План",
       "onboarding": "Початок роботи",
       "create_account": "Додати рахунок",
       "collapse_menu": "Згорнути меню",
@@ -973,10 +974,6 @@
         }
       },
       "plan": {
-        "toggle": {
-          "budget": "Бюджет",
-          "plan": "План"
-        },
         "section": {
           "income": "Доходи",
           "expenses": "Витрати",

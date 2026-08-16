@@ -13,6 +13,7 @@
     },
     "nav": {
       "budget": "预算",
+      "plan": "计划",
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
@@ -973,10 +974,6 @@
         }
       },
       "plan": {
-        "toggle": {
-          "budget": "预算",
-          "plan": "计划"
-        },
         "section": {
           "income": "收入",
           "expenses": "支出",
