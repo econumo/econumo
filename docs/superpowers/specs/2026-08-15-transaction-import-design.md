@@ -65,8 +65,9 @@ the provider as swappable from day one.
   (`'simplefin' | 'csv' | 'apple-wallet'`), never a generic `'push'`; the
   pull/push distinction is a property of the provider registry in code.
 - **Push auth: scoped PATs**, not a new token kind. `access_tokens` gains a
-  `scope` column (`NULL`/`'full'` = today's behavior; `'ingest'` = valid only
-  for `ingest-*` routes). One token system, existing revocation/purge/UI infra
+  `scope` column, `NOT NULL DEFAULT 'full'` (`'full'` = today's behavior,
+  existing rows backfilled by the default; `'ingest'` = valid only for
+  `ingest-*` routes). One token system, existing revocation/purge/UI infra
   reused, future scopes (e.g. read-only) enabled.
 - **Pull credential ownership:** per-user, client-side encrypted. Not `.env`
   (breaks on a multi-user instance), not server-side plaintext (what Actual
@@ -193,9 +194,13 @@ per the existing contract. Migrations paired under
 
 ### `access_tokens.scope` (existing table, new column)
 
-`TEXT NULL`. `NULL` or `'full'` = unrestricted (every existing row keeps
-working unchanged); `'ingest'` = the token authenticates **only** `ingest-*`
-routes. Enforcement lives in the auth middleware: the authenticator already
+`TEXT NOT NULL DEFAULT 'full'` — an additive `ALTER TABLE … ADD COLUMN` on
+both engines (no SQLite table rebuild), with the default backfilling every
+existing row, so the column is never nullable and the Go code never handles a
+nil scope. `'full'` = unrestricted (today's behavior); `'ingest'` = the token
+authenticates **only** `ingest-*` routes; unknown values fail closed, same
+posture as the password-algorithm dispatch. Sessions are always minted
+`'full'`. Enforcement lives in the auth middleware: the authenticator already
 resolves the token row, so it also returns the scope, and the middleware
 rejects a scoped token on any non-matching route with the standard 401
 envelope (`"Invalid access token"` — no scope information leaks). Ingest
