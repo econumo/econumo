@@ -60,7 +60,7 @@ it('renders the menu rows with exact labels and navigates', async () => {
   expect(screen.getByText('Shared access')).toBeInTheDocument()
   expect(screen.getByText('Accounts')).toBeInTheDocument()
   expect(screen.getByText('Payees')).toBeInTheDocument()
-  await user.click(screen.getByText('Budgets'))
+  await user.click(screen.getByText('Budgets & Plans'))
   expect(await screen.findByText('BUDGETS PAGE')).toBeInTheDocument()
 })
 

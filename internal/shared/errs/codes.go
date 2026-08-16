@@ -39,6 +39,8 @@ const (
 	CodeBudgetInvalidElementTypeAlias   = "budget.invalid_element_type_alias"
 	CodeBudgetInvalidRoleAlias          = "budget.invalid_role_alias"
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
+	CodeBudgetEnvelopeSideMixed         = "budget.envelope_side_mixed"
+	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -130,6 +132,8 @@ var AllCodes = []string{
 	CodeBudgetInvalidElementTypeAlias,
 	CodeBudgetInvalidRoleAlias,
 	CodeBudgetTransactionFilterRequired,
+	CodeBudgetEnvelopeSideMixed,
+	CodeBudgetFolderSideMixed,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,

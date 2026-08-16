@@ -112,6 +112,22 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"junk"}}}`},
 	}})
 
+	// budget_plan REST-seeds a budget with a fixed 2024 window plus one planned
+	// value, then drives get_budget_plan for a valid window and an out-of-range
+	// months (the REST read's own scenario pins the full cell math; this pins
+	// the MCP edge + schema).
+	const mcpPlanBudgetID = "b0000000-0000-0000-0000-0000000000c9"
+	register(Scenario{Name: "budget_plan", Steps: []Step{
+		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
+			Body: map[string]any{"id": mcpPlanBudgetID, "name": "MCP Plan Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+		{Label: "seed-limit", Method: "POST", Path: "/api/v1/budget/set-limit",
+			Body: map[string]any{"budgetId": mcpPlanBudgetID, "elementId": apiparity.CatFood, "period": "2024-05-01", "amount": "300"}},
+		{Label: "get-budget-plan",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":3}}}`},
+		{Label: "get-budget-plan-bad-months",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":40}}}`},
+	}})
+
 	// budget_write drives all eight budget create/configure MCP tools end to
 	// end, purely via MCP calls on top of the apiparity fixture (owner's seeded
 	// account + categories). create_budget/create_folder/create_envelope mint
@@ -139,8 +155,14 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
 		{Label: "move-element",
 			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","folder_id":"{{folder_id}}"}}}`},
+		// category_ids used to include CatSalary (income) here too; it was
+		// silently ignored (never rendered in children — see budget_write.golden),
+		// so dropping it is byte-identical, and envelope homogeneity now rejects
+		// a mixed-side category set outright. The REST twin
+		// (catalogue_budget_structure.go) carries the analogous fix; the new
+		// budget_income_elements scenario carries the rejection coverage.
 		{Label: "update-envelope",
-			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `"],"archived":false}}}`},
 		{Label: "set-limit",
 			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-05","amount":"150.00"}}}`},
 		{Label: "set-budget-account-included",

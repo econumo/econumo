@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -48,6 +48,13 @@ export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   return response.data.data.item
 }
 
+export async function getBudgetPlan(id: Id, from: string, months: number): Promise<BudgetPlanDto> {
+  const response = await api.get<Envelope<{ item: BudgetPlanDto }>>(
+    apiUrl(`/api/v1/budget/get-budget-plan?id=${encodeURIComponent(id)}&from=${encodeURIComponent(from)}&months=${months}`),
+  )
+  return response.data.data.item
+}
+
 export interface SetLimitForm {
   budgetId: Id
   elementId: Id
@@ -69,6 +76,8 @@ export interface EnvelopeForm {
   currencyId: Id
   folderId: Id | null
   categories: Id[]
+  /** create only, and only when 'income' — immutable once set; update never sends it */
+  side?: 'income'
 }
 
 export async function createEnvelope(form: EnvelopeForm): Promise<BudgetElementDto> {
@@ -119,6 +128,8 @@ export interface BudgetTransactionsParams {
   envelopeId?: Id
   uncategorized?: boolean
   labelId?: Id
+  /** transfers across the budget boundary; exclusive with every other selector */
+  transfers?: boolean
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -128,6 +139,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.envelopeId) query.set('envelopeId', params.envelopeId)
   if (params.uncategorized) query.set('uncategorized', '1')
   if (params.labelId) query.set('labelId', params.labelId)
+  if (params.transfers) query.set('transfers', '1')
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )

@@ -115,3 +115,35 @@ func TestTxListGuardTreatsWhitespaceLabelAsAbsent(t *testing.T) {
 		t.Fatalf("whitespace-only labelId must not count as a label selector: tagId alone is a valid filter")
 	}
 }
+
+// transfers composes with nothing: alone it passes the guard, alongside any
+// other selector it is rejected with CodeBudgetTransactionFilterRequired.
+func TestTxListGuardTransfersIsExclusive(t *testing.T) {
+	alone := baseTxListRequest()
+	alone.Transfers = true
+	if filterRejected(t, alone) {
+		t.Fatalf("transfers alone must pass the guard")
+	}
+	combos := map[string]func(r *model.BudgetTransactionListRequest){
+		"categoryId":    func(r *model.BudgetTransactionListRequest) { r.CategoryId = strp(txListCategoryID) },
+		"tagId":         func(r *model.BudgetTransactionListRequest) { r.TagId = strp(txListTagID) },
+		"envelopeId":    func(r *model.BudgetTransactionListRequest) { r.EnvelopeId = strp(txListEnvelopeID) },
+		"labelId":       func(r *model.BudgetTransactionListRequest) { r.LabelId = strp(txListLabelID) },
+		"uncategorized": func(r *model.BudgetTransactionListRequest) { r.Uncategorized = true },
+	}
+	for name, set := range combos {
+		req := baseTxListRequest()
+		req.Transfers = true
+		set(&req)
+		if !filterRejected(t, req) {
+			t.Errorf("transfers+%s must be rejected with CodeBudgetTransactionFilterRequired", name)
+		}
+	}
+	// whitespace-only ids read as absent here too
+	ws := baseTxListRequest()
+	ws.Transfers = true
+	ws.CategoryId = strp("   ")
+	if filterRejected(t, ws) {
+		t.Errorf("transfers with a whitespace-only categoryId must pass the guard")
+	}
+}

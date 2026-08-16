@@ -11,6 +11,7 @@ export const queryKeys = {
   user: ['user'] as const,
   connections: ['connections'] as const,
   budget: ['budget'] as const,
+  budgetPlan: ['budgetPlan'] as const,
   budgets: ['budgets'] as const,
   budgetTransactions: ['budgetTransactions'] as const,
   recurring: ['recurring'] as const,

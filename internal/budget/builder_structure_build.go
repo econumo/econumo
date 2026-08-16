@@ -47,13 +47,30 @@ type structChild struct {
 // elements.
 func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filters, limits map[string]budgetedAmount, spending map[string]*elementSpending) (model.StructureResult, error) {
 	options := s.elementOptions(b)
+
+	// Income-sided envelopes and folders exist only in the plan view; the
+	// budget view's wire contract is frozen without them.
+	incomeEnvelopes := map[string]bool{}
+	incomeFolders := map[string]bool{}
+	for _, e := range b.elements {
+		if e.Type == model.ElementIncomeEnvelope {
+			incomeEnvelopes[e.ExternalID.String()] = true
+		}
+		if e.Type.IsIncomeSide() && e.FolderID != nil {
+			incomeFolders[e.FolderID.String()] = true
+		}
+	}
+
 	sorted := append([]*model.BudgetFolder(nil), b.folders...)
 	sortBudgetFolders(sorted)
 	folders := make([]model.BudgetFolderResult, 0, len(sorted))
-	for i, fl := range sorted {
+	for _, fl := range sorted {
+		if incomeFolders[fl.ID.String()] {
+			continue
+		}
 		// position on the wire is the dense 0-based index; the key that produced
 		// this order never leaves the server.
-		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: i})
+		folders = append(folders, model.BudgetFolderResult{Id: fl.ID.String(), Name: fl.Name, Position: len(folders)})
 	}
 
 	toConvert := map[string][]model.ConvertItem{}
@@ -73,6 +90,9 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 
 	// --- Envelopes ---
 	for _, env := range b.envelopes {
+		if incomeEnvelopes[env.ID.String()] {
+			continue
+		}
 		index := elementKey(env.ID.String(), model.ElementEnvelope)
 		opt := options[index]
 		currencyID := budgetCurrencyID

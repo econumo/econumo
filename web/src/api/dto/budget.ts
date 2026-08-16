@@ -19,8 +19,11 @@ export interface BudgetMetaDto {
   access: BudgetAccessDto[]
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
+
+export const isIncomeType = (t: BudgetElementType): boolean =>
+  t === BudgetElementType.INCOME_CATEGORY || t === BudgetElementType.INCOME_ENVELOPE
 
 /** the presentation-only element the backend emits for spending with no category */
 export const UNCATEGORIZED_ID = 'uncategorized'
@@ -108,6 +111,9 @@ export interface BudgetTransactionDto {
   labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
+  /** only on rows of the transfers selector: which side of the boundary the
+   *  included account is on; amount/currencyId are that side's */
+  direction?: 'in' | 'out'
 }
 
 export interface BudgetDto {
@@ -118,4 +124,68 @@ export interface BudgetDto {
   /** labels is optional on the wire: servers older than the labels release —
    *  still accepted by the app's compat floor — omit it. */
   structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
+}
+
+/** per-month cell on a plan-view parent row. planned '' = no limit set that month. */
+export interface PlanCellDto {
+  actual: string
+  planned: string
+}
+
+/** per-month cell on a plan-view child row: children never carry their own limit. */
+export interface PlanChildDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  isArchived: 0 | 1
+  ownerUserId: Id
+  cells: { actual: string }[]
+}
+
+export interface PlanElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  isArchived: 0 | 1
+  folderId: Id | null
+  position: number
+  ownerUserId: Id | null
+  cells: PlanCellDto[]
+  children: PlanChildDto[]
+}
+
+export interface PlanMonthRatesDto {
+  /** date-only Y-m-d, first of the month */
+  period: string
+  rates: BudgetRateDto[]
+}
+
+/** one currency's transfers across the budget boundary in one window month:
+ *  in = moved into included accounts, out = moved out of them (each side in
+ *  its own account's currency); never planned */
+export interface PlanTransferDto {
+  currencyId: Id
+  in: string
+  out: string
+}
+
+export interface PlanMonthTransfersDto {
+  /** date-only Y-m-d, first of the month */
+  period: string
+  /** [] for a month nothing crossed; budget currency first, then by id */
+  items: PlanTransferDto[]
+}
+
+export interface BudgetPlanDto {
+  meta: BudgetMetaDto
+  /** date-only Y-m-d, first of each month in the fetched window */
+  months: string[]
+  openingBalances: { currencyId: Id; amount: string }[]
+  currencyRates: PlanMonthRatesDto[]
+  /** one entry per months[i] */
+  transfers: PlanMonthTransfersDto[]
+  structure: { folders: BudgetFolderDto[]; elements: PlanElementDto[] }
 }

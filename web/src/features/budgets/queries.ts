@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as budgetApi from '@/api/budget'
-import type { BudgetDto, BudgetMetaDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { compareNames } from '@/lib/collate'
@@ -12,6 +12,7 @@ import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
+import { addMonths } from './planMath'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -113,13 +114,12 @@ export function useBudget() {
 
 export function useSetLimit() {
   const queryClient = useQueryClient()
-  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   return useMutation({
-    mutationFn: (form: { budgetId: Id; elementId: Id; amount: string | null }) =>
-      budgetApi.setLimit({ ...form, period: selectedDate }),
+    mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null }) =>
+      budgetApi.setLimit(form),
     onMutate: async (form) => {
       // optimistic budgeted patch with rollback (Vue parity: instant cell feedback)
-      const key = [...queryKeys.budget, form.budgetId, selectedDate]
+      const key = [...queryKeys.budget, form.budgetId, form.period]
       await queryClient.cancelQueries({ queryKey: key })
       const previous = queryClient.getQueryData<BudgetDto | null>(key)
       queryClient.setQueryData<BudgetDto | null>(key, (prev) => {
@@ -143,13 +143,135 @@ export function useSetLimit() {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: () => trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT),
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
+      // budget-mode edits patch only the budget-page cache above; the plan cache
+      // (a different window/query key) must be invalidated too or the plan sheet
+      // keeps showing the pre-edit limit until something else happens to refetch it
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+    },
+  })
+}
+
+export const PLAN_BUFFER = 2
+
+export function planFetchWindow(firstMonth: string, visibleMonths: number): { from: string; months: number } {
+  // buffer both sides so arrow navigation renders instantly; the server caps months at 24
+  const months = Math.min(visibleMonths + 2 * PLAN_BUFFER, 24)
+  return { from: addMonths(firstMonth, -PLAN_BUFFER), months }
+}
+
+export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMonths: number) {
+  const { from, months } = planFetchWindow(firstMonth, visibleMonths)
+  const planKey = [...queryKeys.budgetPlan, budgetId ?? 'none', from, months] as const
+  const query = useQuery<BudgetPlanDto | null>({
+    queryKey: planKey,
+    queryFn: () => (budgetId ? budgetApi.getBudgetPlan(budgetId, from, months) : Promise.resolve(null)),
+    enabled: budgetId !== null,
+    staleTime: TEN_MINUTES,
+    // shifting months keeps showing the previous window instead of a blank sheet
+    placeholderData: keepPreviousData,
+  })
+  return { ...query, fetchFrom: from, planKey }
+}
+
+export function usePlanSetLimit(planKey: readonly unknown[]) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; elementId: Id; period: string; amount: string | null; monthIndex: number }) =>
+      budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: form.period, amount: form.amount }),
+    onMutate: async (form) => {
+      await queryClient.cancelQueries({ queryKey: planKey })
+      const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        return {
+          ...prev,
+          structure: {
+            ...prev.structure,
+            elements: prev.structure.elements.map((el) =>
+              el.id === form.elementId
+                ? {
+                    ...el,
+                    cells: el.cells.map((c, i) =>
+                      i === form.monthIndex ? { ...c, planned: form.amount === null ? '' : form.amount } : c,
+                    ),
+                  }
+                : el,
+            ),
+          },
+        }
+      })
+      return { previous }
+    },
+    onError: (_err, _form, context) => {
+      if (context) {
+        queryClient.setQueryData(planKey, context.previous)
+      }
+    },
+    onSuccess: (_res, form) => {
+      trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
+      // the budget-page cache for that month is now stale; the plan cache resyncs too
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, form.period] })
+      void queryClient.invalidateQueries({ queryKey: planKey })
+    },
+  })
+}
+
+export function useFillPlannedCells(planKey: readonly unknown[]) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { budgetId: Id; elementId: Id; amount: string; targets: { period: string; monthIndex: number }[] }) =>
+      Promise.all(
+        form.targets.map((t) =>
+          budgetApi.setLimit({ budgetId: form.budgetId, elementId: form.elementId, period: t.period, amount: form.amount }),
+        ),
+      ),
+    onMutate: async (form) => {
+      await queryClient.cancelQueries({ queryKey: planKey })
+      const covered = new Set(form.targets.map((t) => t.monthIndex))
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
+        if (!prev) {
+          return prev
+        }
+        return {
+          ...prev,
+          structure: {
+            ...prev.structure,
+            elements: prev.structure.elements.map((el) =>
+              el.id === form.elementId
+                ? { ...el, cells: el.cells.map((c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)) }
+                : el,
+            ),
+          },
+        }
+      })
+    },
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
+    },
+    // No partial rollback: any failure means some months may have landed, so both a
+    // success and a failure need the same resync — the budget-page caches for every
+    // target month plus the plan cache — from the server rather than trusting the
+    // optimistic patch. Invalidating here (not split across onSuccess/onError) also
+    // means it happens exactly once regardless of outcome.
+    onSettled: (_res, _err, form) => {
+      for (const t of form.targets) {
+        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, t.period] })
+      }
+      void queryClient.invalidateQueries({ queryKey: planKey })
+    },
   })
 }
 
 function useInvalidateBudget() {
   const queryClient = useQueryClient()
-  return () => void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+  return () => {
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+  }
 }
 
 export function useCreateEnvelope() {

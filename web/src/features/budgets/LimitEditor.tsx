@@ -6,18 +6,19 @@ import { amountCardInputClass, CardField } from '@/components/CardField'
 import { Button } from '@/components/ui/button'
 import { moneyFormat, normalizeNumber } from '@/lib/money'
 import { isZero } from '@/lib/decimal'
-import type { BudgetElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { limitAmountFromInput } from './limitAmount'
 
 interface LimitEditorProps {
-  element: BudgetElementDto
+  id: string
+  name: string
+  value: string
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
 }
 
 // Desktop inline budget-cell editor (Vue's q-popup-edit).
-export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
+export function LimitEditor({ id, name, value: currentValue, currency, onCommit }: LimitEditorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
@@ -39,14 +40,14 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
       onOpenChange={(next) => {
         setOpen(next)
         if (next) {
-          setValue(isZero(element.budgeted) ? '' : normalizeNumber(element.budgeted))
+          setValue(isZero(currentValue) ? '' : normalizeNumber(currentValue))
           setError(null)
         }
       }}
     >
       <PopoverTrigger asChild>
-        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`limit ${element.name}`}>
-          {moneyFormat(element.budgeted, currency, { showCurrency: false, useNativePrecision: false })}
+        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`limit ${name}`}>
+          {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">
@@ -59,9 +60,9 @@ export function LimitEditor({ element, currency, onCommit }: LimitEditorProps) {
           }}
         >
           {/* the transaction dialog's amount card: label inside, borderless oversized input */}
-          <CardField label={t('budgets.form.budget_limit.limit.label')} htmlFor={`limit-${element.id}`} error={error}>
+          <CardField label={t('budgets.form.budget_limit.limit.label')} htmlFor={`limit-${id}`} error={error}>
             <div className={amountCardInputClass}>
-              <CalculatorInput id={`limit-${element.id}`} autoFocus value={value} onChange={setValue} />
+              <CalculatorInput id={`limit-${id}`} autoFocus value={value} onChange={setValue} />
             </div>
           </CardField>
           <Button type="submit" size="sm">

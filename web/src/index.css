@@ -148,6 +148,11 @@
     --muted: #F5F5F5;
     --muted-foreground: #808080;
     --accent: #F5F5F5;
+    /* Plan grid hover. --plan-hover fills the hovered ROW; tinting toward --accent
+       would fail in dark mode, where --accent is DARKER than the surface and the fill
+       would darken an already-dark row into invisibility (measured: 1.03 vs 1.37
+       luminance ratio), so each theme tints toward its own contrasting end. */
+    --plan-hover: oklch(0.55 0 0);
     --accent-foreground: #333333;
     --destructive: #D34949;
     --border: #E6E6E6;
@@ -183,6 +188,7 @@
     --muted: oklch(0.269 0 0);
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
+    --plan-hover: oklch(0.985 0 0);
     --accent-foreground: oklch(0.985 0 0);
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
@@ -288,5 +294,39 @@
   .coin-loader-coin,
   .coin-loader-shadow {
     animation: none;
+  }
+}
+
+/* Plan grid: rows sit flush and share hairline dividers, so the last row of any
+   grouping must not draw a line across that grouping's bottom edge. The divider
+   lives on the row's [data-row-id] wrapper; scoping to that attribute (rather
+   than every last child) leaves FolderRows' own card border untouched when a
+   folder is the last thing in a band. A folder is a nested card with its own
+   border, so its terminal row needs suppressing too or the two lines double up. */
+.plan-band-income > [data-row-id]:last-child,
+.plan-band-expense > [data-row-id]:last-child,
+.plan-band-archived > [data-row-id]:last-child,
+[data-testid^='plan-folder-'] [data-row-id]:last-child {
+  border-bottom: 0;
+}
+
+
+/* Plan grid hover. The hovered ROW and the single hovered CELL both wash at the
+   same weight; nothing else in the column reacts.
+   Both paint via `background-image` — a different property from the utilities'
+   `background-color`, so the wash composites on top instead of replacing it.
+   That sidesteps a cascade fight it would otherwise lose: Tailwind utilities
+   live in `@layer utilities` (declared by `@import "tailwindcss"`), and
+   unlayered rules beat layered ones outright. Do not "simplify" these back to
+   `background:` — it would erase the current-month and fill-drag tints. */
+@layer utilities {
+  @media (hover: hover) {
+    .plan-row:hover,
+    .plan-row [role='gridcell'][data-col]:hover {
+      background-image: linear-gradient(
+        color-mix(in srgb, var(--plan-hover), transparent 88%),
+        color-mix(in srgb, var(--plan-hover), transparent 88%)
+      );
+    }
   }
 }

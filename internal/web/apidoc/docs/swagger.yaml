@@ -197,6 +197,29 @@ definitions:
       position:
         type: integer
     type: object
+  model.BudgetPlanResult:
+    properties:
+      currencyRates:
+        items:
+          $ref: '#/definitions/model.PlanMonthRatesResult'
+        type: array
+      meta:
+        $ref: '#/definitions/model.MetaResult'
+      months:
+        items:
+          type: string
+        type: array
+      openingBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      structure:
+        $ref: '#/definitions/model.PlanStructureResult'
+      transfers:
+        items:
+          $ref: '#/definitions/model.PlanMonthTransfersResult'
+        type: array
+    type: object
   model.BudgetResult:
     properties:
       balances:
@@ -225,6 +248,13 @@ definitions:
       currencyId:
         type: string
       description:
+        type: string
+      direction:
+        description: |-
+          Direction is present only on rows of the transfers selector: "out" when
+          the included account is the source, "in" when it is the recipient —
+          Amount/CurrencyId are that side's. Omitted on every other list so their
+          bytes are unchanged.
         type: string
       id:
         type: string
@@ -481,6 +511,12 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      side:
+        description: |-
+          Side selects the envelope's (immutable) side: "" or "expense" (default).
+          "income" is reserved for the plan view's income envelopes and currently
+          rejected (see EnvelopeTypeFromSide).
         type: string
     type: object
   model.CreateEnvelopeResult:
@@ -888,6 +924,11 @@ definitions:
           $ref: '#/definitions/model.MetaResult'
         type: array
     type: object
+  model.GetBudgetPlanResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetPlanResult'
+    type: object
   model.GetBudgetResult:
     properties:
       item:
@@ -1277,6 +1318,13 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.OpeningBalanceResult:
+    properties:
+      amount:
+        type: string
+      currencyId:
+        type: string
+    type: object
   model.OptionResult:
     properties:
       name:
@@ -1346,6 +1394,104 @@ definitions:
       lastUsedAt:
         type: string
       name:
+        type: string
+    type: object
+  model.PlanCellResult:
+    properties:
+      actual:
+        type: string
+      planned:
+        type: string
+    type: object
+  model.PlanChildCellResult:
+    properties:
+      actual:
+        type: string
+    type: object
+  model.PlanChildResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanChildCellResult'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      type:
+        type: integer
+    type: object
+  model.PlanElementResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanCellResult'
+        type: array
+      children:
+        items:
+          $ref: '#/definitions/model.PlanChildResult'
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: integer
+    type: object
+  model.PlanMonthRatesResult:
+    properties:
+      period:
+        type: string
+      rates:
+        items:
+          $ref: '#/definitions/model.AverageCurrencyRateResult'
+        type: array
+    type: object
+  model.PlanMonthTransfersResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PlanTransferResult'
+        type: array
+      period:
+        type: string
+    type: object
+  model.PlanStructureResult:
+    properties:
+      elements:
+        items:
+          $ref: '#/definitions/model.PlanElementResult'
+        type: array
+      folders:
+        items:
+          $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+    type: object
+  model.PlanTransferResult:
+    properties:
+      currencyId:
+        type: string
+      in:
+        type: string
+      out:
         type: string
     type: object
   model.PostRecurringTransactionRequest:
@@ -3291,6 +3437,52 @@ paths:
       summary: List budgets
       tags:
       - Budget
+  /api/v1/budget/get-budget-plan:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Window start (Y-m-d, snapped to first of month; defaults to the
+          current month)
+        in: query
+        name: from
+        type: string
+      - description: Window length in months (1-24, default 12)
+        in: query
+        name: months
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetBudgetPlanResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Multi-month budget plan sheet
+      tags:
+      - Budget
   /api/v1/budget/get-transaction-list:
     get:
       parameters:
@@ -3323,6 +3515,11 @@ paths:
       - description: Uncategorized bucket (mutually exclusive with categoryId)
         in: query
         name: uncategorized
+        type: boolean
+      - description: Transfers across the budget boundary (mutually exclusive with
+          every other selector)
+        in: query
+        name: transfers
         type: boolean
       produces:
       - application/json

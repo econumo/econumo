@@ -12,7 +12,7 @@
       "active_only": "Solo attivi"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget e piano",
       "onboarding": "Per iniziare",
       "create_account": "Aggiungi conto",
       "collapse_menu": "Comprimi il menu",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Piano"
+        },
+        "section": {
+          "income": "Entrate",
+          "expenses": "Uscite",
+          "archived": "In archivio"
+        },
+        "nav": {
+          "prev": "Mesi precedenti",
+          "next": "Mesi successivi"
+        },
+        "cell": {
+          "aria": "{name}, {month}: effettivo {actual}, pianificato {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copia il budget nei mesi successivi"
+        },
+        "totals": {
+          "income": "Entrate",
+          "expenses": "Uscite",
+          "transfers": "Trasferimenti",
+          "transfers_tooltip": "Entrate {in} · Uscite {out}",
+          "show_transactions": "Mostra le transazioni",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Nascondi righe vuote",
+          "hidden": "{count} nascoste",
+          "show": "Mostra"
+        },
+        "menu": {
+          "move_to_folder": "Sposta nella cartella…",
+          "no_folder": "Nessuna cartella"
+        },
+        "edit": {
+          "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
+          "no_access_category": "Non puoi modificare questa categoria: appartiene a un altro utente.",
+          "no_access_tag": "Non puoi modificare questo tag: appartiene a un altro utente."
+        }
+      },
       "settings": {
-        "menu_item": "Budget",
-        "header": "Budget",
-        "info": "Qui trovi tutti i tuoi budget. Crea budget separati per obiettivi diversi e condividili con la tua famiglia.",
+        "menu_item": "Budget e piani",
+        "header": "Budget e piani",
+        "info": "Qui trovi tutti i tuoi budget. Crea budget per obiettivi diversi, condividili con la tua famiglia e pianifica il tuo budget per i mesi a venire.",
         "create_budget": "Crea budget",
         "edit_modal": {
           "header": "Modifica budget"
@@ -1371,7 +1415,9 @@
       "envelope_name_length": "Il nome della busta deve contenere da {min} a {max} caratteri",
       "invalid_element_type_alias": "Il tipo di elemento del budget con alias {alias} non esiste",
       "invalid_role_alias": "Il ruolo utente del budget con alias {alias} non esiste",
-      "transaction_filter_required": "Convalida non riuscita"
+      "transaction_filter_required": "Convalida non riuscita",
+      "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
+      "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

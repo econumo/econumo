@@ -12,7 +12,7 @@
       "active_only": "Apenas ativos"
     },
     "nav": {
-      "budget": "Orçamento",
+      "budget": "Orçamento e plano",
       "onboarding": "Primeiros passos",
       "create_account": "Adicionar conta",
       "collapse_menu": "Recolher menu",
@@ -972,10 +972,54 @@
           }
         }
       },
+      "plan": {
+        "toggle": {
+          "budget": "Orçamento",
+          "plan": "Plano"
+        },
+        "section": {
+          "income": "Receitas",
+          "expenses": "Despesas",
+          "archived": "Em arquivo"
+        },
+        "nav": {
+          "prev": "Meses anteriores",
+          "next": "Meses seguintes"
+        },
+        "cell": {
+          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copiar o orçamento para os meses seguintes"
+        },
+        "totals": {
+          "income": "Receitas",
+          "expenses": "Despesas",
+          "transfers": "Transferências",
+          "transfers_tooltip": "Entradas {in} · Saídas {out}",
+          "show_transactions": "Mostrar transações",
+          "net": "Líquido",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Ocultar linhas vazias",
+          "hidden": "{count} ocultas",
+          "show": "Mostrar"
+        },
+        "menu": {
+          "move_to_folder": "Mover para pasta…",
+          "no_folder": "Sem pasta"
+        },
+        "edit": {
+          "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
+          "no_access_category": "Não pode editar esta categoria — pertence a outro utilizador.",
+          "no_access_tag": "Não pode editar esta etiqueta — pertence a outro utilizador."
+        }
+      },
       "settings": {
-        "menu_item": "Orçamentos",
-        "header": "Orçamentos",
-        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos separados para objetivos diferentes e partilhe-os com a sua família.",
+        "menu_item": "Orçamentos e planos",
+        "header": "Orçamentos e planos",
+        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos para objetivos diferentes, partilhe-os com a sua família e planeie o seu orçamento para os próximos meses.",
         "create_budget": "Criar orçamento",
         "edit_modal": {
           "header": "Editar orçamento"
@@ -1371,7 +1415,9 @@
       "envelope_name_length": "O nome do envelope deve ter entre {min} e {max} caracteres.",
       "invalid_element_type_alias": "O tipo de elemento de orçamento com o alias {alias} não existe.",
       "invalid_role_alias": "O papel de utilizador de orçamento com o alias {alias} não existe.",
-      "transaction_filter_required": "Falha na validação."
+      "transaction_filter_required": "Falha na validação.",
+      "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
+      "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas."
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",

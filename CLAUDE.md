@@ -272,8 +272,10 @@ via its documented `NOT_WIRED` list.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
-Translations live in two catalogues, `locales/{en,ru}.json`, shared by both
-stacks — no per-stack duplication. The Go side embeds them (`package locales`,
+Translations live in per-language catalogues `locales/<lang>.json` — currently
+11: `de`, `en`, `es`, `fr`, `it`, `nl`, `pl`, `pt`, `ru`, `uk`, `zh` — shared by
+both stacks, no per-stack duplication. Every catalogue must carry every key
+(`en` is the reference; enforced by `internal/test/i18ntest`). The Go side embeds them (`package locales`,
 `go:embed *.json` in `locales/embed.go`, read via `locales.FS`); the SPA
 imports the same files through Vite JSON imports for `react-i18next`. Keys are
 namespaced to mirror `web/src/features/<name>` plus three cross-cutting
@@ -282,8 +284,9 @@ above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 `{name}` syntax in both stacks. Adding a language means a new
 `locales/<lang>.json` plus entries in `i18n.Supported`
 (`internal/infra/i18n/i18n.go`), registering the catalogue in `resources`
-(`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
-and the `languages` list in `internal/test/i18ntest`.
+(`web/src/app/i18n.ts`) and `getLocaleOptions()` (`web/src/lib/config.ts`);
+the `internal/test/i18ntest` guards derive their language list from
+`i18n.Supported`, so they cover the new catalogue automatically.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
   server-rendered text — the password-reset email, and the error `message`/`errors`
   strings on both edges (REST envelope and MCP tool errors) for errors that carry a
@@ -308,7 +311,7 @@ and the `languages` list in `internal/test/i18ntest`.
   as the stored-language fallback for header-less authenticated requests on
   both edges, and reserved for future background email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
-  key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
+  key parity of every language against `en`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way
   coverage between `errs.AllCodes` and the `errors.*` catalogue keys (every
   registered code has a translation and vice versa), and that every mailer
@@ -636,7 +639,7 @@ data unreadable. Most are also asserted by the test suite.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
 - **Server-rendered error language** (handled-error envelope only): `message` and the per-field
   `errors` strings are rendered server-side in the caller's language when the underlying error
-  carries a catalogue code (`errors.*` keys in `locales/{en,ru}.json`; registry:
+  carries a catalogue code (`errors.*` keys in every `locales/<lang>.json`; registry:
   `internal/shared/errs/codes.go`, `AllCodes`); errors without a code keep their literal English
   text. The language is `reqctx.Language`: `Accept-Language` (the SPA sends its selected locale
   on every request) → the authenticated user's stored `users.language` (resolved in the auth
