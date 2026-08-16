@@ -196,14 +196,17 @@ per the existing contract. Migrations paired under
 
 ### `access_tokens.scope` (existing table, new column)
 
-`TEXT NOT NULL`. The migration DDL carries `DEFAULT 'full'` **solely as the
-backfill mechanism** — SQLite cannot add a NOT NULL column to a populated
-table without a default short of a full table rebuild (which this repo
-avoids; it is why `identifier` still exists). The default is dead after the
-migration: every insert names the column explicitly (sqlc queries always
-list their columns), sessions are minted `'full'` by the login code path,
-and `create-personal-token` **requires** `scope` in the request — a blank
-value fails validation. Requiring a previously-nonexistent field is a
+`TEXT NOT NULL`, **no default in the final schema** — scope is always
+provided explicitly. The per-engine migrations reach that state each in
+their own idiom: PostgreSQL adds the column `NOT NULL DEFAULT 'full'` (which
+backfills existing rows) and then `DROP DEFAULT`s it; SQLite has no
+`ALTER COLUMN`, so its migration uses the standard table rebuild (the
+migration runner already handles these — it toggles `foreign_keys` around
+rebuilds, `internal/infra/storage/migrate/migrate.go:221-230`), writing
+`'full'` as a literal in the `INSERT … SELECT`. In application code the
+scope is explicit everywhere: sessions are minted `'full'` by the login code
+path, and `create-personal-token` **requires** `scope` in the request — a
+blank value fails validation. Requiring a previously-nonexistent field is a
 deliberate contract change to `create-personal-token`: any external script
 creating PATs must start sending `scope`. `'full'` = unrestricted (today's
 behavior); `'ingest'` = the token authenticates **only** `ingest-*` routes;
