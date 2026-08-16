@@ -1270,7 +1270,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     setDraggingFolder(String(event.active.id).startsWith('pfolder:'))
   }
 
-  function handleBandDragEnd(side: 'income' | 'expense', event: DragEndEvent) {
+  function handleBandDragEnd(side: 'income' | 'expense' | 'neutral', event: DragEndEvent) {
     setDraggingFolder(false)
     const { active, over } = event
     if (!over || active.id === over.id) {
@@ -1292,6 +1292,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       }
       const reordered = arrayMove(folderIds, from, to)
       orderFolders.mutate({ budgetId: budget.meta.id, id: draggedId, afterId: afterIdFromDrop(reordered, draggedId) })
+      return
+    }
+    if (side === 'neutral') {
+      // the neutral band holds only header-only folders — no rows to move
       return
     }
 
@@ -1589,6 +1593,45 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             </PlanBand>
           ) : null}
         </section>
+
+        {shownRows.neutral.length > 0 ? (
+          // Member-less folders belong to neither side yet, so they sit between the
+          // bands rather than defaulting into one. Their own drag context keeps folder
+          // reordering available; rows reach them via "Move to folder…" (a neutral
+          // folder is offered to both sides there), never by a cross-band drag.
+          <section role="rowgroup" data-testid="plan-section-neutral" className="plan-band-neutral mt-6 flex flex-col px-1 py-1">
+            <PlanBand
+              editMode={editMode}
+              sensors={sensors}
+              folderIds={shownRows.neutral.map((f) => f.folder.id)}
+              onDragStart={handleBandDragStart}
+              onDragEnd={(e) => handleBandDragEnd('neutral', e)}
+              onDragCancel={() => setDraggingFolder(false)}
+            >
+              {shownRows.neutral.map((f) => {
+                const section = (
+                  <FolderRows
+                    section={f}
+                    ctx={ctx}
+                    hideEmpty={hideEmpty}
+                    folded={folded(f.folder.id)}
+                    collapsed={draggingFolder}
+                    revealed={revealedSections.has(f.folder.id)}
+                    onToggleFold={togglePlanFold}
+                    onReveal={() => revealSection(f.folder.id)}
+                  />
+                )
+                return editMode ? (
+                  <PlanSortableFolder key={f.folder.id} section={f}>
+                    {section}
+                  </PlanSortableFolder>
+                ) : (
+                  <Fragment key={f.folder.id}>{section}</Fragment>
+                )
+              })}
+            </PlanBand>
+          </section>
+        ) : null}
 
         <section
           role="rowgroup"

@@ -117,6 +117,8 @@ it('toggle switches to plan mode and renders the sheet: months, income on top, c
   const income = screen.getByTestId('plan-section-income')
   const firstExpense = screen.getByTestId('plan-section-expense')
   expect(income.compareDocumentPosition(firstExpense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // no member-less folder in the fixture -> no neutral band between them
+  expect(screen.queryByTestId('plan-section-neutral')).not.toBeInTheDocument()
   const cell = screen.getAllByTestId('plan-cell-pe1:0')[0]
   expect(within(cell).getByTestId('cell-actual')).toBeInTheDocument()
   expect(within(cell).getByTestId('cell-planned')).toBeInTheDocument()
@@ -785,7 +787,7 @@ it('ArrowLeft at the name cell does not page the window past the budget start', 
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 })
 
-it('a folder with no elements still renders as a header-only folder in the expense area', async () => {
+it('a folder with no elements renders header-only in its own band between income and expenses', async () => {
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const planWithEmptyFolder: BudgetPlanDto = {
     ...plan,
@@ -801,8 +803,58 @@ it('a folder with no elements still renders as a header-only folder in the expen
   await user.click(await screen.findByRole('tab', { name: /plan/i }))
   await screen.findByTestId('plan-sheet')
 
-  expect(screen.getByTestId('plan-folder-bf-empty')).toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-section-expense')).getByText('Empty Folder')).toBeInTheDocument()
+  const income = screen.getByTestId('plan-section-income')
+  const neutral = screen.getByTestId('plan-section-neutral')
+  const expense = screen.getByTestId('plan-section-expense')
+  expect(within(neutral).getByTestId('plan-folder-bf-empty')).toBeInTheDocument()
+  expect(within(neutral).getByText('Empty Folder')).toBeInTheDocument()
+  expect(within(expense).queryByText('Empty Folder')).not.toBeInTheDocument()
+  expect(within(income).queryByText('Empty Folder')).not.toBeInTheDocument()
+  expect(income.compareDocumentPosition(neutral) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(neutral.compareDocumentPosition(expense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+it('in edit mode, empty folders reorder among themselves inside the neutral band', async () => {
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithEmptyFolders: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      folders: [
+        ...plan.structure.folders,
+        { id: 'bf-e1', name: 'Empty One', position: 5 },
+        { id: 'bf-e2', name: 'Empty Two', position: 6 },
+      ],
+    },
+  }
+  let body: unknown
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithEmptyFolders),
+    http.post('*/api/v1/budget/move-folder', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  // the empty folders' grips live in the neutral band, in neither side's band
+  const neutral = screen.getByTestId('plan-section-neutral')
+  expect(within(neutral).getByRole('button', { name: 'move folder Empty One' })).toBeInTheDocument()
+  expect(within(neutral).getByRole('button', { name: 'move folder Empty Two' })).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-section-expense')).queryByRole('button', { name: /move folder Empty/ })).not.toBeInTheDocument()
+
+  // bands mount their DndContexts in DOM order: income, neutral, expense
+  const neutralCtx = capturedDragContexts[capturedDragContexts.length - 2]
+  neutralCtx.onDragStart({ active: { id: 'pfolder:bf-e1' } })
+  neutralCtx.onDragEnd({ active: { id: 'pfolder:bf-e1' }, over: { id: 'pfolder:bf-e2' } })
+  await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'bf-e1', afterId: 'bf-e2' }))
 })
 
 describe('fill handle', () => {

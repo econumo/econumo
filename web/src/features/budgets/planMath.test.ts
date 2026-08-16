@@ -145,13 +145,18 @@ describe('bucketPlanRows', () => {
     expect(rows.expense.uncategorized).toEqual({ element: uncatExpense, hidden: false })
   })
 
-  it('neutral folder renders in the expense area', () => {
-    const f2: BudgetFolderDto = { id: 'f2', name: 'Empty Folder', position: 0 }
-    const plan = mkPlan({ structure: { folders: [f2], elements: [] } })
+  it('neutral folders get their own bucket, in position order, joining neither side', () => {
+    const f2: BudgetFolderDto = { id: 'f2', name: 'Empty Folder', position: 3 }
+    const f3: BudgetFolderDto = { id: 'f3', name: 'Another Empty', position: 1 }
+    const plan = mkPlan({ structure: { folders: [f2, f3], elements: [] } })
 
     const rows = bucketPlanRows(plan, false)
 
-    expect(rows.expense.folders).toEqual([{ folder: f2, rows: [] }])
+    expect(rows.neutral).toEqual([
+      { folder: f3, rows: [] },
+      { folder: f2, rows: [] },
+    ])
+    expect(rows.expense.folders).toEqual([])
     expect(rows.income.folders).toEqual([])
   })
 

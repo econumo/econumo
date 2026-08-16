@@ -89,6 +89,9 @@ export interface PlanFolderSection {
 }
 export interface PlanRows {
   income: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
+  /** member-less folders: they belong to neither side yet, so they sit between the
+   *  two bands (header-only) until a move gives them one */
+  neutral: PlanFolderSection[]
   expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
   archived: PlanRow[]
 }
@@ -145,12 +148,7 @@ export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRow
     return el ? { element: el, hidden: false } : null
   }
 
-  // A memberless (neutral) folder defaults to the expense area for display.
-  const sides = folderSides(plan)
-  const folderSide = new Map<string, Side>()
-  for (const folder of folders) {
-    folderSide.set(folder.id, sides.get(folder.id) === 'income' ? 'income' : 'expense')
-  }
+  const folderSide = folderSides(plan)
 
   const toRow = (el: PlanElementDto): PlanRow => ({ element: el, hidden: isRowHidden(el) })
   const keep = (rows: PlanRow[]): PlanRow[] => (hideEmpty ? rows.filter((r) => !r.hidden) : rows)
@@ -178,9 +176,11 @@ export function bucketPlanRows(plan: BudgetPlanDto, hideEmpty: boolean): PlanRow
 
   const income = sectionsFor('income')
   const expense = sectionsFor('expense')
+  const neutral = folders.filter((f) => folderSide.get(f.id) === 'neutral').map((folder) => ({ folder, rows: [] }))
 
   return {
     income: { ...income, uncategorized: uncategorizedFor('income') },
+    neutral,
     expense: { ...expense, uncategorized: uncategorizedFor('expense') },
     archived,
   }
