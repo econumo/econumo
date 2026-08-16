@@ -26,12 +26,13 @@ import { useBudgetTransactions } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
 
 /** enough of an element (or a nested child category) to list its transactions.
- *  'label' is a client-side discriminant only -- a label is never a real
- *  BudgetElementType, it never appears in structure.elements or on the wire
- *  as an element type. */
+ *  'label' and 'transfers' are client-side discriminants only -- neither is a
+ *  real BudgetElementType, neither appears in structure.elements or on the wire
+ *  as an element type. 'transfers' is the plan sheet's Transfers line: the
+ *  transfers that crossed the budget boundary in the period. */
 export interface BudgetTransactionsTarget {
   id: Id
-  type: BudgetElementType | 'label'
+  type: BudgetElementType | 'label' | 'transfers'
   name: string
   icon: string
   /** null = the budget base currency */
@@ -40,15 +41,22 @@ export interface BudgetTransactionsTarget {
   parent?: { id: Id; type: BudgetElementType | 'label' }
 }
 
+/** the id a 'transfers' target carries; never a real element id */
+export const TRANSFERS_TARGET_ID = 'transfers'
+
 interface BudgetTransactionsDialogProps {
   budget: BudgetDto
   element: BudgetTransactionsTarget | null
   onClose: () => void
+  /** the month to list (Y-m-d, first of month). Defaults to the budget page's
+   *  selected period; the plan sheet passes the clicked column's month. */
+  periodStart?: string
 }
 
-export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTransactionsDialogProps) {
+export function BudgetTransactionsDialog({ budget, element, onClose, periodStart }: BudgetTransactionsDialogProps) {
   const { t, i18n } = useTranslation()
-  const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const storeSelectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const selectedDate = periodStart ?? storeSelectedDate
   const { data: currencies = [] } = useCurrencies()
   const { data: user } = useUserData()
   const { data: allTransactions } = useTransactions()
@@ -95,6 +103,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
         // BudgetElementType, so this branch can never fire alongside another one
         ...(element.type === 'label' ? { labelId: element.id } : {}),
         ...(element.type === BudgetElementType.ENVELOPE ? { envelopeId: element.id } : {}),
+        // transfers composes with nothing on the backend; like 'label' it can
+        // never coincide with another branch here
+        ...(element.type === 'transfers' ? { transfers: true } : {}),
       }
     : null
   const { data: transactions, isLoading } = useBudgetTransactions(params)
@@ -124,7 +135,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
     return {
       id: wireTx.id,
       author: wireTx.author,
-      type: 'expense',
+      type: wireTx.direction ? 'transfer' : 'expense',
       accountId: '',
       accountRecipientId: null,
       amount: wireTx.amount,
@@ -217,7 +228,11 @@ export function BudgetTransactionsDialog({ budget, element, onClose }: BudgetTra
                         ) : null}
                       </span>
                       <span className="tabular-nums text-muted-foreground">
-                        {moneyFormat(-tx.amount, currency, { useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 })}
+                        {/* every list is spend (negative) except a boundary transfer INTO the budget */}
+                        {moneyFormat(tx.direction === 'in' ? tx.amount : -tx.amount, currency, {
+                          useNativePrecision: false,
+                          maxPrecision: currency?.fractionDigits ?? 2,
+                        })}
                       </span>
                     </button>
                   )

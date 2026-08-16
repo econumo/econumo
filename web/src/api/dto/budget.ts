@@ -111,6 +111,9 @@ export interface BudgetTransactionDto {
   labelIds?: Id[]
   /** full datetime Y-m-d H:i:s */
   spentAt: string
+  /** only on rows of the transfers selector: which side of the boundary the
+   *  included account is on; amount/currencyId are that side's */
+  direction?: 'in' | 'out'
 }
 
 export interface BudgetDto {
@@ -160,11 +163,29 @@ export interface PlanMonthRatesDto {
   rates: BudgetRateDto[]
 }
 
+/** one currency's transfers across the budget boundary in one window month:
+ *  in = moved into included accounts, out = moved out of them (each side in
+ *  its own account's currency); never planned */
+export interface PlanTransferDto {
+  currencyId: Id
+  in: string
+  out: string
+}
+
+export interface PlanMonthTransfersDto {
+  /** date-only Y-m-d, first of the month */
+  period: string
+  /** [] for a month nothing crossed; budget currency first, then by id */
+  items: PlanTransferDto[]
+}
+
 export interface BudgetPlanDto {
   meta: BudgetMetaDto
   /** date-only Y-m-d, first of each month in the fetched window */
   months: string[]
   openingBalances: { currencyId: Id; amount: string }[]
   currencyRates: PlanMonthRatesDto[]
+  /** one entry per months[i] */
+  transfers: PlanMonthTransfersDto[]
   structure: { folders: BudgetFolderDto[]; elements: PlanElementDto[] }
 }

@@ -995,6 +995,9 @@
         "totals": {
           "income": "Revenus",
           "expenses": "Dépenses",
+          "transfers": "Virements",
+          "transfers_tooltip": "Entrées {in} · Sorties {out}",
+          "show_transactions": "Afficher les transactions",
           "net": "Net",
           "balance": "Solde"
         },

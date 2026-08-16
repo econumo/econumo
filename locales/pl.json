@@ -995,6 +995,9 @@
         "totals": {
           "income": "Przychody",
           "expenses": "Wydatki",
+          "transfers": "Przelewy",
+          "transfers_tooltip": "Przychodzące {in} · Wychodzące {out}",
+          "show_transactions": "Pokaż transakcje",
           "net": "Netto",
           "balance": "Saldo"
         },

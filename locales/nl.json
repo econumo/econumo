@@ -995,6 +995,9 @@
         "totals": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",
+          "transfers": "Overboekingen",
+          "transfers_tooltip": "In {in} · Uit {out}",
+          "show_transactions": "Transacties tonen",
           "net": "Netto",
           "balance": "Saldo"
         },

@@ -995,6 +995,9 @@
         "totals": {
           "income": "Receitas",
           "expenses": "Despesas",
+          "transfers": "Transferências",
+          "transfers_tooltip": "Entradas {in} · Saídas {out}",
+          "show_transactions": "Mostrar transações",
           "net": "Líquido",
           "balance": "Saldo"
         },

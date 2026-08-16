@@ -48,6 +48,7 @@ function mkPlan(overrides: Partial<BudgetPlanDto> = {}): BudgetPlanDto {
     months: ['2026-05-01', '2026-06-01'],
     openingBalances: [],
     currencyRates: [],
+    transfers: [],
     structure: { folders: [], elements: [] },
     ...overrides,
   }
@@ -483,6 +484,86 @@ describe('totals + balance', () => {
     expect(balances).toEqual(['990', '1820'])
   })
 
+  it('transfers: in − out per month (each currency at its month rate) folds into Net and Balance', () => {
+    const income = mkEl({
+      id: 'inc-1',
+      type: 3,
+      name: 'Income',
+      cells: [
+        { actual: '1000', planned: '1000' },
+        { actual: '0', planned: '1000' },
+      ],
+    })
+    const expense = mkEl({
+      id: 'exp-1',
+      type: 1,
+      name: 'Expense',
+      cells: [
+        { actual: '300', planned: '300' },
+        { actual: '0', planned: '400' },
+      ],
+    })
+    const plan = mkPlan({
+      months: ['2026-07-01', '2026-08-01'],
+      openingBalances: [{ currencyId: 'cur-usd', amount: '100' }],
+      currencyRates: [
+        {
+          period: '2026-07-01',
+          rates: [
+            { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+            { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '2', periodStart: '2026-07-01', periodEnd: '2026-08-01' },
+          ],
+        },
+        {
+          period: '2026-08-01',
+          rates: [{ currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-08-01', periodEnd: '2026-09-01' }],
+        },
+      ],
+      transfers: [
+        // July: 200 USD out to savings, 40 EUR (= 20 USD at 2:1) back in
+        {
+          period: '2026-07-01',
+          items: [
+            { currencyId: 'cur-usd', in: '0', out: '200' },
+            { currencyId: 'cur-eur', in: '40', out: '0' },
+          ],
+        },
+        // August: 50 USD in — a future month, still counted (transfers are never planned)
+        { period: '2026-08-01', items: [{ currencyId: 'cur-usd', in: '50', out: '0' }] },
+      ],
+      structure: { folders: [], elements: [income, expense] },
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const now = new Date(2026, 7, 15) // July past, August current
+
+    const totals = planTotals(plan, ex, now)
+
+    expect(totals[0].transfersIn).toBe('20')
+    expect(totals[0].transfersOut).toBe('200')
+    expect(totals[0].transfersNet).toBe('-180')
+    expect(totals[1].transfersNet).toBe('50')
+
+    // Net = income − expenses + transfers, on both the actual and the effective figures;
+    // planned never includes transfers
+    expect(totals[0].netActual).toBe('520') // 1000 − 300 − 180
+    expect(totals[0].effectiveNet).toBe('520')
+    expect(totals[0].netPlanned).toBe('700')
+    expect(totals[1].effectiveNet).toBe('650') // max(0,1000) − max(0,400) + 50
+    expect(totals[1].netPlanned).toBe('600')
+
+    // Balance chains on the transfer-inclusive Net: 100 + 520, then + 650
+    expect(balanceRow(plan, totals, ex, now)).toEqual(['620', '1270'])
+  })
+
+  it('transfers: a missing or empty month entry counts as zero', () => {
+    const plan = mkPlan({
+      months: ['2026-07-01', '2026-08-01'],
+      transfers: [{ period: '2026-07-01', items: [] }],
+    })
+    const totals = planTotals(plan, makePlanExchange(plan, [usd]), new Date(2027, 0, 1))
+    expect(totals.map((t) => t.transfersNet)).toEqual(['0', '0'])
+  })
+
   it('empty planned counts as zero everywhere; archived rows count in actuals only', () => {
     const archived = mkEl({
       id: 'exp-archived',
@@ -523,6 +604,9 @@ describe('totals + balance', () => {
       effectiveExpense: '0',
       effectiveNet: '0',
       uncategorizedActual: '0',
+      transfersIn: '0',
+      transfersOut: '0',
+      transfersNet: '0',
     })
     // actual includes the archived row's 30; planned excludes it entirely (normal's empty planned is '0')
     expect(totals[1].expenseActual).toBe('30')

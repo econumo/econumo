@@ -203,6 +203,12 @@ export interface PlanMonthTotals {
   /** actual uncategorized expense less actual uncategorized income — unassigned
    *  money is only ever real spend, so this line ignores plans entirely */
   uncategorizedActual: string
+  /** transfers that crossed the budget boundary this month, in budget currency:
+   *  in = moved into included accounts, out = moved out. Never planned. */
+  transfersIn: string
+  transfersOut: string
+  /** in − out: the Transfers line, and a term of Net / Balance */
+  transfersNet: string
 }
 
 export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
@@ -218,7 +224,15 @@ export function makePlanExchange(plan: BudgetPlanDto, currencies: CurrencyDto[])
 export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
   const cur = currentMonth(now)
   const rows = plan.structure.elements
+  const transfersByMonth = new Map((plan.transfers ?? []).map((t) => [t.period, t.items]))
   return plan.months.map((month, i) => {
+    let transfersIn = '0'
+    let transfersOut = '0'
+    for (const tr of transfersByMonth.get(month) ?? []) {
+      transfersIn = add(transfersIn, ex(tr.currencyId, tr.in, i))
+      transfersOut = add(transfersOut, ex(tr.currencyId, tr.out, i))
+    }
+    const transfersNet = sub(transfersIn, transfersOut)
     let incomeActual = '0'
     let incomePlanned = '0'
     let expenseActual = '0'
@@ -249,17 +263,24 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
+    // Net carries the boundary transfers so the Balance row (which chains on
+    // effectiveNet) reflects money that really left or entered the budget's
+    // accounts — and Balance[m] − Balance[m−1] stays exactly the Net line.
+    // Planned figures never include them: a transfer has no plan.
     return {
       incomeActual,
       incomePlanned,
       expenseActual,
       expensePlanned,
-      netActual: sub(incomeActual, expenseActual),
+      netActual: add(sub(incomeActual, expenseActual), transfersNet),
       netPlanned: sub(incomePlanned, expensePlanned),
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
-      effectiveNet: sub(effIncome, effExpense),
+      effectiveNet: add(sub(effIncome, effExpense), transfersNet),
       uncategorizedActual: sub(uncatExpense, uncatIncome),
+      transfersIn,
+      transfersOut,
+      transfersNet,
     }
   })
 }

@@ -128,6 +128,8 @@ export interface BudgetTransactionsParams {
   envelopeId?: Id
   uncategorized?: boolean
   labelId?: Id
+  /** transfers across the budget boundary; exclusive with every other selector */
+  transfers?: boolean
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -137,6 +139,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.envelopeId) query.set('envelopeId', params.envelopeId)
   if (params.uncategorized) query.set('uncategorized', '1')
   if (params.labelId) query.set('labelId', params.labelId)
+  if (params.transfers) query.set('transfers', '1')
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )

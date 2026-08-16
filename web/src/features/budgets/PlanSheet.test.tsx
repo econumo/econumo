@@ -228,9 +228,9 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   const totals = planTotals(plan, ex)
   const balance = balanceRow(plan, totals, ex)
 
-  // index 2 is the uncategorized expense row slotted between Expenses and Net
+  // indexes 2 and 3 are the Uncategorized and Transfers lines slotted between Expenses and Net
   const rows = within(totalsBlock).getAllByRole('row')
-  const [incomeRow, expensesRow, , netRow] = rows
+  const [incomeRow, expensesRow, , , netRow] = rows
   const augTotals = totals[2]
 
   expect(within(incomeRow).getByText(moneyFormat(augTotals.effectiveIncome, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
@@ -1414,21 +1414,86 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(balance.className).toContain('sticky')
   expect(totals.className).not.toContain('sticky')
 
-  // the three totals rows, plus the uncategorized expense row slotted between
-  // Expenses and Net
+  // the three totals rows, plus the Uncategorized and Transfers lines slotted
+  // between Expenses and Net
   const totalRows = within(totals).getAllByRole('row')
-  expect(totalRows).toHaveLength(4)
+  expect(totalRows).toHaveLength(5)
   expect(within(totals).getByText('Income')).toBeInTheDocument()
   expect(within(totals).getByText('Expenses')).toBeInTheDocument()
   expect(within(totals).getByText('Net')).toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
 
-  // order: Income, Expenses, Uncategorized, Net — all four are totals lines
+  // order: Income, Expenses, Uncategorized, Transfers, Net — all five are totals lines
   expect(totalRows[1]).toHaveTextContent('Expenses')
   expect(totalRows[2]).toHaveTextContent('Uncategorized')
-  expect(totalRows[3]).toHaveTextContent('Net')
-  // it is a totals line, not a selectable element row
+  expect(totalRows[3]).toHaveTextContent('Transfers')
+  expect(totalRows[4]).toHaveTextContent('Net')
+  // they are totals lines, not selectable element rows
   expect(totalRows[2].querySelector('[data-row-id]')).toBeNull()
+  expect(totalRows[3].querySelector('[data-row-id]')).toBeNull()
+})
+
+it('transfers line: signed net per month, a tooltip with the in/out split, and a link only where money crossed', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // window Jun/Jul/Aug; the fixture's June crossed 50 in / 150 out
+  const junLink = screen.getByTestId('plan-totals-transfers-link-0')
+  expect(junLink).toHaveTextContent('-100.00')
+  expect(junLink.className).toContain('text-destructive')
+  expect(junLink).toHaveAttribute('title', 'In 50.00 · Out 150.00. Show transactions')
+
+  // nothing crossed in July: plain text, no link
+  expect(screen.queryByTestId('plan-totals-transfers-link-1')).not.toBeInTheDocument()
+  expect(screen.getByTestId('plan-totals-transfers-1')).toHaveTextContent('0.00')
+
+  // Net and Balance carry the June transfers (math core, not hand-derived)
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const totals = planTotals(plan, ex)
+  expect(totals[1].transfersNet).toBe('-100')
+  const netRow = within(screen.getByTestId('plan-totals')).getAllByRole('row')[4]
+  expect(within(netRow).getByText(moneyFormat(totals[1].effectiveNet, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
+})
+
+it('clicking a totals link opens the transaction list for THAT column\'s month', async () => {
+  usePlanHandlers()
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', selectedDate: '2026-07-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  // Transfers, June (column 0) — not the budget page's selected July period
+  await user.click(screen.getByTestId('plan-totals-transfers-link-0'))
+  const dialog = await screen.findByRole('dialog')
+  expect(within(dialog).getByText('Transfers')).toBeInTheDocument()
+  await waitFor(() => expect(seen).toHaveLength(1))
+  expect(seen[0].searchParams.get('transfers')).toBe('1')
+  expect(seen[0].searchParams.get('periodStart')).toBe('2026-06-01')
+  expect(seen[0].searchParams.get('uncategorized')).toBeNull()
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  // Uncategorized, whichever visible column has spend: the fixture's uncategorized
+  // expense row lands in July (column 1)
+  await user.click(screen.getByTestId('plan-totals-uncategorized-link-1'))
+  await screen.findByRole('dialog')
+  await waitFor(() => expect(seen).toHaveLength(2))
+  expect(seen[1].searchParams.get('uncategorized')).toBe('1')
+  expect(seen[1].searchParams.get('periodStart')).toBe('2026-07-01')
+  expect(seen[1].searchParams.get('transfers')).toBeNull()
 })
 
 it('rules element rows flush with hairline dividers', async () => {

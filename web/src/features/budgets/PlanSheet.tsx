@@ -35,6 +35,8 @@ import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
+import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
+import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canDeleteEnvelope,
   canEditBudget,
@@ -748,18 +750,27 @@ function FolderRows({
   )
 }
 
+/** the totals lines that drill down to a transaction list: the click opens the
+ *  month's list for that bucket. Uncategorized lists the month's uncategorized
+ *  expenses; transfers the transfers that crossed the budget boundary. */
+type TotalsLink = 'uncategorized' | 'transfers'
+
 interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'uncategorized' | 'net'
+  key: 'income' | 'expenses' | 'uncategorized' | 'transfers' | 'net'
   /** the totals.* key holds the label for every row but uncategorized, which reuses
    *  the shared common.uncategorized string the element rows already render */
   labelKey: string
   value: (t: PlanMonthTotals) => string
+  link?: TotalsLink
+  /** a signed line: negatives render destructive, like the Balance row */
+  signed?: boolean
 }
 
 const TOTALS_ROWS: TotalsRowSpec[] = [
   { key: 'income', labelKey: 'budgets.page.plan.totals.income', value: (t) => t.effectiveIncome },
   { key: 'expenses', labelKey: 'budgets.page.plan.totals.expenses', value: (t) => t.effectiveExpense },
-  { key: 'uncategorized', labelKey: 'common.uncategorized', value: (t) => t.uncategorizedActual },
+  { key: 'uncategorized', labelKey: 'common.uncategorized', value: (t) => t.uncategorizedActual, link: 'uncategorized' },
+  { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
   { key: 'net', labelKey: 'budgets.page.plan.totals.net', value: (t) => t.effectiveNet },
 ]
 
@@ -769,14 +780,17 @@ function PlanTotals({
   gridCols,
   totals,
   currency,
+  onLinkClick,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
+  onLinkClick: (link: TotalsLink, month: string) => void
 }) {
   const { t } = useTranslation()
+  const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
       {TOTALS_ROWS.map((spec) => (
@@ -786,11 +800,39 @@ function PlanTotals({
             {visibleMonths.map((m, i) => {
               const idx = monthIndex(m)
               const row = idx >= 0 ? totals[idx] : undefined
+              const value = row ? spec.value(row) : undefined
+              const negative = spec.signed && value !== undefined && cmp(value, '0') < 0
+              const tone = negative ? 'text-destructive' : ''
+              // a zero has nothing to list, so it stays plain text — except a
+              // transfers net that only cancels out (in == out != 0) still has rows
+              const linkable =
+                spec.link && row && value !== undefined
+                  ? spec.link === 'transfers'
+                    ? !(isZero(row.transfersIn) && isZero(row.transfersOut))
+                    : !isZero(value)
+                  : false
+              const title =
+                spec.link === 'transfers' && row
+                  ? `${t('budgets.page.plan.totals.transfers_tooltip', { in: fmt(row.transfersIn), out: fmt(row.transfersOut) })}. ${t('budgets.page.plan.totals.show_transactions')}`
+                  : t('budgets.page.plan.totals.show_transactions')
               return (
-                <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1 `}>
-                  <span className="text-sm">
-                    {row ? moneyFormat(spec.value(row), currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-                  </span>
+                <div key={m} data-col={i} className="flex items-center justify-end px-2 py-1">
+                  {linkable ? (
+                    <button
+                      type="button"
+                      title={title}
+                      aria-label={`transactions ${t(spec.labelKey)} ${m}`}
+                      data-testid={`plan-totals-${spec.key}-link-${i}`}
+                      className={`text-sm tabular-nums underline-offset-2 hover:underline ${tone}`}
+                      onClick={() => onLinkClick(spec.link!, m)}
+                    >
+                      {fmt(value!)}
+                    </button>
+                  ) : (
+                    <span className={`text-sm ${tone}`} data-testid={`plan-totals-${spec.key}-${i}`}>
+                      {value !== undefined ? fmt(value) : '—'}
+                    </span>
+                  )}
                 </div>
               )
             })}
@@ -971,6 +1013,18 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
   const [revealedSections, setRevealedSections] = useState<Set<string>>(new Set())
   const revealSection = (key: string) => setRevealedSections((prev) => new Set(prev).add(key))
+  // the totals drill-down: which bucket, and which column's month
+  const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
+  const openTotalsTransactions = useCallback(
+    (link: 'uncategorized' | 'transfers', month: string) => {
+      const target: BudgetTransactionsTarget =
+        link === 'transfers'
+          ? { id: TRANSFERS_TARGET_ID, type: 'transfers', name: t('budgets.page.plan.totals.transfers'), icon: 'sync_alt', currencyId: null }
+          : { id: UNCATEGORIZED_ID, type: BudgetElementType.CATEGORY, name: t('common.uncategorized'), icon: 'question_mark', currencyId: null }
+      setTransactionsTarget({ target, month })
+    },
+    [t],
+  )
   const containerRef = useRef<HTMLDivElement | null>(null)
   const observerRef = useRef<ResizeObserver | null>(null)
   const [width, setWidth] = useState(0)
@@ -1766,6 +1820,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
+          onLinkClick={openTotalsTransactions}
         />
 
         <PlanBalanceRow
@@ -1776,6 +1831,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           currency={planCurrency}
         />
       </div>
+
+      {/* the totals drill-down lists the CLICKED column's month, not the budget page's period */}
+      <BudgetTransactionsDialog
+        budget={budget}
+        element={transactionsTarget?.target ?? null}
+        periodStart={transactionsTarget?.month}
+        onClose={() => setTransactionsTarget(null)}
+      />
 
       <SetLimitDialog
         target={

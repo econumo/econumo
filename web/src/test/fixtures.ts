@@ -178,6 +178,14 @@ export const fixtureWirePlan = {
       ],
     },
   ],
+  // boundary transfers: June moved 150 out to an excluded account and 50 back
+  // in (net −100); the other months crossed nothing
+  transfers: [
+    { period: '2026-05-01', items: [] },
+    { period: '2026-06-01', items: [{ currencyId: 'cur-usd', in: '50', out: '150' }] },
+    { period: '2026-07-01', items: [] },
+    { period: '2026-08-01', items: [] },
+  ],
   structure: {
     folders: [{ id: 'bf1', name: 'Essentials', position: 0 }],
     elements: [

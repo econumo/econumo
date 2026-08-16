@@ -995,6 +995,9 @@
         "totals": {
           "income": "收入",
           "expenses": "支出",
+          "transfers": "转账",
+          "transfers_tooltip": "转入 {in} · 转出 {out}",
+          "show_transactions": "显示交易",
           "net": "净额",
           "balance": "余额"
         },

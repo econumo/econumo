@@ -995,6 +995,9 @@
         "totals": {
           "income": "Доходы",
           "expenses": "Расходы",
+          "transfers": "Переводы",
+          "transfers_tooltip": "Входящие {in} · Исходящие {out}",
+          "show_transactions": "Показать транзакции",
           "net": "Нетто",
           "balance": "Баланс"
         },
