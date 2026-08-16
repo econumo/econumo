@@ -34,6 +34,15 @@ package apiparity
 // (see budget_income_elements' get-budget-baseline golden, which already
 // reflects the same two rows at date=2024-04-15), not something this
 // scenario introduces.
+//
+// Transfers across the budget boundary (a Savings account excluded from the
+// plan budget) feed the plan's transfers block and its drill-down list:
+//
+//	tx-apr-to-savings    2024-04-12 10:00:00  transfer 100.00  OwnerAccount -> Savings (out)
+//	tx-may-from-savings  2024-05-08 10:00:00  transfer  30.00  Savings -> OwnerAccount (in)
+//
+// Savings stays INCLUDED in the seeded fixture Budget, so its plan (the last
+// call) sees both transfers as internal moves and reports no transfer rows.
 
 func init() {
 	register(Scenario{Name: "budget_plan", Calls: func() []Call {
@@ -44,7 +53,11 @@ func init() {
 			txMayNoCat    = "d0000000-0000-0000-0000-0000000000e3"
 			txAprSalary   = "d0000000-0000-0000-0000-0000000000e4"
 			txJunNoCatInc = "d0000000-0000-0000-0000-0000000000e5"
+			opSavings     = "a0000000-0000-0000-0000-0000000000e6"
+			txAprToSav    = "d0000000-0000-0000-0000-0000000000e7"
+			txMayFromSav  = "d0000000-0000-0000-0000-0000000000e8"
 		)
+		var savingsID string
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
 				Body: map[string]any{"id": planBudget, "name": "Plan", "currencyId": USD, "startDate": "2024-04-01"}},
@@ -72,8 +85,24 @@ func init() {
 			{Label: "tx-jun-nocat-income", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": txJunNoCatInc, "accountId": OwnerAccount, "type": "income",
 					"amount": "50.00", "date": "2024-06-06 08:00:00"}},
+			// The boundary: an owner account excluded from the plan budget, one
+			// transfer out to it in April, one back in May.
+			{Label: "create-savings-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
+				Body: map[string]any{"id": opSavings, "name": "Savings", "icon": "bank", "currencyId": USD, "folderId": OwnerFolder}, CaptureIDInto: &savingsID},
+			{Label: "exclude-savings-account", Method: "POST", Path: "/api/v1/budget/exclude-account", Auth: "owner",
+				Body: map[string]any{"id": planBudget, "accountId": &savingsID}},
+			{Label: "tx-apr-to-savings", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": txAprToSav, "accountId": OwnerAccount, "accountRecipientId": &savingsID, "type": "transfer",
+					"amount": "100.00", "amountRecipient": "100.00", "date": "2024-04-12 10:00:00"}},
+			{Label: "tx-may-from-savings", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": txMayFromSav, "accountId": &savingsID, "accountRecipientId": OwnerAccount, "type": "transfer",
+					"amount": "30.00", "amountRecipient": "30.00", "date": "2024-05-08 10:00:00"}},
 			{Label: "get-budget-plan", Method: "GET",
 				Path: "/api/v1/budget/get-budget-plan?id=" + planBudget + "&from=2024-04-01&months=3", Auth: "owner"},
+			{Label: "get-transaction-list-transfers", Method: "GET",
+				Path: "/api/v1/budget/get-transaction-list?budgetId=" + planBudget + "&periodStart=2024-04-01&transfers=1", Auth: "owner"},
+			{Label: "err:transfers-with-uncategorized", Method: "GET",
+				Path: "/api/v1/budget/get-transaction-list?budgetId=" + planBudget + "&periodStart=2024-04-01&transfers=1&uncategorized=1", Auth: "owner"},
 			{Label: "err:months-out-of-range", Method: "GET",
 				Path: "/api/v1/budget/get-budget-plan?id=" + planBudget + "&from=2024-04-01&months=40", Auth: "owner"},
 			// Frozen-contract re-proof: the budget view shows none of the income

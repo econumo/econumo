@@ -68,6 +68,18 @@ type MonthlyIncomeRow struct {
 	Amount     string
 }
 
+// MonthlyTransferRow is one (month, currency) total of transfers that crossed
+// the budget boundary: In sums transfers INTO the included set (recipient
+// inside, source outside) in the recipient account's currency; Out sums
+// transfers OUT of it in the source account's currency. Either side may be
+// "0" when only the other direction moved money that month.
+type MonthlyTransferRow struct {
+	Month      string
+	CurrencyID string
+	In         string
+	Out        string
+}
+
 // MonthlyLimitRow is one element's limit in one month (the plan sheet's
 // planned cells), keyed by the element's external id + stored type.
 type MonthlyLimitRow struct {
@@ -89,6 +101,10 @@ type BudgetTransactionRow struct {
 	CategoryID  *string
 	PayeeID     *string
 	TagID       *string
+	// Direction is set only on rows from BudgetTransactionsTransfers: "out"
+	// when the included account is the source, "in" when it is the recipient.
+	// Amount/CurrencyID are then the included side's figures.
+	Direction string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a

@@ -270,6 +270,24 @@ type OpeningBalanceResult struct {
 	Amount     string `json:"amount"`
 }
 
+// PlanTransferResult is one currency's transfers across the budget boundary
+// in one window month: In = moved into included accounts (recipient side's
+// amount and currency), Out = moved out of them (source side's). Neither is
+// planned; the client nets them into the month's Net and Balance.
+type PlanTransferResult struct {
+	CurrencyId string `json:"currencyId"`
+	In         string `json:"in"`
+	Out        string `json:"out"`
+}
+
+// PlanMonthTransfersResult is one window month's boundary transfers; Items is
+// [] (never null) for a month nothing crossed, ordered budget currency first
+// then by currency id.
+type PlanMonthTransfersResult struct {
+	Period string               `json:"period"`
+	Items  []PlanTransferResult `json:"items"`
+}
+
 // PlanMonthRatesResult is one window month's average currency rates. Period is
 // the REQUESTED month; each rate row reports its own snapped period, exactly
 // as the budget page's currencyRates block does.
@@ -287,11 +305,12 @@ type PlanStructureResult struct {
 
 // BudgetPlanResult is the full get-budget-plan shape.
 type BudgetPlanResult struct {
-	Meta            MetaResult             `json:"meta"`
-	Months          []string               `json:"months"`
-	OpeningBalances []OpeningBalanceResult `json:"openingBalances"`
-	CurrencyRates   []PlanMonthRatesResult `json:"currencyRates"`
-	Structure       PlanStructureResult    `json:"structure"`
+	Meta            MetaResult                 `json:"meta"`
+	Months          []string                   `json:"months"`
+	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
+	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers       []PlanMonthTransfersResult `json:"transfers"`
+	Structure       PlanStructureResult        `json:"structure"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.
@@ -587,6 +606,10 @@ type BudgetTransactionListRequest struct {
 	EnvelopeId    *string `json:"envelopeId"`
 	LabelId       *string `json:"labelId"`
 	Uncategorized bool    `json:"uncategorized,omitempty"`
+	// Transfers selects the transfers that crossed the budget boundary (one
+	// side included, the other not) — the plan sheet's Transfers drill-down.
+	// Mutually exclusive with every other selector.
+	Transfers bool `json:"transfers,omitempty"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -619,6 +642,11 @@ type BudgetTransactionResult struct {
 	// transaction feature's own wire.
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
+	// Direction is present only on rows of the transfers selector: "out" when
+	// the included account is the source, "in" when it is the recipient —
+	// Amount/CurrencyId are that side's. Omitted on every other list so their
+	// bytes are unchanged.
+	Direction string `json:"direction,omitempty"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.

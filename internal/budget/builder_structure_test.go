@@ -54,6 +54,10 @@ func (s *spendingStub) IncomeByMonth(context.Context, []vo.Id, time.Time, time.T
 	return nil, nil
 }
 
+func (s *spendingStub) TransfersByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.MonthlyTransferRow, error) {
+	return nil, nil
+}
+
 func (s *spendingStub) LimitsByMonth(context.Context, vo.Id, time.Time, time.Time) ([]model.MonthlyLimitRow, error) {
 	return nil, nil
 }
@@ -67,6 +71,10 @@ func (s *spendingStub) BudgetTransactionsByTag(context.Context, vo.Id, *vo.Id, b
 }
 
 func (s *spendingStub) BudgetTransactionsUncategorized(context.Context, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
+	return nil, nil
+}
+
+func (s *spendingStub) BudgetTransactionsTransfers(context.Context, []vo.Id, time.Time, time.Time) ([]model.BudgetTransactionRow, error) {
 	return nil, nil
 }
 

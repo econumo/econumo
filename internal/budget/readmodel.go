@@ -42,6 +42,14 @@ type ReadModel interface {
 	// category — and NULL-category rows — under the income-side Uncategorized
 	// row, so no income ever silently vanishes from the Balance projection.
 	IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error)
+	// TransfersByMonth: transfers (type=2) that crossed the budget boundary,
+	// per (month, currency) over [from, to) — the plan sheet's Transfers
+	// line. "In" = recipient in accountIDs and source not, in the recipient
+	// account's currency; "Out" = the mirror, in the source account's
+	// currency. Transfers with both or neither side included are not rows.
+	// Cross-currency transfers count (each side is measured in its own
+	// account's currency, so no same-amount guard is needed).
+	TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error)
 	// LimitsByMonth: every element limit of the budget in [from, to) as
 	// (external_id, type, month, amount) — the plan sheet's planned cells.
 	LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.MonthlyLimitRow, error)
@@ -60,6 +68,11 @@ type ReadModel interface {
 	// [start, end) on the given accounts with no category and no tag, newest
 	// first. Backs the top-level "uncategorized" element's drill-down.
 	BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsTransfers returns transfers (type=2) in [start, end)
+	// with exactly one side in accountIDs, newest first. Amount/CurrencyID
+	// are the included side's; Direction says which side that is. Backs the
+	// plan sheet's Transfers drill-down (the counterpart of TransfersByMonth).
+	BudgetTransactionsTransfers(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 	// BudgetTransactionsByLabel returns expense transactions (type=0) in
 	// [start, end) on the given accounts carrying labelID, newest first. The
 	// link is many-to-many (transactions_labels), unlike the single tag_id

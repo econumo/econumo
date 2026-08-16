@@ -287,6 +287,87 @@ func TestGetBudgetPlan_OpeningBalanceExcludesWindowBoundary(t *testing.T) {
 	}
 }
 
+// TestGetBudgetPlan_Transfers pins the transfers block: one entry per window
+// month with an empty (never null) items list, and per-currency in/out of the
+// transfers that crossed the budget boundary — a transfer between two included
+// accounts is not a row.
+func TestGetBudgetPlan_Transfers(t *testing.T) {
+	h := newHarness(t)
+	tok := h.token(t)
+	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
+
+	const savingsID = "aaaa1111-0000-7000-8000-000000000077"
+	const walletID = "aaaa1111-0000-7000-8000-000000000078"
+	f.Account(fixture.Account{ID: savingsID, UserID: seedUserID, CurrencyID: usdID, Name: "Savings"})
+	f.Account(fixture.Account{ID: walletID, UserID: seedUserID, CurrencyID: usdID, Name: "Wallet"})
+
+	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Transfers Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+	if st, env := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{"id": budgetID1, "accountId": savingsID}); st != http.StatusOK {
+		t.Fatalf("exclude-account = %d; body=%s", st, env.raw)
+	}
+
+	// April: 100 out to savings, 30 back in; May: a transfer between two
+	// included accounts only (must not surface); June: nothing.
+	f.Transaction(fixture.Transaction{ID: "d0005555-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID, AccountRecipientID: savingsID,
+		Type: 2, Amount: "100.00000000", AmountRecipient: "100.00000000", SpentAt: "2024-04-05 10:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0005555-0000-7000-8000-000000000002", UserID: seedUserID, AccountID: savingsID, AccountRecipientID: accountID,
+		Type: 2, Amount: "30.00000000", AmountRecipient: "30.00000000", SpentAt: "2024-04-20 10:00:00"})
+	f.Transaction(fixture.Transaction{ID: "d0005555-0000-7000-8000-000000000003", UserID: seedUserID, AccountID: accountID, AccountRecipientID: walletID,
+		Type: 2, Amount: "15.00000000", AmountRecipient: "15.00000000", SpentAt: "2024-05-02 10:00:00"})
+
+	st, env := getPlan(t, h, tok, "id="+budgetID1+"&from=2024-04-01&months=3")
+	if st != http.StatusOK {
+		t.Fatalf("get-budget-plan = %d; body=%s", st, env.raw)
+	}
+	item := planItem(t, env)
+	if len(item.Transfers) != 3 {
+		t.Fatalf("transfers length = %d, want 3: %+v", len(item.Transfers), item.Transfers)
+	}
+	for i, want := range []string{"2024-04-01", "2024-05-01", "2024-06-01"} {
+		if item.Transfers[i].Period != want {
+			t.Errorf("transfers[%d].period = %q want %q", i, item.Transfers[i].Period, want)
+		}
+		if item.Transfers[i].Items == nil {
+			t.Errorf("transfers[%d].items must be [] not null", i)
+		}
+	}
+	apr := item.Transfers[0].Items
+	if len(apr) != 1 || apr[0].CurrencyId != usdID || !decEq(apr[0].In, "30") || !decEq(apr[0].Out, "100") {
+		t.Errorf("april transfers = %+v, want one USD row in=30 out=100", apr)
+	}
+	if len(item.Transfers[1].Items) != 0 || len(item.Transfers[2].Items) != 0 {
+		t.Errorf("may/june must have no transfer rows: %+v", item.Transfers[1:])
+	}
+
+	// The drill-down lists the same April rows, newest first, each carrying
+	// the included side's amount and its direction; the both-included May
+	// transfer is not in May's list.
+	st, env = h.do(t, http.MethodGet, "/api/v1/budget/get-transaction-list?budgetId="+budgetID1+"&periodStart=2024-04-01&transfers=1", tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-transaction-list(transfers) = %d; body=%s", st, env.raw)
+	}
+	list := mustUnmarshal[model.GetBudgetTransactionListResult](t, env.Data)
+	if len(list.Items) != 2 {
+		t.Fatalf("transfer list = %+v, want 2 rows", list.Items)
+	}
+	if list.Items[0].Direction != "in" || !decEq(list.Items[0].Amount, "30") || list.Items[1].Direction != "out" || !decEq(list.Items[1].Amount, "100") {
+		t.Errorf("transfer list rows = %+v, want [in 30, out 100]", list.Items)
+	}
+	st, env = h.do(t, http.MethodGet, "/api/v1/budget/get-transaction-list?budgetId="+budgetID1+"&periodStart=2024-05-01&transfers=1", tok, nil)
+	if st != http.StatusOK {
+		t.Fatalf("get-transaction-list(transfers, may) = %d; body=%s", st, env.raw)
+	}
+	if may := mustUnmarshal[model.GetBudgetTransactionListResult](t, env.Data); len(may.Items) != 0 {
+		t.Errorf("may transfer list = %+v, want empty (both sides included)", may.Items)
+	}
+	// the selector composes with nothing
+	st, env = h.do(t, http.MethodGet, "/api/v1/budget/get-transaction-list?budgetId="+budgetID1+"&periodStart=2024-04-01&transfers=1&uncategorized=1", tok, nil)
+	if st != http.StatusBadRequest {
+		t.Errorf("transfers+uncategorized = %d, want 400", st)
+	}
+}
+
 // TestGetBudgetPlan_EnvelopeCategoryDedup: a category claimed by two envelopes
 // (the write path never enforces cross-envelope uniqueness) must surface as a
 // child of exactly one — the LOWEST-ID envelope wins, deterministically,

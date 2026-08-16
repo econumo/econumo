@@ -7,6 +7,7 @@ package repo
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -727,6 +728,111 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 	return out, rows.Err()
 }
 
+// TransfersByMonth implements ReadModel: one grouped query per direction,
+// merged per (month, currency). Rows come back sorted by month then currency
+// id so the wire is deterministic across engines.
+func (r *ReadRepo) TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error) {
+	// Empty IN () is a pgsql syntax error (same guard as the other by-month
+	// queries) — and with no included account nothing can cross the boundary.
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	merged := map[string]*model.MonthlyTransferRow{}
+	run := func(out bool) error {
+		sql, args := r.transfersByMonthSQL(out, accountIDs, from, to)
+		rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+		if err != nil {
+			return err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var monthStr string
+			var currencyID *string
+			a := "0"
+			// SQLite's SUM is float (format 'f',8); PostgreSQL's is exact
+			// NUMERIC text — same split as IncomeByMonth.
+			if r.driver == "postgresql" {
+				var amount *string
+				if err := rows.Scan(&monthStr, &amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = *amount
+				}
+			} else {
+				var amount *float64
+				if err := rows.Scan(&monthStr, &amount, &currencyID); err != nil {
+					return err
+				}
+				if amount != nil {
+					a = strconv.FormatFloat(*amount, 'f', 8, 64)
+				}
+			}
+			if currencyID == nil {
+				continue
+			}
+			key := monthStr + "|" + *currencyID
+			row := merged[key]
+			if row == nil {
+				row = &model.MonthlyTransferRow{Month: monthStr, CurrencyID: *currencyID, In: "0", Out: "0"}
+				merged[key] = row
+			}
+			if out {
+				row.Out = a
+			} else {
+				row.In = a
+			}
+		}
+		return rows.Err()
+	}
+	if err := run(true); err != nil {
+		return nil, err
+	}
+	if err := run(false); err != nil {
+		return nil, err
+	}
+	result := make([]model.MonthlyTransferRow, 0, len(merged))
+	for _, row := range merged {
+		result = append(result, *row)
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Month != result[j].Month {
+			return result[i].Month < result[j].Month
+		}
+		return result[i].CurrencyID < result[j].CurrencyID
+	})
+	return result, nil
+}
+
+// transfersByMonthSQL builds one direction of TransfersByMonth. out=true sums
+// t.amount of transfers whose SOURCE is included and recipient is not, in
+// the source account's currency; out=false sums t.amount_recipient of the
+// mirror, in the recipient account's currency.
+func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to time.Time) (string, []any) {
+	ids := idArgs(accountIDs)
+	n := len(ids)
+	amountCol, joinCol, insideCol, outsideCol := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id"
+	if !out {
+		amountCol, joinCol, insideCol, outsideCol = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id"
+	}
+	month := r.planMonthExpr("t.spent_at")
+	args := make([]any, 0, 2*n+2)
+	args = append(args, ids...)
+	args = append(args, ids...)
+	var dStart, dEnd string
+	if r.driver == "postgresql" {
+		dStart = "$" + itoa(1+2*n)
+		dEnd = "$" + itoa(2+2*n)
+		args = append(args, from, to)
+	} else {
+		dStart, dEnd = "?", "?"
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	sql := "SELECT " + month + " as month, SUM(" + amountCol + ") as amount, a.currency_id FROM transactions t JOIN accounts a ON " + joinCol + " = a.id WHERE t.type = 2 AND " + insideCol + " IN (" + r.ph(1, n) + ") AND " + outsideCol + " NOT IN (" + r.ph(1+n, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, a.currency_id"
+	return sql, args
+}
+
 // LimitsByMonth implements ReadModel. SUM + GROUP BY is one row per
 // (element, month) anyway — (element_id, period) is unique — but keeps the
 // scan on the proven SummarizedLimits float/NUMERIC split.
@@ -1073,6 +1179,72 @@ func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountI
 	}
 	defer rows.Close()
 	return scanBudgetTxRows(rows)
+}
+
+// BudgetTransactionsTransfers implements ReadModel: the two directions of
+// TransfersByMonth as a UNION ALL, each half joining the INCLUDED side's
+// account for the currency and reporting that side's amount. The id
+// tie-break keeps same-instant rows in one order on both engines.
+func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(accountIDs)
+	n := len(ids)
+	half := func(out bool, phStart int, dStart, dEnd string) string {
+		amountCol, joinCol, insideCol, outsideCol, direction := "t.amount", "t.account_id", "t.account_id", "t.account_recipient_id", "'out'"
+		if !out {
+			amountCol, joinCol, insideCol, outsideCol, direction = "t.amount_recipient", "t.account_recipient_id", "t.account_recipient_id", "t.account_id", "'in'"
+		}
+		// explicit aliases: a compound SELECT's ORDER BY must name result columns
+		return "SELECT t.id as id, t.user_id, a.currency_id, " + amountCol + " as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, " + direction + " as direction" +
+			" FROM transactions t JOIN accounts a ON " + joinCol + " = a.id" +
+			" WHERE t.type = 2 AND " + insideCol + " IN (" + r.ph(phStart, n) + ") AND " + outsideCol + " NOT IN (" + r.ph(phStart+n, n) + ")" +
+			" AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd
+	}
+	args := make([]any, 0, 4*n+4)
+	var sql string
+	if r.driver == "postgresql" {
+		sql = half(true, 1, "$"+itoa(1+2*n), "$"+itoa(2+2*n)) + " UNION ALL " + half(false, 3+2*n, "$"+itoa(3+4*n), "$"+itoa(4+4*n))
+		args = append(args, ids...)
+		args = append(args, ids...)
+		args = append(args, start, end)
+		args = append(args, ids...)
+		args = append(args, ids...)
+		args = append(args, start, end)
+	} else {
+		sql = half(true, 1, "?", "?") + " UNION ALL " + half(false, 1, "?", "?")
+		// See sqliteDatetime: bind the bounds as 'Y-m-d H:i:s' text.
+		ds, de := sqliteDatetime(start), sqliteDatetime(end)
+		args = append(args, ids...)
+		args = append(args, ids...)
+		args = append(args, ds, de)
+		args = append(args, ids...)
+		args = append(args, ids...)
+		args = append(args, ds, de)
+	}
+	sql += " ORDER BY spent_at DESC, id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.BudgetTransactionRow
+	for rows.Next() {
+		var row model.BudgetTransactionRow
+		var currencyID, desc *string
+		if err := rows.Scan(&row.ID, &row.UserID, &currencyID, &row.Amount, &desc, &row.SpentAt, &row.CategoryID, &row.PayeeID, &row.TagID, &row.Direction); err != nil {
+			return nil, err
+		}
+		if currencyID != nil {
+			row.CurrencyID = *currencyID
+		}
+		if desc != nil {
+			row.Description = *desc
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
 }
 
 func itoa(n int) string {

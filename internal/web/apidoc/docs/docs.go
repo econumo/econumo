@@ -2147,6 +2147,12 @@ const docTemplate = `{
                         "description": "Uncategorized bucket (mutually exclusive with categoryId)",
                         "name": "uncategorized",
                         "in": "query"
+                    },
+                    {
+                        "type": "boolean",
+                        "description": "Transfers across the budget boundary (mutually exclusive with every other selector)",
+                        "name": "transfers",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -9179,6 +9185,12 @@ const docTemplate = `{
                 },
                 "structure": {
                     "$ref": "#/definitions/model.PlanStructureResult"
+                },
+                "transfers": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanMonthTransfersResult"
+                    }
                 }
             }
         },
@@ -9224,6 +9236,10 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "description": {
+                    "type": "string"
+                },
+                "direction": {
+                    "description": "Direction is present only on rows of the transfers selector: \"out\" when\nthe included account is the source, \"in\" when it is the recipient —\nAmount/CurrencyId are that side's. Omitted on every other list so their\nbytes are unchanged.",
                     "type": "string"
                 },
                 "id": {
@@ -11022,6 +11038,20 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanMonthTransfersResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanTransferResult"
+                    }
+                },
+                "period": {
+                    "type": "string"
+                }
+            }
+        },
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
@@ -11036,6 +11066,20 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.BudgetFolderResult"
                     }
+                }
+            }
+        },
+        "model.PlanTransferResult": {
+            "type": "object",
+            "properties": {
+                "currencyId": {
+                    "type": "string"
+                },
+                "in": {
+                    "type": "string"
+                },
+                "out": {
+                    "type": "string"
                 }
             }
         },

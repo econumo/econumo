@@ -52,6 +52,11 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		rates = append(rates, model.PlanMonthRatesResult{Period: monthStrs[i], Rates: monthRates})
 	}
 
+	transfers, err := s.buildPlanTransfers(ctx, b.budget.CurrencyID, f, monthStrs, from, windowEnd)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+
 	structure, err := s.buildPlanStructure(ctx, b, f, monthsList)
 	if err != nil {
 		return model.BudgetPlanResult{}, err
@@ -62,8 +67,47 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		Months:          monthStrs,
 		OpeningBalances: opening,
 		CurrencyRates:   rates,
+		Transfers:       transfers,
 		Structure:       structure,
 	}, nil
+}
+
+// buildPlanTransfers files TransfersByMonth's rows under their window month,
+// one entry per month (empty Items when nothing crossed), items ordered
+// budget currency first then by currency id.
+func (s *Service) buildPlanTransfers(ctx context.Context, budgetCurrencyID vo.Id, f filters, monthStrs []string, from, windowEnd time.Time) ([]model.PlanMonthTransfersResult, error) {
+	out := make([]model.PlanMonthTransfersResult, len(monthStrs))
+	monthIdx := map[string]int{}
+	for i, m := range monthStrs {
+		out[i] = model.PlanMonthTransfersResult{Period: m, Items: []model.PlanTransferResult{}}
+		monthIdx[m] = i
+	}
+	rows, err := s.read.TransfersByMonth(ctx, f.includedAccountIDs, from, windowEnd)
+	if err != nil {
+		return nil, err
+	}
+	for _, r := range rows {
+		i, ok := monthIdx[r.Month]
+		if !ok {
+			continue
+		}
+		out[i].Items = append(out[i].Items, model.PlanTransferResult{
+			CurrencyId: r.CurrencyID,
+			In:         vo.NewDecimal(r.In).String(),
+			Out:        vo.NewDecimal(r.Out).String(),
+		})
+	}
+	budgetCur := budgetCurrencyID.String()
+	for i := range out {
+		items := out[i].Items
+		sort.SliceStable(items, func(a, b int) bool {
+			if (items[a].CurrencyId == budgetCur) != (items[b].CurrencyId == budgetCur) {
+				return items[a].CurrencyId == budgetCur
+			}
+			return items[a].CurrencyId < items[b].CurrencyId
+		})
+	}
+	return out, nil
 }
 
 // buildOpeningBalances sums per-currency balances of the included accounts

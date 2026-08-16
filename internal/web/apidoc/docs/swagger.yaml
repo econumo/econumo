@@ -215,6 +215,10 @@ definitions:
         type: array
       structure:
         $ref: '#/definitions/model.PlanStructureResult'
+      transfers:
+        items:
+          $ref: '#/definitions/model.PlanMonthTransfersResult'
+        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -244,6 +248,13 @@ definitions:
       currencyId:
         type: string
       description:
+        type: string
+      direction:
+        description: |-
+          Direction is present only on rows of the transfers selector: "out" when
+          the included account is the source, "in" when it is the recipient —
+          Amount/CurrencyId are that side's. Omitted on every other list so their
+          bytes are unchanged.
         type: string
       id:
         type: string
@@ -1420,6 +1431,15 @@ definitions:
           $ref: '#/definitions/model.AverageCurrencyRateResult'
         type: array
     type: object
+  model.PlanMonthTransfersResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PlanTransferResult'
+        type: array
+      period:
+        type: string
+    type: object
   model.PlanStructureResult:
     properties:
       elements:
@@ -1430,6 +1450,15 @@ definitions:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
         type: array
+    type: object
+  model.PlanTransferResult:
+    properties:
+      currencyId:
+        type: string
+      in:
+        type: string
+      out:
+        type: string
     type: object
   model.PostRecurringTransactionRequest:
     properties:
@@ -3452,6 +3481,11 @@ paths:
       - description: Uncategorized bucket (mutually exclusive with categoryId)
         in: query
         name: uncategorized
+        type: boolean
+      - description: Transfers across the budget boundary (mutually exclusive with
+          every other selector)
+        in: query
+        name: transfers
         type: boolean
       produces:
       - application/json
