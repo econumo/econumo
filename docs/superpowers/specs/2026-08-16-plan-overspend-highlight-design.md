@@ -51,3 +51,23 @@ Unchanged:
 - `PlanSheet.test.tsx` — one render assertion: a past-month expense cell whose
   actual exceeds its plan carries `text-destructive` on `[data-testid="cell-actual"]`,
   and the matching income cell does not.
+
+## Addendum (same day): underspend in past months is green
+
+Symmetric rule, approved after the red landed: in a **past** month
+(`month < currentMonth()`), an expense-side parent cell whose plan exceeds the
+actual renders its actual in `text-income` — the green the Budget view's
+"available" pill uses. Current and future months under plan stay muted (nothing
+is won yet). Unset plan counts as 0, so a cell with no plan is never green; a
+past month with a plan and zero spend is green. Exactly at plan is muted.
+Income rows, children and Uncategorized are unchanged.
+
+- `planMath.ts`: `isUnderspent(type, cell, month, cur)` beside `isOverspent`.
+- `ElementRow`: the actual's class becomes red / green / muted from the two
+  predicates (they are mutually exclusive: `actual > planned` vs
+  `planned > actual`).
+- Tests: `planMath.test.ts` — past month under plan → true; current month under
+  plan → false; future month → false; unset plan → false; zero spend with a plan
+  in a past month → true; equal → false; income → false; missing cell → false.
+  `PlanSheet.test.tsx` — the fixture's `cat-food` May cell (120 vs 150) carries
+  `text-income`.

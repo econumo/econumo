@@ -134,12 +134,17 @@ it('overspend turns the actual red in a past month and with no plan set; never o
   // July: 125 spent, no plan stored — a past month by the time this runs (fixture months are 2026)
   const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
   expect(within(foodJuly).getByTestId('cell-actual')).toHaveClass('text-destructive')
-  // May: 120 spent against a 150 plan — under, so plain
+  // May: 120 spent against a 150 plan in a past month — under, so green
   const foodMay = screen.getAllByTestId('plan-cell-cat-food:0')[0]
   expect(within(foodMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
-  // income over an unset plan is not overspend
+  expect(within(foodMay).getByTestId('cell-actual')).toHaveClass('text-income')
+  // income over an unset plan is neither
   const freelanceMay = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
   expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
+  expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-income')
+  // June: 2000 vs 2000 for Salaries (income) — plain; env-eur June 40 vs 100 — green
+  const eurJune = screen.getAllByTestId('plan-cell-env-eur:1')[0]
+  expect(within(eurJune).getByTestId('cell-actual')).toHaveClass('text-income')
 })
 
 it('arrows shift the window by one month, clamped at the budget start', async () => {

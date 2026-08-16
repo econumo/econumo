@@ -72,6 +72,7 @@ import {
   fillTargetCol,
   folderSides,
   isOverspent,
+  isUnderspent,
   makePlanExchange,
   monthDate,
   planInitialFirstMonth,
@@ -475,6 +476,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           const overspend = isOverspent(el.type, cell)
+          const underspend = isUnderspent(el.type, cell, m, ctx.cur)
           const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
           const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
           const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
@@ -496,7 +498,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
             >
-              <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
+              <span
+                data-testid="cell-actual"
+                className={`text-xs ${overspend ? 'text-destructive' : underspend ? 'text-income' : 'text-muted-foreground'}`}
+              >
                 {actualText}
               </span>
               <span data-testid="cell-planned" className="text-sm">

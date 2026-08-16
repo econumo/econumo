@@ -117,6 +117,16 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
   return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
 }
 
+/** the underspend highlight: a PAST month whose plan the actual stayed under — the
+ *  current and future months are still open, so being under plan there means nothing
+ *  yet. Never true without a plan (unset = 0), and never on the income side. */
+export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
+  if (!cell || isIncomeType(type) || month >= cur) {
+    return false
+  }
+  return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
+}
+
 type Side = 'income' | 'expense'
 const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' : 'expense')
 
