@@ -650,11 +650,12 @@ function SectionHeader({
   )
 }
 
-// A folder with zero members (neutral, per folderSides) still renders — header only,
-// no rows — same as the budget page: a folder only disappears if it doesn't exist, not
-// because it currently has no side. section.rows is always the FULL unfiltered member
-// list here (PlanSheet always calls bucketPlanRows(plan, false)), so an empty list means
-// genuinely no members, not "everything hidden by the density toggle".
+// A folder with zero members (neutral, per folderSides) still renders — a header and,
+// when expanded, the same empty-folder hint the budget page shows: a folder only
+// disappears if it doesn't exist, not because it currently has no side. section.rows is
+// always the FULL unfiltered member list here (PlanSheet always calls
+// bucketPlanRows(plan, false)), so an empty list means genuinely no members, not
+// "everything hidden by the density toggle".
 function FolderRows({
   section,
   ctx,
@@ -699,7 +700,11 @@ function FolderRows({
         </span>
         <HiddenRowsNotice count={hiddenCount} onShow={onReveal} />
       </div>
-      <PlanRowList rows={visibleRows} ctx={ctx} />
+      {!folded && !collapsed && section.rows.length === 0 ? (
+        <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
+      ) : (
+        <PlanRowList rows={visibleRows} ctx={ctx} />
+      )}
     </div>
   )
 }

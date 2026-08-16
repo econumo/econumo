@@ -812,6 +812,15 @@ it('a folder with no elements renders header-only in its own band between income
   expect(within(income).queryByText('Empty Folder')).not.toBeInTheDocument()
   expect(income.compareDocumentPosition(neutral) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(neutral.compareDocumentPosition(expense) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // the expanded empty folder carries the same hint the budget view shows; folding hides it
+  const note = 'This folder is empty. Move a category, tag, or envelope here, or create a new envelope.'
+  const folder = screen.getByTestId('plan-folder-bf-empty')
+  expect(within(folder).getByText(note)).toBeInTheDocument()
+  await user.click(within(folder).getByRole('button', { name: 'Empty Folder' }))
+  expect(within(folder).queryByText(note)).not.toBeInTheDocument()
+  // a folder WITH members shows no hint
+  expect(within(screen.getByTestId('plan-folder-bf1')).queryByText(note)).not.toBeInTheDocument()
 })
 
 it('in edit mode, empty folders reorder among themselves inside the neutral band', async () => {
