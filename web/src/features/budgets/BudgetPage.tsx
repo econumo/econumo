@@ -13,7 +13,16 @@ import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
@@ -107,6 +116,13 @@ const preferRowCollisions: CollisionDetection = (args) => {
   const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
   const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
   return row ? [row] : candidates
+}
+
+type BudgetMode = 'budget' | 'plan'
+const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
+const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
+  budget: 'budgets.page.plan.toggle.budget',
+  plan: 'budgets.page.plan.toggle.plan',
 }
 
 // The section is a sortable item itself (folder reorder); the grip lives in
@@ -207,6 +223,11 @@ export function BudgetPage() {
   const createBudget = useCreateBudget()
 
   const [editMode, setEditMode] = useState(false)
+  // edit structure is per view — leaving the view always ends it
+  const switchBudgetMode = (m: BudgetMode) => {
+    setEditMode(false)
+    setBudgetMode(m)
+  }
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
@@ -543,23 +564,24 @@ export function BudgetPage() {
         <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
-        <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
-          {(['budget', 'plan'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              role="tab"
-              aria-selected={budgetMode === m}
-              className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-              onClick={() => {
-                setEditMode(false)
-                setBudgetMode(m)
-              }}
-            >
-              {t(m === 'budget' ? 'budgets.page.plan.toggle.budget' : 'budgets.page.plan.toggle.plan')}
-            </button>
-          ))}
-        </div>
+        {isCompact ? null : (
+          // single-pane headers have no room for the tablist — the mode
+          // switch lives in the settings menu there instead
+          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
+            {BUDGET_MODES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={budgetMode === m}
+                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
+                onClick={() => switchBudgetMode(m)}
+              >
+                {t(BUDGET_MODE_LABEL[m])}
+              </button>
+            ))}
+          </div>
+        )}
         {budgetMode === 'budget' ? (
           <span className="flex shrink-0 items-center gap-1">
             {budgetCurrencyIds.map((currencyId) => {
@@ -602,6 +624,18 @@ export function BudgetPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isCompact ? (
+                <>
+                  <DropdownMenuRadioGroup value={budgetMode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
+                    {BUDGET_MODES.map((m) => (
+                      <DropdownMenuRadioItem key={m} value={m}>
+                        {t(BUDGET_MODE_LABEL[m])}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>

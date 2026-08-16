@@ -369,6 +369,31 @@ it('keeps edit structure in the current view and clears it when the view switche
   expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument()
 })
 
+it('compact viewport: the mode toggle leaves the header and moves into the settings menu', async () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  expect(screen.queryByRole('tablist', { name: 'budget mode' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitemradio', { name: 'Budget' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(screen.getByRole('menuitemradio', { name: 'Plan' }))
+  expect(useBudgetPeriodStore.getState().budgetMode).toBe('plan')
+  expect(screen.queryByRole('button', { name: /^currency /i })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitemradio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(screen.getByRole('menuitemradio', { name: 'Budget' }))
+  expect(useBudgetPeriodStore.getState().budgetMode).toBe('budget')
+})
+
 it('offers change currency on every element, and move to folder', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),

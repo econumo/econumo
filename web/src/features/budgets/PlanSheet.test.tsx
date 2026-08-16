@@ -1254,10 +1254,10 @@ describe('fill handle', () => {
   it('compact mode: the fill handle does not render on a selected editable cell', async () => {
     mockCompactViewport()
     usePlanHandlers()
-    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    // compact headers carry no Budget/Plan tabs — the mode switch sits in the settings menu
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', budgetMode: 'plan' })
     const user = userEvent.setup()
     renderPage()
-    await user.click(await screen.findByRole('tab', { name: /plan/i }))
     await screen.findByTestId('plan-sheet')
 
     // window is Jun/Jul/Aug; pe1's col0 (Jun) has planned '200' — the exact cell
