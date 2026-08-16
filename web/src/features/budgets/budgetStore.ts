@@ -26,8 +26,6 @@ interface BudgetPeriodState {
   /** fold state belongs to one budget; reset when the budget id changes */
   foldBudgetId: Id | null
   resetFoldsFor: (budgetId: Id) => void
-  budgetMode: 'budget' | 'plan'
-  setBudgetMode: (m: 'budget' | 'plan') => void
   planFirstMonth: string | null
   setPlanFirstMonth: (month: string) => void
   /** folded plan sections: 'income', folder ids, 'archived' */
@@ -61,13 +59,6 @@ export const useBudgetPeriodStore = create<BudgetPeriodState>()(
         if (get().foldBudgetId !== budgetId) {
           set({ foldBudgetId: budgetId, unfoldedElements: {} })
         }
-      },
-      budgetMode: 'budget',
-      setBudgetMode: (m) => {
-        if (m === 'plan' && get().budgetMode !== 'plan') {
-          trackEvent(METRICS.BUDGET_PLAN_OPEN)
-        }
-        set({ budgetMode: m })
       },
       planFirstMonth: null,
       setPlanFirstMonth: (month) => {

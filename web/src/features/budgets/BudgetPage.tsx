@@ -18,8 +18,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -78,6 +76,7 @@ import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
 import { CoinLoader } from '@/components/CoinLoader'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
   // sortable row (accounts-settings pattern): the whole row moves with the
@@ -118,12 +117,7 @@ const preferRowCollisions: CollisionDetection = (args) => {
   return row ? [row] : candidates
 }
 
-type BudgetMode = 'budget' | 'plan'
-const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
-const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
-  budget: 'budgets.page.plan.toggle.budget',
-  plan: 'budgets.page.plan.toggle.plan',
-}
+export type BudgetMode = 'budget' | 'plan'
 
 // The section is a sortable item itself (folder reorder); the grip lives in
 // the header rendered by BudgetTable, so the handle props travel via context.
@@ -189,7 +183,7 @@ function ElementLongPress({ element, onLongPress, children }: { element: BudgetE
   return <div {...handlers}>{children}</div>
 }
 
-export function BudgetPage() {
+export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
@@ -204,8 +198,6 @@ export function BudgetPage() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
-  const budgetMode = useBudgetPeriodStore((s) => s.budgetMode)
-  const setBudgetMode = useBudgetPeriodStore((s) => s.setBudgetMode)
   const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
@@ -223,11 +215,11 @@ export function BudgetPage() {
   const createBudget = useCreateBudget()
 
   const [editMode, setEditMode] = useState(false)
-  // edit structure is per view — leaving the view always ends it
-  const switchBudgetMode = (m: BudgetMode) => {
-    setEditMode(false)
-    setBudgetMode(m)
-  }
+  useEffect(() => {
+    if (mode === 'plan') {
+      trackEvent(METRICS.BUDGET_PLAN_OPEN)
+    }
+  }, [mode])
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
@@ -564,24 +556,6 @@ export function BudgetPage() {
         <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
-        {isCompact ? null : (
-          // single-pane headers have no room for the tablist — the mode
-          // switch lives in the settings menu there instead
-          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
-            {BUDGET_MODES.map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={budgetMode === m}
-                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${budgetMode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-                onClick={() => switchBudgetMode(m)}
-              >
-                {t(BUDGET_MODE_LABEL[m])}
-              </button>
-            ))}
-          </div>
-        )}
         {/* both views: the pills toggle the period widget above the table / the sheet */}
         <span className="flex shrink-0 items-center gap-1">
           {budgetCurrencyIds.map((currencyId) => {
@@ -623,25 +597,13 @@ export function BudgetPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isCompact ? (
-                <>
-                  <DropdownMenuRadioGroup value={budgetMode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
-                    {BUDGET_MODES.map((m) => (
-                      <DropdownMenuRadioItem key={m} value={m}>
-                        {t(BUDGET_MODE_LABEL[m])}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
                 {t('budgets.page.budget.settings.menu.edit_structure')}
               </DropdownMenuItem>
-              {budgetMode === 'plan' ? (
+              {mode === 'plan' ? (
                 <>
                   <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
                     {t('budgets.page.plan.density.hide_empty')}
@@ -657,7 +619,7 @@ export function BudgetPage() {
         )}
       </header>
 
-      {budgetMode === 'plan' ? (
+      {mode === 'plan' ? (
         <>
           {/* the same period widget as the budget view, for the page's selected period */}
           {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}

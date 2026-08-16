@@ -973,10 +973,6 @@
         }
       },
       "plan": {
-        "toggle": {
-          "budget": "Бюджет",
-          "plan": "План"
-        },
         "section": {
           "income": "Доходы",
           "expenses": "Расходы",

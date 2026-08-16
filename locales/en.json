@@ -973,10 +973,6 @@
         }
       },
       "plan": {
-        "toggle": {
-          "budget": "Budget",
-          "plan": "Plan"
-        },
         "section": {
           "income": "Income",
           "expenses": "Expenses",
