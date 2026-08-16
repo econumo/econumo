@@ -71,6 +71,7 @@ import {
   currentMonth,
   fillTargetCol,
   folderSides,
+  isOverspent,
   makePlanExchange,
   monthDate,
   planInitialFirstMonth,
@@ -473,9 +474,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const idx = ctx.monthIndex(m)
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
-          // overspend highlight: expense side only, current/future months, a set plan the actual has already cleared
-          const overspend =
-            !isIncomeType(el.type) && m >= ctx.cur && !!cell && cell.planned !== '' && cmp(cell.actual, cell.planned) > 0
+          const overspend = isOverspent(el.type, cell)
           const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
           const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
           const actualText = renderActual(cell?.actual, m, ctx.cur, currency)

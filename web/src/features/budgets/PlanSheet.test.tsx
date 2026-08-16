@@ -126,6 +126,22 @@ it('/plan renders the sheet: months, income on top, cells', async () => {
   expect(within(cell).getByTestId('cell-planned')).toBeInTheDocument()
 })
 
+it('overspend turns the actual red in a past month and with no plan set; never on income', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  // July: 125 spent, no plan stored — a past month by the time this runs (fixture months are 2026)
+  const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
+  expect(within(foodJuly).getByTestId('cell-actual')).toHaveClass('text-destructive')
+  // May: 120 spent against a 150 plan — under, so plain
+  const foodMay = screen.getAllByTestId('plan-cell-cat-food:0')[0]
+  expect(within(foodMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
+  // income over an unset plan is not overspend
+  const freelanceMay = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
+  expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
+})
+
 it('arrows shift the window by one month, clamped at the budget start', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-01-01' })
