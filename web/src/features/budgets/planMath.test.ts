@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/budget'
+import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { sub } from '@/lib/decimal'
 import {
@@ -14,6 +15,7 @@ import {
   fillTargetCol,
   folderSides,
   formatPlanMonth,
+  isOverspent,
   makePlanExchange,
   monthDate,
   monthDiff,
@@ -630,5 +632,32 @@ describe('fillTargetCol', () => {
   it('degrades to the source column on zero/negative width', () => {
     expect(fillTargetCol(1, 300, 0, 5)).toBe(1)
     expect(fillTargetCol(1, 300, -10, 5)).toBe(1)
+  })
+})
+
+describe('isOverspent', () => {
+  const { CATEGORY, INCOME_CATEGORY } = BudgetElementType
+
+  it('is true when an expense actual clears a set plan', () => {
+    expect(isOverspent(CATEGORY, { actual: '222.93', planned: '0' })).toBe(true)
+    expect(isOverspent(CATEGORY, { actual: '150.01', planned: '150' })).toBe(true)
+  })
+
+  it('treats an unset plan as 0', () => {
+    expect(isOverspent(CATEGORY, { actual: '50', planned: '' })).toBe(true)
+    expect(isOverspent(CATEGORY, { actual: '0', planned: '' })).toBe(false)
+  })
+
+  it('is false at exactly the plan', () => {
+    expect(isOverspent(CATEGORY, { actual: '150', planned: '150' })).toBe(false)
+  })
+
+  it('never flags an income row', () => {
+    expect(isOverspent(INCOME_CATEGORY, { actual: '3000', planned: '2000' })).toBe(false)
+    expect(isOverspent(INCOME_CATEGORY, { actual: '300', planned: '' })).toBe(false)
+  })
+
+  it('is false for a missing cell', () => {
+    expect(isOverspent(CATEGORY, undefined)).toBe(false)
   })
 })

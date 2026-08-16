@@ -1,4 +1,4 @@
-import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -106,6 +106,15 @@ export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: 
     return []
   }
   return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
+}
+
+/** the overspend highlight: an expense actual past its plan, in ANY month — an
+ *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
+export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefined): boolean {
+  if (!cell || isIncomeType(type)) {
+    return false
+  }
+  return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
 }
 
 type Side = 'income' | 'expense'
