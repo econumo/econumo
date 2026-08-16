@@ -65,9 +65,11 @@ the provider as swappable from day one.
   (`'simplefin' | 'csv' | 'apple-wallet'`), never a generic `'push'`; the
   pull/push distinction is a property of the provider registry in code.
 - **Push auth: scoped PATs**, not a new token kind. `access_tokens` gains a
-  `scope` column, `NOT NULL DEFAULT 'full'` (`'full'` = today's behavior,
-  existing rows backfilled by the default; `'ingest'` = valid only for
-  `ingest-*` routes). One token system, existing revocation/purge/UI infra
+  required `scope` column (`'full'` = today's behavior; `'ingest'` = valid
+  only for `ingest-*` routes). **Every creation path provides the scope
+  explicitly** — sessions are minted `'full'` by the login code, and
+  `create-personal-token` requires the field; there is no implicit fallback
+  in application code. One token system, existing revocation/purge/UI infra
   reused, future scopes (e.g. read-only) enabled.
 - **Pull credential ownership:** per-user, client-side encrypted. Not `.env`
   (breaks on a multi-user instance), not server-side plaintext (what Actual
@@ -194,22 +196,27 @@ per the existing contract. Migrations paired under
 
 ### `access_tokens.scope` (existing table, new column)
 
-`TEXT NOT NULL DEFAULT 'full'` — an additive `ALTER TABLE … ADD COLUMN` on
-both engines (no SQLite table rebuild), with the default backfilling every
-existing row, so the column is never nullable and the Go code never handles a
-nil scope. `'full'` = unrestricted (today's behavior); `'ingest'` = the token
-authenticates **only** `ingest-*` routes; unknown values fail closed, same
-posture as the password-algorithm dispatch. Sessions are always minted
-`'full'`. Enforcement lives in the auth middleware: the authenticator already
+`TEXT NOT NULL`. The migration DDL carries `DEFAULT 'full'` **solely as the
+backfill mechanism** — SQLite cannot add a NOT NULL column to a populated
+table without a default short of a full table rebuild (which this repo
+avoids; it is why `identifier` still exists). The default is dead after the
+migration: every insert names the column explicitly (sqlc queries always
+list their columns), sessions are minted `'full'` by the login code path,
+and `create-personal-token` **requires** `scope` in the request — a blank
+value fails validation. Requiring a previously-nonexistent field is a
+deliberate contract change to `create-personal-token`: any external script
+creating PATs must start sending `scope`. `'full'` = unrestricted (today's
+behavior); `'ingest'` = the token authenticates **only** `ingest-*` routes;
+unknown values fail closed, same posture as the password-algorithm dispatch.
+Enforcement lives in the auth middleware: the authenticator already
 resolves the token row, so it also returns the scope, and the middleware
 rejects a scoped token on any non-matching route with the standard 401
 envelope (`"Invalid access token"` — no scope information leaks). Ingest
 routes otherwise ride the normal authenticated pipeline, so the readonly-402
 check, rate limiting, and access logging apply for free.
 
-`create-personal-token` gains an optional `scope` request field (additive,
-contract-safe); `get-personal-token-list` returns it so the settings UI can
-badge scoped tokens.
+`get-personal-token-list` returns the scope so the settings UI can badge
+scoped tokens.
 
 ### `import_sources`
 
@@ -666,8 +673,8 @@ convention. `GET` for reads, `POST` for every write.
 | POST | `preview-rule` | Match counts before applying. |
 | POST | `apply-rule` | Backfill. |
 
-Outside `/import`: `create-personal-token` gains the optional `scope` field;
-`get-personal-token-list` returns it.
+Outside `/import`: `create-personal-token` gains a **required** `scope`
+field (`'full' | 'ingest'`); `get-personal-token-list` returns it.
 
 The two-step claim (`claim-setup-token` returns the access URL to the client,
 which encrypts it and calls `create-source`) is what keeps the server from ever
