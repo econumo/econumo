@@ -5,6 +5,7 @@ import type { Id } from '@/api/types'
 import { compareNames } from '@/lib/collate'
 import { add, cmp, isZero, sub } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
+import { periodLabeler } from './budgetMath'
 
 export function addMonths(month: string, delta: number): string {
   const [y, m] = month.split('-').map(Number)
@@ -31,8 +32,8 @@ export function monthDate(m: string): Date {
   return new Date(y, mo - 1, 1)
 }
 
-export function formatPlanMonth(m: string, lang: string): string {
-  return new Intl.DateTimeFormat(lang, { month: 'short', year: '2-digit' }).format(monthDate(m))
+export function formatPlanMonth(m: string, lang: string, now?: Date): string {
+  return periodLabeler(lang, now)(monthDate(m))
 }
 
 export const PLAN_NAME_COL_PX = 210

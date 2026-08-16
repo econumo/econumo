@@ -122,6 +122,15 @@ export interface PeriodItem {
 
 export const MONTHS_AROUND = 23
 
+// The one month-label rule for every budget surface (period strip, plan sheet):
+// this year's months by full name only, any other year as "Mon YYYY".
+export function periodLabeler(lang: string, now: Date = new Date()): (d: Date) => string {
+  const currentYear = now.getFullYear()
+  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
+  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
+  return (d) => (d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`)
+}
+
 export function periodRange(
   selectedDate: string,
   startedAt: string | null,
@@ -130,17 +139,15 @@ export function periodRange(
   lang = 'en',
 ): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
-  const currentYear = new Date().getFullYear()
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
-  const longMonth = new Intl.DateTimeFormat(lang, { month: 'long' })
-  const shortMonth = new Intl.DateTimeFormat(lang, { month: 'short' })
+  const label = periodLabeler(lang)
   const items: PeriodItem[] = []
   for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
     const d = new Date(y, m - 1 + offset, 1)
     const value = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`
     items.push({
       value,
-      label: d.getFullYear() === currentYear ? longMonth.format(d) : `${shortMonth.format(d)} ${d.getFullYear()}`,
+      label: label(d),
       isActive: offset === 0,
       outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
     })

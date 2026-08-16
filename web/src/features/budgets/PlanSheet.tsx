@@ -33,7 +33,7 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
-import { elementDisplayName } from './budgetMath'
+import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import {
   canDeleteEnvelope,
@@ -166,7 +166,7 @@ interface GridCtx {
   meta: BudgetMetaDto
   userId: Id | undefined
   isCompact: boolean
-  monthFmt: Intl.DateTimeFormat
+  monthLabel: (m: string) => string
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
   canEdit: boolean
@@ -397,7 +397,7 @@ const ChildRow = memo(function ChildRow({
             role="gridcell"
             id={cellDomId(rk, i)}
             aria-selected={selected}
-            aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(monthDate(m)), actual: actualText, planned: '—' })}
+            aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: '—' })}
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
@@ -488,7 +488,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               role="gridcell"
               id={cellDomId(rk, i)}
               aria-selected={selected}
-              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthFmt.format(monthDate(m)), actual: actualText, planned: plannedText })}
+              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: plannedText })}
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
@@ -1086,7 +1086,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const visibleMonths = useMemo(() => Array.from({ length: visible }, (_, i) => addMonths(firstMonth, i)), [visible, firstMonth])
   const monthIndex = useCallback((m: string): number => (plan ? plan.months.indexOf(m) : -1), [plan])
   const cur = currentMonth()
-  const monthFmt = useMemo(() => new Intl.DateTimeFormat(i18n.language, { month: 'short', year: '2-digit' }), [i18n.language])
+  // same wording as the budget view's period strip
+  const monthLabel = useMemo(() => {
+    const label = periodLabeler(i18n.language)
+    return (m: string) => label(monthDate(m))
+  }, [i18n.language])
   // A trailing track closes every row with the element's currency and, in edit mode,
   // its actions menu — the budget table's geometry. Every grid consumer (rows, month
   // header, totals, balance) shares this string, so they gain the column together and
@@ -1218,7 +1222,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       meta: budget.meta,
       userId,
       isCompact,
-      monthFmt,
+      monthLabel,
       commit,
       openDialog: setPlanLimitTarget,
       canEdit,
@@ -1251,7 +1255,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     budget.meta,
     userId,
     isCompact,
-    monthFmt,
+    monthLabel,
     commit,
     canEdit,
     selection,
@@ -1586,7 +1590,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               data-col={i}
               className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
             >
-              {monthFmt.format(monthDate(m))}
+              {monthLabel(m)}
             </div>
           ))}
           <span />

@@ -68,10 +68,13 @@ describe('window math', () => {
     expect(monthDate('2026-01-01').getTime()).toBe(new Date(2026, 0, 1).getTime())
   })
 
-  it('formatPlanMonth renders from the local-date path, not a raw UTC parse', () => {
-    const label = formatPlanMonth('2026-07-01', 'en')
-    expect(label).toBe(new Intl.DateTimeFormat('en', { month: 'short', year: '2-digit' }).format(new Date(2026, 6, 1)))
-    expect(label).toContain('Jul')
+  it('formatPlanMonth uses the period-strip wording: bare month this year, "Mon YYYY" otherwise', () => {
+    const now = new Date(2026, 7, 16)
+    // built from local components, not a raw UTC parse of "YYYY-MM-01"
+    expect(formatPlanMonth('2026-07-01', 'en', now)).toBe('July')
+    expect(formatPlanMonth('2025-12-01', 'en', now)).toBe('Dec 2025')
+    expect(formatPlanMonth('2027-01-01', 'en', now)).toBe('Jan 2027')
+    expect(formatPlanMonth('2026-07-01', 'ru', now)).toBe(new Intl.DateTimeFormat('ru', { month: 'long' }).format(new Date(2026, 6, 1)))
   })
 
   it('monthDiff counts months from a to b', () => {
