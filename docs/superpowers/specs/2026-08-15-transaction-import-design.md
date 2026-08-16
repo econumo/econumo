@@ -190,7 +190,7 @@ conversion shims selected once in the constructor.
 
 ## Part 2 — Schema
 
-Five new tables plus one column on an existing table. All ids `TEXT`/UUIDv7
+Six new tables plus one column on an existing table. All ids `TEXT`/UUIDv7
 per the existing contract. Migrations paired under
 `internal/infra/storage/migrations/{sqlite,pgsql}`.
 
@@ -243,6 +243,35 @@ one Apple Wallet source; their cards distinguish the accounts. An ingest hit
 with no source yet gets a clear 4xx telling the user to set up the
 integration first.
 
+### `import_events`
+
+The raw inbox — stage 0 of the pipeline (Part 5). **Every** external
+transaction enters here first, whatever the provider: the push request body
+verbatim, the per-transaction JSON slice of a SimpleFIN response, the CSV
+row. Nothing is interpreted before it is persisted, so nothing is ever
+silently lost to a parse failure — and a later parser fix can retroactively
+process old events (retry).
+
+```
+id, source_id, run_id NULL → import_runs(id),
+payload TEXT,                      -- the raw datum, untouched
+payload_hash,                      -- sha256(payload)
+status ('processed'|'failed'|'discarded'),
+parse_error TEXT NULL,             -- machine-readable reason when failed
+received_at
+UNIQUE(source_id, payload_hash)
+```
+
+The hash uniqueness is the first dedupe layer: an identical retry (Shortcuts
+double-fire, HTTP retry, a re-synced date range returning byte-identical
+slices) dies here as an idempotent no-op before parsing runs. It is a
+*best-effort* layer — a provider may re-serialize the same transaction with
+mutated bytes — so the ledger's external-id uniqueness below remains the
+authoritative second layer. `run_id` ties events fetched during a batch run
+to it, so run detail can list its parse failures; live push events carry
+NULL. Raw payloads are user data like any other (payee names, amounts) and
+are covered by the same at-rest posture as the rest of the database.
+
 ### `import_account_links`
 
 The manual account mapping step. For pull providers an external account is a
@@ -280,6 +309,7 @@ every provider.
 
 ```
 id, source_id, run_id NULL → import_runs(id),
+event_id NULL → import_events(id),
 external_account_id, external_transaction_id,
 transaction_id TEXT NULL REFERENCES transactions(id) ON DELETE SET NULL,
 status TEXT NOT NULL ('linked'|'queued'),
@@ -313,6 +343,10 @@ Row states:
 
 The composite unique is **required, not stylistic**: SimpleFIN transaction ids
 are unique *within an account*, not globally.
+
+`event_id` points back to the raw datum that produced the row, completing
+the provenance chain transaction → link → raw payload. Nullable in the
+schema, but every row the pipeline creates sets it.
 
 `external_currency` is carried on the link row for queued push events, which
 have no account link yet to hold a currency; pull rows leave it NULL (the
@@ -449,6 +483,28 @@ Consequences to accept:
 
 ## Part 5 — Sync flow & reconciler
 
+### The pipeline
+
+Every external transaction, from every provider, moves through the same four
+stages; only stages 0–1 have provider-specific code:
+
+0. **Receive & store** — persist the raw datum into `import_events` before
+   any interpretation. Byte-identical duplicates (payload hash) stop here as
+   idempotent no-ops.
+1. **Parse** — the provider's parser turns the raw datum into a canonical
+   internal event (account label, amount, currency, timestamp, payee,
+   description, external id or the synthesized hash). Failure → the event is
+   marked `failed` with a machine-readable `parse_error`, surfaced in the UI
+   with the raw payload visible, and **retryable** — a parser bug-fix in a
+   later release makes old failures importable.
+2. **Match account** — the parsed account label is looked up against the
+   source's `import_account_links`: **exact match, case-insensitive,
+   whitespace-normalized — never fuzzy, never auto-created** (a wrong
+   account guess is far worse than a queued event). No link → ledger row
+   `status='queued'`. Currency mismatch → queued with a visible error.
+3. **Match transaction & import** — the reconciler below; on create, apply
+   `import_rules` by priority, else the link's `default_category_id`.
+
 ### Pull flow
 
 1. Client unlocks the data key from IndexedDB (prompting for the passphrase
@@ -458,9 +514,12 @@ Consequences to accept:
 3. Server opens an `import_runs` row and calls
    `GET {accessUrl}/accounts?start-date=…` — one call returns accounts *and*
    their nested transactions.
-4. Per external account, **in its own DB transaction**: mapped & enabled →
-   reconcile → apply rules → insert transactions + links; **unmapped → store
-   the transactions as queued links** (Part 6) instead of discarding them.
+4. Per external account, **in its own DB transaction**: store each
+   transaction's raw JSON slice as an `import_events` row (stage 0), parse,
+   then — mapped & enabled → reconcile → apply rules → insert transactions +
+   links; **unmapped → store the transactions as queued links** (Part 6)
+   instead of discarding them. Parse failures are recorded on the run and do
+   not kill it.
 5. Discard the credential. Finalize the run. Return
    `{runId, imported, matched, amountsUpdated, queued, skipped, failed, errors}`.
 
@@ -553,21 +612,33 @@ what the Wallet trigger provides:
 }
 ```
 
-- `amount` is a decimal string; `type` is optional, default `expense` (Wallet
-  amounts are positive for charges).
-- `occurredAt` is RFC3339 **with offset** — the device's local time. The
-  wall-clock date is derived from the event's own offset, not from
-  `X-Timezone` (a Shortcut sends no meaningful header), then stored in the
-  frozen `2006-01-02 15:04:05` format.
-- `eventId` is optional; when absent the external id is the synthesized hash
-  (Part 2).
+Behavior: authenticate (scope check) → resolve the source from
+`(user, 'apple-wallet')` (none → clear 4xx: set up the integration first) →
+**persist the raw body as an `import_events` row** → run the pipeline
+inline (parse → match account → match transaction & import; no job queue —
+this is a sub-second single-row path). The event row is the audit and retry
+substrate, not an async work queue.
 
-Behavior: resolve the source from `(user, 'apple-wallet')`; dedupe against
-the ledger; then — mapped card → run the matcher and create/adopt
-immediately (rules by priority, else the link's default category); unmapped
-card → `status='queued'` link, no transaction; currency mismatch against the
-linked account → stays queued with a visible error rather than importing
-wrong-currency amounts. Response: `{status: "created"|"queued"|"duplicate"}`.
+Parse rules (v1):
+
+| Field | Rule | On failure |
+|---|---|---|
+| `account` | trim, collapse inner whitespace; used verbatim as the external account id | missing/empty → parse failure |
+| `amount` | decimal string, tolerant normalization: strip currency symbols and spaces; `.` and `,` both accepted, the **last** separator is the decimal point (`1.234,56` → `1234.56`); must yield a positive decimal | unparseable → parse failure |
+| `currency` | 3-letter ISO code, uppercased; symbols rejected (`$` is ambiguous — the recipe sends the trigger's currency code) | missing/invalid → parse failure |
+| `occurredAt` | RFC3339 **with offset** — the device's local time; the wall-clock date derives from the event's own offset, not `X-Timezone` (a Shortcut sends no meaningful header), stored in the frozen `2006-01-02 15:04:05` format | missing/invalid → **fallback to `received_at`** — a lost timestamp must not lose a purchase; taps reach the server within seconds |
+| `type` | `expense`/`income`, optional, default `expense` (Wallet amounts are positive for charges) | unknown value → parse failure |
+| `payee` | trim; empty allowed (description is the fallback) | never fails |
+| `eventId` | optional; overrides the synthesized external id | — |
+
+The synthesized external id is computed from **parsed** values —
+`sha256(account|occurredAt|amount|payee)` — so it stays stable across
+retries even when raw bytes differ (field order, whitespace).
+
+Response: `{status: "created"|"queued"|"duplicate"|"failed"}` — always
+HTTP 200 once the event is persisted. A 4xx is invisible to an unattended
+automation; a failed event surfaces in the web UI (queue page, "needs
+attention"), where the user sees the raw payload and can retry or discard.
 
 Rate limit: `ECONUMO_RATE_LIMIT_INGEST`, per user, every request counts,
 following the `accept-invite` precedent.
@@ -577,7 +648,9 @@ following the `accept-invite` precedent.
 One queue across all providers: `status='queued'` links, whatever their
 source. Pull syncs feed it (transactions of unmapped bank accounts), push
 events feed it (unmapped cards), and currency-mismatch holds land in it.
-`unlink-account` / `delete-source` purge their queued rows.
+The queue page also carries a **"needs attention"** section for `failed`
+events (parse errors) — raw payload visible, retry / discard per row.
+`unlink-account` / `delete-source` purge their queued rows and events.
 
 **Mapping converts.** Creating an account link converts that external
 account's queued events in one batch — a **conversion run** (`import_runs`
@@ -665,7 +738,9 @@ convention. `GET` for reads, `POST` for every write.
 | POST | `unlink-account` | Also purges the account's queued rows. |
 | POST | `sync` | The pull flow. Client supplies access URL. |
 | POST | `ingest-apple-wallet-event` | Push ingest (Part 6). Requires `'ingest'`-or-full scope. |
-| GET  | `get-queued-event-list` | Flat queued events for the queue page. |
+| GET  | `get-queued-event-list` | Queued links + failed events for the queue page. |
+| POST | `retry-event` | Re-run the pipeline for a failed event. |
+| POST | `discard-event` | Mark a failed event discarded. |
 | GET  | `get-run-list` | Import history (syncs, CSV uploads, conversions). |
 | GET  | `get-run` | Run detail: links, including tombstones. |
 | GET  | `get-transaction-import-list` | All links for one transaction (provenance + rule-learning base). |
@@ -786,8 +861,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 
 - Unit: matcher stages (incl. cross-source adopt: tolerance windows, token
   containment, amount-correction-only-if-unedited), rule matching/priority,
-  SimpleFIN response normalization, ingest payload normalization + synthesized
-  ids, amount/sign mapping, timezone/date conversion on both paths.
+  SimpleFIN response normalization, parse rules (amount locale normalization,
+  timestamp fallback, failure taxonomy) + synthesized-id stability,
+  event-level dedupe vs ledger dedupe, retry-after-parser-fix,
+  amount/sign mapping, timezone/date conversion on both paths.
 - Repo: engine-adapter coverage for all five tables; `make test-repo-pgsql`.
 - **`apiparity`**: every new route needs a scenario — the guard tests enforce
   that route and scenario counts never shrink. Existing goldens change from
@@ -820,6 +897,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 5. **Shortcut distribution mechanics** — signed-file import questions carrying
    URL + token needs a device test before the flow is finalized (fallbacks in
    Part 9).
+6. **Raw event retention** — `import_events` grows with every imported
+   transaction across all providers. Keep forever (full audit) vs purge
+   processed events after N days (a `token:purge`-style CLI command). Ship
+   v1 keeping everything; decide before the table gets big.
 
 ## Deferred / follow-up
 
