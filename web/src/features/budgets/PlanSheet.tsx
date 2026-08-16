@@ -23,7 +23,7 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto, PlanChildDto, PlanElementDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -1213,26 +1213,31 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return bucketPlanRows({ ...plan, structure }, false)
   }, [plan, dragArrangement])
 
-  // An uncategorized row is dropped when every VISIBLE column's actual is zero — it
-  // can still have spend outside the current window, so it reappears once navigation
-  // brings that month into view. Derived once here (not per-section, not in
-  // buildFlatRows) so the render sections and the keyboard flat-row list can never
-  // disagree on which rows are on screen.
+  // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
+  // carries buffer months either side): an uncategorized row is dropped when every
+  // visible column's actual is zero, and an archived row when no visible column has
+  // an actual or a plan — the archive is history, so an all-dash row there is noise
+  // (the budget view's Archive section applies the same rule per month). Both can
+  // still have values outside the window, so they reappear once navigation brings
+  // that month into view. Derived once here (not per-section, not in buildFlatRows)
+  // so the render sections and the keyboard flat-row list can never disagree on
+  // which rows are on screen.
   const shownRows = useMemo(() => {
     if (!rows) {
       return null
     }
-    const visibleUncat = (r: PlanRow | null): PlanRow | null =>
-      r && visibleMonths.some((m) => {
+    const hasVisible = (r: PlanRow, test: (c: PlanCellDto) => boolean): boolean =>
+      visibleMonths.some((m) => {
         const i = monthIndex(m)
-        return i >= 0 && !isZero(r.element.cells[i]?.actual ?? '0')
+        const c = i >= 0 ? r.element.cells[i] : undefined
+        return c !== undefined && test(c)
       })
-        ? r
-        : null
+    const visibleUncat = (r: PlanRow | null): PlanRow | null => (r && hasVisible(r, (c) => !isZero(c.actual)) ? r : null)
     return {
       ...rows,
       income: { ...rows.income, uncategorized: visibleUncat(rows.income.uncategorized) },
       expense: { ...rows.expense, uncategorized: visibleUncat(rows.expense.uncategorized) },
+      archived: rows.archived.filter((r) => hasVisible(r, (c) => !isZero(c.actual) || c.planned !== '')),
     }
   }, [rows, visibleMonths, monthIndex])
 

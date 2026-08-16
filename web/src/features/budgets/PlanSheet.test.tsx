@@ -747,6 +747,57 @@ it('child rows are not selectable by click or keyboard', async () => {
   expect(parentCell).toHaveAttribute('aria-selected', 'true')
 })
 
+// The archive is history, not a workspace: an archived row shows only when it has a
+// value — a nonzero actual or a set plan — in a VISIBLE month, and the whole section
+// goes when none does. Values in the fetched-but-offscreen buffer months don't count,
+// so paging the window can hide or reveal a row. Same rule as the budget view's
+// Archive section, and independent of the density toggle.
+it('archived rows show only with a value in a visible month; the section disappears otherwise', async () => {
+  const archived = (id: string, name: string, cells: { actual: string; planned: string }[]) => ({
+    id, type: 1, name, icon: 'delete', currencyId: 'cur-usd', isArchived: 1, folderId: null, position: 9, ownerUserId: 'u1', cells, children: [],
+  })
+  const plan = {
+    ...fixtureWirePlan,
+    structure: {
+      ...fixtureWirePlan.structure,
+      elements: [
+        ...fixtureWirePlan.structure.elements,
+        // fixture months are May..Aug; the initial window below is Jun..Aug, so May is a buffer month
+        archived('arch-may', 'Only May', [{ actual: '18.53', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '' }]),
+        archived('arch-aug', 'Only Aug', [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '40' }]),
+        archived('arch-none', 'Nothing', [{ actual: '0', planned: '' }, { actual: '0.00', planned: '' }, { actual: '0', planned: '' }, { actual: '0', planned: '' }]),
+      ],
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(plan),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+
+  // Jun..Aug: only the row with an August plan has a visible value
+  const section = await screen.findByTestId('plan-section-archived')
+  expect(within(section).getByTitle('Only Aug')).toBeInTheDocument()
+  expect(within(section).queryByTitle('Only May')).not.toBeInTheDocument()
+  expect(within(section).queryByTitle('Nothing')).not.toBeInTheDocument()
+
+  // May..Jul: the May spend comes on screen, the August plan leaves it
+  await user.click(screen.getByRole('button', { name: 'Earlier months' }))
+  await waitFor(() => expect(within(screen.getByTestId('plan-section-archived')).getByTitle('Only May')).toBeInTheDocument())
+  expect(within(screen.getByTestId('plan-section-archived')).queryByTitle('Only Aug')).not.toBeInTheDocument()
+
+  // a window with no archived values at all drops the section entirely: Sep..Nov
+  // (only May and Aug carry values, and neither is visible then)
+  for (let i = 0; i < 4; i++) {
+    await user.click(screen.getByRole('button', { name: 'Later months' }))
+  }
+  await waitFor(() => expect(screen.queryByTestId('plan-section-archived')).not.toBeInTheDocument())
+})
+
 it('Enter without the right to edit explains why in a toast instead of opening a dialog: guest role for envelopes, foreign owner for categories/tags; uncategorized stays silent', async () => {
   const guestAccess = [{ user: fixtureOwner, role: 'guest', isAccepted: 1 }]
   const guestBudget = { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, access: guestAccess } }
