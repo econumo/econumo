@@ -11,13 +11,13 @@
 {"success":true,"message":"","data":{}}
 
 == err:expense-envelope-income-child POST /api/v1/budget/create-envelope [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"categories":["An envelope cannot mix income and expense categories"]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"categories":["An envelope cannot contain both income and expense categories"]}}
 
 == err:income-envelope-not-allowed POST /api/v1/budget/create-envelope [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"side":["The value you selected is not a valid choice."]}}
 
 == err:income-into-expense-folder POST /api/v1/budget/move-element [owner] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["Income and expense elements cannot share a folder"]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["A folder cannot contain both income and expenses"]}}
 
 == set-income-limit POST /api/v1/budget/set-limit [owner] -> 200
 {"success":true,"message":"","data":{}}

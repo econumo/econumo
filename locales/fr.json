@@ -990,7 +990,7 @@
           "aria": "{name}, {month} : réel {actual}, prévu {planned}"
         },
         "fill": {
-          "handle_aria": "Copier la valeur prévue sur les mois suivants"
+          "handle_aria": "Copier le budget sur les mois suivants"
         },
         "totals": {
           "income": "Revenus",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "Le type d’élément de budget avec l’alias {alias} n’existe pas.",
       "invalid_role_alias": "Le rôle d’utilisateur de budget avec l’alias {alias} n’existe pas.",
       "transaction_filter_required": "La validation a échoué.",
-      "envelope_side_mixed": "Une enveloppe ne peut pas mélanger les catégories de revenus et de dépenses.",
-      "folder_side_mixed": "Les éléments de revenus et de dépenses ne peuvent pas partager un dossier."
+      "envelope_side_mixed": "Une enveloppe ne peut pas contenir à la fois des catégories de revenus et de dépenses.",
+      "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses."
     },
     "category": {
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",

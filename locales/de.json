@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: Ist {actual}, geplant {planned}"
         },
         "fill": {
-          "handle_aria": "Geplanten Wert auf die folgenden Monate kopieren"
+          "handle_aria": "Budget auf die folgenden Monate kopieren"
         },
         "totals": {
           "income": "Einnahmen",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "BudgetElementType mit dem Alias {alias} existiert nicht",
       "invalid_role_alias": "BudgetUserRole mit dem Alias {alias} existiert nicht",
       "transaction_filter_required": "Validierung fehlgeschlagen",
-      "envelope_side_mixed": "Ein Umschlag kann keine Einnahmen- und Ausgabenkategorien vermischen",
-      "folder_side_mixed": "Einnahmen- und Ausgabenelemente können sich nicht in einem Ordner befinden"
+      "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
+      "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",

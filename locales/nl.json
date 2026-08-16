@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
         },
         "fill": {
-          "handle_aria": "Geplande waarde naar de volgende maanden kopiëren"
+          "handle_aria": "Budget naar de volgende maanden kopiëren"
         },
         "totals": {
           "income": "Inkomsten",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "Een budgetelementtype met alias {alias} bestaat niet.",
       "invalid_role_alias": "Een budgetgebruikersrol met alias {alias} bestaat niet.",
       "transaction_filter_required": "Validatie mislukt.",
-      "envelope_side_mixed": "Een envelop kan inkomsten- en uitgavencategorieën niet mengen.",
-      "folder_side_mixed": "Inkomsten- en uitgavenelementen kunnen geen map delen."
+      "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
+      "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten."
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

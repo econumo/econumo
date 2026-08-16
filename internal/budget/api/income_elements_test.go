@@ -215,7 +215,7 @@ func TestMoveElement_CrossSideRejected(t *testing.T) {
 	if st != http.StatusBadRequest {
 		t.Fatalf("expense into income folder = %d, want 400; body=%s", st, env.raw)
 	}
-	if !strings.Contains(string(env.raw), "Income and expense elements cannot share a folder") {
+	if !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
 		t.Errorf("want the folder side-mixing message; body=%s", env.raw)
 	}
 
@@ -272,7 +272,7 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 	// Homogeneity: income child in a (default expense) envelope.
 	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
 		envBody("beee2222-0000-7000-8000-0000000000b2", "", []string{incomeCatID}, nil))
-	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot mix income and expense categories") {
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot contain both income and expense categories") {
 		t.Fatalf("income child in expense envelope: st=%d body=%s", st, env.raw)
 	}
 
@@ -302,7 +302,7 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 	})
 	st, env = h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok,
 		envBody("beee2222-0000-7000-8000-0000000000b5", "", []string{}, folderID))
-	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "Income and expense elements cannot share a folder") {
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "A folder cannot contain both income and expenses") {
 		t.Fatalf("expense envelope into income folder: st=%d body=%s", st, env.raw)
 	}
 
@@ -327,7 +327,7 @@ func TestCreateEnvelope_IncomeSide(t *testing.T) {
 		"budgetId": budgetID1, "id": incomeEnvID, "name": "Salaries", "icon": "payments",
 		"currencyId": usdID, "isArchived": 0, "categories": []string{expenseCatID},
 	})
-	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot mix income and expense categories") {
+	if st != http.StatusBadRequest || !strings.Contains(string(env.raw), "An envelope cannot contain both income and expense categories") {
 		t.Fatalf("update income envelope with expense child: st=%d body=%s", st, env.raw)
 	}
 }

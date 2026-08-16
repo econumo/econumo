@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: rzeczywiste {actual}, planowane {planned}"
         },
         "fill": {
-          "handle_aria": "Skopiuj planowaną wartość na kolejne miesiące"
+          "handle_aria": "Skopiuj budżet na kolejne miesiące"
         },
         "totals": {
           "income": "Przychody",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "Typ elementu budżetu o aliasie {alias} nie istnieje.",
       "invalid_role_alias": "Rola użytkownika budżetu o aliasie {alias} nie istnieje.",
       "transaction_filter_required": "Weryfikacja nie powiodła się.",
-      "envelope_side_mixed": "Koperta nie może mieszać kategorii przychodów i wydatków.",
-      "folder_side_mixed": "Elementy przychodów i wydatków nie mogą być w tym samym folderze."
+      "envelope_side_mixed": "Koperta nie może jednocześnie zawierać kategorii przychodów i wydatków.",
+      "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków."
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",

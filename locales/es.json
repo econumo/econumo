@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: real {actual}, previsto {planned}"
         },
         "fill": {
-          "handle_aria": "Copiar el valor previsto a los meses siguientes"
+          "handle_aria": "Copiar el presupuesto a los meses siguientes"
         },
         "totals": {
           "income": "Ingresos",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "No existe ningún tipo de elemento de presupuesto con el alias {alias}.",
       "invalid_role_alias": "No existe ningún rol de usuario de presupuesto con el alias {alias}.",
       "transaction_filter_required": "La validación falló.",
-      "envelope_side_mixed": "Un sobre no puede mezclar categorías de ingresos y gastos.",
-      "folder_side_mixed": "Los elementos de ingresos y gastos no pueden compartir una carpeta."
+      "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
+      "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos."
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",

@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: actual {actual}, planned {planned}"
         },
         "fill": {
-          "handle_aria": "Copy planned value to the following months"
+          "handle_aria": "Copy budget to the following months"
         },
         "totals": {
           "income": "Income",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "BudgetElementType with alias {alias} not exists",
       "invalid_role_alias": "BudgetUserRole with alias {alias} not exists",
       "transaction_filter_required": "Validation failed",
-      "envelope_side_mixed": "An envelope cannot mix income and expense categories",
-      "folder_side_mixed": "Income and expense elements cannot share a folder"
+      "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
+      "folder_side_mixed": "A folder cannot contain both income and expenses"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",

@@ -145,7 +145,7 @@ func sideMixed(elements []*model.BudgetElement, folderID vo.Id, typ model.Elemen
 
 func folderSideMixedErr() error {
 	return errs.NewValidation("Validation failed", errs.FieldError{
-		Key: "folderId", Message: "Income and expense elements cannot share a folder", Code: errs.CodeBudgetFolderSideMixed,
+		Key: "folderId", Message: "A folder cannot contain both income and expenses", Code: errs.CodeBudgetFolderSideMixed,
 	})
 }
 

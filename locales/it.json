@@ -990,7 +990,7 @@
           "aria": "{name}, {month}: effettivo {actual}, pianificato {planned}"
         },
         "fill": {
-          "handle_aria": "Copia il valore pianificato nei mesi successivi"
+          "handle_aria": "Copia il budget nei mesi successivi"
         },
         "totals": {
           "income": "Entrate",
@@ -1404,8 +1404,8 @@
       "invalid_element_type_alias": "Il tipo di elemento del budget con alias {alias} non esiste",
       "invalid_role_alias": "Il ruolo utente del budget con alias {alias} non esiste",
       "transaction_filter_required": "Convalida non riuscita",
-      "envelope_side_mixed": "Una busta non può mescolare categorie di entrata e di uscita",
-      "folder_side_mixed": "Gli elementi di entrata e uscita non possono condividere una cartella"
+      "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
+      "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

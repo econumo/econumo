@@ -297,7 +297,7 @@ func (s *Service) validateEnvelopeCategories(ctx context.Context, b *budgetAggre
 		}
 		if c.IsIncome != income {
 			return errs.NewValidation("Validation failed", errs.FieldError{
-				Key: "categories", Message: "An envelope cannot mix income and expense categories", Code: errs.CodeBudgetEnvelopeSideMixed,
+				Key: "categories", Message: "An envelope cannot contain both income and expense categories", Code: errs.CodeBudgetEnvelopeSideMixed,
 			})
 		}
 	}
