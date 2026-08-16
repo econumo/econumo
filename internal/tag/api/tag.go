@@ -108,3 +108,22 @@ func (h *Handlers) UnarchiveTag(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeleteTag(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeleteTag)
 }
+
+// MergeTag handles POST /api/v1/tag/merge-tag (auth).
+//
+// @Summary     Merge two tags
+// @Description Re-points every transaction and recurring template from sourceId to targetId, then deletes sourceId. Requires ownership of both. Cannot be undone.
+// @Tags        Tag
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MergeTagRequest true "Merge tag request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MergeTagResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/tag/merge-tag [post]
+func (h *Handlers) MergeTag(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MergeTag)
+}

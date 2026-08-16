@@ -33,3 +33,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeletePayee :exec
 DELETE FROM payees WHERE id = $1
 ;
+
+-- name: ReassignPayeeTransactions :exec
+UPDATE transactions SET payee_id = $1 WHERE payee_id = $2;
+
+-- name: ReassignPayeeRecurring :exec
+UPDATE recurring_transactions SET payee_id = $1 WHERE payee_id = $2;

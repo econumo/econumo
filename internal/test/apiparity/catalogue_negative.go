@@ -26,6 +26,17 @@ func init() {
 				Body: map[string]any{"id": OwnerAccount, "name": "Hacked", "icon": "hack", "updatedAt": "2024-01-01 00:00:00", "currencyId": USD}},
 			{Label: "err:update-budget-bad-uuid", Method: "POST", Path: "/api/v1/user/update-budget", Auth: "owner",
 				Body: map[string]any{"value": "not-a-uuid"}},
+			// Merge refusals. Merging a row into itself would delete the only
+			// surviving side, and income/expense categories sit in different halves
+			// of the budget, so neither is a legal merge.
+			{Label: "err:merge-category-into-itself", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "owner",
+				Body: map[string]any{"sourceId": CatFood, "targetId": CatFood}},
+			{Label: "err:merge-category-across-types", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "owner",
+				Body: map[string]any{"sourceId": CatFood, "targetId": CatSalary}},
+			{Label: "err:merge-category-foreign-target", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "guest",
+				Body: map[string]any{"sourceId": CatFood, "targetId": CatSalary}},
+			{Label: "err:merge-payee-blank-target", Method: "POST", Path: "/api/v1/payee/merge-payee", Auth: "owner",
+				Body: map[string]any{"sourceId": PayeeShop, "targetId": ""}},
 			// type is parsed before the write-access check, so an invalid type pins
 			// the tier-2 "invalid choice" validation message, not an access denial.
 			// Pins the frozen budget-name validation label at its CALL SITE — a

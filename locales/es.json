@@ -1049,6 +1049,15 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Combinar con…",
+        "title": "Combinar «{name}» con",
+        "confirm": "Combinar",
+        "warning": "Todas las transacciones de «{name}» se moverán y «{name}» se eliminará.",
+        "envelope_info": "Si ambos están en sobres distintos, actualiza primero tu presupuesto para no perder tus importes planificados, ya que al combinar los límites se suman."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1413,9 +1422,8 @@
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",
       "type_invalid": "El tipo de categoría no existe.",
-      "replace_id_required": "replaceId es obligatorio cuando mode=replace.",
       "not_found": "Categoría no encontrada.",
-      "cannot_be_replaced": "Las categorías no se pueden reemplazar.",
+      "cannot_be_merged": "Las categorías seleccionadas no se pueden combinar.",
       "list_empty": "La lista de categorías está vacía."
     },
     "connection": {
@@ -1438,16 +1446,19 @@
     },
     "label": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
+      "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
       "already_exists": "El beneficiario ya existe.",
+      "cannot_be_merged": "Los beneficiarios seleccionados no se pueden combinar.",
       "list_empty": "La lista de beneficiarios está vacía."
     },
     "tag": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "already_exists": "La etiqueta ya existe.",
+      "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
     },
     "token": {

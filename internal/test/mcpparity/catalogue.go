@@ -272,6 +272,38 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `","label_ids":[]}}}`},
 	}})
 
+	// One successful merge per kind, plus a refusal, so every merge_* tool has a
+	// pinned envelope. Each kind seeds two rows over REST and names them, since a
+	// merge needs two ids live at once.
+	register(Scenario{Name: "classification_merge", Steps: []Step{
+		{Label: "seed-cat-src", Method: "POST", Path: "/api/v1/category/create-category", CaptureAs: "cat_src", CaptureID: true,
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Food", "type": "expense", "icon": "food"}},
+		{Label: "seed-cat-dst", Method: "POST", Path: "/api/v1/category/create-category", CaptureAs: "cat_dst", CaptureID: true,
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Groceries", "type": "expense", "icon": "cart"}},
+		{Label: "merge-category", RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"merge_category","arguments":{"sourceId":"{{cat_src}}","targetId":"{{cat_dst}}"}}}`},
+		{Label: "merge-category-into-itself", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"merge_category","arguments":{"sourceId":"{{cat_dst}}","targetId":"{{cat_dst}}"}}}`},
+
+		{Label: "seed-tag-src", Method: "POST", Path: "/api/v1/tag/create-tag", CaptureAs: "tag_src", CaptureID: true,
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Tag A"}},
+		{Label: "seed-tag-dst", Method: "POST", Path: "/api/v1/tag/create-tag", CaptureAs: "tag_dst", CaptureID: true,
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Tag B"}},
+		{Label: "merge-tag", RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"merge_tag","arguments":{"sourceId":"{{tag_src}}","targetId":"{{tag_dst}}"}}}`},
+
+		{Label: "seed-payee-src", Method: "POST", Path: "/api/v1/payee/create-payee", CaptureAs: "payee_src", CaptureID: true,
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Grocer"}},
+		{Label: "seed-payee-dst", Method: "POST", Path: "/api/v1/payee/create-payee", CaptureAs: "payee_dst", CaptureID: true,
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Grocery Store"}},
+		{Label: "merge-payee", RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"merge_payee","arguments":{"sourceId":"{{payee_src}}","targetId":"{{payee_dst}}"}}}`},
+
+		{Label: "seed-label-src", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "lbl_src", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Kid A"}},
+		{Label: "seed-label-dst", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "lbl_dst", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Kids"}},
+		{Label: "merge-label", RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"merge_label","arguments":{"sourceId":"{{lbl_src}}","targetId":"{{lbl_dst}}"}}}`},
+
+		{Label: "list-categories-after-merge", RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
+	}})
+
 	register(Scenario{Name: "prompts", Steps: []Step{
 		{Label: "get-log-expense", RPC: `{"jsonrpc":"2.0","id":1,"method":"prompts/get","params":{"name":"log-expense","arguments":{"description":"27.50 groceries at Lidl yesterday"}}}`},
 		{Label: "get-budget-review", RPC: `{"jsonrpc":"2.0","id":2,"method":"prompts/get","params":{"name":"budget-review","arguments":{}}}`},

@@ -11,7 +11,7 @@ import (
 // DeletePayee deletes the payee. The user must own it; an ownership failure
 // surfaces as AccessDenied (HTTP 403). Transactions referencing the payee have
 // payee_id set to NULL via the ON DELETE SET NULL FK. Delete is unconditional —
-// there is no mode/replaceId.
+// to keep them, use merge-payee instead.
 func (s *Service) DeletePayee(ctx context.Context, userID vo.Id, req model.DeletePayeeRequest) (*model.DeletePayeeResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

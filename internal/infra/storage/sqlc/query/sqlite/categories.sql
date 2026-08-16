@@ -42,3 +42,9 @@ UPDATE transactions SET category_id = ? WHERE category_id = ?;
 
 -- The operation_requests_ids idempotency queries moved to operations.sql (shared
 -- across modules that take a client-supplied operation id).
+
+-- name: ReassignCategoryRecurring :exec
+-- The recurring half of ReassignCategoryTransactions. Its absence is what made
+-- the old delete-category replace mode lossy: templates were left pointing at a
+-- category about to be deleted, and the FK silently nulled them.
+UPDATE recurring_transactions SET category_id = ? WHERE category_id = ?;

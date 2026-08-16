@@ -97,6 +97,39 @@ func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label
 	return items, nil
 }
 
+const reassignRecurringLabels = `-- name: ReassignRecurringLabels :exec
+INSERT INTO recurring_transactions_labels (recurring_transaction_id, label_id)
+SELECT rtl.recurring_transaction_id, $1 FROM recurring_transactions_labels rtl WHERE rtl.label_id = $2
+ON CONFLICT DO NOTHING
+`
+
+type ReassignRecurringLabelsParams struct {
+	LabelID   string
+	LabelID_2 string
+}
+
+func (q *Queries) ReassignRecurringLabels(ctx context.Context, arg ReassignRecurringLabelsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignRecurringLabels, arg.LabelID, arg.LabelID_2)
+	return err
+}
+
+const reassignTransactionLabels = `-- name: ReassignTransactionLabels :exec
+INSERT INTO transactions_labels (transaction_id, label_id)
+SELECT tl.transaction_id, $1 FROM transactions_labels tl WHERE tl.label_id = $2
+ON CONFLICT DO NOTHING
+`
+
+type ReassignTransactionLabelsParams struct {
+	LabelID   string
+	LabelID_2 string
+}
+
+// See the sqlite variant; ON CONFLICT DO NOTHING is this engine INSERT OR IGNORE.
+func (q *Queries) ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTransactionLabels, arg.LabelID, arg.LabelID_2)
+	return err
+}
+
 const upsertLabel = `-- name: UpsertLabel :exec
 INSERT INTO labels (id, user_id, name, icon, sort_key, is_archived, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)

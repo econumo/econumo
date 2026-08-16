@@ -63,6 +63,9 @@ export const METRICS = {
   PAYEE_ARCHIVE: 'appPayeeArchive',
   PAYEE_UNARCHIVE: 'appPayeeUnarchive',
   CLASSIFICATION_SEARCH: 'appClassificationSearch',
+  // one key for all four kinds, discriminated by the `type` property — same
+  // shape as CLASSIFICATION_SEARCH above
+  CLASSIFICATION_MERGE: 'appClassificationMerge',
   BUDGET_CREATE: 'appBudgetCreate',
   BUDGET_UPDATE: 'appBudgetUpdate',
   BUDGET_DELETE: 'appBudgetDelete',

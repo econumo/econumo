@@ -41,3 +41,8 @@ export async function sortCategoryList(ids: Id[]): Promise<CategoryDto[]> {
   const response = await api.post<Envelope<{ items: CategoryDto[] }>>(apiUrl('/api/v1/category/sort-category-list'), { ids })
   return response.data.data.items
 }
+
+/** Absorbs sourceId into targetId and deletes sourceId. Cannot be undone. */
+export async function mergeCategory(sourceId: Id, targetId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/category/merge-category'), { sourceId, targetId })
+}

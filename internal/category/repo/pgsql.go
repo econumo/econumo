@@ -56,3 +56,7 @@ func (pgsqlQuerier) InsertOperationId(ctx context.Context, db backend.DBTX, p in
 func (pgsqlQuerier) MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error {
 	return pgsqlgen.New(db).MarkOperationHandled(ctx, pgsqlgen.MarkOperationHandledParams(p))
 }
+
+func (pgsqlQuerier) ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return pgsqlgen.New(db).ReassignCategoryRecurring(ctx, pgsqlgen.ReassignCategoryRecurringParams(p))
+}

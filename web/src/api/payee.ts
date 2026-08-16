@@ -41,3 +41,8 @@ export async function sortPayeeList(ids: Id[]): Promise<PayeeDto[]> {
   const response = await api.post<Envelope<{ items: PayeeDto[] }>>(apiUrl('/api/v1/payee/sort-payee-list'), { ids })
   return response.data.data.items
 }
+
+/** Absorbs sourceId into targetId and deletes sourceId. Cannot be undone. */
+export async function mergePayee(sourceId: Id, targetId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/payee/merge-payee'), { sourceId, targetId })
+}
