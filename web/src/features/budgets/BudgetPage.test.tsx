@@ -61,8 +61,8 @@ it('renders the full budget page: strip, chips, table, totals', async () => {
   )
   renderPage()
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
-  // 47 period-strip month tabs
-  expect(screen.getAllByRole('tab')).toHaveLength(47)
+  // 47 period-strip month tabs + the Budget/Plan mode toggle's 2 tabs
+  expect(screen.getAllByRole('tab')).toHaveLength(49)
   expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
   expect(screen.getByTestId('budget-totals')).toBeInTheDocument()
   // currency chips from balances
@@ -369,7 +369,7 @@ it('shows the currency pills on both routes; on /plan a pill toggles the period 
   expect(screen.queryByTestId('expense-widget')).not.toBeInTheDocument()
 })
 
-it('no header mode toggle on either route', async () => {
+it('the header tabs navigate between /budget and /plan and reflect the route', async () => {
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
@@ -378,14 +378,46 @@ it('no header mode toggle on either route', async () => {
   const user = userEvent.setup()
   const { router } = renderPage()
   await screen.findByRole('tablist', { name: 'period' })
-  expect(screen.queryByRole('tablist', { name: 'budget mode' })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument()
-  await user.keyboard('{Escape}')
+  const modeTabs = within(screen.getByRole('tablist', { name: 'budget mode' }))
+  expect(modeTabs.getByRole('tab', { name: 'Budget' })).toHaveAttribute('aria-selected', 'true')
 
-  await act(() => router.navigate('/plan'))
+  await user.click(modeTabs.getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
-  expect(screen.queryByRole('tab')).not.toBeInTheDocument()
+  expect(router.state.location.pathname).toBe('/plan')
+  expect(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' })).toHaveAttribute('aria-selected', 'true')
+
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
+  await screen.findByRole('tablist', { name: 'period' })
+  expect(router.state.location.pathname).toBe('/budget')
+})
+
+it('compact viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  const user = userEvent.setup()
+  const { router } = renderPage()
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  expect(screen.queryByRole('tablist', { name: 'budget mode' })).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitemradio', { name: 'Budget' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(screen.getByRole('menuitemradio', { name: 'Plan' }))
+  await screen.findByTestId('plan-sheet')
+  expect(router.state.location.pathname).toBe('/plan')
+  // the currency pills stay in the header on /plan too
+  expect(screen.getAllByRole('button', { name: /^currency /i }).length).toBeGreaterThan(0)
+
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitemradio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
+  await user.click(screen.getByRole('menuitemradio', { name: 'Budget' }))
+  await screen.findByRole('tablist', { name: 'period' })
+  expect(router.state.location.pathname).toBe('/budget')
 })
 
 it('the route hop remounts the page: edit structure started on /plan is off again on /budget', async () => {

@@ -4,7 +4,9 @@
 
 **Goal:** Give the budget plan view its own `/plan` route and nav entry, removing the in-page Budget | Plan toggle.
 
-**Architecture:** One `BudgetPage` component takes a `mode: 'budget' | 'plan'` prop and is mounted (keyed) at both `/budget` and `/plan`. The `budgetMode` store field, the header tablist and the compact settings-menu radio group are deleted; the sidebar gains a **Plan** link on every breakpoint. Spec: `docs/superpowers/specs/2026-08-16-plan-route-design.md`.
+**Architecture:** One `BudgetPage` component takes a `mode: 'budget' | 'plan'` prop and is mounted (keyed) at both `/budget` and `/plan`. The `budgetMode` store field is deleted; the header tablist and the compact settings-menu radio group stay and `navigate()` between the two routes. Spec: `docs/superpowers/specs/2026-08-16-plan-route-design.md`.
+
+> **Revision (same day, after Task 2 landed):** the user decided plan is part of the budget, so the sidebar Plan entry (Task 2) was reverted and the in-page toggle restored as route navigation. Task 2 below is kept for the record but is NOT in the final state; Task 1's "toggle removed" steps were superseded by the restore commit.
 
 **Tech Stack:** React 19, react-router (data router, `createMemoryRouter` in tests), zustand, vitest + testing-library + msw, react-i18next, lucide-react.
 

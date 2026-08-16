@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { CalendarRange, RefreshCw, Rocket, Settings, UserPlus, Wallet } from 'lucide-react'
+import { RefreshCw, Rocket, Settings, UserPlus, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
 // so without it the footer logo ships as a separate asset and can 404 where
@@ -182,13 +182,6 @@ export function ApplicationLayout() {
                     >
                       <Wallet className="size-5" />
                     </Link>
-                    <Link
-                      to={RouterPage.PLAN}
-                      title={t('common.nav.plan')}
-                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
-                    >
-                      <CalendarRange className="size-5" />
-                    </Link>
                   </div>
                 ) : (
                   // compact matches the folder headers below (size and left edge)
@@ -210,9 +203,6 @@ export function ApplicationLayout() {
                     ) : null}
                     <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
-                    </Link>
-                    <Link to={RouterPage.PLAN} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
-                      {t('common.nav.plan')}
                     </Link>
                   </div>
                 )}

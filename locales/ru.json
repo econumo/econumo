@@ -13,7 +13,6 @@
     },
     "nav": {
       "budget": "Бюджет",
-      "plan": "План",
       "onboarding": "Начало работы",
       "create_account": "Добавить счёт",
       "collapse_menu": "Свернуть меню",
@@ -974,6 +973,10 @@
         }
       },
       "plan": {
+        "toggle": {
+          "budget": "Бюджет",
+          "plan": "План"
+        },
         "section": {
           "income": "Доходы",
           "expenses": "Расходы",

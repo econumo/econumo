@@ -13,7 +13,6 @@
     },
     "nav": {
       "budget": "Budżet",
-      "plan": "Plan",
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
@@ -974,6 +973,10 @@
         }
       },
       "plan": {
+        "toggle": {
+          "budget": "Budżet",
+          "plan": "Plan"
+        },
         "section": {
           "income": "Przychody",
           "expenses": "Wydatki",

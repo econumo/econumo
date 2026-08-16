@@ -13,7 +13,6 @@
     },
     "nav": {
       "budget": "Budget",
-      "plan": "Plan",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -974,6 +973,10 @@
         }
       },
       "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
         "section": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",

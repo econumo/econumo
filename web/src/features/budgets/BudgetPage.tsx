@@ -18,6 +18,8 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -118,6 +120,15 @@ const preferRowCollisions: CollisionDetection = (args) => {
 }
 
 export type BudgetMode = 'budget' | 'plan'
+const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
+const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
+  budget: 'budgets.page.plan.toggle.budget',
+  plan: 'budgets.page.plan.toggle.plan',
+}
+const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
+  budget: RouterPage.BUDGET,
+  plan: RouterPage.PLAN,
+}
 
 // The section is a sortable item itself (folder reorder); the grip lives in
 // the header rendered by BudgetTable, so the handle props travel via context.
@@ -220,6 +231,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       trackEvent(METRICS.BUDGET_PLAN_OPEN)
     }
   }, [mode])
+  // the two views are separate routes; the keyed remount ends edit structure
+  const switchBudgetMode = (m: BudgetMode) => {
+    if (m !== mode) {
+      navigate(BUDGET_MODE_ROUTE[m])
+    }
+  }
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
@@ -556,6 +573,24 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
+        {isCompact ? null : (
+          // single-pane headers have no room for the tablist — the mode
+          // switch lives in the settings menu there instead
+          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
+            {BUDGET_MODES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${mode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
+                onClick={() => switchBudgetMode(m)}
+              >
+                {t(BUDGET_MODE_LABEL[m])}
+              </button>
+            ))}
+          </div>
+        )}
         {/* both views: the pills toggle the period widget above the table / the sheet */}
         <span className="flex shrink-0 items-center gap-1">
           {budgetCurrencyIds.map((currencyId) => {
@@ -597,6 +632,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isCompact ? (
+                <>
+                  <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
+                    {BUDGET_MODES.map((m) => (
+                      <DropdownMenuRadioItem key={m} value={m}>
+                        {t(BUDGET_MODE_LABEL[m])}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
