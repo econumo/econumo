@@ -359,6 +359,11 @@ function PlanSortableFolder({ section, children }: { section: PlanFolderSection;
   )
 }
 
+// A child is a read-only breakdown of its parent's actuals: it carries no limit and
+// is not selectable (no aria-selected, no click/keyboard target) — only rows a limit
+// can be set on take the highlight. The indent lives INSIDE the fixed-width name
+// cell: padding on the row itself would eat into the 1fr month tracks and shift the
+// child's figures out from under the parent's.
 const ChildRow = memo(function ChildRow({
   child,
   parentCurrency,
@@ -371,22 +376,14 @@ const ChildRow = memo(function ChildRow({
   const { t } = useTranslation()
   const displayName = elementDisplayName(child.id, child.name, t)
   const rk = `${child.id}:${child.type}`
-  const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
   return (
     <div
       role="row"
       data-row-id={rk}
-      className="plan-row grid items-stretch gap-1 py-1 pr-2 pl-9 text-xs text-muted-foreground"
+      className="plan-row grid items-stretch gap-1 px-2 py-1 text-xs text-muted-foreground"
       style={{ gridTemplateColumns: ctx.gridCols }}
     >
-      <span
-        role="gridcell"
-        id={cellDomId(rk, -1)}
-        aria-selected={nameSelected}
-        className={`flex h-full min-w-0 items-center gap-1.5 truncate${selectedClass(nameSelected)}`}
-        title={displayName}
-        onClick={(e) => ctx.select(rk, -1, e)}
-      >
+      <span role="gridcell" className="flex h-full min-w-0 items-center gap-1.5 truncate pl-7" title={displayName}>
         <EntityIcon name={child.icon} className="text-base" />
         <span className="min-w-0 flex-1 truncate">{displayName}</span>
       </span>
@@ -394,19 +391,15 @@ const ChildRow = memo(function ChildRow({
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
         const actualText = renderActual(cell?.actual, m, ctx.cur, parentCurrency)
-        const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
         return (
           <div
             key={m}
             role="gridcell"
-            id={cellDomId(rk, i)}
-            aria-selected={selected}
             aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: '—' })}
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className={`flex items-center justify-end px-2 py-1 ${selectedClass(selected)}`}
-            onClick={(e) => ctx.select(rk, i, e)}
+            className="flex items-center justify-end px-2 py-1"
           >
             <span data-testid="cell-actual">{actualText}</span>
           </div>
@@ -893,29 +886,19 @@ function PlanBalanceRow({
 
 
 // Same flattening the renderer walks (folders -> loose, income then expense, then
-// archived), so Up/Down can never reach a row that isn't on screen. The uncategorized
-// expense figure is excluded: it renders as a totals line, not a selectable row.
+// archived), so Up/Down can never reach a row that isn't on screen. Only root rows —
+// the ones a limit can be set on — are in the order: an expanded envelope's children
+// are read-only breakdown lines and are stepped over. The uncategorized expense
+// figure is excluded too: it renders as a totals line, not a selectable row.
 interface FlatRow {
   rowKey: string
   el: PlanElementDto
-  child?: PlanChildDto
 }
 
-function buildFlatRows(
-  rows: PlanRows,
-  unfoldedElements: Record<string, boolean>,
-  hideEmpty: boolean,
-  revealedSections: Set<string>,
-  folded: (key: string) => boolean,
-): FlatRow[] {
+function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set<string>, folded: (key: string) => boolean): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ rowKey: rowKey(r), el: r.element })
-    if (r.element.children.length > 0 && unfoldedElements[r.element.id]) {
-      for (const child of r.element.children) {
-        flatRows.push({ rowKey: `${child.id}:${child.type}`, el: r.element, child })
-      }
-    }
   }
   const incomeFolded = folded('income')
   if (!incomeFolded) {
@@ -1072,7 +1055,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const planFolds = useBudgetPeriodStore((s) => s.planFolds)
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
-  const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
@@ -1262,8 +1244,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const totals = useMemo(() => (plan && ex ? planTotals(plan, ex) : []), [plan, ex])
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, unfoldedElements, hideEmpty, revealedSections, folded) : []),
-    [shownRows, unfoldedElements, hideEmpty, revealedSections, folded],
+    () => (shownRows ? buildFlatRows(shownRows, hideEmpty, revealedSections, folded) : []),
+    [shownRows, hideEmpty, revealedSections, folded],
   )
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
@@ -1452,7 +1434,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // row ownership for a category or tag — update-category/update-tag answer anyone
   // but the owner with NotFound, so a shared row must not offer the dialog at all.
   function openElementEditor(entry: FlatRow) {
-    const target = entry.child ?? entry.el
+    const target = entry.el
     if (target.id === UNCATEGORIZED_ID) {
       return
     }
@@ -1485,9 +1467,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   function handleEnter(entry: FlatRow, col: number) {
     if (col === -1) {
       openElementEditor(entry)
-      return
-    }
-    if (entry.child) {
       return
     }
     const month = visibleMonths[col]
@@ -1598,7 +1577,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         if (selection.col === -1) {
           e.preventDefault()
           const entry = flatRows[idx]
-          if (!entry.child && entry.el.children.length > 0) {
+          if (entry.el.children.length > 0) {
             toggleElement(entry.el.id)
           }
         }

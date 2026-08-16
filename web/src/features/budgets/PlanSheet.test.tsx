@@ -540,7 +540,7 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
   await user.keyboard('{Enter}')
   expect(screen.queryByLabelText('Budget')).not.toBeInTheDocument()
 
-  // children never carry their own limit
+  // children never carry their own limit (and are not selectable at all)
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
   await user.click(within(pe1Row).getByText('Living'))
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
@@ -716,17 +716,35 @@ it('Enter on a highlighted envelope, category, or tag opens its edit dialog when
   await waitFor(() => expect(tagBody).toMatchObject({ id: 'tag1', name: 'vacation' }))
 })
 
-it('Enter on a highlighted child category opens the category dialog too', async () => {
+// Only rows that can carry a limit — envelopes, root categories, tags — are selectable.
+// An expanded envelope's children are read-only breakdown lines: a click on one does
+// not move the highlight, and the arrow keys step straight over them.
+it('child rows are not selectable by click or keyboard', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01', foldBudgetId: 'b1', unfoldedElements: { pe1: true } })
   const user = userEvent.setup()
   renderPage()
-  await screen.findByTestId('plan-cell-cat-rent:0')
+  const childCell = await screen.findByTestId('plan-cell-cat-rent:0')
+  const grid = screen.getByTestId('plan-sheet')
+  const childRow = childCell.closest('[role="row"]') as HTMLElement
+  const parentCell = screen.getByTestId('plan-cell-pe1:0')
 
-  await selectNameCell(user, 'cat-rent:1')
-  await user.keyboard('{Enter}')
-  const dialog = await screen.findByRole('dialog', { name: 'Edit category' })
-  expect(within(dialog).getByDisplayValue('Rent')).toBeInTheDocument()
+  await user.click(parentCell)
+  expect(parentCell).toHaveAttribute('aria-selected', 'true')
+
+  // clicking a child cell leaves the parent highlighted; child cells never expose aria-selected
+  await user.click(childCell)
+  expect(parentCell).toHaveAttribute('aria-selected', 'true')
+  for (const cell of within(childRow).getAllByRole('gridcell')) {
+    expect(cell).not.toHaveAttribute('aria-selected')
+  }
+
+  // ArrowDown from the expanded parent skips its children and lands on the next root row
+  grid.focus()
+  await user.keyboard('{ArrowDown}')
+  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'true')
+  await user.keyboard('{ArrowUp}')
+  expect(parentCell).toHaveAttribute('aria-selected', 'true')
 })
 
 it('Enter without the right to edit explains why in a toast instead of opening a dialog: guest role for envelopes, foreign owner for categories/tags; uncategorized stays silent', async () => {
@@ -1521,6 +1539,15 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   // budget mode tints child rows on hover just like parents (BudgetTable.tsx);
   // plan mode must not diverge
   expect(childRow.className).toContain('plan-row')
+
+  // the child row's grid must share the parent row's horizontal padding — the fixed
+  // name column absorbs the indent, so the month cells line up under the parent's
+  // (extra padding on the row itself would shrink the 1fr month tracks and shift them)
+  const parentRow = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]') as HTMLElement
+  expect(parentRow.className).toContain('px-2')
+  expect(childRow.className).toContain('px-2')
+  expect(childRow.className).not.toMatch(/\bpl-\d/)
+  expect(childRow.style.gridTemplateColumns).toBe(parentRow.style.gridTemplateColumns)
 })
 
 it('shows plan row actions only in edit mode, with side-filtered move-to-folder', async () => {
