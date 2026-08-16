@@ -1019,7 +1019,7 @@
       "settings": {
         "menu_item": "Orçamentos e planos",
         "header": "Orçamentos e planos",
-        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos separados para objetivos diferentes, partilhe-os com a sua família e faça a gestão do plano de cada orçamento para os próximos meses.",
+        "info": "Todos os seus orçamentos estão aqui. Crie orçamentos para objetivos diferentes, partilhe-os com a sua família e planeie o seu orçamento para os próximos meses.",
         "create_budget": "Criar orçamento",
         "edit_modal": {
           "header": "Editar orçamento"

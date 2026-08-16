@@ -1019,7 +1019,7 @@
       "settings": {
         "menu_item": "Budget e piani",
         "header": "Budget e piani",
-        "info": "Qui trovi tutti i tuoi budget. Crea budget separati per obiettivi diversi, condividili con la tua famiglia e gestisci il piano di ogni budget per i mesi a venire.",
+        "info": "Qui trovi tutti i tuoi budget. Crea budget per obiettivi diversi, condividili con la tua famiglia e pianifica il tuo budget per i mesi a venire.",
         "create_budget": "Crea budget",
         "edit_modal": {
           "header": "Modifica budget"

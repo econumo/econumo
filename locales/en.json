@@ -1019,7 +1019,7 @@
       "settings": {
         "menu_item": "Budgets & Plans",
         "header": "Budgets & Plans",
-        "info": "All your budgets live here. Create separate budgets for different goals, share them with your family, and manage each budget’s plan for the months ahead.",
+        "info": "All your budgets live here. Create budgets for different goals, share them with your family, and plan your budget for the months ahead.",
         "create_budget": "Create budget",
         "edit_modal": {
           "header": "Edit budget"
