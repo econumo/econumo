@@ -268,6 +268,54 @@ it('folding a section header collapses its rows and persists', async () => {
   expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
 })
 
+it('clicking anywhere on a folder header row toggles the fold, but its own controls keep their action', async () => {
+  // put the dormant row inside the Essentials folder so its header carries a "Show" notice
+  const plan = fixtureWirePlan as unknown as BudgetPlanDto
+  const planWithDormantInFolder: BudgetPlanDto = {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      elements: plan.structure.elements.map((el) => (el.id === 'cat-dormant' ? { ...el, folderId: 'bf1' } : el)),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithDormantInFolder),
+  )
+  useBudgetPeriodStore.setState({ planHideEmpty: true })
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByRole('tab', { name: /plan/i }))
+  await screen.findByTestId('plan-sheet')
+
+  const folder = screen.getByTestId('plan-folder-bf1')
+  const nameButton = within(folder).getByRole('button', { name: 'Essentials' })
+  const header = nameButton.parentElement!.parentElement as HTMLElement
+  expect(within(header).getByText('1 hidden')).toBeInTheDocument()
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+
+  // the blank part of the header row folds…
+  await user.click(header)
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  expect(nameButton).toHaveAttribute('aria-expanded', 'false')
+  // …and unfolds
+  await user.click(header)
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+
+  // "Show" reveals the hidden row without touching the fold
+  await user.click(within(header).getByRole('button', { name: 'Show' }))
+  expect(document.querySelector('[data-row-id="cat-dormant:1"]')).toBeInTheDocument()
+  expect(nameButton).toHaveAttribute('aria-expanded', 'true')
+
+  // the edit-mode grip is a drag handle, not a fold toggle
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'move folder Essentials' }))
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-folder-bf1')).getByRole('button', { name: 'Essentials' })).toHaveAttribute('aria-expanded', 'true')
+})
+
 it('hide-empty removes dormant rows, shows the per-section count, Show reveals them', async () => {
   usePlanHandlers()
   const user = userEvent.setup()

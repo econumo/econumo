@@ -684,7 +684,17 @@ function FolderRows({
   const Chevron = folded ? ChevronRight : ChevronDown
   return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
-      <div className="flex flex-wrap items-center justify-between gap-x-2 pb-1">
+      {/* the whole header row is the fold target, not just the name — its own controls
+          (the drag grip, the hidden-rows "Show") keep their action and don't fold */}
+      <div
+        className="flex cursor-pointer flex-wrap items-center justify-between gap-x-2 pb-1"
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('button')) {
+            return
+          }
+          onToggleFold(section.folder.id)
+        }}
+      >
         <span className="flex min-w-0 items-center gap-1">
           {ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
           <button
