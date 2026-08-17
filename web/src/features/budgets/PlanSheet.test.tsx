@@ -432,7 +432,7 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
 
   // children never carry their own limit, regardless of role
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
-  await user.click(within(pe1Row).getByText('Living'))
+  await user.click(within(pe1Row).getByRole('button', { name: 'Expand' }))
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
   expect(within(childCell).queryByRole('button')).not.toBeInTheDocument()
 
@@ -492,8 +492,12 @@ it('arrow keys move the selection and shift the window at the edges', async () =
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
 
-  // ArrowRight returns to the first month column of the now-shifted window
+  // ArrowRight on the name cell of a row with children first unfolds it (pe1/Living
+  // has a child); the next ArrowRight returns to the first month column of the
+  // now-shifted window
   grid.focus()
+  await user.keyboard('{ArrowRight}')
+  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
   await user.keyboard('{ArrowRight}')
   expect(await screen.findByTestId('plan-cell-pe1:0')).toHaveAttribute('data-month', '2026-05-01')
   expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
@@ -542,7 +546,7 @@ it('Enter opens the editor on an editable cell and is inert on read-only cells',
 
   // children never carry their own limit (and are not selectable at all)
   const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
-  await user.click(within(pe1Row).getByText('Living'))
+  await user.click(within(pe1Row).getByRole('button', { name: 'Expand' }))
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
   await user.click(childCell)
   grid.focus()
@@ -635,6 +639,127 @@ it('ArrowLeft reaches the name cell (col -1) by keyboard, Space there toggles ex
   await user.keyboard('{ArrowLeft}')
   await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
   expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+})
+
+// The name is a selection target, not a fold toggle: only the chevron unfolds the
+// children, so a click meant to highlight the row never springs the breakdown open.
+it('clicking an envelope name selects it without expanding; only the chevron toggles the children', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  const nameCell = within(pe1Row).getByTitle('Living').closest('[role="gridcell"]') as HTMLElement
+
+  await user.click(within(pe1Row).getByTitle('Living'))
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+  expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
+
+  const chevron = within(pe1Row).getByRole('button', { name: 'Expand' })
+  expect(chevron).toHaveAttribute('aria-expanded', 'false')
+  await user.click(chevron)
+  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+  expect(within(pe1Row).getByRole('button', { name: 'Collapse' })).toHaveAttribute('aria-expanded', 'true')
+  await user.click(within(pe1Row).getByRole('button', { name: 'Collapse' }))
+  await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
+})
+
+it('ArrowRight on a collapsed envelope name cell expands it and ArrowLeft collapses it; otherwise the keys navigate as before', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  const nameCell = within(pe1Row).getByTitle('Living').closest('[role="gridcell"]') as HTMLElement
+
+  await user.click(screen.getByTestId('plan-cell-pe1:0'))
+  grid.focus()
+  await user.keyboard('{ArrowLeft}')
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+
+  // collapsed + ArrowRight: expand, selection stays on the name cell
+  await user.keyboard('{ArrowRight}')
+  expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+  // expanded + ArrowRight: the usual move to the first month column
+  await user.keyboard('{ArrowRight}')
+  expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
+
+  await user.keyboard('{ArrowLeft}')
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+  // expanded + ArrowLeft: collapse, the window does not page
+  await user.keyboard('{ArrowLeft}')
+  await waitFor(() => expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument())
+  expect(nameCell).toHaveAttribute('aria-selected', 'true')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  // collapsed + ArrowLeft: pages the window back as before
+  await user.keyboard('{ArrowLeft}')
+  await waitFor(() => expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-05-01'))
+
+  // a row without children never folds on ArrowRight/ArrowLeft — plain navigation
+  await user.click(screen.getByTestId('plan-cell-cat-food:0'))
+  grid.focus()
+  await user.keyboard('{ArrowLeft}{ArrowRight}')
+  expect(screen.getByTestId('plan-cell-cat-food:0')).toHaveAttribute('aria-selected', 'true')
+})
+
+it('folder headers are selectable: ArrowLeft/ArrowRight fold/unfold them, Up/Down step through them keeping the column', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const grid = screen.getByTestId('plan-sheet')
+  const folder = screen.getByTestId('plan-folder-bf1')
+  const nameButton = within(folder).getByRole('button', { name: 'Essentials' })
+  const headerCell = nameButton.closest('[role="gridcell"]') as HTMLElement
+  const header = nameButton.parentElement!.parentElement as HTMLElement
+
+  // clicking the header row still folds (as before) AND selects the folder
+  await user.click(header)
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  expect(headerCell).toHaveAttribute('aria-selected', 'true')
+
+  // ArrowRight unfolds a folded folder; a second ArrowRight is a no-op
+  grid.focus()
+  await user.keyboard('{ArrowRight}')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+  expect(headerCell).toHaveAttribute('aria-selected', 'true')
+  await user.keyboard('{ArrowRight}')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+  expect(headerCell).toHaveAttribute('aria-selected', 'true')
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+
+  // ArrowDown lands on the folder's first member row (name column, where the click put it)
+  await user.keyboard('{ArrowDown}')
+  const pe1Row = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  expect(within(pe1Row).getByTitle('Living').closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
+  await user.keyboard('{ArrowUp}')
+  expect(headerCell).toHaveAttribute('aria-selected', 'true')
+
+  // ArrowLeft folds an unfolded folder; a second ArrowLeft is a no-op (no window paging)
+  await user.keyboard('{ArrowLeft}')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  await user.keyboard('{ArrowLeft}')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
+  expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+  // Space toggles it back open
+  await user.keyboard(' ')
+  expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
+
+  // the column survives a trip through the header: Up from pe1's Jul cell selects
+  // the folder, Down comes back to the same Jul cell
+  await user.click(screen.getByTestId('plan-cell-pe1:1'))
+  grid.focus()
+  await user.keyboard('{ArrowUp}')
+  expect(headerCell).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-pe1:1')).not.toHaveAttribute('aria-selected', 'true')
+  await user.keyboard('{ArrowDown}')
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
 })
 
 // Enter on the highlighted name cell opens the element's own edit dialog — the same
@@ -1064,6 +1189,64 @@ describe('fill handle', () => {
     expect(screen.getByTestId('plan-cell-pe1:2')).toContainElement(screen.getByTestId('fill-handle'))
   })
 
+  it('renders on a hovered editable cell while another cell is selected, and a drag from it selects the source cell', async () => {
+    const bodies: unknown[] = []
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        await delay('infinite')
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+
+    // nothing selected yet: hovering an editable cell already offers the handle
+    const pe1Jul = screen.getByTestId('plan-cell-pe1:1')
+    await user.hover(pe1Jul)
+    expect(within(pe1Jul).getByTestId('fill-handle')).toBeInTheDocument()
+    await user.unhover(pe1Jul)
+    expect(screen.queryByTestId('fill-handle')).not.toBeInTheDocument()
+
+    // select tag1's Jun cell, then hover pe1's Jul cell: the hovered cell offers the
+    // handle without stealing the selection
+    const tag1Jun = screen.getByTestId('plan-cell-tag1:0')
+    await user.click(tag1Jun)
+    expect(within(tag1Jun).getByTestId('fill-handle')).toBeInTheDocument()
+    await user.hover(pe1Jul)
+    expect(tag1Jun).toHaveAttribute('aria-selected', 'true')
+    expect(within(pe1Jul).getByTestId('fill-handle')).toBeInTheDocument()
+
+    // a non-editable cell offers nothing on hover
+    const uncat = screen.getAllByTestId('plan-cell-uncategorized:0')[0]
+    await user.hover(uncat)
+    expect(within(uncat).queryByTestId('fill-handle')).not.toBeInTheDocument()
+
+    // drag from the hovered cell's handle: the pointer leaves the source cell mid-drag,
+    // yet the handle (which holds the pointer capture) survives until release
+    await user.hover(pe1Jul)
+    const handle = within(pe1Jul).getByTestId('fill-handle')
+    fireEvent.pointerDown(handle, { clientX: 100, pointerId: 1 })
+    fireEvent.pointerMove(handle, { clientX: 210, pointerId: 1 })
+    fireEvent.mouseLeave(pe1Jul)
+    expect(screen.getByTestId('plan-cell-pe1:2').className).toContain('fill-covered')
+    expect(within(pe1Jul).getByTestId('fill-handle')).toBe(handle)
+    fireEvent.pointerUp(handle, { clientX: 210, pointerId: 1 })
+
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    // pe1's Jul plan is 250 (fetched months May..Aug, index 2)
+    expect(bodies[0]).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '250' })
+    // once copied, the copied (source) cell is the selection
+    expect(pe1Jul).toHaveAttribute('aria-selected', 'true')
+    expect(tag1Jun).not.toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByTestId('plan-sheet')).toHaveFocus()
+  })
+
   it('dragging a cell with no limit set copies an explicit 0, not an empty amount', async () => {
     const bodies: unknown[] = []
     server.use(
@@ -1423,9 +1606,12 @@ describe('income/expense split', () => {
     expect(document.querySelector('[data-row-id="uncategorized:3"]')).not.toBeInTheDocument()
 
     // keyboard flat rows must skip it too: ArrowDown from the last income loose row
-    // (Freelance) lands on the first expense row, never on the hidden uncategorized row
+    // (Freelance) lands on the expense side (the Essentials folder header, then its
+    // first row), never on the hidden uncategorized row
     await user.click(screen.getByTestId('plan-cell-cat-freelance:0'))
     grid.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(screen.getByRole('button', { name: 'Essentials' }).closest('[role="gridcell"]')).toHaveAttribute('aria-selected', 'true')
     await user.keyboard('{ArrowDown}')
     expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
 
@@ -1583,7 +1769,7 @@ it('gives expanded child rows the same row-hover treatment as their parents', as
   await screen.findByTestId('plan-sheet')
 
   // pe1/Living has children; expanding it reveals cat-rent as a ChildRow
-  await user.click(within(document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).getByTitle('Living'))
+  await user.click(within(document.querySelector('[data-row-id="pe1:0"]') as HTMLElement).getByRole('button', { name: 'Expand' }))
   const childCell = await screen.findByTestId('plan-cell-cat-rent:0')
   const childRow = childCell.closest('[role="row"]') as HTMLElement
 
@@ -1803,7 +1989,7 @@ it('keeps the drag grip on its own root row, not stretched by expanded children'
   // expanding pe1/Living adds child rows INSIDE the same wrapper; the grip must not
   // be pulled to the middle of the whole expanded block
   expect(screen.queryByTestId('plan-cell-cat-rent:0')).not.toBeInTheDocument()
-  await user.click(within(wrapper).getByText('Living'))
+  await user.click(within(wrapper).getByRole('button', { name: 'Expand' }))
   expect(await screen.findByTestId('plan-cell-cat-rent:0')).toBeInTheDocument()
   const rootRow = wrapper.querySelector('[role="row"]') as HTMLElement
   expect(rootRow).toContainElement(screen.getByTestId('plan-cell-pe1:0'))
