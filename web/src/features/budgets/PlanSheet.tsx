@@ -895,12 +895,14 @@ function PlanBalanceRow({
   gridCols,
   balance,
   currency,
+  cur,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
   gridCols: string
   balance: string[]
   currency: CurrencyDto | undefined
+  cur: string
 }) {
   const { t } = useTranslation()
   return (
@@ -909,8 +911,8 @@ function PlanBalanceRow({
       className="sticky bottom-0 z-10 border-t bg-background"
       data-testid="plan-balance-row"
     >
-      <div role="row" className="grid items-center gap-1 px-2 py-1.5 font-semibold" style={{ gridTemplateColumns: gridCols }}>
-        <span className="truncate text-xs">{t('budgets.page.plan.totals.balance')}</span>
+      <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
+        <span className="truncate text-xs font-semibold">{t('budgets.page.plan.totals.balance')}</span>
         {visibleMonths.map((m, i) => {
           const idx = monthIndex(m)
           const value = idx >= 0 ? balance[idx] : undefined
@@ -920,7 +922,7 @@ function PlanBalanceRow({
               key={m}
               data-col={i}
               data-testid={`plan-balance-${i}`}
-              className={`px-2 py-1 text-right text-sm  ${negative ? 'text-destructive' : ''}`}
+              className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
             >
               {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
             </div>
@@ -2050,6 +2052,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           balance={balance}
           currency={planCurrency}
+          cur={cur}
         />
       </div>
 

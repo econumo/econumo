@@ -2023,9 +2023,35 @@ it('leaves the current month column unmarked in the grid body, bold in the heade
   expect(document.querySelectorAll('.plan-current-month')).toHaveLength(0)
   sheet.querySelectorAll('[data-col]').forEach((c) => expect(c.className).not.toContain('bg-accent/40'))
 
-  // the bold month name in the header is the only current-month cue
+  // the bold month name in the header and the bold Balance figure under it are the
+  // current-month cues; the body rows stay uniform
   const header = [...document.querySelectorAll('[role="columnheader"]')].find((h) => h.className.includes('font-bold'))
   expect(header).toBeDefined()
+})
+
+it('bolds only the current month in the Balance row', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+
+  // the header already marks the current column; the Balance figure must agree with it
+  const headers = [...document.querySelectorAll('[role="columnheader"]')]
+  const currentCol = headers.findIndex((h) => h.className.includes('font-bold'))
+
+  const cells = [...document.querySelectorAll('[data-testid^="plan-balance-"]')].filter((c) =>
+    /plan-balance-\d+$/.test(c.getAttribute('data-testid') ?? ''),
+  )
+  expect(cells.length).toBeGreaterThan(1)
+
+  cells.forEach((cell, i) => {
+    const bold = cell.className.includes('font-semibold')
+    expect(bold).toBe(i === currentCol)
+  })
+
+  // the row label keeps its weight regardless of which months are on screen
+  const label = within(screen.getByTestId('plan-balance-row')).getByText('Balance')
+  expect(label.className).toContain('font-semibold')
 })
 
 it('gives expanded child rows the same row-hover treatment as their parents', async () => {
