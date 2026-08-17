@@ -1497,6 +1497,271 @@ describe('fill handle', () => {
   })
 })
 
+describe('clipboard and keyboard fill', () => {
+  function useCapturingHandlers(bodies: unknown[]) {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+      planHandler(),
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        bodies.push(await request.json())
+        await delay('infinite')
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+  }
+
+  function clipboard(text = ''): { setData: ReturnType<typeof vi.fn>; getData: () => string } {
+    return { setData: vi.fn(), getData: () => text }
+  }
+
+  it('copy writes the selected cell: planned amount, 0 for an unset cell, the name on the name cell', async () => {
+    usePlanHandlers()
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    // nothing selected: the event is left alone
+    const idle = clipboard()
+    const idleEvent = fireEvent.copy(grid, { clipboardData: idle })
+    expect(idle.setData).not.toHaveBeenCalled()
+    expect(idleEvent).toBe(true)
+
+    // Jun/Jul/Aug window; pe1 Jun planned '200'
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const jun = clipboard()
+    expect(fireEvent.copy(grid, { clipboardData: jun })).toBe(false)
+    expect(jun.setData).toHaveBeenCalledWith('text/plain', '200')
+
+    // pe1 Aug planned '' reads as 0 everywhere else, so it copies as 0
+    await user.click(screen.getByTestId('plan-cell-pe1:2'))
+    const aug = clipboard()
+    fireEvent.copy(grid, { clipboardData: aug })
+    expect(aug.setData).toHaveBeenCalledWith('text/plain', '0')
+
+    // name cell copies the element name; a non-editable row copies too
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    const name = clipboard()
+    fireEvent.copy(grid, { clipboardData: name })
+    expect(name.setData).toHaveBeenCalledWith('text/plain', 'Living')
+
+    await user.click(screen.getAllByTestId('plan-cell-uncategorized:0')[0])
+    const uncat = clipboard()
+    fireEvent.copy(grid, { clipboardData: uncat })
+    expect(uncat.setData).toHaveBeenCalledTimes(1)
+  })
+
+  it('paste writes a single amount into the selected editable cell through set-limit', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    expect(fireEvent.paste(grid, { clipboardData: clipboard(' 150 ') })).toBe(false)
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0]).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-06-01', amount: '150' })
+    expect(within(screen.getByTestId('plan-cell-pe1:0')).getByTestId('cell-planned')).toHaveTextContent('150')
+    expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_PLAN_PASTE_CELL)
+
+    // an empty clipboard clears the limit, same as an emptied editor
+    fireEvent.paste(grid, { clipboardData: clipboard('') })
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies[1]).toEqual({ budgetId: 'b1', elementId: 'pe1', period: '2026-06-01', amount: null })
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('paste of non-numeric text, or onto a non-editable / name cell, writes nothing', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    fireEvent.paste(grid, { clipboardData: clipboard('hello') })
+    expect(toast.error).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(toast.error).mock.calls[0][1]).toMatchObject({ id: 'plan-paste-blocked' })
+
+    // uncategorized is never editable
+    await user.click(screen.getAllByTestId('plan-cell-uncategorized:0')[0])
+    fireEvent.paste(grid, { clipboardData: clipboard('150') })
+    expect(toast.error).toHaveBeenCalledTimes(2)
+    expect(vi.mocked(toast.error).mock.calls[1][1]).toMatchObject({ id: 'plan-paste-blocked' })
+
+    // name cell: silently ignored (nothing sensible to write)
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.paste(grid, { clipboardData: clipboard('150') })
+    expect(toast.error).toHaveBeenCalledTimes(2)
+
+    // no selection at all
+    fireEvent.paste(grid, { clipboardData: clipboard('150') })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(bodies).toHaveLength(0)
+  })
+
+  it('paste inside the open LimitEditor input is left to the input, not the grid', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+
+    const cell = screen.getByTestId('plan-cell-pe1:0')
+    await user.click(cell)
+    await user.click(within(cell).getByRole('button', { name: 'limit Living' }))
+    const input = document.querySelector<HTMLInputElement>('[data-slot="popover-content"] input')
+    expect(input).not.toBeNull()
+    expect(fireEvent.paste(input as HTMLInputElement, { clipboardData: clipboard('150') })).toBe(true)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(bodies).toHaveLength(0)
+    expect(toast.error).not.toHaveBeenCalled()
+  })
+
+  it('Shift+ArrowRight extends a fill range from the selected cell; releasing Shift copies the value into it', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    // Jun/Jul/Aug; pe1 Jun planned '200'
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const jun = screen.getByTestId('plan-cell-pe1:0')
+    const jul = screen.getByTestId('plan-cell-pe1:1')
+    const aug = screen.getByTestId('plan-cell-pe1:2')
+
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(jul.className).toContain('fill-covered')
+    expect(aug.className).not.toContain('fill-covered')
+    // the selection stays on the source cell
+    expect(jun).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(aug.className).toContain('fill-covered')
+    // at the last visible column: clamps, never pages the window
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(useBudgetPeriodStore.getState().planFirstMonth).toBe('2026-06-01')
+    expect(jun).toHaveAttribute('aria-selected', 'true')
+
+    // a plain arrow mid-fill is swallowed like the pointer drag
+    fireEvent.keyDown(grid, { key: 'ArrowDown' })
+    expect(jun).toHaveAttribute('aria-selected', 'true')
+    expect(bodies).toHaveLength(0)
+
+    fireEvent.keyUp(grid, { key: 'Shift' })
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies).toEqual(
+      expect.arrayContaining([
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '200' },
+        { budgetId: 'b1', elementId: 'pe1', period: '2026-08-01', amount: '200' },
+      ]),
+    )
+    expect(jul.className).not.toContain('fill-covered')
+    expect(within(jul).getByTestId('cell-planned')).toHaveTextContent('200')
+    expect(within(aug).getByTestId('cell-planned')).toHaveTextContent('200')
+  })
+
+  it('Shift+ArrowLeft shrinks the range; a range shrunk to nothing writes nothing on release', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    const jul = screen.getByTestId('plan-cell-pe1:1')
+    const aug = screen.getByTestId('plan-cell-pe1:2')
+
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(aug.className).toContain('fill-covered')
+    fireEvent.keyDown(grid, { key: 'ArrowLeft', shiftKey: true })
+    expect(aug.className).not.toContain('fill-covered')
+    expect(jul.className).toContain('fill-covered')
+    fireEvent.keyDown(grid, { key: 'ArrowLeft', shiftKey: true })
+    expect(jul.className).not.toContain('fill-covered')
+    // never left of the source
+    fireEvent.keyDown(grid, { key: 'ArrowLeft', shiftKey: true })
+    expect(screen.getByTestId('plan-cell-pe1:0')).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.keyUp(grid, { key: 'Shift' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(bodies).toHaveLength(0)
+    // and the grid is back to plain navigation
+    fireEvent.keyDown(grid, { key: 'ArrowRight' })
+    expect(jul).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('Escape or losing focus cancels a keyboard fill without any request', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+    const jul = screen.getByTestId('plan-cell-pe1:1')
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(jul.className).toContain('fill-covered')
+    fireEvent.keyDown(grid, { key: 'Escape' })
+    expect(jul.className).not.toContain('fill-covered')
+    fireEvent.keyUp(grid, { key: 'Shift' })
+
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(jul.className).toContain('fill-covered')
+    fireEvent.blur(grid)
+    expect(jul.className).not.toContain('fill-covered')
+    fireEvent.keyUp(grid, { key: 'Shift' })
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(bodies).toHaveLength(0)
+  })
+
+  it('Shift+ArrowRight on the name cell or a non-editable cell starts nothing and does not move the selection', async () => {
+    const bodies: unknown[] = []
+    useCapturingHandlers(bodies)
+    useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+    const user = userEvent.setup()
+    renderPage()
+    await screen.findByTestId('plan-sheet')
+    const grid = screen.getByTestId('plan-sheet')
+
+    const uncat = screen.getAllByTestId('plan-cell-uncategorized:0')[0]
+    await user.click(uncat)
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(uncat).toHaveAttribute('aria-selected', 'true')
+    expect(document.querySelector('.fill-covered')).toBeNull()
+
+    await user.click(screen.getByTestId('plan-cell-pe1:0'))
+    fireEvent.keyDown(grid, { key: 'ArrowLeft' })
+    fireEvent.keyDown(grid, { key: 'ArrowRight', shiftKey: true })
+    expect(screen.getByTestId('plan-cell-pe1:0')).not.toHaveAttribute('aria-selected', 'true')
+    expect(document.querySelector('.fill-covered')).toBeNull()
+
+    fireEvent.keyUp(grid, { key: 'Shift' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(bodies).toHaveLength(0)
+  })
+})
+
 describe('income/expense split', () => {
   it('renders a foldable Expenses header that collapses the whole expense area', async () => {
     usePlanHandlers()

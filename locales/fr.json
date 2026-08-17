@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Copier le budget sur les mois suivants"
         },
+        "paste": {
+          "not_editable": "Impossible de coller ici — cette cellule n'est pas modifiable.",
+          "invalid": "Rien à coller — le presse-papiers ne contient pas de montant."
+        },
         "totals": {
           "income": "Revenus",
           "expenses": "Dépenses",

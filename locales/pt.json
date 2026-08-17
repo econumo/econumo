@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Copiar o orçamento para os meses seguintes"
         },
+        "paste": {
+          "not_editable": "Não é possível colar aqui — esta célula não é editável.",
+          "invalid": "Nada para colar — a área de transferência não contém um valor."
+        },
         "totals": {
           "income": "Receitas",
           "expenses": "Despesas",

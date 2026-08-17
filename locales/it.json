@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Copia il budget nei mesi successivi"
         },
+        "paste": {
+          "not_editable": "Non puoi incollare qui: questa cella non è modificabile.",
+          "invalid": "Niente da incollare: gli appunti non contengono un importo."
+        },
         "totals": {
           "income": "Entrate",
           "expenses": "Uscite",

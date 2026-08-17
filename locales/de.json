@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Budget auf die folgenden Monate kopieren"
         },
+        "paste": {
+          "not_editable": "Hier kann nicht eingefügt werden — diese Zelle ist nicht bearbeitbar.",
+          "invalid": "Nichts zum Einfügen — die Zwischenablage enthält keinen Betrag."
+        },
         "totals": {
           "income": "Einnahmen",
           "expenses": "Ausgaben",

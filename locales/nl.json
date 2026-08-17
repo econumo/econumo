@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Budget naar de volgende maanden kopiëren"
         },
+        "paste": {
+          "not_editable": "Hier kun je niet plakken — deze cel is niet bewerkbaar.",
+          "invalid": "Niets om te plakken — het klembord bevat geen bedrag."
+        },
         "totals": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",

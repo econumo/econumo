@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Copy budget to the following months"
         },
+        "paste": {
+          "not_editable": "You can't paste here — this cell isn't editable.",
+          "invalid": "Nothing to paste — the clipboard doesn't contain an amount."
+        },
         "totals": {
           "income": "Income",
           "expenses": "Expenses",
