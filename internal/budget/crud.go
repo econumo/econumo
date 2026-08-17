@@ -46,12 +46,25 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
-		// Replace the excluded-account set.
+		// Replace the excluded-account set — but ONLY over the accounts the caller
+		// owns. get-budget reports each requester just their own exclusions
+		// (buildFilters), so a client round-tripping that list back can never name
+		// a co-participant's excluded accounts; treating the set as budget-wide
+		// would silently re-include everything the partner excluded. Ownership is
+		// also the same rule exclude-account enforces, so a foreign id is ignored
+		// rather than applied.
 		want := map[string]bool{}
 		for _, raw := range req.ExcludedAccounts {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
 				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
+			}
+			owned, oerr := s.ownsAccount(txCtx, userID, aid)
+			if oerr != nil {
+				return oerr
+			}
+			if !owned {
+				continue
 			}
 			want[aid.String()] = true
 			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
@@ -59,10 +72,18 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 			}
 		}
 		for _, existing := range b.excludedAccountIDs {
-			if !want[existing.String()] {
-				if serr := s.budgets.IncludeAccount(txCtx, budgetID, existing); serr != nil {
-					return serr
-				}
+			if want[existing.String()] {
+				continue
+			}
+			owned, oerr := s.ownsAccount(txCtx, userID, existing)
+			if oerr != nil {
+				return oerr
+			}
+			if !owned {
+				continue
+			}
+			if serr := s.budgets.IncludeAccount(txCtx, budgetID, existing); serr != nil {
+				return serr
 			}
 		}
 		return nil

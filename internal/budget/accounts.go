@@ -29,6 +29,26 @@ func (s *Service) IncludeAccount(ctx context.Context, userID vo.Id, req model.In
 	return &model.IncludeAccountResult{Item: meta}, nil
 }
 
+// ownsAccount reports whether accountID belongs to userID, memoizing the lookup
+// in the same per-call cache buildFilters uses. A missing account is "not
+// owned": callers skip such ids rather than failing the whole update.
+func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
+	ownerID, ok := s.accountOwners[accountID.String()]
+	if !ok {
+		owner, err := s.accounts.AccountOwner(ctx, accountID)
+		if err != nil {
+			var nf *errs.NotFoundError
+			if errors.As(err, &nf) {
+				return false, nil
+			}
+			return false, err
+		}
+		ownerID = owner.String()
+		s.accountOwners[accountID.String()] = ownerID
+	}
+	return ownerID == userID.String(), nil
+}
+
 // toggleAccount excludes (exclude=true) or includes an account; the account must
 // be owned by the requester (access denied otherwise).
 func (s *Service) toggleAccount(ctx context.Context, userID vo.Id, rawBudget, rawAccount string, exclude bool) (model.MetaResult, error) {

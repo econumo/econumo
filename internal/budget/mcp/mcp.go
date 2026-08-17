@@ -220,11 +220,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, err
 				}
-				// UpdateBudget's ExcludedAccounts field is authoritative: it replaces the
-				// full excluded-account set (internal/budget/crud.go), and account
-				// inclusion is this tool surface's own separate concern
-				// (set_budget_account_included). Round-trip the CURRENT excluded set here,
-				// or an update would silently re-include every previously excluded account.
+				// UpdateBudget's ExcludedAccounts field replaces the caller's OWN
+				// exclusions (internal/budget/crud.go), and account inclusion is this tool
+				// surface's own separate concern (set_budget_account_included). Round-trip
+				// the CURRENT excluded set here, or an update would re-include every
+				// account this user had previously excluded.
 				current, err := svc.GetBudget(ctx, userID, model.GetBudgetRequest{Id: in.BudgetID})
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, webmcp.MapErr(ctx, err)
