@@ -91,11 +91,18 @@ export interface PlanSheetProps {
 }
 
 const rowKey = (r: PlanRow): string => `${r.element.id}:${r.element.type}`
+// A folder header is a selectable row of the grid too (fold/unfold by keyboard); it
+// shares the selection's rowKey space with the element rows under a distinct prefix.
+const folderRowKey = (folderId: Id): string => `pfolder:${folderId}`
+const isFolderRowKey = (rk: string): boolean => rk.startsWith('pfolder:')
 
 // A stable DOM id per gridcell, used by aria-activedescendant. rowKey already embeds
 // a ':' (id:type), which is valid in an HTML id but not worth relying on downstream, so
 // it's sanitized to a safe character set.
 const cellDomId = (rk: string, col: number): string => `plan-cell-${rk.replace(/[^a-zA-Z0-9_-]/g, '_')}-${col}`
+// A folder header has a single cell, so whatever column the selection carries (kept so
+// Up/Down through a header lands back on the same month), its DOM cell is the -1 one.
+const selectionDomId = (sel: PlanSelection): string => cellDomId(sel.rowKey, isFolderRowKey(sel.rowKey) ? -1 : sel.col)
 
 const SELECTED_RING = ' ring-2 ring-ring rounded-sm'
 const selectedClass = (selected: boolean): string => (selected ? SELECTED_RING : '')
@@ -137,7 +144,10 @@ interface PlanLimitTarget {
 /** roving grid selection: col -1 = the row's name cell, 0..visible-1 = month cells.
  *  -1 is the leftmost reachable column: ArrowRight there goes to 0, ArrowLeft at 0
  *  goes to -1, and ArrowLeft AT -1 shifts the window back a month (selection stays
- *  at -1) — the name cell is always reachable by keyboard alone. */
+ *  at -1) — the name cell is always reachable by keyboard alone. On a name cell with
+ *  children, ArrowRight/ArrowLeft first unfold/fold the breakdown and only then move
+ *  on. rowKey may also name a folder header (`pfolder:<id>`), which has just the
+ *  name cell but keeps whatever col the selection arrived with. */
 export interface PlanSelection {
   rowKey: string
   col: number
@@ -422,6 +432,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
   const Chevron = unfolded ? ChevronDown : ChevronRight
   const rk = `${el.id}:${el.type}`
   const nameSelected = ctx.selection?.rowKey === rk && ctx.selection.col === -1
+  // The fill handle also shows on the month cell under the mouse, so a value can be
+  // dragged right without first clicking the cell to select it. Row-local state, so a
+  // hover re-renders this row only, never the grid.
+  const [hoverCol, setHoverCol] = useState<number | null>(null)
 
   const name = (
     <>
@@ -446,23 +460,25 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           className={`flex h-full min-w-0 items-center gap-1${selectedClass(nameSelected)}`}
           onClick={(e) => ctx.select(rk, -1, e)}
         >
-          {expandable ? (
-            <button
-              type="button"
-              className="flex min-w-0 flex-1 items-center gap-1.5 text-left"
-              aria-expanded={unfolded}
-              title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
-              onClick={() => toggleElement(el.id)}
-            >
-              <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
-              {name}
-            </button>
-          ) : (
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              {isUncategorized ? null : <span className="w-3.5 shrink-0" />}
-              {name}
-            </span>
-          )}
+          {/* the name is a selection target only; just the chevron (or ArrowRight/
+              ArrowLeft on the highlighted name cell) folds the breakdown, so a click
+              meant to highlight the row never springs its children open */}
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            {expandable ? (
+              <button
+                type="button"
+                className="flex shrink-0 items-center"
+                aria-expanded={unfolded}
+                title={t(unfolded ? 'common.button.collapse.label' : 'common.button.expand.label')}
+                onClick={() => toggleElement(el.id)}
+              >
+                <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
+              </button>
+            ) : isUncategorized ? null : (
+              <span className="w-3.5 shrink-0" />
+            )}
+            {name}
+          </span>
         </div>
         {ctx.visibleMonths.map((m, i) => {
           const idx = ctx.monthIndex(m)
@@ -474,10 +490,15 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
           const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
+          const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
           const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
           // an unset cell still shows (and edits as) 0, so it is draggable too —
-          // gating on a set limit would hide the handle on every 0.00 cell
-          const showFillHandle = selected && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
+          // gating on a set limit would hide the handle on every 0.00 cell. The
+          // in-flight drag's source keeps its handle mounted even after the pointer
+          // has left the cell: the handle holds the pointer capture, and unmounting
+          // it would drop the pointerup that commits the fill.
+          const showFillHandle =
+            (selected || hoverCol === i || fillSource) && editable && !!cell && !ctx.isCompact && ctx.visibleMonths.length > 1
           return (
             <div
               key={m}
@@ -490,6 +511,8 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-testid={`plan-cell-${el.id}:${i}`}
               className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
+              onMouseEnter={() => setHoverCol(i)}
+              onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
               <span
                 data-testid="cell-actual"
@@ -687,29 +710,42 @@ function FolderRows({
   const visibleRows = collapsed ? [] : visibleSectionRows(section.rows, folded, hideEmpty, revealed)
   const hiddenCount = !folded && hideEmpty && !revealed ? section.rows.filter((r) => r.hidden).length : 0
   const Chevron = folded ? ChevronRight : ChevronDown
+  const rk = folderRowKey(section.folder.id)
+  const selected = ctx.selection?.rowKey === rk
   return (
     <div className="mb-1 rounded-md border p-1.5" data-testid={`plan-folder-${section.folder.id}`}>
       {/* the whole header row is the fold target, not just the name — its own controls
           (the drag grip, the hidden-rows "Show", the actions menu and its portalled
           items, whose clicks re-dispatch through this tree) keep their action and
-          don't fold */}
+          don't fold. A fold click also selects the header, so the arrow keys pick up
+          from here (ArrowLeft/ArrowRight fold/unfold, Up/Down walk the rows). */}
       <div
+        role="row"
         className="flex cursor-pointer flex-wrap items-center justify-between gap-x-2 pb-1"
         onClick={(e) => {
           if ((e.target as HTMLElement).closest(CLICK_ESCAPE_SELECTOR)) {
             return
           }
+          ctx.select(rk, -1, e)
           onToggleFold(section.folder.id)
         }}
       >
-        <span className="flex min-w-0 items-center gap-1">
+        <span
+          role="gridcell"
+          id={cellDomId(rk, -1)}
+          aria-selected={selected}
+          className={`flex min-w-0 items-center gap-1${selectedClass(selected)}`}
+        >
           {ctx.editMode ? <PlanFolderGrip name={section.folder.name} /> : null}
           <button
             type="button"
             className="flex min-w-0 items-center gap-1.5 truncate px-1.5 text-sm font-medium"
             aria-expanded={!folded}
             title={t(folded ? 'common.button.expand.label' : 'common.button.collapse.label')}
-            onClick={() => onToggleFold(section.folder.id)}
+            onClick={(e) => {
+              ctx.select(rk, -1, e)
+              onToggleFold(section.folder.id)
+            }}
           >
             <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="truncate">{section.folder.name}</span>
@@ -885,36 +921,36 @@ function PlanBalanceRow({
 }
 
 
-// Same flattening the renderer walks (folders -> loose, income then expense, then
-// archived), so Up/Down can never reach a row that isn't on screen. Only root rows —
-// the ones a limit can be set on — are in the order: an expanded envelope's children
-// are read-only breakdown lines and are stepped over. The uncategorized expense
-// figure is excluded too: it renders as a totals line, not a selectable row.
-interface FlatRow {
-  rowKey: string
-  el: PlanElementDto
-}
+// Same flattening the renderer walks (folders -> loose, income then neutral folders
+// then expense, then archived), so Up/Down can never reach a row that isn't on
+// screen. A folder contributes its header (a selectable row of its own, so it can be
+// folded/unfolded by keyboard) followed by its visible members. Only root element
+// rows — the ones a limit can be set on — are in the order: an expanded envelope's
+// children are read-only breakdown lines and are stepped over. The uncategorized
+// expense figure is excluded too: it renders as a totals line, not a selectable row.
+type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
 
 function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set<string>, folded: (key: string) => boolean): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
-    flatRows.push({ rowKey: rowKey(r), el: r.element })
+    flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
+  }
+  const pushFolder = (f: PlanFolderSection) => {
+    flatRows.push({ kind: 'folder', rowKey: folderRowKey(f.folder.id), folderId: f.folder.id })
+    visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
   }
   const incomeFolded = folded('income')
   if (!incomeFolded) {
-    for (const f of rows.income.folders) {
-      visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
-    }
+    rows.income.folders.forEach(pushFolder)
     visibleSectionRows(rows.income.loose, incomeFolded, hideEmpty, revealedSections.has('income')).forEach(pushRow)
     if (rows.income.uncategorized) {
       pushRow(rows.income.uncategorized)
     }
   }
+  rows.neutral.forEach(pushFolder)
   const expenseFolded = folded('expense')
   if (!expenseFolded) {
-    for (const f of rows.expense.folders) {
-      visibleSectionRows(f.rows, folded(f.folder.id), hideEmpty, revealedSections.has(f.folder.id)).forEach(pushRow)
-    }
+    rows.expense.folders.forEach(pushFolder)
     visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
   }
   if (rows.archived.length > 0 && !folded('archived')) {
@@ -1056,6 +1092,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const togglePlanFold = useBudgetPeriodStore((s) => s.togglePlanFold)
   const folded = useCallback((key: string): boolean => !!planFolds[key], [planFolds])
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
+  const unfoldedElements = useBudgetPeriodStore((s) => s.unfoldedElements)
   const [selection, setSelection] = useState<PlanSelection | null>(null)
   const [fillDrag, setFillDrag] = useState<FillDrag | null>(null)
 
@@ -1067,7 +1104,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!selection || !scroller) {
       return
     }
-    const cell = scroller.querySelector<HTMLElement>(`#${CSS.escape(cellDomId(selection.rowKey, selection.col))}`)
+    const cell = scroller.querySelector<HTMLElement>(`#${CSS.escape(selectionDomId(selection))}`)
     if (!cell) {
       return
     }
@@ -1196,7 +1233,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       fillCells.mutate({ budgetId: budget.meta.id, elementId: fillDrag.elementId, amount: fillDrag.amount, targets })
     }
     setFillDrag(null)
-  }, [fillDrag, visibleMonths, monthIndex, fillCells, budget.meta.id])
+    // the drag may have started from a merely hovered cell: the cell whose value was
+    // copied becomes the selection, so the keyboard picks up from where the mouse left
+    select(fillDrag.rowKey, fillDrag.startCol)
+  }, [fillDrag, visibleMonths, monthIndex, fillCells, budget.meta.id, select])
 
   const fillCancel = useCallback(() => setFillDrag(null), [])
 
@@ -1438,7 +1478,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // the matching update endpoint: budget role for an envelope (owner|admin|user),
   // row ownership for a category or tag — update-category/update-tag answer anyone
   // but the owner with NotFound, so a shared row must not offer the dialog at all.
-  function openElementEditor(entry: FlatRow) {
+  function openElementEditor(entry: Extract<FlatRow, { kind: 'element' }>) {
     const target = entry.el
     if (target.id === UNCATEGORIZED_ID) {
       return
@@ -1470,6 +1510,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   }
 
   function handleEnter(entry: FlatRow, col: number) {
+    if (entry.kind === 'folder') {
+      togglePlanFold(entry.folderId)
+      return
+    }
     if (col === -1) {
       openElementEditor(entry)
       return
@@ -1531,6 +1575,52 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const idx = flatRows.findIndex((r) => r.rowKey === selection.rowKey)
+    const entry = flatRows[idx]
+    // Left/Right on a highlighted folder header fold/unfold it and never move the
+    // selection or page the window — a header has no month cells to walk. Enter and
+    // Space toggle it too (Enter has no edit action on a folder outside its menu).
+    if (entry.kind === 'folder') {
+      const isFolded = folded(entry.folderId)
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault()
+          if (idx > 0) {
+            select(flatRows[idx - 1].rowKey, selection.col)
+          }
+          break
+        case 'ArrowDown':
+          e.preventDefault()
+          if (idx < flatRows.length - 1) {
+            select(flatRows[idx + 1].rowKey, selection.col)
+          }
+          break
+        case 'ArrowLeft':
+          e.preventDefault()
+          if (!isFolded) {
+            togglePlanFold(entry.folderId)
+          }
+          break
+        case 'ArrowRight':
+          e.preventDefault()
+          if (isFolded) {
+            togglePlanFold(entry.folderId)
+          }
+          break
+        case 'Enter':
+        case ' ':
+          e.preventDefault()
+          togglePlanFold(entry.folderId)
+          break
+        default:
+          break
+      }
+      return
+    }
+    // On a highlighted name cell of a row with children, Left/Right fold/unfold the
+    // breakdown first: ArrowRight expands a collapsed row (and only then walks into
+    // the months), ArrowLeft collapses an expanded one (and only then pages the window).
+    const expandable = entry.el.children.length > 0
+    const unfolded = !!unfoldedElements[entry.el.id]
     switch (e.key) {
       case 'ArrowUp':
         e.preventDefault()
@@ -1547,6 +1637,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       case 'ArrowLeft':
         e.preventDefault()
         if (selection.col === -1) {
+          if (expandable && unfolded) {
+            toggleElement(entry.el.id)
+            break
+          }
           // -1 is the leftmost reachable column, so ArrowLeft here shifts the window
           // instead of going nowhere — keeps the name cell reachable while the window
           // can still be paged from it. Clamped at the budget start, same as the prev
@@ -1564,6 +1658,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       case 'ArrowRight':
         e.preventDefault()
         if (selection.col === -1) {
+          if (expandable && !unfolded) {
+            toggleElement(entry.el.id)
+            break
+          }
           select(selection.rowKey, 0)
         } else if (selection.col >= visible - 1) {
           setPlanFirstMonth(addMonths(firstMonth, 1))
@@ -1574,15 +1672,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         break
       case 'Enter':
         e.preventDefault()
-        handleEnter(flatRows[idx], selection.col)
+        handleEnter(entry, selection.col)
         break
       case ' ':
         // Space on the name cell folds/unfolds the element's children (Enter is the
         // edit shortcut); preventDefault so the scroller does not page down.
         if (selection.col === -1) {
           e.preventDefault()
-          const entry = flatRows[idx]
-          if (entry.el.children.length > 0) {
+          if (expandable) {
             toggleElement(entry.el.id)
           }
         }
@@ -1644,7 +1741,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         role="grid"
         tabIndex={0}
         onKeyDown={handleKeyDown}
-        aria-activedescendant={selection ? cellDomId(selection.rowKey, selection.col) : undefined}
+        aria-activedescendant={selection ? selectionDomId(selection) : undefined}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"
       >
