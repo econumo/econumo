@@ -1,5 +1,5 @@
 import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
+import type { ClipboardEvent, KeyboardEvent, PointerEvent as ReactPointerEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
@@ -58,6 +58,8 @@ import type { ElementContainer } from './elementMove'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
+import { limitAmountFromInput } from './limitAmount'
+import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
 import {
   PLAN_ACTIONS_COL_PX,
@@ -153,9 +155,13 @@ export interface PlanSelection {
   col: number
 }
 
-/** Excel-style fill-right drag state: startCol is the source column (the value being
- *  copied), targetCol the column the pointer currently covers (>= startCol). */
+/** Excel-style fill-right state: startCol is the source column (the value being
+ *  copied), targetCol the column currently covered (>= startCol). A pointer fill is
+ *  driven by the handle drag (startX/colWidth translate pointer travel into columns)
+ *  and commits on pointerup; a keyboard fill is grown/shrunk with Shift+Arrow and
+ *  commits when Shift is released. */
 interface FillDrag {
+  source: 'pointer' | 'keyboard'
   rowKey: string
   elementId: Id
   amount: string
@@ -163,6 +169,13 @@ interface FillDrag {
   targetCol: number
   startX: number
   colWidth: number
+}
+
+// an unset cell reads as 0 everywhere else in the grid, so copying/filling from it
+// carries an explicit 0 rather than an empty limit
+function sourceAmount(el: PlanElementDto, monthIndex: number): string {
+  const planned = monthIndex >= 0 ? (el.cells[monthIndex]?.planned ?? '') : ''
+  return planned === '' ? '0' : planned
 }
 
 /** A row is editable per-cell only for a non-uncategorized, non-archived parent row,
@@ -1198,11 +1211,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       // onClick stopPropagation below.
       const month = visibleMonths[col]
       const idx = month !== undefined ? monthIndex(month) : -1
-      // an unset cell reads as 0 everywhere else in the grid, so dragging it
-      // copies an explicit 0 rather than an empty limit
-      const planned = idx >= 0 ? (el.cells[idx]?.planned ?? '') : ''
-      const amount = planned === '' ? '0' : planned
-      setFillDrag({ rowKey: rk, elementId: el.id, amount, startCol: col, targetCol: col, startX: e.clientX, colWidth })
+      const amount = sourceAmount(el, idx)
+      setFillDrag({ source: 'pointer', rowKey: rk, elementId: el.id, amount, startCol: col, targetCol: col, startX: e.clientX, colWidth })
     },
     [visibleMonths, monthIndex],
   )
@@ -1537,15 +1547,122 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     trigger?.click()
   }
 
+  // The element row under the roving selection (null for none / a folder row), and
+  // that row's month cell as the clipboard and keyboard-fill actions need it (null on
+  // the name cell too).
+  function selectedElementRow(): (FlatRow & { kind: 'element' }) | null {
+    const entry = selection ? flatRows.find((r) => r.rowKey === selection.rowKey) : undefined
+    return entry?.kind === 'element' ? entry : null
+  }
+
+  function selectedMonthCell(): { entry: FlatRow & { kind: 'element' }; col: number; month: string; idx: number } | null {
+    const entry = selectedElementRow()
+    const month = selection ? visibleMonths[selection.col] : undefined
+    if (!entry || !selection || month === undefined) {
+      return null
+    }
+    return { entry, col: selection.col, month, idx: monthIndex(month) }
+  }
+
+  // Cmd/Ctrl+C on the focused grid: the browser fires `copy` on the grid even with no
+  // text selection, so the selected cell's raw value goes to the system clipboard —
+  // pasteable back here or into a spreadsheet. An inner input owns its own copy.
+  function handleCopy(e: ClipboardEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest(KEYDOWN_ESCAPE_SELECTOR)) {
+      return
+    }
+    const entry = selectedElementRow()
+    if (!entry || !selection) {
+      return
+    }
+    const cell = selectedMonthCell()
+    const text = selection.col === -1 ? entry.el.name : cell ? sourceAmount(cell.entry.el, cell.idx) : null
+    if (text === null) {
+      return
+    }
+    e.clipboardData.setData('text/plain', text)
+    e.preventDefault()
+  }
+
+  // Cmd/Ctrl+V: a single amount into the selected cell, parsed by the exact rule the
+  // cell editor applies (empty clears, formulas allowed). Blocked targets say why
+  // instead of silently eating the paste; a fixed toast id keeps repeats from stacking.
+  function handlePaste(e: ClipboardEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest(KEYDOWN_ESCAPE_SELECTOR)) {
+      return
+    }
+    const cell = selectedMonthCell()
+    if (!cell) {
+      return
+    }
+    e.preventDefault()
+    if (!isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
+      toast.error(t('budgets.page.plan.paste.not_editable'), { id: 'plan-paste-blocked' })
+      return
+    }
+    const parsed = limitAmountFromInput(e.clipboardData.getData('text/plain'))
+    if (!parsed.ok) {
+      toast.error(t('budgets.page.plan.paste.invalid'), { id: 'plan-paste-blocked' })
+      return
+    }
+    commit(cell.entry.el.id, cell.month, cell.idx, parsed.amount)
+    trackEvent(METRICS.BUDGET_PLAN_PASTE_CELL)
+  }
+
+  // Shift+ArrowRight on an editable month cell arms a keyboard fill covering the next
+  // column (clamped to the visible window — what is highlighted is what gets written,
+  // same as the pointer drag); the source cell stays selected. Non-editable sources
+  // and the name cell arm nothing.
+  function startKeyboardFill() {
+    const cell = selectedMonthCell()
+    if (!cell || !isEditableCell(cell.entry.el, cell.month, cell.idx, budget.meta, userId)) {
+      return
+    }
+    setFillDrag({
+      source: 'keyboard',
+      rowKey: cell.entry.rowKey,
+      elementId: cell.entry.el.id,
+      amount: sourceAmount(cell.entry.el, cell.idx),
+      startCol: cell.col,
+      targetCol: Math.min(cell.col + 1, visible - 1),
+      startX: 0,
+      colWidth: 0,
+    })
+  }
+
+  // Releasing Shift commits an armed keyboard fill (a range shrunk back to the source
+  // writes nothing — fillEnd already skips targetCol === startCol).
+  function handleKeyUp(e: KeyboardEvent<HTMLDivElement>) {
+    if (e.key === 'Shift' && fillDrag?.source === 'keyboard') {
+      fillEnd()
+    }
+  }
+
+  // Shift released while focus is elsewhere never reaches handleKeyUp, so an armed
+  // keyboard fill must die with the grid's focus rather than linger until the next
+  // Shift release commits it unseen. Pointer drags hold pointer capture and are unaffected.
+  function handleBlur() {
+    if (fillDrag?.source === 'keyboard') {
+      setFillDrag(null)
+    }
+  }
+
   function handleKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (fillDrag) {
       if (e.key === 'Escape') {
         setFillDrag(null)
         return
       }
-      // A fill drag is pointer-driven and modal-ish: any grid-navigation key arriving
-      // mid-drag (e.g. ArrowRight before pointerup) must be a no-op, or the selection/
-      // window shifts under the still-in-flight drag and desyncs the eventual commit's
+      if (fillDrag.source === 'keyboard' && e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+        e.preventDefault()
+        const targetCol =
+          e.key === 'ArrowRight' ? Math.min(fillDrag.targetCol + 1, visible - 1) : Math.max(fillDrag.targetCol - 1, fillDrag.startCol)
+        setFillDrag({ ...fillDrag, targetCol })
+        return
+      }
+      // A fill is modal-ish: any grid-navigation key arriving mid-fill (a plain
+      // ArrowRight before pointerup / Shift release) must be a no-op, or the selection/
+      // window shifts under the still-in-flight fill and desyncs the eventual commit's
       // target columns from what's visually covered.
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Enter') {
         e.preventDefault()
@@ -1571,6 +1688,16 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       if (arrowKeys.includes(e.key)) {
         e.preventDefault()
         setSelection({ rowKey: flatRows[0].rowKey, col: 0 })
+      }
+      return
+    }
+    // Shift+Arrow left/right belongs to the keyboard fill: swallowed even when nothing
+    // arms (name cell, non-editable source) so the selection never jumps under a held
+    // Shift. Shift+ArrowLeft with no fill armed is a no-op — the fill only grows right.
+    if (e.shiftKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+      e.preventDefault()
+      if (e.key === 'ArrowRight') {
+        startKeyboardFill()
       }
       return
     }
@@ -1741,6 +1868,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         role="grid"
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={handleBlur}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
         aria-activedescendant={selection ? selectionDomId(selection) : undefined}
         className="flex min-h-0 flex-1 flex-col overflow-y-auto"
         data-testid="plan-sheet"

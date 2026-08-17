@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Copiar el presupuesto a los meses siguientes"
         },
+        "paste": {
+          "not_editable": "No se puede pegar aquí: esta celda no es editable.",
+          "invalid": "Nada que pegar: el portapapeles no contiene un importe."
+        },
         "totals": {
           "income": "Ingresos",
           "expenses": "Gastos",

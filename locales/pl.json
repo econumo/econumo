@@ -992,6 +992,10 @@
         "fill": {
           "handle_aria": "Skopiuj budżet na kolejne miesiące"
         },
+        "paste": {
+          "not_editable": "Nie można tu wkleić — ta komórka nie jest edytowalna.",
+          "invalid": "Nie ma czego wkleić — schowek nie zawiera kwoty."
+        },
         "totals": {
           "income": "Przychody",
           "expenses": "Wydatki",
