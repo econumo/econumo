@@ -216,7 +216,7 @@ it('editing a planned cell sends set-limit with the cell month and patches optim
   expect(within(cell).getByTestId('cell-planned')).toHaveTextContent('350')
 })
 
-it('totals block renders one effective value per cell for income/expenses/net, and the running balance', async () => {
+it('totals block renders one effective value per cell for income/expenses/transfers, and the running balance', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
   renderPage()
@@ -225,7 +225,7 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   const totalsBlock = screen.getByTestId('plan-totals')
   expect(within(totalsBlock).getByText('Income')).toBeInTheDocument()
   expect(within(totalsBlock).getByText('Expenses')).toBeInTheDocument()
-  expect(within(totalsBlock).getByText('Net')).toBeInTheDocument()
+  expect(within(totalsBlock).getByText('Transfers')).toBeInTheDocument()
   expect(within(screen.getByTestId('plan-balance-row')).getByText('Balance')).toBeInTheDocument()
 
   // window is Jun/Jul/Aug (visible=3 in jsdom, firstMonth pinned above); the last
@@ -237,9 +237,8 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   const totals = planTotals(plan, ex)
   const balance = balanceRow(plan, totals, ex)
 
-  // indexes 2 and 3 are the Uncategorized and Transfers lines slotted between Expenses and Net
   const rows = within(totalsBlock).getAllByRole('row')
-  const [incomeRow, expensesRow, , , netRow] = rows
+  const [incomeRow, expensesRow, transfersRow] = rows
   const augTotals = totals[2]
 
   expect(within(incomeRow).getByText(moneyFormat(augTotals.effectiveIncome, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
@@ -250,10 +249,15 @@ it('totals block renders one effective value per cell for income/expenses/net, a
   expect(within(expensesRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
   expect(within(expensesRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
 
-  expect(within(netRow).getByText(moneyFormat(augTotals.effectiveNet, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
-  expect(within(netRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
-  expect(within(netRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
+  // Aug is the last visible column (index 2); nothing crossed, so assert the cell by
+  // testid — the formatted 0.00 repeats across the row
+  expect(within(transfersRow).getByTestId('plan-totals-transfers-2')).toHaveTextContent(
+    moneyFormat(augTotals.transfersNet, fixtureUsd, { showCurrency: false, useNativePrecision: false }),
+  )
+  expect(within(transfersRow).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(transfersRow).queryByTestId('cell-planned')).not.toBeInTheDocument()
 
+  // effectiveNet is no longer a footer line of its own; the running balance chains on it
   const expected = moneyFormat(balance[3], fixtureUsd, { showCurrency: false, useNativePrecision: false })
   expect(screen.getByTestId('plan-balance-2')).toHaveTextContent(expected)
 })
@@ -436,10 +440,10 @@ it('uncategorized and child cells are not editable; guest role sees no editors',
   const childCell = await screen.findByTestId('plan-cell-cat-rent:1')
   expect(within(childCell).queryByRole('button')).not.toBeInTheDocument()
 
-  // the uncategorized INCOME row is still an element row and is never editable; the
-  // expense side is a totals line now, so only one element row carries this testid
+  // both uncategorized rows are element rows — income and expense — and neither is
+  // ever editable
   const uncatCells = screen.getAllByTestId('plan-cell-uncategorized:1')
-  expect(uncatCells).toHaveLength(1)
+  expect(uncatCells).toHaveLength(2)
   for (const cell of uncatCells) {
     expect(within(cell).queryByRole('button', { name: /limit/i })).not.toBeInTheDocument()
   }
@@ -1775,18 +1779,19 @@ describe('income/expense split', () => {
     const expenseSection = screen.getByTestId('plan-section-expense')
     const expensesButton = within(expenseSection).getByRole('button', { name: 'Expenses' })
 
-    // expense rows present before folding: a folder row and a loose row (the
-    // uncategorized expense figure is a totals line, not a row in this section)
+    // expense rows present before folding: a folder row, a loose row, and the
+    // uncategorized expense row that closes the band
     expect(document.querySelector('[data-row-id="pe1:0"]')).toBeInTheDocument()
     expect(document.querySelector('[data-row-id="cat-food:1"]')).toBeInTheDocument()
+    expect(document.querySelector('[data-row-id="uncategorized:1"]')).toBeInTheDocument()
     // income rows present too
     expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
 
     await user.click(expensesButton)
     expect(document.querySelector('[data-row-id="pe1:0"]')).not.toBeInTheDocument()
     expect(document.querySelector('[data-row-id="cat-food:1"]')).not.toBeInTheDocument()
-    // the uncategorized expense figure is a totals line, unaffected by the fold
-    expect(within(screen.getByTestId('plan-totals')).getByText('Uncategorized')).toBeInTheDocument()
+    // uncategorized is an element row of the band, so it folds away with it
+    expect(document.querySelector('[data-row-id="uncategorized:1"]')).not.toBeInTheDocument()
     // income unaffected by the expense fold
     expect(document.querySelector('[data-row-id="ie1:4"]')).toBeInTheDocument()
 
@@ -1905,23 +1910,19 @@ it('scrolls the income/expenses/net trio and pins only the balance row', async (
   expect(balance.className).toContain('sticky')
   expect(totals.className).not.toContain('sticky')
 
-  // the three totals rows, plus the Uncategorized and Transfers lines slotted
-  // between Expenses and Net
+  // the footer is exactly Income, Expenses, Transfers — uncategorized lives in the
+  // bands as an element row, and Net is dropped (Balance below says the same thing)
   const totalRows = within(totals).getAllByRole('row')
-  expect(totalRows).toHaveLength(5)
-  expect(within(totals).getByText('Income')).toBeInTheDocument()
-  expect(within(totals).getByText('Expenses')).toBeInTheDocument()
-  expect(within(totals).getByText('Net')).toBeInTheDocument()
+  expect(totalRows).toHaveLength(3)
+  expect(totalRows[0]).toHaveTextContent('Income')
+  expect(totalRows[1]).toHaveTextContent('Expenses')
+  expect(totalRows[2]).toHaveTextContent('Transfers')
+  expect(within(totals).queryByText('Uncategorized')).not.toBeInTheDocument()
+  expect(within(totals).queryByText('Net')).not.toBeInTheDocument()
   expect(within(balance).getByText('Balance')).toBeInTheDocument()
 
-  // order: Income, Expenses, Uncategorized, Transfers, Net — all five are totals lines
-  expect(totalRows[1]).toHaveTextContent('Expenses')
-  expect(totalRows[2]).toHaveTextContent('Uncategorized')
-  expect(totalRows[3]).toHaveTextContent('Transfers')
-  expect(totalRows[4]).toHaveTextContent('Net')
   // they are totals lines, not selectable element rows
   expect(totalRows[2].querySelector('[data-row-id]')).toBeNull()
-  expect(totalRows[3].querySelector('[data-row-id]')).toBeNull()
 })
 
 it('transfers line: signed net per month, a tooltip with the in/out split, and a link only where money crossed', async () => {
@@ -1940,13 +1941,17 @@ it('transfers line: signed net per month, a tooltip with the in/out split, and a
   expect(screen.queryByTestId('plan-totals-transfers-link-1')).not.toBeInTheDocument()
   expect(screen.getByTestId('plan-totals-transfers-1')).toHaveTextContent('0.00')
 
-  // Net and Balance carry the June transfers (math core, not hand-derived)
+  // Balance carries the June transfers (math core, not hand-derived): it chains on
+  // effectiveNet, which is where the Net line's value went
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
   const totals = planTotals(plan, ex)
   expect(totals[1].transfersNet).toBe('-100')
-  const netRow = within(screen.getByTestId('plan-totals')).getAllByRole('row')[4]
-  expect(within(netRow).getByText(moneyFormat(totals[1].effectiveNet, fixtureUsd, { showCurrency: false, useNativePrecision: false }))).toBeInTheDocument()
+  // June is fetched index 1, and the window starts at June, so it is visible column 0
+  const expected = balanceRow(plan, totals, ex)[1]
+  expect(screen.getByTestId('plan-balance-0')).toHaveTextContent(
+    moneyFormat(expected, fixtureUsd, { showCurrency: false, useNativePrecision: false }),
+  )
 })
 
 it('clicking a totals link opens the transaction list for THAT column\'s month', async () => {
@@ -1974,14 +1979,10 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
   await user.keyboard('{Escape}')
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 
-  // Uncategorized, whichever visible column has spend: the fixture's uncategorized
-  // expense row lands in July (column 1)
-  await user.click(screen.getByTestId('plan-totals-uncategorized-link-1'))
-  await screen.findByRole('dialog')
-  await waitFor(() => expect(seen).toHaveLength(2))
-  expect(seen[1].searchParams.get('uncategorized')).toBe('1')
-  expect(seen[1].searchParams.get('periodStart')).toBe('2026-07-01')
-  expect(seen[1].searchParams.get('transfers')).toBeNull()
+  // Transfers is the only totals line that drills down: uncategorized is an element
+  // row in the bands now, and Net is gone from the footer entirely
+  expect(screen.queryByTestId('plan-totals-uncategorized-link-1')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-totals')).queryByText('Uncategorized')).not.toBeInTheDocument()
 })
 
 it('rules element rows flush with hairline dividers', async () => {

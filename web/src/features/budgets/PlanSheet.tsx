@@ -487,7 +487,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               >
                 <Chevron className="size-3.5 shrink-0 text-muted-foreground" />
               </button>
-            ) : isUncategorized ? null : (
+            ) : (
               <span className="w-3.5 shrink-0" />
             )}
             {name}
@@ -797,14 +797,11 @@ function FolderRows({
 }
 
 /** the totals lines that drill down to a transaction list: the click opens the
- *  month's list for that bucket. Uncategorized lists the month's uncategorized
- *  expenses; transfers the transfers that crossed the budget boundary. */
-type TotalsLink = 'uncategorized' | 'transfers'
+ *  month's list of transfers that crossed the budget boundary. */
+type TotalsLink = 'transfers'
 
 interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'uncategorized' | 'transfers' | 'net'
-  /** the totals.* key holds the label for every row but uncategorized, which reuses
-   *  the shared common.uncategorized string the element rows already render */
+  key: 'income' | 'expenses' | 'transfers'
   labelKey: string
   value: (t: PlanMonthTotals) => string
   link?: TotalsLink
@@ -812,12 +809,14 @@ interface TotalsRowSpec {
   signed?: boolean
 }
 
+// Uncategorized is NOT a totals line: it is an element row inside the income and
+// expense bands (see the uncategorized rows those sections render), and its actual
+// is already carried by the Income/Expenses lines here. Net is gone too — the
+// Balance row below chains on effectiveNet, so it says the same thing one row down.
 const TOTALS_ROWS: TotalsRowSpec[] = [
   { key: 'income', labelKey: 'budgets.page.plan.totals.income', value: (t) => t.effectiveIncome },
   { key: 'expenses', labelKey: 'budgets.page.plan.totals.expenses', value: (t) => t.effectiveExpense },
-  { key: 'uncategorized', labelKey: 'common.uncategorized', value: (t) => t.uncategorizedActual, link: 'uncategorized' },
   { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
-  { key: 'net', labelKey: 'budgets.page.plan.totals.net', value: (t) => t.effectiveNet },
 ]
 
 function PlanTotals({
@@ -939,8 +938,7 @@ function PlanBalanceRow({
 // screen. A folder contributes its header (a selectable row of its own, so it can be
 // folded/unfolded by keyboard) followed by its visible members. Only root element
 // rows — the ones a limit can be set on — are in the order: an expanded envelope's
-// children are read-only breakdown lines and are stepped over. The uncategorized
-// expense figure is excluded too: it renders as a totals line, not a selectable row.
+// children are read-only breakdown lines and are stepped over.
 type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
 
 function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set<string>, folded: (key: string) => boolean): FlatRow[] {
@@ -965,12 +963,13 @@ function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set
   if (!expenseFolded) {
     rows.expense.folders.forEach(pushFolder)
     visibleSectionRows(rows.expense.loose, expenseFolded, hideEmpty, revealedSections.has('expense')).forEach(pushRow)
+    if (rows.expense.uncategorized) {
+      pushRow(rows.expense.uncategorized)
+    }
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
   }
-  // the uncategorized expense figure is a totals line now, not a selectable element
-  // row, so it stays out of the keyboard order entirely
   return flatRows
 }
 
@@ -1052,11 +1051,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // the totals drill-down: which bucket, and which column's month
   const [transactionsTarget, setTransactionsTarget] = useState<{ target: BudgetTransactionsTarget; month: string } | null>(null)
   const openTotalsTransactions = useCallback(
-    (link: 'uncategorized' | 'transfers', month: string) => {
-      const target: BudgetTransactionsTarget =
-        link === 'transfers'
-          ? { id: TRANSFERS_TARGET_ID, type: 'transfers', name: t('budgets.page.plan.totals.transfers'), icon: 'sync_alt', currencyId: null }
-          : { id: UNCATEGORIZED_ID, type: BudgetElementType.CATEGORY, name: t('common.uncategorized'), icon: 'question_mark', currencyId: null }
+    (_link: TotalsLink, month: string) => {
+      const target: BudgetTransactionsTarget = {
+        id: TRANSFERS_TARGET_ID,
+        type: 'transfers',
+        name: t('budgets.page.plan.totals.transfers'),
+        icon: 'sync_alt',
+        currencyId: null,
+      }
       setTransactionsTarget({ target, month })
     },
     [t],
@@ -2010,6 +2012,9 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
                 )
               })}
               {editMode ? <LooseRowsContainer rows={expenseLoose} ctx={ctx} /> : <PlanRowList rows={expenseLoose} ctx={ctx} />}
+              {shownRows.expense.uncategorized ? (
+                <ElementRow key={rowKey(shownRows.expense.uncategorized)} row={shownRows.expense.uncategorized} ctx={ctx} />
+              ) : null}
             </PlanBand>
           ) : null}
         </section>
