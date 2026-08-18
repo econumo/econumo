@@ -45,9 +45,11 @@ Budget membership becomes an **explicit, append-mostly set**:
 - The budget reads its member accounts **without an `is_deleted` filter**, so
   a soft-deleted member keeps contributing its history. `spentBefore` and
   `budgetedBefore` are then permanently drawn from the same population.
-- Membership can only be removed within **1 month** of being added; after
-  that it is permanent. A departing budget participant takes their accounts'
-  membership with them (their limits already leave with them).
+- Membership can be removed only while the account has **no transactions
+  between the budget start and the start of the current month** — i.e. while
+  removing it cannot change any closed month. A departing budget participant
+  takes their accounts' membership with them (their limits already leave with
+  them).
 - Deleting an account **auto-zeroes** its balance with a correction
   transaction, so a permanently counted deleted account never carries a
   stale balance into the budget summary. The migration applies the same rule
@@ -61,7 +63,7 @@ New table, both engines (`internal/infra/storage/migrations/{sqlite,pgsql}`):
 CREATE TABLE budgets_accounts (
     budget_id  TEXT     NOT NULL,
     account_id TEXT     NOT NULL,
-    added_at   DATETIME NOT NULL,
+    created_at DATETIME NOT NULL,
     PRIMARY KEY (budget_id, account_id),
     FOREIGN KEY (budget_id)  REFERENCES budgets (id)  ON DELETE CASCADE,
     FOREIGN KEY (account_id) REFERENCES accounts (id) ON DELETE CASCADE
@@ -69,7 +71,8 @@ CREATE TABLE budgets_accounts (
 CREATE INDEX budgets_accounts_account_id_idx ON budgets_accounts (account_id);
 ```
 
-`added_at` drives the removal window. The account FK is `ON DELETE CASCADE`,
+`created_at` is bookkeeping only (the removal rule in §4 is activity-based).
+The account FK is `ON DELETE CASCADE`,
 which is correct: account deletion is *soft* (`is_deleted`), so the row
 survives; only a hard delete drops membership.
 
@@ -99,17 +102,14 @@ survives; only a hard delete drops membership.
    - `created_at = updated_at = CURRENT_TIMESTAMP`.
 3. **Seed membership.** For every budget, participants = the owner ∪
    `budgets_access` rows with `is_accepted = 1 AND role <> 2` (guest =
-   `BudgetRoleGuest`). Insert `(budget_id, account_id, added_at)` for every
+   `BudgetRoleGuest`). Insert `(budget_id, account_id, created_at)` for every
    account owned by a participant such that:
    - no `budgets_excluded_accounts (budget_id, account_id)` row exists, and
    - `accounts.is_deleted = 0`, **or** the account was deleted after the
      budget both started and existed:
      `accounts.updated_at >= budgets.started_at AND accounts.updated_at >
      budgets.created_at`.
-   - `added_at = MAX(budgets.created_at, accounts.created_at)` — memberships
-     older than a month are permanent from day one. (A fresh `added_at = now`
-     would open a month-long removal window on every existing budget right
-     after upgrading.)
+   - `created_at = CURRENT_TIMESTAMP`.
 4. **Drop** `budgets_excluded_accounts`.
 
 Effect on existing numbers: a budget's figures move at migration only where a
@@ -121,18 +121,22 @@ Uncategorized in the deletion month. Excluded-account drift is untouched
 ## 3. Resolution — the actual fix
 
 - `budgetAggregate.excludedAccountIDs` → `accounts []model.BudgetAccount`
-  (`AccountID vo.Id`, `AddedAt time.Time`), loaded in `loadAggregate` via
+  (`AccountID vo.Id`, `CreatedAt time.Time`), loaded in `loadAggregate` via
   `Repository.MemberAccounts(ctx, budgetID)`.
 - Repository (`internal/budget/repository.go`, sqlc queries in
   `budgets.sql` for both engines):
   - `MemberAccounts(ctx, budgetID) ([]model.BudgetAccount, error)` — ordered
-    by `added_at, account_id`.
-  - `AddAccount(ctx, budgetID, accountID, addedAt)` — `ON CONFLICT DO
-    NOTHING`; a re-add never refreshes `added_at`.
+    by `created_at, account_id`.
+  - `AddAccount(ctx, budgetID, accountID, now)` — `ON CONFLICT DO NOTHING`.
   - `RemoveAccount(ctx, budgetID, accountID)`.
   - `RemoveAccountsOwnedBy(ctx, budgetID, ownerID)` — `DELETE … WHERE
     budget_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id =
     ?)`; a storage-layer join only.
+- Read model (`internal/budget/readmodel.go`, `repo/read.go`, both engines):
+  `AccountsWithTransactions(ctx, accountIDs []vo.Id, start, end time.Time)
+  ([]vo.Id, error)` — the subset of the given accounts that appear as
+  `account_id` or `account_recipient_id` on any transaction with
+  `start <= spent_at < end`. One query for all of the requester's members.
 - Port (`internal/budget/ports.go`): `AccountLookup.AccountsForOwners` →
   `AccountsByIDs(ctx, ids []vo.Id) ([]model.AccountView, error)`, resolved by
   the server glue over the account repository **without an `is_deleted`
@@ -151,20 +155,26 @@ Uncategorized in the deletion month. Excluded-account drift is untouched
 
 - **Add** — the caller must own the account (`AccountOwner`) and hold
   `canUpdate` on the budget; a soft-deleted account cannot be added
-  (validation error on `accountId`). Idempotent. `added_at = clock.Now()`.
+  (validation error on `accountId`). Idempotent.
 - **Remove** — same authorization. Refused with coded error
-  `budget.account_not_removable` (field `accountId`) when
-  `!now.Before(addedAt.AddDate(0, 1, 0))` (UTC wall clock from `s.clock`).
-  No-op when not a member.
-- One helper `removable(addedAt, now time.Time) bool` is shared by remove,
+  `budget.account_not_removable` (field `accountId`) when the account has
+  any transaction (as source or transfer recipient) with
+  `budget.started_at <= spent_at < localMonth(now)` — the first of the
+  current month in the caller's timezone (`localMonth`, the boundary every
+  other budget month computation uses). No-op when not a member.
+- One helper `removableAccounts(ctx, b, accountIDs, now) (map[string]bool,
+  error)` (one `AccountsWithTransactions` call) is shared by remove,
   `update-budget` and the `filters` builder.
-- **Rationale for 1 month.** Removing an account with transactions
-  re-creates the asymmetry (its spend leaves `spentBefore`, its limits stay
-  in `budgetedBefore`). The window bounds that drift to a single period,
-  where it is visible in the month being viewed and correctable by adjusting
-  that month's limits. Longer windows spread the drift across periods.
+- **Rationale.** Removing an account with transactions in a closed month
+  re-creates the asymmetry: its spend leaves `spentBefore` while its limits
+  stay in `budgetedBefore`, and nothing in the current view shows it. Removing
+  an account whose only budget-period transactions are in the current month
+  changes only that month's own `spent`, in the view being looked at, where it
+  is visible and correctable by adjusting that month's limits. So membership
+  is freely editable until history accrues, then permanent — a freshly created
+  or cloned budget starts fully editable.
 - **Leaving participants** — `removeMemberRecords` additionally calls
-  `RemoveAccountsOwnedBy(budgetID, memberID)`, window ignored. Revoke,
+  `RemoveAccountsOwnedBy(budgetID, memberID)`, removal rule ignored. Revoke,
   decline and delete-connection (`RemoveMember`) all route through it, and
   their limits already leave with them, so both sides of `available` shrink
   together. It also stops a former participant's future transactions leaking
@@ -210,7 +220,8 @@ everything else works.
 
 - `BudgetAccountsField`: props become `selected: Set<Id>` + `locked:
   Set<Id>`; a locked row renders a disabled `Switch`; when any row is locked
-  a one-line hint appears (`budgets.modal.budget_form.accounts_locked_hint`).
+  a one-line hint appears (`budgets.modal.budget_form.accounts_locked_hint`: "Accounts with
+  transactions in past months can't be removed").
   The "N of M included" counter stays.
 - `BudgetDialog` (create): all toggles OFF; submit blocked with
   `budgets.form.budget.accounts.validation.required` until ≥ 1 is on; sends
@@ -237,14 +248,17 @@ registered in `errs.AllCodes`.
    excluded account, a live account, an account deleted after start with
    balance 12.5, an account deleted before the budget existed with balance
    −3; run the new migration; assert exact `budgets_accounts` rows and
-   `added_at`, both zeroing corrections (type/amount/spent_at/description),
+   both zeroing corrections (type/amount/spent_at/description),
    the guest's accounts absent, and `budgets_excluded_accounts` gone.
 2. **Core regression**: a category whose only spend sits on a since-deleted
    member account shows `available = 0` (spend still counted); the same
    through `get-budget` (apiparity scenario).
-3. **Window boundary**: `now = added_at + 1 month − 1s` → removable;
-   `+ 1 month` → locked; `remove-account` on a locked member → 400 with the
-   code; `update-budget` omitting a locked member → 400.
+3. **Removal rule**: a member with a transaction last month → locked; only
+   this-month transactions → removable; a received transfer last month →
+   locked; a transaction before `started_at` → still removable; boundary is
+   the caller's local first-of-month (`X-Timezone`); `remove-account` on a
+   locked member → 400 with the code; `update-budget` omitting a locked
+   member → 400.
 4. **Leaving participant** drops their rows even when locked; other members
    untouched.
 5. **Delete-account auto-zero**: positive balance → expense correction,
