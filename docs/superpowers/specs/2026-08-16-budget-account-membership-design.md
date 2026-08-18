@@ -78,39 +78,68 @@ survives; only a hard delete drops membership.
 
 `budgets_excluded_accounts` is dropped by the same migration.
 
-## 2. Migration `20260817000000` (one file per engine, one transaction)
+## 2. Migration (three versions, run at boot in order)
 
-1. **Create** `budgets_accounts` + index.
-2. **Zero every deleted account** (all users — the invariant going forward is
-   "a deleted account has zero balance", so it is established retroactively).
-   For each `accounts.is_deleted = 1` whose balance is non-zero — the
-   `account_balance.sql` formula (`incomes + transfer_incomes − expenses −
-   transfer_expenses`), `ROUND(…, 8) <> 0` — insert one correction
-   transaction:
-   - `id`: `gen_random_uuid()` on pgsql; the hex-`randomblob` v4 recipe on
-     sqlite (precedent: `20260730000000.sql`). A documented one-off exception
-     to "new ids are UUIDv7".
-   - `user_id = accounts.user_id`, `account_id = accounts.id`,
-     `description = 'Balance adjustment'` (the account feature's
-     `correctionComment`), `category_id/payee_id/tag_id/account_recipient_id
-     = NULL`, `amount_recipient = NULL`.
-   - `type = 0` (expense) and `amount = balance` when the balance is positive;
-     `type = 1` (income) and `amount = −balance` when negative.
-   - `spent_at = accounts.updated_at` — the soft-delete sets `UpdatedAt`
-     (`model.Account.Delete`), and a deleted account is not editable
-     afterwards, so this is the deletion time.
-   - `created_at = updated_at = CURRENT_TIMESTAMP`.
-3. **Seed membership.** For every budget, participants = the owner ∪
-   `budgets_access` rows with `is_accepted = 1 AND role <> 2` (guest =
-   `BudgetRoleGuest`). Insert `(budget_id, account_id, created_at)` for every
-   account owned by a participant such that:
-   - no `budgets_excluded_accounts (budget_id, account_id)` row exists, and
-   - `accounts.is_deleted = 0`, **or** the account was deleted after the
-     budget both started and existed:
-     `accounts.updated_at >= budgets.started_at AND accounts.updated_at >
-     budgets.created_at`.
-   - `created_at = CURRENT_TIMESTAMP`.
-4. **Drop** `budgets_excluded_accounts`.
+### 2a. Go-coded migration steps (infra)
+
+The boot runner (`internal/infra/storage/migrate`) today applies
+`Migration{Version, SQL}` in version order, one transaction each, recorded in
+`schema_migrations`. It gains **Go-coded steps**:
+
+- `migrate.Migration` and `backend.Migration` gain
+  `Run func(ctx context.Context, tx *sql.Tx) error`, mutually exclusive with
+  `SQL`; `applyMigration` executes whichever is set inside the same
+  transaction and records the version identically. Legacy-version import and
+  ordering are unchanged.
+- Go steps live in `internal/infra/storage/migrations/` next to the SQL files
+  (`go_<version>_<slug>.go`; a `Go(driver string) []Step` list). Each
+  backend's `Migrations()` merges its SQL files with the Go steps. Steps
+  receive the driver name and use engine-neutral SQL with `?` placeholders,
+  rebound to `$N` for PostgreSQL.
+- Go steps are **data-only** (no DDL): sqlc reads only the SQL files as its
+  schema input. A guard test asserts no Go step's SQL contains
+  `CREATE|ALTER|DROP TABLE`.
+
+### 2b. `20260817000000.sql` — schema
+
+Create `budgets_accounts` + index (§1).
+
+### 2c. `20260817000001` (Go) — zero every deleted account
+
+All users, not only budget-relevant ones: the invariant going forward is "a
+deleted account has zero balance", so it is established retroactively. For
+each `accounts.is_deleted = 1`, load its transactions and compute the balance
+with `vo.Decimal` (`incomes + transfer_incomes − expenses −
+transfer_expenses`, exact — no float `SUM`). When non-zero, insert one
+correction transaction:
+
+- `id`: a fresh **UUIDv7** (`vo` id generation — no format exception).
+- `user_id = accounts.user_id`, `account_id = accounts.id`,
+  `description = 'Balance adjustment'` (the account feature's
+  `correctionComment`), `category_id/payee_id/tag_id/account_recipient_id
+  = NULL`, `amount_recipient = NULL`.
+- `type = 0` (expense) and `amount = balance` when positive; `type = 1`
+  (income) and `amount = −balance` when negative.
+- `spent_at = accounts.updated_at` — the soft-delete sets `UpdatedAt`
+  (`model.Account.Delete`) and a deleted account is not editable afterwards,
+  so this is the deletion time.
+- `created_at = updated_at = now`.
+
+### 2d. `20260817000002.sql` — seed membership, drop the blacklist
+
+For every budget, participants = the owner ∪ `budgets_access` rows with
+`is_accepted = 1 AND role <> 2` (guest = `BudgetRoleGuest`). Insert
+`(budget_id, account_id, created_at)` for every account owned by a
+participant such that:
+
+- no `budgets_excluded_accounts (budget_id, account_id)` row exists, and
+- `accounts.is_deleted = 0`, **or** the account was deleted after the
+  budget both started and existed:
+  `accounts.updated_at >= budgets.started_at AND accounts.updated_at >
+  budgets.created_at`;
+- `created_at = CURRENT_TIMESTAMP`.
+
+Then `DROP TABLE budgets_excluded_accounts`.
 
 Effect on existing numbers: a budget's figures move at migration only where a
 deleted-after-start account rejoins the population — its spend closes the
@@ -243,13 +272,15 @@ registered in `errs.AllCodes`.
 
 ## 9. Testing
 
-1. **Migration** (Go, `migration_20260817_test.go` style): migrate to the
-   previous version; seed a budget (owner + accepted user + guest), an
+1. **Migration** (Go, `migration_20260817_test.go` style, both engines):
+   migrate to the previous version; seed a budget (owner + accepted user + guest), an
    excluded account, a live account, an account deleted after start with
    balance 12.5, an account deleted before the budget existed with balance
    −3; run the new migration; assert exact `budgets_accounts` rows and
-   both zeroing corrections (type/amount/spent_at/description),
-   the guest's accounts absent, and `budgets_excluded_accounts` gone.
+   both zeroing corrections (type/amount/spent_at/description, UUIDv7 id,
+   exact decimal amount), the guest's accounts absent, and
+   `budgets_excluded_accounts` gone. Runner test: a Go step runs in order
+   between SQL steps, is recorded once, and is skipped on the next boot.
 2. **Core regression**: a category whose only spend sits on a since-deleted
    member account shows `available = 0` (spend still counted); the same
    through `get-budget` (apiparity scenario).
