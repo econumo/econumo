@@ -80,50 +80,66 @@ survives; only a hard delete drops membership.
 
 ## 2. Migration (three versions, run at boot in order)
 
-### 2a. Go-coded migration steps (infra)
+### 2a. Command-backed migration steps (infra)
 
 The boot runner (`internal/infra/storage/migrate`) today applies
 `Migration{Version, SQL}` in version order, one transaction each, recorded in
-`schema_migrations`. It gains **Go-coded steps**:
+`schema_migrations`. It gains **command steps** — a migration that names a
+CLI command instead of carrying SQL:
 
-- `migrate.Migration` and `backend.Migration` gain
-  `Run func(ctx context.Context, tx *sql.Tx) error`, mutually exclusive with
-  `SQL`; `applyMigration` executes whichever is set inside the same
-  transaction and records the version identically. Legacy-version import and
-  ordering are unchanged.
-- Go steps live in `internal/infra/storage/migrations/` next to the SQL files
-  (`go_<version>_<slug>.go`; a `Go(driver string) []Step` list). Each
-  backend's `Migrations()` merges its SQL files with the Go steps. Steps
-  receive the driver name and use engine-neutral SQL with `?` placeholders,
-  rebound to `$N` for PostgreSQL.
-- Go steps are **data-only** (no DDL): sqlc reads only the SQL files as its
-  schema input. A guard test asserts no Go step's SQL contains
-  `CREATE|ALTER|DROP TABLE`.
+- `migrate.Migration`, `backend.Migration` and `migrations.File` gain
+  `Command string`, mutually exclusive with `SQL`. `migrations.SQLite()` /
+  `Pgsql()` merge the `.sql` files with a small in-package registry
+  (`{"20260817000001": "migration:zero-deleted-accounts"}`) and sort by
+  version, so every consumer (`serve`, `data:import-sqlite`, `dbtest`, the
+  migration tests) sees one ordered list.
+- `migrate.Run(ctx, db, migs, migrate.WithCommandRunner(r))`, with
+  `r func(ctx context.Context, name string) error`. A due command step calls
+  the runner — **no surrounding migration transaction**; the command manages
+  its own — and on success records the version. Failure → boot fails with
+  `migrate: apply "<version>": …`, nothing is recorded, and it is retried at
+  the next boot. A missing runner or an unknown command name is also a boot
+  error: a command step is never silently skipped.
+- The dependency rule shapes the dispatch: `migrate` (infra) cannot import
+  `internal/cli` (which imports every feature). So `cmd/econumo/main.go`
+  (`serve`) and `data:import-sqlite` — which already hold the CLI container —
+  pass a runner that dispatches into the CLI command registry. `dbtest`
+  passes `migrate.NoCommands` (a fresh database has no data for these
+  commands to act on); the commands themselves are tested where they live,
+  on seeded data, on both engines.
+- Command names for such steps use the `migration:` prefix
+  (`migration:<slug>`). They are ordinary CLI commands, listed with the
+  others, and safe to run by hand at any time — every migration command must
+  be **idempotent**.
 
 ### 2b. `20260817000000.sql` — schema
 
 Create `budgets_accounts` + index (§1).
 
-### 2c. `20260817000001` (Go) — zero every deleted account
+### 2c. `20260817000001` (command `migration:zero-deleted-accounts`)
 
-All users, not only budget-relevant ones: the invariant going forward is "a
-deleted account has zero balance", so it is established retroactively. For
-each `accounts.is_deleted = 1`, load its transactions and compute the balance
-with `vo.Decimal` (`incomes + transfer_incomes − expenses −
-transfer_expenses`, exact — no float `SUM`). When non-zero, insert one
-correction transaction:
+The command is a thin CLI wrapper over a new account-feature use case
+`Service.ZeroDeletedAccounts(ctx)`. All users, not only budget-relevant
+ones: the invariant going forward is "a deleted account has zero balance",
+so it is established retroactively. For each `accounts.is_deleted = 1`:
+balance via `GetAccountBalance` (all transactions), rounded to 8 decimals
+(the `NUMERIC(19,8)` scale); when non-zero, write one correction through the
+**same `AccountCorrection`/`SaveCorrection` path** that `update-account` and
+the delete-account auto-zero (§5) use, in its own transaction:
 
-- `id`: a fresh **UUIDv7** (`vo` id generation — no format exception).
-- `user_id = accounts.user_id`, `account_id = accounts.id`,
-  `description = 'Balance adjustment'` (the account feature's
-  `correctionComment`), `category_id/payee_id/tag_id/account_recipient_id
-  = NULL`, `amount_recipient = NULL`.
+- `id`: `NextIdentity()` (UUIDv7); `user_id = account.UserID`;
+- `description = correctionComment` ("Balance adjustment"), uncategorized,
+  no payee/tag/recipient;
 - `type = 0` (expense) and `amount = balance` when positive; `type = 1`
-  (income) and `amount = −balance` when negative.
-- `spent_at = accounts.updated_at` — the soft-delete sets `UpdatedAt`
+  (income) and `amount = −balance` when negative;
+- `spent_at = account.UpdatedAt` — the soft-delete sets `UpdatedAt`
   (`model.Account.Delete`) and a deleted account is not editable afterwards,
-  so this is the deletion time.
-- `created_at = updated_at = now`.
+  so this is the deletion time;
+- `created_at = updated_at = clock.Now()`.
+
+Idempotent by construction (a zeroed account is skipped), so it is safe to
+run from the CLI at any time. It logs one operation line per correction
+(`account_id`, `amount`, `type` — ids and amounts only).
 
 ### 2d. `20260817000002.sql` — seed membership, drop the blacklist
 
@@ -277,10 +293,13 @@ registered in `errs.AllCodes`.
    excluded account, a live account, an account deleted after start with
    balance 12.5, an account deleted before the budget existed with balance
    −3; run the new migration; assert exact `budgets_accounts` rows and
-   both zeroing corrections (type/amount/spent_at/description, UUIDv7 id,
-   exact decimal amount), the guest's accounts absent, and
-   `budgets_excluded_accounts` gone. Runner test: a Go step runs in order
-   between SQL steps, is recorded once, and is skipped on the next boot.
+   the guest's accounts absent, and `budgets_excluded_accounts` gone.
+   Runner test: a command step runs in order between SQL steps via the
+   injected runner, is recorded once, is skipped on the next boot, a failing
+   command records nothing, and a missing runner/unknown name fails.
+   Use-case test (`ZeroDeletedAccounts`, both engines): positive → expense,
+   negative → income, zero and `1e-10` residue → nothing, `spent_at ==
+   UpdatedAt`, second run writes nothing.
 2. **Core regression**: a category whose only spend sits on a since-deleted
    member account shows `available = 0` (spend still counted); the same
    through `get-budget` (apiparity scenario).
