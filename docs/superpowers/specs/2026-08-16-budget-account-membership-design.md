@@ -54,6 +54,11 @@ Budget membership becomes an **explicit, append-mostly set**:
   transaction, so a permanently counted deleted account never carries a
   stale balance into the budget summary. The migration applies the same rule
   retroactively to every already-deleted account.
+- Later transaction writes keep that invariant **self-healing** (§5a):
+  creating a transaction against a deleted account is rejected; deleting or
+  editing a transaction that touches one (e.g. a transfer to a live account)
+  re-zeroes the deleted side with a dated correction in the same DB
+  transaction.
 
 ## 1. Data model
 
@@ -241,6 +246,60 @@ the same transaction, exactly as `update-account` does: `correctionComment`
 The response stays `{}` (frozen). Non-owner "delete" (dropping one's own
 grant) is unchanged.
 
+## 5a. Transaction writes touching deleted accounts (self-healing zero)
+
+The §5 invariant — a deleted account has zero balance — must survive later
+transaction writes. A transfer between a deleted account and a live one is a
+single row (`type = 2`, `account_id` + `account_recipient_id`) that stays
+visible and editable from the live side; deleting or editing it moves the
+deleted side's balance. Rules, enforced in `internal/transaction`:
+
+- **Create is rejected** (`create.go`) when `accountId` or
+  `accountRecipientId` resolves to a deleted account: coded error
+  `transaction.account_deleted` (400, on the offending field). Covers manual
+  create, recurring posting (`CreateTransactionFromRecurring`), and import
+  (import must resolve only live accounts; the guard backstops it).
+- **Delete is allowed** (`delete.go`). After the delete, in the same DB
+  transaction, every deleted account among
+  `{account_id, account_recipient_id}` is re-zeroed.
+- **Update is allowed** (`update.go`) — amount, type, sides, date. After the
+  write, the same re-zero runs for every deleted account in the union of the
+  old and new account sets.
+- **Bulk update** (`bulk.go`): exempt if it proves classification-only
+  (category/tag/payee/label — no balance effect; verify at planning time),
+  otherwise it follows the update rule per row.
+
+**Re-zero** is the §2c/§5 zeroing primitive with a caller-supplied `spent_at`
+and description: recompute the account balance (8-decimal rounding); zero or
+sub-representable residue → nothing; positive → expense correction, negative
+→ income; uncategorized, no payee/tag/recipient. Descriptions (literal
+English constants, same convention as `correctionComment`):
+`"Balance adjustment (deleted transaction)"` for delete-triggered
+corrections, `"Balance adjustment (edited transaction)"` for
+update-triggered ones.
+
+**Correction `spent_at`**, per affected deleted account D:
+
+- the transaction was deleted, or the edit removed D from it → the
+  transaction's **old** `spent_at` (the offset lands in the month the
+  removed flow left, so closed-month budget rows stay consistent);
+- D is still a party after the edit → the **new** `spent_at` (equal to the
+  old one for a pure amount edit). A date-only move changes no total
+  balance, so no correction fires.
+
+**Seam**: `internal/transaction/ports.go` gains
+`AccountZeroer { ZeroDeleted(ctx, accountID vo.Id, spentAt time.Time, description string) error }`,
+wired in `internal/server/glue_transaction_zeroer.go` over the account
+feature's zeroing use case (shared with §2c/§5). It runs inside the caller's
+`TxRunner` context, so the write and its correction commit atomically.
+
+Consequences that need no special code: the correction is itself a
+transaction on the deleted account, so deleting it re-fires the rule and
+restores it (converges — after re-zero the balance is zero); a transfer
+between **two** deleted accounts (API-reachable, invisible in the UI)
+re-zeroes both sides. No endpoint or response-shape changes: the correction
+sits on a hidden account and never appears in the refreshed account embed.
+
 ## 6. Wire contract
 
 REST (`internal/budget/api`, DTOs in `internal/model/budget_dto.go`):
@@ -282,9 +341,12 @@ everything else works.
 
 New keys in all 11 catalogues (`locales/<lang>.json`, parity guards):
 `errors.budget.account_not_removable`, `errors.budget.accounts_required`,
+`errors.transaction.account_deleted`,
 `budgets.modal.budget_form.accounts_locked_hint`,
-`budgets.form.budget.accounts.validation.required`. Both codes are
-registered in `errs.AllCodes`.
+`budgets.form.budget.accounts.validation.required`. All three codes are
+registered in `errs.AllCodes`. The §5a correction descriptions are stored
+transaction text, not catalogue keys (same convention as
+`correctionComment`).
 
 ## 9. Testing
 
@@ -321,6 +383,15 @@ registered in `errs.AllCodes`.
 8. `make test`: sqlite/PostgreSQL byte parity for the new queries and the
    migration.
 9. SPA vitest for `BudgetAccountsField`, both dialogs, and the API client.
+10. **Self-healing zero (§5a)**: delete a live↔deleted transfer → correction
+    on the deleted side at the transfer's `spent_at`, exact
+    fields/description; edit its amount → delta correction at the (new)
+    `spent_at` with the edit description; an edit that swaps the deleted
+    side out → correction at the old `spent_at`; date-only edit → no
+    correction; deleting the correction itself → restored; both-sides-deleted
+    transfer → both corrected; create against a deleted account (direct,
+    recurring posting, import) → 400 `transaction.account_deleted`; all of
+    it atomic with the triggering write.
 
 ## 10. Out of scope
 
@@ -345,6 +416,7 @@ registered in `errs.AllCodes`.
 | Update/create budget | `internal/budget/crud.go`, `internal/budget/create.go` |
 | Member removal | `internal/budget/accesssvc.go:117` |
 | Account soft-delete / correction | `internal/account/delete.go`, `internal/account/update.go` |
+| Transaction write paths (§5a) | `internal/transaction/{create,update,delete,bulk}.go`, `ports.go` |
 | Balance formula | `internal/infra/storage/sqlc/query/sqlite/account_balance.sql` |
 | Old blacklist table | `internal/infra/storage/migrations/sqlite/20241103192302.sql:101` |
 | SPA dialogs | `web/src/features/budgets/{BudgetDialog,BudgetUpdateDialog,BudgetAccountsField}.tsx` |
