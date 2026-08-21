@@ -133,7 +133,8 @@ balance via `GetAccountBalance` (all transactions), rounded to 8 decimals
 the delete-account auto-zero (§5) use, in its own transaction:
 
 - `id`: `NextIdentity()` (UUIDv7); `user_id = account.UserID`;
-- `description = correctionComment` ("Balance adjustment"), uncategorized,
+- `description = "Balance adjustment (account deleted)"` (the same new
+  constant §5 uses — NOT the plain `correctionComment`), uncategorized,
   no payee/tag/recipient;
 - `type = 0` (expense) and `amount = balance` when positive; `type = 1`
   (income) and `amount = −balance` when negative;
@@ -239,9 +240,13 @@ Before soft-deleting, compute the account's balance over all its
 transactions (`GetAccountBalance` with a far-future bound), round to 8
 decimals (the `NUMERIC(19,8)` scale — a sub-representable float residue must
 not produce a correction). When non-zero, write a correction transaction in
-the same transaction, exactly as `update-account` does: `correctionComment`
-("Balance adjustment"), uncategorized, `type = 0`/`1` by sign, `amount =
-|balance|`, `spent_at = localNow(ctx)`. Then `acct.Delete(now)`.
+the same transaction, exactly as `update-account` does except the
+description: `"Balance adjustment (account deleted)"` (a new constant
+alongside `correctionComment`, so a deletion-driven zeroing is
+distinguishable from a user's manual balance edit), uncategorized,
+`type = 0`/`1` by sign, `amount = |balance|`, `spent_at = localNow(ctx)`.
+Then `acct.Delete(now)`. The §2c migration stamps the same description on
+its retroactive corrections.
 
 The response stays `{}` (frozen). Non-owner "delete" (dropping one's own
 grant) is unchanged.
@@ -375,7 +380,8 @@ transaction text, not catalogue keys (same convention as
    untouched.
 5. **Delete-account auto-zero**: positive balance → expense correction,
    negative → income, zero → none, `1e-10` residue → none; correction fields
-   exact.
+   exact, description `"Balance adjustment (account deleted)"` (also asserted
+   for the §2c migration corrections).
 6. `create-budget` requires ≥ 1 owned account; `update-budget` with
    `accountIds` omitted leaves membership; present replaces.
 7. `apiparity` + `mcpparity` goldens regenerated with `UPDATE_GOLDEN=1` and
