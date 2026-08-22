@@ -163,6 +163,20 @@ participant such that:
 
 Then `DROP TABLE budgets_excluded_accounts`.
 
+**SQL vs command step.** First preference is plain SQL: one
+`INSERT … SELECT` per engine (participants via `UNION` of the owner and the
+accepted non-guest access rows, `NOT EXISTS` against the blacklist, the
+deleted-after-start predicate), then the `DROP`. If the dialect pair proves
+too complex in practice, fall back to the §2a infrastructure:
+`20260817000002` becomes command `migration:seed-budget-accounts` and the
+`DROP TABLE` moves to a small `20260817000003.sql`. Two constraints shape
+that command: it must use hand-written SQL (`db.Rebind` style — sqlc cannot
+generate queries against `budgets_excluded_accounts`, since the final schema
+no longer contains it), and it must treat a **missing blacklist table as a
+no-op** — that is what keeps it idempotent and safe to run by hand after the
+migration era, when re-seeding would otherwise resurrect memberships users
+had removed.
+
 Effect on existing numbers: a budget's figures move at migration only where a
 deleted-after-start account rejoins the population — its spend closes the
 phantom-available gap it opened, and its zeroing correction shows as
