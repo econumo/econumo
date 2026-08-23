@@ -4,7 +4,7 @@
 
 **Goal:** Replace the budget account blacklist (`budgets_excluded_accounts`) with explicit, activity-locked membership (`budgets_accounts`) that keeps soft-deleted accounts in the population, so `budgetedBefore` and `spentBefore` are always drawn from the same accounts and phantom "available" can no longer accrue.
 
-**Architecture:** A new `budgets_accounts` table is read by the budget builder without an `is_deleted` filter through a new `AccountLookup.AccountsByIDs` port. Membership can be removed only while the account has no transactions in a closed month of the budget (`started_at ≤ spent_at < first-of-current-month`). Deleting an account auto-zeroes its balance with a "Balance adjustment" correction; the same account-feature use case backs a new `migration:zero-deleted-accounts` CLI command, which the boot migration runner invokes as a **command step** between two SQL migrations (create table → zero deleted accounts → seed membership + drop blacklist).
+**Architecture:** A new `budgets_accounts` table is read by the budget builder without an `is_deleted` filter through a new `AccountLookup.AccountsByIDs` port. Membership can be removed only while the account has no transactions in a closed month of the budget (`started_at ≤ spent_at < first-of-current-month`). Deleting an account auto-zeroes its balance with a "Balance adjustment (account deleted)" correction; the same account-feature use case backs a new `migration:zero-deleted-accounts` CLI command, which the boot migration runner invokes as a **command step** between two SQL migrations (create table → zero deleted accounts → seed membership + drop blacklist). The zero-balance invariant is **self-healing** (spec §5a): creating a transaction against a deleted account is rejected (`transaction.account_deleted`); deleting or editing a transaction touching one re-zeroes the deleted side atomically, with the correction dated at the affected transaction's `spent_at`.
 
 **Tech Stack:** Go 1.x (stdlib `net/http`, `database/sql`), sqlc (sqlite + pgsql), modernc sqlite / pgx, React 19 + Vite + vitest, react-i18next.
 
@@ -39,6 +39,7 @@
 | DTOs / errors / i18n | `internal/model/budget_dto.go`, `internal/shared/errs/codes.go`, `locales/*.json` |
 | Budget service + API | `internal/budget/{usecase.go,builder.go,accounts.go,crud.go,create.go,accesssvc.go}`, `internal/budget/api/{budget_more.go,routes.go}`, tests in `internal/budget/api/` |
 | MCP | `internal/budget/mcp/mcp.go`, `internal/test/mcpparity/catalogue.go` + goldens |
+| Self-healing zero (§5a) | `internal/transaction/{create,update,delete}.go`, `ports.go`, `usecase.go`; `internal/account/zero.go`; `internal/server/glue_transaction_zeroer.go`; `internal/shared/errs/codes.go`; `locales/*.json`; tests in `internal/transaction/api/` |
 | apiparity | `internal/test/apiparity/{fixture.go,catalogue_budget_access.go,catalogue_budget_plan.go,catalogue_budget_income.go,…}` + goldens |
 | SPA | `web/src/api/budget.ts`, `web/src/api/dto/budget.ts`, `web/src/features/budgets/{BudgetAccountsField,BudgetDialog,BudgetUpdateDialog}.tsx` (+ tests), `web/src/features/accounts/queries.ts` |
 
@@ -341,8 +342,8 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 - Test: `internal/account/api/zero_deleted_test.go` (new), `internal/account/api/harness_test.go` (expose `svc`)
 
 **Interfaces:**
-- Produces: `AccountStore.ListDeleted(ctx) ([]*model.Account, error)`; `(*account.Service).ZeroDeletedAccounts(ctx) (int, error)` (returns the number of corrections written); unexported `(*Service).zeroBalance(ctx, acct *model.Account, spentAt, now time.Time) (bool, error)`.
-- Consumes: `BalanceReader.Balance(ctx, accountID, before)`, `AccountStore.SaveCorrection`, `correctionComment`.
+- Produces: `AccountStore.ListDeleted(ctx) ([]*model.Account, error)`; `(*account.Service).ZeroDeletedAccounts(ctx) (int, error)` (returns the number of corrections written); unexported `(*Service).zeroBalance(ctx, acct *model.Account, spentAt, now time.Time, description string) (bool, error)`; constant `correctionAccountDeleted = "Balance adjustment (account deleted)"` (alongside `correctionComment` in `usecase.go`, spec §5 — deletion-driven zeroing must be distinguishable from a manual balance edit; Task 9a adds the two §5a siblings).
+- Consumes: `BalanceReader.Balance(ctx, accountID, before)`, `AccountStore.SaveCorrection`.
 
 - [ ] **Step 1: sqlc query `ListDeletedAccounts` (both engines)**
 
@@ -447,7 +448,7 @@ func TestZeroDeletedAccounts_WritesOneCorrectionPerNonZeroDeletedAccount(t *test
 		t.Fatal(err)
 	}
 	pos := corrections(t, h, zeroAcctPos)
-	if len(pos) != 1 || pos[0].typ != 0 || pos[0].amount != "12.5" || pos[0].description != "Balance adjustment" || pos[0].spentAt != updatedAt {
+	if len(pos) != 1 || pos[0].typ != 0 || pos[0].amount != "12.5" || pos[0].description != "Balance adjustment (account deleted)" || pos[0].spentAt != updatedAt {
 		t.Fatalf("positive: %+v (updated_at=%s)", pos, updatedAt)
 	}
 	neg := corrections(t, h, zeroAcctNeg)
@@ -493,7 +494,7 @@ func TestDeleteAccount_AutoZeroesBalanceThenSoftDeletes(t *testing.T) {
 		t.Fatalf("is_deleted=%d err=%v", deleted, err)
 	}
 	c := corrections(t, h, seedAccountID)
-	if len(c) != 1 || c[0].typ != 0 || c[0].amount != "40" || c[0].description != "Balance adjustment" {
+	if len(c) != 1 || c[0].typ != 0 || c[0].amount != "40" || c[0].description != "Balance adjustment (account deleted)" {
 		t.Fatalf("corrections=%+v", c)
 	}
 	if _, err := time.Parse("2006-01-02 15:04:05", c[0].spentAt); err != nil {
@@ -521,6 +522,15 @@ Run: `go test ./internal/account/api/ -run 'ZeroDeleted|DeleteAccount_' -v`
 Expected: FAIL (`ZeroDeletedAccounts` undefined; delete writes no correction).
 
 - [ ] **Step 5: Implement**
+
+In `internal/account/usecase.go`, next to `correctionComment`, add:
+
+```go
+// correctionAccountDeleted marks corrections written because the account was
+// deleted (delete-account auto-zero, migration:zero-deleted-accounts, and the
+// §5a self-healing re-zero glue), distinguishable from a manual balance edit.
+const correctionAccountDeleted = "Balance adjustment (account deleted)"
+```
 
 Create `internal/account/zero.go`:
 
@@ -558,7 +568,7 @@ func (s *Service) ZeroDeletedAccounts(ctx context.Context) (int, error) {
 		var wrote bool
 		err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 			var zerr error
-			wrote, zerr = s.zeroBalance(txCtx, acct, acct.UpdatedAt, s.clock.Now())
+			wrote, zerr = s.zeroBalance(txCtx, acct, acct.UpdatedAt, s.clock.Now(), correctionAccountDeleted)
 			return zerr
 		})
 		if err != nil {
@@ -573,9 +583,10 @@ func (s *Service) ZeroDeletedAccounts(ctx context.Context) (int, error) {
 
 // zeroBalance reconciles acct to a zero balance with one correction dated
 // spentAt (the same sign rule as update-account: a positive balance is removed
-// by an EXPENSE, a negative one filled by an INCOME). Returns whether a row
-// was written.
-func (s *Service) zeroBalance(ctx context.Context, acct *model.Account, spentAt, now time.Time) (bool, error) {
+// by an EXPENSE, a negative one filled by an INCOME). The description says
+// which flow zeroed it (account deletion vs a §5a self-healing write).
+// Returns whether a row was written.
+func (s *Service) zeroBalance(ctx context.Context, acct *model.Account, spentAt, now time.Time, description string) (bool, error) {
 	raw, err := s.balances.Balance(ctx, acct.ID, allTimeBalanceBound)
 	if err != nil {
 		return false, err
@@ -592,7 +603,7 @@ func (s *Service) zeroBalance(ctx context.Context, acct *model.Account, spentAt,
 		ID:          s.accounts.NextIdentity(),
 		UserID:      acct.UserID,
 		AccountID:   acct.ID,
-		Description: correctionComment,
+		Description: description,
 		Type:        corrType,
 		Amount:      balance.Abs().String(),
 		SpentAt:     spentAt,
@@ -617,7 +628,7 @@ In `internal/account/delete.go`, owner branch:
 			// A deleted account must not carry a balance forward (it stays a
 			// budget member and its history keeps counting), so reconcile it
 			// to zero first — dated in the caller's local time like update-account.
-			if _, err := s.zeroBalance(ctx, acct, s.localNow(ctx), now); err != nil {
+			if _, err := s.zeroBalance(ctx, acct, s.localNow(ctx), now, correctionAccountDeleted); err != nil {
 				return err
 			}
 			acct.Delete(now)
@@ -757,7 +768,7 @@ func migrationCommands() []command {
 	return []command{
 		{
 			name:    "migration:zero-deleted-accounts",
-			summary: "write a Balance adjustment so every deleted account's balance is zero (idempotent)",
+			summary: "write a 'Balance adjustment (account deleted)' correction so every deleted account's balance is zero (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {
 				n, err := c.account.ZeroDeletedAccounts(ctx)
 				if err != nil {
@@ -812,7 +823,7 @@ Run: `go test ./internal/cli/ ./internal/infra/storage/... ./cmd/...` → PASS. 
 
 - [ ] **Step 5: Docs**
 
-`CLAUDE.md`: add `migration:zero-deleted-accounts` to the CLI command list with one line: "writes a Balance adjustment so every deleted account's balance is zero; idempotent; also invoked automatically at boot as migration step `20260817000001`". Under **Database**, add: "Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`): the boot runner invokes the named CLI command in version order between SQL files, records the version only on success, and gives it no surrounding transaction — every `migration:*` command must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test databases pass `migrate.NoCommands`." If `docs/run-without-docker.md`/README list the commands, add it there too.
+`CLAUDE.md`: add `migration:zero-deleted-accounts` to the CLI command list with one line: "writes a 'Balance adjustment (account deleted)' correction so every deleted account's balance is zero; idempotent; also invoked automatically at boot as migration step `20260817000001`". Under **Database**, add: "Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`): the boot runner invokes the named CLI command in version order between SQL files, records the version only on success, and gives it no surrounding transaction — every `migration:*` command must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test databases pass `migrate.NoCommands`." If `docs/run-without-docker.md`/README list the commands, add it there too.
 
 - [ ] **Step 6: Commit**
 
@@ -1837,6 +1848,17 @@ Run: `go test ./internal/budget/... ./internal/server/... ./internal/model/...` 
 - Create: `internal/infra/storage/migrations/migration_20260817_test.go`
 - Test: `internal/infra/storage/migrate/labels_schema_test.go`-style existence check optional
 
+> **Escape hatch (spec §2d):** first preference is plain SQL. If the seed
+> `INSERT … SELECT` proves too complex to keep byte-identical across the two
+> dialects, switch `20260817000002` to a command step
+> `migration:seed-budget-accounts` (register like `20260817000001`) and move
+> the `DROP TABLE` to a new `20260817000003.sql`. The command must use
+> hand-written SQL with `db.Rebind` (sqlc cannot see
+> `budgets_excluded_accounts` — the final schema drops it) and must **no-op
+> when the blacklist table is missing**, which is what keeps a by-hand re-run
+> safe after the migration era. The migration test in this task stays
+> identical either way.
+
 - [ ] **Step 1: Failing migration test**
 
 ```go
@@ -1937,6 +1959,56 @@ Delete the three `*Excluded*` queries from both `budgets.sql`, regenerate sqlc, 
 - [ ] **Step 5: Run** — `go build ./... && go test ./internal/infra/storage/... ./internal/budget/...` → PASS. The seeded-data test above runs on sqlite; the pgsql 000/002 SQL is applied on every fresh pgsql test database (`dbtest`, `enginecompare`) and the seed query's syntax is thereby verified on both engines in Task 13's `make test`.
 
 - [ ] **Step 6: Commit** — `git commit -am "feat(budget): migration 20260817000002 seeds budgets_accounts and drops budgets_excluded_accounts"` (with trailer).
+
+---
+
+### Task 9a: Self-healing zero — transaction writes touching deleted accounts (spec §5a)
+
+**Files:**
+- Modify: `internal/account/zero.go` (public `ZeroIfDeleted`)
+- Modify: `internal/transaction/ports.go`, `internal/transaction/usecase.go` (new port field + constants), `create.go`, `update.go`, `delete.go`
+- Create: `internal/server/glue_transaction_zeroer.go`; wire in `internal/server` where the transaction service is built
+- Modify: `internal/shared/errs/codes.go`, all 11 `locales/<lang>.json` (`errors.transaction.account_deleted`)
+- Test: `internal/transaction/api/deleted_account_test.go` (new); one apiparity scenario + goldens
+
+**Interfaces:**
+- Produces (account): `(*account.Service).ZeroIfDeleted(ctx, accountID vo.Id, spentAt time.Time, description string) (bool, error)` — `GetByID`; **no-op `(false, nil)` on a live account**; otherwise `zeroBalance(ctx, acct, spentAt, s.clock.Now(), description)`. Deliberately NO `WithTx` of its own: it must join the caller's transaction (both features' repos read the tx from the shared `TxRunner` ctx).
+- Produces (transaction): port `AccountZeroer { ZeroDeleted(ctx context.Context, accountID vo.Id, spentAt time.Time, description string) error }`; `AccountResolver` gains `AccountDeleted(ctx, accountID vo.Id) (bool, error)` (glue: a small account-repo lookup, same shape as `AccountOwner`); constants `correctionDeletedTx = "Balance adjustment (deleted transaction)"` and `correctionEditedTx = "Balance adjustment (edited transaction)"` in `usecase.go`.
+- Produces (errs): `CodeTransactionAccountDeleted = "transaction.account_deleted"` in `AllCodes`; `en` text `"This account has been deleted"` (translate in all 11 catalogues — i18ntest enforces parity both ways).
+
+Rules recap (spec §5a): create rejects a deleted `accountId`/`accountRecipientId`; update rejects a deleted account **newly introduced** to the account set but allows edits keeping/removing one; delete is always allowed; after a delete or edit, every deleted account in old ∪ new sets is re-zeroed **inside the same `WithTx`** — `spent_at` = old `spent_at` when the transaction was deleted or the account was swapped out, new `spent_at` when it remains a party. Bulk update is exempt (classification-only, transfers rejected). Import is exempt (its `Importer.AvailableAccounts`/`AccountByID` resolution returns live accounts only — asserted by test, not re-guarded).
+
+- [ ] **Step 1: Failing tests**
+
+Create `internal/transaction/api/deleted_account_test.go` in the transaction api harness style (`grep -n "newHarness" internal/transaction/api/*_test.go`; reuse its `corrections`-style raw-SQL helper pattern from Task 2 — copy locally, `db.Rebind` for pgsql). Seed: live account B, account A with a transfer A→B `50` at `"2026-02-10 00:00:00"`, then delete A over the API (auto-zero from Task 2 runs; A's correction set is now `{zeroing at delete}`). Tests:
+
+1. `TestDeleteTransaction_ReZeroesDeletedSide` — delete the transfer from B's side → 200; A gains exactly one NEW correction: `spent_at = "2026-02-10 00:00:00"`, `description = "Balance adjustment (deleted transaction)"`, amount/type reconciling A to zero; B gains none; A's all-time balance is `0`.
+2. `TestUpdateTransaction_AmountEdit_ReZeroesDeletedSide` — change the transfer amount `50→30` → new correction on A at the transaction's `spent_at`, `description = "Balance adjustment (edited transaction)"`; A ends at zero.
+3. `TestUpdateTransaction_SwapOutDeletedSide` — repoint `accountRecipientId` to a second live account → correction on A at the **old** `spent_at` (edit description); A ends at zero.
+4. `TestUpdateTransaction_DateOnlyEdit_NoCorrection` — move `date` only → no new correction on A.
+5. `TestUpdateTransaction_CannotIntroduceDeletedAccount` — an expense on B edited to `accountId = A` (and separately a transfer edited to `accountRecipientId = A`) → 400, envelope code `transaction.account_deleted`, field matches the offending side; nothing written.
+6. `TestCreateTransaction_RejectsDeletedAccount` — create expense on A → 400 same code; transfer B→A → 400 on `accountRecipientId`; `CreateTransactionFromRecurring` path via its public entry point → same.
+7. `TestDeleteTransaction_DeletingCorrectionRestoresIt` — delete A's zeroing correction over the API → 200, and a fresh correction exists (A back at zero).
+8. `TestDeleteTransaction_BothSidesDeleted` — transfer A↔C with both deleted → deleting it re-zeroes both.
+9. `TestImport_CannotTargetDeletedAccount` — an import row naming A's account name creates a NEW live account (find-or-create resolves available accounts only) rather than writing to A; assert A has no new transactions.
+
+- [ ] **Step 2: Run to verify failure** — `go test ./internal/transaction/api/ -run 'DeletedAccount|ReZero|DeletedSide|Introduce' -v`. Expected: FAIL (guards and corrections absent).
+
+- [ ] **Step 3: Implement**
+
+1. `internal/account/zero.go`: add `ZeroIfDeleted` (signature above).
+2. `internal/transaction/usecase.go`: add the two description constants; add `zeroer AccountZeroer` to the service struct + constructor.
+3. `internal/transaction/ports.go`: `AccountZeroer`; extend `AccountResolver` with `AccountDeleted`.
+4. `create.go` (`createTransaction`), after the write-access checks (access first — a caller with no access must still get the access error, and must not learn a foreign account's deleted state): for `accountID` and, when a transfer, the recipient id — `AccountDeleted` → `errs.ValidationError{Msg: "This account has been deleted", MsgCode: errs.CodeTransactionAccountDeleted}` on the offending field (follow the codebase's field-error construction; check how `checkReferences` attaches field names).
+5. `update.go` (`updateTransaction`), inside `WithTx`: capture `oldParties := partySet(t)` and `oldSpentAt := t.SpentAt` before `t.Update(st, now)`; reject any deleted account in the NEW set that is not in `oldParties` (same error as create); after `Save`/`ReplaceLabels`, for each deleted account in `oldParties ∪ newParties`: `spentAt := t.SpentAt` (new) if it is in the new set, else `oldSpentAt`; call `s.zeroer.ZeroDeleted(ctx, id, spentAt, correctionEditedTx)`. Add a tiny `partySet(t) []vo.Id` helper (source + recipient when present).
+6. `delete.go`, inside `WithTx` after `s.repo.Delete`: for each deleted account among the transaction's parties → `ZeroDeleted(ctx, id, t.SpentAt, correctionDeletedTx)`.
+7. `internal/server/glue_transaction_zeroer.go`: adapter over `account.Service.ZeroIfDeleted`; extend the existing transaction `AccountResolver` glue with `AccountDeleted`; wire.
+8. `errs.CodeTransactionAccountDeleted` in `codes.go` + `AllCodes`; add `errors.transaction.account_deleted` to all 11 catalogues.
+9. Fix compile fallout in transaction test fakes (new port + resolver method).
+
+- [ ] **Step 4: apiparity scenario** — add one create-transaction-against-deleted-account scenario (fixture gains a deleted account or delete one in the scenario setup); `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/` and INSPECT: exactly the one new golden, count grows.
+- [ ] **Step 5: Run** — `go test ./internal/transaction/... ./internal/account/... ./internal/test/i18ntest/ ./internal/test/apiparity/`. Expected: PASS.
+- [ ] **Step 6: Commit** — `git commit -am "feat(transaction): self-healing zero for writes touching deleted accounts"` (with trailer).
 
 ---
 
@@ -2070,7 +2142,7 @@ No `METRICS` change: the SPA never called exclude/include-account (no keys exist
 - Modify: `CLAUDE.md` (Notable behaviours + API conventions bullets), `README.md` if it documents excluded accounts (`grep -rn "exclud" README.md docs/`)
 
 - [ ] **Step 1: CLAUDE.md** — under **Notable behaviours** add:
-  "**Budget account membership** is explicit (`budgets_accounts`): a budget counts exactly its member accounts, soft-deleted members included (their history keeps counting so `budgetedBefore`/`spentBefore` share one population). An account can be removed only while it has no transactions between the budget start and the first of the caller's current month (`budget.account_not_removable`); a departing participant's accounts leave with them. `create-budget` requires ≥1 owned `accountIds`; `update-budget.accountIds` is optional (absent = untouched, present = replace-set over the caller's own accounts). Deleting an account auto-writes a 'Balance adjustment' so deleted accounts always have zero balance."
+  "**Budget account membership** is explicit (`budgets_accounts`): a budget counts exactly its member accounts, soft-deleted members included (their history keeps counting so `budgetedBefore`/`spentBefore` share one population). An account can be removed only while it has no transactions between the budget start and the first of the caller's current month (`budget.account_not_removable`); a departing participant's accounts leave with them. `create-budget` requires ≥1 owned `accountIds`; `update-budget.accountIds` is optional (absent = untouched, present = replace-set over the caller's own accounts). Deleting an account auto-writes a 'Balance adjustment (account deleted)' correction so deleted accounts always have zero balance, and the invariant is **self-healing**: creating a transaction against a deleted account is rejected (`transaction.account_deleted`), and deleting/editing a transaction that still touches one (e.g. an old transfer to a live account) re-zeroes the deleted side in the same DB transaction with a correction dated at the affected transaction's `spent_at` ('Balance adjustment (deleted transaction)' / '(edited transaction)')."
   Replace the two `exclude-account`/`include-account` mentions with `add-account`/`remove-account` (search `CLAUDE.md`).
 - [ ] **Step 2: Full suite** — `make go-test` (coverage gate ≥ 80%) and `make test` (needs Postgres: compose auto-provisions, or set `DATABASE_TEST_PGSQL_URL`). Expected: PASS, including enginecompare byte parity of every golden and the pgsql rerun of the repo/unit suite (exercises the pgsql migration 000/002 and the new queries).
 - [ ] **Step 3: Commit** — `git commit -am "docs: budget account membership"` (with trailer).

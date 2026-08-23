@@ -275,18 +275,25 @@ deleted side's balance. Rules, enforced in `internal/transaction`:
 
 - **Create is rejected** (`create.go`) when `accountId` or
   `accountRecipientId` resolves to a deleted account: coded error
-  `transaction.account_deleted` (400, on the offending field). Covers manual
-  create, recurring posting (`CreateTransactionFromRecurring`), and import
-  (import must resolve only live accounts; the guard backstops it).
+  `transaction.account_deleted` (400, on the offending field). The guard in
+  `createTransaction` covers manual create, MCP, and recurring posting
+  (`CreateTransactionFromRecurring`). Import bypasses `createTransaction`
+  (`Importer.SaveTransaction`) but its account resolution
+  (`AvailableAccounts` / `AccountByID`) already returns only live accounts —
+  asserted by test rather than re-guarded.
 - **Delete is allowed** (`delete.go`). After the delete, in the same DB
   transaction, every deleted account among
   `{account_id, account_recipient_id}` is re-zeroed.
-- **Update is allowed** (`update.go`) — amount, type, sides, date. After the
-  write, the same re-zero runs for every deleted account in the union of the
-  old and new account sets.
-- **Bulk update** (`bulk.go`): exempt if it proves classification-only
-  (category/tag/payee/label — no balance effect; verify at planning time),
-  otherwise it follows the update rule per row.
+- **Update is allowed** (`update.go`) — amount, type, sides, date. An edit
+  may remove a deleted account from a transaction but not **introduce** one:
+  the create rule applies to any deleted account newly appearing in the
+  account set (`transaction.account_deleted`). After the write, the same
+  re-zero runs for every deleted account in the union of the old and new
+  account sets.
+- **Bulk update** (`bulk.go`): exempt — confirmed classification-only
+  (category/payee/tag over non-transfers; amounts, accounts and dates are
+  copied from the stored row, and transfers are rejected outright), so it
+  has no balance effect.
 
 **Re-zero** is the §2c/§5 zeroing primitive with a caller-supplied `spent_at`
 and description: recompute the account balance (8-decimal rounding); zero or
