@@ -86,3 +86,28 @@ func TestBudgetAccountLookup_AccountsByIDs_IncludesDeletedInInputOrder(t *testin
 		t.Fatal("unknown id must error")
 	}
 }
+
+// OwnedLiveAccountIDs feeds the accept-access membership seeding: only the
+// user's OWN live accounts — never a deleted one, never one merely shared with
+// them.
+func TestBudgetAccountLookup_OwnedLiveAccountIDs(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u, other := vo.NewId().String(), vo.NewId().String()
+	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	f.User(fixture.User{ID: other, Email: "o@e.test", Name: "O", Password: "pw", Salt: "s"})
+	live, dead, shared := vo.NewId(), vo.NewId(), vo.NewId()
+	f.Account(fixture.Account{ID: live.String(), UserID: u})
+	f.Account(fixture.Account{ID: dead.String(), UserID: u, Deleted: true})
+	f.Account(fixture.Account{ID: shared.String(), UserID: other})
+	f.AccountAccess(shared.String(), u, 1)
+
+	l := server.NewBudgetAccountLookup(accountrepo.NewRepo(db.Engine, db.TX))
+	got, err := l.OwnedLiveAccountIDs(context.Background(), vo.MustParseId(u))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || !got[0].Equal(live) {
+		t.Fatalf("got %v want only the owned live account %s", got, live)
+	}
+}

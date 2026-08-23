@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -98,7 +99,10 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		if serr != nil {
 			return serr
 		}
-		return s.seedTagElements(txCtx, userID, budgetID, after, now, existing)
+		if serr := s.seedTagElements(txCtx, userID, budgetID, after, now, existing); serr != nil {
+			return serr
+		}
+		return s.seedMemberAccounts(txCtx, userID, budgetID, grant.Role, now)
 	})
 	if err != nil {
 		return nil, err
@@ -108,6 +112,30 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		return nil, err
 	}
 	return &model.AcceptAccessResult{Items: list.Items}, nil
+}
+
+// seedMemberAccounts adds a joining participant's live accounts to the budget,
+// the counterpart of removeMemberRecords' RemoveAccountsOwnedBy. Without it
+// their limits would land in budgetedBefore while their spending reached no
+// member account — the asymmetry explicit membership exists to end. The rule
+// mirrors the migration seed (`is_accepted AND role <> 2`): a guest contributes
+// no accounts. Deleted accounts stay out; the seed's deleted-after-start branch
+// is about pre-existing history, not a fresh join. AddAccount is
+// ON CONFLICT DO NOTHING, so re-accepting after a revoke is idempotent.
+func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id, role model.BudgetRole, now time.Time) error {
+	if role == model.BudgetRoleGuest {
+		return nil
+	}
+	ids, err := s.accounts.OwnedLiveAccountIDs(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if aerr := s.budgets.AddAccount(ctx, budgetID, id, now); aerr != nil {
+			return aerr
+		}
+	}
+	return nil
 }
 
 // removeMemberRecords deletes a departing member's seeded records from the

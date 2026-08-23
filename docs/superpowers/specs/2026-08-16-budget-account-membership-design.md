@@ -238,6 +238,23 @@ Uncategorized in the deletion month. Excluded-account drift is untouched
   is visible and correctable by adjusting that month's limits. So membership
   is freely editable until history accrues, then permanent — a freshly created
   or cloned budget starts fully editable.
+- **Joining participants** — `AcceptAccess` seeds membership the way it seeds
+  elements: every LIVE account owned by the accepting user joins the budget,
+  in the same transaction, unless the accepted role is guest (mirroring the
+  §2d seed rule `is_accepted AND role <> 2`). Without it a new participant's
+  limits would land in `budgetedBefore` while their spending reached no member
+  account — the asymmetry this design exists to end. Deleted accounts do not
+  join: §2d's deleted-after-start branch is about pre-existing history, not a
+  fresh join. `AddAccount` is `ON CONFLICT DO NOTHING`, so re-accepting after a
+  revoke is idempotent.
+- **Membership entry points** — rows are created by exactly four paths:
+  (1) `create-budget`'s `accountIds`, (2) `add-account` / `update-budget`'s
+  replace-set, (3) `accept-access` seeding the joining non-guest participant's
+  live accounts, and (4) the one-time §2d migration seed. A newly created
+  account joins **no** budget automatically — that is the deliberate
+  explicit-membership design, not an oversight: adding an account to a budget
+  is an act the user takes, and an auto-join would silently move figures in
+  every budget its owner participates in.
 - **Leaving participants** — `removeMemberRecords` additionally calls
   `RemoveAccountsOwnedBy(budgetID, memberID)`, removal rule ignored. Revoke,
   decline and delete-connection (`RemoveMember`) all route through it, and

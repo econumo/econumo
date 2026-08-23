@@ -38,6 +38,10 @@ type UserLookup interface {
 type AccountLookup interface {
 	AccountsByIDs(ctx context.Context, ids []vo.Id) ([]model.AccountView, error)
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	// OwnedLiveAccountIDs returns the accounts the user OWNS and has not
+	// deleted — accounts merely shared with them are excluded. Feeds the
+	// accept-access membership seeding.
+	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default

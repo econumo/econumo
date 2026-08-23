@@ -34,6 +34,7 @@ func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currenc
 
 type budgetAccountRepo interface {
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.
@@ -63,6 +64,25 @@ func (l *BudgetAccountLookup) AccountsByIDs(ctx context.Context, ids []vo.Id) ([
 		out = append(out, model.AccountView{
 			ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(), IsDeleted: a.IsDeleted,
 		})
+	}
+	return out, nil
+}
+
+// OwnedLiveAccountIDs returns the user's own non-deleted accounts.
+// ListAvailable also yields accounts shared WITH the user (accepted
+// accounts_access grants); those belong to their owner's budgets, not the
+// acceptor's, so the ownership filter here is load-bearing.
+func (l *BudgetAccountLookup) OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	accounts, err := l.accounts.ListAvailable(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(accounts))
+	for _, a := range accounts {
+		if a.IsDeleted || !a.UserID.Equal(userID) {
+			continue
+		}
+		out = append(out, a.ID)
 	}
 	return out, nil
 }
