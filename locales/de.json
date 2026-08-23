@@ -1420,7 +1420,9 @@
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
-      "accounts_required": "Wähle mindestens ein Konto"
+      "accounts_required": "Wähle mindestens ein Konto",
+      "archived": "Dieses Budget ist archiviert",
+      "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",

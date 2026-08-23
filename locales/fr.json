@@ -1420,7 +1420,9 @@
       "envelope_side_mixed": "Une enveloppe ne peut pas contenir à la fois des catégories de revenus et de dépenses.",
       "folder_side_mixed": "Un dossier ne peut pas contenir à la fois des revenus et des dépenses.",
       "account_not_removable": "Ce compte a des transactions dans des mois passés et ne peut plus être retiré du budget",
-      "accounts_required": "Sélectionnez au moins un compte"
+      "accounts_required": "Sélectionnez au moins un compte",
+      "archived": "Ce budget est archivé",
+      "end_before_start": "Le mois de fin est antérieur au début du budget"
     },
     "category": {
       "name_length": "Le nom de la catégorie doit contenir de {min} à {max} caractères.",

@@ -1420,7 +1420,9 @@
       "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
-      "accounts_required": "Selecteer minstens één rekening"
+      "accounts_required": "Selecteer minstens één rekening",
+      "archived": "Dit budget is gearchiveerd",
+      "end_before_start": "De eindmaand ligt vóór de start van het budget"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

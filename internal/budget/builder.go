@@ -98,12 +98,18 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 		Role:       "owner",
 		IsAccepted: 1,
 	})
+	endedAt := ""
+	if b.budget.EndedAt != nil {
+		endedAt = b.budget.EndedAt.Format(datetime.Layout)
+	}
 	return model.MetaResult{
 		Id:          b.budget.ID.String(),
 		OwnerUserId: b.budget.UserID.String(),
 		Name:        b.budget.Name,
 		StartedAt:   b.budget.StartedAt.Format(datetime.Layout),
+		EndedAt:     endedAt,
 		CurrencyId:  b.budget.CurrencyID.String(),
+		IsArchived:  boolToInt(b.budget.IsArchived),
 		Access:      access,
 	}, nil
 }

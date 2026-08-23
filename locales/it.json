@@ -1420,7 +1420,9 @@
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
-      "accounts_required": "Seleziona almeno un conto"
+      "accounts_required": "Seleziona almeno un conto",
+      "archived": "Questo budget è archiviato",
+      "end_before_start": "Il mese finale precede l'inizio del budget"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

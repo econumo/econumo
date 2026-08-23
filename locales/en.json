@@ -1420,7 +1420,9 @@
       "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
       "folder_side_mixed": "A folder cannot contain both income and expenses",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
-      "accounts_required": "Select at least one account"
+      "accounts_required": "Select at least one account",
+      "archived": "This budget is archived",
+      "end_before_start": "The end month is before the budget start"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",

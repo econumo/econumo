@@ -10620,8 +10620,15 @@ const docTemplate = `{
                 "currencyId": {
                     "type": "string"
                 },
+                "endedAt": {
+                    "description": "EndedAt is the last covered month, \"\" when the budget is open-ended.",
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
                 },
                 "name": {
                     "type": "string"
@@ -11839,6 +11846,10 @@ const docTemplate = `{
                     }
                 },
                 "currencyId": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "description": "EndDate is nil when the client omits the field (end month untouched);\n\"\" clears it, \"2006-01-02\" sets it (snapped to first-of-month).",
                     "type": "string"
                 },
                 "id": {

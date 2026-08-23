@@ -43,6 +43,8 @@ const (
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
+	CodeBudgetArchived                  = "budget.archived"
+	CodeBudgetEndBeforeStart            = "budget.end_before_start"
 
 	CodeCategoryNameLength        = "category.name_length"
 	CodeCategoryTypeInvalid       = "category.type_invalid"
@@ -137,6 +139,8 @@ var AllCodes = []string{
 	CodeBudgetFolderSideMixed,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetAccountsRequired,
+	CodeBudgetArchived,
+	CodeBudgetEndBeforeStart,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
