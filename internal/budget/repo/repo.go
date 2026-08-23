@@ -92,22 +92,6 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudget(ctx, r.db(ctx), id.String())
 }
 
-func (r *Repo) ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error) {
-	rows, err := r.q.ListBudgetExcludedAccountIDs(ctx, r.db(ctx), budgetID.String())
-	if err != nil {
-		return nil, err
-	}
-	return parseIDs(rows)
-}
-
-func (r *Repo) ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error {
-	return r.q.AddBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
-}
-
-func (r *Repo) IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error {
-	return r.q.RemoveBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
-}
-
 func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error) {
 	rows, err := r.q.ListBudgetAccounts(ctx, r.db(ctx), budgetID.String())
 	if err != nil {

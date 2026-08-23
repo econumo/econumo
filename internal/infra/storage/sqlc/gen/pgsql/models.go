@@ -116,11 +116,6 @@ type BudgetsEnvelopesCategory struct {
 	CategoryID       string
 }
 
-type BudgetsExcludedAccount struct {
-	BudgetID  string
-	AccountID string
-}
-
 type BudgetsFolder struct {
 	ID        string
 	BudgetID  string

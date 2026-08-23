@@ -20,10 +20,6 @@ type querier interface {
 	UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error
 	DeleteBudget(ctx context.Context, db backend.DBTX, id string) error
 
-	ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error)
-	AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
-	RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
-
 	ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error)
 	GetBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) (accessRow, error)
 	UpsertBudgetAccess(ctx context.Context, db backend.DBTX, p upAccessP) error
@@ -73,15 +69,6 @@ func (sqliteQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudg
 }
 func (sqliteQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudget(ctx, id)
-}
-func (sqliteQuerier) ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error) {
-	return sqlitegen.New(db).ListBudgetExcludedAccountIDs(ctx, budgetID)
-}
-func (sqliteQuerier) AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return sqlitegen.New(db).AddBudgetExcludedAccount(ctx, sqlitegen.AddBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
-}
-func (sqliteQuerier) RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return sqlitegen.New(db).RemoveBudgetExcludedAccount(ctx, sqlitegen.RemoveBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (sqliteQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	return sqlitegen.New(db).ListBudgetAccess(ctx, budgetID)
@@ -215,15 +202,6 @@ func (pgsqlQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudge
 }
 func (pgsqlQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteBudget(ctx, id)
-}
-func (pgsqlQuerier) ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error) {
-	return pgsqlgen.New(db).ListBudgetExcludedAccountIDs(ctx, budgetID)
-}
-func (pgsqlQuerier) AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return pgsqlgen.New(db).AddBudgetExcludedAccount(ctx, pgsqlgen.AddBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
-}
-func (pgsqlQuerier) RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return pgsqlgen.New(db).RemoveBudgetExcludedAccount(ctx, pgsqlgen.RemoveBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (pgsqlQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetAccess(ctx, budgetID)

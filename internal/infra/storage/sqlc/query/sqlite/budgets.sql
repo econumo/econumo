@@ -28,16 +28,6 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeleteBudget :exec
 DELETE FROM budgets WHERE id = ?;
 
--- name: ListBudgetExcludedAccountIDs :many
-SELECT account_id FROM budgets_excluded_accounts WHERE budget_id = ?;
-
--- name: AddBudgetExcludedAccount :exec
-INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES (?, ?)
-ON CONFLICT (budget_id, account_id) DO NOTHING;
-
--- name: RemoveBudgetExcludedAccount :exec
-DELETE FROM budgets_excluded_accounts WHERE budget_id = ? AND account_id = ?;
-
 -- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = ?;
