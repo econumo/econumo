@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Витрати",
         "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Дублювати бюджет",
+        "copy_plans": "Копіювати плани",
+        "start_this_month": "Почати з цього місяця"
+      },
+      "complete_budget_form": {
+        "header": "Завершити бюджет",
+        "end_month": "Останній місяць",
+        "continue_copy": "Продовжити в копії з цього місяця",
+        "copy_plans": "Копіювати плани"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Виберіть принаймні один рахунок"
           }
+        },
+        "end_month": {
+          "label": "Останній місяць",
+          "none": "Без дати завершення"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Разом",
             "expenses": "Усього витрат"
           }
-        }
+        },
+        "archived_banner": "Цей бюджет в архіві та доступний лише для читання"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Керування доступом",
-          "go_to": "Відкрити бюджет"
+          "go_to": "Відкрити бюджет",
+          "duplicate": "Дублювати…",
+          "complete": "Завершити…",
+          "archive": "В архів",
+          "unarchive": "З архіву"
+        },
+        "archived_group": {
+          "header": "Архів"
         }
       }
     }

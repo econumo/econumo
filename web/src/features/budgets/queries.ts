@@ -405,12 +405,13 @@ export function useUpdateBudgetDetail() {
   const invalidate = useInvalidateBudget()
   return useMutation({
     mutationFn: budgetApi.updateBudget,
-    onSuccess: (meta) => {
+    onSuccess: (meta, variables) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
       )
       invalidate()
       trackEvent(METRICS.BUDGET_UPDATE)
+      if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
     },
   })
 }
@@ -481,6 +482,52 @@ export function useDeleteBudget() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
       trackEvent(METRICS.BUDGET_DELETE)
+    },
+  })
+}
+
+/** replaces the budget's meta row in the list cache (archive/unarchive return it) */
+function useReplaceBudgetMeta() {
+  const queryClient = useQueryClient()
+  return (meta: BudgetMetaDto) => {
+    queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
+      (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
+    )
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+  }
+}
+
+export function useArchiveBudget() {
+  const replace = useReplaceBudgetMeta()
+  return useMutation({
+    mutationFn: (id: Id) => budgetApi.archiveBudget(id),
+    onSuccess: (meta) => {
+      replace(meta)
+      trackEvent(METRICS.BUDGET_ARCHIVE)
+    },
+  })
+}
+
+export function useUnarchiveBudget() {
+  const replace = useReplaceBudgetMeta()
+  return useMutation({
+    mutationFn: (id: Id) => budgetApi.unarchiveBudget(id),
+    onSuccess: (meta) => {
+      replace(meta)
+      trackEvent(METRICS.BUDGET_UNARCHIVE)
+    },
+  })
+}
+
+export function useCloneBudget() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: budgetApi.CloneBudgetForm) => budgetApi.cloneBudget(form),
+    onSuccess: (meta) => {
+      queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => [...(prev ?? []), meta])
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      trackEvent(METRICS.BUDGET_CLONE)
     },
   })
 }

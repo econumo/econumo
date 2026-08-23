@@ -8,14 +8,18 @@ import type { BudgetDto, BudgetPlanDto } from '@/api/dto/budget'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import {
+  useArchiveBudget,
   useBudgetPlan,
   useBudgets,
+  useCloneBudget,
   useCreateBudget,
   useDeclineBudgetAccess,
   useDeleteBudget,
   useFillPlannedCells,
   usePlanSetLimit,
   useSetLimit,
+  useUnarchiveBudget,
+  useUpdateBudgetDetail,
 } from './queries'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
@@ -256,4 +260,80 @@ it('useFillPlannedCells invalidates the plan AND every target budget-month cache
   expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-06-01'] })
   expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-07-01'] })
   expect(spy).toHaveBeenCalledWith({ queryKey: planKey })
+})
+
+it('useArchiveBudget posts {id}, updates the cache and fires the metric', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/budget/archive-budget', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...fixtureBudgets[0], isArchived: 1 } },
+      })
+    }),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+  const { result } = renderHook(() => useArchiveBudget(), { wrapper })
+  result.current.mutate('b1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(body).toEqual({ id: 'b1' })
+  expect(queryClient.getQueryData<{ id: string; isArchived: 0 | 1 }[]>(queryKeys.budgets)!.find((b) => b.id === 'b1')!.isArchived).toBe(1)
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_ARCHIVE)
+})
+
+it('useUnarchiveBudget posts {id} and fires its own metric', async () => {
+  server.use(
+    http.post('*/api/v1/budget/unarchive-budget', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureBudgets[0], isArchived: 0 } } }),
+    ),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUnarchiveBudget(), { wrapper })
+  result.current.mutate('b1')
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_UNARCHIVE)
+})
+
+it('useCloneBudget sends the full form and omits startDate when null', async () => {
+  const bodies: Record<string, unknown>[] = []
+  server.use(
+    http.post('*/api/v1/budget/clone-budget', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      return HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })
+    }),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useCloneBudget(), { wrapper })
+
+  result.current.mutate({ id: 'b1', newId: 'b-new', name: 'Copy', startDate: null, withLimits: true })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(bodies[0]).toEqual({ id: 'b1', newId: 'b-new', name: 'Copy', withLimits: true })
+
+  result.current.mutate({ id: 'b1', newId: 'b-new2', name: 'Cont', startDate: '2026-08-01', withLimits: false })
+  await waitFor(() => expect(bodies.length).toBe(2))
+  expect(bodies[1]).toEqual({ id: 'b1', newId: 'b-new2', name: 'Cont', startDate: '2026-08-01', withLimits: false })
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_CLONE)
+})
+
+it('useUpdateBudgetDetail fires the end-date metric only when endDate is sent', async () => {
+  server.use(
+    http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+      const body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { item: { ...fixtureBudgets[0], name: body.name as string } },
+      })
+    }),
+  )
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(trackEventMock).not.toHaveBeenCalledWith(METRICS.BUDGET_SET_END_DATE)
+
+  result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', endDate: '2026-09-01' })
+  await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_SET_END_DATE))
 })

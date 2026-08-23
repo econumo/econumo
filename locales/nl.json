@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Uitgaven",
         "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Budget dupliceren",
+        "copy_plans": "Plannen kopiëren",
+        "start_this_month": "Vanaf deze maand starten"
+      },
+      "complete_budget_form": {
+        "header": "Budget afronden",
+        "end_month": "Laatste maand",
+        "continue_copy": "Verder in een kopie vanaf deze maand",
+        "copy_plans": "Plannen kopiëren"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Selecteer minstens één rekening"
           }
+        },
+        "end_month": {
+          "label": "Eindmaand",
+          "none": "Geen einddatum"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Totaal",
             "expenses": "Totale uitgaven"
           }
-        }
+        },
+        "archived_banner": "Dit budget is gearchiveerd en alleen-lezen"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Toegangsbeheer",
-          "go_to": "Budget openen"
+          "go_to": "Budget openen",
+          "duplicate": "Dupliceren…",
+          "complete": "Afronden…",
+          "archive": "Archiveren",
+          "unarchive": "Uit archief halen"
+        },
+        "archived_group": {
+          "header": "Gearchiveerd"
         }
       }
     }

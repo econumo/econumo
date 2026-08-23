@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Расходы",
         "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Дублировать бюджет",
+        "copy_plans": "Копировать планы",
+        "start_this_month": "Начать с этого месяца"
+      },
+      "complete_budget_form": {
+        "header": "Завершить бюджет",
+        "end_month": "Последний месяц",
+        "continue_copy": "Продолжить в копии с этого месяца",
+        "copy_plans": "Копировать планы"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Выберите хотя бы один счёт"
           }
+        },
+        "end_month": {
+          "label": "Последний месяц",
+          "none": "Без даты окончания"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Итого",
             "expenses": "Всего расходов"
           }
-        }
+        },
+        "archived_banner": "Этот бюджет в архиве и доступен только для чтения"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Управление доступом",
-          "go_to": "Открыть бюджет"
+          "go_to": "Открыть бюджет",
+          "duplicate": "Дублировать…",
+          "complete": "Завершить…",
+          "archive": "В архив",
+          "unarchive": "Из архива"
+        },
+        "archived_group": {
+          "header": "Архив"
         }
       }
     }

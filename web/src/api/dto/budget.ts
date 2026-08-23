@@ -15,7 +15,10 @@ export interface BudgetMetaDto {
   name: string
   /** full datetime Y-m-d H:i:s */
   startedAt: string
+  /** last covered month as a full datetime, '' when the budget is open-ended */
+  endedAt: string
   currencyId: Id
+  isArchived: 0 | 1
   access: BudgetAccessDto[]
 }
 

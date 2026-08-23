@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Andamento delle spese",
         "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplica budget",
+        "copy_plans": "Copia i piani",
+        "start_this_month": "Inizia da questo mese"
+      },
+      "complete_budget_form": {
+        "header": "Concludi budget",
+        "end_month": "Ultimo mese",
+        "continue_copy": "Continua in una copia da questo mese",
+        "copy_plans": "Copia i piani"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Seleziona almeno un conto"
           }
+        },
+        "end_month": {
+          "label": "Mese finale",
+          "none": "Nessuna data di fine"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Totale",
             "expenses": "Totale delle uscite"
           }
-        }
+        },
+        "archived_banner": "Questo budget è archiviato e in sola lettura"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Gestione degli accessi",
-          "go_to": "Apri il budget"
+          "go_to": "Apri il budget",
+          "duplicate": "Duplica…",
+          "complete": "Concludi…",
+          "archive": "Archivia",
+          "unarchive": "Ripristina"
+        },
+        "archived_group": {
+          "header": "Archiviati"
         }
       }
     }

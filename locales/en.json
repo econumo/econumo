@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Spending progress",
         "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplicate budget",
+        "copy_plans": "Copy plans",
+        "start_this_month": "Start from this month"
+      },
+      "complete_budget_form": {
+        "header": "Complete budget",
+        "end_month": "Last month",
+        "continue_copy": "Continue in a copy starting this month",
+        "copy_plans": "Copy plans"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Select at least one account"
           }
+        },
+        "end_month": {
+          "label": "End month",
+          "none": "No end date"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Total",
             "expenses": "Total expenses"
           }
-        }
+        },
+        "archived_banner": "This budget is archived and read-only"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Access control",
-          "go_to": "Open budget"
+          "go_to": "Open budget",
+          "duplicate": "Duplicate…",
+          "complete": "Complete…",
+          "archive": "Archive",
+          "unarchive": "Unarchive"
+        },
+        "archived_group": {
+          "header": "Archived"
         }
       }
     }

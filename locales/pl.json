@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Postęp wydatków",
         "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplikuj budżet",
+        "copy_plans": "Kopiuj plany",
+        "start_this_month": "Zacznij od tego miesiąca"
+      },
+      "complete_budget_form": {
+        "header": "Zakończ budżet",
+        "end_month": "Ostatni miesiąc",
+        "continue_copy": "Kontynuuj w kopii od tego miesiąca",
+        "copy_plans": "Kopiuj plany"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Wybierz co najmniej jedno konto"
           }
+        },
+        "end_month": {
+          "label": "Miesiąc końcowy",
+          "none": "Bez daty końcowej"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Razem",
             "expenses": "Suma wydatków"
           }
-        }
+        },
+        "archived_banner": "Ten budżet jest zarchiwizowany i tylko do odczytu"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Zarządzanie dostępem",
-          "go_to": "Otwórz budżet"
+          "go_to": "Otwórz budżet",
+          "duplicate": "Duplikuj…",
+          "complete": "Zakończ…",
+          "archive": "Archiwizuj",
+          "unarchive": "Przywróć z archiwum"
+        },
+        "archived_group": {
+          "header": "Zarchiwizowane"
         }
       }
     }
