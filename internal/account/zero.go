@@ -44,6 +44,25 @@ func (s *Service) ZeroDeletedAccounts(ctx context.Context) (int, error) {
 	return written, nil
 }
 
+// ZeroIfDeleted re-reconciles a DELETED account to zero with one correction
+// dated spentAt, reporting whether a row was written; a live account is a no-op.
+// It is the §5a self-healing entry point the transaction feature drives after a
+// write that moved a deleted account's balance.
+//
+// Deliberately WITHOUT a WithTx of its own: it must join the caller's
+// transaction (both features' repos take the tx from the context), so the
+// transaction write and its correction commit or roll back together.
+func (s *Service) ZeroIfDeleted(ctx context.Context, accountID vo.Id, spentAt time.Time, description string) (bool, error) {
+	acct, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		return false, err
+	}
+	if !acct.IsDeleted {
+		return false, nil
+	}
+	return s.zeroBalance(ctx, acct, spentAt, s.clock.Now(), description)
+}
+
 // zeroBalance reconciles acct to a zero balance with one correction dated
 // spentAt (the same sign rule as update-account: a positive balance is removed
 // by an EXPENSE, a negative one filled by an INCOME). The description says

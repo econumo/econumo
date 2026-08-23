@@ -49,6 +49,33 @@ func init() {
 		}
 	}})
 
+	// A deleted account's balance is pinned at zero (spec §5a), so no new flow
+	// may be created on or into one: both sides of a create are rejected with
+	// the coded transaction.account_deleted field error, whose wire shape this
+	// scenario freezes.
+	register(Scenario{Name: "transaction_deleted_account", Calls: func() []Call {
+		const (
+			opAccount  = "d0000000-0000-0000-0000-0000000000e1"
+			opExpense  = "d0000000-0000-0000-0000-0000000000e2"
+			opTransfer = "d0000000-0000-0000-0000-0000000000e3"
+		)
+		var acctID string
+		return []Call{
+			{Label: "create-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
+				Body:          map[string]any{"id": opAccount, "name": "Closed", "icon": "wallet", "currencyId": USD, "folderId": OwnerFolder},
+				CaptureIDInto: &acctID},
+			{Label: "delete-account", Method: "POST", Path: "/api/v1/account/delete-account", Auth: "owner",
+				Body: map[string]any{"id": &acctID}},
+			{Label: "err:create-expense-on-deleted", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": opExpense, "accountId": &acctID, "type": "expense",
+					"amount": "5.00", "categoryId": CatFood, "date": "2024-04-04 10:00:00"}},
+			{Label: "err:create-transfer-into-deleted", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{"id": opTransfer, "accountId": OwnerAccount, "accountRecipientId": &acctID,
+					"type": "transfer", "amount": "5.00", "date": "2024-04-04 10:00:00"}},
+			{Label: "get-transaction-list-after", Method: "GET", Path: "/api/v1/transaction/get-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+		}
+	}})
+
 	register(Scenario{Name: "transaction_import", Calls: func() []Call {
 		body, ctype := buildImportBody()
 		return []Call{

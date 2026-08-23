@@ -29,6 +29,10 @@ func (s stubAccountResolver) AccountCurrency(ctx context.Context, accountID vo.I
 	return vo.Id{}, s.ownerErr
 }
 
+func (s stubAccountResolver) AccountDeleted(ctx context.Context, accountID vo.Id) (bool, error) {
+	return false, s.ownerErr
+}
+
 // stubAccountGrants is a minimal AccountGrants whose HasWriteGrant result is
 // controlled per test.
 type stubAccountGrants struct {

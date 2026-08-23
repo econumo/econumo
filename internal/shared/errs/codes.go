@@ -87,6 +87,7 @@ const (
 	CodeTransactionItemNotAvailable    = "transaction.item_not_available"
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 	CodeTransactionTooManyLabels       = "transaction.too_many_labels"
+	CodeTransactionAccountDeleted      = "transaction.account_deleted"
 
 	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
 	CodeUserLanguageInvalid           = "user.language_invalid"
@@ -180,6 +181,7 @@ var AllCodes = []string{
 	CodeTransactionItemNotAvailable,
 	CodeTransactionInvalidImportFile,
 	CodeTransactionTooManyLabels,
+	CodeTransactionAccountDeleted,
 
 	CodeUserReportPeriodInvalid,
 	CodeUserLanguageInvalid,

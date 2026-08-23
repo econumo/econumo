@@ -7,6 +7,7 @@ package transaction
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -27,9 +28,22 @@ type AccountResolver interface {
 	// AccountCurrency returns the account's currency id (for transfer
 	// amount-recipient normalization). Missing -> *errs.NotFoundError.
 	AccountCurrency(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	// AccountDeleted reports whether the account is soft-deleted, for the §5a
+	// guard that keeps new flows off a deleted account. Missing ->
+	// *errs.NotFoundError.
+	AccountDeleted(ctx context.Context, accountID vo.Id) (bool, error)
 	// AccountListForUser returns the user's available accounts in the wire shape
 	// (reverse order), for the create/update/delete result embed.
 	AccountListForUser(ctx context.Context, userID vo.Id) ([]model.AccountResult, error)
+}
+
+// AccountZeroer re-pins a deleted account's balance at zero after a write that
+// moved it (spec §5a). It is a no-op on a live account, and runs INSIDE the
+// caller's transaction — the correction and the write that made it necessary
+// must commit together, or a crash between them would leave a deleted account
+// carrying a balance.
+type AccountZeroer interface {
+	ZeroDeleted(ctx context.Context, accountID vo.Id, spentAt time.Time, description string) error
 }
 
 // VisibleAccounts supplies the set of account ids whose transactions a user may

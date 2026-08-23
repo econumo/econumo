@@ -1472,7 +1472,8 @@
       "account_not_available": "Ce compte n’est pas disponible pour cette opération.",
       "item_not_available": "Cette transaction n’est pas disponible pour cette opération.",
       "invalid_import_file": "Veuillez importer un fichier CSV valide.",
-      "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport."
+      "too_many_labels": "Une transaction peut avoir au maximum 50 tags de rapport.",
+      "account_deleted": "Ce compte a été supprimé."
     },
     "user": {
       "report_period_invalid": "La période du rapport est incorrecte.",

@@ -35,7 +35,7 @@ func newReadService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		nil, nil, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		nil, nil, nil, server.NewTransactionAccountZeroer(accSvc), txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 

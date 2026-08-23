@@ -105,12 +105,40 @@ func (s *Service) updateTransaction(ctx context.Context, userID vo.Id, req model
 		if rerr := s.checkReferences(ctx, userID, &st, labelIDs); rerr != nil {
 			return rerr
 		}
+		// §5a: an edit may REMOVE a deleted account from the transaction but not
+		// INTRODUCE one, so only the accounts newly joining the set are guarded.
+		// As in create, this runs after every write-access check.
+		oldParties := partySet(t)
+		oldSpentAt := t.SpentAt
+		for _, p := range stateParties(&st) {
+			if containsID(oldParties, p.id) {
+				continue
+			}
+			if derr := s.rejectDeletedAccount(ctx, p); derr != nil {
+				return derr
+			}
+		}
 		t.Update(st, now)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr
 		}
 		if lerr := s.repo.ReplaceLabels(ctx, t.ID, t.LabelIDs); lerr != nil {
 			return lerr
+		}
+		// Re-zero every deleted account the edit could have moved. An account
+		// that is still a party takes the NEW spent_at; one the edit swapped out
+		// takes the old one, so the offsetting correction lands in the month the
+		// removed flow left. A date-only move changes no total, so the re-zero
+		// finds no residue and writes nothing.
+		newParties := partySet(t)
+		for _, id := range unionIDs(oldParties, newParties) {
+			spentAt := oldSpentAt
+			if containsID(newParties, id) {
+				spentAt = t.SpentAt
+			}
+			if zerr := s.zeroer.ZeroDeleted(ctx, id, spentAt, correctionEditedTx); zerr != nil {
+				return zerr
+			}
 		}
 		updated = t
 		return nil
