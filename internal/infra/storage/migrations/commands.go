@@ -22,3 +22,10 @@ func RegisterCommand(version, name string) {
 }
 
 func commandSteps() []commandStep { return registry }
+
+func init() {
+	// 20260817000000.sql creates budgets_accounts; this step zeroes every
+	// deleted account; 20260817000002.sql seeds membership and drops the
+	// blacklist. See docs/superpowers/specs/2026-08-16-budget-account-membership-design.md §2.
+	RegisterCommand("20260817000001", "migration:zero-deleted-accounts")
+}

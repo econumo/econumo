@@ -213,7 +213,7 @@ func run(serveArgs []string) error {
 	// Run migrations. The runner imports the legacy versions first so an existing
 	// production DB is left intact (those migrations are recognized as already
 	// applied), then applies only genuinely new migrations.
-	if err := migrate.Run(ctx, db, toMigrateMigrations(be.Migrations())); err != nil {
+	if err := migrate.Run(ctx, db, toMigrateMigrations(be.Migrations()), migrate.WithCommandRunner(cli.MigrationCommandRunner(cfg, db))); err != nil {
 		return err
 	}
 	slog.Info("migrations applied", "backend", be.Name())
