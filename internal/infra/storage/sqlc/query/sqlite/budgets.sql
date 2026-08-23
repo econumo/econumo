@@ -3,26 +3,28 @@
 -- is_archived) -> bool; SMALLINT/SMALLINT UNSIGNED -> int16 via sqlc.yaml.
 
 -- name: GetBudgetByID :one
-SELECT id, currency_id, user_id, name, started_at, created_at, updated_at
+SELECT id, currency_id, user_id, name, started_at, created_at, updated_at, ended_at, is_archived
 FROM budgets
 WHERE id = ?;
 
 -- name: ListBudgetsForUser :many
 -- Budgets the user owns OR has an access row for. Ordered by created_at for a
 -- stable list.
-SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at
+SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b
 WHERE b.user_id = ?
    OR b.id IN (SELECT ba.budget_id FROM budgets_access ba WHERE ba.user_id = ?)
 ORDER BY b.created_at ASC;
 
 -- name: UpsertBudget :exec
-INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     name        = excluded.name,
     started_at  = excluded.started_at,
+    ended_at    = excluded.ended_at,
+    is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at;
 
 -- name: DeleteBudget :exec

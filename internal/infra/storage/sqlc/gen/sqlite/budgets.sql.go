@@ -136,7 +136,7 @@ func (q *Queries) GetBudgetAccess(ctx context.Context, arg GetBudgetAccessParams
 
 const getBudgetByID = `-- name: GetBudgetByID :one
 
-SELECT id, currency_id, user_id, name, started_at, created_at, updated_at
+SELECT id, currency_id, user_id, name, started_at, created_at, updated_at, ended_at, is_archived
 FROM budgets
 WHERE id = ?
 `
@@ -155,6 +155,8 @@ func (q *Queries) GetBudgetByID(ctx context.Context, id string) (Budget, error) 
 		&i.StartedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndedAt,
+		&i.IsArchived,
 	)
 	return i, err
 }
@@ -494,7 +496,7 @@ func (q *Queries) ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetL
 }
 
 const listBudgetsForUser = `-- name: ListBudgetsForUser :many
-SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at
+SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b
 WHERE b.user_id = ?
    OR b.id IN (SELECT ba.budget_id FROM budgets_access ba WHERE ba.user_id = ?)
@@ -525,6 +527,8 @@ func (q *Queries) ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUser
 			&i.StartedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.EndedAt,
+			&i.IsArchived,
 		); err != nil {
 			return nil, err
 		}
@@ -610,12 +614,14 @@ func (q *Queries) RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelope
 }
 
 const upsertBudget = `-- name: UpsertBudget :exec
-INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     name        = excluded.name,
     started_at  = excluded.started_at,
+    ended_at    = excluded.ended_at,
+    is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
 
@@ -625,6 +631,8 @@ type UpsertBudgetParams struct {
 	UserID     string
 	Name       string
 	StartedAt  time.Time
+	EndedAt    *time.Time
+	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -636,6 +644,8 @@ func (q *Queries) UpsertBudget(ctx context.Context, arg UpsertBudgetParams) erro
 		arg.UserID,
 		arg.Name,
 		arg.StartedAt,
+		arg.EndedAt,
+		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

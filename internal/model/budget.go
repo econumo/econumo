@@ -6,6 +6,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -23,6 +24,10 @@ type Budget struct {
 	Name       string
 	CurrencyID vo.Id
 	StartedAt  time.Time // always the first of a month, 00:00:00
+	// EndedAt is the last month the budget covers (inclusive, first-of-month);
+	// nil is open-ended.
+	EndedAt    *time.Time
+	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -61,6 +66,49 @@ func (b *Budget) UpdateCurrency(currencyID vo.Id, now time.Time) {
 func (b *Budget) StartFrom(startedAt, now time.Time) {
 	b.StartedAt = FirstOfMonth(startedAt)
 	b.UpdatedAt = now
+}
+
+// ErrBudgetEndBeforeStart is returned by EndAt when the requested end month
+// precedes the budget's start month. The use case maps it to the coded
+// validation error budget.end_before_start.
+var ErrBudgetEndBeforeStart = errors.New("budget end month is before its start")
+
+// EndAt sets the last covered month (snapped to first-of-month); nil clears it.
+// Bumps updated_at only on change.
+func (b *Budget) EndAt(month *time.Time, now time.Time) error {
+	if month == nil {
+		if b.EndedAt != nil {
+			b.EndedAt = nil
+			b.UpdatedAt = now
+		}
+		return nil
+	}
+	m := FirstOfMonth(*month)
+	if m.Before(FirstOfMonth(b.StartedAt)) {
+		return ErrBudgetEndBeforeStart
+	}
+	if b.EndedAt == nil || !b.EndedAt.Equal(m) {
+		b.EndedAt = &m
+		b.UpdatedAt = now
+	}
+	return nil
+}
+
+// Archive hides the budget and makes it read-only, bumping updated_at only on
+// change.
+func (b *Budget) Archive(now time.Time) {
+	if !b.IsArchived {
+		b.IsArchived = true
+		b.UpdatedAt = now
+	}
+}
+
+// Unarchive restores a budget to writable, bumping updated_at only on change.
+func (b *Budget) Unarchive(now time.Time) {
+	if b.IsArchived {
+		b.IsArchived = false
+		b.UpdatedAt = now
+	}
 }
 
 // BudgetAccess is a participant's grant on a budget (role + accepted flag).

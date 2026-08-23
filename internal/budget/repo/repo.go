@@ -84,7 +84,8 @@ func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, 
 func (r *Repo) Save(ctx context.Context, b *model.Budget) error {
 	return r.q.UpsertBudget(ctx, r.db(ctx), upBudgetP{
 		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
-		Name: b.Name, StartedAt: b.StartedAt, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
+		Name: b.Name, StartedAt: b.StartedAt, EndedAt: b.EndedAt, IsArchived: b.IsArchived,
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
 	})
 }
 
@@ -336,7 +337,7 @@ func hydrateBudget(row budgetRow) (*model.Budget, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, EndedAt: row.EndedAt, IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAccess(row accessRow) (*model.BudgetAccess, error) {

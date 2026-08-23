@@ -63,6 +63,8 @@ type Budget struct {
 	StartedAt  time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	EndedAt    *time.Time
+	IsArchived bool
 }
 
 type BudgetsAccess struct {
