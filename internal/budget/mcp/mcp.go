@@ -26,9 +26,22 @@ type createBudgetInput struct {
 }
 
 type updateBudgetInput struct {
-	BudgetID   string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	Name       string `json:"name" jsonschema:"budget name"`
-	CurrencyID string `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
+	BudgetID   string  `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	Name       string  `json:"name" jsonschema:"budget name"`
+	CurrencyID string  `json:"currency_id" jsonschema:"currency id (UUID), from list_currencies"`
+	EndDate    *string `json:"end_date,omitempty" jsonschema:"end month YYYY-MM-DD; omit to leave unchanged, empty string to clear"`
+}
+
+type cloneBudgetInput struct {
+	BudgetID   string `json:"budget_id" jsonschema:"budget id (UUID) to copy, from list_budgets"`
+	NewID      string `json:"new_id" jsonschema:"client-supplied id (UUID) for the copy"`
+	Name       string `json:"name" jsonschema:"name for the copy"`
+	StartDate  string `json:"start_date,omitempty" jsonschema:"first month YYYY-MM-DD; omit for a full copy from the source's start"`
+	WithLimits bool   `json:"with_limits" jsonschema:"copy the plans (limits) too"`
+}
+
+type budgetIDInput struct {
+	BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 }
 
 type createFolderInput struct {
@@ -214,7 +227,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_budget",
-			Description: "Rename a budget or change its currency. Member accounts are left untouched (use add_budget_account / remove_budget_account)."},
+			Description: "Rename a budget, change its currency, or set/clear its end month. Member accounts are left untouched (use add_budget_account / remove_budget_account)."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateBudgetInput) (*sdk.CallToolResult, model.UpdateBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_budget")
 				userID, err := webmcp.UserID(ctx)
@@ -228,6 +241,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					Id:         in.BudgetID,
 					Name:       in.Name,
 					CurrencyId: in.CurrencyID,
+					EndDate:    in.EndDate,
 				})
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, webmcp.MapErr(ctx, err)
@@ -363,6 +377,57 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, moveElementResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, moveElementResult{BudgetID: in.BudgetID, ElementIDs: []string{in.ElementID}}, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "clone_budget",
+			Description: "Clone a budget you own: structure, sharing and accounts are copied; optionally the plans. Start from the source's start (full copy) or a later month (continuation)."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in cloneBudgetInput) (*sdk.CallToolResult, model.CloneBudgetResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "clone_budget")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.CloneBudgetResult{}, err
+				}
+				res, err := svc.CloneBudget(ctx, userID, model.CloneBudgetRequest{
+					Id:         in.BudgetID,
+					NewId:      in.NewID,
+					Name:       in.Name,
+					StartDate:  in.StartDate,
+					WithLimits: in.WithLimits,
+				})
+				if err != nil {
+					return nil, model.CloneBudgetResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "archive_budget",
+			Description: "Archive a budget: hidden and read-only until unarchived."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in budgetIDInput) (*sdk.CallToolResult, model.ArchiveBudgetResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "archive_budget")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.ArchiveBudgetResult{}, err
+				}
+				res, err := svc.ArchiveBudget(ctx, userID, model.ArchiveBudgetRequest{Id: in.BudgetID})
+				if err != nil {
+					return nil, model.ArchiveBudgetResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "unarchive_budget",
+			Description: "Unarchive a budget."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in budgetIDInput) (*sdk.CallToolResult, model.UnarchiveBudgetResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "unarchive_budget")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.UnarchiveBudgetResult{}, err
+				}
+				res, err := svc.UnarchiveBudget(ctx, userID, model.UnarchiveBudgetRequest{Id: in.BudgetID})
+				if err != nil {
+					return nil, model.UnarchiveBudgetResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "add_budget_account",
