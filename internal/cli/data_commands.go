@@ -100,7 +100,7 @@ func runImportSQLite(ctx context.Context, c *container, args []string) error {
 func toMigratePg(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

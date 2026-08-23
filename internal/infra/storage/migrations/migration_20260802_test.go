@@ -25,7 +25,7 @@ func TestMigration20260802_BackfillsNotDeletedAndFreesDeletedCodes(t *testing.T)
 			before = append(before, m)
 		}
 	}
-	if err := migrate.Run(ctx, db, before); err != nil {
+	if err := migrate.Run(ctx, db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-migrations: %v", err)
 	}
 	seedUser(t, db, "u1")
@@ -34,7 +34,7 @@ func TestMigration20260802_BackfillsNotDeletedAndFreesDeletedCodes(t *testing.T)
 		t.Fatalf("seed custom: %v", err)
 	}
 
-	if err := migrate.Run(ctx, db, all); err != nil {
+	if err := migrate.Run(ctx, db, all, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("target migration: %v", err)
 	}
 

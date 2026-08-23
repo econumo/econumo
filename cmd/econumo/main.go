@@ -321,7 +321,7 @@ func adminAddr(v string) string {
 func toMigrateMigrations(in []backend.Migration) []migrate.Migration {
 	out := make([]migrate.Migration, len(in))
 	for i, m := range in {
-		out[i] = migrate.Migration{Version: m.Version, SQL: m.Up}
+		out[i] = migrate.Migration{Version: m.Version, SQL: m.Up, Command: m.Command}
 	}
 	return out
 }

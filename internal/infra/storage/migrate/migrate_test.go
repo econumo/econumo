@@ -3,6 +3,7 @@ package migrate
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"strings"
 	"testing"
 
@@ -333,6 +334,76 @@ PRAGMA foreign_keys = ON;
 	var fk int
 	if err := db.QueryRow(`PRAGMA foreign_keys`).Scan(&fk); err != nil || fk != 1 {
 		t.Fatalf("foreign_keys after Run = %d (err %v), want 1", fk, err)
+	}
+}
+
+func TestRun_CommandStep_RunsInOrderAndIsRecordedOnce(t *testing.T) {
+	db := openMemory(t)
+	var calls []string
+	runner := func(ctx context.Context, name string) error {
+		calls = append(calls, name)
+		return nil
+	}
+	migs := []Migration{
+		{Version: "0001", SQL: "CREATE TABLE a (id INTEGER)"},
+		{Version: "0002", Command: "migration:demo"},
+		{Version: "0003", SQL: "INSERT INTO a (id) VALUES (1)"},
+	}
+	if err := Run(context.Background(), db, migs, WithCommandRunner(runner)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if strings.Join(calls, ",") != "migration:demo" {
+		t.Fatalf("calls = %v, want [migration:demo]", calls)
+	}
+	if got := appliedSet(t, db); !got["0002"] || !got["0003"] {
+		t.Fatalf("applied = %v, want 0001..0003", got)
+	}
+	if err := Run(context.Background(), db, migs, WithCommandRunner(runner)); err != nil {
+		t.Fatalf("second Run: %v", err)
+	}
+	if len(calls) != 1 {
+		t.Fatalf("command re-ran on second Run: %v", calls)
+	}
+}
+
+func TestRun_CommandStep_FailureRecordsNothing(t *testing.T) {
+	db := openMemory(t)
+	boom := func(ctx context.Context, name string) error { return errors.New("boom") }
+	migs := []Migration{{Version: "0001", Command: "migration:demo"}}
+	err := Run(context.Background(), db, migs, WithCommandRunner(boom))
+	if err == nil || !strings.Contains(err.Error(), `apply "0001"`) || !strings.Contains(err.Error(), "boom") {
+		t.Fatalf("err = %v, want apply-wrapped boom", err)
+	}
+	if got := appliedSet(t, db); got["0001"] {
+		t.Fatalf("failed command step was recorded: %v", got)
+	}
+}
+
+func TestRun_CommandStep_WithoutRunnerFails(t *testing.T) {
+	db := openMemory(t)
+	migs := []Migration{{Version: "0001", Command: "migration:demo"}}
+	err := Run(context.Background(), db, migs)
+	if err == nil || !strings.Contains(err.Error(), "no command runner") {
+		t.Fatalf("err = %v, want no-command-runner error", err)
+	}
+}
+
+func TestRun_CommandStep_NoCommandsRecordsWithoutRunning(t *testing.T) {
+	db := openMemory(t)
+	migs := []Migration{{Version: "0001", Command: "migration:demo"}}
+	if err := Run(context.Background(), db, migs, WithCommandRunner(NoCommands)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if got := appliedSet(t, db); !got["0001"] {
+		t.Fatalf("NoCommands must still record the version: %v", got)
+	}
+}
+
+func TestMigration_SQLAndCommandAreExclusive(t *testing.T) {
+	db := openMemory(t)
+	migs := []Migration{{Version: "0001", SQL: "SELECT 1", Command: "migration:demo"}}
+	if err := Run(context.Background(), db, migs, WithCommandRunner(NoCommands)); err == nil {
+		t.Fatal("expected error for a migration with both SQL and Command")
 	}
 }
 

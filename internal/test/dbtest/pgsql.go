@@ -68,7 +68,7 @@ func NewPostgres(t testing.TB) *DB {
 		_ = raw.Close()
 	})
 
-	if err := migrate.Run(ctx, raw, toMigrationsPg(migrations.Pgsql())); err != nil {
+	if err := migrate.Run(ctx, raw, toMigrationsPg(migrations.Pgsql()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("dbtest: migrate postgres: %v", err)
 	}
 	return &DB{Raw: raw, TX: backend.NewTxManager(raw), Engine: "postgresql"}
@@ -77,7 +77,7 @@ func NewPostgres(t testing.TB) *DB {
 func toMigrationsPg(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

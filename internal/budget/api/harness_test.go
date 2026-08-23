@@ -78,7 +78,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
 		t.Fatalf("pragma foreign_keys: %v", err)
 	}
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
+	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -130,7 +130,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 func toMigrations(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

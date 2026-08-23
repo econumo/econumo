@@ -38,9 +38,9 @@ func cliEnv(t *testing.T) {
 	migs := migrations.SQLite()
 	runnerMigs := make([]migrate.Migration, len(migs))
 	for i, m := range migs {
-		runnerMigs[i] = migrate.Migration{Version: m.Version, SQL: m.SQL}
+		runnerMigs[i] = migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
 	}
-	if err := migrate.Run(context.Background(), raw, runnerMigs); err != nil {
+	if err := migrate.Run(context.Background(), raw, runnerMigs, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("cliEnv: migrate sqlite: %v", err)
 	}
 	if err := raw.Close(); err != nil {

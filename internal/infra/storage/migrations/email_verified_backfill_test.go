@@ -28,7 +28,7 @@ func TestEmailVerifiedBackfillAndDefault(t *testing.T) {
 
 	var before, after []migrate.Migration
 	for _, f := range migrations.SQLite() {
-		m := migrate.Migration{Version: f.Version, SQL: f.SQL}
+		m := migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 		if f.Version < emailVerifiedMigration {
 			before = append(before, m)
 		} else {
@@ -38,7 +38,7 @@ func TestEmailVerifiedBackfillAndDefault(t *testing.T) {
 
 	// Apply everything up to (not including) the email_verified migration, then
 	// seed a legacy user that predates the column.
-	if err := migrate.Run(ctx, db, before); err != nil {
+	if err := migrate.Run(ctx, db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-migrate: %v", err)
 	}
 	// identifier is set to the row's own id (any unique non-null value satisfies
@@ -50,7 +50,7 @@ func TestEmailVerifiedBackfillAndDefault(t *testing.T) {
 
 	// Run is idempotent (tracks applied versions), so replaying the full set
 	// only applies the remaining migrations, including email_verified.
-	if err := migrate.Run(ctx, db, append(before, after...)); err != nil {
+	if err := migrate.Run(ctx, db, append(before, after...), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
