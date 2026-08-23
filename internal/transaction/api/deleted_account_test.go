@@ -226,6 +226,38 @@ func TestUpdateTransaction_AmountEdit_ReZeroesDeletedSide(t *testing.T) {
 	}
 }
 
+// The counterpart to SwapOut: the deleted account (here on the SOURCE side)
+// stays a party while BOTH the amount and the date change, so its correction
+// must sit on the NEW date — that is what keeps the offset in the month the
+// flow now belongs to.
+func TestUpdateTransaction_KeepsDeletedSide_CorrectionOnNewDate(t *testing.T) {
+	h := newHarness(t)
+	h.seedAccount(t, delAcctID, "Vault", 1)
+	txn := h.createTransfer(t, txID1, delAcctID, accountID, "50", transferDate)
+	h.deleteAccount(t, delAcctID)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/transaction/update-transaction", h.token(t),
+		transferBody(txn, delAcctID, accountID, "30", movedDate))
+	if status != http.StatusOK {
+		t.Fatalf("status=%d body=%s", status, env.raw)
+	}
+
+	c := corrections(t, h, delAcctID)
+	if len(c) != 2 {
+		t.Fatalf("corrections on A = %+v, want 2", c)
+	}
+	got := c[1]
+	if got.description != editedTxCorrection || got.typ != 0 || got.amount != "20" {
+		t.Fatalf("re-zero correction = %+v, want expense 20 %q", got, editedTxCorrection)
+	}
+	if ts := wallClock(t, got.spentAt); ts != movedDate {
+		t.Fatalf("correction spent_at = %s, want the NEW %s", ts, movedDate)
+	}
+	if b := allTimeBalance(t, h, delAcctID); b != 0 {
+		t.Fatalf("A all-time balance = %v, want 0", b)
+	}
+}
+
 func TestUpdateTransaction_SwapOutDeletedSide(t *testing.T) {
 	h := newHarness(t)
 	txn := h.seedTransferToDeleted(t)
