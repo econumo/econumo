@@ -6,7 +6,7 @@ import { useBudgetPeriodStore } from './budgetStore'
 const EXTEND_STEP = 12
 const EDGE_THRESHOLD_PX = 300
 
-export function PeriodStrip({ startedAt }: { startedAt: string | null }) {
+export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string | null; endedAt?: string | null }) {
   const { i18n } = useTranslation()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
   const setPeriod = useBudgetPeriodStore((s) => s.setPeriod)
@@ -17,7 +17,7 @@ export function PeriodStrip({ startedAt }: { startedAt: string | null }) {
 
   const [extend, setExtend] = useState({ before: 0, after: 0 })
 
-  const items = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after, i18n.language)
+  const items = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after, i18n.language, endedAt)
 
   useLayoutEffect(() => {
     activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })

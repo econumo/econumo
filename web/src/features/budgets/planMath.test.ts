@@ -47,7 +47,7 @@ function mkEl(overrides: Partial<PlanElementDto> & Pick<PlanElementDto, 'id' | '
 
 function mkPlan(overrides: Partial<BudgetPlanDto> = {}): BudgetPlanDto {
   return {
-    meta: { id: 'b1', ownerUserId: 'u1', name: 'Plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd', access: [] },
+    meta: { id: 'b1', ownerUserId: 'u1', name: 'Plan', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd', isArchived: 0, access: [] },
     months: ['2026-05-01', '2026-06-01'],
     openingBalances: [],
     currencyRates: [],
@@ -117,6 +117,13 @@ describe('window math', () => {
     expect(planInitialFirstMonth('2025-11-01', startedAt, 5, now)).toBe('2026-01-01')
     // single visible column with no persisted value starts at the current month
     expect(planInitialFirstMonth(null, startedAt, 1, now)).toBe('2026-08-01')
+  })
+
+  it('clampFirstMonth never starts past the budget end month', () => {
+    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-06-01')
+    // inside the range is untouched, and an absent end month is unbounded
+    expect(clampFirstMonth('2026-03-01', '2026-01-01 00:00:00', '2026-06-01 00:00:00')).toBe('2026-03-01')
+    expect(clampFirstMonth('2026-09-01', '2026-01-01 00:00:00', '')).toBe('2026-09-01')
   })
 
   it('clampFirstMonth never precedes the budget start month', () => {

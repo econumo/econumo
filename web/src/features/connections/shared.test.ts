@@ -21,7 +21,7 @@ it('sharedAccountsFor picks both directions with the counterparty role', () => {
 
 it('sharedBudgetsFor mirrors the logic over budget access', () => {
   const myBudget: BudgetMetaDto = {
-    id: 'b1', ownerUserId: 'u1', name: 'Household', startedAt: '2026-01-01 00:00:00', currencyId: 'c1',
+    id: 'b1', ownerUserId: 'u1', name: 'Household', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'c1', isArchived: 0,
     access: [
       { user: me, role: 'owner', isAccepted: 1 },
       { user: partner, role: 'user', isAccepted: 0 },
@@ -53,7 +53,7 @@ it('admin access = owner or admin grant (budgets require accepted)', () => {
   expect(hasAccountAdminAccess(theirs, 'u1')).toBe(false)
   expect(hasAccountAdminAccess({ ...theirs, sharedAccess: [{ user: me, role: 'admin', isAccepted: 1 }] }, 'u1')).toBe(true)
   const budget: BudgetMetaDto = {
-    id: 'b1', ownerUserId: 'u2', name: 'B', startedAt: '', currencyId: 'c1',
+    id: 'b1', ownerUserId: 'u2', name: 'B', startedAt: '', endedAt: '', currencyId: 'c1', isArchived: 0,
     access: [{ user: me, role: 'admin', isAccepted: 1 }],
   }
   expect(hasBudgetAdminAccess(budget, 'u1')).toBe(true)

@@ -470,3 +470,29 @@ it('offers change currency on every element, and move to folder', async () => {
   expect(screen.getByRole('menuitem', { name: 'Move to folder…' })).toBeInTheDocument()
   expect(screen.getByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
 })
+
+it('an archived budget shows the banner and blocks structure editing', async () => {
+  const archivedWire = { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, isArchived: 1 } }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: archivedWire } })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  expect(await screen.findByText('This budget is archived and read-only')).toBeInTheDocument()
+
+  // the configure menu's editing entries are disabled — archived wins over role
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toHaveAttribute('aria-disabled', 'true')
+})
+
+it('a live budget shows no archived banner', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  renderPage()
+  expect(await screen.findByRole('button', { name: 'Configure' })).toBeInTheDocument()
+  expect(screen.queryByText('This budget is archived and read-only')).not.toBeInTheDocument()
+})
