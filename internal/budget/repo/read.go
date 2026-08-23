@@ -1247,6 +1247,53 @@ func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs [
 	return out, rows.Err()
 }
 
+// AccountsWithTransactions implements ReadModel.
+func (r *ReadRepo) AccountsWithTransactions(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]vo.Id, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(accountIDs)
+	var sql string
+	var args []any
+	if r.driver == "postgresql" {
+		in1 := r.ph(3, len(ids))
+		in2 := r.ph(3+len(ids), len(ids))
+		sql = "SELECT account_id FROM transactions WHERE spent_at >= $1 AND spent_at < $2 AND account_id IN (" + in1 + ")" +
+			" UNION SELECT account_recipient_id FROM transactions WHERE spent_at >= $1 AND spent_at < $2 AND account_recipient_id IN (" + in2 + ")"
+		args = append(append([]any{start, end}, ids...), ids...)
+	} else {
+		in := r.ph(1, len(ids))
+		sql = "SELECT account_id FROM transactions WHERE spent_at >= ? AND spent_at < ? AND account_id IN (" + in + ")" +
+			" UNION SELECT account_recipient_id FROM transactions WHERE spent_at >= ? AND spent_at < ? AND account_recipient_id IN (" + in + ")"
+		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		ds, de := sqliteDatetime(start), sqliteDatetime(end)
+		args = append(append(append([]any{ds, de}, ids...), ds, de), ids...)
+	}
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	active := map[string]bool{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		active[id] = true
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []vo.Id
+	for _, id := range accountIDs {
+		if active[id.String()] {
+			out = append(out, id)
+		}
+	}
+	return out, nil
+}
+
 func itoa(n int) string {
 	if n == 0 {
 		return "0"

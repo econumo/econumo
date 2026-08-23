@@ -97,4 +97,9 @@ type ReadModel interface {
 	// LabelsForUsers returns label metadata keyed by label id for the given
 	// owners (the budget's account owners).
 	LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[string]model.LabelMeta, error)
+
+	// AccountsWithTransactions returns the subset of accountIDs (input order)
+	// that appear as source or transfer recipient on any transaction with
+	// start <= spent_at < end. Drives the membership removal rule.
+	AccountsWithTransactions(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]vo.Id, error)
 }

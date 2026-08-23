@@ -98,6 +98,10 @@ func (s *spendingStub) LabelsForUsers(context.Context, []vo.Id) (map[string]mode
 	return nil, nil
 }
 
+func (s *spendingStub) AccountsWithTransactions(context.Context, []vo.Id, time.Time, time.Time) ([]vo.Id, error) {
+	return nil, nil
+}
+
 func strptr(s string) *string { return &s }
 
 func TestBuildElementsSpending_RoutesTheThreeBuckets(t *testing.T) {
