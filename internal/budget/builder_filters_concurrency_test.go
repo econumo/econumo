@@ -17,14 +17,21 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-type accountViewStub struct{ views []model.AccountView }
+type accountViewStub struct {
+	views []model.AccountView
+	owner vo.Id
+}
 
 func (a accountViewStub) AccountsByIDs(context.Context, []vo.Id) ([]model.AccountView, error) {
 	return a.views, nil
 }
 
 func (a accountViewStub) AccountOwner(context.Context, vo.Id) (vo.Id, error) {
-	return vo.Id{}, nil
+	return a.owner, nil
+}
+
+func (a accountViewStub) OwnedLiveAccountIDs(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, nil
 }
 
 type emptyMetadataStub struct{}
@@ -43,6 +50,42 @@ type frozenClock struct{ t time.Time }
 
 func (c frozenClock) Now() time.Time { return c.t }
 
+// ownsAccount runs on the WRITE path (create-budget, update-budget), which the
+// same process-wide Service serves in parallel — so it must hold no Service
+// state either. Under -race, two concurrent callers flag any write.
+func TestOwnsAccount_ConcurrentCallsTouchNoServiceState(t *testing.T) {
+	ownerID := vo.MustParseId("0000ffff-0000-7000-8000-000000000001")
+	acct := vo.MustParseId("aaaa0000-0000-7000-8000-000000000001")
+	s := &Service{accounts: accountViewStub{owner: ownerID}}
+
+	var wg sync.WaitGroup
+	results := make([]bool, 4)
+	errs := make([]error, len(results))
+	for i := range results {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			for n := 0; n < 50; n++ {
+				owned, err := s.ownsAccount(context.Background(), ownerID, acct)
+				if err != nil {
+					errs[i] = err
+					return
+				}
+				results[i] = owned
+			}
+		}(i)
+	}
+	wg.Wait()
+	for i, err := range errs {
+		if err != nil {
+			t.Fatalf("caller %d: %v", i, err)
+		}
+		if !results[i] {
+			t.Fatalf("caller %d: ownsAccount=false want true", i)
+		}
+	}
+}
+
 func TestBuildFilters_ConcurrentCallsTouchNoServiceState(t *testing.T) {
 	ownerID := vo.MustParseId("0000ffff-0000-7000-8000-000000000001")
 	currencyID := vo.MustParseId("1a000000-0000-0000-0000-0000000000e1")
@@ -55,9 +98,8 @@ func TestBuildFilters_ConcurrentCallsTouchNoServiceState(t *testing.T) {
 			{ID: acctA.String(), CurrencyID: currencyID.String(), OwnerID: ownerID.String()},
 			{ID: acctB.String(), CurrencyID: currencyID.String(), OwnerID: ownerID.String(), IsDeleted: true},
 		}},
-		metadata:      emptyMetadataStub{},
-		clock:         frozenClock{t: time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)},
-		accountOwners: map[string]string{},
+		metadata: emptyMetadataStub{},
+		clock:    frozenClock{t: time.Date(2026, 8, 17, 10, 0, 0, 0, time.UTC)},
 	}
 	periodStart := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	b := &budgetAggregate{

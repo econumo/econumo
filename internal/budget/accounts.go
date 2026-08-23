@@ -138,24 +138,22 @@ func (s *Service) reloadMeta(ctx context.Context, budgetID vo.Id) (model.MetaRes
 	return s.buildMeta(ctx, b)
 }
 
-// ownsAccount reports whether accountID belongs to userID, memoizing the
-// lookup. A missing account is "not owned": callers skip such ids rather than
-// failing the whole update.
+// ownsAccount reports whether accountID belongs to userID. The lookup is an
+// indexed primary-key read and is deliberately NOT memoized on the Service:
+// one Service instance serves every caller in parallel, so a shared map here
+// would be a `fatal error: concurrent map writes` (unrecoverable — the process
+// dies, the recover middleware never sees it). A missing account is "not
+// owned": callers skip such ids rather than failing the whole update.
 func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
-	ownerID, ok := s.accountOwners[accountID.String()]
-	if !ok {
-		owner, err := s.accounts.AccountOwner(ctx, accountID)
-		if err != nil {
-			var nf *errs.NotFoundError
-			if errors.As(err, &nf) {
-				return false, nil
-			}
-			return false, err
+	owner, err := s.accounts.AccountOwner(ctx, accountID)
+	if err != nil {
+		var nf *errs.NotFoundError
+		if errors.As(err, &nf) {
+			return false, nil
 		}
-		ownerID = owner.String()
-		s.accountOwners[accountID.String()] = ownerID
+		return false, err
 	}
-	return ownerID == userID.String(), nil
+	return owner.Equal(userID), nil
 }
 
 // ChangeElementCurrency sets a budget element's display currency (canUpdate).

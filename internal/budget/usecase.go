@@ -37,11 +37,7 @@ type Service struct {
 	tx          port.TxRunner
 	clock       port.Clock
 
-	// accountOwners memoizes account -> owner id for ownsAccount (owner ids are
-	// immutable). Reads never touch it: get-budget resolves owners from the
-	// account views it already loaded, so this map stays off the read hot path.
-	accountOwners map[string]string
-	txLabels      TransactionLabels
+	txLabels TransactionLabels
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
@@ -66,7 +62,7 @@ func NewService(
 		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo,
 		read: read, convertor: convertor, rates: rates,
 		users: users, accounts: accounts, currency: currency, metadata: metadata, connections: connections,
-		tx: tx, clock: clock, accountOwners: map[string]string{},
+		tx: tx, clock: clock,
 	}
 }
 
