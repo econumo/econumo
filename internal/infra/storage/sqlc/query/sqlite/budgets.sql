@@ -164,3 +164,13 @@ DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;
 -- name: RemoveBudgetAccountsOwnedBy :exec
 DELETE FROM budgets_accounts
 WHERE budget_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id = ?);
+
+-- name: ListBudgetLimitsFrom :many
+-- Clone reads every limit at or after the copy's start month. period is stored
+-- as datetime TEXT in varying forms, so normalize both sides with datetime()
+-- and bind the boundary as a 'Y-m-d H:i:s' string (see ListBudgetLimitsForPeriod).
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = ? AND datetime(l.period) >= datetime(?)
+ORDER BY l.period, l.id;

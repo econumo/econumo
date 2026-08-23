@@ -301,6 +301,24 @@ func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period t
 	return out, nil
 }
 
+// ListLimitsFrom returns every limit of a budget's elements at or after `from`
+// (clone copies forward-looking plans only).
+func (r *Repo) ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error) {
+	rows, err := r.q.ListBudgetLimitsFrom(ctx, r.db(ctx), budgetID.String(), from)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.BudgetElementLimit, 0, len(rows))
+	for _, row := range rows {
+		l, herr := hydrateLimit(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
 func (r *Repo) GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*model.BudgetElementLimit, error) {
 	row, err := r.q.GetBudgetLimit(ctx, r.db(ctx), elementID.String(), period)
 	if err != nil {

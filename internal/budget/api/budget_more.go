@@ -210,6 +210,25 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeclineAccess)
 }
 
+// CloneBudget handles POST /api/v1/budget/clone-budget.
+//
+// @Summary Clone a budget
+// @Tags Budget
+// @Accept json
+// @Produce json
+// @Param request body model.CloneBudgetRequest true "Clone budget"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.CloneBudgetResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
+// @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 403 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
+// @Security Bearer
+// @Router /api/v1/budget/clone-budget [post]
+func (h *Handlers) CloneBudget(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.CloneBudget)
+}
+
 // ArchiveBudget handles POST /api/v1/budget/archive-budget.
 //
 // @Summary Archive a budget

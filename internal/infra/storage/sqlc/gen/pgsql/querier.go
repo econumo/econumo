@@ -231,6 +231,7 @@ type Querier interface {
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]ListBudgetLimitsForPeriodRow, error)
+	ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error)
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
 	ListConnectedUserIDs(ctx context.Context, userID string) ([]string, error)

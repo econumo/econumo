@@ -507,6 +507,58 @@ func (q *Queries) ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetL
 	return items, nil
 }
 
+const listBudgetLimitsFrom = `-- name: ListBudgetLimitsFrom :many
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = $1 AND l.period >= $2
+ORDER BY l.period, l.id
+`
+
+type ListBudgetLimitsFromParams struct {
+	BudgetID string
+	Period   time.Time
+}
+
+type ListBudgetLimitsFromRow struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Amount    string
+}
+
+func (q *Queries) ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetLimitsFrom, arg.BudgetID, arg.Period)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetLimitsFromRow{}
+	for rows.Next() {
+		var i ListBudgetLimitsFromRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Amount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetsForUser = `-- name: ListBudgetsForUser :many
 SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b

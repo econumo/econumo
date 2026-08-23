@@ -156,3 +156,10 @@ DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
 -- name: RemoveBudgetAccountsOwnedBy :exec
 DELETE FROM budgets_accounts
 WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2);
+
+-- name: ListBudgetLimitsFrom :many
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = $1 AND l.period >= $2
+ORDER BY l.period, l.id;

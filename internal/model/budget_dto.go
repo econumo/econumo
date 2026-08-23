@@ -214,6 +214,26 @@ type UnarchiveBudgetResult struct {
 	Item MetaResult `json:"item"`
 }
 
+// CloneBudgetRequest deep-copies a budget the caller owns. StartDate empty
+// means the source's own start month (a full backup); a later month makes the
+// copy a continuation. WithLimits carries the plans over.
+type CloneBudgetRequest struct {
+	Id         string `json:"id"`
+	NewId      string `json:"newId"`
+	Name       string `json:"name"`
+	StartDate  string `json:"startDate"`
+	WithLimits bool   `json:"withLimits"`
+}
+
+func (r CloneBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id, "newId": r.NewId})
+}
+
+// CloneBudgetResult is the copy, built for the caller's current month.
+type CloneBudgetResult struct {
+	Item BudgetResult `json:"item"`
+}
+
 // ResetBudgetRequest resets a budget's start month.
 type ResetBudgetRequest struct {
 	Id        string `json:"id"`

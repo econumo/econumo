@@ -353,6 +353,24 @@ definitions:
       type:
         type: integer
     type: object
+  model.CloneBudgetRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      newId:
+        type: string
+      startDate:
+        type: string
+      withLimits:
+        type: boolean
+    type: object
+  model.CloneBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
+    type: object
   model.CompleteOnboardingResult:
     properties:
       user:
@@ -3121,6 +3139,54 @@ paths:
       security:
       - Bearer: []
       summary: Change a budget element's currency
+      tags:
+      - Budget
+  /api/v1/budget/clone-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Clone budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CloneBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CloneBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Clone a budget
       tags:
       - Budget
   /api/v1/budget/create-budget:
