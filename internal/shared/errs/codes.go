@@ -41,6 +41,8 @@ const (
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
 	CodeBudgetEnvelopeSideMixed         = "budget.envelope_side_mixed"
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
+	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
+	CodeBudgetAccountsRequired          = "budget.accounts_required"
 
 	CodeCategoryNameLength        = "category.name_length"
 	CodeCategoryTypeInvalid       = "category.type_invalid"
@@ -132,6 +134,8 @@ var AllCodes = []string{
 	CodeBudgetTransactionFilterRequired,
 	CodeBudgetEnvelopeSideMixed,
 	CodeBudgetFolderSideMixed,
+	CodeBudgetAccountNotRemovable,
+	CodeBudgetAccountsRequired,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,

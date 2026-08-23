@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Konta",
         "accounts_included": "Uwzględniono {count} z {total}",
-        "accounts_hidden": "W ukrytych folderach"
+        "accounts_hidden": "W ukrytych folderach",
+        "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć"
       },
       "create_budget_form": {
         "header": "Nowy budżet"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Pole wymagane",
             "invalid_name": "Nazwa folderu musi mieć od 3 do 64 znaków"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Wybierz co najmniej jedno konto"
           }
         }
       },
@@ -1412,7 +1418,9 @@
       "invalid_role_alias": "Rola użytkownika budżetu o aliasie {alias} nie istnieje.",
       "transaction_filter_required": "Weryfikacja nie powiodła się.",
       "envelope_side_mixed": "Koperta nie może jednocześnie zawierać kategorii przychodów i wydatków.",
-      "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków."
+      "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków.",
+      "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
+      "accounts_required": "Wybierz co najmniej jedno konto"
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",

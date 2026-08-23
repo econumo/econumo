@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Accounts",
         "accounts_included": "{count} of {total} included",
-        "accounts_hidden": "In hidden folders"
+        "accounts_hidden": "In hidden folders",
+        "accounts_locked_hint": "Accounts with transactions in past months can't be removed"
       },
       "create_budget_form": {
         "header": "New budget"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Required field",
             "invalid_name": "Folder name must be 3-64 characters"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Select at least one account"
           }
         }
       },
@@ -1412,7 +1418,9 @@
       "invalid_role_alias": "BudgetUserRole with alias {alias} not exists",
       "transaction_filter_required": "Validation failed",
       "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
-      "folder_side_mixed": "A folder cannot contain both income and expenses"
+      "folder_side_mixed": "A folder cannot contain both income and expenses",
+      "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
+      "accounts_required": "Select at least one account"
     },
     "category": {
       "name_length": "Category name must be {min}-{max} characters",

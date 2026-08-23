@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Contas",
         "accounts_included": "{count} de {total} incluídas",
-        "accounts_hidden": "Em pastas ocultas"
+        "accounts_hidden": "Em pastas ocultas",
+        "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas"
       },
       "create_budget_form": {
         "header": "Novo orçamento"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Campo obrigatório",
             "invalid_name": "O nome da pasta deve ter entre 3 e 64 caracteres"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Selecione pelo menos uma conta"
           }
         }
       },
@@ -1412,7 +1418,9 @@
       "invalid_role_alias": "O papel de utilizador de orçamento com o alias {alias} não existe.",
       "transaction_filter_required": "Falha na validação.",
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
-      "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas."
+      "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
+      "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
+      "accounts_required": "Selecione pelo menos uma conta"
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",
