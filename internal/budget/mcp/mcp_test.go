@@ -274,22 +274,21 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	}
 
 	toggleRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
-		Name: "set_budget_account_included",
+		Name: "remove_budget_account",
 		Arguments: map[string]any{
 			"budget_id":  budgetID,
 			"account_id": accountID,
-			"included":   false,
 		},
 	})
 	if err != nil {
-		t.Fatalf("set_budget_account_included: transport error: %v", err)
+		t.Fatalf("remove_budget_account: transport error: %v", err)
 	}
 	if toggleRes.IsError {
-		t.Fatalf("set_budget_account_included: unexpected error: %#v", toggleRes.Content)
+		t.Fatalf("remove_budget_account: unexpected error: %#v", toggleRes.Content)
 	}
 	toggleData := structured(t, toggleRes)
-	if toggleData["budget_id"] != budgetID || toggleData["account_id"] != accountID || toggleData["included"] != false {
-		t.Fatalf("set_budget_account_included: unexpected confirmation: %#v", toggleData)
+	if toggleData["budget_id"] != budgetID || toggleData["account_id"] != accountID || toggleData["member"] != false {
+		t.Fatalf("remove_budget_account: unexpected confirmation: %#v", toggleData)
 	}
 
 	updateFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{

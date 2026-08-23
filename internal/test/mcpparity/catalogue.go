@@ -105,7 +105,7 @@ func init() {
 	const mcpBudgetID = "b0000000-0000-0000-0000-0000000000c1"
 	register(Scenario{Name: "budget", Steps: []Step{
 		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
-			Body: map[string]any{"id": mcpBudgetID, "name": "MCP Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+			Body: map[string]any{"id": mcpBudgetID, "name": "MCP Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}},
 		{Label: "get-budget",
 			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"2024-04"}}}`},
 		{Label: "get-budget-bad-month",
@@ -119,7 +119,7 @@ func init() {
 	const mcpPlanBudgetID = "b0000000-0000-0000-0000-0000000000c9"
 	register(Scenario{Name: "budget_plan", Steps: []Step{
 		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
-			Body: map[string]any{"id": mcpPlanBudgetID, "name": "MCP Plan Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+			Body: map[string]any{"id": mcpPlanBudgetID, "name": "MCP Plan Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}},
 		{Label: "seed-limit", Method: "POST", Path: "/api/v1/budget/set-limit",
 			Body: map[string]any{"budgetId": mcpPlanBudgetID, "elementId": apiparity.CatFood, "period": "2024-05-01", "amount": "300"}},
 		{Label: "get-budget-plan",
@@ -128,7 +128,7 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":40}}}`},
 	}})
 
-	// budget_write drives all eight budget create/configure MCP tools end to
+	// budget_write drives all nine budget create/configure MCP tools end to
 	// end, purely via MCP calls on top of the apiparity fixture (owner's seeded
 	// account + categories). create_budget/create_folder/create_envelope mint
 	// their own entity ids server-side (internal/budget/mcp/mcp.go), unlike the
@@ -136,17 +136,18 @@ func init() {
 	// structuredContent (extractMCPID) and threaded into later steps via named
 	// {{vars}} rather than the single-slot %s convention the other scenarios
 	// use — budget_id alone is needed by six later steps, which a single slot
-	// can't hold alongside folder_id/element_id. The update_budget step
-	// exercises the ExcludedAccounts round-trip fix directly: it runs AFTER
-	// set_budget_account_included excludes the owner's account, and the closing
-	// get_budget asserts the exclusion survived the rename (had the tool passed
-	// an empty ExcludedAccounts list, UpdateBudget's authoritative-replace
-	// semantics — internal/budget/crud.go — would have silently re-included it).
-	// Ends with one domain-error path: set_limit for a month before the
-	// budget's start.
+	// can't hold alongside folder_id/element_id. create_budget seeds the
+	// budget's membership via account_ids (the owner's fixture account);
+	// remove_budget_account then add_budget_account exercise the explicit
+	// membership tools end to end — removal succeeds because the owner's only
+	// transaction on that account predates the budget's 2024-05-01 start, so
+	// nothing locks it. update_budget passes no account_ids, and the closing
+	// get_budget confirms membership was left untouched by the rename. Ends
+	// with one domain-error path: set_limit for a month before the budget's
+	// start.
 	register(Scenario{Name: "budget_write", Steps: []Step{
 		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
-			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01"}}}`},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01","account_ids":["` + apiparity.OwnerAccount + `"]}}}`},
 		{Label: "create-folder", CaptureAs: "folder_id", MCPCapturePath: []string{"item", "id"},
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_folder","arguments":{"budget_id":"{{budget_id}}","name":"Bills"}}}`},
 		{Label: "update-folder",
@@ -165,8 +166,10 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `"],"archived":false}}}`},
 		{Label: "set-limit",
 			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-05","amount":"150.00"}}}`},
-		{Label: "set-budget-account-included",
-			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"set_budget_account_included","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `","included":false}}}`},
+		{Label: "remove-budget-account",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"remove_budget_account","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `"}}}`},
+		{Label: "add-budget-account",
+			RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"add_budget_account","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `"}}}`},
 		{Label: "update-budget",
 			RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"update_budget","arguments":{"budget_id":"{{budget_id}}","name":"MCP New Budget Renamed","currency_id":"` + apiparity.USD + `"}}}`},
 		{Label: "get-budget-after",
