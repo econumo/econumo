@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureOwner, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { BudgetsPage } from './BudgetsPage'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -68,7 +68,7 @@ it('set-as-default posts {value:id}', async () => {
   await waitFor(() => expect(body).toEqual({ value: 'b2' }))
 })
 
-it('creates a budget with excluded accounts and appends the row', async () => {
+it('creates a budget with the selected accounts and appends the row', async () => {
   server.use(...coreHandlers())
   let body: Record<string, unknown> | undefined
   server.use(
@@ -95,14 +95,36 @@ it('creates a budget with excluded accounts and appends the row', async () => {
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   // the currency picker row seeds from the user's default currency
   await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  // every account starts OFF; at least one must be toggled on to submit
   await user.click(screen.getByRole('switch', { name: 'include Bank' }))
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
   expect(body!.name).toBe('Vacation')
   expect(body!.startDate).toBe('')
-  expect(body!.excludedAccounts).toEqual(['a2'])
+  expect(body!.accountIds).toEqual(['a2'])
   expect(await screen.findByText('Vacation')).toBeInTheDocument()
+})
+
+it('creating a budget with no accounts selected shows the validation error and sends nothing', async () => {
+  server.use(...coreHandlers())
+  let hits = 0
+  server.use(
+    http.post('*/api/v1/budget/create-budget', () => {
+      hits++
+      return HttpResponse.json({ success: true, message: '', data: { item: { meta: fixtureBudgets[0] } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Main budget')
+  await user.click(screen.getByRole('button', { name: /Create budget/ }))
+  await screen.findByRole('dialog')
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  expect(await screen.findByText('Select at least one account')).toBeInTheDocument()
+  expect(hits).toBe(0)
 })
 
 it('delete confirm removes the budget; go-to navigates', async () => {

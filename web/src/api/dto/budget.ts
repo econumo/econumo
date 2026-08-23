@@ -118,7 +118,7 @@ export interface BudgetTransactionDto {
 
 export interface BudgetDto {
   meta: BudgetMetaDto
-  filters: { periodStart: string; periodEnd: string; excludedAccountsIds: Id[] }
+  filters: { periodStart: string; periodEnd: string; accounts: { id: Id; removable: boolean }[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
   /** labels is optional on the wire: servers older than the labels release —

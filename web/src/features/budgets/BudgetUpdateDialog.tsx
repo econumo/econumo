@@ -31,16 +31,20 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-  const [excluded, setExcluded] = useState<Set<Id>>(new Set())
+  const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [error, setError] = useState<string | null>(null)
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
+  // deleted members are permanent (they never disappear from filters.accounts) and
+  // still count toward the locked rule, so they must round-trip even though the
+  // live account list below has no row for them.
+  const locked = new Set(budget.filters.accounts.filter((a) => !a.removable).map((a) => a.id))
 
   useEffect(() => {
     if (open) {
       setName(budget.meta.name)
       setCurrencyId(budget.meta.currencyId)
-      setExcluded(new Set(budget.filters.excludedAccountsIds))
+      setSelected(new Set(budget.filters.accounts.map((a) => a.id)))
       setError(null)
     }
   }, [open, budget])
@@ -48,12 +52,15 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
 
   const toggleAccount = (id: Id, included: boolean) => {
-    setExcluded((prev) => {
+    if (locked.has(id)) {
+      return
+    }
+    setSelected((prev) => {
       const next = new Set(prev)
       if (included) {
-        next.delete(id)
-      } else {
         next.add(id)
+      } else {
+        next.delete(id)
       }
       return next
     })
@@ -72,7 +79,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       return
     }
     updateBudget.mutate(
-      { id: budget.meta.id, name, currencyId, excludedAccounts: [...excluded] },
+      { id: budget.meta.id, name, currencyId, accountIds: [...selected] },
       { onSuccess: onClose },
     )
   }
@@ -130,7 +137,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} excluded={excluded} onToggle={toggleAccount} /> : null}
+        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={locked} onToggle={toggleAccount} /> : null}
       </form>
 
       <CurrencyPickerDialog
