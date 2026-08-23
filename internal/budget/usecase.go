@@ -78,6 +78,7 @@ type budgetAggregate struct {
 	budget             *model.Budget
 	access             []*model.BudgetAccess
 	excludedAccountIDs []vo.Id
+	accounts           []model.BudgetAccount
 	folders            []*model.BudgetFolder
 	envelopes          []*model.BudgetEnvelope
 	elements           []*model.BudgetElement
@@ -96,6 +97,10 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	if err != nil {
 		return nil, err
 	}
+	accounts, err := s.budgets.MemberAccounts(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
 	folders, err := s.folders.ListFolders(ctx, budgetID)
 	if err != nil {
 		return nil, err
@@ -108,7 +113,7 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	if err != nil {
 		return nil, err
 	}
-	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, folders: folders, envelopes: envelopes, elements: elements}, nil
+	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

@@ -139,7 +139,11 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	var included []vo.Id
 	currencySet := map[string]vo.Id{}
 	var currencyIDs []vo.Id
-	accounts, err := s.accounts.AccountsForOwners(ctx, userIDs)
+	memberIDs := make([]vo.Id, 0, len(b.accounts))
+	for _, m := range b.accounts {
+		memberIDs = append(memberIDs, m.AccountID)
+	}
+	accounts, err := s.accounts.AccountsByIDs(ctx, memberIDs)
 	if err != nil {
 		return filters{}, err
 	}
