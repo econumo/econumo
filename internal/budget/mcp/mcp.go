@@ -19,9 +19,10 @@ import (
 type emptyInput struct{}
 
 type createBudgetInput struct {
-	Name       string `json:"name" jsonschema:"budget name"`
-	CurrencyID string `json:"currency_id,omitempty" jsonschema:"currency id (UUID), from list_currencies; defaults to the user's currency"`
-	StartDate  string `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; defaults to the current month"`
+	Name       string   `json:"name" jsonschema:"budget name"`
+	CurrencyID string   `json:"currency_id,omitempty" jsonschema:"currency id (UUID), from list_currencies; defaults to the user's currency"`
+	StartDate  string   `json:"start_date,omitempty" jsonschema:"YYYY-MM-DD; defaults to the current month"`
+	AccountIDs []string `json:"account_ids" jsonschema:"account ids (UUID) the budget tracks, from list_accounts; at least one"`
 }
 
 type updateBudgetInput struct {
@@ -77,7 +78,7 @@ type setLimitResult struct {
 type setAccountIncludedInput struct {
 	BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
 	AccountID string `json:"account_id" jsonschema:"account id (UUID), from list_accounts"`
-	Included  bool   `json:"included" jsonschema:"true to track this account's balance in the budget, false to exclude it"`
+	Included  bool   `json:"included" jsonschema:"true to track this account's balance in the budget, false to drop it"`
 }
 
 type accountIncludedResult struct {
@@ -205,6 +206,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					Name:       in.Name,
 					StartDate:  in.StartDate,
 					CurrencyId: in.CurrencyID,
+					AccountIds: in.AccountIDs,
 				})
 				if err != nil {
 					return nil, model.CreateBudgetResult{}, webmcp.MapErr(ctx, err)
@@ -213,27 +215,20 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "update_budget",
-			Description: "Rename a budget or change its currency. Excluded accounts are left untouched (use set_budget_account_included to change them). Use list_budgets to find its id."},
+			Description: "Rename a budget or change its currency. Member accounts are left untouched (use set_budget_account_included to change them). Use list_budgets to find its id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in updateBudgetInput) (*sdk.CallToolResult, model.UpdateBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "update_budget")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, err
 				}
-				// UpdateBudget's ExcludedAccounts field replaces the caller's OWN
-				// exclusions (internal/budget/crud.go), and account inclusion is this tool
-				// surface's own separate concern (set_budget_account_included). Round-trip
-				// the CURRENT excluded set here, or an update would re-include every
-				// account this user had previously excluded.
-				current, err := svc.GetBudget(ctx, userID, model.GetBudgetRequest{Id: in.BudgetID})
-				if err != nil {
-					return nil, model.UpdateBudgetResult{}, webmcp.MapErr(ctx, err)
-				}
+				// AccountIds left nil: membership is this tool surface's own separate
+				// concern (set_budget_account_included), and an absent list leaves the
+				// budget's member accounts untouched.
 				res, err := svc.UpdateBudget(ctx, userID, model.UpdateBudgetRequest{
-					Id:               in.BudgetID,
-					Name:             in.Name,
-					CurrencyId:       in.CurrencyID,
-					ExcludedAccounts: current.Item.Filters.ExcludedAccountsIds,
+					Id:         in.BudgetID,
+					Name:       in.Name,
+					CurrencyId: in.CurrencyID,
 				})
 				if err != nil {
 					return nil, model.UpdateBudgetResult{}, webmcp.MapErr(ctx, err)
@@ -372,7 +367,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_budget_account_included",
-			Description: "Include or exclude an owned account from a budget's tracked balances. Use list_accounts for account_id."},
+			Description: "Add an owned account to a budget's tracked balances, or remove it. Use list_accounts for account_id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setAccountIncludedInput) (*sdk.CallToolResult, accountIncludedResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_budget_account_included")
 				userID, err := webmcp.UserID(ctx)
@@ -380,11 +375,11 @@ func Register(svc *appbudget.Service) webmcp.Register {
 					return nil, accountIncludedResult{}, err
 				}
 				if in.Included {
-					if _, err := svc.IncludeAccount(ctx, userID, model.IncludeAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+					if _, err := svc.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
 						return nil, accountIncludedResult{}, webmcp.MapErr(ctx, err)
 					}
 				} else {
-					if _, err := svc.ExcludeAccount(ctx, userID, model.ExcludeAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+					if _, err := svc.RemoveAccount(ctx, userID, model.RemoveAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
 						return nil, accountIncludedResult{}, webmcp.MapErr(ctx, err)
 					}
 				}

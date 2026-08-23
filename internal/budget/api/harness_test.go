@@ -50,11 +50,18 @@ const (
 	accountID = "aaaa1111-0000-7000-8000-000000000001"
 	catID     = "cccc1111-0000-7000-8000-000000000001"
 	tagID     = "dddd1111-0000-7000-8000-000000000001"
+
+	// Ids tests seed themselves (membership scenarios): a second owned account,
+	// a soft-deleted one, and an account belonging to otherUserID.
+	accountID2     = "aaaa1111-0000-7000-8000-000000000002"
+	deadAccountID  = "aaaa1111-0000-7000-8000-000000000003"
+	otherAccountID = "aaaa2222-0000-7000-8000-000000000001"
 )
 
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	f   *fixture.Builder
 }
 
 func newHarness(t *testing.T) *harness {
@@ -124,7 +131,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db}
+	return &harness{srv: srv, db: db, f: f}
 }
 
 func toMigrations(files []migrations.File) []migrate.Migration {

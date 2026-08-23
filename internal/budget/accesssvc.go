@@ -111,9 +111,10 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 }
 
 // removeMemberRecords deletes a departing member's seeded records from the
-// budget: their category/tag elements (limits cascade via FK) and their
-// categories' envelope assignments. Runs in the caller's transaction; revoke
-// is deliberate, so the member's limit history goes with them.
+// budget: their category/tag elements (limits cascade via FK), their member
+// accounts, and their categories' envelope assignments. Runs in the caller's
+// transaction; revoke is deliberate, so the member's limit history goes with
+// them.
 func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
 	owned := map[vo.Id]bool{}
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})
@@ -145,6 +146,11 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 		if derr := s.elements.DeleteElement(ctx, el.ID); derr != nil {
 			return derr
 		}
+	}
+	// A departing participant takes their accounts with them, locked or not:
+	// their balances and spending must stop counting in a budget they left.
+	if err := s.budgets.RemoveAccountsOwnedBy(ctx, b.budget.ID, memberID); err != nil {
+		return err
 	}
 	for _, env := range b.envelopes {
 		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)

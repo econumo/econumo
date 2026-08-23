@@ -6,7 +6,7 @@ import (
 )
 
 // These tests lock in the budget write-endpoint wire contract:
-//   - exclude/include-account take the budget id under "id" (not "budgetId")
+//   - add/remove-account take the budget id under "id" (not "budgetId")
 //   - create-envelope places the new element at position 0 (front of its group)
 //   - move-element-list identifies elements by id alone (no "type" field) and
 //     leaves a deterministic, contiguous ordering
@@ -40,56 +40,56 @@ func seedBudget(t *testing.T, h *harness, tok string) {
 	}
 }
 
-// TestExcludeAccount_UsesIdField verifies the budget id arrives under "id", not
-// "budgetId". Sending it under "id" must succeed; the account must then be
-// recorded as excluded.
-func TestExcludeAccount_UsesIdField(t *testing.T) {
+// TestRemoveAccount_UsesIdField verifies the budget id arrives under "id", not
+// "budgetId". Sending it under "id" must succeed; the membership row must then
+// be gone.
+func TestRemoveAccount_UsesIdField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/remove-account", tok, map[string]any{
 		"id": budgetID1, "accountId": accountID,
 	})
 	if status != http.StatusOK {
-		t.Fatalf("exclude-account (id field)=%d want 200; body=%s", status, env.raw)
+		t.Fatalf("remove-account (id field)=%d want 200; body=%s", status, env.raw)
 	}
 	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, accountID).Scan(&n)
-	if n != 1 {
-		t.Fatalf("excluded-account rows=%d want 1", n)
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, accountID).Scan(&n)
+	if n != 0 {
+		t.Fatalf("membership rows=%d want 0 after remove", n)
 	}
 
 	// Sending the legacy "budgetId" field must NOT be accepted as the budget id
 	// (it is unknown to the form) -> blank id -> 400.
-	status, _ = h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{
+	status, _ = h.do(t, http.MethodPost, "/api/v1/budget/remove-account", tok, map[string]any{
 		"budgetId": budgetID1, "accountId": accountID,
 	})
 	if status != http.StatusBadRequest {
-		t.Fatalf("exclude-account with budgetId field=%d want 400 (id blank)", status)
+		t.Fatalf("remove-account with budgetId field=%d want 400 (id blank)", status)
 	}
 }
 
-// TestIncludeAccount_UsesIdField mirrors the exclude test for include-account.
-func TestIncludeAccount_UsesIdField(t *testing.T) {
+// TestAddAccount_UsesIdField mirrors the remove test for add-account.
+func TestAddAccount_UsesIdField(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 
-	// exclude first (via the corrected field) so include is a real mutation.
-	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{"id": budgetID1, "accountId": accountID}); st != 200 {
-		t.Fatalf("exclude precondition=%d body=%s", st, e.raw)
+	// remove first (via the corrected field) so the add is a real mutation.
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/remove-account", tok, map[string]any{"id": budgetID1, "accountId": accountID}); st != 200 {
+		t.Fatalf("remove precondition=%d body=%s", st, e.raw)
 	}
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/include-account", tok, map[string]any{
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/add-account", tok, map[string]any{
 		"id": budgetID1, "accountId": accountID,
 	})
 	if status != http.StatusOK {
-		t.Fatalf("include-account (id field)=%d want 200; body=%s", status, env.raw)
+		t.Fatalf("add-account (id field)=%d want 200; body=%s", status, env.raw)
 	}
 	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, accountID).Scan(&n)
-	if n != 0 {
-		t.Fatalf("excluded-account rows=%d want 0 after include", n)
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, accountID).Scan(&n)
+	if n != 1 {
+		t.Fatalf("membership rows=%d want 1 after add", n)
 	}
 }
 

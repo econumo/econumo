@@ -37,7 +37,7 @@ func TestGetBudgetPlan_SkeletonShape(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Plan Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Plan Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	const folderID2 = "bfff2222-0000-7000-8000-0000000000b0"
 	h.do(t, http.MethodPost, "/api/v1/budget/create-folder", tok, map[string]any{
@@ -128,7 +128,7 @@ func TestGetBudgetPlan_ExpenseCells(t *testing.T) {
 	f.Category(fixture.Category{ID: rentCatID, UserID: seedUserID, Name: "Rent", Type: 0, Icon: "home"})
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Cells Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Cells Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	// Envelope over the seeded expense category catID ("Food").
 	const envID = "beee2222-0000-7000-8000-0000000000c0"
@@ -254,7 +254,7 @@ func TestGetBudgetPlan_OpeningBalanceExcludesWindowBoundary(t *testing.T) {
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Boundary Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Boundary Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	// Pre-window income: seeds a non-zero opening balance.
 	f.Transaction(fixture.Transaction{ID: "d0004444-0000-7000-8000-000000000001", UserID: seedUserID, AccountID: accountID,
@@ -301,11 +301,10 @@ func TestGetBudgetPlan_Transfers(t *testing.T) {
 	f.Account(fixture.Account{ID: savingsID, UserID: seedUserID, CurrencyID: usdID, Name: "Savings"})
 	f.Account(fixture.Account{ID: walletID, UserID: seedUserID, CurrencyID: usdID, Name: "Wallet"})
 
+	// savings deliberately stays OUT of the budget, so transfers to and from it
+	// cross the boundary.
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Transfers Budget", "currencyId": usdID, "startDate": "2024-04-01"})
-	if st, env := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{"id": budgetID1, "accountId": savingsID}); st != http.StatusOK {
-		t.Fatalf("exclude-account = %d; body=%s", st, env.raw)
-	}
+		map[string]any{"id": budgetID1, "name": "Transfers Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID, walletID}})
 
 	// April: 100 out to savings, 30 back in; May: a transfer between two
 	// included accounts only (must not surface); June: nothing.
@@ -382,7 +381,7 @@ func TestGetBudgetPlan_EnvelopeCategoryDedup(t *testing.T) {
 	tok := h.token(t)
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Dedup Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Dedup Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	const envHighID = "feee3333-0000-7000-8000-0000000000d0" // created first, claims catID first
 	const envLowID = "1eee4444-0000-7000-8000-0000000000d1"  // lower id; created second, claims catID second
@@ -485,7 +484,7 @@ func TestGetBudgetPlan_IncomeRows(t *testing.T) {
 	f.Category(fixture.Category{ID: bonusCatID, UserID: seedUserID, Name: "Bonus", Type: 1, Icon: "star"})
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Income Plan Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Income Plan Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	const incomeEnvID = "beee2222-0000-7000-8000-0000000000c1"
 	seedIncomeEnvelope(t, h, tok, budgetID1, incomeEnvID, "Salaries", []string{salaryCatID})
@@ -581,7 +580,7 @@ func TestGetBudgetPlan_DirtyCrossSideLink(t *testing.T) {
 	f.Category(fixture.Category{ID: salaryCatID, UserID: seedUserID, Name: "Salary Dirty", Type: 1, Icon: "payments"})
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Dirty Link Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Dirty Link Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	const envID = "beee2222-0000-7000-8000-0000000000c3"
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/create-envelope", tok, map[string]any{
@@ -658,7 +657,7 @@ func TestGetBudgetPlan_PerMonthRateConversion(t *testing.T) {
 		CategoryID: catID, Type: 0, Amount: "100.00", SpentAt: "2026-02-15 12:00:00"})
 
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Rate Plan Budget", "currencyId": usdID, "startDate": "2026-01-01"})
+		map[string]any{"id": budgetID1, "name": "Rate Plan Budget", "currencyId": usdID, "startDate": "2026-01-01", "accountIds": []string{accountID, planEurAcctID}})
 
 	st, env := getPlan(t, h, tok, "id="+budgetID1+"&from=2026-01-01&months=2")
 	if st != http.StatusOK {

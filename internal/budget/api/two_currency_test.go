@@ -46,7 +46,8 @@ func TestGetBudget_TwoCurrency_PerCurrencyBalancesAndRates(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.seedTwoCurrency(t)
-	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(budgetID1, "Test Budget")); st != 200 {
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
+		map[string]any{"id": budgetID1, "name": "Test Budget", "currencyId": usdID, "accountIds": []string{accountID, eurAcctID}}); st != 200 {
 		t.Fatalf("create=%d body=%s", st, e.raw)
 	}
 

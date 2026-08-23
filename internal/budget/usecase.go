@@ -72,16 +72,15 @@ func NewService(
 }
 
 // budgetAggregate is the loaded budget with its related rows, assembled once and
-// passed to the builders (avoids re-querying access/excluded/folders/envelopes/
-// elements repeatedly).
+// passed to the builders (avoids re-querying access/member accounts/folders/
+// envelopes/elements repeatedly).
 type budgetAggregate struct {
-	budget             *model.Budget
-	access             []*model.BudgetAccess
-	excludedAccountIDs []vo.Id
-	accounts           []model.BudgetAccount
-	folders            []*model.BudgetFolder
-	envelopes          []*model.BudgetEnvelope
-	elements           []*model.BudgetElement
+	budget    *model.Budget
+	access    []*model.BudgetAccess
+	accounts  []model.BudgetAccount
+	folders   []*model.BudgetFolder
+	envelopes []*model.BudgetEnvelope
+	elements  []*model.BudgetElement
 }
 
 func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAggregate, error) {
@@ -90,10 +89,6 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 		return nil, err
 	}
 	access, err := s.access.ListAccess(ctx, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	excluded, err := s.budgets.ExcludedAccountIDs(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +108,7 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	if err != nil {
 		return nil, err
 	}
-	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
+	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child
