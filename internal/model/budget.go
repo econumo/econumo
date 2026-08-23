@@ -95,6 +95,13 @@ func (a *BudgetAccess) Accept(now time.Time) {
 	}
 }
 
+// BudgetAccount is a budget membership row: the account's transactions and
+// balances count in the budget, from the budget's start, deleted or not.
+type BudgetAccount struct {
+	AccountID vo.Id
+	CreatedAt time.Time
+}
+
 // BudgetFolder groups budget elements (distinct from account folders).
 type BudgetFolder struct {
 	ID        vo.Id

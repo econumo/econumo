@@ -108,6 +108,34 @@ func (r *Repo) IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) er
 	return r.q.RemoveBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
+func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error) {
+	rows, err := r.q.ListBudgetAccounts(ctx, r.db(ctx), budgetID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.BudgetAccount, 0, len(rows))
+	for _, row := range rows {
+		id, perr := vo.ParseId(row.AccountID)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, model.BudgetAccount{AccountID: id, CreatedAt: row.CreatedAt})
+	}
+	return out, nil
+}
+
+func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error {
+	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{BudgetID: budgetID.String(), AccountID: accountID.String(), CreatedAt: now})
+}
+
+func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {
+	return r.q.RemoveBudgetAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
+}
+
+func (r *Repo) RemoveAccountsOwnedBy(ctx context.Context, budgetID, ownerID vo.Id) error {
+	return r.q.RemoveBudgetAccountsOwnedBy(ctx, r.db(ctx), budgetID.String(), ownerID.String())
+}
+
 func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error) {
 	rows, err := r.q.ListBudgetAccess(ctx, r.db(ctx), budgetID.String())
 	if err != nil {

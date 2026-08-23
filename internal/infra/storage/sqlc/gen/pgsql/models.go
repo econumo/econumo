@@ -74,6 +74,12 @@ type BudgetsAccess struct {
 	UpdatedAt  time.Time
 }
 
+type BudgetsAccount struct {
+	BudgetID  string
+	AccountID string
+	CreatedAt time.Time
+}
+
 type BudgetsElement struct {
 	ID         string
 	BudgetID   string

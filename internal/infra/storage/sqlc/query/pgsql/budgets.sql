@@ -150,3 +150,17 @@ DELETE FROM budgets_elements_limits WHERE id = $1;
 -- name: DeleteBudgetLimitsByBudget :exec
 DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1);
+
+-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id;
+
+-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
+
+-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2);

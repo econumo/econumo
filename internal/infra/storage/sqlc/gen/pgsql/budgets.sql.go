@@ -10,6 +10,22 @@ import (
 	"time"
 )
 
+const addBudgetAccount = `-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+ON CONFLICT (budget_id, account_id) DO NOTHING
+`
+
+type AddBudgetAccountParams struct {
+	BudgetID  string
+	AccountID string
+	CreatedAt time.Time
+}
+
+func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
+	return err
+}
+
 const addBudgetExcludedAccount = `-- name: AddBudgetExcludedAccount :exec
 INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES ($1, $2)
 ON CONFLICT (budget_id, account_id) DO NOTHING
@@ -312,6 +328,38 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 	return items, nil
 }
 
+const listBudgetAccounts = `-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
+`
+
+type ListBudgetAccountsRow struct {
+	AccountID string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetAccounts, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetAccountsRow{}
+	for rows.Next() {
+		var i ListBudgetAccountsRow
+		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetElements = `-- name: ListBudgetElements :many
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = $1
@@ -568,6 +616,35 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 		return nil, err
 	}
 	return items, nil
+}
+
+const removeBudgetAccount = `-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2
+`
+
+type RemoveBudgetAccountParams struct {
+	BudgetID  string
+	AccountID string
+}
+
+func (q *Queries) RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccount, arg.BudgetID, arg.AccountID)
+	return err
+}
+
+const removeBudgetAccountsOwnedBy = `-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2)
+`
+
+type RemoveBudgetAccountsOwnedByParams struct {
+	BudgetID string
+	UserID   string
+}
+
+func (q *Queries) RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccountsOwnedBy, arg.BudgetID, arg.UserID)
+	return err
 }
 
 const removeBudgetExcludedAccount = `-- name: RemoveBudgetExcludedAccount :exec

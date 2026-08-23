@@ -24,6 +24,13 @@ type BudgetStore interface {
 	ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
 	ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
+
+	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
+	AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error
+	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
+	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
+	// ownerID — a departing participant takes their accounts with them.
+	RemoveAccountsOwnedBy(ctx context.Context, budgetID, ownerID vo.Id) error
 }
 
 // AccessStore is a budget's participant-grant persistence surface. Consumed by

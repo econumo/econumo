@@ -12,6 +12,7 @@ import (
 type Querier interface {
 	AccountOwnerID(ctx context.Context, id string) (string, error)
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
+	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
@@ -331,6 +332,7 @@ type Querier interface {
 	// query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
+	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error)
@@ -406,6 +408,8 @@ type Querier interface {
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
+	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
+	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
