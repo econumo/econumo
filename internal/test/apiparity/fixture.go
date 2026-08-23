@@ -158,6 +158,12 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// Second budget with no invites (grant-access target).
 	f.Budget(fixture.Budget{ID: Budget2, UserID: OwnerID, CurrencyID: USD, Name: "Second"})
 
+	// Membership mirrors the old implicit population exactly: every
+	// owner-owned account (only OwnerAccount — SharedAccount is guest-owned
+	// and merely shared, not a member) belongs to every owner-owned budget.
+	f.BudgetAccount(Budget, OwnerAccount)
+	f.BudgetAccount(Budget2, OwnerAccount)
+
 	// Budget structure: a folder, an envelope (with a category link), and a
 	// category element row so move/change-currency/envelope scenarios have fixed
 	// ids to reference.
