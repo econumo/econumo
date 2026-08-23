@@ -704,6 +704,19 @@ data unreadable. Most are also asserted by the test suite.
   so a hard delete would silently destroy every account and transaction in that currency. A
   deleted currency still appears in `get-currency-list`/`get-currency-rate-list` so entities
   that hold it keep resolving their symbol and rate.
+- **Budget account membership** is explicit (`budgets_accounts`): a budget counts exactly its
+  member accounts, soft-deleted members included (their history keeps counting so
+  `budgetedBefore`/`spentBefore` share one population). An account can be removed only while it
+  has no transactions between the budget start and the first of the caller's current month
+  (`budget.account_not_removable`); a departing participant's accounts leave with them.
+  `create-budget` requires ≥1 owned `accountIds`; `update-budget.accountIds` is optional (absent
+  = untouched, present = replace-set over the caller's own accounts). Deleting an account
+  auto-writes a "Balance adjustment (account deleted)" correction so deleted accounts always
+  have zero balance, and the invariant is **self-healing**: creating a transaction against a
+  deleted account is rejected (`transaction.account_deleted`), and deleting/editing a
+  transaction that still touches one (e.g. an old transfer to a live account) re-zeroes the
+  deleted side in the same DB transaction with a correction dated at the affected transaction's
+  `spent_at` ("Balance adjustment (deleted transaction)" / "(edited transaction)").
 
 ## Deployment
 
