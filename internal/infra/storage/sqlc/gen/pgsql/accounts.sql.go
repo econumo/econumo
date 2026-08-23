@@ -155,6 +155,44 @@ func (q *Queries) ListAvailableAccounts(ctx context.Context, userID string) ([]A
 	return items, nil
 }
 
+const listDeletedAccounts = `-- name: ListDeletedAccounts :many
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+FROM accounts WHERE is_deleted = TRUE ORDER BY id
+`
+
+func (q *Queries) ListDeletedAccounts(ctx context.Context) ([]Account, error) {
+	rows, err := q.db.QueryContext(ctx, listDeletedAccounts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Account{}
+	for rows.Next() {
+		var i Account
+		if err := rows.Scan(
+			&i.ID,
+			&i.CurrencyID,
+			&i.UserID,
+			&i.Name,
+			&i.Type,
+			&i.Icon,
+			&i.IsDeleted,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertAccount = `-- name: UpsertAccount :exec
 INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)

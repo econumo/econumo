@@ -22,6 +22,11 @@ import (
 // value.
 const correctionComment = "Balance adjustment"
 
+// correctionAccountDeleted marks corrections written because the account was
+// deleted (delete-account auto-zero, migration:zero-deleted-accounts, and the
+// §5a self-healing re-zero glue), distinguishable from a manual balance edit.
+const correctionAccountDeleted = "Balance adjustment (account deleted)"
+
 // Service is the account+folder write-side use-case orchestrator. It owns the tx
 // boundary and builds the response-shaped *Result structs directly. The one
 // Repository/FolderRepository constructor param each split into their role
