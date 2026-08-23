@@ -6,6 +6,7 @@ package budget
 
 import (
 	"context"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -59,4 +60,23 @@ func (s *Service) setArchived(ctx context.Context, userID vo.Id, rawID string, a
 		return model.MetaResult{}, err
 	}
 	return s.reloadMeta(ctx, budgetID)
+}
+
+// endMonth is the budget's last covered month (first-of-month), or nil when the
+// budget is open-ended.
+func (b *budgetAggregate) endMonth() *time.Time {
+	if b.budget.EndedAt == nil {
+		return nil
+	}
+	m := model.FirstOfMonth(*b.budget.EndedAt)
+	return &m
+}
+
+// clampPeriod snaps a requested month down to the budget's end month; periods
+// at or before it pass through unchanged.
+func (b *budgetAggregate) clampPeriod(period time.Time) time.Time {
+	if end := b.endMonth(); end != nil && period.After(*end) {
+		return *end
+	}
+	return period
 }

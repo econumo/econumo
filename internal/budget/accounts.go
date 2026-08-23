@@ -25,7 +25,15 @@ func (s *Service) removableAccounts(ctx context.Context, b *budgetAggregate, ids
 	if len(ids) == 0 {
 		return out, nil
 	}
+	// The lock window runs to the current month, but never past the budget's own
+	// end: months after it are outside the budget, so spending there must not
+	// keep a member permanently.
 	end := localMonth(now, reqctx.Location(ctx))
+	if em := b.endMonth(); em != nil {
+		if after := em.AddDate(0, 1, 0); after.Before(end) {
+			end = after
+		}
+	}
 	active, err := s.read.AccountsWithTransactions(ctx, ids, model.FirstOfMonth(b.budget.StartedAt), end)
 	if err != nil {
 		return nil, err
@@ -233,6 +241,11 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 	}
 	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
 		return nil, model.ValidateBlank(map[string]string{"period": ""}) // invalid-date guard
+	}
+	// Mirror of the started_at guard: an ended budget covers no month past its
+	// end, so planning one would be invisible in every reader.
+	if end := b.endMonth(); end != nil && period.After(*end) {
+		return nil, model.ValidateBlank(map[string]string{"period": ""})
 	}
 
 	now := s.clock.Now()
