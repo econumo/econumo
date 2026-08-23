@@ -133,7 +133,6 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	var currencyIDs []vo.Id
 	var ownIDs []vo.Id
 	for i, v := range views {
-		s.accountOwners[v.ID] = v.OwnerID
 		if v.OwnerID == userID.String() {
 			ownIDs = append(ownIDs, memberIDs[i])
 		}

@@ -44,23 +44,28 @@ func accountNotRemovable() error {
 	})
 }
 
-// AddAccount makes an account the caller owns a member of the budget.
+// AddAccount makes an account the caller owns a member of the budget. Adding an
+// account that is already a member is a no-op — deleted members stay listed in
+// the filters block (they keep counting), so a client may well name one again;
+// only a NEW member has to be a live account.
 func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error) {
-	budgetID, accountID, _, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
+	budgetID, accountID, b, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
 	if err != nil {
 		return nil, err
 	}
-	views, err := s.accounts.AccountsByIDs(ctx, []vo.Id{accountID})
-	if err != nil {
-		return nil, err
-	}
-	if views[0].IsDeleted {
-		return nil, model.ValidateBlank(map[string]string{"accountId": ""})
-	}
-	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		return s.budgets.AddAccount(txCtx, budgetID, accountID, s.clock.Now())
-	}); err != nil {
-		return nil, err
+	if !b.hasAccount(accountID) {
+		views, verr := s.accounts.AccountsByIDs(ctx, []vo.Id{accountID})
+		if verr != nil {
+			return nil, verr
+		}
+		if views[0].IsDeleted {
+			return nil, model.ValidateBlank(map[string]string{"accountId": ""})
+		}
+		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
+			return s.budgets.AddAccount(txCtx, budgetID, accountID, s.clock.Now())
+		}); err != nil {
+			return nil, err
+		}
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
 	if err != nil {
@@ -76,13 +81,7 @@ func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.Rem
 	if err != nil {
 		return nil, err
 	}
-	isMember := false
-	for _, m := range b.accounts {
-		if m.AccountID.Equal(accountID) {
-			isMember = true
-		}
-	}
-	if isMember {
+	if b.hasAccount(accountID) {
 		removable, rerr := s.removableAccounts(ctx, b, []vo.Id{accountID}, s.clock.Now())
 		if rerr != nil {
 			return nil, rerr
@@ -139,9 +138,9 @@ func (s *Service) reloadMeta(ctx context.Context, budgetID vo.Id) (model.MetaRes
 	return s.buildMeta(ctx, b)
 }
 
-// ownsAccount reports whether accountID belongs to userID, memoizing the lookup
-// in the same per-call cache buildFilters uses. A missing account is "not
-// owned": callers skip such ids rather than failing the whole update.
+// ownsAccount reports whether accountID belongs to userID, memoizing the
+// lookup. A missing account is "not owned": callers skip such ids rather than
+// failing the whole update.
 func (s *Service) ownsAccount(ctx context.Context, userID, accountID vo.Id) (bool, error) {
 	ownerID, ok := s.accountOwners[accountID.String()]
 	if !ok {

@@ -96,6 +96,14 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 				if perr != nil {
 					return perr
 				}
+				// Naming an existing member again is a no-op. Deleted members stay
+				// listed in the filters block (they keep counting), so a client
+				// round-tripping that list back names them — rejecting the id would
+				// wedge every later update, since the removal rule keeps such a
+				// member forever. Only a NEW member has to be a live account.
+				if b.hasAccount(aid) {
+					continue
+				}
 				views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
 				if verr != nil {
 					return verr

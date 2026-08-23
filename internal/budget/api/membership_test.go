@@ -100,6 +100,71 @@ func TestMembership_DeletedMemberKeepsCounting(t *testing.T) {
 	}
 }
 
+// TestMembership_DeletedLockedMemberSurvivesUpdate: a soft-deleted member stays
+// listed in filters.accounts (it keeps counting) and can never be removed once
+// locked, so the client round-trips its id back on every save. Rejecting it
+// would wedge update-budget — even a pure rename — forever.
+func TestMembership_DeletedLockedMemberSurvivesUpdate(t *testing.T) {
+	h := newHarnessWithClock(t, fixedAugust())
+	tok := h.token(t)
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, Type: 0, Amount: "5", SpentAt: "2026-07-10 12:00:00"})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, map[string]any{"id": budgetID1, "name": "Budget", "currencyId": usdID, "startDate": "2026-06-01", "accountIds": []string{accountID}})
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, accountID); err != nil {
+		t.Fatal(err)
+	}
+
+	_, env := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
+	res := mustUnmarshal[filtersOut](t, env.Data)
+	if len(res.Item.Filters.Accounts) != 1 || res.Item.Filters.Accounts[0].Id != accountID || res.Item.Filters.Accounts[0].Removable {
+		t.Fatalf("filters=%+v want the deleted member listed and locked", res.Item.Filters)
+	}
+
+	env = h.mustDo(t, http.MethodPost, "/api/v1/budget/update-budget", tok, map[string]any{
+		"id": budgetID1, "name": "Renamed Budget", "currencyId": usdID, "accountIds": []string{accountID},
+	})
+	meta := mustUnmarshal[struct {
+		Item struct {
+			Name string `json:"name"`
+		} `json:"item"`
+	}](t, env.Data)
+	if meta.Item.Name != "Renamed Budget" {
+		t.Fatalf("name=%q want the rename applied", meta.Item.Name)
+	}
+	var n int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, accountID).Scan(&n)
+	if n != 1 {
+		t.Fatalf("membership rows=%d want 1 (the deleted member stays)", n)
+	}
+}
+
+// TestAddAccount_DeletedMemberIsNoOp: re-adding an existing member is a no-op
+// even when the account is soft-deleted, while a deleted NON-member is refused.
+func TestAddAccount_DeletedMemberIsNoOp(t *testing.T) {
+	h := newHarnessWithClock(t, fixedAugust())
+	tok := h.token(t)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, map[string]any{"id": budgetID1, "name": "Budget", "currencyId": usdID, "startDate": "2026-06-01", "accountIds": []string{accountID}})
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, accountID); err != nil {
+		t.Fatal(err)
+	}
+
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/add-account", tok, map[string]any{"id": budgetID1, "accountId": accountID})
+	var n int
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ?`, budgetID1).Scan(&n)
+	if n != 1 {
+		t.Fatalf("membership rows=%d want 1 (re-adding a deleted member is a no-op)", n)
+	}
+
+	h.f.Account(fixture.Account{ID: deadAccountID, UserID: seedUserID, CurrencyID: usdID, Deleted: true})
+	st, env := h.do(t, http.MethodPost, "/api/v1/budget/add-account", tok, map[string]any{"id": budgetID1, "accountId": deadAccountID})
+	if st != http.StatusBadRequest {
+		t.Fatalf("deleted non-member accepted: status=%d body=%s", st, env.raw)
+	}
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ?`, budgetID1).Scan(&n)
+	if n != 1 {
+		t.Fatalf("membership rows=%d want 1 (the refused add must write nothing)", n)
+	}
+}
+
 func TestMembership_RemovalRule(t *testing.T) {
 	h := newHarnessWithClock(t, fixedAugust())
 	tok := h.token(t)
