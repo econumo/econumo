@@ -1053,6 +1053,15 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Unisci a…",
+        "title": "Unisci «{name}» a",
+        "confirm": "Unisci",
+        "warning": "Tutte le transazioni di «{name}» verranno spostate e «{name}» verrà eliminato.",
+        "envelope_info": "Se i due si trovano in buste diverse, aggiorna prima il budget per non perdere gli importi pianificati, perché unendoli i limiti vengono sommati."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1417,9 +1426,8 @@
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",
       "type_invalid": "Il tipo di categoria non esiste",
-      "replace_id_required": "replaceId è obbligatorio con mode=replace",
       "not_found": "Categoria non trovata",
-      "cannot_be_replaced": "Le categorie non possono essere sostituite",
+      "cannot_be_merged": "Le categorie selezionate non possono essere unite.",
       "list_empty": "L'elenco delle categorie è vuoto"
     },
     "connection": {
@@ -1442,16 +1450,19 @@
     },
     "label": {
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
+      "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
     },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
       "already_exists": "Il beneficiario esiste già.",
+      "cannot_be_merged": "I beneficiari selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei beneficiari è vuoto"
     },
     "tag": {
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
       "already_exists": "Il tag esiste già.",
+      "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
     },
     "token": {

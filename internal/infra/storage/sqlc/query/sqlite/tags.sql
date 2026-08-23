@@ -39,3 +39,10 @@ ON CONFLICT (id) DO UPDATE SET
 -- SET NULL FK, matching the PHP delete behaviour.
 DELETE FROM tags WHERE id = ?
 ;
+
+-- name: ReassignTagTransactions :exec
+-- Merge: see ReassignPayeeTransactions for why this is not scoped by user.
+UPDATE transactions SET tag_id = ? WHERE tag_id = ?;
+
+-- name: ReassignTagRecurring :exec
+UPDATE recurring_transactions SET tag_id = ? WHERE tag_id = ?;

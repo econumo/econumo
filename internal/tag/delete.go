@@ -10,8 +10,8 @@ import (
 
 // DeleteTag deletes the tag. The user must own it; an ownership failure surfaces
 // as AccessDenied (HTTP 403). Transactions referencing the tag have tag_id set
-// to NULL via the ON DELETE SET NULL FK. Delete is unconditional — there is no
-// mode/replaceId.
+// to NULL via the ON DELETE SET NULL FK. Delete is unconditional; to keep them,
+// use merge-tag instead.
 func (s *Service) DeleteTag(ctx context.Context, userID vo.Id, req model.DeleteTagRequest) (*model.DeleteTagResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

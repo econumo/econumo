@@ -227,9 +227,11 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
+	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]ListBudgetLimitsByElementRow, error)
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]ListBudgetLimitsForPeriodRow, error)
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)
 	ListCategoriesByOwner(ctx context.Context, userID string) ([]Category, error)
@@ -272,11 +274,22 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	// The operation_requests_ids idempotency queries moved to operations.sql (shared
+	// across modules that take a client-supplied operation id).
+	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
+	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error
+	ReassignPayeeTransactions(ctx context.Context, arg ReassignPayeeTransactionsParams) error
+	ReassignRecurringLabels(ctx context.Context, arg ReassignRecurringLabelsParams) error
+	ReassignTagRecurring(ctx context.Context, arg ReassignTagRecurringParams) error
+	ReassignTagTransactions(ctx context.Context, arg ReassignTagTransactionsParams) error
+	// See the sqlite variant; ON CONFLICT DO NOTHING is this engine INSERT OR IGNORE.
+	ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

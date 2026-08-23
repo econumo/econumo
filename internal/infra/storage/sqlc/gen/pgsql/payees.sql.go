@@ -93,6 +93,34 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 	return items, nil
 }
 
+const reassignPayeeRecurring = `-- name: ReassignPayeeRecurring :exec
+UPDATE recurring_transactions SET payee_id = $1 WHERE payee_id = $2
+`
+
+type ReassignPayeeRecurringParams struct {
+	PayeeID   *string
+	PayeeID_2 *string
+}
+
+func (q *Queries) ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, reassignPayeeRecurring, arg.PayeeID, arg.PayeeID_2)
+	return err
+}
+
+const reassignPayeeTransactions = `-- name: ReassignPayeeTransactions :exec
+UPDATE transactions SET payee_id = $1 WHERE payee_id = $2
+`
+
+type ReassignPayeeTransactionsParams struct {
+	PayeeID   *string
+	PayeeID_2 *string
+}
+
+func (q *Queries) ReassignPayeeTransactions(ctx context.Context, arg ReassignPayeeTransactionsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignPayeeTransactions, arg.PayeeID, arg.PayeeID_2)
+	return err
+}
+
 const upsertPayee = `-- name: UpsertPayee :exec
 INSERT INTO payees (id, user_id, name, is_archived, created_at, updated_at, sort_key)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

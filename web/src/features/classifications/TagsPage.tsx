@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { type ClassificationKind } from '@/lib/classificationKind'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList, type ClassificationItem } from './ClassificationList'
+import { MergeDialog } from './MergeDialog'
 import { TagDialog, type TagDialogItem } from './TagDialog'
 import {
   useTags,
@@ -17,6 +18,8 @@ import {
   useDeleteLabel,
   useMoveLabel,
   useSortLabels,
+  useMergeTag,
+  useMergeLabel,
 } from './queries'
 
 interface ClassificationRow extends ClassificationItem {
@@ -38,8 +41,11 @@ export function TagsPage() {
   const deleteLabel = useDeleteLabel()
   const moveLabel = useMoveLabel()
   const sortLabels = useSortLabels()
+  const mergeTag = useMergeTag()
+  const mergeLabel = useMergeLabel()
 
   const [dialog, setDialog] = useState<{ open: boolean; item: TagDialogItem | null }>({ open: false, item: null })
+  const [mergeSource, setMergeSource] = useState<ClassificationRow | null>(null)
 
   const ownTags = tags.filter((tg) => !user || tg.ownerUserId === user.id)
   const ownLabels = labels.filter((lb) => !user || lb.ownerUserId === user.id)
@@ -74,6 +80,7 @@ export function TagsPage() {
         orderScope={(row) => row.kind}
         onCreate={() => setDialog({ open: true, item: null })}
         onEdit={(row) => setDialog({ open: true, item: { id: row.id, name: row.name, kind: row.kind, icon: row.icon ?? '' } })}
+        extraActions={(row) => [{ label: t('classifications.common.merge.action'), onSelect: () => setMergeSource(row) }]}
         onDelete={(id) => {
           if (kindOf(id) === 'label') {
             deleteLabel.mutate(id)
@@ -92,6 +99,24 @@ export function TagsPage() {
         // receiving endpoint owns.
         onMove={(move) => (kindOf(move.id) === 'label' ? moveLabel.mutate(move) : moveTag.mutate(move))}
         onSort={(ids) => (ids.length > 0 && kindOf(ids[0]) === 'label' ? sortLabels.mutate(ids) : sortTags.mutate(ids))}
+      />
+      <MergeDialog
+        open={mergeSource !== null}
+        source={mergeSource}
+        // same kind only: tags and labels are different entities with different
+        // endpoints, and the two are interleaved in this one list
+        candidates={rows.filter((row) => row.kind === mergeSource?.kind)}
+        warning={t('classifications.common.merge.warning', { name: mergeSource?.name ?? '' })}
+        info={mergeSource?.kind === 'tag' ? t('classifications.common.merge.envelope_info') : undefined}
+        showIcon
+        onClose={() => setMergeSource(null)}
+        onConfirm={(targetId) => {
+          if (mergeSource) {
+            const mutation = mergeSource.kind === 'label' ? mergeLabel : mergeTag
+            mutation.mutate({ sourceId: mergeSource.id, targetId })
+          }
+          setMergeSource(null)
+        }}
       />
       <TagDialog open={dialog.open} item={dialog.item} onClose={() => setDialog({ open: false, item: null })} />
     </>

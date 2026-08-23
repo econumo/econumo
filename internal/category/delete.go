@@ -1,5 +1,3 @@
-// Delete use case: remove a category (delete mode) or reassign its transactions
-// to a replacement and then remove it (replace mode).
 package category
 
 import (
@@ -14,11 +12,8 @@ import (
 // failure surfaces as a ValidationError (HTTP 400, "Category not found"), NOT an
 // AccessDenied. See CLAUDE.md.
 //
-//   - mode=delete: just delete the category. Transactions referencing it have
-//     category_id set to NULL via the ON DELETE SET NULL FK.
-//   - mode=replace: reassign the category's transactions to replaceId, then
-//     delete. Both categories must exist, be owned by the user, and share the
-//     same type.
+// Transactions referencing it have category_id set to NULL via the ON DELETE
+// SET NULL FK. To keep them, use merge-category instead.
 //
 // Returns an empty result ({}).
 func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.DeleteCategoryRequest) (*model.DeleteCategoryResult, error) {
@@ -34,29 +29,6 @@ func (s *Service) DeleteCategory(ctx context.Context, userID vo.Id, req model.De
 		}
 		if !c.UserID.Equal(userID) {
 			return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
-		}
-
-		if req.Mode == model.ModeReplace {
-			if req.ReplaceId == nil {
-				return &errs.ValidationError{Msg: "Category not found", MsgCode: errs.CodeCategoryNotFound}
-			}
-			replaceID, perr := vo.ParseId(*req.ReplaceId)
-			if perr != nil {
-				return perr
-			}
-			replacement, rerr := s.repo.GetByID(ctx, replaceID)
-			if rerr != nil {
-				return rerr
-			}
-			if !replacement.UserID.Equal(userID) {
-				return &errs.ValidationError{Msg: "Categories cannot be replaced", MsgCode: errs.CodeCategoryCannotBeReplaced}
-			}
-			if replacement.Type != c.Type {
-				return &errs.ValidationError{Msg: "Categories cannot be replaced", MsgCode: errs.CodeCategoryCannotBeReplaced}
-			}
-			if rerr := s.repo.ReassignTransactions(ctx, id, replaceID); rerr != nil {
-				return rerr
-			}
 		}
 
 		return s.repo.Delete(ctx, id)

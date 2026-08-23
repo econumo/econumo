@@ -1053,6 +1053,15 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Merge into…",
+        "title": "Merge “{name}” into",
+        "confirm": "Merge",
+        "warning": "All transactions from “{name}” will be moved, and “{name}” will be deleted.",
+        "envelope_info": "If the two sit in different envelopes, update your budget first so you don’t lose your planned amounts — limits are added together when merging."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1417,9 +1426,8 @@
     "category": {
       "name_length": "Category name must be {min}-{max} characters",
       "type_invalid": "CategoryType not exists",
-      "replace_id_required": "replaceId is required for mode=replace",
       "not_found": "Category not found",
-      "cannot_be_replaced": "Categories cannot be replaced",
+      "cannot_be_merged": "The selected categories cannot be merged",
       "list_empty": "Categories list is empty"
     },
     "connection": {
@@ -1442,16 +1450,19 @@
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",
+      "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",
+      "cannot_be_merged": "The selected payees cannot be merged",
       "list_empty": "Payees list is empty"
     },
     "tag": {
       "name_length": "Tag name must be {min}-{max} characters",
       "already_exists": "Tag already exists.",
+      "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
     "token": {

@@ -39,3 +39,11 @@ func (pgsqlQuerier) UpsertLabel(ctx context.Context, db backend.DBTX, p upsertPa
 func (pgsqlQuerier) DeleteLabel(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteLabel(ctx, id)
 }
+
+func (pgsqlQuerier) ReassignTransactionLabels(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return pgsqlgen.New(db).ReassignTransactionLabels(ctx, pgsqlgen.ReassignTransactionLabelsParams(p))
+}
+
+func (pgsqlQuerier) ReassignRecurringLabels(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return pgsqlgen.New(db).ReassignRecurringLabels(ctx, pgsqlgen.ReassignRecurringLabelsParams(p))
+}

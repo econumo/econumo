@@ -43,12 +43,15 @@ type querier interface {
 	RemoveEnvelopeCategory(ctx context.Context, db backend.DBTX, envelopeID, categoryID string) error
 
 	ListBudgetElements(ctx context.Context, db backend.DBTX, budgetID string) ([]elementRow, error)
+	ListBudgetElementsByExternal(ctx context.Context, db backend.DBTX, externalID string) ([]elementRow, error)
 	GetBudgetElement(ctx context.Context, db backend.DBTX, id string) (elementRow, error)
 	GetBudgetElementByExternal(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error)
 	UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error
+	RepointBudgetElement(ctx context.Context, db backend.DBTX, id, externalID string, updatedAt time.Time) error
 	DeleteBudgetElement(ctx context.Context, db backend.DBTX, id string) error
 
 	ListBudgetLimitsForPeriod(ctx context.Context, db backend.DBTX, budgetID string, period time.Time) ([]limitRow, error)
+	ListBudgetLimitsByElement(ctx context.Context, db backend.DBTX, elementID string) ([]limitRow, error)
 	GetBudgetLimit(ctx context.Context, db backend.DBTX, elementID string, period time.Time) (limitRow, error)
 	UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p upLimitP) error
 	DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id string) error
@@ -125,6 +128,17 @@ func (sqliteQuerier) RemoveEnvelopeCategory(ctx context.Context, db backend.DBTX
 }
 func (sqliteQuerier) ListBudgetElements(ctx context.Context, db backend.DBTX, budgetID string) ([]elementRow, error) {
 	return sqlitegen.New(db).ListBudgetElements(ctx, budgetID)
+}
+func (sqliteQuerier) ListBudgetElementsByExternal(ctx context.Context, db backend.DBTX, externalID string) ([]elementRow, error) {
+	return sqlitegen.New(db).ListBudgetElementsByExternal(ctx, externalID)
+}
+func (sqliteQuerier) RepointBudgetElement(ctx context.Context, db backend.DBTX, id, externalID string, updatedAt time.Time) error {
+	return sqlitegen.New(db).RepointBudgetElement(ctx, sqlitegen.RepointBudgetElementParams{
+		ExternalID: externalID, UpdatedAt: updatedAt, ID: id,
+	})
+}
+func (sqliteQuerier) ListBudgetLimitsByElement(ctx context.Context, db backend.DBTX, elementID string) ([]limitRow, error) {
+	return sqlitegen.New(db).ListBudgetLimitsByElement(ctx, elementID)
 }
 func (sqliteQuerier) GetBudgetElement(ctx context.Context, db backend.DBTX, id string) (elementRow, error) {
 	return sqlitegen.New(db).GetBudgetElement(ctx, id)
@@ -288,6 +302,33 @@ func (pgsqlQuerier) ListBudgetElements(ctx context.Context, db backend.DBTX, bud
 	out := make([]elementRow, len(rows))
 	for i, v := range rows {
 		out[i] = elementRow(v)
+	}
+	return out, nil
+}
+func (pgsqlQuerier) ListBudgetElementsByExternal(ctx context.Context, db backend.DBTX, externalID string) ([]elementRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetElementsByExternal(ctx, externalID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]elementRow, len(rows))
+	for i, v := range rows {
+		out[i] = elementRow(v)
+	}
+	return out, nil
+}
+func (pgsqlQuerier) RepointBudgetElement(ctx context.Context, db backend.DBTX, id, externalID string, updatedAt time.Time) error {
+	return pgsqlgen.New(db).RepointBudgetElement(ctx, pgsqlgen.RepointBudgetElementParams{
+		ExternalID: externalID, UpdatedAt: updatedAt, ID: id,
+	})
+}
+func (pgsqlQuerier) ListBudgetLimitsByElement(ctx context.Context, db backend.DBTX, elementID string) ([]limitRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetLimitsByElement(ctx, elementID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]limitRow, len(rows))
+	for i, v := range rows {
+		out[i] = limitRow{ID: v.ID, ElementID: v.ElementID, Period: v.Period, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, Amount: v.Amount}
 	}
 	return out, nil
 }

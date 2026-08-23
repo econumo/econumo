@@ -34,3 +34,6 @@ UPDATE transactions SET category_id = $1 WHERE category_id = $2;
 
 -- The operation_requests_ids idempotency queries moved to operations.sql (shared
 -- across modules that take a client-supplied operation id).
+
+-- name: ReassignCategoryRecurring :exec
+UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2;

@@ -14,7 +14,7 @@ import (
 // recurring_transactions_labels rows referencing it go with it via their
 // ON DELETE CASCADE FKs — recurring templates silently lose the label, so
 // future postings of those templates no longer carry it. Delete is
-// unconditional — there is no mode/replaceId.
+// unconditional; to keep them, use merge-label instead.
 func (s *Service) DeleteLabel(ctx context.Context, userID vo.Id, req model.DeleteLabelRequest) (*model.DeleteLabelResult, error) {
 	id, err := vo.ParseId(req.Id)
 	if err != nil {

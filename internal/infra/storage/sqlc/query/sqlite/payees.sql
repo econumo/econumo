@@ -38,3 +38,12 @@ ON CONFLICT (id) DO UPDATE SET
 -- DELETE SET NULL FK, matching the PHP delete behaviour.
 DELETE FROM payees WHERE id = ?
 ;
+
+-- name: ReassignPayeeTransactions :exec
+-- Merge: point every transaction on the old payee at the new one before the old
+-- payee is deleted. Deliberately not scoped by user, because a shared account
+-- carries the account owner payee and those rows must follow it too.
+UPDATE transactions SET payee_id = ? WHERE payee_id = ?;
+
+-- name: ReassignPayeeRecurring :exec
+UPDATE recurring_transactions SET payee_id = ? WHERE payee_id = ?;

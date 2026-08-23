@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/mcptest"
+	"github.com/econumo/econumo/internal/test/wiring"
 )
 
 func newReadService(t *testing.T, db *dbtest.DB) *appcategory.ReadService {
@@ -28,7 +29,7 @@ func newWriteService(t *testing.T, db *dbtest.DB) *appcategory.Service {
 	txm := db.TX
 	repo := categoryrepo.NewRepo(db.Engine, txm)
 	accessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, txm))
-	return appcategory.NewService(repo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	return appcategory.NewService(repo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver, wiring.BudgetMerger(db.Engine, txm, clock.New()))
 }
 
 func connectSession(t *testing.T, ctx context.Context, read *appcategory.ReadService, write *appcategory.Service) *sdk.ClientSession {

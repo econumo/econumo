@@ -20,6 +20,7 @@ type Service struct {
 	clock      port.Clock
 	read       ReadModel
 	access     AccountAccess
+	budget     BudgetElementMerger
 	labelNames LabelNames
 }
 
@@ -46,8 +47,8 @@ func (s *Service) NamesByOwner(ctx context.Context, ownerID vo.Id) ([]string, er
 // ReadModel get-tag-list uses); order-tag-list returns that full available list.
 // access resolves shared-account ownership for create-tag-for-account. ops
 // backs create-tag's request-id idempotency.
-func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess) *Service {
-	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access}
+func NewService(repo Repository, tx port.TxRunner, ops port.OperationGuard, clock port.Clock, read ReadModel, access AccountAccess, budget BudgetElementMerger) *Service {
+	return &Service{repo: repo, tx: tx, ops: ops, clock: clock, read: read, access: access, budget: budget}
 }
 
 // resolveAccountOwner returns the user a tag created in the context of accountID

@@ -42,3 +42,8 @@ export async function sortTagList(ids: Id[]): Promise<TagDto[]> {
   const response = await api.post<Envelope<{ items: TagDto[] }>>(apiUrl('/api/v1/tag/sort-tag-list'), { ids })
   return response.data.data.items
 }
+
+/** Absorbs sourceId into targetId and deletes sourceId. Cannot be undone. */
+export async function mergeTag(sourceId: Id, targetId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/tag/merge-tag'), { sourceId, targetId })
+}

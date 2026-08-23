@@ -1,0 +1,12 @@
+== create-source POST /api/v1/payee/create-payee [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Grocer","position":1,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}}}
+
+== create-target POST /api/v1/payee/create-payee [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Grocery Store","position":2,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}}}
+
+== merge-payee POST /api/v1/payee/merge-payee [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-merge GET /api/v1/payee/get-payee-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"20000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Shop","position":0,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Grocery Store","position":1,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+
