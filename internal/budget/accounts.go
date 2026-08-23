@@ -127,6 +127,9 @@ func (s *Service) membershipPrelude(ctx context.Context, userID vo.Id, rawBudget
 	if !s.canUpdate(b, userID) {
 		return vo.Id{}, vo.Id{}, nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return vo.Id{}, vo.Id{}, nil, aerr
+	}
 	return budgetID, accountID, b, nil
 }
 
@@ -177,6 +180,9 @@ func (s *Service) ChangeElementCurrency(ctx context.Context, userID vo.Id, req m
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		// elementId on the wire is the element's EXTERNAL id (category/tag/envelope).
@@ -221,6 +227,9 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 	}
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
 		return nil, model.ValidateBlank(map[string]string{"period": ""}) // invalid-date guard

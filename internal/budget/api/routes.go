@@ -15,6 +15,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/create-budget", auth(h.CreateBudget))
 		mux.Handle("POST /api/v1/budget/update-budget", auth(h.UpdateBudget))
 		mux.Handle("POST /api/v1/budget/delete-budget", auth(h.DeleteBudget))
+		mux.Handle("POST /api/v1/budget/archive-budget", auth(h.ArchiveBudget))
+		mux.Handle("POST /api/v1/budget/unarchive-budget", auth(h.UnarchiveBudget))
 		mux.Handle("POST /api/v1/budget/reset-budget", auth(h.ResetBudget))
 		mux.Handle("GET /api/v1/budget/get-budget", auth(h.GetBudget))
 		mux.Handle("GET /api/v1/budget/get-budget-list", auth(h.GetBudgetList))

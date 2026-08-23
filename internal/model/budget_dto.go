@@ -191,6 +191,29 @@ func (r DeleteBudgetRequest) Validate() error { return ValidateBlank(map[string]
 // DeleteBudgetResult is empty.
 type DeleteBudgetResult struct{}
 
+// ArchiveBudgetRequest / UnarchiveBudgetRequest hide or restore a budget.
+type ArchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r ArchiveBudgetRequest) Validate() error { return ValidateBlank(map[string]string{"id": r.Id}) }
+
+type ArchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
+type UnarchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r UnarchiveBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+type UnarchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
 // ResetBudgetRequest resets a budget's start month.
 type ResetBudgetRequest struct {
 	Id        string `json:"id"`

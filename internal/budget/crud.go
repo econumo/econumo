@@ -35,6 +35,9 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	if !curID.Equal(b.budget.CurrencyID) {
 		if eerr := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); eerr != nil {
 			return nil, eerr
@@ -205,6 +208,9 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 	}
 	if !s.canReset(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

@@ -46,6 +46,9 @@ func (s *Service) CreateEnvelope(ctx context.Context, userID vo.Id, req model.Cr
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	if err := s.validateEnvelopeCategories(ctx, b, envType.IsIncomeSide(), req.Categories); err != nil {
 		return nil, err
 	}
@@ -118,6 +121,9 @@ func (s *Service) UpdateEnvelope(ctx context.Context, userID vo.Id, req model.Up
 	}
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	if !b.hasEnvelope(envelopeID) {
 		return nil, accessDenied()
@@ -206,6 +212,9 @@ func (s *Service) DeleteEnvelope(ctx context.Context, userID vo.Id, req model.De
 	}
 	if !s.canDelete(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	if !b.hasEnvelope(envelopeID) {
 		return nil, accessDenied()

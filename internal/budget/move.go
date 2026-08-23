@@ -30,6 +30,9 @@ func (s *Service) MoveElement(ctx context.Context, userID vo.Id, req model.MoveE
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 
 	var folderID *vo.Id
 	if req.FolderId != nil && *req.FolderId != "" {
