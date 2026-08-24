@@ -28,7 +28,7 @@ ARG ECONUMO_VERSION=""
 RUN ECONUMO_VERSION="${ECONUMO_VERSION:-dev}" pnpm run build
 
 # --- 2. Go build (CGO off -> fully static binary) ---
-FROM --platform=$BUILDPLATFORM golang:1.26-alpine AS gobuild
+FROM --platform=$BUILDPLATFORM golang:1.27-alpine AS gobuild
 WORKDIR /src
 # Module files first for layer-cached `go mod download`.
 COPY go.mod go.sum ./
