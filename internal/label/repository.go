@@ -25,6 +25,11 @@ type Repository interface {
 	// recurring_transactions_labels rows go with it via the ON DELETE CASCADE
 	// FKs.
 	Delete(ctx context.Context, id vo.Id) error
+
+	// ReassignTransactions / ReassignRecurring point every row on oldID at newID
+	// (merge), before the old row is deleted.
+	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error
+	ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error
 }
 
 // ReadModel is the label read side (CQRS): available labels for a user are

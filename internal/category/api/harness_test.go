@@ -24,6 +24,7 @@ import (
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -81,7 +82,7 @@ func newHarness(t *testing.T) *harness {
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
 	accountAccess := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm))
-	svc := appcategory.NewService(repo, txm, repo, clk, readRepo, accountAccess)
+	svc := appcategory.NewService(repo, txm, repo, clk, readRepo, accountAccess, wiring.BudgetMerger("sqlite", txm, clk))
 	readSvc := appcategory.NewReadService(readRepo)
 	handlers := handlercategory.NewHandlers(svc, readSvc)
 

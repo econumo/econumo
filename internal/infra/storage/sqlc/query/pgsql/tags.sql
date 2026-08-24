@@ -35,3 +35,9 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeleteTag :exec
 DELETE FROM tags WHERE id = $1
 ;
+
+-- name: ReassignTagTransactions :exec
+UPDATE transactions SET tag_id = $1 WHERE tag_id = $2;
+
+-- name: ReassignTagRecurring :exec
+UPDATE recurring_transactions SET tag_id = $1 WHERE tag_id = $2;

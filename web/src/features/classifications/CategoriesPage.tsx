@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { CategoryDto } from '@/api/dto/category'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
+import { MergeDialog } from './MergeDialog'
 import { CategoryDialog } from './CategoryDialog'
 import {
   useCategories,
@@ -12,7 +13,7 @@ import {
   useUnarchiveCategory,
   useDeleteCategory,
   useMoveCategory,
-  useSortCategories
+  useSortCategories, useMergeCategory
 } from './queries'
 
 export function CategoriesPage() {
@@ -26,8 +27,10 @@ export function CategoriesPage() {
   const deleteCategory = useDeleteCategory()
   const moveCategories = useMoveCategory()
   const sortCategories = useSortCategories()
+  const mergeCategory = useMergeCategory()
 
   const [dialog, setDialog] = useState<{ open: boolean; category: CategoryDto | null }>({ open: false, category: null })
+  const [mergeSource, setMergeSource] = useState<CategoryDto | null>(null)
 
   const own = categories.filter((c) => !user || c.ownerUserId === user.id)
 
@@ -49,10 +52,28 @@ export function CategoriesPage() {
         showIcon
         onCreate={() => setDialog({ open: true, category: null })}
         onEdit={(category) => setDialog({ open: true, category })}
+        extraActions={(category) => [{ label: t('classifications.common.merge.action'), onSelect: () => setMergeSource(category) }]}
         onDelete={(id) => deleteCategory.mutate(id)}
         onToggleArchive={(category) => (category.isArchived === 0 ? archiveCategory.mutate(category.id) : unarchiveCategory.mutate(category.id))}
         onMove={(move) => moveCategories.mutate(move)}
         onSort={(ids) => sortCategories.mutate(ids)}
+      />
+      <MergeDialog
+        open={mergeSource !== null}
+        source={mergeSource}
+        // own items only, and same type: income and expense sit in different
+        // halves of the budget, so the server refuses to merge across them
+        candidates={own.filter((c) => c.type === mergeSource?.type)}
+        warning={t('classifications.common.merge.warning', { name: mergeSource?.name ?? '' })}
+        info={t('classifications.common.merge.envelope_info')}
+        showIcon
+        onClose={() => setMergeSource(null)}
+        onConfirm={(targetId) => {
+          if (mergeSource) {
+            mergeCategory.mutate({ sourceId: mergeSource.id, targetId })
+          }
+          setMergeSource(null)
+        }}
       />
       <CategoryDialog
         open={dialog.open}

@@ -47,6 +47,11 @@ func strPtr(s string) *string {
 	return &s
 }
 
+type mergeCategoryInput struct {
+	SourceID string `json:"sourceId" jsonschema:"id (UUID) of the category to absorb and DELETE, from list_categories"`
+	TargetID string `json:"targetId" jsonschema:"id (UUID) of the category to keep, from list_categories"`
+}
+
 func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.Register {
 	return func(s *sdk.Server) {
 		sdk.AddTool(s, &sdk.Tool{Name: "list_categories",
@@ -80,6 +85,24 @@ func Register(read *appcategory.ReadService, write *appcategory.Service) webmcp.
 				})
 				if err != nil {
 					return nil, model.CreateCategoryResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "merge_category",
+			Description: "Merge one category into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in mergeCategoryInput) (*sdk.CallToolResult, model.MergeCategoryResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "merge_category")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.MergeCategoryResult{}, err
+				}
+				res, err := write.MergeCategory(ctx, userID, model.MergeCategoryRequest{
+					SourceId: in.SourceID,
+					TargetId: in.TargetID,
+				})
+				if err != nil {
+					return nil, model.MergeCategoryResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, *res, nil
 			})

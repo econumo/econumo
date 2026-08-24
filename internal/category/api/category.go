@@ -117,3 +117,26 @@ func (h *Handlers) DeleteCategory(w http.ResponseWriter, r *http.Request) {
 		return h.svc.DeleteCategory(ctx, userID, req)
 	})
 }
+
+// MergeCategory handles POST /api/v1/category/merge-category (auth).
+//
+// @Summary     Merge two categorys
+// @Description Re-points every transaction and recurring template from sourceId to targetId, then deletes sourceId. Requires ownership of both. Cannot be undone.
+// @Tags        Category
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MergeCategoryRequest true "Merge category request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MergeCategoryResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/category/merge-category [post]
+func (h *Handlers) MergeCategory(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.MergeCategoryRequest) (*model.MergeCategoryResult, error) {
+		reqctx.AddLogAttr(ctx, "category_id", req.SourceId)
+		reqctx.AddLogAttr(ctx, "target_category_id", req.TargetId)
+		return h.svc.MergeCategory(ctx, userID, req)
+	})
+}

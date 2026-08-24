@@ -18,12 +18,13 @@ import (
 )
 
 type (
-	categoryRow    = sqlitegen.Category
-	upsertParams   = sqlitegen.UpsertCategoryParams
-	opRow          = sqlitegen.OperationRequestsID
-	insertOpParams = sqlitegen.InsertOperationIdParams
-	markOpParams   = sqlitegen.MarkOperationHandledParams
-	reassignParams = sqlitegen.ReassignCategoryTransactionsParams
+	categoryRow       = sqlitegen.Category
+	upsertParams      = sqlitegen.UpsertCategoryParams
+	opRow             = sqlitegen.OperationRequestsID
+	insertOpParams    = sqlitegen.InsertOperationIdParams
+	markOpParams      = sqlitegen.MarkOperationHandledParams
+	reassignParams    = sqlitegen.ReassignCategoryTransactionsParams
+	reassignRecParams = sqlitegen.ReassignCategoryRecurringParams
 )
 
 type querier interface {
@@ -32,6 +33,7 @@ type querier interface {
 	UpsertCategory(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteCategory(ctx context.Context, db backend.DBTX, id string) error
 	ReassignCategoryTransactions(ctx context.Context, db backend.DBTX, p reassignParams) error
+	ReassignCategoryRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 	GetOperationId(ctx context.Context, db backend.DBTX, id string) (opRow, error)
 	InsertOperationId(ctx context.Context, db backend.DBTX, p insertOpParams) error
 	MarkOperationHandled(ctx context.Context, db backend.DBTX, p markOpParams) error
@@ -169,4 +171,10 @@ func hydrate(row categoryRow) (*model.Category, error) {
 	return &model.Category{ID: id, UserID: userID, Name: row.Name, SortKey: sortkey.Key(row.SortKey),
 		Type: model.CategoryType(row.Type), Icon: row.Icon, IsArchived: row.IsArchived,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+// ReassignRecurring points every recurring template on oldID at newID.
+func (r *Repo) ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error {
+	newStr, oldStr := newID.String(), oldID.String()
+	return r.q.ReassignCategoryRecurring(ctx, r.db(ctx), reassignRecParams{CategoryID: &newStr, CategoryID_2: &oldStr})
 }

@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the 8 label endpoints, each wrapped in the auth middleware.
+// RegisterAPI mounts the 9 label endpoints, each wrapped in the auth middleware.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
 		authMw := middleware.Auth(authn)
@@ -18,6 +18,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/label/archive-label", auth(h.ArchiveLabel))
 		mux.Handle("POST /api/v1/label/unarchive-label", auth(h.UnarchiveLabel))
 		mux.Handle("POST /api/v1/label/delete-label", auth(h.DeleteLabel))
+		mux.Handle("POST /api/v1/label/merge-label", auth(h.MergeLabel))
 		mux.Handle("POST /api/v1/label/move-label", auth(h.MoveLabel))
 		mux.Handle("POST /api/v1/label/sort-label-list", auth(h.SortLabelList))
 		mux.Handle("GET /api/v1/label/get-label-list", auth(h.GetLabelList))

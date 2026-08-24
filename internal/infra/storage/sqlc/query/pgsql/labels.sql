@@ -36,3 +36,14 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeleteLabel :exec
 DELETE FROM labels WHERE id = $1
 ;
+
+-- name: ReassignTransactionLabels :exec
+-- See the sqlite variant; ON CONFLICT DO NOTHING is this engine INSERT OR IGNORE.
+INSERT INTO transactions_labels (transaction_id, label_id)
+SELECT tl.transaction_id, $1 FROM transactions_labels tl WHERE tl.label_id = $2
+ON CONFLICT DO NOTHING;
+
+-- name: ReassignRecurringLabels :exec
+INSERT INTO recurring_transactions_labels (recurring_transaction_id, label_id)
+SELECT rtl.recurring_transaction_id, $1 FROM recurring_transactions_labels rtl WHERE rtl.label_id = $2
+ON CONFLICT DO NOTHING;

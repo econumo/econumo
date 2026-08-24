@@ -19,8 +19,10 @@ import (
 )
 
 type (
-	payeeRow     = sqlitegen.Payee
-	upsertParams = sqlitegen.UpsertPayeeParams
+	payeeRow          = sqlitegen.Payee
+	upsertParams      = sqlitegen.UpsertPayeeParams
+	reassignTxParams  = sqlitegen.ReassignPayeeTransactionsParams
+	reassignRecParams = sqlitegen.ReassignPayeeRecurringParams
 )
 
 type querier interface {
@@ -28,6 +30,8 @@ type querier interface {
 	ListPayeesByOwner(ctx context.Context, db backend.DBTX, userID string) ([]payeeRow, error)
 	UpsertPayee(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeletePayee(ctx context.Context, db backend.DBTX, id string) error
+	ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error
+	ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
 
 type Repo struct {
@@ -102,6 +106,18 @@ func (r *Repo) Save(ctx context.Context, p *model.Payee) error {
 
 func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeletePayee(ctx, r.db(ctx), id.String())
+}
+
+// ReassignTransactions points every transaction on oldID at newID.
+func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
+	newStr, oldStr := newID.String(), oldID.String()
+	return r.q.ReassignPayeeTransactions(ctx, r.db(ctx), reassignTxParams{PayeeID: &newStr, PayeeID_2: &oldStr})
+}
+
+// ReassignRecurring points every recurring template on oldID at newID.
+func (r *Repo) ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error {
+	newStr, oldStr := newID.String(), oldID.String()
+	return r.q.ReassignPayeeRecurring(ctx, r.db(ctx), reassignRecParams{PayeeID: &newStr, PayeeID_2: &oldStr})
 }
 
 func hydrate(row payeeRow) (*model.Payee, error) {

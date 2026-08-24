@@ -99,7 +99,7 @@ func (r UnarchivePayeeRequest) Validate() error {
 type UnarchivePayeeResult struct{}
 
 // DeletePayeeRequest is the delete-payee request body. Payee delete is
-// unconditional — there is no mode/replaceId.
+// unconditional; to keep the rows pointing at the payee, use merge-payee.
 type DeletePayeeRequest struct {
 	Id string `json:"id"`
 }
@@ -112,6 +112,31 @@ func (r DeletePayeeRequest) Validate() error {
 }
 
 type DeletePayeeResult struct{}
+
+// MergePayeeRequest is the merge-payee request body: sourceId is absorbed into
+// targetId and then deleted. The fields are named rather than reusing the usual
+// "id" because this also ships as an MCP tool, where which side gets destroyed
+// must be unambiguous to a model choosing arguments.
+type MergePayeeRequest struct {
+	SourceId string `json:"sourceId"`
+	TargetId string `json:"targetId"`
+}
+
+func (r MergePayeeRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.SourceId) == "" {
+		fields = append(fields, errs.FieldError{Key: "sourceId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.TargetId) == "" {
+		fields = append(fields, errs.FieldError{Key: "targetId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type MergePayeeResult struct{}
 
 // MovePayeeRequest is the move-payee request body. AfterId is the id of the
 // sibling this payee should land immediately after; null means "move to the

@@ -280,12 +280,48 @@ func (r *Repo) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	})
 }
 
+func (r *Repo) ListElementsByExternal(ctx context.Context, externalID vo.Id) ([]*model.BudgetElement, error) {
+	rows, err := r.q.ListBudgetElementsByExternal(ctx, r.db(ctx), externalID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.BudgetElement, 0, len(rows))
+	for _, row := range rows {
+		e, herr := hydrateElement(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+func (r *Repo) RepointElement(ctx context.Context, id, externalID vo.Id, updatedAt time.Time) error {
+	return r.q.RepointBudgetElement(ctx, r.db(ctx), id.String(), externalID.String(), updatedAt)
+}
+
 func (r *Repo) DeleteElement(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetElement(ctx, r.db(ctx), id.String())
 }
 
 func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*model.BudgetElementLimit, error) {
 	rows, err := r.q.ListBudgetLimitsForPeriod(ctx, r.db(ctx), budgetID.String(), period)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.BudgetElementLimit, 0, len(rows))
+	for _, row := range rows {
+		l, herr := hydrateLimit(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, l)
+	}
+	return out, nil
+}
+
+func (r *Repo) ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error) {
+	rows, err := r.q.ListBudgetLimitsByElement(ctx, r.db(ctx), elementID.String())
 	if err != nil {
 		return nil, err
 	}

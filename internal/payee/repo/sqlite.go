@@ -30,3 +30,11 @@ func (sqliteQuerier) UpsertPayee(ctx context.Context, db backend.DBTX, p upsertP
 func (sqliteQuerier) DeletePayee(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeletePayee(ctx, id)
 }
+
+func (sqliteQuerier) ReassignPayeeTransactions(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return sqlitegen.New(db).ReassignPayeeTransactions(ctx, p)
+}
+
+func (sqliteQuerier) ReassignPayeeRecurring(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return sqlitegen.New(db).ReassignPayeeRecurring(ctx, p)
+}

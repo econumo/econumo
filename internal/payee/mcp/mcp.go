@@ -24,6 +24,11 @@ type updatePayeeInput struct {
 	Name string `json:"name" jsonschema:"payee name, 3-64 characters"`
 }
 
+type mergePayeeInput struct {
+	SourceID string `json:"sourceId" jsonschema:"id (UUID) of the payee to absorb and DELETE, from list_payees"`
+	TargetID string `json:"targetId" jsonschema:"id (UUID) of the payee to keep, from list_payees"`
+}
+
 type setArchivedInput struct {
 	ID       string `json:"id" jsonschema:"payee id (UUID), from list_payees"`
 	Archived bool   `json:"archived" jsonschema:"true to archive, false to unarchive"`
@@ -68,6 +73,24 @@ func Register(read *apppayee.ReadService, write *apppayee.Service) webmcp.Regist
 				})
 				if err != nil {
 					return nil, model.CreatePayeeResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "merge_payee",
+			Description: "Merge one payee into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in mergePayeeInput) (*sdk.CallToolResult, model.MergePayeeResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "merge_payee")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.MergePayeeResult{}, err
+				}
+				res, err := write.MergePayee(ctx, userID, model.MergePayeeRequest{
+					SourceId: in.SourceID,
+					TargetId: in.TargetID,
+				})
+				if err != nil {
+					return nil, model.MergePayeeResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, *res, nil
 			})

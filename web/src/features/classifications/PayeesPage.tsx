@@ -5,8 +5,9 @@ import { isNotEmpty, isValidPayeeName } from '@/lib/validation'
 import type { PayeeDto } from '@/api/dto/payee'
 import { useUserData } from '@/features/user/queries'
 import { ClassificationList } from './ClassificationList'
+import { MergeDialog } from './MergeDialog'
 import { usePayees, useCreatePayee, useUpdatePayee, useArchivePayee, useUnarchivePayee, useDeletePayee, useMovePayee,
-  useSortPayees } from './queries'
+  useSortPayees, useMergePayee } from './queries'
 
 export function PayeesPage() {
   const { t } = useTranslation()
@@ -19,8 +20,10 @@ export function PayeesPage() {
   const deletePayee = useDeletePayee()
   const movePayees = useMovePayee()
   const sortPayees = useSortPayees()
+  const mergePayee = useMergePayee()
 
   const [dialog, setDialog] = useState<{ open: boolean; payee: PayeeDto | null }>({ open: false, payee: null })
+  const [mergeSource, setMergeSource] = useState<PayeeDto | null>(null)
   const own = payees.filter((p) => !user || p.ownerUserId === user.id)
 
   const validate = (value: string): string | null => {
@@ -47,10 +50,26 @@ export function PayeesPage() {
         analyticsType="payee"
         onCreate={() => setDialog({ open: true, payee: null })}
         onEdit={(payee) => setDialog({ open: true, payee })}
+        extraActions={(payee) => [{ label: t('classifications.common.merge.action'), onSelect: () => setMergeSource(payee) }]}
         onDelete={(id) => deletePayee.mutate(id)}
         onToggleArchive={(payee) => (payee.isArchived === 0 ? archivePayee.mutate(payee.id) : unarchivePayee.mutate(payee.id))}
         onMove={(move) => movePayees.mutate(move)}
         onSort={(ids) => sortPayees.mutate(ids)}
+      />
+      <MergeDialog
+        open={mergeSource !== null}
+        source={mergeSource}
+        // built from the owner-filtered list, so a connected user's payee can
+        // never be named as the target
+        candidates={own}
+        warning={t('classifications.common.merge.warning', { name: mergeSource?.name ?? '' })}
+        onClose={() => setMergeSource(null)}
+        onConfirm={(targetId) => {
+          if (mergeSource) {
+            mergePayee.mutate({ sourceId: mergeSource.id, targetId })
+          }
+          setMergeSource(null)
+        }}
       />
       <PromptDialog
         open={dialog.open}

@@ -376,6 +376,46 @@ func (q *Queries) ListBudgetElements(ctx context.Context, budgetID string) ([]Bu
 	return items, nil
 }
 
+const listBudgetElementsByExternal = `-- name: ListBudgetElementsByExternal :many
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE external_id = ?
+`
+
+// Every budget in which this category/tag appears. A merge must touch them all,
+// including budgets shared with connected users.
+func (q *Queries) ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetElementsByExternal, externalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BudgetsElement{}
+	for rows.Next() {
+		var i BudgetsElement
+		if err := rows.Scan(
+			&i.ID,
+			&i.BudgetID,
+			&i.CurrencyID,
+			&i.FolderID,
+			&i.ExternalID,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetEnvelopes = `-- name: ListBudgetEnvelopes :many
 SELECT id, budget_id, name, icon, is_archived, created_at, updated_at
 FROM budgets_envelopes WHERE budget_id = ?
@@ -433,6 +473,43 @@ func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]Bud
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetLimitsByElement = `-- name: ListBudgetLimitsByElement :many
+SELECT id, element_id, period, created_at, updated_at, amount
+FROM budgets_elements_limits WHERE element_id = ?
+`
+
+// Every period this element holds a limit for. A merge transfers all of them,
+// past and future alike, so there is deliberately no period filter.
+func (q *Queries) ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetLimitsByElement, elementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BudgetsElementsLimit{}
+	for rows.Next() {
+		var i BudgetsElementsLimit
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Amount,
 		); err != nil {
 			return nil, err
 		}
@@ -606,6 +683,25 @@ type RemoveEnvelopeCategoryParams struct {
 
 func (q *Queries) RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error {
 	_, err := q.db.ExecContext(ctx, removeEnvelopeCategory, arg.BudgetEnvelopeID, arg.CategoryID)
+	return err
+}
+
+const repointBudgetElement = `-- name: RepointBudgetElement :exec
+UPDATE budgets_elements SET external_id = ?, updated_at = ? WHERE id = ?
+`
+
+type RepointBudgetElementParams struct {
+	ExternalID string
+	UpdatedAt  time.Time
+	ID         string
+}
+
+// Merge, no-conflict branch: hand the element to another classification instead
+// of deleting and recreating it, which keeps its folder and sort position so the
+// budget row stays where the user put it. UpsertBudgetElement deliberately does
+// not update external_id, hence this dedicated statement.
+func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
+	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
 	return err
 }
 

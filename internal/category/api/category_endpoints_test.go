@@ -289,25 +289,29 @@ func TestDeleteCategory_Delete_RemovesIt(t *testing.T) {
 	}
 }
 
-func TestDeleteCategory_Replace_ReassignsAndRemoves(t *testing.T) {
+// mode=replace was a redundant, incomplete second merge path: it moved
+// transactions but not recurring templates, so a replace silently nulled the
+// category on every template referencing it. merge-category does the whole job,
+// so replace was removed — and it must fail LOUDLY rather than degrade into a
+// destructive plain delete, which is what dropping the field alone would do.
+func TestDeleteCategory_ReplaceMode_IsRejectedAndDeletesNothing(t *testing.T) {
 	h := newHarness(t)
 	token := h.issueToken(t)
 
-	// Two expense categories owned by the seeded user.
 	h.seedCategory(t, catID1, seedUserID, "Old", 0, 0, false)
 	h.seedCategory(t, catID2, seedUserID, "New", 1, 0, false)
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/category/delete-category", token, map[string]any{
 		"id": catID1, "mode": "replace", "replaceId": catID2,
 	})
-	if status != http.StatusOK {
-		t.Fatalf("replace-delete status = %d, want 200; body: %s", status, env.raw)
+	if status != http.StatusBadRequest {
+		t.Fatalf("replace-delete status = %d, want 400; body: %s", status, env.raw)
 	}
 
 	_, listEnv := h.do(t, http.MethodGet, "/api/v1/category/get-category-list", token, nil)
 	list := mustUnmarshal[itemsWrapper](t, listEnv.Data)
-	if len(list.Items) != 1 || list.Items[0].ID != catID2 {
-		t.Fatalf("list after replace = %+v, want only catID2", list.Items)
+	if len(list.Items) != 2 {
+		t.Fatalf("list after rejected replace = %+v, want both categories intact", list.Items)
 	}
 }
 
