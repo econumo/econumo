@@ -37,14 +37,17 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
   // deleted members are permanent (they never disappear from filters.accounts) and
   // still count toward the locked rule, so they must round-trip even though the
-  // live account list below has no row for them.
-  const locked = new Set(budget.filters.accounts.filter((a) => !a.removable).map((a) => a.id))
+  // live account list below has no row for them. A server older than the
+  // membership release omits the field entirely: treat that as "no members
+  // known" rather than crashing the page.
+  const members = budget.filters?.accounts ?? []
+  const locked = new Set(members.filter((a) => !a.removable).map((a) => a.id))
 
   useEffect(() => {
     if (open) {
       setName(budget.meta.name)
       setCurrencyId(budget.meta.currencyId)
-      setSelected(new Set(budget.filters.accounts.map((a) => a.id)))
+      setSelected(new Set((budget.filters?.accounts ?? []).map((a) => a.id)))
       setError(null)
     }
   }, [open, budget])
