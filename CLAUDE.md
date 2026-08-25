@@ -354,6 +354,16 @@ Tests live alongside the Go code:
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
 
+### Manual regression test plan
+
+`docs/regression-test-plan.md` is the canonical manual regression checklist
+(all modules, mobile/tablet/desktop viewports, multi-user sharing scenarios).
+**Any change to user-observable behavior MUST update the affected checklist
+items in the same PR** — add cases for new features, edit changed flows,
+delete removed ones, and add an item for any regression that escaped to
+production. Keep items phrased as verifiable outcomes and keep the 📱
+(mobile/tablet) markers accurate.
+
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 80). CI surfaces the coverage % in the Actions job summary plus an HTML
 artifact (`.github/workflows/go-tests.yml`).
