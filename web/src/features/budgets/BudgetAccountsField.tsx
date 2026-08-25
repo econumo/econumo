@@ -22,7 +22,8 @@ const SEARCH_THRESHOLD = 6
 // with accounts that live in hidden folders separated below the rest. `selected`
 // may hold ids absent from `accounts` (e.g. a deleted member on the update
 // dialog) — those simply render no row, but stay in the set so submitting
-// still round-trips them.
+// still round-trips them. The included/total counter therefore counts only
+// members that HAVE a row, or a budget with deleted members reads "6 of 5".
 export function BudgetAccountsField({ accounts, selected, locked, onToggle }: BudgetAccountsFieldProps) {
   const { t } = useTranslation()
   const { data: folders = [] } = useFolders()
@@ -56,7 +57,7 @@ export function BudgetAccountsField({ accounts, selected, locked, onToggle }: Bu
         <Label className="text-[11px] font-normal text-muted-foreground">{t('budgets.modal.budget_form.accounts')}</Label>
         <span className="text-[11px] text-muted-foreground">
           {t('budgets.modal.budget_form.accounts_included', {
-            count: String(selected.size),
+            count: String(accounts.reduce((n, a) => (selected.has(a.id) ? n + 1 : n), 0)),
             total: String(accounts.length),
           })}
         </span>

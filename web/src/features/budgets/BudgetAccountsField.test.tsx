@@ -29,6 +29,11 @@ describe('BudgetAccountsField', () => {
     expect(screen.getByText("Accounts with transactions in past months can't be removed")).toBeInTheDocument()
     expect(screen.getByText('2 of 2 included')).toBeInTheDocument()
   })
+  it('counts only members that have a row, ignoring deleted ones kept for round-tripping', () => {
+    renderField(<BudgetAccountsField accounts={accounts} selected={new Set(['a1', 'a2', 'deleted-1'])} locked={new Set()} onToggle={vi.fn()} />)
+    expect(screen.getByText('2 of 2 included')).toBeInTheDocument()
+    expect(screen.queryByText('3 of 2 included')).toBeNull()
+  })
   it('shows no hint when nothing is locked', () => {
     renderField(<BudgetAccountsField accounts={accounts} selected={new Set()} locked={new Set()} onToggle={vi.fn()} />)
     expect(screen.queryByText(/can't be removed/)).toBeNull()
