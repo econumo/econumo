@@ -111,14 +111,6 @@ export const fixtureWireBudget = {
       { id: 'a2', removable: true },
     ],
   },
-  filters: {
-    periodStart: '2026-07-01 00:00:00',
-    periodEnd: '2026-08-01 00:00:00',
-    accounts: [
-      { id: 'a1', removable: true },
-      { id: 'a2', removable: true },
-    ],
-  },
   balances: [
     { currencyId: 'cur-usd', startBalance: '100.5', endBalance: null, income: '500', expenses: '-45.5', exchanges: '0', holdings: '0' },
     { currencyId: 'cur-eur', startBalance: null, endBalance: null, income: null, expenses: null, exchanges: null, holdings: '10' },
