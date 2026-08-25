@@ -103,7 +103,14 @@ export const fixtureWireBudget = {
     id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
     access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
-  filters: { periodStart: '2026-07-01 00:00:00', periodEnd: '2026-08-01 00:00:00', excludedAccountsIds: ['a-excluded'] },
+  filters: {
+    periodStart: '2026-07-01 00:00:00',
+    periodEnd: '2026-08-01 00:00:00',
+    accounts: [
+      { id: 'a1', removable: true },
+      { id: 'a2', removable: true },
+    ],
+  },
   balances: [
     { currencyId: 'cur-usd', startBalance: '100.5', endBalance: null, income: '500', expenses: '-45.5', exchanges: '0', holdings: '0' },
     { currencyId: 'cur-eur', startBalance: null, endBalance: null, income: null, expenses: null, exchanges: null, holdings: '10' },

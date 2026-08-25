@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "账户",
         "accounts_included": "已包含 {count} 个，共 {total} 个",
-        "accounts_hidden": "在隐藏文件夹中"
+        "accounts_hidden": "在隐藏文件夹中",
+        "accounts_locked_hint": "在过去月份中有交易的账户无法移除"
       },
       "create_budget_form": {
         "header": "新建预算"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "必填项",
             "invalid_name": "文件夹名称需为 3-64 个字符"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "请至少选择一个账户"
           }
         }
       },
@@ -1421,7 +1427,9 @@
       "invalid_role_alias": "别名为 {alias} 的预算用户角色不存在。",
       "transaction_filter_required": "校验未通过。",
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
-      "folder_side_mixed": "文件夹中不能同时包含收入和支出。"
+      "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
+      "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
+      "accounts_required": "请至少选择一个账户"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",
@@ -1475,7 +1483,8 @@
       "account_not_available": "该账户不可用于此操作。",
       "item_not_available": "该交易不可用于此操作。",
       "invalid_import_file": "请上传有效的 CSV 文件。",
-      "too_many_labels": "一笔交易最多可以有 50 个统计标签。"
+      "too_many_labels": "一笔交易最多可以有 50 个统计标签。",
+      "account_deleted": "该账户已删除。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",

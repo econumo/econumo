@@ -37,12 +37,7 @@ type Service struct {
 	tx          port.TxRunner
 	clock       port.Clock
 
-	// accountOwners is a per-call cache (set fresh per Service is fine; the
-	// Service is constructed once, so guard via a small map populated lazily and
-	// only read within a single request — acceptable for owner ids which are
-	// immutable).
-	accountOwners map[string]string
-	txLabels      TransactionLabels
+	txLabels TransactionLabels
 }
 
 // SetTransactionLabels wires the reporting-label lookup. It is a setter rather
@@ -67,20 +62,20 @@ func NewService(
 		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo,
 		read: read, convertor: convertor, rates: rates,
 		users: users, accounts: accounts, currency: currency, metadata: metadata, connections: connections,
-		tx: tx, clock: clock, accountOwners: map[string]string{},
+		tx: tx, clock: clock,
 	}
 }
 
 // budgetAggregate is the loaded budget with its related rows, assembled once and
-// passed to the builders (avoids re-querying access/excluded/folders/envelopes/
-// elements repeatedly).
+// passed to the builders (avoids re-querying access/member accounts/folders/
+// envelopes/elements repeatedly).
 type budgetAggregate struct {
-	budget             *model.Budget
-	access             []*model.BudgetAccess
-	excludedAccountIDs []vo.Id
-	folders            []*model.BudgetFolder
-	envelopes          []*model.BudgetEnvelope
-	elements           []*model.BudgetElement
+	budget    *model.Budget
+	access    []*model.BudgetAccess
+	accounts  []model.BudgetAccount
+	folders   []*model.BudgetFolder
+	envelopes []*model.BudgetEnvelope
+	elements  []*model.BudgetElement
 }
 
 func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAggregate, error) {
@@ -92,7 +87,7 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	if err != nil {
 		return nil, err
 	}
-	excluded, err := s.budgets.ExcludedAccountIDs(ctx, budgetID)
+	accounts, err := s.budgets.MemberAccounts(ctx, budgetID)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +103,17 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	if err != nil {
 		return nil, err
 	}
-	return &budgetAggregate{budget: b, access: access, excludedAccountIDs: excluded, folders: folders, envelopes: envelopes, elements: elements}, nil
+	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
+}
+
+// hasAccount reports whether accountID is already a member of this budget.
+func (a *budgetAggregate) hasAccount(accountID vo.Id) bool {
+	for _, m := range a.accounts {
+		if m.AccountID.Equal(accountID) {
+			return true
+		}
+	}
+	return false
 }
 
 // hasFolder reports whether folderID is one of this budget's folders. Child

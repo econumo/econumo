@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Conti",
         "accounts_included": "{count} di {total} inclusi",
-        "accounts_hidden": "In cartelle nascoste"
+        "accounts_hidden": "In cartelle nascoste",
+        "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi"
       },
       "create_budget_form": {
         "header": "Nuovo budget"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Campo obbligatorio",
             "invalid_name": "Il nome della cartella deve contenere da 3 a 64 caratteri"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Seleziona almeno un conto"
           }
         }
       },
@@ -1421,7 +1427,9 @@
       "invalid_role_alias": "Il ruolo utente del budget con alias {alias} non esiste",
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
-      "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite"
+      "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
+      "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
+      "accounts_required": "Seleziona almeno un conto"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",
@@ -1475,7 +1483,8 @@
       "account_not_available": "Questo conto non è disponibile per questa operazione.",
       "item_not_available": "Questa transazione non è disponibile per questa operazione.",
       "invalid_import_file": "Carica un file CSV valido",
-      "too_many_labels": "Una transazione può avere al massimo 50 tag per i report."
+      "too_many_labels": "Una transazione può avere al massimo 50 tag per i report.",
+      "account_deleted": "Questo conto è stato eliminato."
     },
     "user": {
       "report_period_invalid": "Il periodo del report non è corretto",

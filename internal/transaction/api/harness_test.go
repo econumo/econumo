@@ -67,10 +67,31 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	// svc and acc are the live services behind the router, for the few tests
+	// that drive a use case with no route mounted here (account deletion) or
+	// no route at all (CreateTransactionFromRecurring).
+	svc *apptransaction.Service
+	acc *appaccount.Service
 }
 
-func newHarness(t *testing.T) *harness {
+// harnessOption tweaks the wiring for a single test. wrapZeroer decorates the
+// §5a account zeroer, so a test can make one re-zero fail mid-write.
+type harnessOption func(*harnessOptions)
+
+type harnessOptions struct {
+	wrapZeroer func(apptransaction.AccountZeroer) apptransaction.AccountZeroer
+}
+
+func withZeroer(wrap func(apptransaction.AccountZeroer) apptransaction.AccountZeroer) harnessOption {
+	return func(o *harnessOptions) { o.wrapZeroer = wrap }
+}
+
+func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	t.Helper()
+	var options harnessOptions
+	for _, o := range opts {
+		o(&options)
+	}
 	ctx := context.Background()
 	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
 	if err != nil {
@@ -85,7 +106,7 @@ func newHarness(t *testing.T) *harness {
 	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
 		t.Fatalf("pragma foreign_keys: %v", err)
 	}
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
+	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -134,12 +155,17 @@ func newHarness(t *testing.T) *harness {
 		txImportAccounts, connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		txImportCategories, txImportPayees, txImportTags, txImportLabels, txRepo,
 	)
+	var zeroer apptransaction.AccountZeroer = server.NewTransactionAccountZeroer(accSvc)
+	if options.wrapZeroer != nil {
+		zeroer = options.wrapZeroer(zeroer)
+	}
 	svc := apptransaction.NewService(
 		txRepo, accSvc,
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport,
 		server.NewTransactionLabelOwnership(labelRepo),
+		zeroer,
 		txm, operationrepo.NewGuard("sqlite", txm), clock.New(),
 	)
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}
@@ -147,13 +173,13 @@ func newHarness(t *testing.T) *harness {
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlertransaction.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db}
+	return &harness{srv: srv, db: db, svc: svc, acc: accSvc}
 }
 
 func toMigrations(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

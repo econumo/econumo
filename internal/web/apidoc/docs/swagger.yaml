@@ -147,6 +147,18 @@ definitions:
       type:
         type: integer
     type: object
+  model.AddAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.AddAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.ArchiveCategoryRequest:
     properties:
       id:
@@ -187,6 +199,13 @@ definitions:
         type: string
       rate:
         type: string
+    type: object
+  model.BudgetAccountFilter:
+    properties:
+      id:
+        type: string
+      removable:
+        type: boolean
     type: object
   model.BudgetFolderResult:
     properties:
@@ -438,12 +457,16 @@ definitions:
     type: object
   model.CreateBudgetRequest:
     properties:
-      currencyId:
-        type: string
-      excludedAccounts:
+      accountIds:
+        description: |-
+          AccountIds are the budget's initial member accounts. At least one owned,
+          non-deleted account is required — enforced as a coded error in the use
+          case, not here, so the wire carries the catalogue code.
         items:
           type: string
         type: array
+      currencyId:
+        type: string
       id:
         type: string
       name:
@@ -880,23 +903,11 @@ definitions:
       item:
         $ref: '#/definitions/model.TransactionResult'
     type: object
-  model.ExcludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  model.ExcludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/model.MetaResult'
-    type: object
   model.FiltersResult:
     properties:
-      excludedAccountsIds:
+      accounts:
         items:
-          type: string
+          $ref: '#/definitions/model.BudgetAccountFilter'
         type: array
       periodEnd:
         type: string
@@ -1085,18 +1096,6 @@ definitions:
         type: integer
       skipped:
         type: integer
-    type: object
-  model.IncludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  model.IncludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/model.MetaResult'
     type: object
   model.LabelResult:
     properties:
@@ -1593,6 +1592,18 @@ definitions:
     type: object
   model.RemindPasswordResult:
     type: object
+  model.RemoveAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.RemoveAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.ReplaceFolderRequest:
     properties:
       id:
@@ -1979,12 +1990,15 @@ definitions:
     type: object
   model.UpdateBudgetRequest:
     properties:
-      currencyId:
-        type: string
-      excludedAccounts:
+      accountIds:
+        description: |-
+          AccountIds is nil when the client omits the field, which leaves membership
+          untouched; a present list replaces the caller's own member set.
         items:
           type: string
         type: array
+      currencyId:
+        type: string
       id:
         type: string
       name:
@@ -2977,6 +2991,50 @@ paths:
       summary: Accept budget access
       tags:
       - Budget
+  /api/v1/budget/add-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AddAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Add an account to a budget
+      tags:
+      - Budget
   /api/v1/budget/change-element-currency:
     post:
       consumes:
@@ -3329,50 +3387,6 @@ paths:
       summary: Delete a budget folder
       tags:
       - Budget
-  /api/v1/budget/exclude-account:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Exclude account
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.ExcludeAccountRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.ExcludeAccountResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Exclude an account from a budget
-      tags:
-      - Budget
   /api/v1/budget/get-budget:
     get:
       parameters:
@@ -3590,50 +3604,6 @@ paths:
       summary: Grant budget access
       tags:
       - Budget
-  /api/v1/budget/include-account:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Include account
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.IncludeAccountRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.IncludeAccountResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Include an account in a budget
-      tags:
-      - Budget
   /api/v1/budget/move-element:
     post:
       consumes:
@@ -3724,6 +3694,50 @@ paths:
       security:
       - Bearer: []
       summary: Move a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/remove-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Remove account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RemoveAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RemoveAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Remove an account from a budget
       tags:
       - Budget
   /api/v1/budget/reset-budget:

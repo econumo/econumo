@@ -25,7 +25,7 @@ func TestTagChildDrilldown_ReturnsTheIntersection(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	// Same category, same period: one tagged, one not.

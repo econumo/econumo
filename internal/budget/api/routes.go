@@ -35,8 +35,8 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/revoke-access", auth(h.RevokeAccess))
 		mux.Handle("POST /api/v1/budget/decline-access", auth(h.DeclineAccess))
 
-		mux.Handle("POST /api/v1/budget/exclude-account", auth(h.ExcludeAccount))
-		mux.Handle("POST /api/v1/budget/include-account", auth(h.IncludeAccount))
+		mux.Handle("POST /api/v1/budget/add-account", auth(h.AddAccount))
+		mux.Handle("POST /api/v1/budget/remove-account", auth(h.RemoveAccount))
 		mux.Handle("POST /api/v1/budget/change-element-currency", auth(h.ChangeElementCurrency))
 		mux.Handle("POST /api/v1/budget/set-limit", auth(h.SetLimit))
 		mux.Handle("POST /api/v1/budget/move-element", auth(h.MoveElement))

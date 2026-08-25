@@ -27,11 +27,19 @@ type MetaResult struct {
 	Access      []AccessResult `json:"access"`
 }
 
-// FiltersResult is the budget's period + excluded accounts.
+// BudgetAccountFilter is one member account of the budget as the requester sees
+// it: Removable is false once the account has transactions in a closed month,
+// because dropping it then would rewrite history the budget's limits stand on.
+type BudgetAccountFilter struct {
+	Id        string `json:"id"`
+	Removable bool   `json:"removable"`
+}
+
+// FiltersResult is the budget's period + the requester's member accounts.
 type FiltersResult struct {
-	PeriodStart         string   `json:"periodStart"`
-	PeriodEnd           string   `json:"periodEnd"`
-	ExcludedAccountsIds []string `json:"excludedAccountsIds"`
+	PeriodStart string                `json:"periodStart"`
+	PeriodEnd   string                `json:"periodEnd"`
+	Accounts    []BudgetAccountFilter `json:"accounts"`
 }
 
 // CurrencyBalanceResult is one currency's period financial summary. The amount
@@ -127,11 +135,14 @@ type BudgetResult struct {
 
 // CreateBudgetRequest is the create-budget body.
 type CreateBudgetRequest struct {
-	Id               string   `json:"id"`
-	Name             string   `json:"name"`
-	StartDate        string   `json:"startDate"`
-	CurrencyId       string   `json:"currencyId"`
-	ExcludedAccounts []string `json:"excludedAccounts"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	StartDate  string `json:"startDate"`
+	CurrencyId string `json:"currencyId"`
+	// AccountIds are the budget's initial member accounts. At least one owned,
+	// non-deleted account is required — enforced as a coded error in the use
+	// case, not here, so the wire carries the catalogue code.
+	AccountIds []string `json:"accountIds"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -146,10 +157,12 @@ type CreateBudgetResult struct {
 
 // UpdateBudgetRequest is the update-budget body.
 type UpdateBudgetRequest struct {
-	Id               string   `json:"id"`
-	Name             string   `json:"name"`
-	CurrencyId       string   `json:"currencyId"`
-	ExcludedAccounts []string `json:"excludedAccounts"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	CurrencyId string `json:"currencyId"`
+	// AccountIds is nil when the client omits the field, which leaves membership
+	// untouched; a present list replaces the caller's own member set.
+	AccountIds []string `json:"accountIds"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -502,37 +515,37 @@ func (r RevokeAccessRequest) Validate() error {
 // RevokeAccessResult is empty.
 type RevokeAccessResult struct{}
 
-// ExcludeAccountRequest / IncludeAccountRequest toggle an account in the budget.
-// The request field for the budget id is "id" (not "budgetId") — the exclude/
-// include forms carry the budget under "id", and validation reports the blank
-// field under "id" to match the frozen wire contract.
-type ExcludeAccountRequest struct {
+// AddAccountRequest / RemoveAccountRequest change a budget's account
+// membership. The request field for the budget id is "id" (not "budgetId") —
+// the membership forms carry the budget under "id", and validation reports the
+// blank field under "id" to match the frozen wire contract.
+type AddAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
-func (r ExcludeAccountRequest) Validate() error {
+func (r AddAccountRequest) Validate() error {
 	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
-// ExcludeAccountResult / IncludeAccountResult are {item: MetaResult}.
-type ExcludeAccountResult struct {
+// AddAccountResult / RemoveAccountResult are {item: MetaResult}.
+type AddAccountResult struct {
 	Item MetaResult `json:"item"`
 }
 
-// IncludeAccountRequest includes a previously-excluded account. The budget id
-// arrives under "id" (see ExcludeAccountRequest).
-type IncludeAccountRequest struct {
+// RemoveAccountRequest drops an account from the budget. The budget id arrives
+// under "id" (see AddAccountRequest).
+type RemoveAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
-func (r IncludeAccountRequest) Validate() error {
+func (r RemoveAccountRequest) Validate() error {
 	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
-// IncludeAccountResult is {item: MetaResult}.
-type IncludeAccountResult struct {
+// RemoveAccountResult is {item: MetaResult}.
+type RemoveAccountResult struct {
 	Item MetaResult `json:"item"`
 }
 

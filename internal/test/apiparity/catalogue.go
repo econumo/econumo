@@ -376,7 +376,7 @@ func init() {
 		const newBudget = "b0000000-0000-0000-0000-0000000000ff"
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
-				Body: map[string]any{"id": newBudget, "name": "Trip", "currencyId": USD, "startDate": "2024-04-01"}},
+				Body: map[string]any{"id": newBudget, "name": "Trip", "currencyId": USD, "startDate": "2024-04-01", "accountIds": []string{OwnerAccount}}},
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/budget/get-budget-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "set-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{

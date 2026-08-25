@@ -9,9 +9,9 @@ import (
 )
 
 // BudgetStore is the model.Budget aggregate root's own persistence surface:
-// identity, lookup/listing, the write/delete, and the excluded-accounts join
+// identity, lookup/listing, the write/delete, and the member-accounts join
 // table. Consumed by loadAggregate (usecase.go), CreateBudget (create.go),
-// UpdateBudget/DeleteBudget/ResetBudget (crud.go), toggleAccount
+// UpdateBudget/DeleteBudget/ResetBudget (crud.go), AddAccount/RemoveAccount
 // (accounts.go), and GetBudgetList (read.go). A missing budget returns an
 // *errs.NotFoundError.
 type BudgetStore interface {
@@ -21,9 +21,12 @@ type BudgetStore interface {
 	Save(ctx context.Context, b *model.Budget) error
 	Delete(ctx context.Context, id vo.Id) error
 
-	ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
-	ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
-	IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
+	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
+	AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error
+	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
+	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
+	// ownerID — a departing participant takes their accounts with them.
+	RemoveAccountsOwnedBy(ctx context.Context, budgetID, ownerID vo.Id) error
 }
 
 // AccessStore is a budget's participant-grant persistence surface. Consumed by

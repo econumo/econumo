@@ -100,6 +100,13 @@ export function useDeleteAccount() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
       )
+      // deleting an account writes a "Balance adjustment (account deleted)"
+      // correction and may drop it from a budget's membership, so both the
+      // budget queries and the transaction list need a real refetch beyond
+      // the optimistic cache patch above.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       trackEvent(METRICS.ACCOUNT_DELETE)
     },
   })

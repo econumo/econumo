@@ -16,6 +16,8 @@ import (
 	// backend.Get(cfg.DatabaseDriver) fails even though the migrated file DB
 	// this package's tests build is fine.
 	_ "github.com/econumo/econumo/internal/infra/storage/sqlite"
+
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // cliEnv points the container at an isolated sqlite DB + JWT dir. Unlike the
@@ -38,9 +40,9 @@ func cliEnv(t *testing.T) {
 	migs := migrations.SQLite()
 	runnerMigs := make([]migrate.Migration, len(migs))
 	for i, m := range migs {
-		runnerMigs[i] = migrate.Migration{Version: m.Version, SQL: m.SQL}
+		runnerMigs[i] = migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command}
 	}
-	if err := migrate.Run(context.Background(), raw, runnerMigs); err != nil {
+	if err := migrate.Run(context.Background(), raw, runnerMigs, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("cliEnv: migrate sqlite: %v", err)
 	}
 	if err := raw.Close(); err != nil {
@@ -215,6 +217,66 @@ func TestUserSetAccessAndShowExitCodes(t *testing.T) {
 		if got := Run(s.args); got != s.want {
 			t.Fatalf("%s: Run(%v) = %d, want %d", s.name, s.args, got, s.want)
 		}
+	}
+}
+
+// TestMigrationZeroDeletedAccounts_CommandAndRunner drives the CLI command end
+// to end (a deleted account holding a non-zero balance gets a correction, and
+// a second run is a no-op), then exercises MigrationCommandRunner's dispatch
+// rules directly: it accepts only migration:* names and shares the caller's
+// db without closing it. Ids are real UUIDs (vo.NewId), not the brief's
+// literal 'u1'/'acc-del': the command lists accounts through the repo, whose
+// hydrateAccount calls vo.ParseId (strict uuid.Parse), so a non-UUID id would
+// fail there rather than exercise the behavior under test.
+func TestMigrationZeroDeletedAccounts_CommandAndRunner(t *testing.T) {
+	cliEnv(t)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	userID := vo.NewId().String()
+	accountID := vo.NewId().String()
+	txID := vo.NewId().String()
+
+	// seed straight through the container's db: a deleted account holding +5
+	mustExec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := c.db.ExecContext(ctx, q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	mustExec(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','','2026-01-01 00:00:00','2026-01-01 00:00:00')`, userID, userID, userID+"@e.test")
+	mustExec(`INSERT INTO accounts (id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at) VALUES (?,'dffc2a06-6f29-4704-8575-31709adee926',?,'A',2,'wallet',1,'2026-01-01 00:00:00','2026-02-01 00:00:00')`, accountID, userID)
+	mustExec(`INSERT INTO transactions (id, user_id, account_id, description, type, amount, spent_at, created_at, updated_at) VALUES (?,?,?,'',1,5,'2026-01-10 00:00:00','2026-01-10 00:00:00','2026-01-10 00:00:00')`, txID, userID, accountID)
+
+	if code := Run([]string{"migration:zero-deleted-accounts"}); code != 0 {
+		t.Fatalf("exit code %d", code)
+	}
+	var n int
+	if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM transactions WHERE account_id = ? AND type = 0 AND amount = 5`, accountID).Scan(&n); err != nil || n != 1 {
+		t.Fatalf("corrections=%d err=%v", n, err)
+	}
+	// second run is a no-op
+	if code := Run([]string{"migration:zero-deleted-accounts"}); code != 0 {
+		t.Fatalf("exit code %d", code)
+	}
+	if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM transactions WHERE account_id = ?`, accountID).Scan(&n); err != nil || n != 2 {
+		t.Fatalf("rows after second run=%d err=%v (want 2: original + one correction)", n, err)
+	}
+
+	// the runner dispatches by name over a caller-owned db and refuses non-migration commands
+	runner := MigrationCommandRunner(c.cfg, c.db)
+	if err := runner(ctx, "migration:zero-deleted-accounts"); err != nil {
+		t.Fatalf("runner: %v", err)
+	}
+	if err := runner(ctx, "user:create"); err == nil {
+		t.Fatal("runner must refuse non-migration commands")
+	}
+	if err := runner(ctx, "migration:nope"); err == nil {
+		t.Fatal("runner must fail on an unknown command")
 	}
 }
 

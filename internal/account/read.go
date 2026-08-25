@@ -41,6 +41,17 @@ func (s *Service) AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, err
 	return acct.UserID, nil
 }
 
+// AccountDeleted reports whether an account is soft-deleted (for cross-module
+// use, e.g. transaction's §5a guard). Missing -> *errs.NotFoundError (from the
+// repo).
+func (s *Service) AccountDeleted(ctx context.Context, accountID vo.Id) (bool, error) {
+	acct, err := s.accounts.GetByID(ctx, accountID)
+	if err != nil {
+		return false, err
+	}
+	return acct.IsDeleted, nil
+}
+
 // AccountCurrency returns an account's currency id (for cross-module use, e.g.
 // transaction's transfer amount normalization). Missing -> *errs.NotFoundError
 // (from the repo).

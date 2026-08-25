@@ -30,8 +30,10 @@ type budgetResult struct {
 	} `json:"item"`
 }
 
+// createBudgetReq is the minimal valid create body: a budget needs at least one
+// member account, and the harness seeds exactly one for the seed user.
 func createBudgetReq(id, name string) map[string]any {
-	return map[string]any{"id": id, "name": name, "currencyId": usdID}
+	return map[string]any{"id": id, "name": name, "currencyId": usdID, "accountIds": []string{accountID}}
 }
 
 func TestCreateBudget_SeedsElements_OwnerAccess(t *testing.T) {

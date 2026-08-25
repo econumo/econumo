@@ -7,7 +7,7 @@ import "testing"
 // The floor tracks the registered scenario count — raise it as scenarios are
 // added, never lower it.
 func TestCatalogueSize(t *testing.T) {
-	const min = 51 // raised for the reporting-labels scenarios (2026-08)
+	const min = 54 // raised for the §5a deleted-account scenario (2026-08)
 	if n := len(Catalogue()); n < min {
 		t.Fatalf("catalogue has %d scenarios, want >= %d — a scenario file was dropped", n, min)
 	}

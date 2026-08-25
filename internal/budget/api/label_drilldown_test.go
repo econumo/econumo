@@ -24,7 +24,7 @@ func TestGetTransactionListByLabel(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -83,7 +83,7 @@ func TestGetTransactionListRejectsLabelIdWithTagOrEnvelope(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
@@ -116,7 +116,7 @@ func TestGetTransactionListByLabelAndCategory(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -194,7 +194,7 @@ func TestGetTransactionListWhitespaceLabelId_TreatedAsAbsent(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelDrilldownBudgetID, "name": "Label Drilldown Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 

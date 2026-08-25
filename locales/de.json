@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Konten",
         "accounts_included": "{count} von {total} einbezogen",
-        "accounts_hidden": "In ausgeblendeten Ordnern"
+        "accounts_hidden": "In ausgeblendeten Ordnern",
+        "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden"
       },
       "create_budget_form": {
         "header": "Neues Budget"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Pflichtfeld",
             "invalid_name": "Der Ordnername muss 3-64 Zeichen lang sein"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Wähle mindestens ein Konto"
           }
         }
       },
@@ -1421,7 +1427,9 @@
       "invalid_role_alias": "BudgetUserRole mit dem Alias {alias} existiert nicht",
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
-      "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten"
+      "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
+      "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
+      "accounts_required": "Wähle mindestens ein Konto"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",
@@ -1475,7 +1483,8 @@
       "account_not_available": "Dieses Konto ist für diesen Vorgang nicht verfügbar.",
       "item_not_available": "Diese Transaktion ist für diesen Vorgang nicht verfügbar.",
       "invalid_import_file": "Bitte laden Sie eine gültige CSV-Datei hoch",
-      "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben."
+      "too_many_labels": "Eine Transaktion kann höchstens 50 Auswertungs-Tags haben.",
+      "account_deleted": "Dieses Konto wurde gelöscht."
     },
     "user": {
       "report_period_invalid": "ReportPeriod ist ungültig",

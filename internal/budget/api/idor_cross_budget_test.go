@@ -192,9 +192,9 @@ func TestBudgetGrantAccess_UnconnectedUser_Denied(t *testing.T) {
 	assertBudgetDenied(t, status, env)
 }
 
-// include/exclude-account must require write access to the BUDGET, not just
-// ownership of the account being toggled.
-func TestExcludeAccount_ForeignBudget_Denied(t *testing.T) {
+// add/remove-account must require write access to the BUDGET, not just
+// ownership of the account being moved in or out.
+func TestAddAccount_ForeignBudget_Denied(t *testing.T) {
 	h := newHarness(t)
 	owner := h.token(t)
 	seedBudget(t, h, owner) // owner's budgetID1
@@ -203,14 +203,14 @@ func TestExcludeAccount_ForeignBudget_Denied(t *testing.T) {
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.Account(fixture.Account{ID: attackerAcctID, UserID: secondUserID, CurrencyID: usdID, Name: "Mine"})
 
-	status, env := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", attacker, map[string]any{
+	status, env := h.do(t, http.MethodPost, "/api/v1/budget/add-account", attacker, map[string]any{
 		"id": budgetID1, "accountId": attackerAcctID,
 	})
 	assertBudgetDenied(t, status, env)
 
 	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id = ?`, budgetID1).Scan(&n)
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ? AND account_id = ?`, budgetID1, attackerAcctID).Scan(&n)
 	if n != 0 {
-		t.Fatalf("excluded-account rows=%d want 0 (wrote to a foreign budget)", n)
+		t.Fatalf("membership rows=%d want 0 (wrote to a foreign budget)", n)
 	}
 }

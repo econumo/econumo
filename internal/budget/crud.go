@@ -9,7 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateBudget updates a budget's name/currency/excluded-accounts and returns its
+// UpdateBudget updates a budget's name/currency/member-accounts and returns its
 // meta. Requires read access; a name change additionally requires update access.
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
@@ -28,7 +28,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if err != nil {
 		return nil, err
 	}
-	// Any field change (name, currency, excluded accounts) requires edit rights;
+	// Any field change (name, currency, member accounts) requires edit rights;
 	// a read-only guest must not alter budget metadata.
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
@@ -46,44 +46,74 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
-		// Replace the excluded-account set — but ONLY over the accounts the caller
-		// owns. get-budget reports each requester just their own exclusions
-		// (buildFilters), so a client round-tripping that list back can never name
-		// a co-participant's excluded accounts; treating the set as budget-wide
-		// would silently re-include everything the partner excluded. Ownership is
-		// also the same rule exclude-account enforces, so a foreign id is ignored
-		// rather than applied.
-		want := map[string]bool{}
-		for _, raw := range req.ExcludedAccounts {
-			aid, perr := vo.ParseId(raw)
-			if perr != nil {
-				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
+		// accountIds absent → membership untouched (older clients, MCP). Present →
+		// replace-set over the caller's OWN accounts: add missing, remove absent
+		// ones — but a member with closed-month history is permanent, so naming
+		// a set that drops one fails the whole update.
+		if req.AccountIds != nil {
+			want := map[string]bool{}
+			for _, raw := range req.AccountIds {
+				aid, perr := vo.ParseId(raw)
+				if perr != nil {
+					return model.ValidateBlank(map[string]string{"accountIds": ""})
+				}
+				owned, oerr := s.ownsAccount(txCtx, userID, aid)
+				if oerr != nil {
+					return oerr
+				}
+				if !owned {
+					continue
+				}
+				want[aid.String()] = true
 			}
-			owned, oerr := s.ownsAccount(txCtx, userID, aid)
-			if oerr != nil {
-				return oerr
+			var ownMembers []vo.Id
+			for _, m := range b.accounts {
+				owned, oerr := s.ownsAccount(txCtx, userID, m.AccountID)
+				if oerr != nil {
+					return oerr
+				}
+				if owned {
+					ownMembers = append(ownMembers, m.AccountID)
+				}
 			}
-			if !owned {
-				continue
+			removable, rerr := s.removableAccounts(txCtx, b, ownMembers, now)
+			if rerr != nil {
+				return rerr
 			}
-			want[aid.String()] = true
-			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
-				return serr
+			for _, m := range ownMembers {
+				if want[m.String()] {
+					continue
+				}
+				if !removable[m.String()] {
+					return accountNotRemovable()
+				}
+				if serr := s.budgets.RemoveAccount(txCtx, budgetID, m); serr != nil {
+					return serr
+				}
 			}
-		}
-		for _, existing := range b.excludedAccountIDs {
-			if want[existing.String()] {
-				continue
-			}
-			owned, oerr := s.ownsAccount(txCtx, userID, existing)
-			if oerr != nil {
-				return oerr
-			}
-			if !owned {
-				continue
-			}
-			if serr := s.budgets.IncludeAccount(txCtx, budgetID, existing); serr != nil {
-				return serr
+			for idStr := range want {
+				aid, perr := vo.ParseId(idStr)
+				if perr != nil {
+					return perr
+				}
+				// Naming an existing member again is a no-op. Deleted members stay
+				// listed in the filters block (they keep counting), so a client
+				// round-tripping that list back names them — rejecting the id would
+				// wedge every later update, since the removal rule keeps such a
+				// member forever. Only a NEW member has to be a live account.
+				if b.hasAccount(aid) {
+					continue
+				}
+				views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
+				if verr != nil {
+					return verr
+				}
+				if views[0].IsDeleted {
+					return model.ValidateBlank(map[string]string{"accountIds": ""})
+				}
+				if serr := s.budgets.AddAccount(txCtx, budgetID, aid, now); serr != nil {
+					return serr
+				}
 			}
 		}
 		return nil

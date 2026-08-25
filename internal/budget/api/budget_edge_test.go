@@ -109,35 +109,36 @@ func TestChangeElementCurrency_ForeignCustom_400(t *testing.T) {
 	}
 }
 
-func TestUpdateBudget_ExcludedAccountsReplaced(t *testing.T) {
+// TestUpdateBudget_AccountIdsReplaced: accountIds is a replace-set over the
+// caller's own accounts — an id that is not listed leaves the budget (while it
+// is still removable), and listing it again brings it back.
+func TestUpdateBudget_AccountIdsReplaced(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 
-	// Exclude the account via update-budget's excludedAccounts set.
 	status, env := h.do(t, http.MethodPost, "/api/v1/budget/update-budget", tok, map[string]any{
 		"id": budgetID1, "name": "Test Budget", "currencyId": usdID,
-		"excludedAccounts": []string{accountID},
+		"accountIds": []string{},
 	})
 	if status != http.StatusOK {
-		t.Fatalf("update-budget exclude=%d body=%s", status, env.raw)
+		t.Fatalf("update-budget drop=%d body=%s", status, env.raw)
 	}
 	var n int
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id=? AND account_id=?`, budgetID1, accountID).Scan(&n)
-	if n != 1 {
-		t.Fatalf("excluded rows after add=%d want 1", n)
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id=? AND account_id=?`, budgetID1, accountID).Scan(&n)
+	if n != 0 {
+		t.Fatalf("membership rows after drop=%d want 0", n)
 	}
-	// Now send an empty set -> the previously-excluded account is re-included.
 	status, env = h.do(t, http.MethodPost, "/api/v1/budget/update-budget", tok, map[string]any{
 		"id": budgetID1, "name": "Test Budget", "currencyId": usdID,
-		"excludedAccounts": []string{},
+		"accountIds": []string{accountID},
 	})
 	if status != http.StatusOK {
-		t.Fatalf("update-budget clear=%d body=%s", status, env.raw)
+		t.Fatalf("update-budget re-add=%d body=%s", status, env.raw)
 	}
-	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_excluded_accounts WHERE budget_id=? AND account_id=?`, budgetID1, accountID).Scan(&n)
-	if n != 0 {
-		t.Fatalf("excluded rows after clear=%d want 0", n)
+	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id=? AND account_id=?`, budgetID1, accountID).Scan(&n)
+	if n != 1 {
+		t.Fatalf("membership rows after re-add=%d want 1", n)
 	}
 }
 
@@ -527,48 +528,38 @@ func TestCreateFolder_Blank_400(t *testing.T) {
 	}
 }
 
-func TestExcludeAccount_ReflectedInGetBudget(t *testing.T) {
+func TestRemoveAccount_ReflectedInGetBudget(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 
-	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", tok, map[string]any{"id": budgetID1, "accountId": accountID}); st != http.StatusOK {
-		t.Fatalf("exclude-account=%d body=%s", st, e.raw)
+	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/remove-account", tok, map[string]any{"id": budgetID1, "accountId": accountID}); st != http.StatusOK {
+		t.Fatalf("remove-account=%d body=%s", st, e.raw)
 	}
-	// get-budget filters.excludedAccountsIds must contain the account.
+	// get-budget filters.accounts no longer lists the account.
 	status, env := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1, tok, nil)
 	if status != http.StatusOK {
 		t.Fatalf("get-budget=%d body=%s", status, env.raw)
 	}
-	res := mustUnmarshal[struct {
-		Item struct {
-			Filters struct {
-				ExcludedAccountsIds []string `json:"excludedAccountsIds"`
-			} `json:"filters"`
-		} `json:"item"`
-	}](t, env.Data)
-	var found bool
-	for _, id := range res.Item.Filters.ExcludedAccountsIds {
-		if id == accountID {
-			found = true
+	res := mustUnmarshal[filtersOut](t, env.Data)
+	for _, a := range res.Item.Filters.Accounts {
+		if a.Id == accountID {
+			t.Fatalf("filters.accounts=%+v must not contain the removed %s", res.Item.Filters.Accounts, accountID)
 		}
-	}
-	if !found {
-		t.Fatalf("excludedAccountsIds=%v want to contain %s", res.Item.Filters.ExcludedAccountsIds, accountID)
 	}
 }
 
-func TestExcludeAccount_NotOwnerOfAccount_403(t *testing.T) {
+func TestRemoveAccount_NotOwnerOfAccount_403(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	seedBudget(t, h, tok)
 	other := h.seedSecondUser(t)
 	// The second user does not own the seeded account -> AccessDenied.
-	status, _ := h.do(t, http.MethodPost, "/api/v1/budget/exclude-account", other, map[string]any{
+	status, _ := h.do(t, http.MethodPost, "/api/v1/budget/remove-account", other, map[string]any{
 		"id": budgetID1, "accountId": accountID,
 	})
 	if status != http.StatusForbidden {
-		t.Fatalf("exclude-account non-account-owner=%d want 403", status)
+		t.Fatalf("remove-account non-account-owner=%d want 403", status)
 	}
 }
 

@@ -20,10 +20,6 @@ type querier interface {
 	UpsertBudget(ctx context.Context, db backend.DBTX, p upBudgetP) error
 	DeleteBudget(ctx context.Context, db backend.DBTX, id string) error
 
-	ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error)
-	AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
-	RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
-
 	ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error)
 	GetBudgetAccess(ctx context.Context, db backend.DBTX, budgetID, userID string) (accessRow, error)
 	UpsertBudgetAccess(ctx context.Context, db backend.DBTX, p upAccessP) error
@@ -56,6 +52,11 @@ type querier interface {
 	UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p upLimitP) error
 	DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id string) error
 	DeleteBudgetLimitsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error
+
+	ListBudgetAccounts(ctx context.Context, db backend.DBTX, budgetID string) ([]sqlitegen.ListBudgetAccountsRow, error)
+	AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error
+	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
+	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 }
 
 type sqliteQuerier struct{}
@@ -71,15 +72,6 @@ func (sqliteQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudg
 }
 func (sqliteQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteBudget(ctx, id)
-}
-func (sqliteQuerier) ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error) {
-	return sqlitegen.New(db).ListBudgetExcludedAccountIDs(ctx, budgetID)
-}
-func (sqliteQuerier) AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return sqlitegen.New(db).AddBudgetExcludedAccount(ctx, sqlitegen.AddBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
-}
-func (sqliteQuerier) RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return sqlitegen.New(db).RemoveBudgetExcludedAccount(ctx, sqlitegen.RemoveBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (sqliteQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	return sqlitegen.New(db).ListBudgetAccess(ctx, budgetID)
@@ -188,6 +180,18 @@ func (sqliteQuerier) DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id 
 func (sqliteQuerier) DeleteBudgetLimitsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
 	return sqlitegen.New(db).DeleteBudgetLimitsByBudget(ctx, budgetID)
 }
+func (sqliteQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, budgetID string) ([]sqlitegen.ListBudgetAccountsRow, error) {
+	return sqlitegen.New(db).ListBudgetAccounts(ctx, budgetID)
+}
+func (sqliteQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
+	return sqlitegen.New(db).AddBudgetAccount(ctx, p)
+}
+func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	return sqlitegen.New(db).RemoveBudgetAccount(ctx, sqlitegen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
+}
+func (sqliteQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
+	return sqlitegen.New(db).RemoveBudgetAccountsOwnedBy(ctx, sqlitegen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
+}
 
 // pgsqlQuerier is the whole-struct shim (field-by-field for the limit row/params).
 type pgsqlQuerier struct{}
@@ -212,15 +216,6 @@ func (pgsqlQuerier) UpsertBudget(ctx context.Context, db backend.DBTX, p upBudge
 }
 func (pgsqlQuerier) DeleteBudget(ctx context.Context, db backend.DBTX, id string) error {
 	return pgsqlgen.New(db).DeleteBudget(ctx, id)
-}
-func (pgsqlQuerier) ListBudgetExcludedAccountIDs(ctx context.Context, db backend.DBTX, budgetID string) ([]string, error) {
-	return pgsqlgen.New(db).ListBudgetExcludedAccountIDs(ctx, budgetID)
-}
-func (pgsqlQuerier) AddBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return pgsqlgen.New(db).AddBudgetExcludedAccount(ctx, pgsqlgen.AddBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
-}
-func (pgsqlQuerier) RemoveBudgetExcludedAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
-	return pgsqlgen.New(db).RemoveBudgetExcludedAccount(ctx, pgsqlgen.RemoveBudgetExcludedAccountParams{BudgetID: budgetID, AccountID: accountID})
 }
 func (pgsqlQuerier) ListBudgetAccess(ctx context.Context, db backend.DBTX, budgetID string) ([]accessRow, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetAccess(ctx, budgetID)
@@ -374,4 +369,24 @@ func (pgsqlQuerier) DeleteBudgetLimit(ctx context.Context, db backend.DBTX, id s
 }
 func (pgsqlQuerier) DeleteBudgetLimitsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
 	return pgsqlgen.New(db).DeleteBudgetLimitsByBudget(ctx, budgetID)
+}
+func (pgsqlQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, budgetID string) ([]sqlitegen.ListBudgetAccountsRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetAccounts(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]sqlitegen.ListBudgetAccountsRow, len(rows))
+	for i, v := range rows {
+		out[i] = sqlitegen.ListBudgetAccountsRow{AccountID: v.AccountID, CreatedAt: v.CreatedAt}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
+	return pgsqlgen.New(db).AddBudgetAccount(ctx, pgsqlgen.AddBudgetAccountParams{BudgetID: p.BudgetID, AccountID: p.AccountID, CreatedAt: p.CreatedAt})
+}
+func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	return pgsqlgen.New(db).RemoveBudgetAccount(ctx, pgsqlgen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
+}
+func (pgsqlQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
+	return pgsqlgen.New(db).RemoveBudgetAccountsOwnedBy(ctx, pgsqlgen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
 }

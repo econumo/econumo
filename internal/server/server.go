@@ -323,7 +323,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	labelOwnership := NewTransactionLabelOwnership(labelRepo)
 	transactionSvc := apptransaction.NewService(
 		transactionRepo, accountSvc, accountAccessResolver, accountSvc, userOwnerLookup, txExportLookup, txImportLookup,
-		labelOwnership, txm, opGuard, clk,
+		labelOwnership, NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 

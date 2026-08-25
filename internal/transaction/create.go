@@ -74,6 +74,12 @@ func (s *Service) createTransaction(ctx context.Context, userID vo.Id, req model
 		if rerr := s.checkReferences(ctx, userID, &st, req.LabelIds); rerr != nil {
 			return rerr
 		}
+		// After checkReferences, which is where the recipient's write access is
+		// verified — the deleted state of an account the caller may not write to
+		// must stay invisible to them.
+		if derr := s.rejectDeletedParties(ctx, &st); derr != nil {
+			return derr
+		}
 		t := model.New(st)
 		if serr := s.repo.Save(ctx, t); serr != nil {
 			return serr

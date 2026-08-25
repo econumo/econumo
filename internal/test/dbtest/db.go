@@ -77,7 +77,7 @@ func NewSQLite(t testing.TB) *DB {
 		t.Fatalf("dbtest: sqlite pragma foreign_keys: %v", err)
 	}
 
-	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite())); err != nil {
+	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("dbtest: migrate sqlite: %v", err)
 	}
 	return &DB{Raw: raw, TX: backend.NewTxManager(raw), Engine: "sqlite"}
@@ -87,7 +87,7 @@ func NewSQLite(t testing.TB) *DB {
 func toMigrations(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

@@ -41,8 +41,9 @@ package apiparity
 //	tx-apr-to-savings    2024-04-12 10:00:00  transfer 100.00  OwnerAccount -> Savings (out)
 //	tx-may-from-savings  2024-05-08 10:00:00  transfer  30.00  Savings -> OwnerAccount (in)
 //
-// Savings stays INCLUDED in the seeded fixture Budget, so its plan (the last
-// call) sees both transfers as internal moves and reports no transfer rows.
+// Savings is explicitly added as a member of the seeded fixture Budget (the
+// add-savings-to-fixture-budget call), so its plan (the last call) sees both
+// transfers as internal moves and reports no transfer rows.
 
 func init() {
 	register(Scenario{Name: "budget_plan", Calls: func() []Call {
@@ -60,7 +61,7 @@ func init() {
 		var savingsID string
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
-				Body: map[string]any{"id": planBudget, "name": "Plan", "currencyId": USD, "startDate": "2024-04-01"}},
+				Body: map[string]any{"id": planBudget, "name": "Plan", "currencyId": USD, "startDate": "2024-04-01", "accountIds": []string{OwnerAccount}}},
 			{Label: "set-expense-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": planBudget, "elementId": CatFood, "period": "2024-05-01", "amount": "300"}},
 			{Label: "set-income-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
@@ -89,8 +90,17 @@ func init() {
 			// transfer out to it in April, one back in May.
 			{Label: "create-savings-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
 				Body: map[string]any{"id": opSavings, "name": "Savings", "icon": "bank", "currencyId": USD, "folderId": OwnerFolder}, CaptureIDInto: &savingsID},
-			{Label: "exclude-savings-account", Method: "POST", Path: "/api/v1/budget/exclude-account", Auth: "owner",
+			{Label: "remove-savings-account", Method: "POST", Path: "/api/v1/budget/remove-account", Auth: "owner",
 				Body: map[string]any{"id": planBudget, "accountId": &savingsID}},
+			// Explicit membership pin: Savings is a NEW account (created above),
+			// never a member of planBudget or the fixture Budget by default. It
+			// must never join planBudget (that boundary is the whole point of this
+			// scenario), but the fixture Budget's re-proof below still expects it
+			// INCLUDED there (see the file header) — under the old implicit-member
+			// model a new owner account joined every owner budget automatically;
+			// under explicit membership it has to be added.
+			{Label: "add-savings-to-fixture-budget", Method: "POST", Path: "/api/v1/budget/add-account", Auth: "owner",
+				Body: map[string]any{"id": Budget, "accountId": &savingsID}},
 			{Label: "tx-apr-to-savings", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": txAprToSav, "accountId": OwnerAccount, "accountRecipientId": &savingsID, "type": "transfer",
 					"amount": "100.00", "amountRecipient": "100.00", "date": "2024-04-12 10:00:00"}},

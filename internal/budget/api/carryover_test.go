@@ -64,7 +64,7 @@ func TestGetBudget_MultiPeriodCarryover(t *testing.T) {
 	// startDate pins the budget's first month to March 2025 so the before-walk
 	// runs March -> April; without it the budget starts in the current month and
 	// no prior period exists.
-	createReq := map[string]any{"id": budgetID1, "name": "Carryover Budget", "currencyId": usdID, "startDate": "2025-03-01"}
+	createReq := map[string]any{"id": budgetID1, "name": "Carryover Budget", "currencyId": usdID, "startDate": "2025-03-01", "accountIds": []string{accountID}}
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createReq); st != 200 {
 		t.Fatalf("create=%d body=%s", st, e.raw)
 	}

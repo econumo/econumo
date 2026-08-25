@@ -31,6 +31,18 @@ func (pgsqlQuerier) ListAvailableAccounts(ctx context.Context, db backend.DBTX, 
 	return out, nil
 }
 
+func (pgsqlQuerier) ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error) {
+	rows, err := pgsqlgen.New(db).ListDeletedAccounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]accountRow, len(rows))
+	for i, a := range rows {
+		out[i] = accountRow(a)
+	}
+	return out, nil
+}
+
 func (pgsqlQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
 	return pgsqlgen.New(db).CountAvailableAccounts(ctx, userID)
 }

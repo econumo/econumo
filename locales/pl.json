@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Konta",
         "accounts_included": "Uwzględniono {count} z {total}",
-        "accounts_hidden": "W ukrytych folderach"
+        "accounts_hidden": "W ukrytych folderach",
+        "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć"
       },
       "create_budget_form": {
         "header": "Nowy budżet"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Pole wymagane",
             "invalid_name": "Nazwa folderu musi mieć od 3 do 64 znaków"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Wybierz co najmniej jedno konto"
           }
         }
       },
@@ -1421,7 +1427,9 @@
       "invalid_role_alias": "Rola użytkownika budżetu o aliasie {alias} nie istnieje.",
       "transaction_filter_required": "Weryfikacja nie powiodła się.",
       "envelope_side_mixed": "Koperta nie może jednocześnie zawierać kategorii przychodów i wydatków.",
-      "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków."
+      "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków.",
+      "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
+      "accounts_required": "Wybierz co najmniej jedno konto"
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
@@ -1475,7 +1483,8 @@
       "account_not_available": "To konto jest niedostępne dla tej operacji.",
       "item_not_available": "Ta transakcja jest niedostępna dla tej operacji.",
       "invalid_import_file": "Prześlij prawidłowy plik CSV.",
-      "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych."
+      "too_many_labels": "Transakcja może mieć maksymalnie 50 tagów raportowych.",
+      "account_deleted": "To konto zostało usunięte."
     },
     "user": {
       "report_period_invalid": "Nieprawidłowy okres raportu.",

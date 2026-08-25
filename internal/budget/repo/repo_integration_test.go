@@ -123,28 +123,6 @@ func TestBudgetRepo_AccessCRUD(t *testing.T) {
 	}
 }
 
-func TestBudgetRepo_ExcludedAccounts(t *testing.T) {
-	repo, db := newRepo(t)
-	ctx := context.Background()
-	saveBudget(t, repo, ctx)
-	fixture.New(t, db).Account(fixture.Account{ID: acctA, CurrencyID: usdID, UserID: userA, Name: "A", Icon: "x"})
-
-	if err := repo.ExcludeAccount(ctx, vo.MustParseId(budgetID), vo.MustParseId(acctA)); err != nil {
-		t.Fatalf("ExcludeAccount: %v", err)
-	}
-	ids, err := repo.ExcludedAccountIDs(ctx, vo.MustParseId(budgetID))
-	if err != nil || len(ids) != 1 || ids[0].String() != acctA {
-		t.Fatalf("ExcludedAccountIDs = %v, %v; want [acctA]", ids, err)
-	}
-	if err := repo.IncludeAccount(ctx, vo.MustParseId(budgetID), vo.MustParseId(acctA)); err != nil {
-		t.Fatalf("IncludeAccount: %v", err)
-	}
-	ids, _ = repo.ExcludedAccountIDs(ctx, vo.MustParseId(budgetID))
-	if len(ids) != 0 {
-		t.Errorf("want no excluded after include, got %d", len(ids))
-	}
-}
-
 func TestBudgetRepo_FolderCRUD(t *testing.T) {
 	repo, _ := newRepo(t)
 	ctx := context.Background()

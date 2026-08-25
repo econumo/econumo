@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -51,17 +52,41 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 		}
 	}
 
+	// A budget without member accounts tracks nothing; refuse before anything is
+	// written so a rejected create leaves no budget row behind.
+	if len(req.AccountIds) == 0 {
+		return nil, errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "accountIds", Message: "Select at least one account", Code: errs.CodeBudgetAccountsRequired,
+		})
+	}
+
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
 		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}
-		for _, raw := range req.ExcludedAccounts {
+		for _, raw := range req.AccountIds {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
-				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
 			}
-			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
+			// ownsAccount reports a missing account as "not owned", so it must be
+			// consulted before AccountsByIDs, which errors on an unknown id.
+			owned, oerr := s.ownsAccount(txCtx, userID, aid)
+			if oerr != nil {
+				return oerr
+			}
+			if !owned {
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
+			}
+			views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
+			if verr != nil {
+				return verr
+			}
+			if views[0].IsDeleted {
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
+			}
+			if serr := s.budgets.AddAccount(txCtx, budgetID, aid, now); serr != nil {
 				return serr
 			}
 		}

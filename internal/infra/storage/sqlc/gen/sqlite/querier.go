@@ -12,7 +12,7 @@ import (
 type Querier interface {
 	AccountOwnerID(ctx context.Context, id string) (string, error)
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
-	AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error
+	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
@@ -331,12 +331,12 @@ type Querier interface {
 	// query plans.
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
+	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	// Every budget in which this category/tag appears. A merge must touch them all,
 	// including budgets shared with connected users.
 	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
-	ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
 	// Every period this element holds a limit for. A merge transfers all of them,
 	// past and future alike, so there is deliberately no period filter.
@@ -368,6 +368,7 @@ type Querier interface {
 	// list and the code->id map. Custom (per-user) currencies must never reach the
 	// CLI/OXR path. Mirrors CurrencyRepository::getAll() (code projection only).
 	ListCurrencyCodes(ctx context.Context) ([]ListCurrencyCodesRow, error)
+	ListDeletedAccounts(ctx context.Context) ([]Account, error)
 	ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID string) ([]string, error)
 	// Read-side query for the transaction CSV export (SQLite). Returns the user's
 	// accessible accounts (own + shared via accounts_access, not deleted) with their
@@ -431,7 +432,8 @@ type Querier interface {
 	ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
-	RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error
+	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
+	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the

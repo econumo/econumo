@@ -10,18 +10,19 @@ import (
 	"time"
 )
 
-const addBudgetExcludedAccount = `-- name: AddBudgetExcludedAccount :exec
-INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES (?, ?)
+const addBudgetAccount = `-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
-type AddBudgetExcludedAccountParams struct {
+type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	CreatedAt time.Time
 }
 
-func (q *Queries) AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetExcludedAccount, arg.BudgetID, arg.AccountID)
+func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
 	return err
 }
 
@@ -305,6 +306,38 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 	return items, nil
 }
 
+const listBudgetAccounts = `-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id
+`
+
+type ListBudgetAccountsRow struct {
+	AccountID string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetAccounts, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetAccountsRow{}
+	for rows.Next() {
+		var i ListBudgetAccountsRow
+		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetElements = `-- name: ListBudgetElements :many
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = ?
@@ -409,33 +442,6 @@ func (q *Queries) ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]B
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const listBudgetExcludedAccountIDs = `-- name: ListBudgetExcludedAccountIDs :many
-SELECT account_id FROM budgets_excluded_accounts WHERE budget_id = ?
-`
-
-func (q *Queries) ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listBudgetExcludedAccountIDs, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var account_id string
-		if err := rows.Scan(&account_id); err != nil {
-			return nil, err
-		}
-		items = append(items, account_id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err
@@ -637,17 +643,32 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
-const removeBudgetExcludedAccount = `-- name: RemoveBudgetExcludedAccount :exec
-DELETE FROM budgets_excluded_accounts WHERE budget_id = ? AND account_id = ?
+const removeBudgetAccount = `-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?
 `
 
-type RemoveBudgetExcludedAccountParams struct {
+type RemoveBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
 }
 
-func (q *Queries) RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error {
-	_, err := q.db.ExecContext(ctx, removeBudgetExcludedAccount, arg.BudgetID, arg.AccountID)
+func (q *Queries) RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccount, arg.BudgetID, arg.AccountID)
+	return err
+}
+
+const removeBudgetAccountsOwnedBy = `-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = ? AND account_id IN (SELECT id FROM accounts WHERE user_id = ?)
+`
+
+type RemoveBudgetAccountsOwnedByParams struct {
+	BudgetID string
+	UserID   string
+}
+
+func (q *Queries) RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccountsOwnedBy, arg.BudgetID, arg.UserID)
 	return err
 }
 

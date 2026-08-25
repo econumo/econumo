@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Cuentas",
         "accounts_included": "{count} de {total} incluidas",
-        "accounts_hidden": "En carpetas ocultas"
+        "accounts_hidden": "En carpetas ocultas",
+        "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar"
       },
       "create_budget_form": {
         "header": "Nuevo presupuesto"
@@ -867,6 +868,11 @@
           "validation": {
             "required_field": "Campo obligatorio",
             "invalid_name": "El nombre de la carpeta debe tener entre 3 y 64 caracteres"
+          }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Selecciona al menos una cuenta"
           }
         }
       },
@@ -1421,7 +1427,9 @@
       "invalid_role_alias": "No existe ningún rol de usuario de presupuesto con el alias {alias}.",
       "transaction_filter_required": "La validación falló.",
       "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
-      "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos."
+      "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
+      "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
+      "accounts_required": "Selecciona al menos una cuenta"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",
@@ -1475,7 +1483,8 @@
       "account_not_available": "Esta cuenta no está disponible para esta operación.",
       "item_not_available": "Esta transacción no está disponible para esta operación.",
       "invalid_import_file": "Sube un archivo CSV válido.",
-      "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes."
+      "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes.",
+      "account_deleted": "Esta cuenta ha sido eliminada."
     },
     "user": {
       "report_period_invalid": "El periodo del informe es incorrecto.",

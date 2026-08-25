@@ -133,11 +133,13 @@ type LabelMeta struct {
 }
 
 // AccountView is an account as the budget filters builder needs it: id +
-// currency + owner.
+// currency + owner. IsDeleted is carried through so a soft-deleted member
+// account still counts (see AccountLookup.AccountsByIDs).
 type AccountView struct {
 	ID         string
 	CurrencyID string
 	OwnerID    string
+	IsDeleted  bool
 }
 
 // CategoryMeta is a category's display metadata for the budget structure.

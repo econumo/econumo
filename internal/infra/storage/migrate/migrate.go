@@ -40,9 +40,37 @@ import (
 // Migration is defined in this package (not in the backend package) so that the
 // backend package can import migrate and expose Migrations() []migrate.Migration
 // without creating an import cycle.
+//
+// Exactly one of SQL / Command is set: SQL runs statements in one transaction;
+// Command names a CLI command (`migration:<slug>`) the composition root
+// dispatches — a data step that needs feature code the infra layer cannot
+// import. A command step gets no surrounding transaction (the command manages
+// its own), so it must be idempotent; its version is recorded only after it
+// succeeds.
 type Migration struct {
 	Version string
 	SQL     string
+	Command string
+}
+
+// CommandRunner dispatches a command step by name.
+type CommandRunner func(ctx context.Context, name string) error
+
+// NoCommands records command steps without running them — for fresh test
+// databases, where a data command has nothing to act on.
+var NoCommands CommandRunner = func(context.Context, string) error { return nil }
+
+// Option configures Run.
+type Option func(*options)
+
+type options struct {
+	commands CommandRunner
+}
+
+// WithCommandRunner supplies the dispatcher for command steps. Without it, a
+// migration set containing a command step fails when Run reaches it.
+func WithCommandRunner(r CommandRunner) Option {
+	return func(o *options) { o.commands = r }
 }
 
 // legacyMigrationTable is the legacy migration bookkeeping table. It is a fixed
@@ -63,7 +91,12 @@ const legacyMigrationTable = "migration_versions"
 // executing their SQL. An existing production DB therefore skips the
 // schema-creating migrations and only applies genuinely new ones; a fresh DB
 // (no/empty legacy table) runs everything. Run is idempotent.
-func Run(ctx context.Context, db *sql.DB, migs []Migration) error {
+func Run(ctx context.Context, db *sql.DB, migs []Migration, opts ...Option) error {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	if err := ensureSchemaMigrations(ctx, db); err != nil {
 		return err
 	}
@@ -100,12 +133,34 @@ func Run(ctx context.Context, db *sql.DB, migs []Migration) error {
 		if applied[m.Version] {
 			continue
 		}
-		if err := applyMigration(ctx, db, m); err != nil {
+		if m.SQL != "" && m.Command != "" {
+			return fmt.Errorf("migrate: apply %q: migration sets both SQL and Command", m.Version)
+		}
+		var err error
+		if m.Command != "" {
+			err = applyCommand(ctx, db, m, o.commands)
+		} else {
+			err = applyMigration(ctx, db, m)
+		}
+		if err != nil {
 			return fmt.Errorf("migrate: apply %q: %w", m.Version, err)
 		}
 	}
 
 	return nil
+}
+
+// applyCommand dispatches a command step via run and records its version only
+// on success — a command step gets no surrounding transaction (it manages its
+// own), so there is nothing to roll back on failure.
+func applyCommand(ctx context.Context, db *sql.DB, m Migration, run CommandRunner) error {
+	if run == nil {
+		return fmt.Errorf("command step %q: no command runner configured", m.Command)
+	}
+	if err := run(ctx, m.Command); err != nil {
+		return fmt.Errorf("command %q: %w", m.Command, err)
+	}
+	return recordVersion(ctx, db, m.Version)
 }
 
 // ensureSchemaMigrations creates the bookkeeping table if it does not yet exist.

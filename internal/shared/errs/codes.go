@@ -41,6 +41,8 @@ const (
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
 	CodeBudgetEnvelopeSideMixed         = "budget.envelope_side_mixed"
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
+	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
+	CodeBudgetAccountsRequired          = "budget.accounts_required"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -87,6 +89,7 @@ const (
 	CodeTransactionItemNotAvailable    = "transaction.item_not_available"
 	CodeTransactionInvalidImportFile   = "transaction.invalid_import_file"
 	CodeTransactionTooManyLabels       = "transaction.too_many_labels"
+	CodeTransactionAccountDeleted      = "transaction.account_deleted"
 
 	CodeUserReportPeriodInvalid       = "user.report_period_invalid"
 	CodeUserLanguageInvalid           = "user.language_invalid"
@@ -134,6 +137,8 @@ var AllCodes = []string{
 	CodeBudgetTransactionFilterRequired,
 	CodeBudgetEnvelopeSideMixed,
 	CodeBudgetFolderSideMixed,
+	CodeBudgetAccountNotRemovable,
+	CodeBudgetAccountsRequired,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
@@ -180,6 +185,7 @@ var AllCodes = []string{
 	CodeTransactionItemNotAvailable,
 	CodeTransactionInvalidImportFile,
 	CodeTransactionTooManyLabels,
+	CodeTransactionAccountDeleted,
 
 	CodeUserReportPeriodInvalid,
 	CodeUserLanguageInvalid,

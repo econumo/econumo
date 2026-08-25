@@ -12,6 +12,19 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
+// correctionDeletedTx / correctionEditedTx are the descriptions stamped on the
+// §5a corrections that re-pin a deleted account at zero after one of its
+// transactions was removed or edited (resolved English strings, like the
+// account module's own correction descriptions, and stored as-is).
+const (
+	correctionDeletedTx = "Balance adjustment (deleted transaction)"
+	correctionEditedTx  = "Balance adjustment (edited transaction)"
+
+	// deletedAccountMsg is the frozen en text of the §5a create/introduce
+	// rejection; the caller's language is resolved at the edge from its code.
+	deletedAccountMsg = "This account has been deleted"
+)
+
 // Service is the transaction write-side orchestrator.
 type Service struct {
 	repo     Repository
@@ -22,6 +35,7 @@ type Service struct {
 	export   ExportLookup
 	importer Importer
 	labels   LabelOwnership
+	zeroer   AccountZeroer
 	tx       port.TxRunner
 	ops      port.OperationGuard
 	clock    port.Clock
@@ -37,11 +51,85 @@ func NewService(
 	export ExportLookup,
 	importer Importer,
 	labels LabelOwnership,
+	zeroer AccountZeroer,
 	tx port.TxRunner,
 	ops port.OperationGuard,
 	clock port.Clock,
 ) *Service {
-	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, labels: labels, tx: tx, ops: ops, clock: clock}
+	return &Service{repo: repo, accounts: accounts, grants: grants, visible: visible, users: users, export: export, importer: importer, labels: labels, zeroer: zeroer, tx: tx, ops: ops, clock: clock}
+}
+
+// party is one side of a transaction: the account and the request field that
+// names it, so a rejection points at the field the caller sent.
+type party struct {
+	id    vo.Id
+	field string
+}
+
+// stateParties lists the accounts a pending write touches: the source account
+// and, on a transfer, the recipient.
+func stateParties(st *model.NewState) []party {
+	out := []party{{id: st.AccountID, field: "accountId"}}
+	if st.AccountRecipID != nil {
+		out = append(out, party{id: *st.AccountRecipID, field: "accountRecipientId"})
+	}
+	return out
+}
+
+// partySet is stateParties over a persisted transaction (ids only).
+func partySet(t *model.Transaction) []vo.Id {
+	out := []vo.Id{t.AccountID}
+	if t.AccountRecipID != nil {
+		out = append(out, *t.AccountRecipID)
+	}
+	return out
+}
+
+// unionIDs concatenates two id lists without duplicates, keeping a's order.
+func unionIDs(a, b []vo.Id) []vo.Id {
+	out := make([]vo.Id, 0, len(a)+len(b))
+	for _, ids := range [][]vo.Id{a, b} {
+		for _, id := range ids {
+			if !containsID(out, id) {
+				out = append(out, id)
+			}
+		}
+	}
+	return out
+}
+
+func containsID(ids []vo.Id, id vo.Id) bool {
+	for _, v := range ids {
+		if v.Equal(id) {
+			return true
+		}
+	}
+	return false
+}
+
+// rejectDeletedParties enforces the §5a create rule: no transaction may put a
+// new flow on a soft-deleted account, whose balance is pinned at zero. It must
+// run only AFTER the write-access checks on the same accounts, so a caller
+// without access learns nothing about a foreign account's deleted state.
+func (s *Service) rejectDeletedParties(ctx context.Context, st *model.NewState) error {
+	for _, p := range stateParties(st) {
+		if err := s.rejectDeletedAccount(ctx, p); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *Service) rejectDeletedAccount(ctx context.Context, p party) error {
+	deleted, err := s.accounts.AccountDeleted(ctx, p.id)
+	if err != nil {
+		return err
+	}
+	if !deleted {
+		return nil
+	}
+	return errs.NewValidation("Validation failed",
+		errs.FieldError{Key: p.field, Message: deletedAccountMsg, Code: errs.CodeTransactionAccountDeleted})
 }
 
 // checkWriteAccess verifies the user may add/update/delete a transaction on the

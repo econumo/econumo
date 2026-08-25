@@ -24,16 +24,6 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: DeleteBudget :exec
 DELETE FROM budgets WHERE id = $1;
 
--- name: ListBudgetExcludedAccountIDs :many
-SELECT account_id FROM budgets_excluded_accounts WHERE budget_id = $1;
-
--- name: AddBudgetExcludedAccount :exec
-INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES ($1, $2)
-ON CONFLICT (budget_id, account_id) DO NOTHING;
-
--- name: RemoveBudgetExcludedAccount :exec
-DELETE FROM budgets_excluded_accounts WHERE budget_id = $1 AND account_id = $2;
-
 -- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
 FROM budgets_access WHERE budget_id = $1;
@@ -161,3 +151,17 @@ DELETE FROM budgets_elements_limits WHERE id = $1;
 -- name: DeleteBudgetLimitsByBudget :exec
 DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1);
+
+-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id;
+
+-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
+
+-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2);

@@ -644,6 +644,12 @@ func (b *Builder) BudgetAccess(budgetID, userID string, role int, accepted bool)
 		budgetID, userID, role, accepted, now, now)
 }
 
+// BudgetAccount adds an account to a budget's member set.
+func (b *Builder) BudgetAccount(budgetID, accountID string) {
+	b.t.Helper()
+	b.insert(`INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)`, budgetID, accountID, b.now())
+}
+
 // AccessToken seeds one access_tokens row (a live session or PAT). tokenHash
 // is the sha256 hex of the raw bearer token; expiresAt nil = never expires.
 type AccessToken struct {

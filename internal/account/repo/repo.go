@@ -47,6 +47,7 @@ type balanceResult struct {
 type querier interface {
 	GetAccount(ctx context.Context, db backend.DBTX, id string) (accountRow, error)
 	ListAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) ([]accountRow, error)
+	ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error)
 	CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpsertAccount(ctx context.Context, db backend.DBTX, p upsertAccountP) error
 	GetAccountOption(ctx context.Context, db backend.DBTX, p getOptionP) (optionRow, error)
@@ -104,6 +105,23 @@ func (r *Repo) GetByID(ctx context.Context, id vo.Id) (*model.Account, error) {
 // ListAvailable returns the user's non-deleted accounts.
 func (r *Repo) ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error) {
 	rows, err := r.q.ListAvailableAccounts(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.Account, 0, len(rows))
+	for _, row := range rows {
+		a, herr := hydrateAccount(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// ListDeleted returns every soft-deleted account.
+func (r *Repo) ListDeleted(ctx context.Context) ([]*model.Account, error) {
+	rows, err := r.q.ListDeletedAccounts(ctx, r.db(ctx))
 	if err != nil {
 		return nil, err
 	}

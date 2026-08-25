@@ -529,6 +529,11 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
+- Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
+  the boot runner invokes the named CLI command in version order between SQL files, records the
+  version only on success, and gives it no surrounding transaction — every `migration:*` command
+  must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test
+  databases pass `migrate.NoCommands`.
 
 ## CLI / management commands
 
@@ -549,6 +554,7 @@ currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
+migration:zero-deleted-accounts
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -572,6 +578,10 @@ bookkeeping tables excluded. It aborts if the target already holds data unless
 already be on the current schema — boot the current econumo binary against it
 once before importing — and the command refuses with a clear error on a
 schema-version mismatch between source and target.
+
+`migration:zero-deleted-accounts` writes a "Balance adjustment (account
+deleted)" correction so every deleted account's balance is zero; idempotent;
+also invoked automatically at boot as migration step `20260817000001`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -694,6 +704,19 @@ data unreadable. Most are also asserted by the test suite.
   so a hard delete would silently destroy every account and transaction in that currency. A
   deleted currency still appears in `get-currency-list`/`get-currency-rate-list` so entities
   that hold it keep resolving their symbol and rate.
+- **Budget account membership** is explicit (`budgets_accounts`): a budget counts exactly its
+  member accounts, soft-deleted members included (their history keeps counting so
+  `budgetedBefore`/`spentBefore` share one population). An account can be removed only while it
+  has no transactions between the budget start and the first of the caller's current month
+  (`budget.account_not_removable`); a departing participant's accounts leave with them.
+  `create-budget` requires ≥1 owned `accountIds`; `update-budget.accountIds` is optional (absent
+  = untouched, present = replace-set over the caller's own accounts). Deleting an account
+  auto-writes a "Balance adjustment (account deleted)" correction so deleted accounts always
+  have zero balance, and the invariant is **self-healing**: creating a transaction against a
+  deleted account is rejected (`transaction.account_deleted`), and deleting/editing a
+  transaction that still touches one (e.g. an old transfer to a live account) re-zeroes the
+  deleted side in the same DB transaction with a correction dated at the affected transaction's
+  `spent_at` ("Balance adjustment (deleted transaction)" / "(edited transaction)").
 
 ## Deployment
 

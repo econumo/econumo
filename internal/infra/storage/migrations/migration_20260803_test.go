@@ -29,10 +29,10 @@ func runUpTo(t *testing.T, name, version string) *sql.DB {
 	var before []migrate.Migration
 	for _, f := range migrations.SQLite() {
 		if f.Version < version {
-			before = append(before, migrate.Migration{Version: f.Version, SQL: f.SQL})
+			before = append(before, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
 		}
 	}
-	if err := migrate.Run(context.Background(), db, before); err != nil {
+	if err := migrate.Run(context.Background(), db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-migrations: %v", err)
 	}
 	return db
@@ -44,9 +44,9 @@ func runAll(t *testing.T, db *sql.DB) {
 	t.Helper()
 	var all []migrate.Migration
 	for _, f := range migrations.SQLite() {
-		all = append(all, migrate.Migration{Version: f.Version, SQL: f.SQL})
+		all = append(all, migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command})
 	}
-	if err := migrate.Run(context.Background(), db, all); err != nil {
+	if err := migrate.Run(context.Background(), db, all, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("target migration: %v", err)
 	}
 }

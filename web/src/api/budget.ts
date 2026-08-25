@@ -12,14 +12,15 @@ export interface CreateBudgetForm {
   name: string
   startDate: string | null
   currencyId: Id
-  excludedAccounts: Id[]
+  accountIds: Id[]
 }
 
 export interface UpdateBudgetForm {
   id: Id
   name: string
   currencyId: Id
-  excludedAccounts: Id[]
+  /** absent = membership untouched; present = replace-set */
+  accountIds?: Id[]
 }
 
 export async function getBudgetList(): Promise<BudgetMetaDto[]> {
@@ -166,12 +167,12 @@ export async function declineAccess(budgetId: Id): Promise<void> {
 }
 
 // NOTE the wire quirk: the budget id travels under "id", not budgetId.
-export async function excludeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/exclude-account'), { id: budgetId, accountId })
+export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), { id: budgetId, accountId })
   return response.data.data.item
 }
 
-export async function includeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/include-account'), { id: budgetId, accountId })
+export async function removeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/remove-account'), { id: budgetId, accountId })
   return response.data.data.item
 }

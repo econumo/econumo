@@ -76,7 +76,9 @@ func runImportSQLite(ctx context.Context, c *container, args []string) error {
 
 	// Bring the target to the current schema (schema + schema_migrations), so a
 	// bare createdb'd Postgres works in one command; migrate.Run is idempotent.
-	if err := migrate.Run(ctx, c.db, toMigratePg(migrations.Pgsql())); err != nil {
+	// Its own container shares c.db (never closes it) rather than opening a
+	// second connection to the same database.
+	if err := migrate.Run(ctx, c.db, toMigratePg(migrations.Pgsql()), migrate.WithCommandRunner(MigrationCommandRunner(c.cfg, c.db))); err != nil {
 		return fmt.Errorf("migrate target: %w", err)
 	}
 
@@ -100,7 +102,7 @@ func runImportSQLite(ctx context.Context, c *container, args []string) error {
 func toMigratePg(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }
