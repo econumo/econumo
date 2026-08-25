@@ -37,13 +37,23 @@ func Decode(r *http.Request, dst any) error {
 		if errors.As(err, &tooLarge) {
 			return errs.NewValidation("Request body too large.")
 		}
+		// A syntax error or a wrong-typed field is a CLIENT mistake, so it must
+		// surface as a 400 rather than falling through to the 500 exception
+		// envelope (which also logs it at ERROR, hiding real faults among client
+		// noise). The decoder's own text names Go struct fields and offsets, so
+		// it is replaced with a fixed message rather than echoed.
+		var syntax *json.SyntaxError
+		var unmarshalType *json.UnmarshalTypeError
+		if errors.As(err, &syntax) || errors.As(err, &unmarshalType) {
+			return errs.NewValidation("Request body is not valid JSON.")
+		}
 		return err
 	}
 	return nil
 }
 
 // DecodeValidate decodes the body then runs dst.Validate() if dst implements
-// Validator. A JSON syntax error is surfaced as a generic 400.
+// Validator.
 func DecodeValidate(r *http.Request, dst any) error {
 	if err := Decode(r, dst); err != nil {
 		return err

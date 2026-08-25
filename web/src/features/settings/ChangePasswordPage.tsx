@@ -9,6 +9,7 @@ import { isNotEmpty, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useUpdatePassword } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
+import { useFormErrors } from '@/hooks/useFormErrors'
 
 interface FormErrors {
   oldPassword?: string
@@ -23,7 +24,7 @@ export function ChangePasswordPage() {
   const [oldPassword, setOldPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [newPasswordRetry, setNewPasswordRetry] = useState('')
-  const [errors, setErrors] = useState<FormErrors>({})
+  const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<FormErrors>()
   const [outcome, setOutcome] = useState<'success' | 'error' | null>(null)
   const [errorMessage, setErrorMessage] = useState('')
 
@@ -59,7 +60,7 @@ export function ChangePasswordPage() {
           setOldPassword('')
           setNewPassword('')
           setNewPasswordRetry('')
-          setErrors({})
+          resetErrors()
           setOutcome('success')
         },
         onError: () => {
@@ -94,7 +95,12 @@ export function ChangePasswordPage() {
             type="password"
             placeholder={t('user.change_password.form.password.placeholder')}
             value={oldPassword}
-            onChange={(e) => setOldPassword(e.target.value)}
+            onChange={(e) => {
+              clearError('oldPassword')
+              // the new-password rule "must differ from the old one" reads this field
+              clearError('newPassword')
+              setOldPassword(e.target.value)
+            }}
           />
           {errors.oldPassword ? <p className="text-sm text-destructive">{errors.oldPassword}</p> : null}
         </div>
@@ -105,7 +111,12 @@ export function ChangePasswordPage() {
             type="password"
             placeholder={t('user.change_password.form.new_password.placeholder')}
             value={newPassword}
-            onChange={(e) => setNewPassword(e.target.value)}
+            onChange={(e) => {
+              clearError('newPassword')
+              // the retry rule "must match the new password" reads this field
+              clearError('newPasswordRetry')
+              setNewPassword(e.target.value)
+            }}
           />
           {errors.newPassword ? <p className="text-sm text-destructive">{errors.newPassword}</p> : null}
         </div>
@@ -116,7 +127,10 @@ export function ChangePasswordPage() {
             type="password"
             placeholder={t('user.change_password.form.new_password_retry.placeholder')}
             value={newPasswordRetry}
-            onChange={(e) => setNewPasswordRetry(e.target.value)}
+            onChange={(e) => {
+              clearError('newPasswordRetry')
+              setNewPasswordRetry(e.target.value)
+            }}
           />
           {errors.newPasswordRetry ? <p className="text-sm text-destructive">{errors.newPasswordRetry}</p> : null}
         </div>

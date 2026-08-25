@@ -11,6 +11,7 @@ import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { useFormErrors } from '@/hooks/useFormErrors'
 import { BudgetAccountsField } from './BudgetAccountsField'
 
 interface BudgetDialogProps {
@@ -29,20 +30,21 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
-  const [errors, setErrors] = useState<{ name?: string; currency?: string; accounts?: string }>({})
+  const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; currency?: string; accounts?: string }>()
 
   useEffect(() => {
     if (open) {
       setName('')
       setCurrencyId(userCurrencyId(user))
       setSelected(new Set())
-      setErrors({})
+      resetErrors()
     }
   }, [open, user])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
 
   const toggleAccount = (id: Id, included: boolean) => {
+    clearError('accounts')
     setSelected((prev) => {
       const next = new Set(prev)
       if (included) {
@@ -106,7 +108,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
             maxLength={64}
             placeholder={t('budgets.form.budget.name.placeholder')}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              clearError('name')
+              setName(e.target.value)
+            }}
           />
         </CardField>
 
@@ -138,7 +143,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
         title={t('budgets.form.budget_envelope.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
-        onPick={setCurrencyId}
+        onPick={(id) => {
+          clearError('currency')
+          setCurrencyId(id)
+        }}
       />
     </ResponsiveDialog>
   )

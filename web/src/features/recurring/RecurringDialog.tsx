@@ -36,6 +36,7 @@ import type { TransactionType } from '@/api/dto/transaction'
 import type { RecurringSchedule } from '@/api/dto/recurring'
 import { useCreateRecurring, useUpdateRecurring } from './queries'
 import { useRecurringForm, buildRecurringPayload } from './useRecurringForm'
+import { useFormErrors } from '@/hooks/useFormErrors'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 const SCHEDULE_ORDER: RecurringSchedule[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
@@ -54,7 +55,7 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
   const updateRecurring = useUpdateRecurring()
 
   const { form, patch, setType, setSchedule, account } = useRecurringForm(params, accounts)
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [dateOpen, setDateOpen] = useState(false)
   const [addTagOpen, setAddTagOpen] = useState(false)
 
@@ -225,7 +226,10 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               autoFocus
               placeholder={t('transactions.modal.form.amount.label')}
               value={form.amount}
-              onChange={(amount) => patch({ amount })}
+              onChange={(amount) => {
+                clearError('amount')
+                patch({ amount })
+              }}
             />
           </div>
           {errors.amount ? <p className="pb-1 text-sm text-destructive">{errors.amount}</p> : null}
@@ -245,7 +249,10 @@ function RecurringForm({ params, onDone }: { params: OpenRecurringParams; onDone
               <EntitySelect
                 aria-label="to account"
                 value={form.accountRecipientId}
-                onChange={(id) => patch({ accountRecipientId: id })}
+                onChange={(id) => {
+                  clearError('accountRecipientId')
+                  patch({ accountRecipientId: id })
+                }}
                 options={selectableAccounts.filter((a) => a.id !== form.accountId).map(accountToOption)}
               />
             </SelectCard>
