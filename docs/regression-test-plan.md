@@ -21,12 +21,21 @@ end-to-end journeys.
    registration are exercised:
 
    ```bash
+   rm -f /tmp/econumo-regression.sqlite
    DATABASE_URL="sqlite:///tmp/econumo-regression.sqlite" \
    PORT=8181 \
    ECONUMO_ALLOW_REGISTRATION=true \
    ECONUMO_ANALYTICS=false \
+   ECONUMO_EMAIL_VERIFICATION=false \
+   ECONUMO_ADMIN_PORT= ECONUMO_ADMIN_TOKEN= ECONUMO_BILLING_URL= ECONUMO_DATA_SALT= \
    ./econumo serve
    ```
+
+   The binary loads the repo `.env` for any variable not set in the shell, so
+   the explicit empty overrides above are required — otherwise a developer
+   `.env` can silently enable the admin listener (port collision at boot),
+   email verification, or a data salt. `rm -f` guarantees the DB is fresh on
+   repeat runs.
 
 3. Open `http://localhost:8181` — the embedded SPA and API share one origin.
 4. Test data conventions used below — create these three users (via the
@@ -58,6 +67,10 @@ navigation (single-pane vs sidebar).
 
 - [ ] 📱 Register a new user: name/email/password/confirm; inline validation
       (short password, mismatched confirm, bad email); redirected to login.
+      > **Known blocker (until the hidden-`host` validation bug is fixed):**
+      > in a fresh browser with `ALLOW_CUSTOM_API` on, login/registration
+      > silently no-op. Workaround: expand "Connect to a custom server" once
+      > (it seeds the address) and collapse or leave it — then submit works.
 - [ ] Register with an email that already exists → clear field error, no
       account created.
 - [ ] Login with correct credentials → lands on `/` (onboarding for a fresh
@@ -99,11 +112,15 @@ navigation (single-pane vs sidebar).
       now; account page shows it.
 - [ ] Edit account: rename, change icon; balance edit creates a correction to
       match the new balance.
-- [ ] Create a second currency account (e.g. EUR) — requires the currency to be
-      enabled in Settings → Currencies first.
+- [ ] Create a second currency account (e.g. EUR). On a fresh self-hosted DB
+      (no OER token) there are no global currencies besides USD — create a
+      custom currency in Settings → Currencies first (name, code, symbol,
+      rate); that is the normal manual path.
 - [ ] Folders: create, rename, collapse/expand, hide/show (hidden folder
       disappears from sidebar but its accounts stay reachable via settings),
-      delete (only sensible when empty / accounts are moved), reorder folders.
+      delete — deleting a folder MOVES its accounts into the general folder
+      (nothing is lost); the general folder itself offers no Delete; reorder
+      folders.
 - [ ] Drag-and-drop an account within a folder and across folders (desktop);
       order persists after reload.
 - [ ] Delete an account with transactions → confirm dialog; account disappears;
@@ -112,7 +129,9 @@ navigation (single-pane vs sidebar).
       (spent/budgeted-before figures unchanged).
 - [ ] Account page 📱: transaction list groups by day, "today" anchor,
       future-dated (not-posted recurring) entries render above with markers;
-      search filters the list; virtualized scroll stays smooth with 100+ rows.
+      search filters the list; virtualized scroll stays smooth with 100+ rows
+      (seed them via CSV import — a generated 100+-row file doubles as the
+      import-at-scale test).
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
 
 ## 5. Transactions
@@ -146,11 +165,13 @@ navigation (single-pane vs sidebar).
 
 - [ ] 📱 Create a recurring rule (from a transaction's "make recurring" and
       from Settings → Recurring): type, amount, schedule, accounts, category.
-- [ ] Due occurrence appears on the account page as "not posted"; Post creates
-      the real transaction (idempotent — no double post on double click) and
-      advances the schedule; Skip advances without posting.
-- [ ] Month-end clamping: a rule scheduled for the 31st posts on Feb 28/29 and
-      returns to the 31st in March.
+- [ ] Due occurrence appears on the account page as "not posted". Post from the
+      account-page row preview posts immediately (dated today); Post from
+      Settings → Recurring opens a pre-filled review dialog (scheduled date)
+      that you confirm. Both advance the schedule. Skip (advances without
+      posting) is offered ONLY on the account-page row preview.
+- [ ] Month-end clamping (31st → Feb 28 → Mar 31) is long-horizon — covered by
+      unit tests; in a manual run just note the next-date math looks right.
 - [ ] Edit and delete a rule; delete asks for confirmation; posted transactions
       survive rule deletion.
 - [ ] Recurring settings page groups rules by account; actions are gated by
@@ -161,8 +182,8 @@ navigation (single-pane vs sidebar).
 For **each** of categories / tags / payees (and labels inside the tags page):
 
 - [ ] 📱 Create, rename, change icon (and type/kind where applicable:
-      expense/income category tabs, tag-vs-label kind toggle — kind locked
-      after creation).
+      expense/income category tabs, kind toggle — "Budget tag" is the tag entity,
+      "Reporting tag" is the label entity; kind locked after creation).
 - [ ] Archive → item leaves active lists and pickers but history keeps it;
       unarchive restores; "active only" switch reveals archived entries.
 - [ ] Delete an unused item; deleting one in use warns / behaves per rules.
@@ -178,7 +199,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 ## 8. Currencies
 
 - [ ] "My currencies" vs "Global currencies" tabs; enable/disable one currency;
-      bulk enable-all/disable-all.
+      bulk enable-all/disable-all. Only executable when server-side global
+      currencies exist (rates fetched); a fresh DB has just the locked USD.
 - [ ] Base currency and profile currency rows are locked with a reason.
 - [ ] Create a custom currency (name, code, symbol, fraction digits, rate);
       it becomes usable for accounts; edit it; delete it (soft delete —
@@ -208,7 +230,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
       envelope), delete folder; leaving the mode persists the layout.
-- [ ] Envelopes: create (name, currency, categories multi-select, icon);
+- [ ] Envelopes: create via the "+" button on a folder header in Edit
+      structure mode (name, currency, categories multi-select);
       transactions of member categories aggregate under the envelope; edit
       membership; delete envelope returns categories to top level.
 - [ ] Tag on a transaction: spending counts toward the **tag** element, not the
@@ -308,9 +331,10 @@ User C sees none of it.
 - [ ] Sync button: spins during refetch; failure (kill the server briefly)
       turns it amber with a tooltip; recovery clears it. App restores from the
       persisted cache on reload without a boot-loader flash.
-- [ ] Update notices: with a newer release available, the dismissible sidebar
-      notice and the settings "update available" row appear (can be simulated
-      by pointing `ECONUMO_VERSION` at an old value).
+- [ ] Update notices (environment-dependent — needs `ECONUMO_CHECK_UPDATES`
+      and reachability of econumo.com): with a newer release available, the
+      dismissible sidebar notice and the settings "update available" row
+      appear (simulate by pointing `ECONUMO_VERSION` at an old value).
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
       gets 402 toasts on writes, subscription banner shows; security actions
       (logout, password, sessions) still work.
@@ -326,9 +350,11 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
-- [ ] Every dialog used in the suites above renders as a bottom-sheet drawer on
-      mobile (<640px) and a centered dialog on tablet — content scrolls, safe
-      areas respected, keyboard does not cover inputs.
+- [ ] Every dialog used in the suites above renders as a bottom-sheet drawer
+      (short content: previews, action lists, confirms) or a full-screen sheet
+      (long forms, e.g. Add transaction) on mobile (<640px), and a centered
+      dialog on tablet — content scrolls, safe areas respected, keyboard does
+      not cover inputs.
 - [ ] Row actions open bottom sheets (accounts, transactions, classifications,
       recurring, sessions, tokens, budgets).
 - [ ] Long lists scroll smoothly; sidebar scroll position is remembered when
