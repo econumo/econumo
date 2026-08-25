@@ -46,12 +46,11 @@ const (
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
 
-	CodeCategoryNameLength        = "category.name_length"
-	CodeCategoryTypeInvalid       = "category.type_invalid"
-	CodeCategoryReplaceIDRequired = "category.replace_id_required"
-	CodeCategoryNotFound          = "category.not_found"
-	CodeCategoryCannotBeReplaced  = "category.cannot_be_replaced"
-	CodeCategoryListEmpty         = "category.list_empty"
+	CodeCategoryNameLength     = "category.name_length"
+	CodeCategoryTypeInvalid    = "category.type_invalid"
+	CodeCategoryNotFound       = "category.not_found"
+	CodeCategoryCannotBeMerged = "category.cannot_be_merged"
+	CodeCategoryListEmpty      = "category.list_empty"
 
 	CodeConnectionInvalidUUID      = "connection.invalid_uuid"
 	CodeConnectionInvalidRoleAlias = "connection.invalid_role_alias"
@@ -59,16 +58,19 @@ const (
 	CodeConnectionInvitingYourself = "connection.inviting_yourself"
 	CodeConnectionDeletingYourself = "connection.deleting_yourself"
 
-	CodePayeeNameLength    = "payee.name_length"
-	CodePayeeAlreadyExists = "payee.already_exists"
-	CodePayeeListEmpty     = "payee.list_empty"
+	CodePayeeNameLength     = "payee.name_length"
+	CodePayeeAlreadyExists  = "payee.already_exists"
+	CodePayeeCannotBeMerged = "payee.cannot_be_merged"
+	CodePayeeListEmpty      = "payee.list_empty"
 
-	CodeTagNameLength    = "tag.name_length"
-	CodeTagAlreadyExists = "tag.already_exists"
-	CodeTagListEmpty     = "tag.list_empty"
+	CodeTagNameLength     = "tag.name_length"
+	CodeTagAlreadyExists  = "tag.already_exists"
+	CodeTagCannotBeMerged = "tag.cannot_be_merged"
+	CodeTagListEmpty      = "tag.list_empty"
 
-	CodeLabelNameLength = "label.name_length"
-	CodeLabelListEmpty  = "label.list_empty"
+	CodeLabelNameLength     = "label.name_length"
+	CodeLabelCannotBeMerged = "label.cannot_be_merged"
+	CodeLabelListEmpty      = "label.list_empty"
 
 	CodeCurrencyAlreadyExists       = "currency.already_exists"
 	CodeCurrencyNameLength          = "currency.name_length"
@@ -144,9 +146,8 @@ var AllCodes = []string{
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
-	CodeCategoryReplaceIDRequired,
 	CodeCategoryNotFound,
-	CodeCategoryCannotBeReplaced,
+	CodeCategoryCannotBeMerged,
 	CodeCategoryListEmpty,
 
 	CodeConnectionInvalidUUID,
@@ -157,13 +158,16 @@ var AllCodes = []string{
 
 	CodePayeeNameLength,
 	CodePayeeAlreadyExists,
+	CodePayeeCannotBeMerged,
 	CodePayeeListEmpty,
 
 	CodeTagNameLength,
 	CodeTagAlreadyExists,
+	CodeTagCannotBeMerged,
 	CodeTagListEmpty,
 
 	CodeLabelNameLength,
+	CodeLabelCannotBeMerged,
 	CodeLabelListEmpty,
 
 	CodeCurrencyAlreadyExists,

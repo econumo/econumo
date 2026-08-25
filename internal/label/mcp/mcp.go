@@ -37,6 +37,11 @@ type archivedResult struct {
 	Archived bool   `json:"archived"`
 }
 
+type mergeLabelInput struct {
+	SourceID string `json:"sourceId" jsonschema:"id (UUID) of the reporting tag to absorb and DELETE, from list_labels"`
+	TargetID string `json:"targetId" jsonschema:"id (UUID) of the reporting tag to keep, from list_labels"`
+}
+
 func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Register {
 	return func(s *sdk.Server) {
 		sdk.AddTool(s, &sdk.Tool{Name: "list_labels",
@@ -68,6 +73,24 @@ func Register(read *applabel.ReadService, write *applabel.Service) webmcp.Regist
 				})
 				if err != nil {
 					return nil, model.CreateLabelResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		sdk.AddTool(s, &sdk.Tool{Name: "merge_label",
+			Description: "Merge one reporting tag into another: moves every transaction and recurring template from sourceId to targetId, then DELETES sourceId. Cannot be undone; confirm with the user before calling."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in mergeLabelInput) (*sdk.CallToolResult, model.MergeLabelResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "merge_label")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.MergeLabelResult{}, err
+				}
+				res, err := write.MergeLabel(ctx, userID, model.MergeLabelRequest{
+					SourceId: in.SourceID,
+					TargetId: in.TargetID,
+				})
+				if err != nil {
+					return nil, model.MergeLabelResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, *res, nil
 			})

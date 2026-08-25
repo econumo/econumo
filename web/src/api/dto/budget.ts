@@ -121,7 +121,9 @@ export interface BudgetTransactionDto {
 
 export interface BudgetDto {
   meta: BudgetMetaDto
-  filters: { periodStart: string; periodEnd: string; accounts: { id: Id; removable: boolean }[] }
+  /** accounts is optional on the wire: servers older than the budget-membership
+   *  release — still accepted by the app's compat floor — omit it. */
+  filters: { periodStart: string; periodEnd: string; accounts?: { id: Id; removable: boolean }[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
   /** labels is optional on the wire: servers older than the labels release —

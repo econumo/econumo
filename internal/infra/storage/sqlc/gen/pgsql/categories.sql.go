@@ -95,6 +95,23 @@ func (q *Queries) ListCategoriesByOwner(ctx context.Context, userID string) ([]C
 	return items, nil
 }
 
+const reassignCategoryRecurring = `-- name: ReassignCategoryRecurring :exec
+
+UPDATE recurring_transactions SET category_id = $1 WHERE category_id = $2
+`
+
+type ReassignCategoryRecurringParams struct {
+	CategoryID   *string
+	CategoryID_2 *string
+}
+
+// The operation_requests_ids idempotency queries moved to operations.sql (shared
+// across modules that take a client-supplied operation id).
+func (q *Queries) ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, reassignCategoryRecurring, arg.CategoryID, arg.CategoryID_2)
+	return err
+}
+
 const reassignCategoryTransactions = `-- name: ReassignCategoryTransactions :exec
 UPDATE transactions SET category_id = $1 WHERE category_id = $2
 `

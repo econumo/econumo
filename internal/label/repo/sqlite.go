@@ -30,3 +30,11 @@ func (sqliteQuerier) UpsertLabel(ctx context.Context, db backend.DBTX, p upsertP
 func (sqliteQuerier) DeleteLabel(ctx context.Context, db backend.DBTX, id string) error {
 	return sqlitegen.New(db).DeleteLabel(ctx, id)
 }
+
+func (sqliteQuerier) ReassignTransactionLabels(ctx context.Context, db backend.DBTX, p reassignTxParams) error {
+	return sqlitegen.New(db).ReassignTransactionLabels(ctx, p)
+}
+
+func (sqliteQuerier) ReassignRecurringLabels(ctx context.Context, db backend.DBTX, p reassignRecParams) error {
+	return sqlitegen.New(db).ReassignRecurringLabels(ctx, p)
+}

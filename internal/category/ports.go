@@ -18,3 +18,11 @@ type AccountAccess interface {
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
 	HasAdminGrant(ctx context.Context, accountID, userID vo.Id) (bool, error)
 }
+
+// BudgetElementMerger folds the source classification's budget presence (its
+// element, and that element's per-period limits) into the target's. Implemented
+// by internal/budget and wired in internal/server, so this package never imports
+// it.
+type BudgetElementMerger interface {
+	MergeElements(ctx context.Context, oldExternalID, newExternalID vo.Id) error
+}

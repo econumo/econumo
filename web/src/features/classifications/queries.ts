@@ -115,6 +115,33 @@ function useEntityCacheOps(kind: EntityKind, touchesBudget: boolean) {
         void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       }
     },
+    // A merge RE-POINTS rows at the target rather than nulling them, which is
+    // what separates it from remove() above. The budget is always invalidated:
+    // the source's per-period limits were folded into the target's, so a cached
+    // budget would still show the pre-merge numbers and read as data loss.
+    merge: (sourceId: Id, targetId: Id, txField: 'categoryId' | 'payeeId' | 'tagId') => {
+      queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== sourceId))
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+        (prev ?? []).map((t) => (t[txField] === sourceId ? { ...t, [txField]: targetId } : t)),
+      )
+      queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
+        (prev ?? []).map((r) => (r[txField] === sourceId ? { ...r, [txField]: targetId } : r)),
+      )
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    },
+    // Labels are many-to-many, so a merge rewrites the id sets: a row already
+    // carrying both must end up with ONE target id, not a duplicate.
+    mergeLabel: (sourceId: Id, targetId: Id) => {
+      queryClient.setQueryData<EntityDto[]>(key, (prev) => (prev ?? []).filter((i) => i.id !== sourceId))
+      const swap = (ids: Id[]) => (ids.includes(sourceId) ? [...new Set(ids.map((id) => (id === sourceId ? targetId : id)))] : ids)
+      queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
+        (prev ?? []).map((t) => ({ ...t, labelIds: swap(t.labelIds ?? []) })),
+      )
+      queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) =>
+        (prev ?? []).map((r) => ({ ...r, labelIds: swap(r.labelIds ?? []) })),
+      )
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    },
     replaceAll: (items: EntityDto[]) => queryClient.setQueryData(key, items),
     // Reorder the cached list to an explicit id order and re-stamp dense
     // positions, so a bulk sort shows instantly instead of after the round trip.
@@ -178,6 +205,17 @@ export function useDeleteCategory() {
   })
 }
 
+export function useMergeCategory() {
+  const ops = useEntityCacheOps('categories', true)
+  return useMutation({
+    mutationFn: ({ sourceId, targetId }: { sourceId: Id; targetId: Id }) => categoryApi.mergeCategory(sourceId, targetId),
+    onSuccess: (_r, { sourceId, targetId }) => {
+      ops.merge(sourceId, targetId, 'categoryId')
+      trackEvent(METRICS.CLASSIFICATION_MERGE, { type: 'category' })
+    },
+  })
+}
+
 export function useMoveCategory() {
   const ops = useEntityCacheOps('categories', false)
   return useMutation({
@@ -233,6 +271,17 @@ export function useDeletePayee() {
   })
 }
 
+export function useMergePayee() {
+  const ops = useEntityCacheOps('payees', false)
+  return useMutation({
+    mutationFn: ({ sourceId, targetId }: { sourceId: Id; targetId: Id }) => payeeApi.mergePayee(sourceId, targetId),
+    onSuccess: (_r, { sourceId, targetId }) => {
+      ops.merge(sourceId, targetId, 'payeeId')
+      trackEvent(METRICS.CLASSIFICATION_MERGE, { type: 'payee' })
+    },
+  })
+}
+
 export function useMovePayee() {
   const ops = useEntityCacheOps('payees', false)
   return useMutation({
@@ -284,6 +333,17 @@ export function useDeleteTag() {
     onSuccess: (_r, id) => {
       ops.remove(id, 'tagId')
       trackEvent(METRICS.TAG_DELETE)
+    },
+  })
+}
+
+export function useMergeTag() {
+  const ops = useEntityCacheOps('tags', true)
+  return useMutation({
+    mutationFn: ({ sourceId, targetId }: { sourceId: Id; targetId: Id }) => tagApi.mergeTag(sourceId, targetId),
+    onSuccess: (_r, { sourceId, targetId }) => {
+      ops.merge(sourceId, targetId, 'tagId')
+      trackEvent(METRICS.CLASSIFICATION_MERGE, { type: 'tag' })
     },
   })
 }
@@ -424,6 +484,17 @@ export function useDeleteLabel() {
       queryClient.setQueryData<RecurringDto[]>(queryKeys.recurring, (prev) => withoutLabel(prev, id))
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       trackEvent(METRICS.LABEL_DELETE)
+    },
+  })
+}
+
+export function useMergeLabel() {
+  const ops = useEntityCacheOps('labels', true)
+  return useMutation({
+    mutationFn: ({ sourceId, targetId }: { sourceId: Id; targetId: Id }) => labelApi.mergeLabel(sourceId, targetId),
+    onSuccess: (_r, { sourceId, targetId }) => {
+      ops.mergeLabel(sourceId, targetId)
+      trackEvent(METRICS.CLASSIFICATION_MERGE, { type: 'label' })
     },
   })
 }

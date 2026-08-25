@@ -106,6 +106,37 @@ func (q *Queries) ListTagsByOwner(ctx context.Context, userID string) ([]Tag, er
 	return items, nil
 }
 
+const reassignTagRecurring = `-- name: ReassignTagRecurring :exec
+UPDATE recurring_transactions SET tag_id = ? WHERE tag_id = ?
+`
+
+type ReassignTagRecurringParams struct {
+	TagID   *string
+	TagID_2 *string
+}
+
+func (q *Queries) ReassignTagRecurring(ctx context.Context, arg ReassignTagRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTagRecurring, arg.TagID, arg.TagID_2)
+	return err
+}
+
+const reassignTagTransactions = `-- name: ReassignTagTransactions :exec
+;
+
+UPDATE transactions SET tag_id = ? WHERE tag_id = ?
+`
+
+type ReassignTagTransactionsParams struct {
+	TagID   *string
+	TagID_2 *string
+}
+
+// Merge: see ReassignPayeeTransactions for why this is not scoped by user.
+func (q *Queries) ReassignTagTransactions(ctx context.Context, arg ReassignTagTransactionsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTagTransactions, arg.TagID, arg.TagID_2)
+	return err
+}
+
 const upsertTag = `-- name: UpsertTag :exec
 ;
 

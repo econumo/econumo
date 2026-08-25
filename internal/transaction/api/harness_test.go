@@ -37,6 +37,7 @@ import (
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
@@ -140,8 +141,8 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	labelRepo := labelrepo.NewRepo("sqlite", txm)
 	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), labelrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
-	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
-	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
+	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)), wiring.BudgetMerger("sqlite", txm, clock.New()))
+	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)), wiring.BudgetMerger("sqlite", txm, clock.New()))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txImportAccounts := server.NewTransactionImportAccounts(
 		accSvc, accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm), curLookup, "USD",

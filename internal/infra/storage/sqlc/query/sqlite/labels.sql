@@ -38,3 +38,15 @@ ON CONFLICT (id) DO UPDATE SET
 -- unlike tags there is no SET NULL, because the link is a join table.
 DELETE FROM labels WHERE id = ?
 ;
+
+-- name: ReassignTransactionLabels :exec
+-- Merge: transactions_labels is many-to-many, so a transaction may ALREADY hold
+-- both labels. Re-pointing has to dedupe rather than overwrite, or the pair
+-- collides on the (transaction_id, label_id) primary key. The source rows
+-- themselves cascade away when the label is deleted.
+INSERT OR IGNORE INTO transactions_labels (transaction_id, label_id)
+SELECT tl.transaction_id, ? FROM transactions_labels tl WHERE tl.label_id = ?;
+
+-- name: ReassignRecurringLabels :exec
+INSERT OR IGNORE INTO recurring_transactions_labels (recurring_transaction_id, label_id)
+SELECT rtl.recurring_transaction_id, ? FROM recurring_transactions_labels rtl WHERE rtl.label_id = ?;

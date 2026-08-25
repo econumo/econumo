@@ -116,6 +116,13 @@ ON CONFLICT (id) DO UPDATE SET
     sort_key    = excluded.sort_key,
     updated_at  = excluded.updated_at;
 
+-- name: ListBudgetElementsByExternal :many
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE external_id = $1;
+
+-- name: RepointBudgetElement :exec
+UPDATE budgets_elements SET external_id = $1, updated_at = $2 WHERE id = $3;
+
 -- name: DeleteBudgetElement :exec
 DELETE FROM budgets_elements WHERE id = $1;
 
@@ -128,6 +135,10 @@ WHERE e.budget_id = $1 AND l.period = $2;
 -- name: GetBudgetLimit :one
 SELECT id, element_id, period, created_at, updated_at, amount
 FROM budgets_elements_limits WHERE element_id = $1 AND period = $2;
+
+-- name: ListBudgetLimitsByElement :many
+SELECT id, element_id, period, created_at, updated_at, amount
+FROM budgets_elements_limits WHERE element_id = $1;
 
 -- name: UpsertBudgetLimit :exec
 INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)

@@ -1082,6 +1082,15 @@
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Scal z…",
+        "title": "Scal „{name}” z",
+        "confirm": "Scal",
+        "warning": "Wszystkie transakcje „{name}” zostaną przeniesione, a „{name}” zostanie usunięty.",
+        "envelope_info": "Jeśli oba znajdują się w różnych kopertach, najpierw zaktualizuj budżet, aby nie stracić zaplanowanych kwot, ponieważ przy scalaniu limity są sumowane."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1450,9 +1459,8 @@
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
       "type_invalid": "Podany typ kategorii nie istnieje.",
-      "replace_id_required": "Przy mode=replace wymagane jest replaceId.",
       "not_found": "Nie znaleziono kategorii.",
-      "cannot_be_replaced": "Kategorii nie można zastąpić.",
+      "cannot_be_merged": "Nie można scalić wybranych kategorii.",
       "list_empty": "Lista kategorii jest pusta."
     },
     "connection": {
@@ -1475,16 +1483,19 @@
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
+      "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
+      "cannot_be_merged": "Nie można scalić wybranych odbiorców.",
       "list_empty": "Lista odbiorców jest pusta."
     },
     "tag": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki tag już istnieje.",
+      "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
     "token": {

@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 )
 
 const tagOwnerID = "11111111-1111-1111-1111-111111111111"
@@ -27,7 +28,7 @@ func newTagSvc(t *testing.T, db *dbtest.DB) *apptag.Service {
 	readRepo := tagrepo.NewReadRepo(db.Engine, db.TX)
 	opGuard := operationrepo.NewGuard(db.Engine, db.TX)
 	access := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(db.Engine, db.TX))
-	return apptag.NewService(repo, db.TX, opGuard, clock.New(), readRepo, access)
+	return apptag.NewService(repo, db.TX, opGuard, clock.New(), readRepo, access, wiring.BudgetMerger(db.Engine, db.TX, clock.New()))
 }
 
 // tagFixture seeds an owner. Returns the builder.

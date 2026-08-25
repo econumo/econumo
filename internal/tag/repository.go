@@ -24,4 +24,9 @@ type Repository interface {
 	// Delete removes a tag. Transactions referencing it have tag_id set to NULL
 	// via the ON DELETE SET NULL FK.
 	Delete(ctx context.Context, id vo.Id) error
+
+	// ReassignTransactions / ReassignRecurring point every row on oldID at newID
+	// (merge), before the old row is deleted.
+	ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error
+	ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error
 }

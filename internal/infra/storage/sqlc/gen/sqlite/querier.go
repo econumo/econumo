@@ -333,8 +333,14 @@ type Querier interface {
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
+	// Every budget in which this category/tag appears. A merge must touch them all,
+	// including budgets shared with connected users.
+	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
 	ListBudgetFolders(ctx context.Context, budgetID string) ([]BudgetsFolder, error)
+	// Every period this element holds a limit for. A merge transfers all of them,
+	// past and future alike, so there is deliberately no period filter.
+	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error)
 	// period is stored as a datetime TEXT whose exact form varies (RFC3339
 	// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
 	// time.Time does NOT compare equal to either via raw "=", so normalize both
@@ -405,14 +411,39 @@ type Querier interface {
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
+	// The operation_requests_ids idempotency queries moved to operations.sql (shared
+	// across modules that take a client-supplied operation id).
+	// The recurring half of ReassignCategoryTransactions. Its absence is what made
+	// the old delete-category replace mode lossy: templates were left pointing at a
+	// category about to be deleted, and the FK silently nulled them.
+	ReassignCategoryRecurring(ctx context.Context, arg ReassignCategoryRecurringParams) error
 	// Replace-mode: point every transaction on the old category at the new one
 	// before the old category is deleted (mirrors TransactionRepository::replaceCategory).
 	ReassignCategoryTransactions(ctx context.Context, arg ReassignCategoryTransactionsParams) error
+	ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error
+	// Merge: point every transaction on the old payee at the new one before the old
+	// payee is deleted. Deliberately not scoped by user, because a shared account
+	// carries the account owner payee and those rows must follow it too.
+	ReassignPayeeTransactions(ctx context.Context, arg ReassignPayeeTransactionsParams) error
+	ReassignRecurringLabels(ctx context.Context, arg ReassignRecurringLabelsParams) error
+	ReassignTagRecurring(ctx context.Context, arg ReassignTagRecurringParams) error
+	// Merge: see ReassignPayeeTransactions for why this is not scoped by user.
+	ReassignTagTransactions(ctx context.Context, arg ReassignTagTransactionsParams) error
+	// Merge: transactions_labels is many-to-many, so a transaction may ALREADY hold
+	// both labels. Re-pointing has to dedupe rather than overwrite, or the pair
+	// collides on the (transaction_id, label_id) primary key. The source rows
+	// themselves cascade away when the label is deleted.
+	ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error
 	RemoveAccountFromAllFolders(ctx context.Context, accountID string) error
 	RemoveAccountFromFolder(ctx context.Context, arg RemoveAccountFromFolderParams) error
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	// Merge, no-conflict branch: hand the element to another classification instead
+	// of deleting and recreating it, which keeps its folder and sort position so the
+	// budget row stays where the user put it. UpsertBudgetElement deliberately does
+	// not update external_id, hence this dedicated statement.
+	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

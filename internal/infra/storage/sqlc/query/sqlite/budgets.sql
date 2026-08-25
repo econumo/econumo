@@ -120,6 +120,19 @@ ON CONFLICT (id) DO UPDATE SET
     sort_key    = excluded.sort_key,
     updated_at  = excluded.updated_at;
 
+-- name: ListBudgetElementsByExternal :many
+-- Every budget in which this category/tag appears. A merge must touch them all,
+-- including budgets shared with connected users.
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE external_id = ?;
+
+-- name: RepointBudgetElement :exec
+-- Merge, no-conflict branch: hand the element to another classification instead
+-- of deleting and recreating it, which keeps its folder and sort position so the
+-- budget row stays where the user put it. UpsertBudgetElement deliberately does
+-- not update external_id, hence this dedicated statement.
+UPDATE budgets_elements SET external_id = ?, updated_at = ? WHERE id = ?;
+
 -- name: DeleteBudgetElement :exec
 DELETE FROM budgets_elements WHERE id = ?;
 
@@ -136,6 +149,12 @@ WHERE e.budget_id = ? AND datetime(l.period) = datetime(?);
 -- name: GetBudgetLimit :one
 SELECT id, element_id, period, created_at, updated_at, amount
 FROM budgets_elements_limits WHERE element_id = ? AND datetime(period) = datetime(?);
+
+-- name: ListBudgetLimitsByElement :many
+-- Every period this element holds a limit for. A merge transfers all of them,
+-- past and future alike, so there is deliberately no period filter.
+SELECT id, element_id, period, created_at, updated_at, amount
+FROM budgets_elements_limits WHERE element_id = ?;
 
 -- name: UpsertBudgetLimit :exec
 INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)

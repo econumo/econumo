@@ -108,3 +108,18 @@ it('a deleted member absent from the live account list still round-trips in acco
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.accountIds).toEqual(['a1', 'a-deleted'])
 })
+
+// A server older than the membership release omits filters.accounts (and older
+// still, filters entirely). The dialog must degrade to "no locked rows", not
+// crash the whole page with a render error.
+it('renders when the server omits filters.accounts', async () => {
+  const legacy = { ...baseBudget, filters: { ...baseBudget.filters, accounts: undefined } } as unknown as BudgetDto
+  renderDialog(legacy)
+  await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
+})
+
+it('renders when the server omits filters entirely', async () => {
+  const legacy = { ...baseBudget, filters: undefined } as unknown as BudgetDto
+  renderDialog(legacy)
+  await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
+})

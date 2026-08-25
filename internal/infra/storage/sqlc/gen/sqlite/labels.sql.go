@@ -105,6 +105,42 @@ func (q *Queries) ListLabelsByOwner(ctx context.Context, userID string) ([]Label
 	return items, nil
 }
 
+const reassignRecurringLabels = `-- name: ReassignRecurringLabels :exec
+INSERT OR IGNORE INTO recurring_transactions_labels (recurring_transaction_id, label_id)
+SELECT rtl.recurring_transaction_id, ? FROM recurring_transactions_labels rtl WHERE rtl.label_id = ?
+`
+
+type ReassignRecurringLabelsParams struct {
+	LabelID   string
+	LabelID_2 string
+}
+
+func (q *Queries) ReassignRecurringLabels(ctx context.Context, arg ReassignRecurringLabelsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignRecurringLabels, arg.LabelID, arg.LabelID_2)
+	return err
+}
+
+const reassignTransactionLabels = `-- name: ReassignTransactionLabels :exec
+;
+
+INSERT OR IGNORE INTO transactions_labels (transaction_id, label_id)
+SELECT tl.transaction_id, ? FROM transactions_labels tl WHERE tl.label_id = ?
+`
+
+type ReassignTransactionLabelsParams struct {
+	LabelID   string
+	LabelID_2 string
+}
+
+// Merge: transactions_labels is many-to-many, so a transaction may ALREADY hold
+// both labels. Re-pointing has to dedupe rather than overwrite, or the pair
+// collides on the (transaction_id, label_id) primary key. The source rows
+// themselves cascade away when the label is deleted.
+func (q *Queries) ReassignTransactionLabels(ctx context.Context, arg ReassignTransactionLabelsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignTransactionLabels, arg.LabelID, arg.LabelID_2)
+	return err
+}
+
 const upsertLabel = `-- name: UpsertLabel :exec
 ;
 
