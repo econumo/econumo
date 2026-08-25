@@ -26,6 +26,7 @@ import { useConnections } from '@/features/connections/queries'
 import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
+import { useFormErrors } from '@/hooks/useFormErrors'
 
 export function AccountDialog() {
   const { t } = useTranslation()
@@ -48,7 +49,7 @@ export function AccountDialog() {
   const [currencyId, setCurrencyId] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [icon, setIcon] = useState(defaultAccountIcon)
-  const [errors, setErrors] = useState<{ name?: string; balance?: string }>({})
+  const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
   const [shareOpen, setShareOpen] = useState(false)
   const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
 
@@ -75,7 +76,7 @@ export function AccountDialog() {
     }
     setShareOpen(false)
     setLevelEntry(null)
-    setErrors({})
+    resetErrors()
     // re-seed whenever the dialog opens with new params
   }, [params, user])
 
@@ -179,7 +180,10 @@ export function AccountDialog() {
             maxLength={64}
             placeholder={t('accounts.form.name.placeholder')}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              clearError('name')
+              setName(e.target.value)
+            }}
           />
         </CardField>
 
@@ -189,7 +193,10 @@ export function AccountDialog() {
             className={cardFieldControlClass}
             placeholder={t('accounts.form.balance.placeholder')}
             value={balance}
-            onChange={setBalance}
+            onChange={(v) => {
+              clearError('balance')
+              setBalance(v)
+            }}
           />
         </CardField>
 

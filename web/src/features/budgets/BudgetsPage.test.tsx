@@ -127,6 +127,26 @@ it('creating a budget with no accounts selected shows the validation error and s
   expect(hits).toBe(0)
 })
 
+it('retracts each validation error as soon as its own field is fixed', async () => {
+  server.use(...coreHandlers())
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Main budget')
+  await user.click(screen.getByRole('button', { name: /Create budget/ }))
+  await screen.findByRole('dialog')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  // Submit empty to raise both errors, then fix each field in turn: a message the
+  // user has already acted on must not linger until the next submit.
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  expect(await screen.findByText('Required field')).toBeInTheDocument()
+  expect(screen.getByText('Select at least one account')).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  expect(screen.queryByText('Required field')).toBeNull()
+  expect(screen.getByText('Select at least one account')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+  expect(screen.queryByText('Select at least one account')).toBeNull()
+})
+
 it('delete confirm removes the budget; go-to navigates', async () => {
   server.use(...coreHandlers({ user: userWithDefaultBudget }))
   server.use(
