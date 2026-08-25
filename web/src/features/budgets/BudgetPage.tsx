@@ -12,6 +12,7 @@ import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
+import { InfoBox } from '@/components/InfoBox'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -311,9 +312,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
-  const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false
-  const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
+  // An archived budget is read-only regardless of role: archived wins over
+  // whatever the caller's grant would otherwise allow (the server enforces the
+  // same rule with a coded 403).
+  const archived = budget?.meta.isArchived === 1
+  const configure = budget && !archived ? canConfigureBudget(budget.meta, user?.id) : false
+  const editDetails = budget && !archived ? canEditBudget(budget.meta, user?.id) : false
+  const limitsEditable = budget && !archived ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -674,7 +679,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         </>
       ) : (
         <>
-          <PeriodStrip startedAt={budget.meta.startedAt} />
+          {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
 
           {editMode ? (
             <div>

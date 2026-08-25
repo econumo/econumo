@@ -1,6 +1,7 @@
 package model
 
 import (
+	"errors"
 	"testing"
 	"time"
 
@@ -381,4 +382,73 @@ func asValidation(err error, target **errs.ValidationError) bool {
 		*target = ve
 	}
 	return ok
+}
+
+func TestBudget_EndAt(t *testing.T) {
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "B",
+		mustID(t, "33333333-3333-3333-3333-333333333333"),
+		time.Date(2024, 3, 1, 0, 0, 0, 0, time.UTC), t0)
+
+	mid := time.Date(2024, 6, 15, 12, 0, 0, 0, time.UTC) // snaps to 2024-06-01
+	if err := b.EndAt(&mid, t1); err != nil {
+		t.Fatal(err)
+	}
+	want := time.Date(2024, 6, 1, 0, 0, 0, 0, time.UTC)
+	if b.EndedAt == nil || !b.EndedAt.Equal(want) {
+		t.Fatalf("endedAt=%v want %v", b.EndedAt, want)
+	}
+	if !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("EndAt should bump updatedAt, got %v", b.UpdatedAt)
+	}
+
+	// re-setting the same month is a no-op.
+	b.UpdatedAt = t0
+	if err := b.EndAt(&mid, t1); err != nil {
+		t.Fatal(err)
+	}
+	if !b.UpdatedAt.Equal(t0) {
+		t.Fatal("no-op EndAt bumped updatedAt")
+	}
+
+	before := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
+	if err := b.EndAt(&before, t1); !errors.Is(err, ErrBudgetEndBeforeStart) {
+		t.Fatalf("err=%v want ErrBudgetEndBeforeStart", err)
+	}
+
+	// the start month itself is allowed (a one-month budget).
+	start := time.Date(2024, 3, 20, 0, 0, 0, 0, time.UTC)
+	if err := b.EndAt(&start, t1); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := b.EndAt(nil, t1); err != nil || b.EndedAt != nil {
+		t.Fatalf("clear: err=%v endedAt=%v", err, b.EndedAt)
+	}
+}
+
+func TestBudget_ArchiveUnarchive_Idempotent(t *testing.T) {
+	b := NewBudget(mustID(t, "11111111-1111-1111-1111-111111111111"),
+		mustID(t, "22222222-2222-2222-2222-222222222222"), "B",
+		mustID(t, "33333333-3333-3333-3333-333333333333"), t0, t0)
+
+	b.Archive(t1)
+	if !b.IsArchived || !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("archive: isArchived=%v updatedAt=%v", b.IsArchived, b.UpdatedAt)
+	}
+	b.UpdatedAt = t0
+	b.Archive(t1)
+	if !b.UpdatedAt.Equal(t0) {
+		t.Fatal("second Archive bumped updatedAt")
+	}
+
+	b.Unarchive(t1)
+	if b.IsArchived || !b.UpdatedAt.Equal(t1) {
+		t.Fatalf("unarchive: isArchived=%v updatedAt=%v", b.IsArchived, b.UpdatedAt)
+	}
+	b.UpdatedAt = t0
+	b.Unarchive(t1)
+	if !b.UpdatedAt.Equal(t0) {
+		t.Fatal("second Unarchive bumped updatedAt")
+	}
 }

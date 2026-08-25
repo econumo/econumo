@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Progresso das despesas",
         "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplicar orçamento",
+        "copy_plans": "Copiar planos",
+        "start_this_month": "Começar a partir deste mês"
+      },
+      "complete_budget_form": {
+        "header": "Concluir orçamento",
+        "end_month": "Último mês",
+        "continue_copy": "Continuar numa cópia a partir deste mês",
+        "copy_plans": "Copiar planos"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Selecione pelo menos uma conta"
           }
+        },
+        "end_month": {
+          "label": "Mês final",
+          "none": "Sem data de fim"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Total",
             "expenses": "Total de despesas"
           }
-        }
+        },
+        "archived_banner": "Este orçamento está arquivado e é somente leitura"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Controlo de acesso",
-          "go_to": "Abrir orçamento"
+          "go_to": "Abrir orçamento",
+          "duplicate": "Duplicar…",
+          "complete": "Concluir…",
+          "archive": "Arquivar",
+          "unarchive": "Desarquivar"
+        },
+        "archived_group": {
+          "header": "Arquivados"
         }
       }
     }
@@ -1429,7 +1452,9 @@
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
-      "accounts_required": "Selecione pelo menos uma conta"
+      "accounts_required": "Selecione pelo menos uma conta",
+      "archived": "Este orçamento está arquivado",
+      "end_before_start": "O mês final é anterior ao início do orçamento"
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",

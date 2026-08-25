@@ -717,6 +717,14 @@ data unreadable. Most are also asserted by the test suite.
   transaction that still touches one (e.g. an old transfer to a live account) re-zeroes the
   deleted side in the same DB transaction with a correction dated at the affected transaction's
   `spent_at` ("Balance adjustment (deleted transaction)" / "(edited transaction)").
+- **Budget lifecycle**: a budget may carry an end month (`ended_at`, inclusive first-of-month;
+  `endedAt` on the wire, `""` when unset) and an archived flag (`isArchived` 0/1). Archived =
+  hidden + read-only: every budget write returns a coded 403 `budget.archived` except
+  unarchive/delete/revoke/decline/accept (and archive itself, idempotent). Readers clamp periods
+  to the end month; `set-limit` refuses periods past it; the membership removal window ends at
+  `min(current month, end month + 1)`. `clone-budget` is an owner-only single-transaction deep
+  copy (structure, sharing, membership, optionally plans from a chosen start month; envelope
+  elements' `external_id` remapped) — the copy starts open-ended and unarchived.
 
 ## Deployment
 

@@ -36,6 +36,7 @@ func (s *Service) GetBudgetPlan(ctx context.Context, userID vo.Id, req model.Get
 	if err != nil {
 		return nil, err
 	}
+	from = b.clampPeriod(from)
 	result, err := s.BuildBudgetPlan(ctx, userID, b, from, months)
 	if err != nil {
 		return nil, err

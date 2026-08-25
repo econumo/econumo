@@ -178,6 +178,26 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-01","amount":"10.00"}}}`},
 	}})
 
+	// budget_lifecycle drives the end-date/archive/clone tools: set an end month,
+	// archive, prove a write is refused while archived (the coded 403 rendered
+	// through MapErr), unarchive, clone, and read the copy back.
+	register(Scenario{Name: "budget_lifecycle", Steps: []Step{
+		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP Lifecycle","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01","account_ids":["` + apiparity.OwnerAccount + `"]}}}`},
+		{Label: "set-end-date",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_budget","arguments":{"budget_id":"{{budget_id}}","name":"MCP Lifecycle","currency_id":"` + apiparity.USD + `","end_date":"2024-07-01"}}}`},
+		{Label: "archive-budget",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"archive_budget","arguments":{"budget_id":"{{budget_id}}"}}}`},
+		{Label: "set-limit-archived",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"` + apiparity.CatFood + `","month":"2024-05","amount":"10.00"}}}`},
+		{Label: "unarchive-budget",
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"unarchive_budget","arguments":{"budget_id":"{{budget_id}}"}}}`},
+		{Label: "clone-budget",
+			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"clone_budget","arguments":{"budget_id":"{{budget_id}}","new_id":"b0000000-0000-0000-0000-0000000000c1","name":"MCP Lifecycle Copy","with_limits":true}}}`},
+		{Label: "get-clone",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"b0000000-0000-0000-0000-0000000000c1","month":"2024-05"}}}`},
+	}})
+
 	// transactions REST-seeds a FRESH account (so list_transactions starts
 	// empty rather than inheriting the fixture's two seeded transactions),
 	// captures its minted id, then drives create_transaction / list_transactions

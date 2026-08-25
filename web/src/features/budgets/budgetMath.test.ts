@@ -141,3 +141,18 @@ it('widget math folds signed exchanges/holdings and clamps progress', () => {
   expect(over.overspent).toBe(true)
   expect(over.progress).toBe(1)
 })
+
+it('periodRange marks months after the budget end month as outside', () => {
+  const range = periodRange('2026-07-01', '2026-01-01 00:00:00', 6, 6, 'en', '2026-08-01 00:00:00')
+  expect(range.find((i) => i.value === '2026-08-01')!.outsideBudget).toBe(false)
+  expect(range.find((i) => i.value === '2026-09-01')!.outsideBudget).toBe(true)
+  // the start boundary still applies in the same call
+  expect(range.find((i) => i.value === '2026-01-01')!.outsideBudget).toBe(false)
+  const wide = periodRange('2026-07-01', '2026-02-01 00:00:00', 6, 6, 'en', '2026-08-01 00:00:00')
+  expect(wide.find((i) => i.value === '2026-01-01')!.outsideBudget).toBe(true)
+})
+
+it('periodRange without an end month leaves later months inside', () => {
+  const range = periodRange('2026-07-01', '2026-01-01 00:00:00', 6, 6, 'en', '')
+  expect(range.find((i) => i.value === '2026-12-01')!.outsideBudget).toBe(false)
+})

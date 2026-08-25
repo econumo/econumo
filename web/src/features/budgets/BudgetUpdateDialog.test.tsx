@@ -9,8 +9,8 @@ import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 
 const baseBudget: BudgetDto = {
   meta: {
-    id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
-    access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+    id: 'b1', ownerUserId: 'u1', name: 'Main budget', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd',
+    isArchived: 0, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
   },
   filters: {
     periodStart: '2026-07-01 00:00:00',

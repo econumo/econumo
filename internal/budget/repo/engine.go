@@ -47,6 +47,7 @@ type querier interface {
 	DeleteBudgetElement(ctx context.Context, db backend.DBTX, id string) error
 
 	ListBudgetLimitsForPeriod(ctx context.Context, db backend.DBTX, budgetID string, period time.Time) ([]limitRow, error)
+	ListBudgetLimitsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]limitRow, error)
 	ListBudgetLimitsByElement(ctx context.Context, db backend.DBTX, elementID string) ([]limitRow, error)
 	GetBudgetLimit(ctx context.Context, db backend.DBTX, elementID string, period time.Time) (limitRow, error)
 	UpsertBudgetLimit(ctx context.Context, db backend.DBTX, p upLimitP) error
@@ -154,6 +155,11 @@ func (sqliteQuerier) ListBudgetLimitsForPeriod(ctx context.Context, db backend.D
 	// 'Y-m-d H:i:s' string so it normalizes equal regardless of the stored form
 	// (a bound time.Time does not compare equal to the stored datetime text).
 	return sqlitegen.New(db).ListBudgetLimitsForPeriod(ctx, sqlitegen.ListBudgetLimitsForPeriodParams{BudgetID: budgetID, Datetime: limitPeriodArg(period)})
+}
+func (sqliteQuerier) ListBudgetLimitsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]limitRow, error) {
+	// datetime(l.period) >= datetime(?): bind the boundary as a 'Y-m-d H:i:s'
+	// string for the same reason ListBudgetLimitsForPeriod does.
+	return sqlitegen.New(db).ListBudgetLimitsFrom(ctx, sqlitegen.ListBudgetLimitsFromParams{BudgetID: budgetID, Datetime: limitPeriodArg(from)})
 }
 func (sqliteQuerier) GetBudgetLimit(ctx context.Context, db backend.DBTX, elementID string, period time.Time) (limitRow, error) {
 	return sqlitegen.New(db).GetBudgetLimit(ctx, sqlitegen.GetBudgetLimitParams{ElementID: elementID, Datetime: limitPeriodArg(period)})
@@ -343,6 +349,17 @@ func (pgsqlQuerier) DeleteBudgetElement(ctx context.Context, db backend.DBTX, id
 }
 func (pgsqlQuerier) ListBudgetLimitsForPeriod(ctx context.Context, db backend.DBTX, budgetID string, period time.Time) ([]limitRow, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetLimitsForPeriod(ctx, pgsqlgen.ListBudgetLimitsForPeriodParams{BudgetID: budgetID, Period: period})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]limitRow, len(rows))
+	for i, v := range rows {
+		out[i] = limitRow{ID: v.ID, ElementID: v.ElementID, Period: v.Period, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, Amount: v.Amount}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) ListBudgetLimitsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]limitRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetLimitsFrom(ctx, pgsqlgen.ListBudgetLimitsFromParams{BudgetID: budgetID, Period: from})
 	if err != nil {
 		return nil, err
 	}

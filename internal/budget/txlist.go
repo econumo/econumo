@@ -64,6 +64,10 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, err
 	}
+	if clamped := b.clampPeriod(periodStart); !clamped.Equal(periodStart) {
+		periodStart = clamped
+		periodEnd = periodStart.AddDate(0, 1, 0)
+	}
 	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
 	if err != nil {
 		return nil, err

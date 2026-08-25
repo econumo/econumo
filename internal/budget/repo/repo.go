@@ -84,7 +84,8 @@ func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, 
 func (r *Repo) Save(ctx context.Context, b *model.Budget) error {
 	return r.q.UpsertBudget(ctx, r.db(ctx), upBudgetP{
 		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
-		Name: b.Name, StartedAt: b.StartedAt, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
+		Name: b.Name, StartedAt: b.StartedAt, EndedAt: b.EndedAt, IsArchived: b.IsArchived,
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
 	})
 }
 
@@ -309,15 +310,17 @@ func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period t
 	if err != nil {
 		return nil, err
 	}
-	out := make([]*model.BudgetElementLimit, 0, len(rows))
-	for _, row := range rows {
-		l, herr := hydrateLimit(row)
-		if herr != nil {
-			return nil, herr
-		}
-		out = append(out, l)
+	return hydrateLimits(rows)
+}
+
+// ListLimitsFrom returns every limit of a budget's elements at or after `from`
+// (clone copies forward-looking plans only).
+func (r *Repo) ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error) {
+	rows, err := r.q.ListBudgetLimitsFrom(ctx, r.db(ctx), budgetID.String(), from)
+	if err != nil {
+		return nil, err
 	}
-	return out, nil
+	return hydrateLimits(rows)
 }
 
 func (r *Repo) ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error) {
@@ -325,6 +328,10 @@ func (r *Repo) ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*mod
 	if err != nil {
 		return nil, err
 	}
+	return hydrateLimits(rows)
+}
+
+func hydrateLimits(rows []limitRow) ([]*model.BudgetElementLimit, error) {
 	out := make([]*model.BudgetElementLimit, 0, len(rows))
 	for _, row := range rows {
 		l, herr := hydrateLimit(row)
@@ -372,7 +379,7 @@ func hydrateBudget(row budgetRow) (*model.Budget, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, EndedAt: row.EndedAt, IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAccess(row accessRow) (*model.BudgetAccess, error) {

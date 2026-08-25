@@ -21,6 +21,17 @@ export interface UpdateBudgetForm {
   currencyId: Id
   /** absent = membership untouched; present = replace-set */
   accountIds?: Id[]
+  /** absent = end month untouched; '' clears it; 'Y-m-d' sets it */
+  endDate?: string
+}
+
+export interface CloneBudgetForm {
+  id: Id
+  newId: Id
+  name: string
+  /** null = copy from the source's own start month */
+  startDate: string | null
+  withLimits: boolean
 }
 
 export async function getBudgetList(): Promise<BudgetMetaDto[]> {
@@ -40,6 +51,23 @@ export async function updateBudget(form: UpdateBudgetForm): Promise<BudgetMetaDt
 
 export async function deleteBudget(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/delete-budget'), { id })
+}
+
+export async function cloneBudget(form: CloneBudgetForm): Promise<BudgetMetaDto> {
+  const { startDate, ...rest } = form
+  const body = startDate === null ? rest : { ...rest, startDate }
+  const response = await api.post<Envelope<{ item: { meta: BudgetMetaDto } }>>(apiUrl('/api/v1/budget/clone-budget'), body)
+  return response.data.data.item.meta
+}
+
+export async function archiveBudget(id: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/archive-budget'), { id })
+  return response.data.data.item
+}
+
+export async function unarchiveBudget(id: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/unarchive-budget'), { id })
+  return response.data.data.item
 }
 
 export async function getBudget(id: Id, date: string): Promise<BudgetDto> {

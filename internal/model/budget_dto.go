@@ -19,12 +19,15 @@ type AccessResult struct {
 
 // MetaResult is a budget's metadata block.
 type MetaResult struct {
-	Id          string         `json:"id"`
-	OwnerUserId string         `json:"ownerUserId"`
-	Name        string         `json:"name"`
-	StartedAt   string         `json:"startedAt"`
-	CurrencyId  string         `json:"currencyId"`
-	Access      []AccessResult `json:"access"`
+	Id          string `json:"id"`
+	OwnerUserId string `json:"ownerUserId"`
+	Name        string `json:"name"`
+	StartedAt   string `json:"startedAt"`
+	// EndedAt is the last covered month, "" when the budget is open-ended.
+	EndedAt    string         `json:"endedAt"`
+	CurrencyId string         `json:"currencyId"`
+	IsArchived int            `json:"isArchived"`
+	Access     []AccessResult `json:"access"`
 }
 
 // BudgetAccountFilter is one member account of the budget as the requester sees
@@ -163,6 +166,9 @@ type UpdateBudgetRequest struct {
 	// AccountIds is nil when the client omits the field, which leaves membership
 	// untouched; a present list replaces the caller's own member set.
 	AccountIds []string `json:"accountIds"`
+	// EndDate is nil when the client omits the field (end month untouched);
+	// "" clears it, "2006-01-02" sets it (snapped to first-of-month).
+	EndDate *string `json:"endDate"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -184,6 +190,49 @@ func (r DeleteBudgetRequest) Validate() error { return ValidateBlank(map[string]
 
 // DeleteBudgetResult is empty.
 type DeleteBudgetResult struct{}
+
+// ArchiveBudgetRequest / UnarchiveBudgetRequest hide or restore a budget.
+type ArchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r ArchiveBudgetRequest) Validate() error { return ValidateBlank(map[string]string{"id": r.Id}) }
+
+type ArchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
+type UnarchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r UnarchiveBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+type UnarchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
+// CloneBudgetRequest deep-copies a budget the caller owns. StartDate empty
+// means the source's own start month (a full backup); a later month makes the
+// copy a continuation. WithLimits carries the plans over.
+type CloneBudgetRequest struct {
+	Id         string `json:"id"`
+	NewId      string `json:"newId"`
+	Name       string `json:"name"`
+	StartDate  string `json:"startDate"`
+	WithLimits bool   `json:"withLimits"`
+}
+
+func (r CloneBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id, "newId": r.NewId})
+}
+
+// CloneBudgetResult is the copy, built for the caller's current month.
+type CloneBudgetResult struct {
+	Item BudgetResult `json:"item"`
+}
 
 // ResetBudgetRequest resets a budget's start month.
 type ResetBudgetRequest struct {

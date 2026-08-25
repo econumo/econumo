@@ -46,6 +46,7 @@ func (s *Service) GetBudget(ctx context.Context, userID vo.Id, req model.GetBudg
 	if err != nil {
 		return nil, err
 	}
+	periodStart = b.clampPeriod(periodStart)
 	result, err := s.BuildBudget(ctx, userID, b, periodStart, s.clock.Now())
 	if err != nil {
 		return nil, err

@@ -159,6 +159,16 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.ArchiveBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.ArchiveCategoryRequest:
     properties:
       id:
@@ -342,6 +352,24 @@ definitions:
         type: string
       type:
         type: integer
+    type: object
+  model.CloneBudgetRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      newId:
+        type: string
+      startDate:
+        type: string
+      withLimits:
+        type: boolean
+    type: object
+  model.CloneBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
     type: object
   model.CompleteOnboardingResult:
     properties:
@@ -1198,8 +1226,13 @@ definitions:
         type: array
       currencyId:
         type: string
+      endedAt:
+        description: EndedAt is the last covered month, "" when the budget is open-ended.
+        type: string
       id:
         type: string
+      isArchived:
+        type: integer
       name:
         type: string
       ownerUserId:
@@ -1902,6 +1935,16 @@ definitions:
       name:
         type: string
     type: object
+  model.UnarchiveBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.UnarchiveCategoryRequest:
     properties:
       id:
@@ -1998,6 +2041,11 @@ definitions:
           type: string
         type: array
       currencyId:
+        type: string
+      endDate:
+        description: |-
+          EndDate is nil when the client omits the field (end month untouched);
+          "" clears it, "2006-01-02" sets it (snapped to first-of-month).
         type: string
       id:
         type: string
@@ -3035,6 +3083,54 @@ paths:
       summary: Add an account to a budget
       tags:
       - Budget
+  /api/v1/budget/archive-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Archive budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a budget
+      tags:
+      - Budget
   /api/v1/budget/change-element-currency:
     post:
       consumes:
@@ -3077,6 +3173,54 @@ paths:
       security:
       - Bearer: []
       summary: Change a budget element's currency
+      tags:
+      - Budget
+  /api/v1/budget/clone-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Clone budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CloneBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CloneBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Clone a budget
       tags:
       - Budget
   /api/v1/budget/create-budget:
@@ -3870,6 +4014,54 @@ paths:
       security:
       - Bearer: []
       summary: Set a budget element limit
+      tags:
+      - Budget
+  /api/v1/budget/unarchive-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Unarchive budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a budget
       tags:
       - Budget
   /api/v1/budget/update-budget:

@@ -264,3 +264,45 @@ it('delete is offered on an admin-shared budget, not only owned ones', async () 
   await user.click(screen.getByRole('button', { name: 'budget actions Admin plan' }))
   expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
 })
+
+const archivedBudgets = [
+  fixtureBudgets[0],
+  { ...fixtureBudgets[1], isArchived: 1 as const },
+]
+
+it('archived budgets sit in a collapsed group, expandable on click', async () => {
+  server.use(...coreHandlers({ budgets: archivedBudgets }))
+  const user = userEvent.setup()
+  renderPage()
+
+  // the live budget is listed; the archived one is not, until the group opens
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  expect(screen.queryByText('Alpha plan')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: /Archived/ }))
+  expect(await screen.findByText('Alpha plan')).toBeInTheDocument()
+})
+
+it('the actions menu offers Archive for a live budget and Unarchive for an archived one', async () => {
+  server.use(...coreHandlers({ budgets: archivedBudgets }))
+  let archivedBody: unknown
+  server.use(
+    http.post('*/api/v1/budget/archive-budget', async ({ request }) => {
+      archivedBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...archivedBudgets[0], isArchived: 1 } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByLabelText('budget actions Main budget'))
+  expect(await screen.findByText('Archive')).toBeInTheDocument()
+  expect(screen.queryByText('Unarchive')).not.toBeInTheDocument()
+  await user.click(screen.getByText('Archive'))
+  await waitFor(() => expect(archivedBody).toEqual({ id: 'b1' }))
+
+  // the archived row offers Unarchive instead
+  await user.click(screen.getByRole('button', { name: /Archived/ }))
+  await user.click(await screen.findByLabelText('budget actions Alpha plan'))
+  expect(await screen.findByText('Unarchive')).toBeInTheDocument()
+})

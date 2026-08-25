@@ -59,9 +59,15 @@ export function planVisibleCount(containerWidthPx: number, editMode = false): nu
   return fit < 3 ? 1 : Math.min(fit, 12)
 }
 
-export function clampFirstMonth(firstMonth: string, startedAt: string): string {
+export function clampFirstMonth(firstMonth: string, startedAt: string, endedAt?: string): string {
   const startMonth = `${startedAt.slice(0, 7)}-01`
-  return firstMonth < startMonth ? startMonth : firstMonth
+  let clamped = firstMonth < startMonth ? startMonth : firstMonth
+  // never open the window past the budget's last covered month
+  if (endedAt) {
+    const endMonth = `${endedAt.slice(0, 7)}-01`
+    if (clamped > endMonth) clamped = endMonth < startMonth ? startMonth : endMonth
+  }
+  return clamped
 }
 
 /** Excel fill: the column the drag currently targets. Right-only — never

@@ -1,24 +1,26 @@
 -- Budget module queries (PostgreSQL). See the sqlite variant for documentation.
 
 -- name: GetBudgetByID :one
-SELECT id, currency_id, user_id, name, started_at, created_at, updated_at
+SELECT id, currency_id, user_id, name, started_at, created_at, updated_at, ended_at, is_archived
 FROM budgets
 WHERE id = $1;
 
 -- name: ListBudgetsForUser :many
-SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at
+SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b
 WHERE b.user_id = $1
    OR b.id IN (SELECT ba.budget_id FROM budgets_access ba WHERE ba.user_id = $2)
 ORDER BY b.created_at ASC;
 
 -- name: UpsertBudget :exec
-INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     name        = excluded.name,
     started_at  = excluded.started_at,
+    ended_at    = excluded.ended_at,
+    is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at;
 
 -- name: DeleteBudget :exec
@@ -165,3 +167,10 @@ DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
 -- name: RemoveBudgetAccountsOwnedBy :exec
 DELETE FROM budgets_accounts
 WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2);
+
+-- name: ListBudgetLimitsFrom :many
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = $1 AND l.period >= $2
+ORDER BY l.period, l.id;

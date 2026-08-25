@@ -107,8 +107,11 @@ copy, built for the caller's current month — the create-budget shape).
   - `budgets_folders`: name, sort key;
   - `budgets_envelopes` (+ `budgets_envelopes_categories`): all fields,
     folder remapped;
-  - `budgets_elements`: same `external_id`/`type`, folder remapped,
-    currency, sort key;
+  - `budgets_elements`: same `type`, folder remapped, currency, sort key;
+    `external_id` is kept for category/tag elements (global entities) but
+    **remapped through the envelope id map for envelope-type elements** —
+    an envelope element's `external_id` references the budget-scoped
+    `budgets_envelopes.id`, which the clone re-creates under a fresh id;
   - `budgets_elements_limits`: **only when `withLimits`**, and only rows
     with `period ≥ startDate`, element remapped.
 - Not copied / not done: `ended_at`, `is_archived`, the source's timestamps,

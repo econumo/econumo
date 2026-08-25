@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "支出进度",
         "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "复制预算",
+        "copy_plans": "复制计划",
+        "start_this_month": "从本月开始"
+      },
+      "complete_budget_form": {
+        "header": "结束预算",
+        "end_month": "最后一个月",
+        "continue_copy": "从本月开始在副本中继续",
+        "copy_plans": "复制计划"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "请至少选择一个账户"
           }
+        },
+        "end_month": {
+          "label": "结束月份",
+          "none": "无结束日期"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "合计",
             "expenses": "支出合计"
           }
-        }
+        },
+        "archived_banner": "此预算已归档，为只读状态"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "访问控制",
-          "go_to": "打开预算"
+          "go_to": "打开预算",
+          "duplicate": "复制…",
+          "complete": "结束…",
+          "archive": "归档",
+          "unarchive": "取消归档"
+        },
+        "archived_group": {
+          "header": "已归档"
         }
       }
     }
@@ -1429,7 +1452,9 @@
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
-      "accounts_required": "请至少选择一个账户"
+      "accounts_required": "请至少选择一个账户",
+      "archived": "此预算已归档",
+      "end_before_start": "结束月份早于预算开始时间"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",

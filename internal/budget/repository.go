@@ -101,6 +101,8 @@ type LimitStore interface {
 
 	// ListLimitsForPeriod returns the limits for a budget's elements in a period.
 	ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*model.BudgetElementLimit, error)
+	// ListLimitsFrom returns the limits at or after a month (clone).
+	ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error)
 	// ListLimitsByElement returns every period's limit for one element; a merge
 	// transfers all of them, so it deliberately has no period filter.
 	ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error)

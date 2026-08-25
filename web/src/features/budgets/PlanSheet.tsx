@@ -1135,7 +1135,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       scroller.scrollTop += box.bottom - bottomEdge
     }
   }, [selection])
-  const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt)
+  const firstMonth = clampFirstMonth(persisted ?? planInitialFirstMonth(null, startedAt, visible), startedAt, budget.meta.endedAt)
   const atStart = firstMonth <= startedAt.slice(0, 7) + '-01'
 
   const { data: plan, isPending, isError, refetch, planKey } = useBudgetPlan(budget.meta.id, firstMonth, visible)

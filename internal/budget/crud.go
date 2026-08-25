@@ -2,10 +2,12 @@ package budget
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -33,6 +35,9 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	if !curID.Equal(b.budget.CurrencyID) {
 		if eerr := s.currency.EnsureUsable(ctx, userID.String(), curID.String()); eerr != nil {
 			return nil, eerr
@@ -43,6 +48,27 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		b.budget.UpdateName(req.Name, now)
 		b.budget.UpdateCurrency(curID, now)
+		if req.EndDate != nil {
+			if *req.EndDate == "" {
+				if eerr := b.budget.EndAt(nil, now); eerr != nil {
+					return eerr
+				}
+			} else {
+				d, perr := time.Parse(datetime.DateLayout, *req.EndDate)
+				if perr != nil {
+					return model.ValidateBlank(map[string]string{"endDate": ""})
+				}
+				if eerr := b.budget.EndAt(&d, now); eerr != nil {
+					if errors.Is(eerr, model.ErrBudgetEndBeforeStart) {
+						return errs.NewValidation("Validation failed", errs.FieldError{
+							Key: "endDate", Message: "The end month is before the budget start",
+							Code: errs.CodeBudgetEndBeforeStart,
+						})
+					}
+					return eerr
+				}
+			}
+		}
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
@@ -182,6 +208,9 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 	}
 	if !s.canReset(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	now := s.clock.Now()
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {

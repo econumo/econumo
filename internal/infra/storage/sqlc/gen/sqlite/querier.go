@@ -346,6 +346,10 @@ type Querier interface {
 	// time.Time does NOT compare equal to either via raw "=", so normalize both
 	// sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]BudgetsElementsLimit, error)
+	// Clone reads every limit at or after the copy's start month. period is stored
+	// as datetime TEXT in varying forms, so normalize both sides with datetime()
+	// and bind the boundary as a 'Y-m-d H:i:s' string (see ListBudgetLimitsForPeriod).
+	ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]BudgetsElementsLimit, error)
 	// Budgets the user owns OR has an access row for. Ordered by created_at for a
 	// stable list.
 	ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUserParams) ([]Budget, error)

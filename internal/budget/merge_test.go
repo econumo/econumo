@@ -98,6 +98,10 @@ func (f *fakeLimits) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, pe
 	return nil, nil
 }
 
+func (f *fakeLimits) ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error) {
+	return nil, nil
+}
+
 func (f *fakeLimits) ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error) {
 	var out []*model.BudgetElementLimit
 	for _, l := range f.rows {

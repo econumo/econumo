@@ -137,9 +137,11 @@ export function periodRange(
   monthsBefore = MONTHS_AROUND,
   monthsAfter = MONTHS_AROUND,
   lang = 'en',
+  endedAt: string | null = null,
 ): PeriodItem[] {
   const [y, m] = selectedDate.split('-').map(Number)
   const startMonth = startedAt ? startedAt.slice(0, 7) : null
+  const endMonth = endedAt ? endedAt.slice(0, 7) : null
   const label = periodLabeler(lang)
   const items: PeriodItem[] = []
   for (let offset = -monthsBefore; offset <= monthsAfter; offset++) {
@@ -149,7 +151,9 @@ export function periodRange(
       value,
       label: label(d),
       isActive: offset === 0,
-      outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
+      outsideBudget:
+        (startMonth !== null && value.slice(0, 7) < startMonth) ||
+        (endMonth !== null && endMonth !== '' && value.slice(0, 7) > endMonth),
     })
   }
   return items

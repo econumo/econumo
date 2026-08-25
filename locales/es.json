@@ -850,6 +850,17 @@
       "expense_widget": {
         "header": "Progreso de los gastos",
         "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplicar presupuesto",
+        "copy_plans": "Copiar planes",
+        "start_this_month": "Empezar desde este mes"
+      },
+      "complete_budget_form": {
+        "header": "Finalizar presupuesto",
+        "end_month": "Último mes",
+        "continue_copy": "Continuar en una copia desde este mes",
+        "copy_plans": "Copiar planes"
       }
     },
     "form": {
@@ -874,6 +885,10 @@
           "validation": {
             "required": "Selecciona al menos una cuenta"
           }
+        },
+        "end_month": {
+          "label": "Mes final",
+          "none": "Sin fecha de fin"
         }
       },
       "budget_envelope": {
@@ -976,7 +991,8 @@
             "name": "Total",
             "expenses": "Gastos totales"
           }
-        }
+        },
+        "archived_banner": "Este presupuesto está archivado y es de solo lectura"
       },
       "plan": {
         "toggle": {
@@ -1053,7 +1069,14 @@
         },
         "list_actions": {
           "access": "Control de acceso",
-          "go_to": "Abrir el presupuesto"
+          "go_to": "Abrir el presupuesto",
+          "duplicate": "Duplicar…",
+          "complete": "Finalizar…",
+          "archive": "Archivar",
+          "unarchive": "Desarchivar"
+        },
+        "archived_group": {
+          "header": "Archivados"
         }
       }
     }
@@ -1429,7 +1452,9 @@
       "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
       "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
-      "accounts_required": "Selecciona al menos una cuenta"
+      "accounts_required": "Selecciona al menos una cuenta",
+      "archived": "Este presupuesto está archivado",
+      "end_before_start": "El mes final es anterior al inicio del presupuesto"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",

@@ -1,0 +1,27 @@
+== update-budget-end-date POST /api/v1/budget/update-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Second","startedAt":"<datetime>","endedAt":"<datetime>","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}
+
+== err:update-budget-end-before-start POST /api/v1/budget/update-budget [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"endDate":["The end month is before the budget start"]}}
+
+== archive-budget POST /api/v1/budget/archive-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Second","startedAt":"<datetime>","endedAt":"<datetime>","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":1,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}
+
+== err:set-limit-archived POST /api/v1/budget/set-limit [owner] -> 403
+{"success":false,"message":"This budget is archived","code":0,"errors":[]}
+
+== unarchive-budget POST /api/v1/budget/unarchive-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Second","startedAt":"<datetime>","endedAt":"<datetime>","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}
+
+== clone-budget POST /api/v1/budget/clone-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000c3","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Copy","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":null,"income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","available":"-12.5","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111"}],"labels":[]}}}}
+
+== get-budget-clone GET /api/v1/budget/get-budget?id=b0000000-0000-0000-0000-0000000000c3&date=2024-05-01 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000c3","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Copy","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":"987.5","income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","available":"-12.5","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111"}],"labels":[]}}}}
+
+== err:clone-budget-not-owner POST /api/v1/budget/clone-budget [guest] -> 403
+{"success":false,"message":"Access denied","code":0,"errors":[]}
+
+== update-budget-clear-end-date POST /api/v1/budget/update-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"b0000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Second","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]}}}
+
