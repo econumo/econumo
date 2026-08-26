@@ -26,12 +26,14 @@ export function DuplicateBudgetDialog({ budget, onClose }: DuplicateBudgetDialog
 
   useEffect(() => {
     if (budget) {
-      setName(budget.name)
+      // pre-filling the identical name is one Enter away from two
+      // indistinguishable budgets — suffix the copy
+      setName(t('budgets.modal.duplicate_budget_form.copy_name', { name: budget.name }))
       setCopyPlans(true)
       setStartThisMonth(false)
       setError(undefined)
     }
-  }, [budget])
+  }, [budget, t])
 
   const submit = () => {
     if (!budget) return

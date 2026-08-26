@@ -57,6 +57,7 @@ const (
 	CodeConnectionInvalidCode      = "connection.invalid_code"
 	CodeConnectionInvitingYourself = "connection.inviting_yourself"
 	CodeConnectionDeletingYourself = "connection.deleting_yourself"
+	CodeConnectionInviteNotFound   = "connection.invite_not_found"
 
 	CodePayeeNameLength     = "payee.name_length"
 	CodePayeeAlreadyExists  = "payee.already_exists"
@@ -155,6 +156,7 @@ var AllCodes = []string{
 	CodeConnectionInvalidCode,
 	CodeConnectionInvitingYourself,
 	CodeConnectionDeletingYourself,
+	CodeConnectionInviteNotFound,
 
 	CodePayeeNameLength,
 	CodePayeeAlreadyExists,

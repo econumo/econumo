@@ -17,7 +17,14 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
 
   const [extend, setExtend] = useState({ before: 0, after: 0 })
 
-  const items = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after, i18n.language, endedAt)
+  const allItems = periodRange(selectedDate, startedAt, MONTHS_AROUND + extend.before, MONTHS_AROUND + extend.after, i18n.language, endedAt)
+  // The strip is clamped to the budget's lifetime: months before the start or
+  // past the end month are dead (the server clamps reads anyway), so they are
+  // not offered. The active month stays visible even when the stored selection
+  // points outside the window (e.g. a budget that ended before this month).
+  const items = allItems.filter((item) => !item.outsideBudget || item.isActive)
+  const canExtendBefore = allItems.length > 0 && !allItems[0].outsideBudget
+  const canExtendAfter = allItems.length > 0 && !allItems[allItems.length - 1].outsideBudget
 
   useLayoutEffect(() => {
     activeRef.current?.scrollIntoView({ inline: 'center', block: 'nearest' })
@@ -54,10 +61,10 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
     if (!el || el.clientWidth === 0) {
       return
     }
-    if (el.scrollLeft < EDGE_THRESHOLD_PX && prependAnchor.current === null) {
+    if (canExtendBefore && el.scrollLeft < EDGE_THRESHOLD_PX && prependAnchor.current === null) {
       prependAnchor.current = el.scrollWidth
       setExtend((e) => ({ ...e, before: e.before + EXTEND_STEP }))
-    } else if (el.scrollWidth - el.scrollLeft - el.clientWidth < EDGE_THRESHOLD_PX) {
+    } else if (canExtendAfter && el.scrollWidth - el.scrollLeft - el.clientWidth < EDGE_THRESHOLD_PX) {
       setExtend((e) => ({ ...e, after: e.after + EXTEND_STEP }))
     }
   }

@@ -102,3 +102,46 @@ it('stores the server address as it is typed', async () => {
   await user.type(host, 'https://my.box.test')
   expect(localStorage.getItem('backendHost')).toBe(JSON.stringify('https://my.box.test'))
 })
+
+it('submits with the custom-server section collapsed and custom API allowed', async () => {
+  // Regression: register('host') runs even while the section is collapsed, so
+  // its rules must not block the submit when selfHosted is off — this used to
+  // silently swallow every registration on a fresh self-hosted browser.
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  server.use(
+    http.post('*/api/v1/user/register-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { user: { id: 'u1', name: 'Ada', avatar: '' } } }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText('Name'), 'Ada')
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.type(screen.getByLabelText('Confirm password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign up/i }))
+  expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
+})
+
+it("shows the server's reason when registration fails with one", async () => {
+  server.use(
+    http.post('*/api/v1/user/register-user', () =>
+      HttpResponse.json({ success: false, message: 'User already exists', code: 400, errors: {} }, { status: 400 }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.type(screen.getByLabelText('Name'), 'Ada')
+  await user.type(screen.getByLabelText('Email'), 'taken@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.type(screen.getByLabelText('Confirm password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign up/i }))
+  expect(await screen.findByText('User already exists')).toBeInTheDocument()
+})
+
+it('redirects to login when registration is disabled', async () => {
+  window.econumoConfig = { ALLOW_REGISTRATION: 'false' }
+  renderPage()
+  expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
+})

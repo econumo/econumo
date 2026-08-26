@@ -182,9 +182,13 @@ export function LoginPage() {
                 type="url"
                 placeholder={t('user.form.server_host.placeholder')}
                 {...register('host', {
+                  // register() runs on every render even while the section is
+                  // collapsed (react-hook-form keeps the field registered), so
+                  // the rules must pass when selfHosted is off — otherwise the
+                  // invisible empty field blocks every submit.
                   validate: {
-                    required: (v) => isNotEmpty(v) || t('user.form.server_host.validation.required_field'),
-                    url: (v) => isValidHttpUrl(v) || t('user.form.server_host.validation.invalid_url'),
+                    required: (v, values) => !values.selfHosted || isNotEmpty(v) || t('user.form.server_host.validation.required_field'),
+                    url: (v, values) => !values.selfHosted || isValidHttpUrl(v) || t('user.form.server_host.validation.invalid_url'),
                   },
                   onChange: (e: ChangeEvent<HTMLInputElement>) => config.backendHost(e.target.value),
                 })}
