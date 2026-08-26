@@ -1,5 +1,5 @@
 window.econumoConfig = {
-  LILTAG_CONFIG_URL: 'liltag-config.json',
+  LILTAG_CONFIG_URL: '/liltag-config.json',
   LILTAG_CACHE_TTL: 0,
   ALLOW_REGISTRATION: true,
   ANALYTICS: true,

@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { queryKeys } from "@/app/queryKeys";
 import {
   Bookmark,
   ChevronDown,
@@ -78,6 +80,7 @@ export function BudgetsPage() {
   const [declineTarget, setDeclineTarget] = useState<BudgetMetaDto | null>(
     null,
   );
+  const queryClient = useQueryClient();
   const [accessBudgetId, setAccessBudgetId] = useState<string | null>(null);
   const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null);
   const [errorOpen, setErrorOpen] = useState(false);
@@ -119,7 +122,7 @@ export function BudgetsPage() {
               ? `default budget ${budget.name}`
               : `set default ${budget.name}`
           }
-          disabled={isDefault || !accepted}
+          disabled={isDefault || !accepted || budget.isArchived === 1}
           className="text-muted-foreground disabled:opacity-100"
           onClick={() => updateDefaultBudget.mutate(budget.id)}
         >
@@ -166,7 +169,13 @@ export function BudgetsPage() {
               </DropdownMenuItem>
             ) : null}
             {user && hasBudgetAdminAccess(budget, user.id) ? (
-              <DropdownMenuItem onSelect={() => setAccessBudgetId(budget.id)}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  // grant state changes on the partner's device — refresh first
+                  void queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
+                  setAccessBudgetId(budget.id);
+                }}
+              >
                 {t("budgets.page.settings.list_actions.access")}
               </DropdownMenuItem>
             ) : null}

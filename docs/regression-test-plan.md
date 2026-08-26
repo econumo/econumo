@@ -67,12 +67,12 @@ navigation (single-pane vs sidebar).
 
 - [ ] 📱 Register a new user: name/email/password/confirm; inline validation
       (short password, mismatched confirm, bad email); redirected to login.
-      > **Known blocker (until the hidden-`host` validation bug is fixed):**
-      > in a fresh browser with `ALLOW_CUSTOM_API` on, login/registration
-      > silently no-op. Workaround: expand "Connect to a custom server" once
-      > (it seeds the address) and collapse or leave it — then submit works.
-- [ ] Register with an email that already exists → clear field error, no
-      account created.
+      Must work in a fresh browser profile with the custom-server section
+      collapsed (regression guard: the hidden `host` field once blocked every
+      submit on self-hosted instances).
+- [ ] Register with an email that already exists → the failure dialog states
+      the server's reason ("User already exists", localized), no account
+      created.
 - [ ] Login with correct credentials → lands on `/` (onboarding for a fresh
       user); wrong password → error dialog, no session created.
 - [ ] "Remember email" checkbox pre-fills the email on next visit.
@@ -86,7 +86,8 @@ navigation (single-pane vs sidebar).
       → next API call redirects to `/login?reason=expired` with the
       session-expired notice.
 - [ ] With `ECONUMO_ALLOW_REGISTRATION=false`: Sign-up tab is disabled on the
-      login screen and registering via API returns an error.
+      login screen, opening `/register` directly redirects to the login page,
+      and registering via API returns an error.
 - [ ] With `ECONUMO_EMAIL_VERIFICATION=true` (separate boot): fresh
       registration → first login is blocked, code email is sent, verification
       dialog accepts the code, resend has a cooldown, then login proceeds.
@@ -223,9 +224,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       limit shows immediately and carries into the next period per rules.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
-- [ ] Period strip: navigate previous/next months; figures change; periods
-      before the budget start are not offered; clamped at the end month for
-      ended budgets.
+- [ ] Period strip: navigate previous/next months; figures change; months
+      before the budget start or past the end month are not offered (the
+      active month stays visible even if the stored selection is outside);
+      scrolling never extends past the budget's lifetime.
 - [ ] Currency filter chips (multi-currency data) filter rows/totals.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
@@ -252,8 +254,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       with transactions inside the budget window since the start of the
       current month cannot be removed (clear error); hidden-accounts note and
       included counter are correct (never "N of M" with N>M).
-- [ ] **Duplicate** (clone): deep copy with/without plans from a chosen start
-      month; copy starts unarchived/open-ended; structure and sharing carried.
+- [ ] **Duplicate** (clone): name pre-fills with a localized "(copy)" suffix;
+      deep copy with/without plans from a chosen start month; copy starts
+      unarchived/open-ended; structure and sharing carried.
 - [ ] **Complete**: sets end month; optionally continues with a copy (+ plans,
       new name). Ended budget: period strip clamps at end month, set-limit
       refuses later periods.
@@ -278,7 +281,9 @@ User C sees none of it.
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):
       B gets a sharing-request badge; the requests dialog lists the invite
-      with folder selection; Accept places the account in the chosen folder.
+      with folder selection; Accept places the account in the chosen folder
+      and A's categories/payees/tags resolve on B's side immediately (no
+      "Uncategorized" rows, no stale caches).
 - [ ] Decline works (with confirm) and removes the pending invite.
 - [ ] Role behavior: `guest` = read-only (no add/edit/delete transaction
       controls anywhere — row menu, preview, FAB); `user` can write

@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "Duplicar presupuesto",
+        "copy_name": "{name} (copia)",
         "copy_plans": "Copiar planes",
         "start_this_month": "Empezar desde este mes"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "No existe ningún rol de acceso a la cuenta con el alias {alias}.",
       "invalid_code": "El código de conexión es incorrecto.",
       "inviting_yourself": "¿Invitarte a ti mismo?",
-      "deleting_yourself": "¿Eliminarte a ti mismo?"
+      "deleting_yourself": "¿Eliminarte a ti mismo?",
+      "invite_not_found": "El código de invitación no es válido o ha caducado."
     },
     "currency": {
       "already_exists": "La moneda ya existe.",

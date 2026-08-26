@@ -76,6 +76,11 @@ func (s *Service) AcceptInvite(ctx context.Context, userID vo.Id, req model.Acce
 	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		inv, gerr := s.invites.GetByCode(txCtx, code, s.clock.Now())
 		if gerr != nil {
+			// The repo's not-found is an internal entity name; the caller typed
+			// a code that is wrong or expired — tell them that, localized.
+			if _, notFound := errs.AsNotFound(gerr); notFound {
+				return &errs.ValidationError{Msg: "The invitation code is invalid or has expired.", MsgCode: errs.CodeConnectionInviteNotFound}
+			}
 			return gerr
 		}
 		if inv.UserID.Equal(userID) {

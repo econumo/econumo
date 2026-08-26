@@ -273,6 +273,14 @@ export function useAcceptAccountAccess() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       // the pre-accept cache excludes this account's transactions (pending = no access)
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+      // access also unlocks the owner's classifications and custom currencies;
+      // without a refetch every shared transaction renders as "Uncategorized"
+      void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tags })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.labels })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payees })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
       trackEvent(METRICS.CONNECTION_ACCEPT_ACCOUNT_ACCESS)
     },
   })

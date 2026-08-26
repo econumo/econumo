@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "复制预算",
+        "copy_name": "{name}（副本）",
         "copy_plans": "复制计划",
         "start_this_month": "从本月开始"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "别名为 {alias} 的账户访问角色不存在。",
       "invalid_code": "邀请码不正确。",
       "inviting_yourself": "您不能邀请自己。",
-      "deleting_yourself": "您不能删除自己。"
+      "deleting_yourself": "您不能删除自己。",
+      "invite_not_found": "邀请码无效或已过期。"
     },
     "currency": {
       "already_exists": "该货币已存在。",

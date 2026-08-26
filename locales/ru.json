@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "Дублировать бюджет",
+        "copy_name": "{name} (копия)",
         "copy_plans": "Копировать планы",
         "start_this_month": "Начать с этого месяца"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "Роль доступа к счёту с псевдонимом {alias} не существует.",
       "invalid_code": "Код подключения указан неверно.",
       "inviting_yourself": "Пригласить самого себя?",
-      "deleting_yourself": "Удалить самого себя?"
+      "deleting_yourself": "Удалить самого себя?",
+      "invite_not_found": "Код приглашения недействителен или истёк."
     },
     "currency": {
       "already_exists": "Такая валюта уже существует.",

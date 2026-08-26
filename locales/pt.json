@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "Duplicar orçamento",
+        "copy_name": "{name} (cópia)",
         "copy_plans": "Copiar planos",
         "start_this_month": "Começar a partir deste mês"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "O papel de acesso à conta com o alias {alias} não existe.",
       "invalid_code": "O código de ligação está incorreto.",
       "inviting_yourself": "A convidar-se a si próprio?",
-      "deleting_yourself": "A eliminar-se a si próprio?"
+      "deleting_yourself": "A eliminar-se a si próprio?",
+      "invite_not_found": "O código de convite é inválido ou expirou."
     },
     "currency": {
       "already_exists": "A moeda já existe.",

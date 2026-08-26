@@ -61,8 +61,9 @@ it('renders the full budget page: strip, chips, table, totals', async () => {
   )
   renderPage()
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
-  // 47 period-strip month tabs + the Budget/Plan mode toggle's 2 tabs
-  expect(screen.getAllByRole('tab')).toHaveLength(49)
+  // period strip is clamped at the budget start (Jan..selected+23 = 30 month
+  // tabs) + the Budget/Plan mode toggle's 2 tabs
+  expect(screen.getAllByRole('tab')).toHaveLength(32)
   expect(await screen.findByTestId('budget-folder-Essentials')).toBeInTheDocument()
   expect(screen.getByTestId('budget-totals')).toBeInTheDocument()
   // currency chips from balances

@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "Budget dupliceren",
+        "copy_name": "{name} (kopie)",
         "copy_plans": "Plannen kopiëren",
         "start_this_month": "Vanaf deze maand starten"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "Een rekeningrol met alias {alias} bestaat niet.",
       "invalid_code": "De verbindingscode is onjuist.",
       "inviting_yourself": "Uzelf uitnodigen?",
-      "deleting_yourself": "Uzelf verwijderen?"
+      "deleting_yourself": "Uzelf verwijderen?",
+      "invite_not_found": "De uitnodigingscode is ongeldig of verlopen."
     },
     "currency": {
       "already_exists": "Deze valuta bestaat al.",

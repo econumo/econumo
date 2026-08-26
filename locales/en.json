@@ -429,8 +429,8 @@
       "success_title": "Import complete",
       "partial_success_title": "Import completed with errors",
       "error_title": "Import failed",
-      "imported": "{count} transaction(s) imported | {count} transactions imported",
-      "failed": "{count} transaction(s) failed | {count} transactions failed",
+      "imported": "{count} transaction imported | {count} transactions imported",
+      "failed": "{count} transaction failed | {count} transactions failed",
       "errors_detail": "Error details",
       "row": "Row",
       "rows": "Rows",
@@ -853,6 +853,7 @@
       },
       "duplicate_budget_form": {
         "header": "Duplicate budget",
+        "copy_name": "{name} (copy)",
         "copy_plans": "Copy plans",
         "start_this_month": "Start from this month"
       },
@@ -1468,7 +1469,8 @@
       "invalid_role_alias": "AccountRole with alias {alias} not exists",
       "invalid_code": "ConnectionCode is incorrect",
       "inviting_yourself": "Inviting yourself?",
-      "deleting_yourself": "Deleting yourself?"
+      "deleting_yourself": "Deleting yourself?",
+      "invite_not_found": "The invitation code is invalid or has expired."
     },
     "currency": {
       "already_exists": "Currency already exists",

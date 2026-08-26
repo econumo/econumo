@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { FailDialog } from '@/components/FailDialog'
+import { apiErrorMessage } from '@/lib/apiError'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
@@ -28,7 +29,7 @@ export function RegistrationPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const registerMutation = useRegister()
-  const [failOpen, setFailOpen] = useState(false)
+  const [failMessage, setFailMessage] = useState<string | null>(null)
   const customApiAllowed = config.isCustomApiAllowed()
 
   const { register, handleSubmit, setValue, getValues, watch, formState: { errors } } = useForm<RegistrationForm>({
@@ -66,8 +67,14 @@ export function RegistrationPage() {
   useEffect(() => {
     if (getToken()) {
       window.location.assign('/')
+      return
     }
-  }, [])
+    // the Sign-up tab is already disabled, but the URL still resolves —
+    // don't render a form whose submit the server will refuse
+    if (!config.isRegistrationAllowed()) {
+      navigate(RouterPage.LOGIN, { replace: true })
+    }
+  }, [navigate])
 
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {
@@ -77,8 +84,10 @@ export function RegistrationPage() {
       // account the user will sign in with.
       config.rememberedEmail(email)
       navigate(RouterPage.LOGIN)
-    } catch {
-      setFailOpen(true)
+    } catch (err) {
+      // The backend localizes the reason (e.g. a taken email) — show it
+      // instead of a generic apology.
+      setFailMessage(apiErrorMessage(err))
     }
   })
 
@@ -164,9 +173,13 @@ export function RegistrationPage() {
                 type="url"
                 placeholder={t('user.form.server_host.placeholder')}
                 {...register('host', {
+                  // register() runs on every render even while the section is
+                  // collapsed (react-hook-form keeps the field registered), so
+                  // the rules must pass when selfHosted is off — otherwise the
+                  // invisible empty field blocks every submit.
                   validate: {
-                    required: (v) => isNotEmpty(v) || t('user.form.server_host.validation.required_field'),
-                    url: (v) => isValidHttpUrl(v) || t('user.form.server_host.validation.invalid_url'),
+                    required: (v, values) => !values.selfHosted || isNotEmpty(v) || t('user.form.server_host.validation.required_field'),
+                    url: (v, values) => !values.selfHosted || isValidHttpUrl(v) || t('user.form.server_host.validation.invalid_url'),
                   },
                   onChange: (e: ChangeEvent<HTMLInputElement>) => config.backendHost(e.target.value),
                 })}
@@ -179,10 +192,10 @@ export function RegistrationPage() {
         </form>
 
         <FailDialog
-          open={failOpen}
-          onClose={() => setFailOpen(false)}
+          open={failMessage !== null}
+          onClose={() => setFailMessage(null)}
           title={t('auth.sign_up_failed.header')}
-          description={t('auth.sign_up_failed.information')}
+          description={failMessage ?? t('auth.sign_up_failed.information')}
         />
       </div>
     </>

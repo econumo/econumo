@@ -455,6 +455,13 @@ export function useAcceptBudgetAccess() {
       // accepting can change the default budget option + budget visibility
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      // access also unlocks the owner's classifications and custom currencies
+      // referenced by the budget's elements
+      void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tags })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
       trackEvent(METRICS.BUDGET_ACCEPT_ACCESS)
     },
   })
