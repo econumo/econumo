@@ -107,7 +107,7 @@ servers" — standard for self-hosting clients.
 ## Store submission checklist
 
 - App id `com.econumo.app` on both stores.
-- Privacy labels: declare PostHog product analytics (disabled instance-wide
+- Privacy labels: declare Twillingate product analytics (disabled instance-wide
   when the server sets `ECONUMO_ANALYTICS=false`); no ad tracking.
 - Review notes: include a demo account on Econumo Cloud so reviewers can
   sign in without registering.

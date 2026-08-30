@@ -261,7 +261,7 @@ vitest (`pnpm test`).
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
-`app`-prefixed camelCase names; the PostHog snake_case name derives
+`app`-prefixed camelCase names; the collector's snake_case name derives
 automatically) and call `trackEvent` at the action's success point (mutation
 `onSuccess`; or inside `mutationFn` after the API call for hooks with a dedupe
 short-circuit, e.g. the classification creates). Prefer the shared hook/store
@@ -432,7 +432,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
-- `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to PostHog (default `true`).
+- `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to Twillingate (default `true`).
   `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
   the other booleans). Server-owned SPA config keys reach the frontend via an
   `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
