@@ -995,8 +995,8 @@
         },
         "archived_banner": "Dit budget is gearchiveerd en alleen-lezen",
         "nav": {
-          "prev": "Vorige maand",
-          "next": "Volgende maand"
+          "prev": "Naar eerdere maanden scrollen",
+          "next": "Naar latere maanden scrollen"
         }
       },
       "plan": {

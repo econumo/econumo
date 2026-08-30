@@ -2,12 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { addMonths } from './planMath'
 import { MONTHS_AROUND, periodRange } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 
 const EXTEND_STEP = 12
 const EDGE_THRESHOLD_PX = 300
+// roughly a screenful of month chips per arrow click
+const SCROLL_STEP_PX = 320
 
 export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string | null; endedAt?: string | null }) {
   const { t, i18n } = useTranslation()
@@ -32,12 +33,18 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
   const items = allItems.filter((item) => !item.afterEnd || item.isActive)
   const canExtendBefore = true
   const canExtendAfter = allItems.length > 0 && !allItems[allItems.length - 1].afterEnd
-  // one-month steps for the desktop arrows; the end month is the only hard stop
-  const endMonth = endedAt ? endedAt.slice(0, 7) : ''
-  const atEnd = endMonth !== '' && selectedDate.slice(0, 7) >= endMonth
-  const step = (delta: number) => {
-    setExtend({ before: 0, after: 0 })
-    setPeriod(addMonths(`${selectedDate.slice(0, 7)}-01`, delta))
+  // The desktop arrows pan the strip only — the selected month never moves, so
+  // the table below stays put while you look around (same idea as the plan
+  // sheet's nav shifting its window without moving the selection). Scrolling
+  // triggers handleScroll, so the window keeps extending at either edge.
+  // Assign scrollLeft rather than scrollBy({behavior:'smooth'}): smooth scrolling
+  // is a no-op under prefers-reduced-motion (and in jsdom), which would leave the
+  // arrows dead. handleScroll still fires, so the window extends at either edge.
+  const scrollBy = (delta: number) => {
+    const el = containerRef.current
+    if (el) {
+      el.scrollLeft += delta
+    }
   }
 
   useLayoutEffect(() => {
@@ -94,7 +101,7 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
           size="icon"
           className="size-8"
           aria-label={t('budgets.page.budget.nav.prev')}
-          onClick={() => step(-1)}
+          onClick={() => scrollBy(-SCROLL_STEP_PX)}
         >
           <ChevronLeft className="size-4" />
         </Button>
@@ -104,8 +111,7 @@ export function PeriodStrip({ startedAt, endedAt = null }: { startedAt: string |
           size="icon"
           className="size-8"
           aria-label={t('budgets.page.budget.nav.next')}
-          disabled={atEnd}
-          onClick={() => step(1)}
+          onClick={() => scrollBy(SCROLL_STEP_PX)}
         >
           <ChevronRight className="size-4" />
         </Button>

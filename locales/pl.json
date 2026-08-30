@@ -995,8 +995,8 @@
         },
         "archived_banner": "Ten budżet jest zarchiwizowany i tylko do odczytu",
         "nav": {
-          "prev": "Poprzedni miesiąc",
-          "next": "Następny miesiąc"
+          "prev": "Przewiń do wcześniejszych miesięcy",
+          "next": "Przewiń do późniejszych miesięcy"
         }
       },
       "plan": {

@@ -995,8 +995,8 @@
         },
         "archived_banner": "Este presupuesto está archivado y es de solo lectura",
         "nav": {
-          "prev": "Mes anterior",
-          "next": "Mes siguiente"
+          "prev": "Desplazar a meses anteriores",
+          "next": "Desplazar a meses posteriores"
         }
       },
       "plan": {

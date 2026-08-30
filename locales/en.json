@@ -995,8 +995,8 @@
         },
         "archived_banner": "This budget is archived and read-only",
         "nav": {
-          "prev": "Previous month",
-          "next": "Next month"
+          "prev": "Scroll to earlier months",
+          "next": "Scroll to later months"
         }
       },
       "plan": {

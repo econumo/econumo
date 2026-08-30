@@ -995,8 +995,8 @@
         },
         "archived_banner": "Ce budget est archivé et en lecture seule",
         "nav": {
-          "prev": "Mois précédent",
-          "next": "Mois suivant"
+          "prev": "Faire défiler vers les mois précédents",
+          "next": "Faire défiler vers les mois suivants"
         }
       },
       "plan": {

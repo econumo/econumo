@@ -995,8 +995,8 @@
         },
         "archived_banner": "Questo budget è archiviato e in sola lettura",
         "nav": {
-          "prev": "Mese precedente",
-          "next": "Mese successivo"
+          "prev": "Scorri ai mesi precedenti",
+          "next": "Scorri ai mesi successivi"
         }
       },
       "plan": {

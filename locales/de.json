@@ -995,8 +995,8 @@
         },
         "archived_banner": "Dieses Budget ist archiviert und schreibgeschützt",
         "nav": {
-          "prev": "Vorheriger Monat",
-          "next": "Nächster Monat"
+          "prev": "Zu früheren Monaten scrollen",
+          "next": "Zu späteren Monaten scrollen"
         }
       },
       "plan": {

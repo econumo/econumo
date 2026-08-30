@@ -232,9 +232,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       visible even if the stored selection is outside); scrolling never
       extends past the end month.
 - [ ] Period strip desktop arrows (‹ ›, left of the strip, hidden on mobile
-      where the strip scrolls by touch): step one month back/forward; the
-      back arrow reaches months before the budget start; the forward arrow
-      is disabled at an ended budget's end month.
+      where the strip scrolls by touch): they PAN the strip only — the
+      selected month and the table below never change; panning to either
+      edge keeps extending the window (past months included).
 - [ ] Currency filter chips (multi-currency data) filter rows/totals.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete

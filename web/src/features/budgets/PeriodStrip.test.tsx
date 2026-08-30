@@ -33,28 +33,27 @@ it('navigating to a pre-start month works and keeps it selectable', async () => 
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
 })
 
-it('desktop arrows step one month back and forward', async () => {
-  const user = userEvent.setup()
-  render(<PeriodStrip startedAt="2026-06-01 00:00:00" />)
-  await user.click(screen.getByRole('button', { name: 'Previous month' }))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
-  await user.click(screen.getByRole('button', { name: 'Next month' }))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
-})
-
-it('the back arrow steps into months before the budget start', async () => {
+it('desktop arrows scroll the strip without changing the selected month', async () => {
   const user = userEvent.setup()
   useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
   render(<PeriodStrip startedAt="2026-06-01 00:00:00" />)
-  await user.click(screen.getByRole('button', { name: 'Previous month' }))
-  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-05-01')
+  const strip = screen.getByRole('tablist')
+  strip.scrollLeft = 1000
+
+  await user.click(screen.getByRole('button', { name: 'Scroll to later months' }))
+  expect(strip.scrollLeft).toBe(1320)
+  await user.click(screen.getByRole('button', { name: 'Scroll to earlier months' }))
+  expect(strip.scrollLeft).toBe(1000)
+  // panning must not move the selection — the table below stays put
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
+  expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('June')
 })
 
-it('the forward arrow is disabled at an ended budget\'s end month', () => {
+it('both arrows stay enabled, including at an ended budget\'s end month', () => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
   render(<PeriodStrip startedAt="2026-01-01 00:00:00" endedAt="2026-08-01 00:00:00" />)
-  expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
-  expect(screen.getByRole('button', { name: 'Previous month' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Scroll to later months' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Scroll to earlier months' })).toBeEnabled()
 })
 
 it('strip clamps at the end month for an ended budget but keeps the active tab', () => {

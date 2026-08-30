@@ -995,8 +995,8 @@
         },
         "archived_banner": "Este orçamento está arquivado e é somente leitura",
         "nav": {
-          "prev": "Mês anterior",
-          "next": "Próximo mês"
+          "prev": "Rolar para meses anteriores",
+          "next": "Rolar para meses posteriores"
         }
       },
       "plan": {
