@@ -224,10 +224,17 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       limit shows immediately and carries into the next period per rules.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
-- [ ] Period strip: navigate previous/next months; figures change; months
-      before the budget start or past the end month are not offered (the
-      active month stays visible even if the stored selection is outside);
-      scrolling never extends past the budget's lifetime.
+- [ ] Period strip: navigate previous/next months; figures change. Months
+      BEFORE the budget start remain browsable as read-only history (dimmed,
+      scrolling keeps extending into the past) and show that month's real
+      spending; limit cells are not editable there and set-limit is refused.
+      Months past the end month are not offered (the active month stays
+      visible even if the stored selection is outside); scrolling never
+      extends past the end month.
+- [ ] Period strip desktop arrows (‹ ›, left of the strip, hidden on mobile
+      where the strip scrolls by touch): step one month back/forward; the
+      back arrow reaches months before the budget start; the forward arrow
+      is disabled at an ended budget's end month.
 - [ ] Currency filter chips (multi-currency data) filter rows/totals.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete

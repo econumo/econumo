@@ -117,7 +117,10 @@ export interface PeriodItem {
   value: string
   label: string
   isActive: boolean
+  /** before the budget's start month: browsable but read-only, rendered dimmed */
   outsideBudget: boolean
+  /** past the end month of an ended budget: not offered at all */
+  afterEnd: boolean
 }
 
 export const MONTHS_AROUND = 23
@@ -151,9 +154,8 @@ export function periodRange(
       value,
       label: label(d),
       isActive: offset === 0,
-      outsideBudget:
-        (startMonth !== null && value.slice(0, 7) < startMonth) ||
-        (endMonth !== null && endMonth !== '' && value.slice(0, 7) > endMonth),
+      outsideBudget: startMonth !== null && value.slice(0, 7) < startMonth,
+      afterEnd: endMonth !== null && endMonth !== '' && value.slice(0, 7) > endMonth,
     })
   }
   return items

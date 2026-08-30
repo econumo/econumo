@@ -993,7 +993,11 @@
             "expenses": "支出合计"
           }
         },
-        "archived_banner": "此预算已归档，为只读状态"
+        "archived_banner": "此预算已归档，为只读状态",
+        "nav": {
+          "prev": "上个月",
+          "next": "下个月"
+        }
       },
       "plan": {
         "toggle": {

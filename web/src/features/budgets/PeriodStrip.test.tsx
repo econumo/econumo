@@ -14,16 +14,47 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
-it('strip clamps at the start month, marks active; click sets the period', async () => {
+it('strip offers months before the start (read-only history), marks active; click sets the period', async () => {
   const user = userEvent.setup()
   render(<PeriodStrip startedAt="2026-01-01 00:00:00" />)
-  // months before the budget start are not offered (Jan..Jul + 23 ahead)
-  const tabs = screen.getAllByRole('tab')
-  expect(tabs[0]).toHaveTextContent('January')
-  expect(screen.queryByRole('tab', { name: 'Dec 2025' })).not.toBeInTheDocument()
+  // pre-start months stay browsable so past spending can be reviewed
+  expect(screen.getByRole('tab', { name: 'Dec 2025' })).toBeInTheDocument()
   expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('July')
   await user.click(screen.getByRole('tab', { name: 'March' }))
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
+})
+
+it('navigating to a pre-start month works and keeps it selectable', async () => {
+  const user = userEvent.setup()
+  render(<PeriodStrip startedAt="2026-06-01 00:00:00" />)
+  const past = screen.getByRole('tab', { name: 'March' })
+  expect(past).toBeInTheDocument()
+  await user.click(past)
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-03-01')
+})
+
+it('desktop arrows step one month back and forward', async () => {
+  const user = userEvent.setup()
+  render(<PeriodStrip startedAt="2026-06-01 00:00:00" />)
+  await user.click(screen.getByRole('button', { name: 'Previous month' }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-06-01')
+  await user.click(screen.getByRole('button', { name: 'Next month' }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
+})
+
+it('the back arrow steps into months before the budget start', async () => {
+  const user = userEvent.setup()
+  useBudgetPeriodStore.setState({ selectedDate: '2026-06-01' })
+  render(<PeriodStrip startedAt="2026-06-01 00:00:00" />)
+  await user.click(screen.getByRole('button', { name: 'Previous month' }))
+  expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-05-01')
+})
+
+it('the forward arrow is disabled at an ended budget\'s end month', () => {
+  useBudgetPeriodStore.setState({ selectedDate: '2026-08-01' })
+  render(<PeriodStrip startedAt="2026-01-01 00:00:00" endedAt="2026-08-01 00:00:00" />)
+  expect(screen.getByRole('button', { name: 'Next month' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Previous month' })).toBeEnabled()
 })
 
 it('strip clamps at the end month for an ended budget but keeps the active tab', () => {
@@ -32,26 +63,28 @@ it('strip clamps at the end month for an ended budget but keeps the active tab',
   // Sep is only shown because it is the (stale) selection; Oct+ are gone
   expect(screen.getByRole('tab', { selected: true })).toHaveTextContent('September')
   expect(screen.queryByRole('tab', { name: 'October' })).not.toBeInTheDocument()
+  // pre-start months remain browsable; only the end boundary truncates
+  expect(screen.getByRole('tab', { name: 'Dec 2025' })).toBeInTheDocument()
   const tabs = screen.getAllByRole('tab')
-  expect(tabs[0]).toHaveTextContent('January')
+  expect(tabs[tabs.length - 1]).toHaveTextContent('September')
 })
 
-it('strip extends the window forward but never past the budget bounds', () => {
+it('strip extends both directions but never past the end month', () => {
   render(<PeriodStrip startedAt="2026-01-01 00:00:00" />)
   const strip = screen.getByRole('tablist')
   Object.defineProperty(strip, 'clientWidth', { value: 800, configurable: true })
   Object.defineProperty(strip, 'scrollWidth', { value: 4000, configurable: true })
   const initial = screen.getAllByRole('tab').length
 
-  // the left edge is already clamped at the start month — no extension
+  // the left edge keeps extending into the past (read-only history)
   strip.scrollLeft = 100
   fireEvent.scroll(strip)
-  expect(screen.getAllByRole('tab')).toHaveLength(initial)
+  expect(screen.getAllByRole('tab')).toHaveLength(initial + 12)
 
   // open-ended budgets keep extending forward
   strip.scrollLeft = 3500
   fireEvent.scroll(strip)
-  expect(screen.getAllByRole('tab')).toHaveLength(initial + 12)
+  expect(screen.getAllByRole('tab')).toHaveLength(initial + 24)
   // the selected month is unchanged — only the rendered window grew
   expect(useBudgetPeriodStore.getState().selectedDate).toBe('2026-07-01')
 })
