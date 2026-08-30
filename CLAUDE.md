@@ -732,9 +732,12 @@ data unreadable. Most are also asserted by the test suite.
   hidden + read-only: every budget write returns a coded 403 `budget.archived` except
   unarchive/delete/revoke/decline/accept (and archive itself, idempotent). Readers clamp periods
   to the end month; `set-limit` refuses periods past it; the membership removal window ends at
-  `min(current month, end month + 1)`. `clone-budget` is an owner-only single-transaction deep
+  `min(current month, end month + 1)`. `clone-budget` is an owner-or-admin single-transaction deep
   copy (structure, sharing, membership, optionally plans from a chosen start month; envelope
-  elements' `external_id` remapped) — the copy starts open-ended and unarchived.
+  elements' `external_id` remapped) — the copy starts open-ended and unarchived, owned by the
+  cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
+  owner joins the copy's sharing set as an accepted admin, so every member account keeps a
+  participant backing it.
 
 ## Deployment
 

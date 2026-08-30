@@ -264,6 +264,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] **Duplicate** (clone): name pre-fills with a localized "(copy)" suffix;
       deep copy with/without plans from a chosen start month; copy starts
       unarchived/open-ended; structure and sharing carried.
+- [ ] **Duplicate/Complete as shared admin** ("Full control", not owner): both
+      actions are offered and succeed; the cloner owns the copy, the former
+      owner appears in its sharing set as an accepted "Full control"
+      participant, and all member accounts (the former owner's included) carry
+      over. A "Can edit"/read-only participant is offered neither action.
 - [ ] **Complete**: sets end month; optionally continues with a copy (+ plans,
       new name). Ended budget: period strip clamps at end month, set-limit
       refuses later periods.

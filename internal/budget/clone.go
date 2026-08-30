@@ -1,5 +1,6 @@
-// CloneBudget deep-copies a budget the caller owns: structure, sharing,
-// membership and (optionally) plans, under fresh ids.
+// CloneBudget deep-copies a budget the caller owns or administers: structure,
+// sharing, membership and (optionally) plans, under fresh ids. The caller
+// always owns the copy.
 package budget
 
 import (
@@ -29,14 +30,15 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 	if err != nil {
 		return nil, err
 	}
-	// Owner only: a copy carries the source's whole sharing set, so only the
-	// owner may spawn one. An archived or ended source is still cloneable —
-	// continuing from a completed budget is the point of the feature.
+	// Owner or admin ("full control") only: the copy carries the source's whole
+	// sharing set and membership, so only a fully-privileged participant may
+	// spawn one. An archived or ended source is still cloneable — continuing
+	// from a completed budget is the point of the feature.
 	role, err := s.budgetRole(src, userID)
 	if err != nil {
 		return nil, err
 	}
-	if role != model.BudgetRoleOwner {
+	if role != model.BudgetRoleOwner && role != model.BudgetRoleAdmin {
 		return nil, accessDenied()
 	}
 
@@ -61,9 +63,23 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 		if serr := s.budgets.Save(txCtx, nb); serr != nil {
 			return serr
 		}
+		// The cloner becomes the copy's owner, so their own grant (if any) is
+		// dropped; when an admin clones, the former owner joins the copy as an
+		// accepted admin — every participant stays, so every member account
+		// (theirs included) keeps a participant backing it.
 		for _, a := range src.access {
+			if a.UserID.Equal(userID) {
+				continue
+			}
 			na := model.NewBudgetAccess(s.access.NextIdentity(), newID, a.UserID, a.Role, now)
 			na.IsAccepted = a.IsAccepted
+			if serr := s.access.SaveAccess(txCtx, na); serr != nil {
+				return serr
+			}
+		}
+		if !src.budget.UserID.Equal(userID) {
+			na := model.NewBudgetAccess(s.access.NextIdentity(), newID, src.budget.UserID, model.BudgetRoleAdmin, now)
+			na.IsAccepted = true
 			if serr := s.access.SaveAccess(txCtx, na); serr != nil {
 				return serr
 			}

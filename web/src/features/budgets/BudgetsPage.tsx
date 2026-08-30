@@ -179,7 +179,7 @@ export function BudgetsPage() {
                 {t("budgets.page.settings.list_actions.access")}
               </DropdownMenuItem>
             ) : null}
-            {budget.ownerUserId === user?.id ? (
+            {user && hasBudgetAdminAccess(budget, user.id) ? (
               <DropdownMenuItem onSelect={() => setDuplicateTarget(budget)}>
                 {t("budgets.page.settings.list_actions.duplicate")}
               </DropdownMenuItem>

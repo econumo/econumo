@@ -162,7 +162,7 @@ func TestCloneBudget_StartDateAndLimitsFilters(t *testing.T) {
 	}
 }
 
-func TestCloneBudget_OwnerOnly_ArchivedSourceAllowed(t *testing.T) {
+func TestCloneBudget_AdminBecomesOwnerOfCopy(t *testing.T) {
 	h := newHarnessWithClock(t, fixedAugust())
 	tok := h.token(t)
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(cloneSrcID, "Src"))
@@ -172,11 +172,62 @@ func TestCloneBudget_OwnerOnly_ArchivedSourceAllowed(t *testing.T) {
 		map[string]any{"budgetId": cloneSrcID, "userId": otherUserID, "role": "admin"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/accept-access", otherUserID, map[string]any{"budgetId": cloneSrcID})
 
-	// even an admin cannot clone — owner only (spec §4)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/clone-budget", otherUserID,
+		map[string]any{"id": cloneSrcID, "newId": cloneDstID, "name": "Copy", "withLimits": false})
+
+	// the cloner owns the copy
+	var copyOwner string
+	if err := h.db.QueryRow(`SELECT user_id FROM budgets WHERE id = ?`, cloneDstID).Scan(&copyOwner); err != nil {
+		t.Fatal(err)
+	}
+	if copyOwner != otherUserID {
+		t.Fatalf("copy owner=%q want the cloning admin %q", copyOwner, otherUserID)
+	}
+
+	// sharing set: the cloner's own grant is dropped (ownership replaces it) and
+	// the former owner joins as an accepted admin, so every participant — and
+	// with them every member account — stays on the copy.
+	var accessRows int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM budgets_access WHERE budget_id = ?`, cloneDstID).Scan(&accessRows); err != nil {
+		t.Fatal(err)
+	}
+	if accessRows != 1 {
+		t.Fatalf("access rows=%d want 1 (former owner only)", accessRows)
+	}
+	var role int
+	var accepted bool
+	if err := h.db.QueryRow(`SELECT role, is_accepted FROM budgets_access WHERE budget_id = ? AND user_id = ?`, cloneDstID, seedUserID).Scan(&role, &accepted); err != nil {
+		t.Fatalf("former owner has no access row on the copy: %v", err)
+	}
+	if role != 0 || !accepted {
+		t.Fatalf("former owner role=%d accepted=%v want accepted admin (0)", role, accepted)
+	}
+
+	// membership: the former owner's account is still a member of the copy
+	var memberRows int
+	if err := h.db.QueryRow(`SELECT COUNT(*) FROM budgets_accounts WHERE budget_id = ? AND account_id = ?`, cloneDstID, accountID).Scan(&memberRows); err != nil {
+		t.Fatal(err)
+	}
+	if memberRows != 1 {
+		t.Fatal("former owner's account membership not copied")
+	}
+}
+
+func TestCloneBudget_EditorDenied_ArchivedSourceAllowed(t *testing.T) {
+	h := newHarnessWithClock(t, fixedAugust())
+	tok := h.token(t)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, createBudgetReq(cloneSrcID, "Src"))
+	h.f.User(fixture.User{ID: otherUserID, Email: "o@e.test", Name: "O", Password: "pw", Salt: seedSalt})
+	h.f.Connect(seedUserID, otherUserID)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/grant-access", tok,
+		map[string]any{"budgetId": cloneSrcID, "userId": otherUserID, "role": "user"})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/accept-access", otherUserID, map[string]any{"budgetId": cloneSrcID})
+
+	// only owner|admin may clone — an editor ("user" role) is refused
 	st, env := h.do(t, http.MethodPost, "/api/v1/budget/clone-budget", otherUserID,
 		map[string]any{"id": cloneSrcID, "newId": cloneDstID, "name": "Nope", "withLimits": false})
 	if st != http.StatusForbidden {
-		t.Fatalf("admin clone: status=%d body=%s want 403", st, env.raw)
+		t.Fatalf("editor clone: status=%d body=%s want 403", st, env.raw)
 	}
 
 	// an archived source is still cloneable by its owner

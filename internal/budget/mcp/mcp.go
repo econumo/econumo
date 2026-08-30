@@ -380,7 +380,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "clone_budget",
-			Description: "Clone a budget you own: structure, sharing and accounts are copied; optionally the plans. Start from the source's start (full copy) or a later month (continuation)."},
+			Description: "Clone a budget you own or administer: structure, sharing and accounts are copied (the copy is yours); optionally the plans. Start from the source's start (full copy) or a later month (continuation)."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in cloneBudgetInput) (*sdk.CallToolResult, model.CloneBudgetResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "clone_budget")
 				userID, err := webmcp.UserID(ctx)
