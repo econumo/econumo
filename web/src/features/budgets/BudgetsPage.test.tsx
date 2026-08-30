@@ -263,6 +263,25 @@ it('delete is offered on an admin-shared budget, not only owned ones', async () 
   await screen.findByText('Admin plan')
   await user.click(screen.getByRole('button', { name: 'budget actions Admin plan' }))
   expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  // full control includes cloning: the copy becomes the admin's own budget
+  expect(screen.getByRole('menuitem', { name: 'Duplicate…' })).toBeInTheDocument()
+})
+
+it('duplicate is not offered to a plain shared user', async () => {
+  const userShared = {
+    id: 'b5', ownerUserId: 'u2', name: 'User plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [
+      { user: partner, role: 'owner', isAccepted: 1 },
+      { user: fixtureOwner, role: 'user', isAccepted: 1 },
+    ],
+  }
+  server.use(...coreHandlers({ budgets: [userShared] }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('User plan')
+  await user.click(screen.getByRole('button', { name: 'budget actions User plan' }))
+  await screen.findByRole('menu')
+  expect(screen.queryByRole('menuitem', { name: 'Duplicate…' })).not.toBeInTheDocument()
 })
 
 const archivedBudgets = [
