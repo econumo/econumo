@@ -95,7 +95,14 @@ function usePlanHandlers() {
   )
 }
 
+// The plan fixtures span May-Aug 2026 and several cases read "today" straight
+// off the system clock: the default three-month window, the bold current-month
+// header, past-vs-future cell styling. Left on the real clock they quietly rot
+// the moment the calendar leaves that window. Only Date is faked, so
+// userEvent's and waitFor's real timers still run.
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 7, 15, 12, 0, 0))
   vi.clearAllMocks()
   localStorage.clear()
   window.econumoConfig = {}
@@ -110,6 +117,10 @@ beforeEach(() => {
     planFolds: {},
     planHideEmpty: false,
   })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 it('/plan renders the sheet: months, income on top, cells', async () => {
