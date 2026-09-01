@@ -1,6 +1,12 @@
 package apiparity
 
 func init() {
+	// Every recurring occurrence here must stay ahead of the harness clock: a
+	// posted transaction dated today lands inside the account's "balance as of
+	// end of today" window and shifts the golden balances, so a hard-coded
+	// calendar date silently rots the goldens the day it arrives.
+	futureDate := ClockTime.AddDate(0, 1, 0).Format("2006-01-02 15:04:05")
+
 	register(Scenario{Name: "recurring_crud", Calls: func() []Call {
 		const opCreate = "e0000000-0000-0000-0000-0000000000a1"
 		var rtID string
@@ -9,7 +15,7 @@ func init() {
 				Body: map[string]any{
 					"id": opCreate, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": CatFood,
-					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"schedule": "monthly", "nextPaymentAt": futureDate,
 					"description": "rent",
 				}, CaptureIDInto: &rtID},
 			{Label: "list-after-create", Method: "GET", Path: "/api/v1/recurring/get-recurring-transaction-list", Auth: "owner"},
@@ -45,7 +51,7 @@ func init() {
 				Body: map[string]any{
 					"id": opCreate, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": CatFood,
-					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"schedule": "monthly", "nextPaymentAt": futureDate,
 					"description": "rent", "sourceTransactionId": &txID,
 				}},
 			{Label: "transaction-list-after-link", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner"},
@@ -61,14 +67,14 @@ func init() {
 				Body: map[string]any{
 					"id": opCreate, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": CatFood,
-					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"schedule": "monthly", "nextPaymentAt": futureDate,
 					"description": "rent",
 				}, CaptureIDInto: &rtID},
 			{Label: "post-recurring-transaction", Method: "POST", Path: "/api/v1/recurring/post-recurring-transaction", Auth: "owner",
 				Body: map[string]any{
 					"recurringId": &rtID, "id": opTx, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": CatFood,
-					"date": "2026-08-31 00:00:00", "description": "rent",
+					"date": futureDate, "description": "rent",
 				}},
 			{Label: "recurring-list-after-post", Method: "GET", Path: "/api/v1/recurring/get-recurring-transaction-list", Auth: "owner"},
 			{Label: "transaction-list-after-post", Method: "GET", Path: "/api/v1/transaction/get-transaction-list", Auth: "owner"},
@@ -90,7 +96,7 @@ func init() {
 			full := map[string]any{
 				"recurringId": &rtID, "id": opID, "type": "expense", "amount": "50.00",
 				"accountId": OwnerAccount, "categoryId": CatFood,
-				"date": "2026-08-31 00:00:00", "description": "rent",
+				"date": futureDate, "description": "rent",
 			}
 			for k, v := range body {
 				full[k] = v
@@ -102,7 +108,7 @@ func init() {
 				Body: map[string]any{
 					"id": opCreate, "type": "expense", "amount": "50.00",
 					"accountId": OwnerAccount, "categoryId": CatFood,
-					"schedule": "monthly", "nextPaymentAt": "2026-08-31 00:00:00",
+					"schedule": "monthly", "nextPaymentAt": futureDate,
 					"description": "rent", "labelIds": []string{LabelPersonal, LabelWork},
 				}, CaptureIDInto: &rtID},
 			post("post-inherits-template-labels", opInherit, nil),
