@@ -11,12 +11,13 @@ import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
+import { useFormErrors } from '@/hooks/useFormErrors'
 import { BudgetAccountsField } from './BudgetAccountsField'
 
 interface BudgetDialogProps {
   open: boolean
   onClose: () => void
-  onSubmit: (form: { name: string; currencyId: Id; excludedAccounts: Id[] }) => void
+  onSubmit: (form: { name: string; currencyId: Id; accountIds: Id[] }) => void
 }
 
 export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
@@ -28,34 +29,35 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
   const [name, setName] = useState('')
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
-  const [excluded, setExcluded] = useState<Set<Id>>(new Set())
-  const [errors, setErrors] = useState<{ name?: string; currency?: string }>({})
+  const [selected, setSelected] = useState<Set<Id>>(new Set())
+  const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; currency?: string; accounts?: string }>()
 
   useEffect(() => {
     if (open) {
       setName('')
       setCurrencyId(userCurrencyId(user))
-      setExcluded(new Set())
-      setErrors({})
+      setSelected(new Set())
+      resetErrors()
     }
   }, [open, user])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
 
   const toggleAccount = (id: Id, included: boolean) => {
-    setExcluded((prev) => {
+    clearError('accounts')
+    setSelected((prev) => {
       const next = new Set(prev)
       if (included) {
-        next.delete(id)
-      } else {
         next.add(id)
+      } else {
+        next.delete(id)
       }
       return next
     })
   }
 
   const submit = () => {
-    const next: { name?: string; currency?: string } = {}
+    const next: { name?: string; currency?: string; accounts?: string } = {}
     if (!isNotEmpty(name)) {
       next.name = t('budgets.form.budget.name.validation.required_field')
     } else if (!isValidBudgetName(name)) {
@@ -64,11 +66,14 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
     if (!currencyId) {
       next.currency = t('budgets.form.budget_envelope.currency.validation.required_field')
     }
+    if (selected.size === 0) {
+      next.accounts = t('budgets.form.budget.accounts.validation.required')
+    }
     setErrors(next)
     if (Object.keys(next).length > 0 || !currencyId) {
       return
     }
-    onSubmit({ name, currencyId, excludedAccounts: [...excluded] })
+    onSubmit({ name, currencyId, accountIds: [...selected] })
   }
 
   return (
@@ -103,7 +108,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
             maxLength={64}
             placeholder={t('budgets.form.budget.name.placeholder')}
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              clearError('name')
+              setName(e.target.value)
+            }}
           />
         </CardField>
 
@@ -122,7 +130,12 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
         </button>
         {errors.currency ? <p className="text-sm text-destructive">{errors.currency}</p> : null}
 
-        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} excluded={excluded} onToggle={toggleAccount} /> : null}
+        {ownAccounts.length > 0 ? (
+          <>
+            <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={new Set()} onToggle={toggleAccount} />
+            {errors.accounts ? <p className="text-sm text-destructive">{errors.accounts}</p> : null}
+          </>
+        ) : null}
       </form>
 
       <CurrencyPickerDialog
@@ -130,7 +143,10 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
         title={t('budgets.form.budget_envelope.currency.label')}
         value={currencyId}
         onClose={() => setCurrencyOpen(false)}
-        onPick={setCurrencyId}
+        onPick={(id) => {
+          clearError('currency')
+          setCurrencyId(id)
+        }}
       />
     </ResponsiveDialog>
   )

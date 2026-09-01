@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetTransactionDto } from './dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto } from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -12,14 +12,26 @@ export interface CreateBudgetForm {
   name: string
   startDate: string | null
   currencyId: Id
-  excludedAccounts: Id[]
+  accountIds: Id[]
 }
 
 export interface UpdateBudgetForm {
   id: Id
   name: string
   currencyId: Id
-  excludedAccounts: Id[]
+  /** absent = membership untouched; present = replace-set */
+  accountIds?: Id[]
+  /** absent = end month untouched; '' clears it; 'Y-m-d' sets it */
+  endDate?: string
+}
+
+export interface CloneBudgetForm {
+  id: Id
+  newId: Id
+  name: string
+  /** null = copy from the source's own start month */
+  startDate: string | null
+  withLimits: boolean
 }
 
 export async function getBudgetList(): Promise<BudgetMetaDto[]> {
@@ -41,9 +53,33 @@ export async function deleteBudget(id: Id): Promise<void> {
   await api.post(apiUrl('/api/v1/budget/delete-budget'), { id })
 }
 
+export async function cloneBudget(form: CloneBudgetForm): Promise<BudgetMetaDto> {
+  const { startDate, ...rest } = form
+  const body = startDate === null ? rest : { ...rest, startDate }
+  const response = await api.post<Envelope<{ item: { meta: BudgetMetaDto } }>>(apiUrl('/api/v1/budget/clone-budget'), body)
+  return response.data.data.item.meta
+}
+
+export async function archiveBudget(id: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/archive-budget'), { id })
+  return response.data.data.item
+}
+
+export async function unarchiveBudget(id: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/unarchive-budget'), { id })
+  return response.data.data.item
+}
+
 export async function getBudget(id: Id, date: string): Promise<BudgetDto> {
   const response = await api.get<Envelope<{ item: BudgetDto }>>(
     apiUrl(`/api/v1/budget/get-budget?id=${encodeURIComponent(id)}&date=${encodeURIComponent(date)}`),
+  )
+  return response.data.data.item
+}
+
+export async function getBudgetPlan(id: Id, from: string, months: number): Promise<BudgetPlanDto> {
+  const response = await api.get<Envelope<{ item: BudgetPlanDto }>>(
+    apiUrl(`/api/v1/budget/get-budget-plan?id=${encodeURIComponent(id)}&from=${encodeURIComponent(from)}&months=${months}`),
   )
   return response.data.data.item
 }
@@ -69,6 +105,8 @@ export interface EnvelopeForm {
   currencyId: Id
   folderId: Id | null
   categories: Id[]
+  /** create only, and only when 'income' — immutable once set; update never sends it */
+  side?: 'income'
 }
 
 export async function createEnvelope(form: EnvelopeForm): Promise<BudgetElementDto> {
@@ -119,6 +157,8 @@ export interface BudgetTransactionsParams {
   envelopeId?: Id
   uncategorized?: boolean
   labelId?: Id
+  /** transfers across the budget boundary; exclusive with every other selector */
+  transfers?: boolean
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -128,6 +168,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.envelopeId) query.set('envelopeId', params.envelopeId)
   if (params.uncategorized) query.set('uncategorized', '1')
   if (params.labelId) query.set('labelId', params.labelId)
+  if (params.transfers) query.set('transfers', '1')
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )
@@ -154,12 +195,12 @@ export async function declineAccess(budgetId: Id): Promise<void> {
 }
 
 // NOTE the wire quirk: the budget id travels under "id", not budgetId.
-export async function excludeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/exclude-account'), { id: budgetId, accountId })
+export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/add-account'), { id: budgetId, accountId })
   return response.data.data.item
 }
 
-export async function includeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
-  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/include-account'), { id: budgetId, accountId })
+export async function removeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
+  const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/remove-account'), { id: budgetId, accountId })
   return response.data.data.item
 }

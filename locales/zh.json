@@ -12,7 +12,7 @@
       "active_only": "仅显示启用中的项目"
     },
     "nav": {
-      "budget": "预算",
+      "budget": "预算与计划",
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "账户",
         "accounts_included": "已包含 {count} 个，共 {total} 个",
-        "accounts_hidden": "在隐藏文件夹中"
+        "accounts_hidden": "在隐藏文件夹中",
+        "accounts_locked_hint": "在过去月份中有交易的账户无法移除"
       },
       "create_budget_form": {
         "header": "新建预算"
@@ -849,6 +850,18 @@
       "expense_widget": {
         "header": "支出进度",
         "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "复制预算",
+        "copy_name": "{name}（副本）",
+        "copy_plans": "复制计划",
+        "start_this_month": "从本月开始"
+      },
+      "complete_budget_form": {
+        "header": "结束预算",
+        "end_month": "最后一个月",
+        "continue_copy": "从本月开始在副本中继续",
+        "copy_plans": "复制计划"
       }
     },
     "form": {
@@ -868,6 +881,15 @@
             "required_field": "必填项",
             "invalid_name": "文件夹名称需为 3-64 个字符"
           }
+        },
+        "accounts": {
+          "validation": {
+            "required": "请至少选择一个账户"
+          }
+        },
+        "end_month": {
+          "label": "结束月份",
+          "none": "无结束日期"
         }
       },
       "budget_envelope": {
@@ -970,12 +992,65 @@
             "name": "合计",
             "expenses": "支出合计"
           }
+        },
+        "archived_banner": "此预算已归档，为只读状态",
+        "nav": {
+          "prev": "滚动到更早的月份",
+          "next": "滚动到更晚的月份"
+        }
+      },
+      "plan": {
+        "toggle": {
+          "budget": "预算",
+          "plan": "计划"
+        },
+        "section": {
+          "income": "收入",
+          "expenses": "支出",
+          "archived": "已归档"
+        },
+        "nav": {
+          "prev": "更早的月份",
+          "next": "更晚的月份"
+        },
+        "cell": {
+          "aria": "{name}，{month}：实际 {actual}，计划 {planned}"
+        },
+        "fill": {
+          "handle_aria": "将预算复制到后续月份"
+        },
+        "paste": {
+          "not_editable": "无法在此粘贴——此单元格不可编辑。",
+          "invalid": "没有可粘贴的内容——剪贴板中没有金额。"
+        },
+        "totals": {
+          "income": "收入",
+          "expenses": "支出",
+          "transfers": "转账",
+          "transfers_tooltip": "转入 {in} · 转出 {out}",
+          "show_transactions": "显示交易",
+          "net": "净额",
+          "balance": "余额"
+        },
+        "density": {
+          "hide_empty": "隐藏空行",
+          "hidden": "已隐藏 {count} 项",
+          "show": "显示"
+        },
+        "menu": {
+          "move_to_folder": "移动到文件夹…",
+          "no_folder": "无文件夹"
+        },
+        "edit": {
+          "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
+          "no_access_category": "无法编辑此分类——它属于其他用户。",
+          "no_access_tag": "无法编辑此标签——它属于其他用户。"
         }
       },
       "settings": {
-        "menu_item": "预算",
-        "header": "预算",
-        "info": "您的所有预算都在这里。为不同目标创建独立的预算，并与家人共享。",
+        "menu_item": "预算与计划",
+        "header": "预算与计划",
+        "info": "您的所有预算都在这里。为不同目标创建预算，与家人共享，并为未来几个月规划您的预算。",
         "create_budget": "创建预算",
         "edit_modal": {
           "header": "编辑预算"
@@ -999,12 +1074,28 @@
         },
         "list_actions": {
           "access": "访问控制",
-          "go_to": "打开预算"
+          "go_to": "打开预算",
+          "duplicate": "复制…",
+          "complete": "结束…",
+          "archive": "归档",
+          "unarchive": "取消归档"
+        },
+        "archived_group": {
+          "header": "已归档"
         }
       }
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "合并到…",
+        "title": "将“{name}”合并到",
+        "confirm": "合并",
+        "warning": "“{name}”的所有交易将被移动，并删除“{name}”。",
+        "envelope_info": "如果两者位于不同的信封中，请先更新预算，以免丢失已计划的金额，因为合并时限额会相加。"
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1362,14 +1453,19 @@
       "envelope_name_length": "信封名称需为 {min}-{max} 个字符。",
       "invalid_element_type_alias": "别名为 {alias} 的预算元素类型不存在。",
       "invalid_role_alias": "别名为 {alias} 的预算用户角色不存在。",
-      "transaction_filter_required": "校验未通过。"
+      "transaction_filter_required": "校验未通过。",
+      "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
+      "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
+      "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
+      "accounts_required": "请至少选择一个账户",
+      "archived": "此预算已归档",
+      "end_before_start": "结束月份早于预算开始时间"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",
       "type_invalid": "指定的分类类型不存在。",
-      "replace_id_required": "使用 mode=replace 时必须指定 replaceId。",
       "not_found": "未找到该分类。",
-      "cannot_be_replaced": "分类无法替换。",
+      "cannot_be_merged": "无法合并所选分类。",
       "list_empty": "分类列表为空。"
     },
     "connection": {
@@ -1377,7 +1473,8 @@
       "invalid_role_alias": "别名为 {alias} 的账户访问角色不存在。",
       "invalid_code": "邀请码不正确。",
       "inviting_yourself": "您不能邀请自己。",
-      "deleting_yourself": "您不能删除自己。"
+      "deleting_yourself": "您不能删除自己。",
+      "invite_not_found": "邀请码无效或已过期。"
     },
     "currency": {
       "already_exists": "该货币已存在。",
@@ -1392,16 +1489,19 @@
     },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
+      "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",
+      "cannot_be_merged": "无法合并所选收款人。",
       "list_empty": "收款人列表为空。"
     },
     "tag": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "already_exists": "该标签已存在。",
+      "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
     "token": {
@@ -1414,7 +1514,8 @@
       "account_not_available": "该账户不可用于此操作。",
       "item_not_available": "该交易不可用于此操作。",
       "invalid_import_file": "请上传有效的 CSV 文件。",
-      "too_many_labels": "一笔交易最多可以有 50 个统计标签。"
+      "too_many_labels": "一笔交易最多可以有 50 个统计标签。",
+      "account_deleted": "该账户已删除。"
     },
     "user": {
       "report_period_invalid": "报表周期不正确。",

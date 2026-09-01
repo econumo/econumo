@@ -28,7 +28,14 @@ func (s *Service) DeleteAccount(ctx context.Context, userID vo.Id, req model.Del
 
 	if acct.UserID.Equal(userID) {
 		if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-			acct.Delete(s.clock.Now())
+			now := s.clock.Now()
+			// A deleted account must not carry a balance forward (it stays a
+			// budget member and its history keeps counting), so reconcile it
+			// to zero first — dated in the caller's local time like update-account.
+			if _, err := s.zeroBalance(ctx, acct, s.localNow(ctx), now, correctionAccountDeleted); err != nil {
+				return err
+			}
+			acct.Delete(now)
 			return s.accounts.Save(ctx, acct)
 		}); err != nil {
 			return nil, err

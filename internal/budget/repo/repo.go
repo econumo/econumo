@@ -84,7 +84,8 @@ func (r *Repo) ListForUser(ctx context.Context, userID vo.Id) ([]*model.Budget, 
 func (r *Repo) Save(ctx context.Context, b *model.Budget) error {
 	return r.q.UpsertBudget(ctx, r.db(ctx), upBudgetP{
 		ID: b.ID.String(), CurrencyID: b.CurrencyID.String(), UserID: b.UserID.String(),
-		Name: b.Name, StartedAt: b.StartedAt, CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
+		Name: b.Name, StartedAt: b.StartedAt, EndedAt: b.EndedAt, IsArchived: b.IsArchived,
+		CreatedAt: b.CreatedAt, UpdatedAt: b.UpdatedAt,
 	})
 }
 
@@ -92,20 +93,32 @@ func (r *Repo) Delete(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudget(ctx, r.db(ctx), id.String())
 }
 
-func (r *Repo) ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error) {
-	rows, err := r.q.ListBudgetExcludedAccountIDs(ctx, r.db(ctx), budgetID.String())
+func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error) {
+	rows, err := r.q.ListBudgetAccounts(ctx, r.db(ctx), budgetID.String())
 	if err != nil {
 		return nil, err
 	}
-	return parseIDs(rows)
+	out := make([]model.BudgetAccount, 0, len(rows))
+	for _, row := range rows {
+		id, perr := vo.ParseId(row.AccountID)
+		if perr != nil {
+			return nil, perr
+		}
+		out = append(out, model.BudgetAccount{AccountID: id, CreatedAt: row.CreatedAt})
+	}
+	return out, nil
 }
 
-func (r *Repo) ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error {
-	return r.q.AddBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
+func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error {
+	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{BudgetID: budgetID.String(), AccountID: accountID.String(), CreatedAt: now})
 }
 
-func (r *Repo) IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error {
-	return r.q.RemoveBudgetExcludedAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
+func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {
+	return r.q.RemoveBudgetAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
+}
+
+func (r *Repo) RemoveAccountsOwnedBy(ctx context.Context, budgetID, ownerID vo.Id) error {
+	return r.q.RemoveBudgetAccountsOwnedBy(ctx, r.db(ctx), budgetID.String(), ownerID.String())
 }
 
 func (r *Repo) ListAccess(ctx context.Context, budgetID vo.Id) ([]*model.BudgetAccess, error) {
@@ -268,6 +281,26 @@ func (r *Repo) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	})
 }
 
+func (r *Repo) ListElementsByExternal(ctx context.Context, externalID vo.Id) ([]*model.BudgetElement, error) {
+	rows, err := r.q.ListBudgetElementsByExternal(ctx, r.db(ctx), externalID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]*model.BudgetElement, 0, len(rows))
+	for _, row := range rows {
+		e, herr := hydrateElement(row)
+		if herr != nil {
+			return nil, herr
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+func (r *Repo) RepointElement(ctx context.Context, id, externalID vo.Id, updatedAt time.Time) error {
+	return r.q.RepointBudgetElement(ctx, r.db(ctx), id.String(), externalID.String(), updatedAt)
+}
+
 func (r *Repo) DeleteElement(ctx context.Context, id vo.Id) error {
 	return r.q.DeleteBudgetElement(ctx, r.db(ctx), id.String())
 }
@@ -277,6 +310,28 @@ func (r *Repo) ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period t
 	if err != nil {
 		return nil, err
 	}
+	return hydrateLimits(rows)
+}
+
+// ListLimitsFrom returns every limit of a budget's elements at or after `from`
+// (clone copies forward-looking plans only).
+func (r *Repo) ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error) {
+	rows, err := r.q.ListBudgetLimitsFrom(ctx, r.db(ctx), budgetID.String(), from)
+	if err != nil {
+		return nil, err
+	}
+	return hydrateLimits(rows)
+}
+
+func (r *Repo) ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error) {
+	rows, err := r.q.ListBudgetLimitsByElement(ctx, r.db(ctx), elementID.String())
+	if err != nil {
+		return nil, err
+	}
+	return hydrateLimits(rows)
+}
+
+func hydrateLimits(rows []limitRow) ([]*model.BudgetElementLimit, error) {
 	out := make([]*model.BudgetElementLimit, 0, len(rows))
 	for _, row := range rows {
 		l, herr := hydrateLimit(row)
@@ -324,7 +379,7 @@ func hydrateBudget(row budgetRow) (*model.Budget, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return &model.Budget{ID: id, UserID: userID, Name: row.Name, CurrencyID: currencyID, StartedAt: row.StartedAt, EndedAt: row.EndedAt, IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }
 
 func hydrateAccess(row accessRow) (*model.BudgetAccess, error) {

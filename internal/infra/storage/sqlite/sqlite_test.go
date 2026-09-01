@@ -144,8 +144,10 @@ func TestMigrations_NonEmpty(t *testing.T) {
 		if m.Version == "" {
 			t.Error("migration with empty Version")
 		}
-		if m.Up == "" {
-			t.Errorf("migration %s has empty Up SQL", m.Version)
+		// Up and Command are mutually exclusive (backend.Migration's doc comment):
+		// a command step (e.g. migration:zero-deleted-accounts) carries no SQL.
+		if m.Up == "" && m.Command == "" {
+			t.Errorf("migration %s has neither Up SQL nor Command", m.Version)
 		}
 		if seen[m.Version] {
 			t.Errorf("duplicate migration version %s", m.Version)

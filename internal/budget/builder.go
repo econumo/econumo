@@ -20,12 +20,15 @@ import (
 type filters struct {
 	periodStart, periodEnd time.Time
 	userIDs                []vo.Id
-	excludedAccountIDs     []vo.Id
-	includedAccountIDs     []vo.Id
-	currencyIDs            []vo.Id
-	categories             map[string]model.CategoryMeta // expense-only, keyed by id
-	tags                   map[string]model.TagMeta
-	labels                 map[string]model.LabelMeta
+	// accountFilters are the REQUESTER's own member accounts, with their
+	// removability; includedAccountIDs is every participant's member account.
+	accountFilters     []model.BudgetAccountFilter
+	includedAccountIDs []vo.Id
+	currencyIDs        []vo.Id
+	categories         map[string]model.CategoryMeta // expense-only, keyed by id
+	incomeCategories   map[string]model.CategoryMeta // income-only; read by the plan builder ONLY
+	tags               map[string]model.TagMeta
+	labels             map[string]model.LabelMeta
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
@@ -62,9 +65,9 @@ func (s *Service) BuildBudget(ctx context.Context, userID vo.Id, b *budgetAggreg
 	return model.BudgetResult{
 		Meta: meta,
 		Filters: model.FiltersResult{
-			PeriodStart:         f.periodStart.Format(datetime.Layout),
-			PeriodEnd:           f.periodEnd.Format(datetime.Layout),
-			ExcludedAccountsIds: idStrings(f.excludedAccountIDs),
+			PeriodStart: f.periodStart.Format(datetime.Layout),
+			PeriodEnd:   f.periodEnd.Format(datetime.Layout),
+			Accounts:    f.accountFilters,
 		},
 		Balances:      balances,
 		CurrencyRates: rates,
@@ -95,12 +98,18 @@ func (s *Service) buildMeta(ctx context.Context, b *budgetAggregate) (model.Meta
 		Role:       "owner",
 		IsAccepted: 1,
 	})
+	endedAt := ""
+	if b.budget.EndedAt != nil {
+		endedAt = b.budget.EndedAt.Format(datetime.Layout)
+	}
 	return model.MetaResult{
 		Id:          b.budget.ID.String(),
 		OwnerUserId: b.budget.UserID.String(),
 		Name:        b.budget.Name,
 		StartedAt:   b.budget.StartedAt.Format(datetime.Layout),
+		EndedAt:     endedAt,
 		CurrencyId:  b.budget.CurrencyID.String(),
+		IsArchived:  boolToInt(b.budget.IsArchived),
 		Access:      access,
 	}, nil
 }
@@ -114,51 +123,41 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		}
 	}
 
-	// excludedAccountIds for THIS user (meta filter shows the requester's set).
-	excludedForUser := make([]vo.Id, 0)
-	for _, aid := range b.excludedAccountIDs {
-		ownerID, ok := s.accountOwners[aid.String()]
-		if !ok {
-			o, err := s.accounts.AccountOwner(ctx, aid)
-			if err == nil {
-				ownerID = o.String()
-				s.accountOwners[aid.String()] = ownerID
-			}
-		}
-		if ownerID == userID.String() {
-			excludedForUser = append(excludedForUser, aid)
-		}
+	// The budget counts every member account of every participant, deleted or
+	// not; the filters block reports only the requester's own, with the
+	// removability the membership rule allows.
+	memberIDs := make([]vo.Id, 0, len(b.accounts))
+	for _, m := range b.accounts {
+		memberIDs = append(memberIDs, m.AccountID)
 	}
-
-	// included = all participant accounts minus ALL excluded.
-	excludedSet := map[string]bool{}
-	for _, aid := range b.excludedAccountIDs {
-		excludedSet[aid.String()] = true
-	}
-	var included []vo.Id
-	currencySet := map[string]vo.Id{}
-	var currencyIDs []vo.Id
-	accounts, err := s.accounts.AccountsForOwners(ctx, userIDs)
+	views, err := s.accounts.AccountsByIDs(ctx, memberIDs)
 	if err != nil {
 		return filters{}, err
 	}
-	for _, a := range accounts {
-		if excludedSet[a.ID] {
-			continue
+	included := memberIDs
+	currencySet := map[string]vo.Id{}
+	var currencyIDs []vo.Id
+	var ownIDs []vo.Id
+	for i, v := range views {
+		if v.OwnerID == userID.String() {
+			ownIDs = append(ownIDs, memberIDs[i])
 		}
-		aid, perr := vo.ParseId(a.ID)
-		if perr != nil {
-			return filters{}, perr
-		}
-		included = append(included, aid)
-		if _, seen := currencySet[a.CurrencyID]; !seen {
-			cid, cerr := vo.ParseId(a.CurrencyID)
+		if _, seen := currencySet[v.CurrencyID]; !seen {
+			cid, cerr := vo.ParseId(v.CurrencyID)
 			if cerr != nil {
 				return filters{}, cerr
 			}
-			currencySet[a.CurrencyID] = cid
+			currencySet[v.CurrencyID] = cid
 			currencyIDs = append(currencyIDs, cid)
 		}
+	}
+	removable, err := s.removableAccounts(ctx, b, ownIDs, s.clock.Now())
+	if err != nil {
+		return filters{}, err
+	}
+	accountFilters := make([]model.BudgetAccountFilter, 0, len(ownIDs))
+	for _, id := range ownIDs {
+		accountFilters = append(accountFilters, model.BudgetAccountFilter{Id: id.String(), Removable: removable[id.String()]})
 	}
 
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
@@ -166,8 +165,11 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		return filters{}, err
 	}
 	catMap := map[string]model.CategoryMeta{}
+	incomeCatMap := map[string]model.CategoryMeta{}
 	for _, c := range cats {
-		if !c.IsIncome { // expense categories only
+		if c.IsIncome {
+			incomeCatMap[c.ID] = c
+		} else {
 			catMap[c.ID] = c
 		}
 	}
@@ -190,18 +192,10 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 
 	return filters{
 		periodStart: periodStart, periodEnd: periodEnd,
-		userIDs: userIDs, excludedAccountIDs: excludedForUser,
+		userIDs: userIDs, accountFilters: accountFilters,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
-		categories: catMap, tags: tagMap, labels: labels,
+		categories: catMap, incomeCategories: incomeCatMap, tags: tagMap, labels: labels,
 	}, nil
-}
-
-func idStrings(ids []vo.Id) []string {
-	out := make([]string, len(ids))
-	for i, id := range ids {
-		out[i] = id.String()
-	}
-	return out
 }
 
 func boolToInt(b bool) int {

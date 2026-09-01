@@ -106,3 +106,22 @@ func (h *Handlers) UnarchivePayee(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeletePayee(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeletePayee)
 }
+
+// MergePayee handles POST /api/v1/payee/merge-payee (auth).
+//
+// @Summary     Merge two payees
+// @Description Re-points every transaction and recurring template from sourceId to targetId, then deletes sourceId. Requires ownership of both. Cannot be undone.
+// @Tags        Payee
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MergePayeeRequest true "Merge payee request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MergePayeeResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/payee/merge-payee [post]
+func (h *Handlers) MergePayee(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MergePayee)
+}

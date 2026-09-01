@@ -38,6 +38,15 @@ func (s *Service) DeleteTransaction(ctx context.Context, userID vo.Id, req model
 		if derr := s.repo.Delete(ctx, id); derr != nil {
 			return derr
 		}
+		// §5a: the removed flow moved any deleted party's balance off zero, so
+		// re-pin it with an offsetting correction dated where the flow used to
+		// sit. Live accounts are a no-op. Inside this WithTx, so the delete and
+		// its corrections commit together.
+		for _, acctID := range partySet(t) {
+			if zerr := s.zeroer.ZeroDeleted(ctx, acctID, t.SpentAt, correctionDeletedTx); zerr != nil {
+				return zerr
+			}
+		}
 		deleted = t
 		return nil
 	}); err != nil {

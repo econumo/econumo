@@ -23,8 +23,10 @@ import (
 // (write and read side) reuses the same physical column order and there is no
 // per-query row type.
 type (
-	labelRow     = sqlitegen.Label
-	upsertParams = sqlitegen.UpsertLabelParams
+	labelRow          = sqlitegen.Label
+	upsertParams      = sqlitegen.UpsertLabelParams
+	reassignTxParams  = sqlitegen.ReassignTransactionLabelsParams
+	reassignRecParams = sqlitegen.ReassignRecurringLabelsParams
 )
 
 type querier interface {
@@ -32,6 +34,8 @@ type querier interface {
 	ListLabelsByOwner(ctx context.Context, db backend.DBTX, userID string) ([]labelRow, error)
 	UpsertLabel(ctx context.Context, db backend.DBTX, p upsertParams) error
 	DeleteLabel(ctx context.Context, db backend.DBTX, id string) error
+	ReassignTransactionLabels(ctx context.Context, db backend.DBTX, p reassignTxParams) error
+	ReassignRecurringLabels(ctx context.Context, db backend.DBTX, p reassignRecParams) error
 }
 
 type Repo struct {
@@ -120,4 +124,17 @@ func hydrate(row labelRow) (*model.Label, error) {
 	}
 	return &model.Label{ID: id, UserID: userID, Name: row.Name, Icon: row.Icon, SortKey: sortkey.Key(row.SortKey),
 		IsArchived: row.IsArchived, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+// ReassignTransactions copies every transaction carrying oldID onto newID.
+// The join table is many-to-many, so the insert dedupes: a transaction already
+// holding both labels keeps one row, not two. The old rows themselves cascade
+// away when the label is deleted.
+func (r *Repo) ReassignTransactions(ctx context.Context, oldID, newID vo.Id) error {
+	return r.q.ReassignTransactionLabels(ctx, r.db(ctx), reassignTxParams{LabelID: newID.String(), LabelID_2: oldID.String()})
+}
+
+// ReassignRecurring is ReassignTransactions for recurring templates.
+func (r *Repo) ReassignRecurring(ctx context.Context, oldID, newID vo.Id) error {
+	return r.q.ReassignRecurringLabels(ctx, r.db(ctx), reassignRecParams{LabelID: newID.String(), LabelID_2: oldID.String()})
 }

@@ -170,3 +170,51 @@ it('tag delete invalidates the budget cache; payee delete does not', async () =>
   await user.click(screen.getByRole('button', { name: 'Delete' }))
   await waitFor(() => expect(tagSpy).toHaveBeenCalledWith({ queryKey: queryKeys.budget }))
 })
+
+// The list endpoints return connected users' payees too, and every settings page
+// narrows to its own before rendering. The merge picker must be built from that
+// same narrowed list, or a client could name an id the server will refuse.
+it('payee merge offers only the caller’s own payees as targets', async () => {
+  server.use(
+    ...coreHandlers({
+      payees: [
+        { id: 'p1', ownerUserId: 'u1', name: 'Grocer', position: 0, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+        { id: 'p2', ownerUserId: 'u1', name: 'Grocer Twin', position: 1, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+        { id: 'p3', ownerUserId: 'u2', name: 'Someone Elses', position: 2, isArchived: 0, createdAt: '2026-01-01 00:00:00', updatedAt: '2026-01-01 00:00:00' },
+      ],
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage(<PayeesPage />)
+  await screen.findByText('Grocer Twin')
+
+  await user.click(screen.getByRole('button', { name: 'actions Grocer' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Merge into…' }))
+
+  expect(await screen.findByRole('option', { name: 'Grocer Twin' })).toBeInTheDocument()
+  // the acted-on row itself, and the connected user's payee
+  expect(screen.queryByRole('option', { name: 'Grocer' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: 'Someone Elses' })).not.toBeInTheDocument()
+})
+
+it('payee merge posts sourceId and targetId', async () => {
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/payee/merge-payee', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage(<PayeesPage />)
+  await screen.findByText('Grocer Twin')
+
+  await user.click(screen.getByRole('button', { name: 'actions Grocer' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Merge into…' }))
+  await user.click(await screen.findByRole('option', { name: 'Grocer Twin' }))
+  await user.click(screen.getByRole('button', { name: 'Merge' }))
+
+  await waitFor(() => expect(body).toEqual({ sourceId: 'p1', targetId: 'p2' }))
+  // the absorbed row leaves the list without a refetch
+  await waitFor(() => expect(screen.queryByText('Grocer')).not.toBeInTheDocument())
+})

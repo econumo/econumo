@@ -62,7 +62,7 @@ func TestUncategorized_TopLevelRowAppears(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.Transaction(fixture.Transaction{
@@ -135,7 +135,7 @@ func TestUncategorized_HiddenWhenNoSuchSpending(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.Transaction(fixture.Transaction{
@@ -156,7 +156,7 @@ func TestUncategorized_TaggedGoesToTheTagAsAChild(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	f.Transaction(fixture.Transaction{
@@ -251,7 +251,7 @@ func TestUncategorized_TagWithOnlyCategoryDeletedSpending(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	// Shape left behind by delete-category in delete mode: tag present, category
@@ -300,7 +300,7 @@ func TestUncategorized_Drilldown_TopLevelAndTagChild(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	// Categorized, unaffected by either drill-down below.
@@ -366,7 +366,7 @@ func TestUncategorized_EnvelopeIdCombinationIsRejected(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Uncat Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	f := fixture.New(t, &dbtest.DB{Raw: h.db, Engine: "sqlite"})
 	envelopeID := f.BudgetEnvelope(fixture.BudgetEnvelope{BudgetID: budgetID1, Name: "Envelope"})

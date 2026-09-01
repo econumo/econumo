@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -30,6 +31,9 @@ func (s *Service) GrantAccess(ctx context.Context, userID vo.Id, req model.Grant
 	}
 	if !s.canShare(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 	// A budget may only be shared with a connected user (never with yourself).
 	connected, err := s.connections.AreConnected(ctx, userID, invitedID)
@@ -98,7 +102,10 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 		if serr != nil {
 			return serr
 		}
-		return s.seedTagElements(txCtx, userID, budgetID, after, now, existing)
+		if serr := s.seedTagElements(txCtx, userID, budgetID, after, now, existing); serr != nil {
+			return serr
+		}
+		return s.seedMemberAccounts(txCtx, userID, budgetID, grant.Role, now)
 	})
 	if err != nil {
 		return nil, err
@@ -110,10 +117,35 @@ func (s *Service) AcceptAccess(ctx context.Context, userID vo.Id, req model.Acce
 	return &model.AcceptAccessResult{Items: list.Items}, nil
 }
 
+// seedMemberAccounts adds a joining participant's live accounts to the budget,
+// the counterpart of removeMemberRecords' RemoveAccountsOwnedBy. Without it
+// their limits would land in budgetedBefore while their spending reached no
+// member account — the asymmetry explicit membership exists to end. The rule
+// mirrors the migration seed (`is_accepted AND role <> 2`): a guest contributes
+// no accounts. Deleted accounts stay out; the seed's deleted-after-start branch
+// is about pre-existing history, not a fresh join. AddAccount is
+// ON CONFLICT DO NOTHING, so re-accepting after a revoke is idempotent.
+func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id, role model.BudgetRole, now time.Time) error {
+	if role == model.BudgetRoleGuest {
+		return nil
+	}
+	ids, err := s.accounts.OwnedLiveAccountIDs(ctx, userID)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		if aerr := s.budgets.AddAccount(ctx, budgetID, id, now); aerr != nil {
+			return aerr
+		}
+	}
+	return nil
+}
+
 // removeMemberRecords deletes a departing member's seeded records from the
-// budget: their category/tag elements (limits cascade via FK) and their
-// categories' envelope assignments. Runs in the caller's transaction; revoke
-// is deliberate, so the member's limit history goes with them.
+// budget: their category/tag elements (limits cascade via FK), their member
+// accounts, and their categories' envelope assignments. Runs in the caller's
+// transaction; revoke is deliberate, so the member's limit history goes with
+// them.
 func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
 	owned := map[vo.Id]bool{}
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})
@@ -145,6 +177,11 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 		if derr := s.elements.DeleteElement(ctx, el.ID); derr != nil {
 			return derr
 		}
+	}
+	// A departing participant takes their accounts with them, locked or not:
+	// their balances and spending must stop counting in a budget they left.
+	if err := s.budgets.RemoveAccountsOwnedBy(ctx, b.budget.ID, memberID); err != nil {
+		return err
 	}
 	for _, env := range b.envelopes {
 		catIDs, cerr := s.envelopes.EnvelopeCategoryIDs(ctx, env.ID)

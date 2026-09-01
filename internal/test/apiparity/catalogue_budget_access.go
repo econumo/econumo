@@ -1,7 +1,7 @@
 package apiparity
 
 // Budget access + account scenarios: invite accept/decline/grant/revoke, plus
-// account include/exclude, reset, and the transaction-list read — the 8 routes
+// account add/remove, reset, and the transaction-list read — the 8 routes
 // carved out of missingFromCatalogue by this file.
 //
 // accept-access and decline-access each consume the ONE seeded pending invite
@@ -39,10 +39,14 @@ func init() {
 		// get-transaction-list returns an empty (still-2xx, but wrong) list.
 		const period = "2024-04-01"
 		return []Call{
-			// Field-name quirk (frozen): include/exclude carry the budget id as "id".
-			{Label: "exclude-account", Method: "POST", Path: "/api/v1/budget/exclude-account", Auth: "owner",
+			// Field-name quirk (frozen): add/remove-account carry the budget id as
+			// "id". Budget started April 2024 (Txn1's seed month) and the real
+			// wall clock is 2026, so OwnerAccount is LOCKED (activity within the
+			// budget's lifetime) — remove-account correctly 400s. add-account then
+			// re-adds it, which is a no-op (still a member) and returns 200.
+			{Label: "err:remove-account-locked", Method: "POST", Path: "/api/v1/budget/remove-account", Auth: "owner",
 				Body: map[string]any{"id": Budget, "accountId": OwnerAccount}},
-			{Label: "include-account", Method: "POST", Path: "/api/v1/budget/include-account", Auth: "owner",
+			{Label: "add-account", Method: "POST", Path: "/api/v1/budget/add-account", Auth: "owner",
 				Body: map[string]any{"id": Budget, "accountId": OwnerAccount}},
 			// ResetBudgetRequest.StartedAt is parsed with datetime.Layout (full
 			// "2006-01-02 15:04:05", not date-only Y-m-d) — a bare date fails Validate.

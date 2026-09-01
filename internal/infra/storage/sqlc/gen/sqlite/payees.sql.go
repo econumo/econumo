@@ -104,6 +104,39 @@ func (q *Queries) ListPayeesByOwner(ctx context.Context, userID string) ([]Payee
 	return items, nil
 }
 
+const reassignPayeeRecurring = `-- name: ReassignPayeeRecurring :exec
+UPDATE recurring_transactions SET payee_id = ? WHERE payee_id = ?
+`
+
+type ReassignPayeeRecurringParams struct {
+	PayeeID   *string
+	PayeeID_2 *string
+}
+
+func (q *Queries) ReassignPayeeRecurring(ctx context.Context, arg ReassignPayeeRecurringParams) error {
+	_, err := q.db.ExecContext(ctx, reassignPayeeRecurring, arg.PayeeID, arg.PayeeID_2)
+	return err
+}
+
+const reassignPayeeTransactions = `-- name: ReassignPayeeTransactions :exec
+;
+
+UPDATE transactions SET payee_id = ? WHERE payee_id = ?
+`
+
+type ReassignPayeeTransactionsParams struct {
+	PayeeID   *string
+	PayeeID_2 *string
+}
+
+// Merge: point every transaction on the old payee at the new one before the old
+// payee is deleted. Deliberately not scoped by user, because a shared account
+// carries the account owner payee and those rows must follow it too.
+func (q *Queries) ReassignPayeeTransactions(ctx context.Context, arg ReassignPayeeTransactionsParams) error {
+	_, err := q.db.ExecContext(ctx, reassignPayeeTransactions, arg.PayeeID, arg.PayeeID_2)
+	return err
+}
+
 const upsertPayee = `-- name: UpsertPayee :exec
 ;
 

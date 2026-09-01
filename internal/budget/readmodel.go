@@ -30,6 +30,29 @@ type ReadModel interface {
 	CountSpending(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.SpendingRow, error)
 	// SummarizedLimits: summed element limits over [start, end) (for budgetedBefore).
 	SummarizedLimits(ctx context.Context, budgetID vo.Id, start, end time.Time) ([]model.SummarizedLimitRow, error)
+	// SpendingByMonth: expense spending per (month, category/tag, currency)
+	// over [from, to) — the plan sheet's actual-expense cells in ONE query for
+	// the whole window. Bucketing matches CountSpending (rows outside the
+	// category set are dropped except NULL-category rows; a tag_id row keeps
+	// its tag).
+	SpendingByMonth(ctx context.Context, categoryIDs, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlySpendingRow, error)
+	// IncomeByMonth: income (type=1) per (month, category, currency) over
+	// [from, to) on the given accounts. Deliberately NO category filter: the
+	// plan builder files rows whose category is not a participant income
+	// category — and NULL-category rows — under the income-side Uncategorized
+	// row, so no income ever silently vanishes from the Balance projection.
+	IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyIncomeRow, error)
+	// TransfersByMonth: transfers (type=2) that crossed the budget boundary,
+	// per (month, currency) over [from, to) — the plan sheet's Transfers
+	// line. "In" = recipient in accountIDs and source not, in the recipient
+	// account's currency; "Out" = the mirror, in the source account's
+	// currency. Transfers with both or neither side included are not rows.
+	// Cross-currency transfers count (each side is measured in its own
+	// account's currency, so no same-amount guard is needed).
+	TransfersByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.MonthlyTransferRow, error)
+	// LimitsByMonth: every element limit of the budget in [from, to) as
+	// (external_id, type, month, amount) — the plan sheet's planned cells.
+	LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.MonthlyLimitRow, error)
 
 	// BudgetTransactionsByCategories returns expense transactions (type=0, tag IS
 	// NULL) in [start, end) on the given accounts, in the given categories,
@@ -45,6 +68,11 @@ type ReadModel interface {
 	// [start, end) on the given accounts with no category and no tag, newest
 	// first. Backs the top-level "uncategorized" element's drill-down.
 	BudgetTransactionsUncategorized(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
+	// BudgetTransactionsTransfers returns transfers (type=2) in [start, end)
+	// with exactly one side in accountIDs, newest first. Amount/CurrencyID
+	// are the included side's; Direction says which side that is. Backs the
+	// plan sheet's Transfers drill-down (the counterpart of TransfersByMonth).
+	BudgetTransactionsTransfers(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error)
 	// BudgetTransactionsByLabel returns expense transactions (type=0) in
 	// [start, end) on the given accounts carrying labelID, newest first. The
 	// link is many-to-many (transactions_labels), unlike the single tag_id
@@ -69,4 +97,9 @@ type ReadModel interface {
 	// LabelsForUsers returns label metadata keyed by label id for the given
 	// owners (the budget's account owners).
 	LabelsForUsers(ctx context.Context, userIDs []vo.Id) (map[string]model.LabelMeta, error)
+
+	// AccountsWithTransactions returns the subset of accountIDs (input order)
+	// that appear as source or transfer recipient on any transaction with
+	// start <= spent_at < end. Drives the membership removal rule.
+	AccountsWithTransactions(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]vo.Id, error)
 }

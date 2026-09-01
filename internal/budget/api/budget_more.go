@@ -210,40 +210,97 @@ func (h *Handlers) DeclineAccess(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeclineAccess)
 }
 
-// ExcludeAccount handles POST /api/v1/budget/exclude-account.
+// CloneBudget handles POST /api/v1/budget/clone-budget.
 //
-// @Summary Exclude an account from a budget
+// @Summary Clone a budget
 // @Tags Budget
 // @Accept json
 // @Produce json
-// @Param request body model.ExcludeAccountRequest true "Exclude account"
-// @Success 200 {object} apidoc.JsonResponseOk{data=model.ExcludeAccountResult}
+// @Param request body model.CloneBudgetRequest true "Clone budget"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.CloneBudgetResult}
 // @Failure 400 {object} apidoc.JsonResponseError
 // @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 403 {object} apidoc.JsonResponseError
 // @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
-// @Router /api/v1/budget/exclude-account [post]
-func (h *Handlers) ExcludeAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.ExcludeAccount)
+// @Router /api/v1/budget/clone-budget [post]
+func (h *Handlers) CloneBudget(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.CloneBudget)
 }
 
-// IncludeAccount handles POST /api/v1/budget/include-account.
+// ArchiveBudget handles POST /api/v1/budget/archive-budget.
 //
-// @Summary Include an account in a budget
+// @Summary Archive a budget
 // @Tags Budget
 // @Accept json
 // @Produce json
-// @Param request body model.IncludeAccountRequest true "Include account"
-// @Success 200 {object} apidoc.JsonResponseOk{data=model.IncludeAccountResult}
+// @Param request body model.ArchiveBudgetRequest true "Archive budget"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.ArchiveBudgetResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
+// @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 403 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
+// @Security Bearer
+// @Router /api/v1/budget/archive-budget [post]
+func (h *Handlers) ArchiveBudget(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.ArchiveBudget)
+}
+
+// UnarchiveBudget handles POST /api/v1/budget/unarchive-budget.
+//
+// @Summary Unarchive a budget
+// @Tags Budget
+// @Accept json
+// @Produce json
+// @Param request body model.UnarchiveBudgetRequest true "Unarchive budget"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.UnarchiveBudgetResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
+// @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 403 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
+// @Security Bearer
+// @Router /api/v1/budget/unarchive-budget [post]
+func (h *Handlers) UnarchiveBudget(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.UnarchiveBudget)
+}
+
+// AddAccount handles POST /api/v1/budget/add-account.
+//
+// @Summary Add an account to a budget
+// @Tags Budget
+// @Accept json
+// @Produce json
+// @Param request body model.AddAccountRequest true "Add account"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.AddAccountResult}
 // @Failure 400 {object} apidoc.JsonResponseError
 // @Failure 401 {object} apidoc.JsonResponseUnauthorized
 // @Failure 402 {object} apidoc.JsonResponseError
 // @Failure 500 {object} apidoc.JsonResponseException
 // @Security Bearer
-// @Router /api/v1/budget/include-account [post]
-func (h *Handlers) IncludeAccount(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.IncludeAccount)
+// @Router /api/v1/budget/add-account [post]
+func (h *Handlers) AddAccount(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.AddAccount)
+}
+
+// RemoveAccount handles POST /api/v1/budget/remove-account.
+//
+// @Summary Remove an account from a budget
+// @Tags Budget
+// @Accept json
+// @Produce json
+// @Param request body model.RemoveAccountRequest true "Remove account"
+// @Success 200 {object} apidoc.JsonResponseOk{data=model.RemoveAccountResult}
+// @Failure 400 {object} apidoc.JsonResponseError
+// @Failure 401 {object} apidoc.JsonResponseUnauthorized
+// @Failure 402 {object} apidoc.JsonResponseError
+// @Failure 500 {object} apidoc.JsonResponseException
+// @Security Bearer
+// @Router /api/v1/budget/remove-account [post]
+func (h *Handlers) RemoveAccount(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.RemoveAccount)
 }
 
 // ChangeElementCurrency handles POST /api/v1/budget/change-element-currency.

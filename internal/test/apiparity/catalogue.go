@@ -150,6 +150,77 @@ func init() {
 		}
 	}})
 
+	// ---- merge sequences (per classification kind) ----
+	//
+	// Each creates two rows, merges the first into the second, and reads back, so
+	// the golden pins both the empty {} result and the surviving list. Refusals
+	// (merge into self, merge across category types) are pinned in
+	// negative_paths, which is where non-2xx envelopes live.
+
+	register(Scenario{Name: "category_merge", Calls: func() []Call {
+		const srcOp = "c0000000-0000-0000-0000-0000000000a1"
+		const dstOp = "c0000000-0000-0000-0000-0000000000a2"
+		const incomeOp = "c0000000-0000-0000-0000-0000000000a3"
+		var srcID, dstID, incomeID string
+		_ = incomeID
+		return []Call{
+			{Label: "create-source", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body: map[string]any{"id": srcOp, "name": "Food", "type": "expense", "icon": "food"}, CaptureIDInto: &srcID},
+			{Label: "create-target", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body: map[string]any{"id": dstOp, "name": "Groceries", "type": "expense", "icon": "cart"}, CaptureIDInto: &dstID},
+			{Label: "create-income", Method: "POST", Path: "/api/v1/category/create-category", Auth: "owner",
+				Body: map[string]any{"id": incomeOp, "name": "Salary", "type": "income", "icon": "cash"}, CaptureIDInto: &incomeID},
+			{Label: "merge-category", Method: "POST", Path: "/api/v1/category/merge-category", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcID, "targetId": &dstID}},
+			{Label: "read-after-merge", Method: "GET", Path: "/api/v1/category/get-category-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
+	register(Scenario{Name: "tag_merge", Calls: func() []Call {
+		const srcOp = "10000000-0000-0000-0000-0000000000a1"
+		const dstOp = "10000000-0000-0000-0000-0000000000a2"
+		var srcID, dstID string
+		return []Call{
+			{Label: "create-source", Method: "POST", Path: "/api/v1/tag/create-tag", Auth: "owner",
+				Body: map[string]any{"id": srcOp, "name": "Urgent"}, CaptureIDInto: &srcID},
+			{Label: "create-target", Method: "POST", Path: "/api/v1/tag/create-tag", Auth: "owner",
+				Body: map[string]any{"id": dstOp, "name": "Priority"}, CaptureIDInto: &dstID},
+			{Label: "merge-tag", Method: "POST", Path: "/api/v1/tag/merge-tag", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcID, "targetId": &dstID}},
+			{Label: "read-after-merge", Method: "GET", Path: "/api/v1/tag/get-tag-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
+	register(Scenario{Name: "label_merge", Calls: func() []Call {
+		const srcOp = "30000000-0000-0000-0000-0000000000a1"
+		const dstOp = "30000000-0000-0000-0000-0000000000a2"
+		var srcID, dstID string
+		return []Call{
+			{Label: "create-source", Method: "POST", Path: "/api/v1/label/create-label", Auth: "owner",
+				Body: map[string]any{"id": srcOp, "name": "Kid A"}, CaptureIDInto: &srcID},
+			{Label: "create-target", Method: "POST", Path: "/api/v1/label/create-label", Auth: "owner",
+				Body: map[string]any{"id": dstOp, "name": "Kids"}, CaptureIDInto: &dstID},
+			{Label: "merge-label", Method: "POST", Path: "/api/v1/label/merge-label", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcID, "targetId": &dstID}},
+			{Label: "read-after-merge", Method: "GET", Path: "/api/v1/label/get-label-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
+	register(Scenario{Name: "payee_merge", Calls: func() []Call {
+		const srcOp = "20000000-0000-0000-0000-0000000000a1"
+		const dstOp = "20000000-0000-0000-0000-0000000000a2"
+		var srcID, dstID string
+		return []Call{
+			{Label: "create-source", Method: "POST", Path: "/api/v1/payee/create-payee", Auth: "owner",
+				Body: map[string]any{"id": srcOp, "name": "Grocer"}, CaptureIDInto: &srcID},
+			{Label: "create-target", Method: "POST", Path: "/api/v1/payee/create-payee", Auth: "owner",
+				Body: map[string]any{"id": dstOp, "name": "Grocery Store"}, CaptureIDInto: &dstID},
+			{Label: "merge-payee", Method: "POST", Path: "/api/v1/payee/merge-payee", Auth: "owner",
+				Body: map[string]any{"sourceId": &srcID, "targetId": &dstID}},
+			{Label: "read-after-merge", Method: "GET", Path: "/api/v1/payee/get-payee-list", Auth: "owner", Body: map[string]any{}},
+		}
+	}})
+
 	// The fixture's only global currency is USD (seeded by the baseline
 	// migration), which is ALSO both the instance base currency
 	// (harness CurrencyBase="USD") and the owner's profile currency
@@ -305,7 +376,7 @@ func init() {
 		const newBudget = "b0000000-0000-0000-0000-0000000000ff"
 		return []Call{
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
-				Body: map[string]any{"id": newBudget, "name": "Trip", "currencyId": USD, "startDate": "2024-04-01"}},
+				Body: map[string]any{"id": newBudget, "name": "Trip", "currencyId": USD, "startDate": "2024-04-01", "accountIds": []string{OwnerAccount}}},
 			{Label: "read-after-create", Method: "GET", Path: "/api/v1/budget/get-budget-list", Auth: "owner", Body: map[string]any{}},
 			{Label: "set-limit", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{

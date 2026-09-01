@@ -6,6 +6,10 @@ SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updat
 FROM accounts
 WHERE id = $1;
 
+-- name: ListDeletedAccounts :many
+SELECT id, currency_id, user_id, name, type, icon, is_deleted, created_at, updated_at
+FROM accounts WHERE is_deleted = TRUE ORDER BY id;
+
 -- name: ListAvailableAccounts :many
 -- Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
 -- (see the sqlite variant, incl. the pending-grant and ORDER BY rationale). $1

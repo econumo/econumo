@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureOwner, fixtureUser } from '@/test/fixtures'
+import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { BudgetsPage } from './BudgetsPage'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
@@ -68,7 +68,7 @@ it('set-as-default posts {value:id}', async () => {
   await waitFor(() => expect(body).toEqual({ value: 'b2' }))
 })
 
-it('creates a budget with excluded accounts and appends the row', async () => {
+it('creates a budget with the selected accounts and appends the row', async () => {
   server.use(...coreHandlers())
   let body: Record<string, unknown> | undefined
   server.use(
@@ -95,14 +95,56 @@ it('creates a budget with excluded accounts and appends the row', async () => {
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   // the currency picker row seeds from the user's default currency
   await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  // every account starts OFF; at least one must be toggled on to submit
   await user.click(screen.getByRole('switch', { name: 'include Bank' }))
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
   expect(body!.name).toBe('Vacation')
   expect(body!.startDate).toBe('')
-  expect(body!.excludedAccounts).toEqual(['a2'])
+  expect(body!.accountIds).toEqual(['a2'])
   expect(await screen.findByText('Vacation')).toBeInTheDocument()
+})
+
+it('creating a budget with no accounts selected shows the validation error and sends nothing', async () => {
+  server.use(...coreHandlers())
+  let hits = 0
+  server.use(
+    http.post('*/api/v1/budget/create-budget', () => {
+      hits++
+      return HttpResponse.json({ success: true, message: '', data: { item: { meta: fixtureBudgets[0] } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Main budget')
+  await user.click(screen.getByRole('button', { name: /Create budget/ }))
+  await screen.findByRole('dialog')
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  expect(await screen.findByText('Select at least one account')).toBeInTheDocument()
+  expect(hits).toBe(0)
+})
+
+it('retracts each validation error as soon as its own field is fixed', async () => {
+  server.use(...coreHandlers())
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('Main budget')
+  await user.click(screen.getByRole('button', { name: /Create budget/ }))
+  await screen.findByRole('dialog')
+  await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
+  // Submit empty to raise both errors, then fix each field in turn: a message the
+  // user has already acted on must not linger until the next submit.
+  await user.click(screen.getByRole('button', { name: 'Create' }))
+  expect(await screen.findByText('Required field')).toBeInTheDocument()
+  expect(screen.getByText('Select at least one account')).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Name'), 'Vacation')
+  expect(screen.queryByText('Required field')).toBeNull()
+  expect(screen.getByText('Select at least one account')).toBeInTheDocument()
+  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+  expect(screen.queryByText('Select at least one account')).toBeNull()
 })
 
 it('delete confirm removes the budget; go-to navigates', async () => {
@@ -221,4 +263,65 @@ it('delete is offered on an admin-shared budget, not only owned ones', async () 
   await screen.findByText('Admin plan')
   await user.click(screen.getByRole('button', { name: 'budget actions Admin plan' }))
   expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+  // full control includes cloning: the copy becomes the admin's own budget
+  expect(screen.getByRole('menuitem', { name: 'Duplicate…' })).toBeInTheDocument()
+})
+
+it('duplicate is not offered to a plain shared user', async () => {
+  const userShared = {
+    id: 'b5', ownerUserId: 'u2', name: 'User plan', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+    access: [
+      { user: partner, role: 'owner', isAccepted: 1 },
+      { user: fixtureOwner, role: 'user', isAccepted: 1 },
+    ],
+  }
+  server.use(...coreHandlers({ budgets: [userShared] }))
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByText('User plan')
+  await user.click(screen.getByRole('button', { name: 'budget actions User plan' }))
+  await screen.findByRole('menu')
+  expect(screen.queryByRole('menuitem', { name: 'Duplicate…' })).not.toBeInTheDocument()
+})
+
+const archivedBudgets = [
+  fixtureBudgets[0],
+  { ...fixtureBudgets[1], isArchived: 1 as const },
+]
+
+it('archived budgets sit in a collapsed group, expandable on click', async () => {
+  server.use(...coreHandlers({ budgets: archivedBudgets }))
+  const user = userEvent.setup()
+  renderPage()
+
+  // the live budget is listed; the archived one is not, until the group opens
+  expect(await screen.findByText('Main budget')).toBeInTheDocument()
+  expect(screen.queryByText('Alpha plan')).not.toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: /Archived/ }))
+  expect(await screen.findByText('Alpha plan')).toBeInTheDocument()
+})
+
+it('the actions menu offers Archive for a live budget and Unarchive for an archived one', async () => {
+  server.use(...coreHandlers({ budgets: archivedBudgets }))
+  let archivedBody: unknown
+  server.use(
+    http.post('*/api/v1/budget/archive-budget', async ({ request }) => {
+      archivedBody = await request.json()
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...archivedBudgets[0], isArchived: 1 } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+
+  await user.click(await screen.findByLabelText('budget actions Main budget'))
+  expect(await screen.findByText('Archive')).toBeInTheDocument()
+  expect(screen.queryByText('Unarchive')).not.toBeInTheDocument()
+  await user.click(screen.getByText('Archive'))
+  await waitFor(() => expect(archivedBody).toEqual({ id: 'b1' }))
+
+  // the archived row offers Unarchive instead
+  await user.click(screen.getByRole('button', { name: /Archived/ }))
+  await user.click(await screen.findByLabelText('budget actions Alpha plan'))
+  expect(await screen.findByText('Unarchive')).toBeInTheDocument()
 })

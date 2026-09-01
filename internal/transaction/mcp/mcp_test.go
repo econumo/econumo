@@ -27,6 +27,7 @@ import (
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 	"github.com/econumo/econumo/internal/test/mcptest"
+	"github.com/econumo/econumo/internal/test/wiring"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	transactionmcp "github.com/econumo/econumo/internal/transaction/mcp"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
@@ -51,8 +52,8 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 	catRepo := categoryrepo.NewRepo(db.Engine, txm)
 	tgRepo := tagrepo.NewRepo(db.Engine, txm)
 	pyRepo := payeerepo.NewRepo(db.Engine, txm)
-	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
-	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver, wiring.BudgetMerger(db.Engine, txm, clock.New()))
+	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver, wiring.BudgetMerger(db.Engine, txm, clock.New()))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), payeerepo.NewReadRepo(db.Engine, txm), accessResolver)
 	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), labelrepo.NewReadRepo(db.Engine, txm), accessResolver)
@@ -76,6 +77,7 @@ func newTransactionService(t *testing.T, db *dbtest.DB) *apptransaction.Service 
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
 		txExport, txImport, server.NewTransactionLabelOwnership(labelRepo),
+		server.NewTransactionAccountZeroer(accSvc),
 		txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }

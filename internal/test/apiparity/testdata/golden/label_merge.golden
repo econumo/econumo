@@ -1,0 +1,12 @@
+== create-source POST /api/v1/label/create-label [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Kid A","icon":"label","position":2,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}}}
+
+== create-target POST /api/v1/label/create-label [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Kids","icon":"label","position":3,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}}}
+
+== merge-label POST /api/v1/label/merge-label [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== read-after-merge GET /api/v1/label/get-label-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"30000000-0000-0000-0000-000000000002","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Personal","icon":"label","position":0,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"30000000-0000-0000-0000-000000000001","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Work","icon":"label","position":1,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"},{"id":"<generated-uuid>","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Kids","icon":"label","position":2,"isArchived":0,"createdAt":"<datetime>","updatedAt":"<datetime>"}]}}
+

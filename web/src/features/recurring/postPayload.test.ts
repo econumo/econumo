@@ -30,6 +30,28 @@ it('omits labelIds so the server inherits the template\'s labels', () => {
   expect('labelIds' in recurringPostPayload(template({ type: 'transfer', accountRecipientId: 'a2' }), accounts, exchangeFn)).toBe(false)
 })
 
+it('posts a future-dated template as now instead of its scheduled date', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
+  try {
+    const payload = recurringPostPayload(template({ nextPaymentAt: '2026-09-01 00:00:00' }), accounts, exchangeFn)
+    expect(payload.date).toBe('2026-08-20 14:30:45')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('keeps the scheduled date when the template is due today', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
+  try {
+    const payload = recurringPostPayload(template({ nextPaymentAt: '2026-08-20 00:00:00' }), accounts, exchangeFn)
+    expect(payload.date).toBe('2026-08-20 00:00:00')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
 it('mints a fresh transaction id rather than reusing the template id', () => {
   const first = recurringPostPayload(template(), accounts, exchangeFn)
   const second = recurringPostPayload(template(), accounts, exchangeFn)

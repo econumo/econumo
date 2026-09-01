@@ -7,12 +7,16 @@ import (
 	"log/slog"
 	"strings"
 
+	appaccount "github.com/econumo/econumo/internal/account"
+	accountrepo "github.com/econumo/econumo/internal/account/repo"
 	"github.com/econumo/econumo/internal/config"
+	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
 	appcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/mailer"
+	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/server"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -25,15 +29,18 @@ import (
 // CLI assumes an already-migrated database (the server migrates on boot).
 type container struct {
 	db       *sql.DB
+	owned    bool // true when this container opened db itself (newContainer, not newContainerFor)
 	cfg      config.Config
 	clk      clock.Real
 	user     *appuser.Service
 	currency *appcurrency.WriteService
 	loader   *currencyrepo.Loader
+	account  *appaccount.Service
 }
 
-// newContainer loads config, opens the database, and wires the user + currency
-// services. The database backends are registered by cmd/econumo's blank imports.
+// newContainer loads config, opens the database, and wires the container's
+// services over it. The database backends are registered by cmd/econumo's
+// blank imports.
 func newContainer(ctx context.Context) (*container, error) {
 	cfg, err := config.Load()
 	if err != nil {
@@ -54,6 +61,15 @@ func newContainer(ctx context.Context) (*container, error) {
 	}
 	slog.Debug("cli: database opened", "driver", cfg.DatabaseDriver)
 
+	c := newContainerFor(cfg, db)
+	c.owned = true
+	return c, nil
+}
+
+// newContainerFor wires the services over an already-open database. Used by
+// newContainer and by the migration command runner, which shares serve's
+// connection and must not close it.
+func newContainerFor(cfg config.Config, db *sql.DB) *container {
 	txm := backend.NewTxManager(db)
 	// Salt-free, like the API: every CLI user command runs in plaintext mode so a
 	// CLI-created/edited user is readable by the running server. Only data:remove-salt
@@ -89,6 +105,19 @@ func newContainer(ctx context.Context) (*container, error) {
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)
 	loader := currencyrepo.NewLoader(cfg.OpenExchangeRatesToken, clk.Now)
 
+	// Account service, mirroring server.BuildAPI's wiring (internal/server/server.go).
+	// Needed for the migration:* commands (e.g. zero-deleted-accounts); no CLI
+	// account:* commands exist yet.
+	accountRepo := accountrepo.NewRepo(cfg.DatabaseDriver, txm)
+	folderRepo := accountrepo.NewFolderRepo(cfg.DatabaseDriver, txm)
+	accountAccessRepo := accountrepo.NewAccessRepo(cfg.DatabaseDriver, txm)
+	accountAccessResolver := connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo(cfg.DatabaseDriver, txm))
+	opGuard := operationrepo.NewGuard(cfg.DatabaseDriver, txm)
+	accountSvc := appaccount.NewService(
+		accountRepo, folderRepo, accountAccessRepo, server.NewAccountCurrencyLookup(currencyLookup), server.NewUserOwnerLookup(userRepo),
+		accountAccessResolver, txm, opGuard, clk,
+	)
+
 	return &container{
 		db:       db,
 		cfg:      cfg,
@@ -96,12 +125,16 @@ func newContainer(ctx context.Context) (*container, error) {
 		user:     userSvc,
 		currency: currencySvc,
 		loader:   loader,
-	}, nil
+		account:  accountSvc,
+	}
 }
 
-// Close releases the database connection.
+// Close releases the database connection this container opened. A no-op for a
+// container built by newContainerFor over a caller-owned db (e.g. the
+// migration command runner sharing serve's connection): that db outlives the
+// container and must not be closed here.
 func (c *container) Close() {
-	if c.db != nil {
+	if c.owned && c.db != nil {
 		_ = c.db.Close()
 	}
 }

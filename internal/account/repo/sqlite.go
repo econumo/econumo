@@ -32,6 +32,10 @@ func (sqliteQuerier) ListAvailableAccounts(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).ListAvailableAccounts(ctx, sqlitegen.ListAvailableAccountsParams{UserID: userID, UserID_2: userID})
 }
 
+func (sqliteQuerier) ListDeletedAccounts(ctx context.Context, db backend.DBTX) ([]accountRow, error) {
+	return sqlitegen.New(db).ListDeletedAccounts(ctx)
+}
+
 func (sqliteQuerier) CountAvailableAccounts(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
 	return sqlitegen.New(db).CountAvailableAccounts(ctx, sqlitegen.CountAvailableAccountsParams{UserID: userID, UserID_2: userID})
 }

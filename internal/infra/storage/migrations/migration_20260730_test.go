@@ -36,7 +36,7 @@ func openFK(t *testing.T) *sql.DB {
 func toRunList(src []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, 0, len(src))
 	for _, m := range src {
-		out = append(out, migrate.Migration{Version: m.Version, SQL: m.SQL})
+		out = append(out, migrate.Migration{Version: m.Version, SQL: m.SQL, Command: m.Command})
 	}
 	return out
 }
@@ -67,7 +67,7 @@ func TestMigration20260730_RebuildPreservesDataAndNormalizesOptions(t *testing.T
 			before = append(before, m)
 		}
 	}
-	if err := migrate.Run(ctx, db, before); err != nil {
+	if err := migrate.Run(ctx, db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("pre-migrations: %v", err)
 	}
 
@@ -95,7 +95,7 @@ func TestMigration20260730_RebuildPreservesDataAndNormalizesOptions(t *testing.T
 	seedOption(t, db, "o2", "u2", "ZZZ") // unresolvable -> normalized to USD id
 	// u3 has NO currency option -> seeded with the USD id.
 
-	if err := migrate.Run(ctx, db, all); err != nil {
+	if err := migrate.Run(ctx, db, all, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("target migration: %v", err)
 	}
 
@@ -134,7 +134,7 @@ func TestMigration20260730_OwnFirstResolutionAndAlreadyIDUntouched(t *testing.T)
 			before = append(before, m)
 		}
 	}
-	if err := migrate.Run(ctx, db, before); err != nil {
+	if err := migrate.Run(ctx, db, before, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatal(err)
 	}
 	seedUser(t, db, "u1")
@@ -150,7 +150,7 @@ func TestMigration20260730_OwnFirstResolutionAndAlreadyIDUntouched(t *testing.T)
 	seedOption(t, db, "o1", "u1", "EUR") // -> e1
 	seedOption(t, db, "o2", "u2", "e1")  // already an id -> untouched
 
-	if err := migrate.Run(ctx, db, all); err != nil {
+	if err := migrate.Run(ctx, db, all, migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatal(err)
 	}
 	var v string
@@ -165,7 +165,7 @@ func TestMigration20260730_OwnFirstResolutionAndAlreadyIDUntouched(t *testing.T)
 func TestMigration20260730_PartialUniquesAndCascades(t *testing.T) {
 	db := openFK(t)
 	ctx := context.Background()
-	if err := migrate.Run(ctx, db, toRunList(migrations.SQLite())); err != nil {
+	if err := migrate.Run(ctx, db, toRunList(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatal(err)
 	}
 	mustExec := func(q string) {

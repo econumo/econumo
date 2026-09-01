@@ -10,18 +10,19 @@ import (
 	"time"
 )
 
-const addBudgetExcludedAccount = `-- name: AddBudgetExcludedAccount :exec
-INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES ($1, $2)
+const addBudgetAccount = `-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
-type AddBudgetExcludedAccountParams struct {
+type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	CreatedAt time.Time
 }
 
-func (q *Queries) AddBudgetExcludedAccount(ctx context.Context, arg AddBudgetExcludedAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetExcludedAccount, arg.BudgetID, arg.AccountID)
+func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
 	return err
 }
 
@@ -135,7 +136,7 @@ func (q *Queries) GetBudgetAccess(ctx context.Context, arg GetBudgetAccessParams
 
 const getBudgetByID = `-- name: GetBudgetByID :one
 
-SELECT id, currency_id, user_id, name, started_at, created_at, updated_at
+SELECT id, currency_id, user_id, name, started_at, created_at, updated_at, ended_at, is_archived
 FROM budgets
 WHERE id = $1
 `
@@ -152,6 +153,8 @@ func (q *Queries) GetBudgetByID(ctx context.Context, id string) (Budget, error) 
 		&i.StartedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.EndedAt,
+		&i.IsArchived,
 	)
 	return i, err
 }
@@ -312,6 +315,38 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 	return items, nil
 }
 
+const listBudgetAccounts = `-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
+`
+
+type ListBudgetAccountsRow struct {
+	AccountID string
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetAccounts, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetAccountsRow{}
+	for rows.Next() {
+		var i ListBudgetAccountsRow
+		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetElements = `-- name: ListBudgetElements :many
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = $1
@@ -319,6 +354,44 @@ FROM budgets_elements WHERE budget_id = $1
 
 func (q *Queries) ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error) {
 	rows, err := q.db.QueryContext(ctx, listBudgetElements, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []BudgetsElement{}
+	for rows.Next() {
+		var i BudgetsElement
+		if err := rows.Scan(
+			&i.ID,
+			&i.BudgetID,
+			&i.CurrencyID,
+			&i.FolderID,
+			&i.ExternalID,
+			&i.Type,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetElementsByExternal = `-- name: ListBudgetElementsByExternal :many
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE external_id = $1
+`
+
+func (q *Queries) ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetElementsByExternal, externalID)
 	if err != nil {
 		return nil, err
 	}
@@ -386,33 +459,6 @@ func (q *Queries) ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]B
 	return items, nil
 }
 
-const listBudgetExcludedAccountIDs = `-- name: ListBudgetExcludedAccountIDs :many
-SELECT account_id FROM budgets_excluded_accounts WHERE budget_id = $1
-`
-
-func (q *Queries) ListBudgetExcludedAccountIDs(ctx context.Context, budgetID string) ([]string, error) {
-	rows, err := q.db.QueryContext(ctx, listBudgetExcludedAccountIDs, budgetID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []string{}
-	for rows.Next() {
-		var account_id string
-		if err := rows.Scan(&account_id); err != nil {
-			return nil, err
-		}
-		items = append(items, account_id)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const listBudgetFolders = `-- name: ListBudgetFolders :many
 SELECT id, budget_id, name, created_at, updated_at, sort_key
 FROM budgets_folders WHERE budget_id = $1 ORDER BY sort_key ASC, id ASC
@@ -434,6 +480,50 @@ func (q *Queries) ListBudgetFolders(ctx context.Context, budgetID string) ([]Bud
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.SortKey,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listBudgetLimitsByElement = `-- name: ListBudgetLimitsByElement :many
+SELECT id, element_id, period, created_at, updated_at, amount
+FROM budgets_elements_limits WHERE element_id = $1
+`
+
+type ListBudgetLimitsByElementRow struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Amount    string
+}
+
+func (q *Queries) ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]ListBudgetLimitsByElementRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetLimitsByElement, elementID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetLimitsByElementRow{}
+	for rows.Next() {
+		var i ListBudgetLimitsByElementRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Amount,
 		); err != nil {
 			return nil, err
 		}
@@ -499,8 +589,60 @@ func (q *Queries) ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetL
 	return items, nil
 }
 
+const listBudgetLimitsFrom = `-- name: ListBudgetLimitsFrom :many
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = $1 AND l.period >= $2
+ORDER BY l.period, l.id
+`
+
+type ListBudgetLimitsFromParams struct {
+	BudgetID string
+	Period   time.Time
+}
+
+type ListBudgetLimitsFromRow struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	Amount    string
+}
+
+func (q *Queries) ListBudgetLimitsFrom(ctx context.Context, arg ListBudgetLimitsFromParams) ([]ListBudgetLimitsFromRow, error) {
+	rows, err := q.db.QueryContext(ctx, listBudgetLimitsFrom, arg.BudgetID, arg.Period)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListBudgetLimitsFromRow{}
+	for rows.Next() {
+		var i ListBudgetLimitsFromRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ElementID,
+			&i.Period,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Amount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBudgetsForUser = `-- name: ListBudgetsForUser :many
-SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at
+SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b
 WHERE b.user_id = $1
    OR b.id IN (SELECT ba.budget_id FROM budgets_access ba WHERE ba.user_id = $2)
@@ -529,6 +671,8 @@ func (q *Queries) ListBudgetsForUser(ctx context.Context, arg ListBudgetsForUser
 			&i.StartedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.EndedAt,
+			&i.IsArchived,
 		); err != nil {
 			return nil, err
 		}
@@ -570,17 +714,32 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
-const removeBudgetExcludedAccount = `-- name: RemoveBudgetExcludedAccount :exec
-DELETE FROM budgets_excluded_accounts WHERE budget_id = $1 AND account_id = $2
+const removeBudgetAccount = `-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2
 `
 
-type RemoveBudgetExcludedAccountParams struct {
+type RemoveBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
 }
 
-func (q *Queries) RemoveBudgetExcludedAccount(ctx context.Context, arg RemoveBudgetExcludedAccountParams) error {
-	_, err := q.db.ExecContext(ctx, removeBudgetExcludedAccount, arg.BudgetID, arg.AccountID)
+func (q *Queries) RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccount, arg.BudgetID, arg.AccountID)
+	return err
+}
+
+const removeBudgetAccountsOwnedBy = `-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2)
+`
+
+type RemoveBudgetAccountsOwnedByParams struct {
+	BudgetID string
+	UserID   string
+}
+
+func (q *Queries) RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error {
+	_, err := q.db.ExecContext(ctx, removeBudgetAccountsOwnedBy, arg.BudgetID, arg.UserID)
 	return err
 }
 
@@ -598,13 +757,30 @@ func (q *Queries) RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelope
 	return err
 }
 
+const repointBudgetElement = `-- name: RepointBudgetElement :exec
+UPDATE budgets_elements SET external_id = $1, updated_at = $2 WHERE id = $3
+`
+
+type RepointBudgetElementParams struct {
+	ExternalID string
+	UpdatedAt  time.Time
+	ID         string
+}
+
+func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
+	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
 const upsertBudget = `-- name: UpsertBudget :exec
-INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     name        = excluded.name,
     started_at  = excluded.started_at,
+    ended_at    = excluded.ended_at,
+    is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at
 `
 
@@ -614,6 +790,8 @@ type UpsertBudgetParams struct {
 	UserID     string
 	Name       string
 	StartedAt  time.Time
+	EndedAt    *time.Time
+	IsArchived bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 }
@@ -625,6 +803,8 @@ func (q *Queries) UpsertBudget(ctx context.Context, arg UpsertBudgetParams) erro
 		arg.UserID,
 		arg.Name,
 		arg.StartedAt,
+		arg.EndedAt,
+		arg.IsArchived,
 		arg.CreatedAt,
 		arg.UpdatedAt,
 	)

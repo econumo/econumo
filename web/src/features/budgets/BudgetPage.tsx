@@ -12,11 +12,22 @@ import { v7 as uuidv7 } from 'uuid'
 import { isAxiosError } from 'axios'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
+import { InfoBox } from '@/components/InfoBox'
 import { Button } from '@/components/ui/button'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
@@ -55,6 +66,7 @@ import { bucketElements, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { BudgetTable } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
+import { PlanSheet } from './PlanSheet'
 import { ExpenseWidget } from './ExpenseWidget'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -67,6 +79,7 @@ import { useCreateBudget } from './queries'
 import type { ElementContainer } from './elementMove'
 import { applyArrangement, arrangementFromBuckets, arrangementItem, moveElementInArrangement } from './elementMove'
 import { CoinLoader } from '@/components/CoinLoader'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 function DraggableElement({ id, children }: { id: string; children: ReactNode }) {
   // sortable row (accounts-settings pattern): the whole row moves with the
@@ -105,6 +118,17 @@ const preferRowCollisions: CollisionDetection = (args) => {
   const candidates = (collisions.length > 0 ? collisions : rectIntersection(args)).filter((c) => c.id !== args.active.id)
   const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
   return row ? [row] : candidates
+}
+
+export type BudgetMode = 'budget' | 'plan'
+const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
+const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
+  budget: 'budgets.page.plan.toggle.budget',
+  plan: 'budgets.page.plan.toggle.plan',
+}
+const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
+  budget: RouterPage.BUDGET,
+  plan: RouterPage.PLAN,
 }
 
 // The section is a sortable item itself (folder reorder); the grip lives in
@@ -171,7 +195,7 @@ function ElementLongPress({ element, onLongPress, children }: { element: BudgetE
   return <div {...handlers}>{children}</div>
 }
 
-export function BudgetPage() {
+export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
@@ -186,6 +210,8 @@ export function BudgetPage() {
   const { data: accounts = [] } = useAccounts()
   const { data: categories = [] } = useCategories()
   const selectedDate = useBudgetPeriodStore((s) => s.selectedDate)
+  const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
+  const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
 
   const setLimit = useSetLimit()
@@ -201,6 +227,17 @@ export function BudgetPage() {
   const createBudget = useCreateBudget()
 
   const [editMode, setEditMode] = useState(false)
+  useEffect(() => {
+    if (mode === 'plan') {
+      trackEvent(METRICS.BUDGET_PLAN_OPEN)
+    }
+  }, [mode])
+  // the two views are separate routes; the keyed remount ends edit structure
+  const switchBudgetMode = (m: BudgetMode) => {
+    if (m !== mode) {
+      navigate(BUDGET_MODE_ROUTE[m])
+    }
+  }
   const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
@@ -210,8 +247,10 @@ export function BudgetPage() {
   const [deleteEnvelopeTarget, setDeleteEnvelopeTarget] = useState<BudgetElementDto | null>(null)
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
+  const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
+
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
 
@@ -273,9 +312,13 @@ export function BudgetPage() {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  const configure = budget ? canConfigureBudget(budget.meta, user?.id) : false
-  const editDetails = budget ? canEditBudget(budget.meta, user?.id) : false
-  const limitsEditable = budget ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
+  // An archived budget is read-only regardless of role: archived wins over
+  // whatever the caller's grant would otherwise allow (the server enforces the
+  // same rule with a coded 403).
+  const archived = budget?.meta.isArchived === 1
+  const configure = budget && !archived ? canConfigureBudget(budget.meta, user?.id) : false
+  const editDetails = budget && !archived ? canEditBudget(budget.meta, user?.id) : false
+  const limitsEditable = budget && !archived ? canUpdateLimits(budget.meta, user?.id, selectedDate) : false
 
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -346,7 +389,7 @@ export function BudgetPage() {
           onClose={() => setCreateBudgetOpen(false)}
           onSubmit={(form) => {
             createBudget.mutate(
-              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, excludedAccounts: form.excludedAccounts, ownerUserId: user?.id },
+              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, accountIds: form.accountIds, ownerUserId: user?.id },
               { onSuccess: () => setCreateBudgetOpen(false) },
             )
           }}
@@ -502,11 +545,13 @@ export function BudgetPage() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {element.type !== BudgetElementType.ENVELOPE ? (
-          <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
-            {t('budgets.page.budget.structure.element.action.change_currency')}
-          </DropdownMenuItem>
-        ) : (
+        <DropdownMenuItem onSelect={() => setCurrencyTarget(element)}>
+          {t('budgets.page.budget.structure.element.action.change_currency')}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => setMoveFolderTarget(element)}>
+          {t('budgets.page.plan.menu.move_to_folder')}
+        </DropdownMenuItem>
+        {element.type === BudgetElementType.ENVELOPE ? (
           <>
             <DropdownMenuItem onSelect={() => setEnvelopeDialog({ open: true, envelope: element, folderId: element.folderId })}>
               {t('common.button.edit.label')}
@@ -517,7 +562,7 @@ export function BudgetPage() {
               </DropdownMenuItem>
             ) : null}
           </>
-        )}
+        ) : null}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -533,6 +578,25 @@ export function BudgetPage() {
         <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
+        {isCompact ? null : (
+          // single-pane headers have no room for the tablist — the mode
+          // switch lives in the settings menu there instead
+          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
+            {BUDGET_MODES.map((m) => (
+              <button
+                key={m}
+                type="button"
+                role="tab"
+                aria-selected={mode === m}
+                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${mode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
+                onClick={() => switchBudgetMode(m)}
+              >
+                {t(BUDGET_MODE_LABEL[m])}
+              </button>
+            ))}
+          </div>
+        )}
+        {/* both views: the pills toggle the period widget above the table / the sheet */}
         <span className="flex shrink-0 items-center gap-1">
           {budgetCurrencyIds.map((currencyId) => {
             const currency = currencies.find((c) => c.id === currencyId)
@@ -573,12 +637,32 @@ export function BudgetPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isCompact ? (
+                <>
+                  <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
+                    {BUDGET_MODES.map((m) => (
+                      <DropdownMenuRadioItem key={m} value={m}>
+                        {t(BUDGET_MODE_LABEL[m])}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
                 {t('budgets.page.budget.settings.menu.edit_structure')}
               </DropdownMenuItem>
+              {mode === 'plan' ? (
+                <>
+                  <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
+                    {t('budgets.page.plan.density.hide_empty')}
+                  </DropdownMenuCheckboxItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem onSelect={() => navigate(RouterPage.SETTINGS_BUDGETS)}>
                 {t('budgets.page.budget.settings.menu.budget_list')}
               </DropdownMenuItem>
@@ -587,107 +671,120 @@ export function BudgetPage() {
         )}
       </header>
 
-      <PeriodStrip startedAt={budget.meta.startedAt} />
-
-      {editMode ? (
-        <div>
-          <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
-            <FolderPlus className="size-4" />
-            {t('budgets.page.budget.structure.action.create_folder')}
-          </Button>
-        </div>
-      ) : null}
-
-      {isPlaceholderData || periodSwitching ? (
-        // month switch in flight — the strip stays put, the stale table is
-        // replaced by the loader until the new period lands
-        <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
-          <CoinLoader label={t('common.app.modal.loading.data_loading')} />
-        </div>
+      {mode === 'plan' ? (
+        <>
+          {/* the same period widget as the budget view, for the page's selected period */}
+          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+          <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+        </>
       ) : (
         <>
-          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+          {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
 
-          <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
-            <DndContext
-              sensors={sensors}
-              collisionDetection={preferRowCollisions}
-              // rows collapse on drag start, so drop-zone rects must re-measure
-              // mid-drag and the grabbed node re-anchors to the pointer
-              measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
-              modifiers={[snapRowToPointer]}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-              onDragCancel={() => {
-                setDragInProgress(false)
-                setDraggingFolderId(null)
-                setDropFolderKey(null)
-                setDragArrangement(null)
-              }}
-            >
-              <SortableContext
-                items={buckets.withFolder.map((b) => b.folder!.id)}
-                strategy={verticalListSortingStrategy}
-              >
-              <BudgetTable
-                budget={budget}
-                buckets={buckets}
-                hideChildren={dragInProgress}
-                hideContents={draggingFolderId !== null}
-                renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
-                // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
-                renderFolderActions={editMode ? folderActions : undefined}
-                renderActions={editMode ? elementActions : undefined}
-                renderBudgetCell={
-                  limitsEditable && !editMode && !isCompact
-                    ? (element) => (
-                        <LimitEditor
-                          element={element}
-                          currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
-                          onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, amount })}
-                        />
-                      )
-                    : undefined
-                }
-                renderRowWrapper={
-                  editMode
-                    ? (element, _bucket, row) => (
-                        <DraggableElement key={element.id} id={element.id}>
-                          {row}
-                        </DraggableElement>
-                      )
-                    : isCompact && limitsEditable
-                      ? (element, _bucket, row) => (
-                          <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
-                            {row}
-                          </ElementLongPress>
-                        )
-                      : undefined
-                }
-                sectionWrapper={
-                  editMode
-                    ? (bucket, _key, node) => {
-                        const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
-                        return (
-                          <SortableSection
-                            bucket={bucket}
-                            id={`bfolder:${folderKey}`}
-                            highlighted={dropFolderKey === folderKey}
-                            folderDragging={draggingFolderId !== null}
-                          >
-                            {node}
-                          </SortableSection>
-                        )
-                      }
-                    : undefined
-                }
-                onSpentClick={editMode ? undefined : setTransactionsTarget}
-                onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
-              />
-              </SortableContext>
-            </DndContext>
-          </div>
+          {editMode ? (
+            <div>
+              <Button type="button" variant="secondary" size="sm" onClick={() => setCreateFolderOpen(true)}>
+                <FolderPlus className="size-4" />
+                {t('budgets.page.budget.structure.action.create_folder')}
+              </Button>
+            </div>
+          ) : null}
+
+          {isPlaceholderData || periodSwitching ? (
+            // month switch in flight — the strip stays put, the stale table is
+            // replaced by the loader until the new period lands
+            <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
+              <CoinLoader label={t('common.app.modal.loading.data_loading')} />
+            </div>
+          ) : (
+            <>
+              {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
+
+              <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={preferRowCollisions}
+                  // rows collapse on drag start, so drop-zone rects must re-measure
+                  // mid-drag and the grabbed node re-anchors to the pointer
+                  measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+                  modifiers={[snapRowToPointer]}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDragEnd={handleDragEnd}
+                  onDragCancel={() => {
+                    setDragInProgress(false)
+                    setDraggingFolderId(null)
+                    setDropFolderKey(null)
+                    setDragArrangement(null)
+                  }}
+                >
+                  <SortableContext
+                    items={buckets.withFolder.map((b) => b.folder!.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                  <BudgetTable
+                    budget={budget}
+                    buckets={buckets}
+                    hideChildren={dragInProgress}
+                    hideContents={draggingFolderId !== null}
+                    renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
+                    // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
+                    renderFolderActions={editMode ? folderActions : undefined}
+                    renderActions={editMode ? elementActions : undefined}
+                    renderBudgetCell={
+                      limitsEditable && !editMode && !isCompact
+                        ? (element) => (
+                            <LimitEditor
+                              id={element.id}
+                              name={element.name}
+                              value={element.budgeted}
+                              currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
+                              onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
+                            />
+                          )
+                        : undefined
+                    }
+                    renderRowWrapper={
+                      editMode
+                        ? (element, _bucket, row) => (
+                            <DraggableElement key={element.id} id={element.id}>
+                              {row}
+                            </DraggableElement>
+                          )
+                        : isCompact && limitsEditable
+                          ? (element, _bucket, row) => (
+                              <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
+                                {row}
+                              </ElementLongPress>
+                            )
+                          : undefined
+                    }
+                    sectionWrapper={
+                      editMode
+                        ? (bucket, _key, node) => {
+                            const folderKey = bucket.folder ? String(bucket.folder.id) : 'null'
+                            return (
+                              <SortableSection
+                                bucket={bucket}
+                                id={`bfolder:${folderKey}`}
+                                highlighted={dropFolderKey === folderKey}
+                                folderDragging={draggingFolderId !== null}
+                              >
+                                {node}
+                              </SortableSection>
+                            )
+                          }
+                        : undefined
+                    }
+                    onSpentClick={editMode ? undefined : setTransactionsTarget}
+                    onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
+                  />
+                  </SortableContext>
+                </DndContext>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -722,6 +819,7 @@ export function BudgetPage() {
         open={envelopeDialog.open}
         envelope={envelopeDialog.envelope}
         budgetCurrencyId={budget.meta.currencyId}
+        side="expense"
         onClose={() => setEnvelopeDialog({ open: false, envelope: null, folderId: null })}
         onSubmit={(form) => {
           const close = () => setEnvelopeDialog({ open: false, envelope: null, folderId: null })
@@ -782,10 +880,53 @@ export function BudgetPage() {
         />
       ) : null}
 
+      {moveFolderTarget ? (
+        <ResponsiveDialog
+          open
+          onOpenChange={(o) => !o && setMoveFolderTarget(null)}
+          title={t('budgets.page.plan.menu.move_to_folder')}
+        >
+          <ul className="flex max-h-72 flex-col overflow-y-auto scrollbar-slim">
+            {budget.structure.folders.map((f) => (
+              <li key={f.id}>
+                <button
+                  type="button"
+                  className="w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+                  onClick={() => {
+                    moveElement.mutate({
+                      budgetId: budget.meta.id,
+                      item: { id: moveFolderTarget.id, folderId: f.id, position: 0, afterId: null },
+                    })
+                    setMoveFolderTarget(null)
+                  }}
+                >
+                  {f.name}
+                </button>
+              </li>
+            ))}
+            <li>
+              <button
+                type="button"
+                className="w-full rounded-md px-2 py-2 text-left text-sm hover:bg-econumo-hover"
+                onClick={() => {
+                  moveElement.mutate({
+                    budgetId: budget.meta.id,
+                    item: { id: moveFolderTarget.id, folderId: null, position: 0, afterId: null },
+                  })
+                  setMoveFolderTarget(null)
+                }}
+              >
+                {t('budgets.page.plan.menu.no_folder')}
+              </button>
+            </li>
+          </ul>
+        </ResponsiveDialog>
+      ) : null}
+
       <SetLimitDialog
-        element={limitTarget}
+        target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
-        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, amount })}
+        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
       />
 
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />

@@ -9,9 +9,9 @@ import (
 )
 
 // BudgetStore is the model.Budget aggregate root's own persistence surface:
-// identity, lookup/listing, the write/delete, and the excluded-accounts join
+// identity, lookup/listing, the write/delete, and the member-accounts join
 // table. Consumed by loadAggregate (usecase.go), CreateBudget (create.go),
-// UpdateBudget/DeleteBudget/ResetBudget (crud.go), toggleAccount
+// UpdateBudget/DeleteBudget/ResetBudget (crud.go), AddAccount/RemoveAccount
 // (accounts.go), and GetBudgetList (read.go). A missing budget returns an
 // *errs.NotFoundError.
 type BudgetStore interface {
@@ -21,9 +21,12 @@ type BudgetStore interface {
 	Save(ctx context.Context, b *model.Budget) error
 	Delete(ctx context.Context, id vo.Id) error
 
-	ExcludedAccountIDs(ctx context.Context, budgetID vo.Id) ([]vo.Id, error)
-	ExcludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
-	IncludeAccount(ctx context.Context, budgetID, accountID vo.Id) error
+	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
+	AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error
+	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
+	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
+	// ownerID — a departing participant takes their accounts with them.
+	RemoveAccountsOwnedBy(ctx context.Context, budgetID, ownerID vo.Id) error
 }
 
 // AccessStore is a budget's participant-grant persistence surface. Consumed by
@@ -53,7 +56,7 @@ type FolderStore interface {
 // EnvelopeStore is the budget-envelope persistence surface, including its
 // category-membership join table. Consumed by loadAggregate (usecase.go),
 // CreateEnvelope/UpdateEnvelope/DeleteEnvelope (envelopes.go), and
-// restoreElementsOrder (move.go). Envelope ids are always client-supplied, so
+// syncElements (move.go). Envelope ids are always client-supplied, so
 // there is no NextIdentity here.
 type EnvelopeStore interface {
 	ListEnvelopes(ctx context.Context, budgetID vo.Id) ([]*model.BudgetEnvelope, error)
@@ -71,7 +74,7 @@ type EnvelopeStore interface {
 // Consumed by loadAggregate (usecase.go), seedCategoryElements/
 // seedTagElements (create.go), CreateEnvelope/UpdateEnvelope/DeleteEnvelope
 // (envelopes.go), ChangeElementCurrency/SetLimit (accounts.go), and
-// MoveElementList/shiftElements/restoreElementsOrder (move.go). NextIdentity
+// MoveElement/syncElements (move.go). NextIdentity
 // allocates a fresh element id.
 type ElementStore interface {
 	NextIdentity() vo.Id
@@ -80,7 +83,13 @@ type ElementStore interface {
 	GetElement(ctx context.Context, id vo.Id) (*model.BudgetElement, error)
 	// GetElementByExternal finds an element by its (budget, externalId) pair.
 	GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error)
+	// ListElementsByExternal returns this external id's element in EVERY budget,
+	// which is the scope a classification merge has to cover.
+	ListElementsByExternal(ctx context.Context, externalID vo.Id) ([]*model.BudgetElement, error)
 	SaveElement(ctx context.Context, e *model.BudgetElement) error
+	// RepointElement hands an element to a different classification. SaveElement
+	// cannot do this: its upsert deliberately leaves external_id alone.
+	RepointElement(ctx context.Context, id, externalID vo.Id, updatedAt time.Time) error
 	DeleteElement(ctx context.Context, id vo.Id) error
 }
 
@@ -92,6 +101,11 @@ type LimitStore interface {
 
 	// ListLimitsForPeriod returns the limits for a budget's elements in a period.
 	ListLimitsForPeriod(ctx context.Context, budgetID vo.Id, period time.Time) ([]*model.BudgetElementLimit, error)
+	// ListLimitsFrom returns the limits at or after a month (clone).
+	ListLimitsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementLimit, error)
+	// ListLimitsByElement returns every period's limit for one element; a merge
+	// transfers all of them, so it deliberately has no period filter.
+	ListLimitsByElement(ctx context.Context, elementID vo.Id) ([]*model.BudgetElementLimit, error)
 	GetLimit(ctx context.Context, elementID vo.Id, period time.Time) (*model.BudgetElementLimit, error)
 	SaveLimit(ctx context.Context, l *model.BudgetElementLimit) error
 	DeleteLimit(ctx context.Context, id vo.Id) error

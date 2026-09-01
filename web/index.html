@@ -30,7 +30,11 @@
         script.src = "/liltag.min.js";
         script.onload = function () {
           const lilTag = new LilTag(window.econumoConfig.LILTAG_CONFIG_URL);
-          lilTag.enableCache(parseInt(window.econumoConfig.LILTAG_CACHE_TTL));
+          // 0/unset means "no cache" — LilTag warns on non-positive TTLs
+          const ttl = parseInt(window.econumoConfig.LILTAG_CACHE_TTL);
+          if (ttl > 0) {
+            lilTag.enableCache(ttl);
+          }
           lilTag.init();
         };
         document.head.appendChild(script);

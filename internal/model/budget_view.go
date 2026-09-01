@@ -48,6 +48,47 @@ type SummarizedLimitRow struct {
 	Amount     string
 }
 
+// MonthlySpendingRow is one (month, category?, tag?, currency) expense total
+// for the plan sheet. Month is the first-of-month TEXT "YYYY-MM-01", rendered
+// identically by both engines so the wire output stays byte-identical.
+type MonthlySpendingRow struct {
+	Month      string
+	CategoryID *string
+	TagID      *string
+	CurrencyID string
+	Amount     string
+}
+
+// MonthlyIncomeRow is one (month, category?, currency) income total.
+// CategoryID nil = uncategorized income.
+type MonthlyIncomeRow struct {
+	Month      string
+	CategoryID *string
+	CurrencyID string
+	Amount     string
+}
+
+// MonthlyTransferRow is one (month, currency) total of transfers that crossed
+// the budget boundary: In sums transfers INTO the included set (recipient
+// inside, source outside) in the recipient account's currency; Out sums
+// transfers OUT of it in the source account's currency. Either side may be
+// "0" when only the other direction moved money that month.
+type MonthlyTransferRow struct {
+	Month      string
+	CurrencyID string
+	In         string
+	Out        string
+}
+
+// MonthlyLimitRow is one element's limit in one month (the plan sheet's
+// planned cells), keyed by the element's external id + stored type.
+type MonthlyLimitRow struct {
+	ExternalID string
+	Type       int16
+	Month      string
+	Amount     string
+}
+
 // BudgetTransactionRow is one transaction in the budget transaction list, with
 // the account's currency joined and the optional category/payee/tag ids.
 type BudgetTransactionRow struct {
@@ -60,6 +101,10 @@ type BudgetTransactionRow struct {
 	CategoryID  *string
 	PayeeID     *string
 	TagID       *string
+	// Direction is set only on rows from BudgetTransactionsTransfers: "out"
+	// when the included account is the source, "in" when it is the recipient.
+	// Amount/CurrencyID are then the included side's figures.
+	Direction string
 }
 
 // LabelSpendingRow is one (label, category, currency) spending total in a
@@ -88,11 +133,13 @@ type LabelMeta struct {
 }
 
 // AccountView is an account as the budget filters builder needs it: id +
-// currency + owner.
+// currency + owner. IsDeleted is carried through so a soft-deleted member
+// account still counts (see AccountLookup.AccountsByIDs).
 type AccountView struct {
 	ID         string
 	CurrencyID string
 	OwnerID    string
+	IsDeleted  bool
 }
 
 // CategoryMeta is a category's display metadata for the budget structure.

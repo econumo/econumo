@@ -23,6 +23,11 @@ type AccountStore interface {
 	// ListAvailable returns the user's non-deleted accounts.
 	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 
+	// ListDeleted returns every soft-deleted account across all users (the
+	// zero-deleted-accounts migration and self-healing sweep operate globally,
+	// not per-user).
+	ListDeleted(ctx context.Context) ([]*model.Account, error)
+
 	// CountAvailable returns how many non-deleted accounts the user has (seeds a
 	// new account's position when no options rows exist).
 	CountAvailable(ctx context.Context, userID vo.Id) (int, error)

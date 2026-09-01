@@ -12,7 +12,7 @@
       "active_only": "Alleen actieve"
     },
     "nav": {
-      "budget": "Budget",
+      "budget": "Budget & plan",
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Rekeningen",
         "accounts_included": "{count} van {total} opgenomen",
-        "accounts_hidden": "In verborgen mappen"
+        "accounts_hidden": "In verborgen mappen",
+        "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd"
       },
       "create_budget_form": {
         "header": "Nieuw budget"
@@ -849,6 +850,18 @@
       "expense_widget": {
         "header": "Uitgaven",
         "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Budget dupliceren",
+        "copy_name": "{name} (kopie)",
+        "copy_plans": "Plannen kopiëren",
+        "start_this_month": "Vanaf deze maand starten"
+      },
+      "complete_budget_form": {
+        "header": "Budget afronden",
+        "end_month": "Laatste maand",
+        "continue_copy": "Verder in een kopie vanaf deze maand",
+        "copy_plans": "Plannen kopiëren"
       }
     },
     "form": {
@@ -868,6 +881,15 @@
             "required_field": "Verplicht veld",
             "invalid_name": "Mapnaam moet 3-64 tekens bevatten"
           }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Selecteer minstens één rekening"
+          }
+        },
+        "end_month": {
+          "label": "Eindmaand",
+          "none": "Geen einddatum"
         }
       },
       "budget_envelope": {
@@ -970,12 +992,65 @@
             "name": "Totaal",
             "expenses": "Totale uitgaven"
           }
+        },
+        "archived_banner": "Dit budget is gearchiveerd en alleen-lezen",
+        "nav": {
+          "prev": "Naar eerdere maanden scrollen",
+          "next": "Naar latere maanden scrollen"
+        }
+      },
+      "plan": {
+        "toggle": {
+          "budget": "Budget",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Inkomsten",
+          "expenses": "Uitgaven",
+          "archived": "Gearchiveerd"
+        },
+        "nav": {
+          "prev": "Eerdere maanden",
+          "next": "Latere maanden"
+        },
+        "cell": {
+          "aria": "{name}, {month}: werkelijk {actual}, gepland {planned}"
+        },
+        "fill": {
+          "handle_aria": "Budget naar de volgende maanden kopiëren"
+        },
+        "paste": {
+          "not_editable": "Hier kun je niet plakken — deze cel is niet bewerkbaar.",
+          "invalid": "Niets om te plakken — het klembord bevat geen bedrag."
+        },
+        "totals": {
+          "income": "Inkomsten",
+          "expenses": "Uitgaven",
+          "transfers": "Overboekingen",
+          "transfers_tooltip": "In {in} · Uit {out}",
+          "show_transactions": "Transacties tonen",
+          "net": "Netto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Lege rijen verbergen",
+          "hidden": "{count} verborgen",
+          "show": "Tonen"
+        },
+        "menu": {
+          "move_to_folder": "Naar map verplaatsen…",
+          "no_folder": "Geen map"
+        },
+        "edit": {
+          "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
+          "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
+          "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
         }
       },
       "settings": {
-        "menu_item": "Budgetten",
-        "header": "Budgetten",
-        "info": "Hier staan al uw budgetten. Maak aparte budgetten voor verschillende doelen en deel ze met uw gezin.",
+        "menu_item": "Budgetten & plannen",
+        "header": "Budgetten & plannen",
+        "info": "Hier staan al uw budgetten. Maak budgetten voor verschillende doelen, deel ze met uw gezin en plan uw budget voor de komende maanden.",
         "create_budget": "Budget aanmaken",
         "edit_modal": {
           "header": "Budget bewerken"
@@ -999,12 +1074,28 @@
         },
         "list_actions": {
           "access": "Toegangsbeheer",
-          "go_to": "Budget openen"
+          "go_to": "Budget openen",
+          "duplicate": "Dupliceren…",
+          "complete": "Afronden…",
+          "archive": "Archiveren",
+          "unarchive": "Uit archief halen"
+        },
+        "archived_group": {
+          "header": "Gearchiveerd"
         }
       }
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Samenvoegen met…",
+        "title": "‘{name}’ samenvoegen met",
+        "confirm": "Samenvoegen",
+        "warning": "Alle transacties van ‘{name}’ worden verplaatst en ‘{name}’ wordt verwijderd.",
+        "envelope_info": "Staan beide in verschillende enveloppen, werk dan eerst je budget bij zodat je geplande bedragen niet verloren gaan — bij het samenvoegen worden de limieten opgeteld."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1362,14 +1453,19 @@
       "envelope_name_length": "Envelopnaam moet {min}-{max} tekens bevatten.",
       "invalid_element_type_alias": "Een budgetelementtype met alias {alias} bestaat niet.",
       "invalid_role_alias": "Een budgetgebruikersrol met alias {alias} bestaat niet.",
-      "transaction_filter_required": "Validatie mislukt."
+      "transaction_filter_required": "Validatie mislukt.",
+      "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
+      "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
+      "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
+      "accounts_required": "Selecteer minstens één rekening",
+      "archived": "Dit budget is gearchiveerd",
+      "end_before_start": "De eindmaand ligt vóór de start van het budget"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
       "type_invalid": "Het opgegeven categorietype bestaat niet.",
-      "replace_id_required": "Bij mode=replace is replaceId verplicht.",
       "not_found": "Categorie niet gevonden.",
-      "cannot_be_replaced": "Categorieën kunnen niet worden vervangen.",
+      "cannot_be_merged": "De geselecteerde categorieën kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met categorieën is leeg."
     },
     "connection": {
@@ -1377,7 +1473,8 @@
       "invalid_role_alias": "Een rekeningrol met alias {alias} bestaat niet.",
       "invalid_code": "De verbindingscode is onjuist.",
       "inviting_yourself": "Uzelf uitnodigen?",
-      "deleting_yourself": "Uzelf verwijderen?"
+      "deleting_yourself": "Uzelf verwijderen?",
+      "invite_not_found": "De uitnodigingscode is ongeldig of verlopen."
     },
     "currency": {
       "already_exists": "Deze valuta bestaat al.",
@@ -1392,16 +1489,19 @@
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
+      "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
+      "cannot_be_merged": "De geselecteerde begunstigden kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met begunstigden is leeg."
     },
     "tag": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze tag bestaat al.",
+      "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
     "token": {
@@ -1414,7 +1514,8 @@
       "account_not_available": "Deze rekening is niet beschikbaar voor deze bewerking.",
       "item_not_available": "Deze transactie is niet beschikbaar voor deze bewerking.",
       "invalid_import_file": "Upload een geldig CSV-bestand.",
-      "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben."
+      "too_many_labels": "Een transactie kan maximaal 50 rapportagetags hebben.",
+      "account_deleted": "Deze rekening is verwijderd."
     },
     "user": {
       "report_period_invalid": "De rapportageperiode is onjuist.",

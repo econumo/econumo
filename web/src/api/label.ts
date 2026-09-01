@@ -42,3 +42,8 @@ export async function sortLabelList(ids: Id[]): Promise<LabelDto[]> {
   const response = await api.post<Envelope<{ items: LabelDto[] }>>(apiUrl('/api/v1/label/sort-label-list'), { ids })
   return response.data.data.items
 }
+
+/** Absorbs sourceId into targetId and deletes sourceId. Cannot be undone. */
+export async function mergeLabel(sourceId: Id, targetId: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/label/merge-label'), { sourceId, targetId })
+}

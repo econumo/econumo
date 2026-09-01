@@ -29,7 +29,7 @@ it('partial success: both counts and error rows formatting', () => {
     ],
   })
   expect(screen.getByText('Import completed with errors')).toBeInTheDocument()
-  expect(screen.getByText('1 transaction(s) imported')).toBeInTheDocument()
+  expect(screen.getByText('1 transaction imported')).toBeInTheDocument()
   expect(screen.getByText('3 transactions failed')).toBeInTheDocument()
   expect(screen.getByText('Error details')).toBeInTheDocument()
   expect(screen.getByText(/Row 4/)).toBeInTheDocument()

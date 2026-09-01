@@ -19,19 +19,30 @@ type AccessResult struct {
 
 // MetaResult is a budget's metadata block.
 type MetaResult struct {
-	Id          string         `json:"id"`
-	OwnerUserId string         `json:"ownerUserId"`
-	Name        string         `json:"name"`
-	StartedAt   string         `json:"startedAt"`
-	CurrencyId  string         `json:"currencyId"`
-	Access      []AccessResult `json:"access"`
+	Id          string `json:"id"`
+	OwnerUserId string `json:"ownerUserId"`
+	Name        string `json:"name"`
+	StartedAt   string `json:"startedAt"`
+	// EndedAt is the last covered month, "" when the budget is open-ended.
+	EndedAt    string         `json:"endedAt"`
+	CurrencyId string         `json:"currencyId"`
+	IsArchived int            `json:"isArchived"`
+	Access     []AccessResult `json:"access"`
 }
 
-// FiltersResult is the budget's period + excluded accounts.
+// BudgetAccountFilter is one member account of the budget as the requester sees
+// it: Removable is false once the account has transactions in a closed month,
+// because dropping it then would rewrite history the budget's limits stand on.
+type BudgetAccountFilter struct {
+	Id        string `json:"id"`
+	Removable bool   `json:"removable"`
+}
+
+// FiltersResult is the budget's period + the requester's member accounts.
 type FiltersResult struct {
-	PeriodStart         string   `json:"periodStart"`
-	PeriodEnd           string   `json:"periodEnd"`
-	ExcludedAccountsIds []string `json:"excludedAccountsIds"`
+	PeriodStart string                `json:"periodStart"`
+	PeriodEnd   string                `json:"periodEnd"`
+	Accounts    []BudgetAccountFilter `json:"accounts"`
 }
 
 // CurrencyBalanceResult is one currency's period financial summary. The amount
@@ -127,11 +138,14 @@ type BudgetResult struct {
 
 // CreateBudgetRequest is the create-budget body.
 type CreateBudgetRequest struct {
-	Id               string   `json:"id"`
-	Name             string   `json:"name"`
-	StartDate        string   `json:"startDate"`
-	CurrencyId       string   `json:"currencyId"`
-	ExcludedAccounts []string `json:"excludedAccounts"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	StartDate  string `json:"startDate"`
+	CurrencyId string `json:"currencyId"`
+	// AccountIds are the budget's initial member accounts. At least one owned,
+	// non-deleted account is required — enforced as a coded error in the use
+	// case, not here, so the wire carries the catalogue code.
+	AccountIds []string `json:"accountIds"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -146,10 +160,15 @@ type CreateBudgetResult struct {
 
 // UpdateBudgetRequest is the update-budget body.
 type UpdateBudgetRequest struct {
-	Id               string   `json:"id"`
-	Name             string   `json:"name"`
-	CurrencyId       string   `json:"currencyId"`
-	ExcludedAccounts []string `json:"excludedAccounts"`
+	Id         string `json:"id"`
+	Name       string `json:"name"`
+	CurrencyId string `json:"currencyId"`
+	// AccountIds is nil when the client omits the field, which leaves membership
+	// untouched; a present list replaces the caller's own member set.
+	AccountIds []string `json:"accountIds"`
+	// EndDate is nil when the client omits the field (end month untouched);
+	// "" clears it, "2006-01-02" sets it (snapped to first-of-month).
+	EndDate *string `json:"endDate"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -171,6 +190,49 @@ func (r DeleteBudgetRequest) Validate() error { return ValidateBlank(map[string]
 
 // DeleteBudgetResult is empty.
 type DeleteBudgetResult struct{}
+
+// ArchiveBudgetRequest / UnarchiveBudgetRequest hide or restore a budget.
+type ArchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r ArchiveBudgetRequest) Validate() error { return ValidateBlank(map[string]string{"id": r.Id}) }
+
+type ArchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
+type UnarchiveBudgetRequest struct {
+	Id string `json:"id"`
+}
+
+func (r UnarchiveBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+type UnarchiveBudgetResult struct {
+	Item MetaResult `json:"item"`
+}
+
+// CloneBudgetRequest deep-copies a budget the caller owns. StartDate empty
+// means the source's own start month (a full backup); a later month makes the
+// copy a continuation. WithLimits carries the plans over.
+type CloneBudgetRequest struct {
+	Id         string `json:"id"`
+	NewId      string `json:"newId"`
+	Name       string `json:"name"`
+	StartDate  string `json:"startDate"`
+	WithLimits bool   `json:"withLimits"`
+}
+
+func (r CloneBudgetRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id, "newId": r.NewId})
+}
+
+// CloneBudgetResult is the copy, built for the caller's current month.
+type CloneBudgetResult struct {
+	Item BudgetResult `json:"item"`
+}
 
 // ResetBudgetRequest resets a budget's start month.
 type ResetBudgetRequest struct {
@@ -203,6 +265,119 @@ type GetBudgetResult struct {
 // GetBudgetListResult is {items: [MetaResult]}.
 type GetBudgetListResult struct {
 	Items []MetaResult `json:"items"`
+}
+
+// GetBudgetPlanRequest selects a budget + a month window for the plan read.
+// From and Months arrive as raw query strings; the service parses them.
+type GetBudgetPlanRequest struct {
+	Id     string `json:"id"`
+	From   string `json:"from"`
+	Months string `json:"months"`
+}
+
+func (r GetBudgetPlanRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+// PlanCellResult is one (element, month) plan cell. Planned is "" when no
+// limit row exists for that month — the frozen empty-cell encoding.
+type PlanCellResult struct {
+	Actual  string `json:"actual"`
+	Planned string `json:"planned"`
+}
+
+// PlanChildCellResult is one (envelope child, month) cell — actual only;
+// planned lives on the parent, exactly like budgeted on the budget page.
+type PlanChildCellResult struct {
+	Actual string `json:"actual"`
+}
+
+// PlanChildResult is a category nested under an envelope in the plan sheet.
+// Cells align index-for-index with BudgetPlanResult.Months.
+type PlanChildResult struct {
+	Id          string                `json:"id"`
+	Type        int                   `json:"type"`
+	Name        string                `json:"name"`
+	Icon        string                `json:"icon"`
+	IsArchived  int                   `json:"isArchived"`
+	OwnerUserId string                `json:"ownerUserId"`
+	Cells       []PlanChildCellResult `json:"cells"`
+}
+
+// PlanElementResult is one plan-sheet row (income and expense alike; the
+// element type encodes the side). Cells align with BudgetPlanResult.Months.
+type PlanElementResult struct {
+	Id          string            `json:"id"`
+	Type        int               `json:"type"`
+	Name        string            `json:"name"`
+	Icon        string            `json:"icon"`
+	CurrencyId  string            `json:"currencyId"`
+	IsArchived  int               `json:"isArchived"`
+	FolderId    *string           `json:"folderId"`
+	Position    int               `json:"position"`
+	OwnerUserId *string           `json:"ownerUserId"`
+	Cells       []PlanCellResult  `json:"cells"`
+	Children    []PlanChildResult `json:"children"`
+}
+
+// OpeningBalanceResult is one currency's real account balance strictly
+// BEFORE the window start (transactions dated < months[0]) — the client-side
+// Balance row's seed. This deliberately differs from the budget page's
+// startBalance bound (<=): the plan's Balance row arithmetically chains this
+// seed to the per-month nets (seed + net(month0) + ...), and month 0's
+// actual cells already cover [months[0], months[0]+1mo), so the boundary
+// instant must not appear in both or it is double-counted.
+type OpeningBalanceResult struct {
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanTransferResult is one currency's transfers across the budget boundary
+// in one window month: In = moved into included accounts (recipient side's
+// amount and currency), Out = moved out of them (source side's). Neither is
+// planned; the client nets them into the month's Net and Balance.
+type PlanTransferResult struct {
+	CurrencyId string `json:"currencyId"`
+	In         string `json:"in"`
+	Out        string `json:"out"`
+}
+
+// PlanMonthTransfersResult is one window month's boundary transfers; Items is
+// [] (never null) for a month nothing crossed, ordered budget currency first
+// then by currency id.
+type PlanMonthTransfersResult struct {
+	Period string               `json:"period"`
+	Items  []PlanTransferResult `json:"items"`
+}
+
+// PlanMonthRatesResult is one window month's average currency rates. Period is
+// the REQUESTED month; each rate row reports its own snapped period, exactly
+// as the budget page's currencyRates block does.
+type PlanMonthRatesResult struct {
+	Period string                      `json:"period"`
+	Rates  []AverageCurrencyRateResult `json:"rates"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult `json:"folders"`
+	Elements []PlanElementResult  `json:"elements"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape.
+type BudgetPlanResult struct {
+	Meta            MetaResult                 `json:"meta"`
+	Months          []string                   `json:"months"`
+	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
+	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers       []PlanMonthTransfersResult `json:"transfers"`
+	Structure       PlanStructureResult        `json:"structure"`
+}
+
+// GetBudgetPlanResult is {item: BudgetPlanResult}.
+type GetBudgetPlanResult struct {
+	Item BudgetPlanResult `json:"item"`
 }
 
 // CreateBudgetFolderRequest / UpdateBudgetFolderRequest bodies.
@@ -286,6 +461,10 @@ type CreateEnvelopeRequest struct {
 	CurrencyId string   `json:"currencyId"`
 	FolderId   *string  `json:"folderId"`
 	Categories []string `json:"categories"`
+	// Side selects the envelope's (immutable) side: "" or "expense" (default).
+	// "income" is reserved for the plan view's income envelopes and currently
+	// rejected (see EnvelopeTypeFromSide).
+	Side string `json:"side"`
 }
 
 func (r CreateEnvelopeRequest) Validate() error {
@@ -385,37 +564,37 @@ func (r RevokeAccessRequest) Validate() error {
 // RevokeAccessResult is empty.
 type RevokeAccessResult struct{}
 
-// ExcludeAccountRequest / IncludeAccountRequest toggle an account in the budget.
-// The request field for the budget id is "id" (not "budgetId") — the exclude/
-// include forms carry the budget under "id", and validation reports the blank
-// field under "id" to match the frozen wire contract.
-type ExcludeAccountRequest struct {
+// AddAccountRequest / RemoveAccountRequest change a budget's account
+// membership. The request field for the budget id is "id" (not "budgetId") —
+// the membership forms carry the budget under "id", and validation reports the
+// blank field under "id" to match the frozen wire contract.
+type AddAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
-func (r ExcludeAccountRequest) Validate() error {
+func (r AddAccountRequest) Validate() error {
 	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
-// ExcludeAccountResult / IncludeAccountResult are {item: MetaResult}.
-type ExcludeAccountResult struct {
+// AddAccountResult / RemoveAccountResult are {item: MetaResult}.
+type AddAccountResult struct {
 	Item MetaResult `json:"item"`
 }
 
-// IncludeAccountRequest includes a previously-excluded account. The budget id
-// arrives under "id" (see ExcludeAccountRequest).
-type IncludeAccountRequest struct {
+// RemoveAccountRequest drops an account from the budget. The budget id arrives
+// under "id" (see AddAccountRequest).
+type RemoveAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
 }
 
-func (r IncludeAccountRequest) Validate() error {
+func (r RemoveAccountRequest) Validate() error {
 	return ValidateBlank(map[string]string{"id": r.BudgetId, "accountId": r.AccountId})
 }
 
-// IncludeAccountResult is {item: MetaResult}.
-type IncludeAccountResult struct {
+// RemoveAccountResult is {item: MetaResult}.
+type RemoveAccountResult struct {
 	Item MetaResult `json:"item"`
 }
 
@@ -489,6 +668,10 @@ type BudgetTransactionListRequest struct {
 	EnvelopeId    *string `json:"envelopeId"`
 	LabelId       *string `json:"labelId"`
 	Uncategorized bool    `json:"uncategorized,omitempty"`
+	// Transfers selects the transfers that crossed the budget boundary (one
+	// side included, the other not) — the plan sheet's Transfers drill-down.
+	// Mutually exclusive with every other selector.
+	Transfers bool `json:"transfers,omitempty"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -521,6 +704,11 @@ type BudgetTransactionResult struct {
 	// transaction feature's own wire.
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
+	// Direction is present only on rows of the transfers selector: "out" when
+	// the included account is the source, "in" when it is the recipient —
+	// Amount/CurrencyId are that side's. Omitted on every other list so their
+	// bytes are unchanged.
+	Direction string `json:"direction,omitempty"`
 }
 
 // GetBudgetTransactionListResult is {items: [...]}.

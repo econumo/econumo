@@ -41,6 +41,7 @@ import (
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	handlertransaction "github.com/econumo/econumo/internal/transaction/api"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
@@ -81,7 +82,7 @@ func newHarness(t *testing.T) *harness {
 	}
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
+	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -117,8 +118,8 @@ func newHarness(t *testing.T) *harness {
 	labelRepo := labelrepo.NewRepo("sqlite", txm)
 	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), labelrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
-	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
-	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
+	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)), wiring.BudgetMerger("sqlite", txm, clock.New()))
+	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), tagrepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)), wiring.BudgetMerger("sqlite", txm, clock.New()))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard("sqlite", txm), clock.New(), payeerepo.NewReadRepo("sqlite", txm), connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)))
 	txImportAccounts := server.NewTransactionImportAccounts(
 		accountSvc, accountrepo.NewRepo("sqlite", txm), accountrepo.NewFolderRepo("sqlite", txm), curLookup, "USD",
@@ -138,7 +139,8 @@ func newHarness(t *testing.T) *harness {
 		txRepo, accountSvc,
 		accountAccessResolver,
 		accountSvc,
-		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, labelOwnership, txm, opGuard, clk,
+		server.NewUserOwnerLookup(userrepo.NewRepo("sqlite", txm)), txExport, txImport, labelOwnership,
+		server.NewTransactionAccountZeroer(accountSvc), txm, opGuard, clk,
 	)
 
 	recurringRepo := recurringrepo.NewRepo("sqlite", txm)
@@ -160,7 +162,7 @@ func newHarness(t *testing.T) *harness {
 func toMigrations(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

@@ -48,6 +48,7 @@ type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
 	f   *fixture.Builder
+	svc *appaccount.Service
 }
 
 func newHarness(t *testing.T) *harness {
@@ -88,7 +89,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 
-	return &harness{srv: srv, db: db, f: f}
+	return &harness{srv: srv, db: db, f: f, svc: svc}
 }
 
 func seedUsers(t *testing.T, f *fixture.Builder) {

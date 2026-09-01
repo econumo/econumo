@@ -62,7 +62,7 @@ func newHarness(t *testing.T) *harness {
 	db.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = db.Close() })
 
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite())); err != nil {
+	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
 
@@ -115,7 +115,7 @@ func seedUsers(t *testing.T, tdb *dbtest.DB) {
 func toMigrations(files []migrations.File) []migrate.Migration {
 	out := make([]migrate.Migration, len(files))
 	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL}
+		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
 	}
 	return out
 }

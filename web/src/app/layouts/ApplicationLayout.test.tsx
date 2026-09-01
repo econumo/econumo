@@ -93,7 +93,7 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   expect(screen.getAllByText('100.50 $').length).toBeGreaterThanOrEqual(2)
   // user block + nav
   expect(screen.getByText('Ada')).toBeInTheDocument()
-  expect(screen.getByText('Budget')).toBeInTheDocument()
+  expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
   expect(screen.getByText('Settings')).toBeInTheDocument()
 })
 
@@ -195,7 +195,7 @@ it('desktop divider click collapses the sidebar to an icon rail and back', async
   // account names and the user name are gone, only icons remain
   expect(screen.queryByText('Cash')).not.toBeInTheDocument()
   expect(screen.queryByText('Ada')).not.toBeInTheDocument()
-  expect(screen.queryByText('Budget')).not.toBeInTheDocument()
+  expect(screen.queryByText('Budget & Plan')).not.toBeInTheDocument()
   // the account is still reachable as an icon button, avatar still shown
   expect(screen.getByRole('button', { name: 'Cash' })).toBeInTheDocument()
   expect(screen.getByTestId('user-avatar')).toHaveAttribute('data-avatar', fixtureUser.avatar)
@@ -246,7 +246,7 @@ it('shows a sharing-requests button above the Budget link when invites are pendi
 
   const button = screen.getByRole('button', { name: /Sharing requests/ })
   expect(button).toHaveTextContent('2')
-  const budgetLink = screen.getByRole('link', { name: 'Budget' })
+  const budgetLink = screen.getByRole('link', { name: 'Budget & Plan' })
   // eslint-disable-next-line no-bitwise
   expect(button.compareDocumentPosition(budgetLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
@@ -269,7 +269,7 @@ it('collapsed rail shows the sharing-requests icon button with a count bubble, a
   expect(await screen.findByText('Cash')).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
-  expect(screen.queryByText('Budget')).not.toBeInTheDocument()
+  expect(screen.queryByText('Budget & Plan')).not.toBeInTheDocument()
 
   const button = screen.getByTitle('Sharing requests')
   expect(button).toHaveTextContent('2')

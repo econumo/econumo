@@ -21,6 +21,7 @@ import (
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 )
 
 const glueClassificationOwner = "44444444-4444-4444-4444-444444444444"
@@ -34,7 +35,7 @@ func newClassificationSvcs(t *testing.T, db *dbtest.DB) (*apptag.Service, *appla
 
 	tagSvc := apptag.NewService(
 		tagrepo.NewRepo(db.Engine, db.TX), db.TX, opGuard, clock.New(),
-		tagrepo.NewReadRepo(db.Engine, db.TX), access,
+		tagrepo.NewReadRepo(db.Engine, db.TX), access, wiring.BudgetMerger(db.Engine, db.TX, clock.New()),
 	)
 	labelSvc := applabel.NewService(
 		labelrepo.NewRepo(db.Engine, db.TX), db.TX, opGuard, clock.New(),

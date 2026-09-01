@@ -100,6 +100,13 @@ export function useDeleteAccount() {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) =>
         (prev ?? []).filter((t) => survives.has(t.accountId) || (t.accountRecipientId !== null && survives.has(t.accountRecipientId))),
       )
+      // deleting an account writes a "Balance adjustment (account deleted)"
+      // correction and may drop it from a budget's membership, so both the
+      // budget queries and the transaction list need a real refetch beyond
+      // the optimistic cache patch above.
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       trackEvent(METRICS.ACCOUNT_DELETE)
     },
   })
@@ -266,6 +273,14 @@ export function useAcceptAccountAccess() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.folders })
       // the pre-accept cache excludes this account's transactions (pending = no access)
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+      // access also unlocks the owner's classifications and custom currencies;
+      // without a refetch every shared transaction renders as "Uncategorized"
+      void queryClient.invalidateQueries({ queryKey: queryKeys.categories })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.tags })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.labels })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.payees })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencies })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.currencyRates })
       trackEvent(METRICS.CONNECTION_ACCEPT_ACCOUNT_ACCESS)
     },
   })

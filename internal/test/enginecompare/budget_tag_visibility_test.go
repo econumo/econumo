@@ -28,7 +28,7 @@ func TestBudgetTagWithLimitNoTransactions_PerEngine(t *testing.T) {
 
 		// Fresh budget with a known start so the period math is deterministic.
 		if st, body := h.Call(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-			map[string]any{"id": budgetID, "name": "Tag Vis", "currencyId": apiparity.USD, "startDate": "2024-04-01"}); st != http.StatusOK {
+			map[string]any{"id": budgetID, "name": "Tag Vis", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}); st != http.StatusOK {
 			t.Fatalf("create-budget = %d; body: %s", st, body)
 		}
 

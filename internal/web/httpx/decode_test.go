@@ -37,3 +37,45 @@ func TestDecode_OversizedBody_ValidationError(t *testing.T) {
 		t.Fatalf("Decode error = %T (%v), want *errs.ValidationError", err, err)
 	}
 }
+
+func TestDecode_MalformedBody_ValidationError(t *testing.T) {
+	// Syntax errors and wrong-typed fields are client mistakes: they must become
+	// 400-level validation errors, never the 500 exception envelope. The decoder's
+	// own text names Go struct fields, so the message must not echo it.
+	for _, tc := range []struct {
+		name string
+		body string
+	}{
+		{"syntax error", `{broken`},
+		{"wrong field type", `{"name":12345}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			r := httptest.NewRequest("POST", "/", strings.NewReader(tc.body))
+			var dst decodeTarget
+			err := Decode(r, &dst)
+			if err == nil {
+				t.Fatal("Decode = nil, want malformed-body error")
+			}
+			v, ok := errs.AsValidation(err)
+			if !ok {
+				t.Fatalf("Decode error = %T (%v), want *errs.ValidationError", err, err)
+			}
+			if v.Msg != "Request body is not valid JSON." {
+				t.Fatalf("message = %q, want the fixed generic message", v.Msg)
+			}
+			if len(v.Fields) != 0 {
+				t.Fatalf("fields = %v, want none (fieldless error surfaces its own message)", v.Fields)
+			}
+		})
+	}
+}
+
+func TestDecode_EmptyBody_NoError(t *testing.T) {
+	// Some endpoints accept {}; an empty body must still decode to the zero value
+	// rather than tripping the new malformed-body branch.
+	r := httptest.NewRequest("POST", "/", strings.NewReader(""))
+	var dst decodeTarget
+	if err := Decode(r, &dst); err != nil {
+		t.Fatalf("Decode = %v, want nil", err)
+	}
+}

@@ -47,7 +47,8 @@ export function createRouter() {
               children: [
                 { path: '/', element: <HomePage /> },
                 { path: '/account/:id', element: <AccountPage /> },
-                { path: '/budget', element: <BudgetPage /> },
+                { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
+                { path: '/plan', element: <BudgetPage key="plan" mode="plan" /> },
                 { path: '/onboarding', element: <OnboardingPage /> },
                 { path: '/settings', element: <SettingsPage /> },
                 { path: '/settings/profile', element: <ProfilePage /> },

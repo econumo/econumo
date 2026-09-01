@@ -6,6 +6,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -51,17 +52,41 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 		}
 	}
 
+	// A budget without member accounts tracks nothing; refuse before anything is
+	// written so a rejected create leaves no budget row behind.
+	if len(req.AccountIds) == 0 {
+		return nil, errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "accountIds", Message: "Select at least one account", Code: errs.CodeBudgetAccountsRequired,
+		})
+	}
+
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
 		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}
-		for _, raw := range req.ExcludedAccounts {
+		for _, raw := range req.AccountIds {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
-				return model.ValidateBlank(map[string]string{"excludedAccounts": ""})
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
 			}
-			if serr := s.budgets.ExcludeAccount(txCtx, budgetID, aid); serr != nil {
+			// ownsAccount reports a missing account as "not owned", so it must be
+			// consulted before AccountsByIDs, which errors on an unknown id.
+			owned, oerr := s.ownsAccount(txCtx, userID, aid)
+			if oerr != nil {
+				return oerr
+			}
+			if !owned {
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
+			}
+			views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
+			if verr != nil {
+				return verr
+			}
+			if views[0].IsDeleted {
+				return model.ValidateBlank(map[string]string{"accountIds": ""})
+			}
+			if serr := s.budgets.AddAccount(txCtx, budgetID, aid, now); serr != nil {
 				return serr
 			}
 		}
@@ -90,38 +115,46 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 	return &model.CreateBudgetResult{Item: result}, nil
 }
 
-// seedCategoryElements creates a budget element for each non-income category of
-// the user; archived categories get the unset key, others get an increasing one.
-// Ids in skip already have an element in the budget (accept after an earlier
-// membership) and are left untouched. Returns the key the next element follows.
+// seedCategoryElements creates a budget element for each category of the user —
+// expense categories first (type=category), then income categories
+// (type=income_category), one continuous key chain. Archived categories get the
+// unset key. Ids in skip already have an element in the budget (accept after an
+// earlier membership) and are left untouched. Returns the key the next element
+// follows.
 func (s *Service) seedCategoryElements(ctx context.Context, userID, budgetID vo.Id, after sortkey.Key, now time.Time, skip map[vo.Id]bool) (sortkey.Key, error) {
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{userID})
 	if err != nil {
 		return after, err
 	}
-	for _, c := range cats {
-		if c.IsIncome {
-			continue
-		}
-		extID, perr := vo.ParseId(c.ID)
-		if perr != nil {
-			return after, perr
-		}
-		if skip[extID] {
-			continue
-		}
-		key := sortkey.Key("")
-		if !c.IsArchived {
-			next, kerr := nextSeedKey(after)
-			if kerr != nil {
-				return after, kerr
+	for _, wantIncome := range []bool{false, true} {
+		for _, c := range cats {
+			if c.IsIncome != wantIncome {
+				continue
 			}
-			key, after = next, next
-		}
-		el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, model.ElementCategory, nil, nil, now)
-		el.SetSortKey(key)
-		if serr := s.elements.SaveElement(ctx, el); serr != nil {
-			return after, serr
+			extID, perr := vo.ParseId(c.ID)
+			if perr != nil {
+				return after, perr
+			}
+			if skip[extID] {
+				continue
+			}
+			typ := model.ElementCategory
+			if c.IsIncome {
+				typ = model.ElementIncomeCategory
+			}
+			key := sortkey.Key("")
+			if !c.IsArchived {
+				next, kerr := nextSeedKey(after)
+				if kerr != nil {
+					return after, kerr
+				}
+				key, after = next, next
+			}
+			el := model.NewBudgetElement(s.elements.NextIdentity(), budgetID, extID, typ, nil, nil, now)
+			el.SetSortKey(key)
+			if serr := s.elements.SaveElement(ctx, el); serr != nil {
+				return after, serr
+			}
 		}
 	}
 	return after, nil

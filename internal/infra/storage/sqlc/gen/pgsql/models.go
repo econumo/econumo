@@ -63,6 +63,8 @@ type Budget struct {
 	StartedAt  time.Time
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+	EndedAt    *time.Time
+	IsArchived bool
 }
 
 type BudgetsAccess struct {
@@ -72,6 +74,12 @@ type BudgetsAccess struct {
 	IsAccepted bool
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
+}
+
+type BudgetsAccount struct {
+	BudgetID  string
+	AccountID string
+	CreatedAt time.Time
 }
 
 type BudgetsElement struct {
@@ -108,11 +116,6 @@ type BudgetsEnvelope struct {
 type BudgetsEnvelopesCategory struct {
 	BudgetEnvelopeID string
 	CategoryID       string
-}
-
-type BudgetsExcludedAccount struct {
-	BudgetID  string
-	AccountID string
 }
 
 type BudgetsFolder struct {

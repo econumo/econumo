@@ -105,14 +105,30 @@ func init() {
 	const mcpBudgetID = "b0000000-0000-0000-0000-0000000000c1"
 	register(Scenario{Name: "budget", Steps: []Step{
 		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
-			Body: map[string]any{"id": mcpBudgetID, "name": "MCP Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01"}},
+			Body: map[string]any{"id": mcpBudgetID, "name": "MCP Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}},
 		{Label: "get-budget",
 			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"2024-04"}}}`},
 		{Label: "get-budget-bad-month",
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"` + mcpBudgetID + `","month":"junk"}}}`},
 	}})
 
-	// budget_write drives all eight budget create/configure MCP tools end to
+	// budget_plan REST-seeds a budget with a fixed 2024 window plus one planned
+	// value, then drives get_budget_plan for a valid window and an out-of-range
+	// months (the REST read's own scenario pins the full cell math; this pins
+	// the MCP edge + schema).
+	const mcpPlanBudgetID = "b0000000-0000-0000-0000-0000000000c9"
+	register(Scenario{Name: "budget_plan", Steps: []Step{
+		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
+			Body: map[string]any{"id": mcpPlanBudgetID, "name": "MCP Plan Budget", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}},
+		{Label: "seed-limit", Method: "POST", Path: "/api/v1/budget/set-limit",
+			Body: map[string]any{"budgetId": mcpPlanBudgetID, "elementId": apiparity.CatFood, "period": "2024-05-01", "amount": "300"}},
+		{Label: "get-budget-plan",
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":3}}}`},
+		{Label: "get-budget-plan-bad-months",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"get_budget_plan","arguments":{"budget_id":"` + mcpPlanBudgetID + `","from_month":"2024-04","months":40}}}`},
+	}})
+
+	// budget_write drives all nine budget create/configure MCP tools end to
 	// end, purely via MCP calls on top of the apiparity fixture (owner's seeded
 	// account + categories). create_budget/create_folder/create_envelope mint
 	// their own entity ids server-side (internal/budget/mcp/mcp.go), unlike the
@@ -120,17 +136,18 @@ func init() {
 	// structuredContent (extractMCPID) and threaded into later steps via named
 	// {{vars}} rather than the single-slot %s convention the other scenarios
 	// use — budget_id alone is needed by six later steps, which a single slot
-	// can't hold alongside folder_id/element_id. The update_budget step
-	// exercises the ExcludedAccounts round-trip fix directly: it runs AFTER
-	// set_budget_account_included excludes the owner's account, and the closing
-	// get_budget asserts the exclusion survived the rename (had the tool passed
-	// an empty ExcludedAccounts list, UpdateBudget's authoritative-replace
-	// semantics — internal/budget/crud.go — would have silently re-included it).
-	// Ends with one domain-error path: set_limit for a month before the
-	// budget's start.
+	// can't hold alongside folder_id/element_id. create_budget seeds the
+	// budget's membership via account_ids (the owner's fixture account);
+	// remove_budget_account then add_budget_account exercise the explicit
+	// membership tools end to end — removal succeeds because the owner's only
+	// transaction on that account predates the budget's 2024-05-01 start, so
+	// nothing locks it. update_budget passes no account_ids, and the closing
+	// get_budget confirms membership was left untouched by the rename. Ends
+	// with one domain-error path: set_limit for a month before the budget's
+	// start.
 	register(Scenario{Name: "budget_write", Steps: []Step{
 		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
-			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01"}}}`},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP New Budget","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01","account_ids":["` + apiparity.OwnerAccount + `"]}}}`},
 		{Label: "create-folder", CaptureAs: "folder_id", MCPCapturePath: []string{"item", "id"},
 			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"create_folder","arguments":{"budget_id":"{{budget_id}}","name":"Bills"}}}`},
 		{Label: "update-folder",
@@ -139,18 +156,46 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_envelope","arguments":{"budget_id":"{{budget_id}}","name":"Groceries","icon":"cart","currency_id":"` + apiparity.USD + `","folder_id":"{{folder_id}}","category_ids":["` + apiparity.CatFood + `"]}}}`},
 		{Label: "move-element",
 			RPC: `{"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"move_element","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","folder_id":"{{folder_id}}"}}}`},
+		// category_ids used to include CatSalary (income) here too; it was
+		// silently ignored (never rendered in children — see budget_write.golden),
+		// so dropping it is byte-identical, and envelope homogeneity now rejects
+		// a mixed-side category set outright. The REST twin
+		// (catalogue_budget_structure.go) carries the analogous fix; the new
+		// budget_income_elements scenario carries the rejection coverage.
 		{Label: "update-envelope",
-			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `","` + apiparity.CatSalary + `"],"archived":false}}}`},
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"update_envelope","arguments":{"budget_id":"{{budget_id}}","id":"{{element_id}}","name":"Groceries Renamed","icon":"cart","currency_id":"` + apiparity.USD + `","category_ids":["` + apiparity.CatFood + `"],"archived":false}}}`},
 		{Label: "set-limit",
 			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-05","amount":"150.00"}}}`},
-		{Label: "set-budget-account-included",
-			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"set_budget_account_included","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `","included":false}}}`},
+		{Label: "remove-budget-account",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"remove_budget_account","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `"}}}`},
+		{Label: "add-budget-account",
+			RPC: `{"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"add_budget_account","arguments":{"budget_id":"{{budget_id}}","account_id":"` + apiparity.OwnerAccount + `"}}}`},
 		{Label: "update-budget",
 			RPC: `{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"update_budget","arguments":{"budget_id":"{{budget_id}}","name":"MCP New Budget Renamed","currency_id":"` + apiparity.USD + `"}}}`},
 		{Label: "get-budget-after",
 			RPC: `{"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"{{budget_id}}","month":"2024-05"}}}`},
 		{Label: "set-limit-before-start",
 			RPC: `{"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"{{element_id}}","month":"2024-01","amount":"10.00"}}}`},
+	}})
+
+	// budget_lifecycle drives the end-date/archive/clone tools: set an end month,
+	// archive, prove a write is refused while archived (the coded 403 rendered
+	// through MapErr), unarchive, clone, and read the copy back.
+	register(Scenario{Name: "budget_lifecycle", Steps: []Step{
+		{Label: "create-budget", CaptureAs: "budget_id", MCPCapturePath: []string{"item", "meta", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget","arguments":{"name":"MCP Lifecycle","currency_id":"` + apiparity.USD + `","start_date":"2024-05-01","account_ids":["` + apiparity.OwnerAccount + `"]}}}`},
+		{Label: "set-end-date",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"update_budget","arguments":{"budget_id":"{{budget_id}}","name":"MCP Lifecycle","currency_id":"` + apiparity.USD + `","end_date":"2024-07-01"}}}`},
+		{Label: "archive-budget",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"archive_budget","arguments":{"budget_id":"{{budget_id}}"}}}`},
+		{Label: "set-limit-archived",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"set_limit","arguments":{"budget_id":"{{budget_id}}","element_id":"` + apiparity.CatFood + `","month":"2024-05","amount":"10.00"}}}`},
+		{Label: "unarchive-budget",
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"unarchive_budget","arguments":{"budget_id":"{{budget_id}}"}}}`},
+		{Label: "clone-budget",
+			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"clone_budget","arguments":{"budget_id":"{{budget_id}}","new_id":"b0000000-0000-0000-0000-0000000000c1","name":"MCP Lifecycle Copy","with_limits":true}}}`},
+		{Label: "get-clone",
+			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"b0000000-0000-0000-0000-0000000000c1","month":"2024-05"}}}`},
 	}})
 
 	// transactions REST-seeds a FRESH account (so list_transactions starts
@@ -248,6 +293,38 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `","label_ids":["{{label2_id}}"]}}}`},
 		{Label: "update-empty-label-ids-clears",
 			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"update_transaction","arguments":{"id":"{{tx_id}}","type":"expense","amount":"20.00","account_id":"{{account_id}}","date":"2024-04-03","category_id":"` + apiparity.CatFood + `","label_ids":[]}}}`},
+	}})
+
+	// One successful merge per kind, plus a refusal, so every merge_* tool has a
+	// pinned envelope. Each kind seeds two rows over REST and names them, since a
+	// merge needs two ids live at once.
+	register(Scenario{Name: "classification_merge", Steps: []Step{
+		{Label: "seed-cat-src", Method: "POST", Path: "/api/v1/category/create-category", CaptureAs: "cat_src", CaptureID: true,
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Food", "type": "expense", "icon": "food"}},
+		{Label: "seed-cat-dst", Method: "POST", Path: "/api/v1/category/create-category", CaptureAs: "cat_dst", CaptureID: true,
+			Body: map[string]any{"id": "c0000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Groceries", "type": "expense", "icon": "cart"}},
+		{Label: "merge-category", RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"merge_category","arguments":{"sourceId":"{{cat_src}}","targetId":"{{cat_dst}}"}}}`},
+		{Label: "merge-category-into-itself", RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"merge_category","arguments":{"sourceId":"{{cat_dst}}","targetId":"{{cat_dst}}"}}}`},
+
+		{Label: "seed-tag-src", Method: "POST", Path: "/api/v1/tag/create-tag", CaptureAs: "tag_src", CaptureID: true,
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Tag A"}},
+		{Label: "seed-tag-dst", Method: "POST", Path: "/api/v1/tag/create-tag", CaptureAs: "tag_dst", CaptureID: true,
+			Body: map[string]any{"id": "10000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Tag B"}},
+		{Label: "merge-tag", RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"merge_tag","arguments":{"sourceId":"{{tag_src}}","targetId":"{{tag_dst}}"}}}`},
+
+		{Label: "seed-payee-src", Method: "POST", Path: "/api/v1/payee/create-payee", CaptureAs: "payee_src", CaptureID: true,
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Grocer"}},
+		{Label: "seed-payee-dst", Method: "POST", Path: "/api/v1/payee/create-payee", CaptureAs: "payee_dst", CaptureID: true,
+			Body: map[string]any{"id": "20000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Grocery Store"}},
+		{Label: "merge-payee", RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"merge_payee","arguments":{"sourceId":"{{payee_src}}","targetId":"{{payee_dst}}"}}}`},
+
+		{Label: "seed-label-src", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "lbl_src", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000e1", "name": "MCP Merge Kid A"}},
+		{Label: "seed-label-dst", Method: "POST", Path: "/api/v1/label/create-label", CaptureAs: "lbl_dst", CaptureID: true,
+			Body: map[string]any{"id": "30000000-0000-0000-0000-0000000000e2", "name": "MCP Merge Kids"}},
+		{Label: "merge-label", RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"merge_label","arguments":{"sourceId":"{{lbl_src}}","targetId":"{{lbl_dst}}"}}}`},
+
+		{Label: "list-categories-after-merge", RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_categories","arguments":{}}}`},
 	}})
 
 	register(Scenario{Name: "prompts", Steps: []Step{

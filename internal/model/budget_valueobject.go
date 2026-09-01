@@ -14,6 +14,10 @@ const (
 	ElementEnvelope ElementType = 0
 	ElementCategory ElementType = 1
 	ElementTag      ElementType = 2
+	// Income-side types (plan view). Values are persisted in
+	// budgets_elements.type and therefore frozen.
+	ElementIncomeCategory ElementType = 3
+	ElementIncomeEnvelope ElementType = 4
 )
 
 // UncategorizedID is the wire id of the presentation-only budget element that
@@ -32,12 +36,17 @@ const (
 	UncategorizedIcon = "question_mark"
 )
 
-var elementAliases = [...]string{ElementEnvelope: "envelope", ElementCategory: "category", ElementTag: "tag"}
+var elementAliases = [...]string{
+	ElementEnvelope: "envelope", ElementCategory: "category", ElementTag: "tag",
+	ElementIncomeCategory: "income_category", ElementIncomeEnvelope: "income_envelope",
+}
 
-// ElementTypeFromAlias parses an element type alias.
+// ElementTypeFromAlias parses an element type alias. Only the original three
+// are valid wire inputs (drill-down requests); the income types are internal,
+// so existing validation output is unchanged.
 func ElementTypeFromAlias(alias string) (ElementType, error) {
 	for v, a := range elementAliases {
-		if a == alias {
+		if a == alias && ElementType(v) <= ElementTag {
 			return ElementType(v), nil
 		}
 	}
@@ -56,6 +65,28 @@ func (t ElementType) Alias() string {
 }
 
 func (t ElementType) Int16() int16 { return int16(t) }
+
+// IsIncomeSide reports whether the element belongs to the plan view's income
+// area. Tags and the original envelope/category types are expense-side.
+func (t ElementType) IsIncomeSide() bool {
+	return t == ElementIncomeCategory || t == ElementIncomeEnvelope
+}
+
+// EnvelopeTypeFromSide maps a create-envelope side alias to the element type
+// that stores it. Absent ("") means expense, keeping the wire contract for
+// existing clients. Creating income envelopes is deliberately switched off for
+// now: "income" is rejected like any unknown alias, so no client can mint an
+// ElementIncomeEnvelope row until the feature ships end-to-end. Existing rows
+// of that type stay first-class everywhere else (plan view, update, move).
+func EnvelopeTypeFromSide(side string) (ElementType, error) {
+	switch side {
+	case "", "expense":
+		return ElementEnvelope, nil
+	}
+	return 0, errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "side", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+	})
+}
 
 // BudgetRole is a budget participant's role: owner=-1, admin=0, user=1, guest=2.
 // owner is synthetic — never stored (only admin/user/guest are persisted); the

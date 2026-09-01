@@ -272,8 +272,10 @@ via its documented `NOT_WIRED` list.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
-Translations live in two catalogues, `locales/{en,ru}.json`, shared by both
-stacks — no per-stack duplication. The Go side embeds them (`package locales`,
+Translations live in per-language catalogues `locales/<lang>.json` — currently
+11: `de`, `en`, `es`, `fr`, `it`, `nl`, `pl`, `pt`, `ru`, `uk`, `zh` — shared by
+both stacks, no per-stack duplication. Every catalogue must carry every key
+(`en` is the reference; enforced by `internal/test/i18ntest`). The Go side embeds them (`package locales`,
 `go:embed *.json` in `locales/embed.go`, read via `locales.FS`); the SPA
 imports the same files through Vite JSON imports for `react-i18next`. Keys are
 namespaced to mirror `web/src/features/<name>` plus three cross-cutting
@@ -282,8 +284,9 @@ above), and `emails` (backend-rendered mail). `{var}` placeholders use the same
 `{name}` syntax in both stacks. Adding a language means a new
 `locales/<lang>.json` plus entries in `i18n.Supported`
 (`internal/infra/i18n/i18n.go`), registering the catalogue in `resources`
-(`web/src/app/i18n.ts`), `getLocaleOptions()` (`web/src/lib/config.ts`),
-and the `languages` list in `internal/test/i18ntest`.
+(`web/src/app/i18n.ts`) and `getLocaleOptions()` (`web/src/lib/config.ts`);
+the `internal/test/i18ntest` guards derive their language list from
+`i18n.Supported`, so they cover the new catalogue automatically.
 - **Backend runtime**: `internal/infra/i18n` (`i18n.T(lang, key, params)`) translates
   server-rendered text — the password-reset email, and the error `message`/`errors`
   strings on both edges (REST envelope and MCP tool errors) for errors that carry a
@@ -308,7 +311,7 @@ and the `languages` list in `internal/test/i18ntest`.
   as the stored-language fallback for header-less authenticated requests on
   both edges, and reserved for future background email rendering).
 - **Guards** (`internal/test/i18ntest`, run inside `make go-test`): catalogue
-  key parity between `en`/`ru`, `{var}` placeholder-set parity per key,
+  key parity of every language against `en`, `{var}` placeholder-set parity per key,
   frontend-source `t()`-call key coverage against the catalogue, two-way
   coverage between `errs.AllCodes` and the `errors.*` catalogue keys (every
   registered code has a translation and vice versa), and that every mailer
@@ -350,6 +353,16 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+
+### Manual regression test plan
+
+`docs/regression-test-plan.md` is the canonical manual regression checklist
+(all modules, mobile/tablet/desktop viewports, multi-user sharing scenarios).
+**Any change to user-observable behavior MUST update the affected checklist
+items in the same PR** — add cases for new features, edit changed flows,
+delete removed ones, and add an item for any regression that escaped to
+production. Keep items phrased as verifiable outcomes and keep the 📱
+(mobile/tablet) markers accurate.
 
 Coverage gate: `make go-test` enforces a cross-package minimum (`GO_COVER_MIN`,
 default 80). CI surfaces the coverage % in the Actions job summary plus an HTML
@@ -526,6 +539,11 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
+- Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
+  the boot runner invokes the named CLI command in version order between SQL files, records the
+  version only on success, and gives it no surrounding transaction — every `migration:*` command
+  must be idempotent. `serve` and `data:import-sqlite` pass `cli.MigrationCommandRunner`; test
+  databases pass `migrate.NoCommands`.
 
 ## CLI / management commands
 
@@ -546,6 +564,7 @@ currency:add <code> [name] [fraction-digits]
 token:purge [days]
 data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
+migration:zero-deleted-accounts
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -569,6 +588,10 @@ bookkeeping tables excluded. It aborts if the target already holds data unless
 already be on the current schema — boot the current econumo binary against it
 once before importing — and the command refuses with a clear error on a
 schema-version mismatch between source and target.
+
+`migration:zero-deleted-accounts` writes a "Balance adjustment (account
+deleted)" correction so every deleted account's balance is zero; idempotent;
+also invoked automatically at boot as migration step `20260817000001`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
@@ -636,7 +659,7 @@ data unreadable. Most are also asserted by the test suite.
 - JSON is encoded with HTML escaping disabled (`/`, `<`, `>` appear literally).
 - **Server-rendered error language** (handled-error envelope only): `message` and the per-field
   `errors` strings are rendered server-side in the caller's language when the underlying error
-  carries a catalogue code (`errors.*` keys in `locales/{en,ru}.json`; registry:
+  carries a catalogue code (`errors.*` keys in every `locales/<lang>.json`; registry:
   `internal/shared/errs/codes.go`, `AllCodes`); errors without a code keep their literal English
   text. The language is `reqctx.Language`: `Accept-Language` (the SPA sends its selected locale
   on every request) → the authenticated user's stored `users.language` (resolved in the auth
@@ -691,6 +714,30 @@ data unreadable. Most are also asserted by the test suite.
   so a hard delete would silently destroy every account and transaction in that currency. A
   deleted currency still appears in `get-currency-list`/`get-currency-rate-list` so entities
   that hold it keep resolving their symbol and rate.
+- **Budget account membership** is explicit (`budgets_accounts`): a budget counts exactly its
+  member accounts, soft-deleted members included (their history keeps counting so
+  `budgetedBefore`/`spentBefore` share one population). An account can be removed only while it
+  has no transactions between the budget start and the first of the caller's current month
+  (`budget.account_not_removable`); a departing participant's accounts leave with them.
+  `create-budget` requires ≥1 owned `accountIds`; `update-budget.accountIds` is optional (absent
+  = untouched, present = replace-set over the caller's own accounts). Deleting an account
+  auto-writes a "Balance adjustment (account deleted)" correction so deleted accounts always
+  have zero balance, and the invariant is **self-healing**: creating a transaction against a
+  deleted account is rejected (`transaction.account_deleted`), and deleting/editing a
+  transaction that still touches one (e.g. an old transfer to a live account) re-zeroes the
+  deleted side in the same DB transaction with a correction dated at the affected transaction's
+  `spent_at` ("Balance adjustment (deleted transaction)" / "(edited transaction)").
+- **Budget lifecycle**: a budget may carry an end month (`ended_at`, inclusive first-of-month;
+  `endedAt` on the wire, `""` when unset) and an archived flag (`isArchived` 0/1). Archived =
+  hidden + read-only: every budget write returns a coded 403 `budget.archived` except
+  unarchive/delete/revoke/decline/accept (and archive itself, idempotent). Readers clamp periods
+  to the end month; `set-limit` refuses periods past it; the membership removal window ends at
+  `min(current month, end month + 1)`. `clone-budget` is an owner-or-admin single-transaction deep
+  copy (structure, sharing, membership, optionally plans from a chosen start month; envelope
+  elements' `external_id` remapped) — the copy starts open-ended and unarchived, owned by the
+  cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
+  owner joins the copy's sharing set as an accepted admin, so every member account keeps a
+  participant backing it.
 
 ## Deployment
 

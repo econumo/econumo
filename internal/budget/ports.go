@@ -32,10 +32,16 @@ type UserLookup interface {
 	ClearActiveBudget(ctx context.Context, userID, budgetID vo.Id) error
 }
 
-// AccountLookup resolves accounts owned by the budget participants + ownership.
+// AccountLookup resolves the budget's member accounts + ownership. AccountsByIDs
+// deliberately returns soft-deleted accounts too: a deleted member keeps
+// counting in the budget.
 type AccountLookup interface {
-	AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]model.AccountView, error)
+	AccountsByIDs(ctx context.Context, ids []vo.Id) ([]model.AccountView, error)
 	AccountOwner(ctx context.Context, accountID vo.Id) (vo.Id, error)
+	// OwnedLiveAccountIDs returns the accounts the user OWNS and has not
+	// deleted — accounts merely shared with them are excluded. Feeds the
+	// accept-access membership seeding.
+	OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error)
 }
 
 // CurrencyLookup resolves a currency id by code (createBudget default

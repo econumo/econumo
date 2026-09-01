@@ -17,11 +17,14 @@ var sqliteFS embed.FS
 //go:embed pgsql/*.sql
 var pgsqlFS embed.FS
 
-// File is one migration file: Version is the filename without extension
-// (e.g. "0001_baseline"), SQL is its contents.
+// File is one migration step: Version is the filename without extension
+// (e.g. "0001_baseline") for a SQL migration, SQL its contents; a registered
+// command step instead carries Command and an empty SQL (mutually exclusive —
+// see migrate.Migration).
 type File struct {
 	Version string
 	SQL     string
+	Command string
 }
 
 func SQLite() []File { return load(sqliteFS, "sqlite") }
@@ -46,6 +49,9 @@ func load(fsys embed.FS, dir string) []File {
 			Version: strings.TrimSuffix(e.Name(), ".sql"),
 			SQL:     string(b),
 		})
+	}
+	for _, c := range commandSteps() {
+		out = append(out, File{Version: c.version, Command: c.name})
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Version < out[j].Version })
 	return out

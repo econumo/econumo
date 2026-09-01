@@ -1,0 +1,27 @@
+== create-budget POST /api/v1/budget/create-budget [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000ee","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Income Plan","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":null,"income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","available":"-12.5","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111"}],"labels":[]}}}}
+
+== get-budget-baseline GET /api/v1/budget/get-budget?id=b0000000-0000-0000-0000-0000000000ee&date=2024-04-15 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000ee","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Income Plan","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"0","endBalance":"987.5","income":"1000","expenses":"12.5","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":null,"position":0,"budgeted":"0","available":"-12.5","spent":"12.5","budgetSpent":"12.5","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111"}],"labels":[]}}}}
+
+== create-folder POST /api/v1/budget/create-folder [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"bf000000-0000-0000-0000-0000000000ee","name":"Living","position":0}}}
+
+== seed-expense-folder POST /api/v1/budget/move-element [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== err:expense-envelope-income-child POST /api/v1/budget/create-envelope [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"categories":["An envelope cannot contain both income and expense categories"]}}
+
+== err:income-envelope-not-allowed POST /api/v1/budget/create-envelope [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"side":["The value you selected is not a valid choice."]}}
+
+== err:income-into-expense-folder POST /api/v1/budget/move-element [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"folderId":["A folder cannot contain both income and expenses"]}}
+
+== set-income-limit POST /api/v1/budget/set-limit [owner] -> 200
+{"success":true,"message":"","data":{}}
+
+== get-budget-after GET /api/v1/budget/get-budget?id=b0000000-0000-0000-0000-0000000000ee&date=2024-05-15 [owner] -> 200
+{"success":true,"message":"","data":{"item":{"meta":{"id":"b0000000-0000-0000-0000-0000000000ee","ownerUserId":"11111111-1111-1111-1111-111111111111","name":"Income Plan","startedAt":"<datetime>","endedAt":"","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"access":[{"user":{"id":"11111111-1111-1111-1111-111111111111","avatar":"diamond:sky","name":"User 1111"},"role":"owner","isAccepted":1}]},"filters":{"periodStart":"<datetime>","periodEnd":"<datetime>","accounts":[{"id":"a0000000-0000-0000-0000-000000000001","removable":false}]},"balances":[{"currencyId":"dffc2a06-6f29-4704-8575-31709adee926","startBalance":"987.5","endBalance":"987.5","income":"0","expenses":"0","exchanges":"0","holdings":"0"}],"currencyRates":[],"structure":{"folders":[{"id":"bf000000-0000-0000-0000-0000000000ee","name":"Living","position":0}],"elements":[{"id":"c0000000-0000-0000-0000-000000000001","type":1,"name":"Food","icon":"i","currencyId":"dffc2a06-6f29-4704-8575-31709adee926","isArchived":0,"folderId":"bf000000-0000-0000-0000-0000000000ee","position":0,"budgeted":"0","available":"-12.5","spent":"0","budgetSpent":"0","children":[],"ownerUserId":"11111111-1111-1111-1111-111111111111"}],"labels":[]}}}}
+

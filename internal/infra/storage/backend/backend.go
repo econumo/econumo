@@ -41,11 +41,13 @@ type DBTX interface {
 
 // Migration is a single forward-only schema change. Version is an ordered,
 // comparable identifier (e.g. "0001_baseline"); Up is the SQL applied inside a
-// transaction by the migration runner. Migrations are dialect-specific and live
-// embedded in their owning Backend.
+// transaction by the migration runner, or Command names a CLI command step
+// (mutually exclusive with Up — see migrate.Migration). Migrations are
+// dialect-specific and live embedded in their owning Backend.
 type Migration struct {
 	Version string
 	Up      string
+	Command string
 }
 
 // Backend abstracts a database engine. A Backend knows its driver name, how to

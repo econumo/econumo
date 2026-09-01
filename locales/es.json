@@ -12,7 +12,7 @@
       "active_only": "Solo activos"
     },
     "nav": {
-      "budget": "Presupuesto",
+      "budget": "Presupuesto y plan",
       "onboarding": "Primeros pasos",
       "create_account": "Añadir cuenta",
       "collapse_menu": "Contraer el menú",
@@ -804,7 +804,8 @@
       "budget_form": {
         "accounts": "Cuentas",
         "accounts_included": "{count} de {total} incluidas",
-        "accounts_hidden": "En carpetas ocultas"
+        "accounts_hidden": "En carpetas ocultas",
+        "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar"
       },
       "create_budget_form": {
         "header": "Nuevo presupuesto"
@@ -849,6 +850,18 @@
       "expense_widget": {
         "header": "Progreso de los gastos",
         "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}"
+      },
+      "duplicate_budget_form": {
+        "header": "Duplicar presupuesto",
+        "copy_name": "{name} (copia)",
+        "copy_plans": "Copiar planes",
+        "start_this_month": "Empezar desde este mes"
+      },
+      "complete_budget_form": {
+        "header": "Finalizar presupuesto",
+        "end_month": "Último mes",
+        "continue_copy": "Continuar en una copia desde este mes",
+        "copy_plans": "Copiar planes"
       }
     },
     "form": {
@@ -868,6 +881,15 @@
             "required_field": "Campo obligatorio",
             "invalid_name": "El nombre de la carpeta debe tener entre 3 y 64 caracteres"
           }
+        },
+        "accounts": {
+          "validation": {
+            "required": "Selecciona al menos una cuenta"
+          }
+        },
+        "end_month": {
+          "label": "Mes final",
+          "none": "Sin fecha de fin"
         }
       },
       "budget_envelope": {
@@ -970,12 +992,65 @@
             "name": "Total",
             "expenses": "Gastos totales"
           }
+        },
+        "archived_banner": "Este presupuesto está archivado y es de solo lectura",
+        "nav": {
+          "prev": "Desplazar a meses anteriores",
+          "next": "Desplazar a meses posteriores"
+        }
+      },
+      "plan": {
+        "toggle": {
+          "budget": "Presupuesto",
+          "plan": "Plan"
+        },
+        "section": {
+          "income": "Ingresos",
+          "expenses": "Gastos",
+          "archived": "Archivado"
+        },
+        "nav": {
+          "prev": "Meses anteriores",
+          "next": "Meses siguientes"
+        },
+        "cell": {
+          "aria": "{name}, {month}: real {actual}, previsto {planned}"
+        },
+        "fill": {
+          "handle_aria": "Copiar el presupuesto a los meses siguientes"
+        },
+        "paste": {
+          "not_editable": "No se puede pegar aquí: esta celda no es editable.",
+          "invalid": "Nada que pegar: el portapapeles no contiene un importe."
+        },
+        "totals": {
+          "income": "Ingresos",
+          "expenses": "Gastos",
+          "transfers": "Transferencias",
+          "transfers_tooltip": "Entradas {in} · Salidas {out}",
+          "show_transactions": "Mostrar las transacciones",
+          "net": "Neto",
+          "balance": "Saldo"
+        },
+        "density": {
+          "hide_empty": "Ocultar filas vacías",
+          "hidden": "{count} ocultas",
+          "show": "Mostrar"
+        },
+        "menu": {
+          "move_to_folder": "Mover a carpeta…",
+          "no_folder": "Sin carpeta"
+        },
+        "edit": {
+          "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
+          "no_access_category": "No puedes editar esta categoría: pertenece a otro usuario.",
+          "no_access_tag": "No puedes editar esta etiqueta: pertenece a otro usuario."
         }
       },
       "settings": {
-        "menu_item": "Presupuestos",
-        "header": "Presupuestos",
-        "info": "Aquí están todos tus presupuestos. Crea presupuestos separados para objetivos distintos y compártelos con tu familia.",
+        "menu_item": "Presupuestos y planes",
+        "header": "Presupuestos y planes",
+        "info": "Aquí están todos tus presupuestos. Crea presupuestos para objetivos distintos, compártelos con tu familia y planifica tu presupuesto para los próximos meses.",
         "create_budget": "Crear presupuesto",
         "edit_modal": {
           "header": "Editar el presupuesto"
@@ -999,12 +1074,28 @@
         },
         "list_actions": {
           "access": "Control de acceso",
-          "go_to": "Abrir el presupuesto"
+          "go_to": "Abrir el presupuesto",
+          "duplicate": "Duplicar…",
+          "complete": "Finalizar…",
+          "archive": "Archivar",
+          "unarchive": "Desarchivar"
+        },
+        "archived_group": {
+          "header": "Archivados"
         }
       }
     }
   },
   "classifications": {
+    "common": {
+      "merge": {
+        "action": "Combinar con…",
+        "title": "Combinar «{name}» con",
+        "confirm": "Combinar",
+        "warning": "Todas las transacciones de «{name}» se moverán y «{name}» se eliminará.",
+        "envelope_info": "Si ambos están en sobres distintos, actualiza primero tu presupuesto para no perder tus importes planificados, ya que al combinar los límites se suman."
+      }
+    },
     "categories": {
       "pages": {
         "settings": {
@@ -1362,14 +1453,19 @@
       "envelope_name_length": "El nombre del sobre debe tener entre {min} y {max} caracteres.",
       "invalid_element_type_alias": "No existe ningún tipo de elemento de presupuesto con el alias {alias}.",
       "invalid_role_alias": "No existe ningún rol de usuario de presupuesto con el alias {alias}.",
-      "transaction_filter_required": "La validación falló."
+      "transaction_filter_required": "La validación falló.",
+      "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
+      "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
+      "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
+      "accounts_required": "Selecciona al menos una cuenta",
+      "archived": "Este presupuesto está archivado",
+      "end_before_start": "El mes final es anterior al inicio del presupuesto"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",
       "type_invalid": "El tipo de categoría no existe.",
-      "replace_id_required": "replaceId es obligatorio cuando mode=replace.",
       "not_found": "Categoría no encontrada.",
-      "cannot_be_replaced": "Las categorías no se pueden reemplazar.",
+      "cannot_be_merged": "Las categorías seleccionadas no se pueden combinar.",
       "list_empty": "La lista de categorías está vacía."
     },
     "connection": {
@@ -1377,7 +1473,8 @@
       "invalid_role_alias": "No existe ningún rol de acceso a la cuenta con el alias {alias}.",
       "invalid_code": "El código de conexión es incorrecto.",
       "inviting_yourself": "¿Invitarte a ti mismo?",
-      "deleting_yourself": "¿Eliminarte a ti mismo?"
+      "deleting_yourself": "¿Eliminarte a ti mismo?",
+      "invite_not_found": "El código de invitación no es válido o ha caducado."
     },
     "currency": {
       "already_exists": "La moneda ya existe.",
@@ -1392,16 +1489,19 @@
     },
     "label": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
+      "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
       "already_exists": "El beneficiario ya existe.",
+      "cannot_be_merged": "Los beneficiarios seleccionados no se pueden combinar.",
       "list_empty": "La lista de beneficiarios está vacía."
     },
     "tag": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",
       "already_exists": "La etiqueta ya existe.",
+      "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
     },
     "token": {
@@ -1414,7 +1514,8 @@
       "account_not_available": "Esta cuenta no está disponible para esta operación.",
       "item_not_available": "Esta transacción no está disponible para esta operación.",
       "invalid_import_file": "Sube un archivo CSV válido.",
-      "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes."
+      "too_many_labels": "Una transacción puede tener como máximo 50 etiquetas de informes.",
+      "account_deleted": "Esta cuenta ha sido eliminada."
     },
     "user": {
       "report_period_invalid": "El periodo del informe es incorrecto.",

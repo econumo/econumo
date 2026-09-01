@@ -203,3 +203,27 @@ it('reveals the server address field through the custom-server disclosure', asyn
   await user.click(screen.getByRole('button', { name: /custom server/i }))
   expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
 })
+
+it('submits with the custom-server section collapsed and custom API allowed', async () => {
+  // Regression: register('host') runs even while the section is collapsed, so
+  // its rules must not block the submit when selfHosted is off — this used to
+  // silently swallow every login on a fresh self-hosted browser.
+  window.econumoConfig = { ALLOW_CUSTOM_API: 'true' }
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'jwt',
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderLogin()
+  expect(screen.queryByLabelText('Server address')).not.toBeInTheDocument()
+  await user.type(screen.getByLabelText('Email'), 'ada@example.test')
+  await user.type(screen.getByLabelText('Password'), 'secret12')
+  await user.click(screen.getByRole('button', { name: /sign in/i }))
+  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
+})

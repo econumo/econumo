@@ -24,6 +24,7 @@ import (
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	"github.com/econumo/econumo/internal/test/wiring"
 	apptransaction "github.com/econumo/econumo/internal/transaction"
 	transactionrepo "github.com/econumo/econumo/internal/transaction/repo"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -50,8 +51,8 @@ func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	labelRepo := labelrepo.NewRepo(db.Engine, txm)
 	labelSvc := applabel.NewService(labelRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), labelrepo.NewReadRepo(db.Engine, txm), accessResolver)
 	txExport := transactionrepo.NewExportLookup(txRepo, server.NewTransactionCategoryNameLookup(catRepo), server.NewTransactionTagNameLookup(tgRepo), server.NewTransactionPayeeNameLookup(pyRepo), server.NewTransactionLabelNameLookup(labelRepo))
-	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver)
-	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver)
+	catSvc := appcategory.NewService(catRepo, txm, catRepo, clock.New(), categoryrepo.NewReadRepo(db.Engine, txm), accessResolver, wiring.BudgetMerger(db.Engine, txm, clock.New()))
+	tgSvc := apptag.NewService(tgRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), tagrepo.NewReadRepo(db.Engine, txm), accessResolver, wiring.BudgetMerger(db.Engine, txm, clock.New()))
 	pySvc := apppayee.NewService(pyRepo, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(), payeerepo.NewReadRepo(db.Engine, txm), accessResolver)
 	txImportAccounts := server.NewTransactionImportAccounts(accSvc, accountrepo.NewRepo(db.Engine, txm), accountrepo.NewFolderRepo(db.Engine, txm), curLookup, "USD")
 	txImportCategories := server.NewTransactionImportCategories(catSvc, catRepo)
@@ -62,7 +63,7 @@ func newWriteService(t *testing.T, db *dbtest.DB) *apptransaction.Service {
 	return apptransaction.NewService(
 		txRepo, accSvc, accessResolver, accSvc,
 		server.NewUserOwnerLookup(userrepo.NewRepo(db.Engine, txm)),
-		txExport, txImport, nil, txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
+		txExport, txImport, nil, server.NewTransactionAccountZeroer(accSvc), txm, operationrepo.NewGuard(db.Engine, txm), clock.New(),
 	)
 }
 

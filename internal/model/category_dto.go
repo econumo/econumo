@@ -126,22 +126,21 @@ func (r UnarchiveCategoryRequest) Validate() error {
 // ({"data":{}}).
 type UnarchiveCategoryResult struct{}
 
-// Delete modes.
+// Delete modes. "replace" was removed in favour of merge-category, which does
+// the same job completely (it also moves recurring templates and budget limits);
+// it now falls through to the invalid-choice branch below rather than silently
+// degrading into a destructive plain delete.
 const (
-	ModeDelete  = "delete"
-	ModeReplace = "replace"
+	ModeDelete = "delete"
 )
 
-// DeleteCategoryRequest is the delete-category request body. replaceId is
-// nullable; it is required when mode == replace.
+// DeleteCategoryRequest is the delete-category request body.
 type DeleteCategoryRequest struct {
-	Id        string  `json:"id"`
-	Mode      string  `json:"mode"`
-	ReplaceId *string `json:"replaceId"`
+	Id   string `json:"id"`
+	Mode string `json:"mode"`
 }
 
-// Validate enforces id NotBlank, mode NotBlank + one of delete|replace, and
-// replaceId present when mode == replace.
+// Validate enforces id NotBlank and mode NotBlank + "delete".
 func (r DeleteCategoryRequest) Validate() error {
 	var fields []errs.FieldError
 	if strings.TrimSpace(r.Id) == "" {
@@ -149,10 +148,6 @@ func (r DeleteCategoryRequest) Validate() error {
 	}
 	switch r.Mode {
 	case ModeDelete:
-	case ModeReplace:
-		if r.ReplaceId == nil || strings.TrimSpace(*r.ReplaceId) == "" {
-			fields = append(fields, errs.FieldError{Key: "replaceId", Message: "replaceId is required for mode=replace", Code: errs.CodeCategoryReplaceIDRequired})
-		}
 	case "":
 		fields = append(fields, errs.FieldError{Key: "mode", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 	default:
@@ -229,3 +224,28 @@ type MoveCategoryResult struct {
 type GetCategoryListResult struct {
 	Items []CategoryResult `json:"items"`
 }
+
+// MergeCategoryRequest is the merge-category request body: sourceId is absorbed into
+// targetId and then deleted. The fields are named rather than reusing the usual
+// "id" because this also ships as an MCP tool, where which side gets destroyed
+// must be unambiguous to a model choosing arguments.
+type MergeCategoryRequest struct {
+	SourceId string `json:"sourceId"`
+	TargetId string `json:"targetId"`
+}
+
+func (r MergeCategoryRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.SourceId) == "" {
+		fields = append(fields, errs.FieldError{Key: "sourceId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.TargetId) == "" {
+		fields = append(fields, errs.FieldError{Key: "targetId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type MergeCategoryResult struct{}

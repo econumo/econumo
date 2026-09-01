@@ -11,15 +11,20 @@ import { useFolders } from '@/features/accounts/queries'
 
 interface BudgetAccountsFieldProps {
   accounts: AccountDto[]
-  excluded: Set<Id>
+  selected: Set<Id>
+  locked: Set<Id>
   onToggle: (id: Id, included: boolean) => void
 }
 
 const SEARCH_THRESHOLD = 6
 
 // Card-style include/exclude account list for the budget forms: searchable,
-// with accounts that live in hidden folders separated below the rest.
-export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAccountsFieldProps) {
+// with accounts that live in hidden folders separated below the rest. `selected`
+// may hold ids absent from `accounts` (e.g. a deleted member on the update
+// dialog) — those simply render no row, but stay in the set so submitting
+// still round-trips them. The included/total counter therefore counts only
+// members that HAVE a row, or a budget with deleted members reads "6 of 5".
+export function BudgetAccountsField({ accounts, selected, locked, onToggle }: BudgetAccountsFieldProps) {
   const { t } = useTranslation()
   const { data: folders = [] } = useFolders()
   const [search, setSearch] = useState('')
@@ -39,7 +44,8 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
       <span className={`min-w-0 flex-1 truncate text-sm ${dimmed ? 'text-muted-foreground' : ''}`}>{account.name}</span>
       <Switch
         aria-label={`include ${account.name}`}
-        checked={!excluded.has(account.id)}
+        checked={selected.has(account.id)}
+        disabled={locked.has(account.id)}
         onCheckedChange={(checked) => onToggle(account.id, checked === true)}
       />
     </li>
@@ -51,7 +57,7 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
         <Label className="text-[11px] font-normal text-muted-foreground">{t('budgets.modal.budget_form.accounts')}</Label>
         <span className="text-[11px] text-muted-foreground">
           {t('budgets.modal.budget_form.accounts_included', {
-            count: String(accounts.length - excluded.size),
+            count: String(accounts.reduce((n, a) => (selected.has(a.id) ? n + 1 : n), 0)),
             total: String(accounts.length),
           })}
         </span>
@@ -80,6 +86,9 @@ export function BudgetAccountsField({ accounts, excluded, onToggle }: BudgetAcco
           <li className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</li>
         ) : null}
       </ul>
+      {locked.size > 0 ? (
+        <p className="text-[11px] text-muted-foreground">{t('budgets.modal.budget_form.accounts_locked_hint')}</p>
+      ) : null}
     </div>
   )
 }

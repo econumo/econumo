@@ -1,38 +1,30 @@
 -- Budget module queries (PostgreSQL). See the sqlite variant for documentation.
 
 -- name: GetBudgetByID :one
-SELECT id, currency_id, user_id, name, started_at, created_at, updated_at
+SELECT id, currency_id, user_id, name, started_at, created_at, updated_at, ended_at, is_archived
 FROM budgets
 WHERE id = $1;
 
 -- name: ListBudgetsForUser :many
-SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at
+SELECT b.id, b.currency_id, b.user_id, b.name, b.started_at, b.created_at, b.updated_at, b.ended_at, b.is_archived
 FROM budgets b
 WHERE b.user_id = $1
    OR b.id IN (SELECT ba.budget_id FROM budgets_access ba WHERE ba.user_id = $2)
 ORDER BY b.created_at ASC;
 
 -- name: UpsertBudget :exec
-INSERT INTO budgets (id, currency_id, user_id, name, started_at, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO budgets (id, currency_id, user_id, name, started_at, ended_at, is_archived, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT (id) DO UPDATE SET
     currency_id = excluded.currency_id,
     name        = excluded.name,
     started_at  = excluded.started_at,
+    ended_at    = excluded.ended_at,
+    is_archived = excluded.is_archived,
     updated_at  = excluded.updated_at;
 
 -- name: DeleteBudget :exec
 DELETE FROM budgets WHERE id = $1;
-
--- name: ListBudgetExcludedAccountIDs :many
-SELECT account_id FROM budgets_excluded_accounts WHERE budget_id = $1;
-
--- name: AddBudgetExcludedAccount :exec
-INSERT INTO budgets_excluded_accounts (budget_id, account_id) VALUES ($1, $2)
-ON CONFLICT (budget_id, account_id) DO NOTHING;
-
--- name: RemoveBudgetExcludedAccount :exec
-DELETE FROM budgets_excluded_accounts WHERE budget_id = $1 AND account_id = $2;
 
 -- name: ListBudgetAccess :many
 SELECT budget_id, user_id, role, is_accepted, created_at, updated_at
@@ -124,6 +116,13 @@ ON CONFLICT (id) DO UPDATE SET
     sort_key    = excluded.sort_key,
     updated_at  = excluded.updated_at;
 
+-- name: ListBudgetElementsByExternal :many
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE external_id = $1;
+
+-- name: RepointBudgetElement :exec
+UPDATE budgets_elements SET external_id = $1, updated_at = $2 WHERE id = $3;
+
 -- name: DeleteBudgetElement :exec
 DELETE FROM budgets_elements WHERE id = $1;
 
@@ -136,6 +135,10 @@ WHERE e.budget_id = $1 AND l.period = $2;
 -- name: GetBudgetLimit :one
 SELECT id, element_id, period, created_at, updated_at, amount
 FROM budgets_elements_limits WHERE element_id = $1 AND period = $2;
+
+-- name: ListBudgetLimitsByElement :many
+SELECT id, element_id, period, created_at, updated_at, amount
+FROM budgets_elements_limits WHERE element_id = $1;
 
 -- name: UpsertBudgetLimit :exec
 INSERT INTO budgets_elements_limits (id, element_id, period, created_at, updated_at, amount)
@@ -150,3 +153,24 @@ DELETE FROM budgets_elements_limits WHERE id = $1;
 -- name: DeleteBudgetLimitsByBudget :exec
 DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1);
+
+-- name: ListBudgetAccounts :many
+SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id;
+
+-- name: AddBudgetAccount :exec
+INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: RemoveBudgetAccount :exec
+DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
+
+-- name: RemoveBudgetAccountsOwnedBy :exec
+DELETE FROM budgets_accounts
+WHERE budget_id = $1 AND account_id IN (SELECT id FROM accounts WHERE user_id = $2);
+
+-- name: ListBudgetLimitsFrom :many
+SELECT l.id, l.element_id, l.period, l.created_at, l.updated_at, l.amount
+FROM budgets_elements_limits l
+JOIN budgets_elements e ON e.id = l.element_id
+WHERE e.budget_id = $1 AND l.period >= $2
+ORDER BY l.period, l.id;

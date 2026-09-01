@@ -147,6 +147,28 @@ definitions:
       type:
         type: integer
     type: object
+  model.AddAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.AddAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
+  model.ArchiveBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.ArchiveBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.ArchiveCategoryRequest:
     properties:
       id:
@@ -188,6 +210,13 @@ definitions:
       rate:
         type: string
     type: object
+  model.BudgetAccountFilter:
+    properties:
+      id:
+        type: string
+      removable:
+        type: boolean
+    type: object
   model.BudgetFolderResult:
     properties:
       id:
@@ -196,6 +225,29 @@ definitions:
         type: string
       position:
         type: integer
+    type: object
+  model.BudgetPlanResult:
+    properties:
+      currencyRates:
+        items:
+          $ref: '#/definitions/model.PlanMonthRatesResult'
+        type: array
+      meta:
+        $ref: '#/definitions/model.MetaResult'
+      months:
+        items:
+          type: string
+        type: array
+      openingBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      structure:
+        $ref: '#/definitions/model.PlanStructureResult'
+      transfers:
+        items:
+          $ref: '#/definitions/model.PlanMonthTransfersResult'
+        type: array
     type: object
   model.BudgetResult:
     properties:
@@ -225,6 +277,13 @@ definitions:
       currencyId:
         type: string
       description:
+        type: string
+      direction:
+        description: |-
+          Direction is present only on rows of the transfers selector: "out" when
+          the included account is the source, "in" when it is the recipient —
+          Amount/CurrencyId are that side's. Omitted on every other list so their
+          bytes are unchanged.
         type: string
       id:
         type: string
@@ -293,6 +352,24 @@ definitions:
         type: string
       type:
         type: integer
+    type: object
+  model.CloneBudgetRequest:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+      newId:
+        type: string
+      startDate:
+        type: string
+      withLimits:
+        type: boolean
+    type: object
+  model.CloneBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetResult'
     type: object
   model.CompleteOnboardingResult:
     properties:
@@ -408,12 +485,16 @@ definitions:
     type: object
   model.CreateBudgetRequest:
     properties:
-      currencyId:
-        type: string
-      excludedAccounts:
+      accountIds:
+        description: |-
+          AccountIds are the budget's initial member accounts. At least one owned,
+          non-deleted account is required — enforced as a coded error in the use
+          case, not here, so the wire carries the catalogue code.
         items:
           type: string
         type: array
+      currencyId:
+        type: string
       id:
         type: string
       name:
@@ -481,6 +562,12 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      side:
+        description: |-
+          Side selects the envelope's (immutable) side: "" or "expense" (default).
+          "income" is reserved for the plan view's income envelopes and currently
+          rejected (see EnvelopeTypeFromSide).
         type: string
     type: object
   model.CreateEnvelopeResult:
@@ -763,8 +850,6 @@ definitions:
         type: string
       mode:
         type: string
-      replaceId:
-        type: string
     type: object
   model.DeleteCategoryResult:
     type: object
@@ -846,23 +931,11 @@ definitions:
       item:
         $ref: '#/definitions/model.TransactionResult'
     type: object
-  model.ExcludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  model.ExcludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/model.MetaResult'
-    type: object
   model.FiltersResult:
     properties:
-      excludedAccountsIds:
+      accounts:
         items:
-          type: string
+          $ref: '#/definitions/model.BudgetAccountFilter'
         type: array
       periodEnd:
         type: string
@@ -889,6 +962,11 @@ definitions:
         items:
           $ref: '#/definitions/model.MetaResult'
         type: array
+    type: object
+  model.GetBudgetPlanResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.BudgetPlanResult'
     type: object
   model.GetBudgetResult:
     properties:
@@ -1047,18 +1125,6 @@ definitions:
       skipped:
         type: integer
     type: object
-  model.IncludeAccountRequest:
-    properties:
-      accountId:
-        type: string
-      id:
-        type: string
-    type: object
-  model.IncludeAccountResult:
-    properties:
-      item:
-        $ref: '#/definitions/model.MetaResult'
-    type: object
   model.LabelResult:
     properties:
       createdAt:
@@ -1116,6 +1182,42 @@ definitions:
       result:
         type: string
     type: object
+  model.MergeCategoryRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeCategoryResult:
+    type: object
+  model.MergeLabelRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeLabelResult:
+    type: object
+  model.MergePayeeRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergePayeeResult:
+    type: object
+  model.MergeTagRequest:
+    properties:
+      sourceId:
+        type: string
+      targetId:
+        type: string
+    type: object
+  model.MergeTagResult:
+    type: object
   model.MetaResult:
     properties:
       access:
@@ -1124,8 +1226,13 @@ definitions:
         type: array
       currencyId:
         type: string
+      endedAt:
+        description: EndedAt is the last covered month, "" when the budget is open-ended.
+        type: string
       id:
         type: string
+      isArchived:
+        type: integer
       name:
         type: string
       ownerUserId:
@@ -1243,6 +1350,13 @@ definitions:
           $ref: '#/definitions/model.TagResult'
         type: array
     type: object
+  model.OpeningBalanceResult:
+    properties:
+      amount:
+        type: string
+      currencyId:
+        type: string
+    type: object
   model.OptionResult:
     properties:
       name:
@@ -1312,6 +1426,104 @@ definitions:
       lastUsedAt:
         type: string
       name:
+        type: string
+    type: object
+  model.PlanCellResult:
+    properties:
+      actual:
+        type: string
+      planned:
+        type: string
+    type: object
+  model.PlanChildCellResult:
+    properties:
+      actual:
+        type: string
+    type: object
+  model.PlanChildResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanChildCellResult'
+        type: array
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      type:
+        type: integer
+    type: object
+  model.PlanElementResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanCellResult'
+        type: array
+      children:
+        items:
+          $ref: '#/definitions/model.PlanChildResult'
+        type: array
+      currencyId:
+        type: string
+      folderId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: integer
+    type: object
+  model.PlanMonthRatesResult:
+    properties:
+      period:
+        type: string
+      rates:
+        items:
+          $ref: '#/definitions/model.AverageCurrencyRateResult'
+        type: array
+    type: object
+  model.PlanMonthTransfersResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.PlanTransferResult'
+        type: array
+      period:
+        type: string
+    type: object
+  model.PlanStructureResult:
+    properties:
+      elements:
+        items:
+          $ref: '#/definitions/model.PlanElementResult'
+        type: array
+      folders:
+        items:
+          $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+    type: object
+  model.PlanTransferResult:
+    properties:
+      currencyId:
+        type: string
+      in:
+        type: string
+      out:
         type: string
     type: object
   model.PostRecurringTransactionRequest:
@@ -1412,6 +1624,18 @@ definitions:
         type: string
     type: object
   model.RemindPasswordResult:
+    type: object
+  model.RemoveAccountRequest:
+    properties:
+      accountId:
+        type: string
+      id:
+        type: string
+    type: object
+  model.RemoveAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
     type: object
   model.ReplaceFolderRequest:
     properties:
@@ -1711,6 +1935,16 @@ definitions:
       name:
         type: string
     type: object
+  model.UnarchiveBudgetRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.UnarchiveBudgetResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.MetaResult'
+    type: object
   model.UnarchiveCategoryRequest:
     properties:
       id:
@@ -1799,12 +2033,20 @@ definitions:
     type: object
   model.UpdateBudgetRequest:
     properties:
-      currencyId:
-        type: string
-      excludedAccounts:
+      accountIds:
+        description: |-
+          AccountIds is nil when the client omits the field, which leaves membership
+          untouched; a present list replaces the caller's own member set.
         items:
           type: string
         type: array
+      currencyId:
+        type: string
+      endDate:
+        description: |-
+          EndDate is nil when the client omits the field (end month untouched);
+          "" clears it, "2006-01-02" sets it (snapped to first-of-month).
+        type: string
       id:
         type: string
       name:
@@ -2797,6 +3039,98 @@ paths:
       summary: Accept budget access
       tags:
       - Budget
+  /api/v1/budget/add-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Add account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AddAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AddAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Add an account to a budget
+      tags:
+      - Budget
+  /api/v1/budget/archive-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Archive budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ArchiveBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ArchiveBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Archive a budget
+      tags:
+      - Budget
   /api/v1/budget/change-element-currency:
     post:
       consumes:
@@ -2839,6 +3173,54 @@ paths:
       security:
       - Bearer: []
       summary: Change a budget element's currency
+      tags:
+      - Budget
+  /api/v1/budget/clone-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Clone budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CloneBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CloneBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Clone a budget
       tags:
       - Budget
   /api/v1/budget/create-budget:
@@ -3149,50 +3531,6 @@ paths:
       summary: Delete a budget folder
       tags:
       - Budget
-  /api/v1/budget/exclude-account:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Exclude account
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.ExcludeAccountRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.ExcludeAccountResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Exclude an account from a budget
-      tags:
-      - Budget
   /api/v1/budget/get-budget:
     get:
       parameters:
@@ -3257,6 +3595,52 @@ paths:
       summary: List budgets
       tags:
       - Budget
+  /api/v1/budget/get-budget-plan:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: id
+        required: true
+        type: string
+      - description: Window start (Y-m-d, snapped to first of month; defaults to the
+          current month)
+        in: query
+        name: from
+        type: string
+      - description: Window length in months (1-24, default 12)
+        in: query
+        name: months
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetBudgetPlanResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Multi-month budget plan sheet
+      tags:
+      - Budget
   /api/v1/budget/get-transaction-list:
     get:
       parameters:
@@ -3289,6 +3673,11 @@ paths:
       - description: Uncategorized bucket (mutually exclusive with categoryId)
         in: query
         name: uncategorized
+        type: boolean
+      - description: Transfers across the budget boundary (mutually exclusive with
+          every other selector)
+        in: query
+        name: transfers
         type: boolean
       produces:
       - application/json
@@ -3357,50 +3746,6 @@ paths:
       security:
       - Bearer: []
       summary: Grant budget access
-      tags:
-      - Budget
-  /api/v1/budget/include-account:
-    post:
-      consumes:
-      - application/json
-      parameters:
-      - description: Include account
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/model.IncludeAccountRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/apidoc.JsonResponseOk'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.IncludeAccountResult'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
-        "402":
-          description: Payment Required
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/apidoc.JsonResponseException'
-      security:
-      - Bearer: []
-      summary: Include an account in a budget
       tags:
       - Budget
   /api/v1/budget/move-element:
@@ -3493,6 +3838,50 @@ paths:
       security:
       - Bearer: []
       summary: Move a budget folder
+      tags:
+      - Budget
+  /api/v1/budget/remove-account:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Remove account
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RemoveAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RemoveAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Remove an account from a budget
       tags:
       - Budget
   /api/v1/budget/reset-budget:
@@ -3625,6 +4014,54 @@ paths:
       security:
       - Bearer: []
       summary: Set a budget element limit
+      tags:
+      - Budget
+  /api/v1/budget/unarchive-budget:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Unarchive budget
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnarchiveBudgetRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnarchiveBudgetResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unarchive a budget
       tags:
       - Budget
   /api/v1/budget/update-budget:
@@ -3923,6 +4360,53 @@ paths:
       security:
       - Bearer: []
       summary: Get the category list
+      tags:
+      - Category
+  /api/v1/category/merge-category:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge category request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeCategoryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeCategoryResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two categorys
       tags:
       - Category
   /api/v1/category/move-category:
@@ -4834,6 +5318,53 @@ paths:
       summary: Get the label list
       tags:
       - Label
+  /api/v1/label/merge-label:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge label request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeLabelRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeLabelResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two labels
+      tags:
+      - Label
   /api/v1/label/move-label:
     post:
       consumes:
@@ -5181,6 +5712,53 @@ paths:
       security:
       - Bearer: []
       summary: Get the payee list
+      tags:
+      - Payee
+  /api/v1/payee/merge-payee:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge payee request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergePayeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergePayeeResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two payees
       tags:
       - Payee
   /api/v1/payee/move-payee:
@@ -5817,6 +6395,53 @@ paths:
       security:
       - Bearer: []
       summary: Get the tag list
+      tags:
+      - Tag
+  /api/v1/tag/merge-tag:
+    post:
+      consumes:
+      - application/json
+      description: Re-points every transaction and recurring template from sourceId
+        to targetId, then deletes sourceId. Requires ownership of both. Cannot be
+        undone.
+      parameters:
+      - description: Merge tag request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.MergeTagRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.MergeTagResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Merge two tags
       tags:
       - Tag
   /api/v1/tag/move-tag:

@@ -175,6 +175,7 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 			"name":        "Groceries Budget",
 			"currency_id": fixture.USD,
 			"start_date":  "2024-04-01",
+			"account_ids": []string{accountID},
 		},
 	})
 	if err != nil {
@@ -273,22 +274,21 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	}
 
 	toggleRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
-		Name: "set_budget_account_included",
+		Name: "remove_budget_account",
 		Arguments: map[string]any{
 			"budget_id":  budgetID,
 			"account_id": accountID,
-			"included":   false,
 		},
 	})
 	if err != nil {
-		t.Fatalf("set_budget_account_included: transport error: %v", err)
+		t.Fatalf("remove_budget_account: transport error: %v", err)
 	}
 	if toggleRes.IsError {
-		t.Fatalf("set_budget_account_included: unexpected error: %#v", toggleRes.Content)
+		t.Fatalf("remove_budget_account: unexpected error: %#v", toggleRes.Content)
 	}
 	toggleData := structured(t, toggleRes)
-	if toggleData["budget_id"] != budgetID || toggleData["account_id"] != accountID || toggleData["included"] != false {
-		t.Fatalf("set_budget_account_included: unexpected confirmation: %#v", toggleData)
+	if toggleData["budget_id"] != budgetID || toggleData["account_id"] != accountID || toggleData["member"] != false {
+		t.Fatalf("remove_budget_account: unexpected confirmation: %#v", toggleData)
 	}
 
 	updateFolderRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
@@ -321,9 +321,9 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 		t.Fatalf("update_envelope: unexpected error: %#v", updateEnvelopeRes.Content)
 	}
 
-	// update_budget must NOT silently re-include the account excluded above:
-	// ExcludedAccounts is authoritative on the wire (internal/budget/crud.go), so
-	// the tool must round-trip the current excluded set.
+	// update_budget must NOT silently re-add the account removed above: the tool
+	// sends no accountIds, and an absent list leaves membership untouched
+	// (internal/budget/crud.go).
 	updateBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name: "update_budget",
 		Arguments: map[string]any{
@@ -361,9 +361,9 @@ func TestBudgetTools_BuildFlow(t *testing.T) {
 	if !ok {
 		t.Fatalf("get_budget: missing filters: %#v", getItem)
 	}
-	excluded, ok := filters["excludedAccountsIds"].([]any)
-	if !ok || len(excluded) != 1 || excluded[0] != accountID {
-		t.Fatalf("get_budget: expected account %q to stay excluded after update_budget, got: %#v", accountID, filters["excludedAccountsIds"])
+	accounts, ok := filters["accounts"].([]any)
+	if !ok || len(accounts) != 0 {
+		t.Fatalf("get_budget: expected account %q to stay out of the budget after update_budget, got: %#v", accountID, filters["accounts"])
 	}
 	structureData, ok := getItem["structure"].(map[string]any)
 	if !ok {
@@ -419,7 +419,7 @@ func TestMoveElementTool(t *testing.T) {
 
 	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_budget",
-		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01"},
+		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01", "account_ids": []string{accountID}},
 	})
 	if err != nil || createBudgetRes.IsError {
 		t.Fatalf("create_budget: %v %#v", err, createBudgetRes)
@@ -481,6 +481,7 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
 
 	svc := newBudgetService(t, db)
 	ctx := mcptest.CtxWithUser(t, userID)
@@ -488,7 +489,7 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 
 	createBudgetRes, err := cs.CallTool(ctx, &sdk.CallToolParams{
 		Name:      "create_budget",
-		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01"},
+		Arguments: map[string]any{"name": "Bud", "currency_id": fixture.USD, "start_date": "2024-04-01", "account_ids": []string{accountID}},
 	})
 	if err != nil || createBudgetRes.IsError {
 		t.Fatalf("create_budget: %v %#v", err, createBudgetRes)
@@ -547,10 +548,67 @@ func TestMoveElementTool_AbsentElementID_DoesNotClaimSuccess(t *testing.T) {
 	}
 }
 
+func TestGetBudgetPlanTool(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := fixture.New(t, db)
+	userID := f.User(fixture.User{})
+	budgetID := f.Budget(fixture.Budget{UserID: userID, Name: "Plan Household"})
+
+	svc := newBudgetService(t, db)
+	ctx := mcptest.CtxWithUser(t, userID)
+	cs := connectBudgetSession(t, ctx, svc)
+
+	res, err := cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "from_month": "2024-04", "months": 3},
+	})
+	if err != nil {
+		t.Fatalf("get_budget_plan: %v", err)
+	}
+	if res.IsError {
+		t.Fatalf("get_budget_plan errored: %#v", res.Content)
+	}
+	item, ok := structured(t, res)["item"].(map[string]any)
+	if !ok {
+		t.Fatalf("no item in structured result: %#v", res.StructuredContent)
+	}
+	months, ok := item["months"].([]any)
+	if !ok || len(months) != 3 || months[0] != "2024-04-01" {
+		t.Fatalf("months = %#v", item["months"])
+	}
+
+	// Malformed from_month is rejected before the service runs.
+	res, err = cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "from_month": "junk"},
+	})
+	if err != nil {
+		t.Fatalf("bad from_month transport error: %v", err)
+	}
+	badText, ok := res.Content[0].(*sdk.TextContent)
+	if !res.IsError || !ok || !strings.Contains(badText.Text, "from_month must be YYYY-MM") {
+		t.Fatalf("bad from_month: IsError=%v content=%#v", res.IsError, res.Content)
+	}
+
+	// Out-of-range months surfaces the REST read's invalid-choice validation.
+	res, err = cs.CallTool(ctx, &sdk.CallToolParams{
+		Name:      "get_budget_plan",
+		Arguments: map[string]any{"budget_id": budgetID, "months": 40},
+	})
+	if err != nil {
+		t.Fatalf("bad months transport error: %v", err)
+	}
+	badText, ok = res.Content[0].(*sdk.TextContent)
+	if !res.IsError || !ok || !strings.Contains(badText.Text, "not a valid choice") {
+		t.Fatalf("bad months: IsError=%v content=%#v", res.IsError, res.Content)
+	}
+}
+
 func TestBudgetTools_SetLimitBeforeStart_IsError(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	f := fixture.New(t, db)
 	userID := f.User(fixture.User{})
+	accountID := f.Account(fixture.Account{UserID: userID})
 
 	svc := newBudgetService(t, db)
 	ctx := mcptest.CtxWithUser(t, userID)
@@ -562,6 +620,7 @@ func TestBudgetTools_SetLimitBeforeStart_IsError(t *testing.T) {
 			"name":        "Household",
 			"currency_id": fixture.USD,
 			"start_date":  "2024-04-01",
+			"account_ids": []string{accountID},
 		},
 	})
 	if err != nil {

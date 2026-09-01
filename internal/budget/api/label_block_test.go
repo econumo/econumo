@@ -63,7 +63,7 @@ func TestLabelBlockOverlapsWithoutInflatingElements(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -114,7 +114,7 @@ func TestLabelBlockHidesLabelsWithoutSpend(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -139,7 +139,7 @@ func TestLabelBlockUsesAccountOwnerLabels(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -148,6 +148,7 @@ func TestLabelBlockUsesAccountOwnerLabels(t *testing.T) {
 	f.BudgetAccess(labelBudgetID, otherUserID, 1, true) // role=user, accepted
 	collabAcctID := "aaaa5555-0000-7000-8000-000000000005"
 	f.Account(fixture.Account{ID: collabAcctID, UserID: otherUserID, CurrencyID: usdID, Name: "Collab"})
+	f.BudgetAccount(labelBudgetID, collabAcctID) // the collaborator's account is a budget member
 	f.Label(fixture.Label{ID: labelAID, UserID: otherUserID, Name: "Their Label"})
 
 	txID := f.Transaction(fixture.Transaction{
@@ -210,7 +211,7 @@ func TestLabelBlockNeverCreatesBudgetsElementsRows(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -267,7 +268,7 @@ func TestLabelBlockOrderedByPosition(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 
@@ -314,7 +315,7 @@ func TestLabelBlockIsArchivedReflectsArchivedFlag(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01"}); st != http.StatusOK {
+		map[string]any{"id": labelBudgetID, "name": "Label Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}}); st != http.StatusOK {
 		t.Fatalf("create-budget=%d body=%s", st, e.raw)
 	}
 

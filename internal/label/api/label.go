@@ -108,3 +108,22 @@ func (h *Handlers) UnarchiveLabel(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) DeleteLabel(w http.ResponseWriter, r *http.Request) {
 	endpoint.Handle(w, r, h.svc.DeleteLabel)
 }
+
+// MergeLabel handles POST /api/v1/label/merge-label (auth).
+//
+// @Summary     Merge two labels
+// @Description Re-points every transaction and recurring template from sourceId to targetId, then deletes sourceId. Requires ownership of both. Cannot be undone.
+// @Tags        Label
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.MergeLabelRequest true "Merge label request"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.MergeLabelResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     402     {object} apidoc.JsonResponseError
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/label/merge-label [post]
+func (h *Handlers) MergeLabel(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, h.svc.MergeLabel)
+}

@@ -30,9 +30,15 @@ import (
 // folder's child rows drill down to exactly that pair. Pairing labelId with
 // another SELECTOR (tagId or envelopeId) stays rejected up front with
 // CodeBudgetTransactionFilterRequired: which of the two narrows would be
-// ambiguous, and silently picking one would return the wrong set.
+// ambiguous, and silently picking one would return the wrong set. transfers
+// selects the transfers that crossed the budget boundary (the plan sheet's
+// Transfers line) and composes with nothing: any other selector alongside it
+// is rejected the same way.
 // Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
+	if req.Transfers && (req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
+	}
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
 		return nil, errs.NewValidation("Validation failed", errs.FieldError{
 			Key: "categoryId", Message: "This value should not be provided when uncategorized is true.", Code: errs.CodeInvalidChoice,
@@ -58,6 +64,10 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, err
 	}
+	if clamped := b.clampPeriod(periodStart); !clamped.Equal(periodStart) {
+		periodStart = clamped
+		periodEnd = periodStart.AddDate(0, 1, 0)
+	}
 	f, err := s.buildFilters(ctx, userID, b, periodStart, periodEnd)
 	if err != nil {
 		return nil, err
@@ -75,6 +85,10 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 
 	var rows []model.BudgetTransactionRow
 	switch {
+	// transfers composes with nothing (guarded above), so it needs no
+	// narrowing case of its own.
+	case req.Transfers:
+		rows, err = s.read.BudgetTransactionsTransfers(ctx, f.includedAccountIDs, periodStart, periodEnd)
 	// The label cases lead the switch, narrowest first: Go takes the FIRST
 	// matching case, and both the uncategorized and the categoryId case below
 	// would otherwise match a label request and silently drop the label.
@@ -205,6 +219,7 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 			Description: row.Description,
 			LabelIds:    labelIDs,
 			SpentAt:     normalizeSpentAt(row.SpentAt),
+			Direction:   row.Direction,
 		}
 		if row.CategoryID != nil {
 			if c, ok := f.categories[*row.CategoryID]; ok {
@@ -232,6 +247,12 @@ func optID(p *string) string {
 		return ""
 	}
 	return *p
+}
+
+// optIDSet reports whether an optional id carries anything but whitespace —
+// the same "present" test the label exclusivity guard applies.
+func optIDSet(p *string) bool {
+	return strings.TrimSpace(optID(p)) != ""
 }
 
 // normalizeSpentAt renders the stored DATETIME as "2006-01-02 15:04:05".

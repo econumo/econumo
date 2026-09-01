@@ -29,6 +29,9 @@ func (s *Service) CreateFolder(ctx context.Context, userID vo.Id, req model.Crea
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	now := s.clock.Now()
 	var created *model.BudgetFolder
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
@@ -75,6 +78,9 @@ func (s *Service) UpdateFolder(ctx context.Context, userID vo.Id, req model.Upda
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	if !b.hasFolder(folderID) {
 		return nil, accessDenied()
 	}
@@ -114,6 +120,9 @@ func (s *Service) DeleteFolder(ctx context.Context, userID vo.Id, req model.Dele
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
 	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
 	if !b.hasFolder(folderID) {
 		return nil, accessDenied()
 	}
@@ -151,6 +160,9 @@ func (s *Service) MoveFolder(ctx context.Context, userID vo.Id, req model.MoveBu
 	}
 	if !s.canUpdate(b, userID) {
 		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
 	}
 
 	folders := append([]*model.BudgetFolder(nil), b.folders...)

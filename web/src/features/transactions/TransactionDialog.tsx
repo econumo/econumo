@@ -48,6 +48,7 @@ import { EntitySelect } from './EntitySelect'
 import { SelectCard } from './SelectCard'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TransactionType } from '@/api/dto/transaction'
+import { useFormErrors } from '@/hooks/useFormErrors'
 
 const TYPE_ORDER: TransactionType[] = ['income', 'transfer', 'expense']
 
@@ -75,7 +76,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     accounts,
     routeAccountId ?? null,
   )
-  const [errors, setErrors] = useState<Record<string, string>>({})
+  const { errors, setErrors, clear: clearError } = useFormErrors<Record<string, string | undefined>>()
   const [addTagOpen, setAddTagOpen] = useState(false)
   const [dateOpen, setDateOpen] = useState(false)
 
@@ -120,6 +121,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const chips = classificationChips(tags, labels, form, ownerId)
 
   const setAmount = (amount: string) => {
+    clearError('amount')
     if (isTransfer) {
       // also when editing: a stale recipient amount would silently keep the
       // recipient account's balance unchanged (Vue recomputed unconditionally)
@@ -349,7 +351,10 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 className={cardFieldControlClass}
                 inputMode="decimal"
                 value={form.amountRecipient}
-                onChange={(e) => patch({ amountRecipient: e.target.value })}
+                onChange={(e) => {
+                  clearError('amountRecipient')
+                  patch({ amountRecipient: e.target.value })
+                }}
               />
             </CardField>
           ) : null}

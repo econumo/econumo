@@ -33,8 +33,8 @@ func (l *BudgetCurrencyLookup) EnsureUsable(ctx context.Context, userID, currenc
 }
 
 type budgetAccountRepo interface {
-	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 	GetByID(ctx context.Context, id vo.Id) (*model.Account, error)
+	ListAvailable(ctx context.Context, userID vo.Id) ([]*model.Account, error)
 }
 
 // BudgetAccountLookup adapts the account repository to budget.AccountLookup.
@@ -49,35 +49,40 @@ func NewBudgetAccountLookup(accounts budgetAccountRepo) *BudgetAccountLookup {
 	return &BudgetAccountLookup{accounts: accounts}
 }
 
-// AccountsForOwners returns the accounts OWNED by the given users. Budget
-// membership is owner-only (a.user IN :users), NOT the own+shared "available"
-// set. ListAvailable returns own + shared accounts, so we filter to accounts
-// actually owned by one of the participants — otherwise shared accounts inflate
-// the budget's start balance.
-func (l *BudgetAccountLookup) AccountsForOwners(ctx context.Context, userIDs []vo.Id) ([]model.AccountView, error) {
-	owners := make(map[string]bool, len(userIDs))
-	for _, uid := range userIDs {
-		owners[uid.String()] = true
-	}
-	var out []model.AccountView
-	seen := map[string]bool{}
-	for _, uid := range userIDs {
-		accts, err := l.accounts.ListAvailable(ctx, uid)
+// AccountsByIDs resolves the budget's explicit member accounts, in input
+// order. Deleted accounts are returned too (never filtered here) — a deleted
+// member keeps counting in the budget. An unknown id propagates the account
+// repo's *errs.NotFoundError: a hard-deleted account cascades its membership
+// row, so it can never legitimately be asked for.
+func (l *BudgetAccountLookup) AccountsByIDs(ctx context.Context, ids []vo.Id) ([]model.AccountView, error) {
+	out := make([]model.AccountView, 0, len(ids))
+	for _, id := range ids {
+		a, err := l.accounts.GetByID(ctx, id)
 		if err != nil {
 			return nil, err
 		}
-		for _, a := range accts {
-			if !owners[a.UserID.String()] {
-				continue // shared with a participant but not owned by one
-			}
-			if seen[a.ID.String()] {
-				continue
-			}
-			seen[a.ID.String()] = true
-			out = append(out, model.AccountView{
-				ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(),
-			})
+		out = append(out, model.AccountView{
+			ID: a.ID.String(), CurrencyID: a.CurrencyID.String(), OwnerID: a.UserID.String(), IsDeleted: a.IsDeleted,
+		})
+	}
+	return out, nil
+}
+
+// OwnedLiveAccountIDs returns the user's own non-deleted accounts.
+// ListAvailable also yields accounts shared WITH the user (accepted
+// accounts_access grants); those belong to their owner's budgets, not the
+// acceptor's, so the ownership filter here is load-bearing.
+func (l *BudgetAccountLookup) OwnedLiveAccountIDs(ctx context.Context, userID vo.Id) ([]vo.Id, error) {
+	accounts, err := l.accounts.ListAvailable(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]vo.Id, 0, len(accounts))
+	for _, a := range accounts {
+		if a.IsDeleted || !a.UserID.Equal(userID) {
+			continue
 		}
+		out = append(out, a.ID)
 	}
 	return out, nil
 }

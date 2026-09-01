@@ -102,7 +102,7 @@ func (b *Backend) Migrations() []backend.Migration {
 	files := migrations.Pgsql()
 	out := make([]backend.Migration, len(files))
 	for i, f := range files {
-		out[i] = backend.Migration{Version: f.Version, Up: f.SQL}
+		out[i] = backend.Migration{Version: f.Version, Up: f.SQL, Command: f.Command}
 	}
 	return out
 }

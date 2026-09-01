@@ -99,7 +99,7 @@ func TestTagLimit_VisibleAfterTaggedTransactionDeleted(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Repro Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Repro Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	// Limit on the tag.
 	if st, e := h.do(t, http.MethodPost, "/api/v1/budget/set-limit", tok,
@@ -143,7 +143,7 @@ func TestTagWithoutLimitOrTransactions_StaysHidden(t *testing.T) {
 	h := newHarness(t)
 	tok := h.token(t)
 	h.do(t, http.MethodPost, "/api/v1/budget/create-budget", tok,
-		map[string]any{"id": budgetID1, "name": "Empty Budget", "currencyId": usdID, "startDate": "2024-04-01"})
+		map[string]any{"id": budgetID1, "name": "Empty Budget", "currencyId": usdID, "startDate": "2024-04-01", "accountIds": []string{accountID}})
 
 	// No limit, no transactions for the seeded tag.
 	_, b := h.do(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date=2024-04-15", tok, nil)

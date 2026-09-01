@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { DndContext, DragOverlay, KeyboardSensor, MeasuringStrategy, PointerSensor, closestCenter, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
 import type { DragEndEvent, DragOverEvent, DragStartEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -19,6 +20,7 @@ import { getItem, setItem } from '@/lib/storage'
 import { isNotEmpty, isValidFolderName } from '@/lib/validation'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useUiStore } from '@/app/uiStore'
+import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import type { AccountDto } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
@@ -297,6 +299,7 @@ export function AccountsSettingsPage() {
   const [deleteAccountTarget, setDeleteAccountTarget] = useState<AccountDto | null>(null)
   const [declineAccountTarget, setDeclineAccountTarget] = useState<AccountDto | null>(null)
   const [previewAccount, setPreviewAccount] = useState<AccountDto | null>(null)
+  const queryClient = useQueryClient()
   const [accessAccountId, setAccessAccountId] = useState<string | null>(null)
   const [levelTarget, setLevelTarget] = useState<{ accountId: string; entry: ShareEntry } | null>(null)
 
@@ -485,6 +488,9 @@ export function AccountsSettingsPage() {
                             setDeclineAccountTarget(account)
                           }
                         } else if (action === 'access') {
+                          // grant state changes on the partner's device
+                          // (accept/decline) — refresh before showing it
+                          void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
                           setAccessAccountId(account.id)
                         } else {
                           setPreviewAccount(account)
