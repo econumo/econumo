@@ -218,8 +218,8 @@ one route + one normalizer; the core does not change.
 ### Dependency rule
 
 `imports` needs to create transactions, resolve accounts/categories/payees/
-tags, and convert foreign-currency amounts — all sibling features (the
-convertor is `internal/currency`). Per the repository dependency rule it declares
+tags/labels, and convert foreign-currency amounts — all sibling features
+(the convertor is `internal/currency`). Per the repository dependency rule it declares
 consumer-side interfaces in its own `ports.go`, and `internal/server` wires
 `glue_imports_*.go` adapters at composition time. `archtest` auto-detects new
 feature packages, so this is enforced from the first commit.
@@ -236,7 +236,7 @@ conversion shims selected once in the constructor.
 
 ## Part 2 — Schema
 
-Six new tables plus one column on an existing table. All ids `TEXT`/UUIDv7
+Eight new tables plus one column on an existing table. All ids `TEXT`/UUIDv7
 per the existing contract. Migrations paired under
 `internal/infra/storage/migrations/{sqlite,pgsql}`.
 
@@ -374,7 +374,7 @@ external_payee, external_description, external_amount, external_currency NULL,
 external_posted_at,
 
 -- what the import assigned / observed at link time (diff base for rule learning)
-applied_category_id, applied_payee_id, applied_tag_id, applied_label_id,
+applied_category_id, applied_payee_id, applied_tag_id,
 applied_rule_id NULL,
 
 imported_at
@@ -412,8 +412,8 @@ schema, but every row the pipeline creates sets it.
 have no account link yet to hold a currency; pull rows leave it NULL (the
 account link owns it).
 
-The `applied_*` columns snapshot the transaction's classification as of that
-link's creation: a creating link records what rules/defaults assigned; an
+The `applied_*` columns — plus the link's `import_link_applied_labels` rows —
+snapshot the transaction's classification as of that link's creation: a creating link records what rules/defaults assigned; an
 adopting link (Part 5) records the transaction's values at adoption time.
 Rule learning (Part 7) diffs against the **most recent** link's snapshot.
 
@@ -457,18 +457,57 @@ match_field ('description'|'external_payee'|'external_category'),
 match_type  ('exact'|'contains'|'prefix'),
 match_value, is_case_sensitive,
 target_category_id NULL, target_payee_id NULL, target_tag_id NULL,
-target_label_id NULL,
 priority, created_at, updated_at
 ```
 
 **One row, multiple nullable targets** — not one row per target kind. Editing a
 transaction typically changes payee *and* category together, and that must
 produce a single rule with a single priority, not two rows that can later
-disagree. `NULL` target means "leave alone".
+disagree. `NULL` target means "leave alone"; the label equivalent is having no
+`import_rule_labels` rows.
 
 A plain dictionary mapping ("external category `Groceries` → my Food category")
 is just `match_field='external_category', match_type='exact'`. Pattern rules
 ("description contains `STARBUCKS`") use `contains`. One table covers both.
+
+Rules only ever **add** classification. A rule that clears a category or strips
+a label is not expressible in v1 and is not wanted: a rule fires on every
+future import of a matching string, so a subtractive rule would silently undo
+the user's own later corrections.
+
+### `import_rule_labels` / `import_link_applied_labels`
+
+Labels are the one classification axis that is a **set**, not a scalar: a
+transaction carries many (`transactions_labels`, `PRIMARY KEY (transaction_id,
+label_id)`), where `transactions.tag_id` is a single nullable column. So the
+label target of a rule, and the label snapshot on a link, each need their own
+junction table mirroring that shape:
+
+```
+import_rule_labels(rule_id → import_rules(id) ON DELETE CASCADE,
+                   label_id → labels(id) ON DELETE CASCADE,
+                   PRIMARY KEY (rule_id, label_id))
+
+import_link_applied_labels(link_id → import_transaction_links(id) ON DELETE CASCADE,
+                           label_id → labels(id) ON DELETE CASCADE,
+                           PRIMARY KEY (link_id, label_id))
+```
+
+A JSON array column would have been two fewer tables and is the wrong call:
+when the user deletes a label, a rule still targeting it must stop applying a
+dead id, and a snapshot must stop claiming it. The FK cascade does that in the
+database — the same argument Part 3 makes for `ON DELETE SET NULL` on
+tombstones. A text blob would instead need Go cleanup in the label-delete
+path, which is another feature's code and would violate the dependency rule.
+
+A rule's label set is capped at `maxLabelsPerImportRow` (10,
+`internal/transaction/import.go:25`) — the cap the CSV importer already
+applies per row. One number for "how many labels may an import put on one
+transaction", wherever the import came from.
+
+Labels are ignored on transfers, per the transaction contract. Imports create
+only non-transfers, so this never binds in practice; it is noted so a future
+transfer-aware provider does not rediscover it.
 
 ## Part 3 — Deletion semantics
 
@@ -645,9 +684,10 @@ tap-time push events with posted bank records, a case Actual does not have.
   purchases on the wrong day for anyone west of UTC, surfacing as wrong-day
   budget attribution.
 - **Payee** — `payee` when the bridge supplies it, else `description`.
-- **Category** — rules by priority, falling back to the link's
-  `default_category_id`; nil when neither applies (legal everywhere in
-  Econumo).
+- **Classification** — `import_rules` by priority set category, payee, tag
+  and labels; category falls back to the link's `default_category_id` when no
+  rule assigns one. All four are optional — nil category, nil payee, nil tag
+  and an empty label set are legal everywhere in Econumo.
 
 ### Failure handling
 
@@ -754,8 +794,10 @@ sync. This is the loop that populates `import_rules`.
 **Detection is client-side.** The SPA knows a transaction is imported (it has
 `isImported`), fetches its links on open (`get-transaction-import-list`), and
 on save diffs the current values against the **most recent** link's
-`applied_category_id` / `applied_payee_id` / `applied_tag_id` /
-`applied_label_id` snapshot. If a target changed, it offers a rule.
+`applied_category_id` / `applied_payee_id` / `applied_tag_id` snapshot and
+the link's applied label set. Category, payee and tag compare as scalars;
+labels compare as **sets**, so adding one label to a transaction that already
+had two is a detected change. If a target changed, it offers a rule.
 
 This deliberately leaves `update-transaction` untouched — no change to a frozen
 contract, and an advisory suggestion does not belong in a write path.
@@ -1032,7 +1074,11 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   amount/sign mapping, timezone/date conversion on both paths, and currency
   conversion (converted amount is what the matcher compares; the original
   survives on the link; a missing rate queues rather than guesses).
-- Repo: engine-adapter coverage for all six tables; `make test-repo-pgsql`.
+- Repo: engine-adapter coverage for all eight tables; `make test-repo-pgsql`.
+- Labels as a set, not a scalar: a rule applying several labels; the applied
+  label snapshot round-tripping; rule learning detecting an added label on a
+  transaction that already had others; deleting a label cascading out of both
+  junction tables so no rule or snapshot keeps a dead id.
 - Cross-feature adapters come from `internal/test/wiring` (the real
   implementations `internal/server` assembles), not per-test stubs — so the
   currency conversion and transaction creation an import performs are
@@ -1068,7 +1114,7 @@ nothing but a phone. The SimpleFIN path adds an external aggregator account and
 the client-side key management, the two riskiest pieces; putting them third
 means the core is already proven when they land.
 
-1. **Core** — `internal/imports` package skeleton, the six tables + the
+1. **Core** — `internal/imports` package skeleton, the eight tables + the
    `access_tokens.scope` column and its middleware enforcement, the event
    inbox, the ledger, runs, the matcher, tombstone/cascade semantics, and
    `isImported` on the transaction list. No provider yet; the matcher and
