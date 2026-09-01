@@ -1,7 +1,8 @@
 # Transaction Import (SimpleFIN + Apple Wallet) — Design
 
 **Date:** 2026-08-15
-**Status:** Approved (brainstorm); supersedes the 2026-07-19 SimpleFIN-only draft
+**Status:** Approved; open questions resolved 2026-09-01 (see Resolved
+questions). Supersedes the 2026-07-19 SimpleFIN-only draft.
 
 ## Overview
 
@@ -18,9 +19,9 @@ ingestion modes from day one:
 The feature is deliberately built as a **generic import subsystem** that
 SimpleFIN and Apple Wallet are merely the first clients of. The durable parts —
 external→internal id mapping, deduplication, the unmapped-event queue, mapping
-rules, import runs, the reconciler — are provider-agnostic and are reused by
-the existing CSV import and by any future provider (Enable Banking, Pluggy,
-Akahu, Tasker/Macrodroid on Android).
+rules, import runs, the reconciler — are provider-agnostic. Any future
+provider (Enable Banking, Pluggy, Akahu, Tasker/Macrodroid on Android) plugs
+into them, and the existing CSV import adopts them in a later PR.
 
 Two properties shape the pull side:
 
@@ -105,6 +106,15 @@ the provider as swappable from day one.
   reviews/edits/accepts through the normal rules UI. Configured by
   `ECONUMO_AI_DSN` (instance-level, `MAILER_DSN` pattern); unset hides the
   feature entirely.
+- **A foreign-currency event is converted, not rejected.** Econumo
+  transactions carry no currency of their own — the amount is implicitly in
+  the account's currency (`internal/model/transaction_dto.go`). A tap in a
+  currency other than the linked account's is therefore converted with the
+  instance's stored rate for the event's date, with the original amount and
+  currency preserved on the link row; no rate available means the event
+  queues rather than guessing. A *whole external account* whose currency
+  differs is a different thing — a misconfiguration — and is still refused at
+  link time.
 - **Queue triage is per-event as well as per-account.** A queued transaction
   opens the standard transaction dialog pre-filled for one-off import (no
   account link required), or can be skipped — durably: a skipped event counts
@@ -147,9 +157,10 @@ integrations. Accepted.
 - **Regex match rules.** A denial-of-service surface (catastrophic
   backtracking on user-supplied patterns evaluated per row).
   `exact`/`contains`/`prefix` covers the realistic cases.
-- **Migrating the CSV importer into this package.** CSV *adopts* the shared
-  dedupe ledger and run concept, but its parsing stays in
-  `internal/transaction`.
+- **Anything touching the CSV importer.** It keeps its current behavior for
+  now: no shared ledger, no runs, and re-uploading the same file still
+  duplicates. Adopting the ledger is a later PR (resolved question 2), and
+  even then its parsing stays in `internal/transaction`.
 - **Per-provider scopes.** A single `'ingest'` scope covers all `ingest-*`
   routes; a scope matrix adds ceremony for no realistic threat difference.
 
@@ -184,8 +195,9 @@ one route + one normalizer; the core does not change.
 
 ### Dependency rule
 
-`imports` needs to create transactions and resolve accounts/categories/payees/
-tags — all sibling features. Per the repository dependency rule it declares
+`imports` needs to create transactions, resolve accounts/categories/payees/
+tags, and convert foreign-currency amounts — all sibling features (the
+convertor is `internal/currency`). Per the repository dependency rule it declares
 consumer-side interfaces in its own `ports.go`, and `internal/server` wires
 `glue_imports_*.go` adapters at composition time. `archtest` auto-detects new
 feature packages, so this is enforced from the first commit.
@@ -312,7 +324,10 @@ time simply means imports land pre-categorized when no rule matches. It is
 optional; nil-category imports are legal, same as the REST path.
 
 `external_currency` lets the link step refuse a mismatch against the Econumo
-account's currency instead of silently importing wrong-currency amounts.
+account's currency instead of silently importing wrong-currency amounts. This
+is the *account-level* check — the whole external account being denominated
+differently is a misconfiguration. A single foreign-currency event on an
+otherwise correct link is a different case and is converted (stage 3).
 
 ### `import_transaction_links`
 
@@ -343,7 +358,8 @@ CREATE INDEX ... ON import_transaction_links(transaction_id);
 Row states:
 
 - `status='queued'`, `transaction_id NULL` — event received, account not yet
-  mapped (or currency-mismatched); no transaction exists. Convertible.
+  mapped, or its currency could not be converted for want of a rate; no
+  transaction exists. Convertible.
 - `status='linked'`, `transaction_id` set — a live link. A transaction may
   have **several** live links, one per source that reported it; the plain
   index on `transaction_id` serves the lookups (there is deliberately no
@@ -374,11 +390,12 @@ adopting link (Part 5) records the transaction's values at adoption time.
 Rule learning (Part 7) diffs against the **most recent** link's snapshot.
 
 **External ids.** SimpleFIN supplies one. CSV rows and Apple Wallet events do
-not, so synthesize: CSV uses `sha256(date|amount|description|row-ordinal)`;
-push uses `sha256(external_account|occurred_at|amount|merchant)`, overridable
+not, so synthesize: CSV (when it adopts the ledger) uses
+`sha256(date|amount|description|row-ordinal)`; push uses `sha256(external_account|occurred_at|amount|merchant)`, overridable
 by an explicit client `eventId` (Shortcuts has a UUID action). Same table,
-same uniqueness constraint — re-uploading a CSV, a Shortcuts automation
-double-fire, and an HTTP retry all dedupe to "already seen" for free,
+same uniqueness constraint — a Shortcuts automation double-fire, an HTTP
+retry, and (once CSV adopts the ledger) a re-uploaded CSV all dedupe to
+"already seen" for free,
 retiring the "no idempotency at any level" gap
 (`internal/transaction/ports.go:116-117` documents `SaveTransaction` as
 explicitly having no idempotency id). The repo's shared operation guard
@@ -518,9 +535,16 @@ stages; only stages 0–1 have provider-specific code:
    source's `import_account_links`: **exact match, case-insensitive,
    whitespace-normalized — never fuzzy, never auto-created** (a wrong
    account guess is far worse than a queued event). No link → ledger row
-   `status='queued'`. Currency mismatch → queued with a visible error.
+   `status='queued'`.
 3. **Match transaction & import** — the reconciler below; on create, apply
    `import_rules` by priority, else the link's `default_category_id`.
+   Currency conversion happens here, before the amount is compared to
+   anything: when the event's currency differs from the linked account's,
+   convert with the stored rate for the event's date, and match on the
+   converted amount. `external_amount` + `external_currency` on the link keep
+   the original auditable forever, and the run summary reports how many were
+   converted. No rate available for that currency and date → the event queues
+   with a visible reason rather than importing a guessed amount.
 
 ### Pull flow
 
@@ -585,10 +609,13 @@ tap-time push events with posted bank records, a case Actual does not have.
   → `income`; negative → `expense`. Store `abs()`; Econumo encodes sign in
   `TransactionType`. Decimal string end to end, no float, consistent with the
   decimal-on-the-wire contract.
-- **Date** — `posted` (unix) converted via the caller's `X-Timezone`, then
-  formatted `2006-01-02 15:04:05`. **This needs a deliberate decision**: a
-  UTC-naive conversion puts late-evening transactions on the wrong day for
-  anyone west of UTC, which surfaces as wrong-day budget attribution.
+- **Date** — `posted` is a bare unix timestamp, so there is no "bank's own
+  date" to store verbatim; a timezone must be chosen to derive the day. Use
+  the same fallback chain the rest of the codebase uses for day boundaries:
+  the caller's `X-Timezone` → the stored `users.timezone` → UTC. Then format
+  `2006-01-02 15:04:05`. A UTC-naive conversion would put late-evening
+  purchases on the wrong day for anyone west of UTC, surfacing as wrong-day
+  budget attribution.
 - **Payee** — `payee` when the bridge supplies it, else `description`.
 - **Category** — rules by priority, falling back to the link's
   `default_category_id`; nil when neither applies (legal everywhere in
@@ -665,7 +692,7 @@ following the `accept-invite` precedent.
 
 One queue across all providers: `status='queued'` links, whatever their
 source. Pull syncs feed it (transactions of unmapped bank accounts), push
-events feed it (unmapped cards), and currency-mismatch holds land in it.
+events feed it (unmapped cards), and unconvertible-currency holds land in it.
 The queue page also carries a **"needs attention"** section for `failed`
 events (parse errors) — raw payload visible, retry / discard per row.
 `unlink-account` / `delete-source` purge their queued rows and events.
@@ -850,24 +877,29 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   sync trigger, run history.
 - **Apple Wallet** — setup flow below, card mapping, activity.
 
-### Apple Wallet setup — the pre-configured shortcut
+### Apple Wallet setup — manual recipe first, shortcut file later
 
-The app ships the shortcut; the user should not build one by hand. The setup
-page: create the `'ingest'`-scoped PAT (shown once) → **"Get the Shortcut"**
-link serving the bundled, **signed** `.shortcut` file → on import, the
-shortcut's **import questions** prompt for exactly two values: the server URL
-and the token. The user pastes, enables the Wallet "Transaction" automation
-("Run Immediately"), done.
+Signing a `.shortcut` file requires the macOS-only `shortcuts` CLI (iOS
+refuses unsigned shortcut files), which the development environment does not
+have. Stage 2 therefore ships the setup flow **without** the artifact, and the
+one-tap file becomes a follow-up done on a Mac.
 
-Mechanics to verify during implementation (open question 5): iOS refuses
-unsigned shortcut files, so the artifact is signed once with
-`shortcuts sign --mode anyone` (macOS-only tooling), committed to the repo
-(`web/public/econumo-apple-wallet.shortcut`), and served by the SPA like any
-static asset; regeneration is a documented manual step when the recipe
-changes. If import questions prove unable to carry the values, fallback is a
-first-run in-shortcut setup prompt that stores them in the shortcut's own
-storage. If file signing proves unworkable, fallback is a hosted iCloud share
-link (external dependency, documented).
+**v1 setup page:** create the `'ingest'`-scoped PAT (shown once, with a copy
+button) → the server URL, likewise copyable → step-by-step instructions with
+screenshots for building the automation by hand: new Automation → Transaction
+trigger → Run Immediately → "Get Contents of URL" with the POST body from
+Part 6. Five actions. The page pre-renders the exact JSON body with the user's
+values already substituted, so the user copies rather than composes.
+
+**Follow-up:** sign the recipe once with `shortcuts sign --mode anyone`,
+commit it (`web/public/econumo-apple-wallet.shortcut`), and serve it as a
+static asset; the setup page then leads with "Get the Shortcut" and keeps the
+manual steps as a fallback. Regeneration is a documented manual step when the
+recipe changes. Two mechanics need a device test at that point: whether the
+shortcut's **import questions** can carry the server URL and token (fallback:
+a first-run in-shortcut prompt storing them in the shortcut's own storage),
+and whether the signed file imports cleanly (fallback: a hosted iCloud share
+link — an external dependency, documented).
 
 ### Queue page + banner
 
@@ -960,30 +992,60 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   grouping, mapping validation. Run `pnpm exec tsc -b` — vitest and oxlint do
   not type-check.
 
-## Open questions
+## Implementation staging
 
-1. **Timezone for pull `posted`** — confirm caller-`X-Timezone` conversion is
-   right versus storing the bank's own date verbatim. (Push is settled: the
-   event's RFC3339 offset.)
-2. **CSV run integration** — the SPA uploads CSV in sequential 500-row chunks
-   (`web/src/features/transactions/importCsv.ts:5`). Making a run span an
-   upload means creating the run first and threading `run_id` through every
-   chunk, finalizing at the end. Real scope; possibly a follow-up PR.
-3. **Matcher constants** — ±3 days exact-adopt, +5 days / ±20% cross-source:
-   unverified against real bank data; ship behind named constants.
-4. **Multi-currency accounts** — v1 blocks a currency mismatch at link time
-   and holds mismatched push events in the queue. Confirm versus converting.
-5. **Shortcut distribution mechanics** — signed-file import questions carrying
-   URL + token needs a device test before the flow is finalized (fallbacks in
-   Part 9).
-6. **Raw event retention** — `import_events` grows with every imported
-   transaction across all providers. Keep forever (full audit) vs purge
-   processed events after N days (a `token:purge`-style CLI command). Ship
-   v1 keeping everything; decide before the table gets big.
-7. **Suggest-rules prompt shape** — how much history fits one completion
-   (cap the sample; most-frequent payee strings first), and whether the
-   proposal quality justifies a second "refine" round-trip. Needs
-   experimentation with a real catalogue; the seam isolates it.
+Four plans, one PR each, **push-first**: the Apple Wallet path exercises the
+whole generic core — events, ledger, matcher, queue, runs — while depending on
+nothing but a phone. The SimpleFIN path adds an external aggregator account and
+the client-side key management, the two riskiest pieces; putting them third
+means the core is already proven when they land.
+
+1. **Core** — `internal/imports` package skeleton, the six tables + the
+   `access_tokens.scope` column and its middleware enforcement, the event
+   inbox, the ledger, runs, the matcher, tombstone/cascade semantics, and
+   `isImported` on the transaction list. No provider yet; the matcher and
+   ledger are tested directly.
+2. **Apple Wallet** — the `ingest-apple-wallet-event` route and normalizer,
+   currency conversion, the queue (page, banner, per-account mapping with its
+   conversion run, per-event triage, skip/retry/discard), account links, and
+   the Settings → Data page with the manual setup recipe. **This is where the
+   feature becomes usable.**
+3. **SimpleFIN** — the pull `Provider` seam and its implementation, the
+   two-step claim, `importCrypto.ts` (PBKDF2/Argon2id → non-extractable
+   IndexedDB key), sync, run history, per-account error handling.
+4. **Rules** — `import_rules`, matching by priority, edit-driven rule
+   learning with the editable match value and live match counts, preview and
+   backfill, the rules management UI, and the optional `ECONUMO_AI_DSN`
+   suggestion flow.
+
+Each plan is written only when its predecessor merges — the core's shape will
+teach us things about stages 2-4 that are not worth guessing at now.
+
+## Resolved questions
+
+Resolved 2026-09-01, after the spec was approved.
+
+1. **Timezone for pull `posted`** — caller's `X-Timezone` → stored
+   `users.timezone` → UTC, matching the codebase's existing day-boundary rule.
+   A bare unix timestamp offers no bank-supplied date to store verbatim.
+   (Push was already settled: the event's own RFC3339 offset.)
+2. **CSV run integration** — deferred to its own PR after stage 2. Threading a
+   `run_id` through the SPA's sequential 500-row chunk uploads is a frontend
+   contract change unrelated to import correctness. Until it lands, re-uploading
+   a CSV still duplicates, as it does today.
+3. **Matcher constants** — ship behind named constants in one file, documented
+   as unvalidated against real bank data.
+4. **Multi-currency** — split in two. A whole external account denominated
+   differently from its Econumo account is a misconfiguration and is refused at
+   link time. A single foreign-currency event on a correct link is converted
+   with the stored rate for its date, falling back to the queue when no rate
+   exists. See Decisions and Part 5 stage 3.
+5. **Shortcut distribution** — stage 2 ships written setup instructions; the
+   signed `.shortcut` file is a follow-up requiring macOS tooling. See Part 9.
+6. **Raw event retention** — keep everything in v1. An `import:purge-events`
+   CLI, mirroring `token:purge`, is the follow-up when the table gets big.
+7. **Suggest-rules prompt shape** — resolved by experiment in stage 4; the
+   stubbed transport seam isolates the risk.
 
 ## Deferred / follow-up
 
@@ -997,3 +1059,6 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - Pending-transaction support (pull).
 - Balance reconciliation.
 - Additional PAT scopes (e.g. read-only).
+- CSV adoption of the shared ledger and runs (resolved question 2).
+- The signed `.shortcut` artifact and its device test (resolved question 5).
+- `import:purge-events` CLI for raw-event retention (resolved question 6).
