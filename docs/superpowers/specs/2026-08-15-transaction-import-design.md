@@ -115,6 +115,15 @@ the provider as swappable from day one.
   queues rather than guessing. A *whole external account* whose currency
   differs is a different thing — a misconfiguration — and is still refused at
   link time.
+- **A link whose Econumo account is deleted goes dormant, it does not fail.**
+  Accounts soft-delete, and since the deleted-account work landed, creating a
+  transaction against one is refused (`transaction.account_deleted`) and
+  deleting an account auto-writes a zeroing correction. An importer that kept
+  writing to a deleted account would fight that invariant. So: deleting an
+  account disables its `import_account_links`, and their incoming events queue
+  like any other unmapped event — visible, re-mappable to another account, and
+  never silently dropped or errored mid-run. The link is not deleted, so its
+  ledger rows keep counting as seen and nothing resurrects.
 - **Queue triage is per-event as well as per-account.** A queued transaction
   opens the standard transaction dialog pre-filled for one-off import (no
   account link required), or can be skipped — durably: a skipped event counts
@@ -224,10 +233,16 @@ per the existing contract. Migrations paired under
 provided explicitly. The per-engine migrations reach that state each in
 their own idiom: PostgreSQL adds the column `NOT NULL DEFAULT 'full'` (which
 backfills existing rows) and then `DROP DEFAULT`s it; SQLite has no
-`ALTER COLUMN`, so its migration uses the standard table rebuild (the
-migration runner already handles these — it toggles `foreign_keys` around
-rebuilds, `internal/infra/storage/migrate/migrate.go:221-230`), writing
-`'full'` as a literal in the `INSERT … SELECT`. In application code the
+`ALTER COLUMN`, so its migration uses the standard table rebuild, writing
+`'full'` as a literal in the `INSERT … SELECT`. A rebuild migration writes
+plain `PRAGMA foreign_keys = OFF;` / `ON;` statements around its body and the
+runner **hoists** them: OFF runs on a pinned connection outside the
+transaction (the pragma is a silent no-op inside one), the connection's prior
+enforcement state is restored afterwards whatever happens, and
+`PRAGMA foreign_key_check` gates the result inside the transaction so a
+violation rolls the migration back
+(`internal/infra/storage/migrate/migrate.go:236-292`; `20260802000000.sql` is
+a worked example). In application code the
 scope is explicit everywhere: sessions are minted `'full'` by the login code
 path, and `create-personal-token` **requires** `scope` in the request — a
 blank value fails validation. Requiring a previously-nonexistent field is a
@@ -312,8 +327,8 @@ UNIQUE(source_id, external_account_id)
 
 Nothing converts to transactions until a link exists. Unmapped external
 accounts queue their events (Part 6) and are **never auto-created** — this
-avoids the existing CSV failure mode in
-`internal/transaction/import.go:424-442`, where a name matching an unwritable
+avoids the existing CSV failure mode in `findOrCreateAccount`
+(`internal/transaction/import.go:422-440`), where a name matching an unwritable
 shared account silently creates a duplicate own account.
 
 `default_category_id` is a **convenience, not a correctness fix**: Econumo
@@ -397,7 +412,7 @@ same uniqueness constraint — a Shortcuts automation double-fire, an HTTP
 retry, and (once CSV adopts the ledger) a re-uploaded CSV all dedupe to
 "already seen" for free,
 retiring the "no idempotency at any level" gap
-(`internal/transaction/ports.go:116-117` documents `SaveTransaction` as
+(`internal/transaction/ports.go:130-131` documents `SaveTransaction` as
 explicitly having no idempotency id). The repo's shared operation guard
 (`internal/infra/operation`) stays untouched; the ledger is the imports-wide
 dedupe mechanism.
@@ -976,6 +991,13 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   conversion (converted amount is what the matcher compares; the original
   survives on the link; a missing rate queues rather than guesses).
 - Repo: engine-adapter coverage for all six tables; `make test-repo-pgsql`.
+- Cross-feature adapters come from `internal/test/wiring` (the real
+  implementations `internal/server` assembles), not per-test stubs — so the
+  currency conversion and transaction creation an import performs are
+  exercised for real.
+- Deleted-account interaction: a link whose account is soft-deleted queues its
+  events instead of erroring; the account's zeroing correction and the
+  importer do not fight.
 - **`apiparity`**: every new route needs a scenario — the guard tests enforce
   that route and scenario counts never shrink. Existing goldens change from
   the `isImported` addition and the PAT `scope` field.
