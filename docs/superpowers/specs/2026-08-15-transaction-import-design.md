@@ -972,8 +972,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   SimpleFIN response normalization, parse rules (amount locale normalization,
   timestamp fallback, failure taxonomy) + synthesized-id stability,
   event-level dedupe vs ledger dedupe, retry-after-parser-fix,
-  amount/sign mapping, timezone/date conversion on both paths.
-- Repo: engine-adapter coverage for all five tables; `make test-repo-pgsql`.
+  amount/sign mapping, timezone/date conversion on both paths, and currency
+  conversion (converted amount is what the matcher compares; the original
+  survives on the link; a missing rate queues rather than guesses).
+- Repo: engine-adapter coverage for all six tables; `make test-repo-pgsql`.
 - **`apiparity`**: every new route needs a scenario — the guard tests enforce
   that route and scenario counts never shrink. Existing goldens change from
   the `isImported` addition and the PAT `scope` field.
@@ -988,6 +990,8 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - Security regression: the access URL must never appear in logs or in any
   persisted column; ingest bodies never logged; production SQLite
   `foreign_keys = ON` assertion.
+- `docs/regression-test-plan.md`: every stage adds its user-observable flows
+  to the manual checklist, per the repository rule.
 - Frontend: vitest for crypto round-trip, rule-value extraction, queue
   grouping, mapping validation. Run `pnpm exec tsc -b` — vitest and oxlint do
   not type-check.
