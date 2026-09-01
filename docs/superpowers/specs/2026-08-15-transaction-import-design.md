@@ -333,7 +333,6 @@ event.
 ```
 id, source_id, external_account_id, external_name, external_currency,
 account_id           → accounts(id),
-default_category_id  → categories(id) NULL,
 is_enabled, created_at, updated_at
 UNIQUE(source_id, external_account_id)
 ```
@@ -344,12 +343,20 @@ avoids the existing CSV failure mode in `findOrCreateAccount`
 (`internal/transaction/import.go:422-440`), where a name matching an unwritable
 shared account silently creates a duplicate own account.
 
-`default_category_id` is a **convenience, not a correctness fix**: Econumo
-allows nil categories on every transaction type
-(`internal/model/transaction_dto.go:62` documents categoryId as optional;
-there is no category-required check for non-transfers). A default at mapping
-time simply means imports land pre-categorized when no rule matches. It is
-optional; nil-category imports are legal, same as the REST path.
+There is deliberately **no per-link default category**. Econumo allows nil
+categories on every transaction type (`internal/model/transaction_dto.go:62`
+documents categoryId as optional; there is no category-required check for
+non-transfers), so an unclassified import is legal, and leaving it nil is also
+the better default: nil reads as "needs attention" and gets corrected, whereas
+a plausible-but-wrong category silently pollutes the budget. `import_rules` is
+the one classification mechanism; a second, weaker one competing with it would
+only raise the question of which wins.
+
+The case this gives up is blanket categorization of a single-purpose account
+("everything on the fuel card is Fuel"), which rules cannot express — they
+match on the description/payee/external-category strings, not on the account.
+If that turns out to be wanted, the clean form is an optional account scope on
+a rule, not a column here.
 
 `external_currency` lets the link step refuse a mismatch against the Econumo
 account's currency instead of silently importing wrong-currency amounts. This
@@ -604,7 +611,7 @@ stages; only stages 0–1 have provider-specific code:
    account guess is far worse than a queued event). No link → ledger row
    `status='queued'`.
 3. **Match transaction & import** — the reconciler below; on create, apply
-   `import_rules` by priority, else the link's `default_category_id`.
+   `import_rules` by priority; unmatched fields stay nil.
    Currency conversion happens here, before the amount is compared to
    anything: when the event's currency differs from the linked account's,
    convert with the stored rate for the event's date, and match on the
@@ -685,8 +692,7 @@ tap-time push events with posted bank records, a case Actual does not have.
   budget attribution.
 - **Payee** — `payee` when the bridge supplies it, else `description`.
 - **Classification** — `import_rules` by priority set category, payee, tag
-  and labels; category falls back to the link's `default_category_id` when no
-  rule assigns one. All four are optional — nil category, nil payee, nil tag
+  and labels; a field no rule assigns stays unset. All four are optional — nil category, nil payee, nil tag
   and an empty label set are legal everywhere in Econumo.
 
 ### Failure handling
@@ -895,7 +901,7 @@ convention. `GET` for reads, `POST` for every write.
 | GET  | `get-source-list` | Sources with status and `last_synced_at`. |
 | POST | `delete-source` | Remove a source, its links, and its queued rows. |
 | POST | `list-external-accounts` | Proxy: client supplies access URL, server returns accounts for mapping (pull). |
-| POST | `link-account` | Map external account → Econumo account (+ optional default category). Triggers the conversion run for queued events. |
+| POST | `link-account` | Map external account → Econumo account. Triggers the conversion run for queued events. |
 | POST | `unlink-account` | Also purges the account's queued rows. |
 | POST | `sync` | The pull flow. Client supplies access URL. |
 | POST | `ingest-apple-wallet-event` | Push ingest (Part 6). Requires `'ingest'`-or-full scope. |
