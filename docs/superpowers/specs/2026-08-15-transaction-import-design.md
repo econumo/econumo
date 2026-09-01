@@ -29,10 +29,12 @@ Two properties shape the pull side:
    server stores the provider credential as opaque ciphertext it cannot
    decrypt; the key never leaves the browser. A leaked database or backup
    exposes no bank access.
-2. **Manual sync only.** There is no scheduler. The user clicks "Sync". This
-   matches the reference implementation (Actual Budget's bank sync is also
-   manual-trigger) and is a *requirement* of (1) — a server that cannot decrypt
-   a credential cannot sync unattended.
+2. **Sync is triggered by the device, never scheduled by the server.** A
+   server that cannot decrypt a credential cannot sync unattended — that is
+   forced by (1), not a preference. The user clicks "Sync", and the client
+   also syncs on its own when it opens with the key already unlocked, so in
+   practice the data is current whenever the app is looked at. Actual Budget's
+   bank sync is likewise manual-trigger.
 
 The push side involves **no bank credential at all** — the phone authenticates
 with a scoped personal access token and sends data the user's own device
@@ -154,8 +156,19 @@ integrations. Accepted.
 
 ## Non-Goals (v1)
 
-- **Scheduled/background sync.** Structurally impossible under client-side
-  keys, and explicitly not wanted.
+- **Server-scheduled sync.** Structurally impossible under client-side keys:
+  the server holds no key to sync with. Caching the passphrase or the derived
+  access URL in server memory to enable a daily job was considered and
+  rejected — it would put a live bank credential in the heap for hours, where
+  a core dump, swap, or a container/hypervisor snapshot can serialize it to
+  disk, which attacks the one property this design actually promises. It is
+  also unreliable in the failure mode that matters least visibly: any deploy
+  or OOM empties the cache, so "daily" silently becomes "daily unless we
+  shipped", and missing transactions are exactly what a user does not notice.
+  Device-triggered sync (below) covers the same need without a server-side
+  credential lifetime.
+- **True background sync on mobile.** Sync-on-resume is in scope; waking the
+  app on a timer needs a background-runner plugin and is deferred.
 - **Pending transactions** on the pull path. Their ids mutate when they post;
   Actual gates this behind a preference and still carries open bugs. Deferred.
   (Push tap-time events are not "pending" rows — they are real transactions,
@@ -889,7 +902,7 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
 - **SimpleFIN** — connect (paste setup token, set/enter encryption
   passphrase, claim, encrypt, store), unlock (passphrase prompt when the
   IndexedDB key is absent; "forget this device" clears it), account mapping,
-  sync trigger, run history.
+  sync trigger (plus the automatic on-open sync below), run history.
 - **Apple Wallet** — setup flow below, card mapping, activity.
 
 ### Apple Wallet setup — manual recipe first, shortcut file later
@@ -915,6 +928,35 @@ shortcut's **import questions** can carry the server URL and token (fallback:
 a first-run in-shortcut prompt storing them in the shortcut's own storage),
 and whether the signed file imports cleanly (fallback: a hosted iCloud share
 link — an external dependency, documented).
+
+### Device-triggered sync
+
+The server never schedules a sync, so the client does. On app open — and, in
+the mobile shell, on resume via the `@capacitor/app` listener already
+available — the SPA syncs every enabled pull source in the background.
+
+Four rules keep this from being obnoxious or expensive:
+
+- **Silent when locked.** It runs only if the non-extractable key is already
+  in IndexedDB. A missing key (evicted, cleared, new device) skips the sync
+  and shows an unobtrusive "unlock to sync" affordance — it must never
+  interrupt app open with a passphrase prompt.
+- **Throttled per source.** At most one automatic sync per source per
+  `AUTO_SYNC_MIN_INTERVAL` (start at 6h, a named constant), measured against
+  `last_synced_at`. SimpleFIN is an external service with its own limits, and
+  opening the app five times before lunch must not mean five bank calls. The
+  explicit Sync button ignores the throttle.
+- **Never blocking.** It runs after first paint and never gates rendering.
+  A failure is silent apart from the source's status in Settings → Data —
+  an automatic action the user did not ask for must not raise an error
+  dialog.
+- **Distinguishable.** The run records its trigger (`auto` | `manual`) so run
+  history reads honestly, and the `IMPORT_SYNC` metric carries it as a
+  property.
+
+This is what replaces a scheduler: not "synced at 3am", but "current whenever
+you look at it". Someone who never opens the app never syncs — an acceptable
+consequence, since they are also not reading their budget.
 
 ### Queue page + banner
 
@@ -967,7 +1009,7 @@ not data loss.
 
 Per the repository rule, every new user-facing action fires an event. New
 `METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`,
-`IMPORT_SYNC`, `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
+`IMPORT_SYNC` (with an `auto`/`manual` trigger property), `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
 `IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_RUN_DELETE`,
 `IMPORT_RULE_CREATE`, `IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
 shared hook choke point so every surface is covered once. (Server-side ingest
@@ -1038,7 +1080,8 @@ means the core is already proven when they land.
    feature becomes usable.**
 3. **SimpleFIN** — the pull `Provider` seam and its implementation, the
    two-step claim, `importCrypto.ts` (PBKDF2/Argon2id → non-extractable
-   IndexedDB key), sync, run history, per-account error handling.
+   IndexedDB key), sync, device-triggered sync-on-open, run history,
+   per-account error handling.
 4. **Rules** — `import_rules`, matching by priority, edit-driven rule
    learning with the editable match value and live match counts, preview and
    backfill, the rules management UI, and the optional `ECONUMO_AI_DSN`
@@ -1085,6 +1128,8 @@ Resolved 2026-09-01, after the spec was approved.
 - Pending-transaction support (pull).
 - Balance reconciliation.
 - Additional PAT scopes (e.g. read-only).
+- True periodic background sync on mobile (a Capacitor background-runner
+  plugin waking the app on a timer, rather than syncing on resume).
 - CSV adoption of the shared ledger and runs (resolved question 2).
 - The signed `.shortcut` artifact and its device test (resolved question 5).
 - `import:purge-events` CLI for raw-event retention (resolved question 6).
