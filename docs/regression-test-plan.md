@@ -152,6 +152,9 @@ navigation (single-pane vs sidebar).
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today".
+- [ ] Transaction list rows carry `isImported` (0/1) in the API response; a
+      transaction with an import link (any provider) reads 1, hand-entered
+      reads 0 (no UI badge yet — stage 2 of the import feature).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -339,6 +342,9 @@ User C sees none of it.
       token revealed exactly once with copy button; API call with the PAT
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
+- [ ] Create a personal token with scope "full" — it works everywhere; an
+      "ingest" token (create via API) is rejected with 401 on every non-import
+      route.
 
 ## 13. Cross-cutting & platform
 

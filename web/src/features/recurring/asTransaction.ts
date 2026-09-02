@@ -51,6 +51,7 @@ export function recurringAsTransaction(recurring: RecurringDto, { accounts, cate
     // is dimmed by that flag alone rather than twice over
     isInFuture: false,
     recurringId: recurring.id,
+    isImported: 0,
     recurring,
   } as unknown as ViewTransaction
 }

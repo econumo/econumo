@@ -558,3 +558,35 @@ func TestTransactionRepo_LabelsByTransactionIDs_ChunksAcrossBoundary(t *testing.
 		}
 	}
 }
+
+func TestTransactionRepo_ImportedTransactionIDs(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	const tx1, tx2, tx3 = "d0000000-0000-0000-0000-0000000000d1", "d0000000-0000-0000-0000-0000000000d2", "d0000000-0000-0000-0000-0000000000d3"
+	for _, id := range []string{tx1, tx2, tx3} {
+		if err := repo.Save(ctx, expense(id, acct1, "1.00000000", fixedTime)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	f := fixture.New(t, db)
+	srcID := f.ImportSource(fixture.ImportSource{UserID: userA, Name: "Bank"})
+	// tx1 has two links (two sources would each link it once in real life; here
+	// two external keys from one source is enough to prove no duplication).
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcID, ExternalAccountID: "acc", ExternalTransactionID: "e1", TransactionID: tx1, ExternalAmount: "1.00000000"})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcID, ExternalAccountID: "acc", ExternalTransactionID: "e2", TransactionID: tx1, ExternalAmount: "1.00000000"})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcID, ExternalAccountID: "acc", ExternalTransactionID: "e3", TransactionID: tx2, ExternalAmount: "1.00000000"})
+	// A tombstone (transaction_id NULL) must not mark anything.
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcID, ExternalAccountID: "acc", ExternalTransactionID: "e4", ExternalAmount: "1.00000000"})
+
+	got, err := repo.ImportedTransactionIDs(ctx, []vo.Id{vo.MustParseId(tx1), vo.MustParseId(tx2), vo.MustParseId(tx3)})
+	if err != nil {
+		t.Fatalf("ImportedTransactionIDs: %v", err)
+	}
+	if !got[tx1] || !got[tx2] || got[tx3] || len(got) != 2 {
+		t.Fatalf("got %v, want {tx1, tx2}", got)
+	}
+	empty, err := repo.ImportedTransactionIDs(ctx, nil)
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("empty ids: %v, %v", empty, err)
+	}
+}

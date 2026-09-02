@@ -657,6 +657,7 @@ type AccessToken struct {
 	UserID    string
 	Kind      string // "session" | "personal"
 	TokenHash string
+	Scope     string // "full" | "ingest" ("" -> "full")
 	Name      string // PAT label ("" -> NULL)
 	UserAgent string // session UA ("" -> NULL)
 	ExpiresAt *time.Time
@@ -670,9 +671,13 @@ func (b *Builder) AccessToken(tk AccessToken) string {
 	if tk.ExpiresAt != nil {
 		exp = *tk.ExpiresAt
 	}
-	b.insert(`INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
-		id, tk.UserID, tk.Kind, tk.TokenHash, nullable(tk.Name), nullable(tk.UserAgent), now, now, exp)
+	scope := tk.Scope
+	if scope == "" {
+		scope = "full"
+	}
+	b.insert(`INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)`,
+		id, tk.UserID, tk.Kind, tk.TokenHash, scope, nullable(tk.Name), nullable(tk.UserAgent), now, now, exp)
 	return id
 }
 

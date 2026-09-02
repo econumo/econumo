@@ -18,8 +18,11 @@ import (
 // Defining it here keeps the middleware from hard-depending on the concrete
 // type, so tests (and any future authenticator) can substitute their own.
 type TokenAuthenticator interface {
-	Authenticate(ctx context.Context, token string) (userID vo.Id, tokenID vo.Id, level model.AccessLevel, err error)
+	Authenticate(ctx context.Context, token string) (model.Principal, error)
 }
+
+// IngestPathPrefix is the only route family an ingest-scoped token may reach.
+const IngestPathPrefix = "/api/v1/import/ingest-"
 
 // StoredLanguageResolver is an optional capability of the wired
 // TokenAuthenticator: it resolves the authenticated user's persisted UI
@@ -94,7 +97,7 @@ func Auth(authn TokenAuthenticator) Middleware {
 				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Access token not found"))
 				return
 			}
-			userID, tokenID, level, err := authn.Authenticate(r.Context(), token)
+			p, err := authn.Authenticate(r.Context(), token)
 			if err != nil {
 				var ue *errs.UnauthorizedError
 				if !errors.As(err, &ue) {
@@ -103,6 +106,21 @@ func Auth(authn TokenAuthenticator) Middleware {
 				httpx.WriteError(r.Context(), w, err)
 				return
 			}
+			// Allowlist, not a denylist: only the two known scopes are admitted
+			// (full anywhere; ingest only under IngestPathPrefix), so an empty
+			// or unknown stored scope is rejected everywhere — the repo read
+			// path does not validate the column, so this gate is the only
+			// place that does. The 401 text is identical to a bad token on
+			// purpose: an ingest credential must not reveal that it is valid
+			// elsewhere.
+			switch {
+			case p.Scope == model.TokenScopeFull:
+			case p.Scope == model.TokenScopeIngest && strings.HasPrefix(r.URL.Path, IngestPathPrefix):
+			default:
+				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Invalid access token"))
+				return
+			}
+			userID, tokenID, level := p.UserID, p.TokenID, p.Level
 			ctx := r.Context()
 			// A request with no (supported) Accept-Language falls back to the
 			// user's stored UI language, so error rendering follows the caller's
