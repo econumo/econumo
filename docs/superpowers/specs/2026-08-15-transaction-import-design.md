@@ -1188,23 +1188,23 @@ shortcut is untouched.
 Desktop browsers show the "open Settings → Data on your iPhone" note instead
 of the Configure button — the SPA's mobile view is the same page.
 
-**Building the artifacts** (maintainer, on a Mac): author both shortcuts in
-Shortcuts.app, export each with Share → "Anyone" (equivalently
-`shortcuts sign --mode anyone --input … --output …`), commit the signed
-files to `web/public/shortcuts/` and the unsigned plist source (via
-`shortcut-sign extract`) to `web/shortcuts/` with a README, so the recipe is
-reviewable in diffs and re-signable by anyone with a Mac. Regeneration is a
-documented manual step whenever the recipe changes; the served file name
-carries a version (`econumo-wallet-v1.shortcut`) so an installed shortcut
-can be told apart from the current one.
+**Building the artifacts** (maintainer, on a Mac): the action-by-action
+recipe for both shortcuts, the configuration-file and request contract, the
+device test, and the sign/export steps are in `web/shortcuts/README.md`.
+The signed files go to `web/public/shortcuts/`, the unsigned plist source
+(via `shortcut-sign extract`) next to the README, so the recipe is
+reviewable in diffs and re-signable by anyone with a Mac. The served file
+name carries a version (`econumo-wallet-v1.shortcut`) so an installed
+shortcut can be told apart from the current one.
 
 **Fallback that stays:** the manual recipe — PAT shown once with a copy
 button, the server URL, the pre-rendered JSON body with the user's values
 substituted, five actions with screenshots — remains on the page below the
 one-tap path, for anyone whose device cannot import the file. Its "same-named
-cards" note (Part 2, card → account) applies to both paths: a per-card
-automation just points at the same Econumo Wallet shortcut with a literal
-`account` — the shortcut takes an optional text input override for that.
+cards" note (Part 2, card → account) applies to both paths: the user
+duplicates Econumo Wallet, replaces the `account` value with a literal, and
+points a per-card automation at the copy (a Transaction automation cannot
+pass extra input, so a copy is the only way to vary the label).
 
 **Rejected:** per-user signing by the server (impossible without Apple ID key
 material; a Mac-hosted signing service would be a third party receiving every
