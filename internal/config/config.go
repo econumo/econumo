@@ -29,6 +29,11 @@ type Config struct {
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
+	ImportMatchDays       int // ECONUMO_IMPORT_MATCH_DAYS: ± window for the same-amount import adopt (default 3, 0-31)
+	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
+	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
+	ImportTokenMinLength  int // ECONUMO_IMPORT_TOKEN_MIN_LENGTH: shortest merchant token that must be contained (default 3, 1-16)
+
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
 	AdminPort  string // ECONUMO_ADMIN_PORT
@@ -172,6 +177,30 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("ECONUMO_CURRENCY_UPDATE_INTERVAL %d is too large (max 31 days)", interval)
 	}
 	c.CurrencyUpdateIntervalDays = interval
+
+	// Matcher thresholds are guesses until real bank data has been through
+	// them, so they are tunable — but a typo must fail at boot, not silently
+	// change what counts as a duplicate.
+	for _, p := range []struct {
+		key      string
+		def      int
+		min, max int
+		dst      *int
+	}{
+		{"ECONUMO_IMPORT_MATCH_DAYS", 3, 0, 31, &c.ImportMatchDays},
+		{"ECONUMO_IMPORT_TIP_DAYS", 5, 0, 31, &c.ImportTipDays},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", 20, 0, 100, &c.ImportTipTolerancePct},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", 3, 1, 16, &c.ImportTokenMinLength},
+	} {
+		n, err := getIntStrict(p.key, p.def)
+		if err != nil {
+			return Config{}, err
+		}
+		if n < p.min || n > p.max {
+			return Config{}, fmt.Errorf("%s %d is out of range (%d-%d)", p.key, n, p.min, p.max)
+		}
+		*p.dst = n
+	}
 
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
 	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")

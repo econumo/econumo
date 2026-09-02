@@ -129,8 +129,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the thirteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `imports`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -148,7 +148,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -183,7 +183,12 @@ Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
 keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
-no `repository.go` either.
+no `repository.go` either. `imports` (the bank/phone transaction-import
+subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
+ships in stages: stage 1 is the persistence + matcher core with no HTTP edge
+and no provider, so it has `repository.go` and `repo/` but no `api/` or
+`ports.go` yet; the package name is `imports` (not `import`, a Go keyword)
+while its future routes live under `/api/v1/import/`.
 
 ### Dependency rule
 
@@ -457,6 +462,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
+  `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
+  ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
+  fails at boot. Read into `imports.MatcherConfig`; the matcher itself is a pure function of
+  `(event, candidates, config)`.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -625,7 +635,10 @@ In the distroless image these run via the binary directly, e.g.
 - **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
   Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes) and `personal` (user-created
-  PATs with an optional fixed expiry, full access, shown exactly once at creation).
+  PATs with an optional fixed expiry, shown exactly once at creation).
+  Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
+  that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
+  `"Invalid access token"`). `create-personal-token` requires `scope`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
@@ -681,6 +694,8 @@ data unreadable. Most are also asserted by the test suite.
   authenticator error — no internals leak).
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
+- `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.

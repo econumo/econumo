@@ -235,9 +235,9 @@ consumer-side interfaces in its own `ports.go`, and `internal/server` wires
 `glue_imports_*.go` adapters at composition time. `archtest` auto-detects new
 feature packages, so this is enforced from the first commit.
 
-**One deliberate exception**, see Part 4: the transaction list query embeds an
-`EXISTS` subquery against `import_transaction_links` directly in SQL. This is
-a knowing shortcut, to be refactored later.
+**One deliberate exception**, see Part 4: the transaction repo's
+`ImportedTransactionIDs` batch lookup reads `import_transaction_links`
+directly in SQL. This is a knowing shortcut, to be refactored later.
 
 ### Persistence
 
@@ -700,10 +700,12 @@ on the cascade belongs in `enginecompare`.
 ## Part 4 — Marking imported transactions in the list
 
 The transaction list exposes `isImported` (int `0`/`1`, per the wire
-contract) so the UI can badge the row. **Implementation: an `EXISTS` subquery**
-from the transaction list query into `import_transaction_links` — no join, so
-multiple links cannot duplicate rows, and no uniqueness constraint is needed
-for correctness.
+contract) so the UI can badge the row. **Implementation: a batch lookup** —
+`Repository.ImportedTransactionIDs(ctx, ids)` runs `SELECT DISTINCT
+transaction_id FROM import_transaction_links WHERE transaction_id IN (...)`
+in chunks, exactly like `LabelsByTransactionIDs`, and the list builder sets
+the flag per row. Multiple links collapse to one flag, so no uniqueness
+constraint is needed for correctness.
 
 Full provenance lives on transaction-open: `get-transaction-import-list`
 returns every link for the transaction (provider, source, run, external
@@ -714,11 +716,10 @@ another reason the list carries only the flag.
 
 Consequences to accept:
 
-- The subquery reads a table another feature owns. `archtest` will **not**
-  catch this coupling — it is SQL, not a Go import. The query files must carry
-  a comment marking the cross-feature reference so the later refactor is
-  greppable.
-- Two query files (`query/{sqlite,pgsql}`) plus `sqlc generate`.
+- The lookup reads a table another feature owns. `archtest` will **not**
+  catch this coupling — it is SQL, not a Go import. The repo method carries a
+  comment marking the cross-feature reference, and it is the only place the
+  transaction feature names the table.
 - `TransactionResult` gains `isImported`, so **every golden file changes**.
   Additive and safe for clients (unknown fields ignored), but per the repo
   convention a golden diff means observable behavior changed — regenerate with
@@ -833,9 +834,10 @@ values fail at boot (the `ECONUMO_CURRENCY_UPDATE_INTERVAL` precedent), and
 `0` on a window means exact-date only. They are read into one
 `imports.MatcherConfig` struct passed to the matcher, so the matcher itself
 stays a pure function of `(event, candidates, config)` — the property the
-unit tests rely on. Each one is documented in `CLAUDE.md`'s Configuration
-list and `.env.example` in the PR that introduces it (stage 1 for the first
-two, stage 2 for the tip-matching pair).
+unit tests rely on. All four are documented in CLAUDE.md's Configuration list
+and .env.example in stage 1, which implements and tests every matcher stage;
+nothing consumes MatcherConfig at composition time until stage 2 wires the
+first provider.
 
 The queue page's client-side grouping (Part 9) uses the same date, amount and
 token thresholds, so the server merges the effective values into the served
@@ -1460,7 +1462,7 @@ Resolved 2026-09-01, after the spec was approved.
 - Passkey / WebAuthn PRF as an alternative key source. The wrapped-data-key
   design means this is just another way to unwrap the same data key — no
   re-encryption, no schema change.
-- Refactor the Part 4 `EXISTS` subquery to a proper port + glue adapter.
+- Refactor the Part 4 `ImportedTransactionIDs` SQL shortcut to a proper port + glue adapter.
 - Pending-transaction support (pull).
 - Balance reconciliation.
 - Additional PAT scopes (e.g. read-only).

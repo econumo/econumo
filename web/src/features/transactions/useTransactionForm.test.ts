@@ -45,7 +45,7 @@ it('edit seeds all fields from the transaction, amounts unformatted', () => {
   const tx: TransactionDto = {
     id: 't1', author: owner, type: 'expense', accountId: 'a1', accountRecipientId: null,
     amount: '1234.5', amountRecipient: null, categoryId: 'cat1', description: 'x', payeeId: 'p1', tagId: null,
-    labelIds: ['lb1', 'lb2'], date: '2026-07-01 10:00:00', recurringId: null,
+    labelIds: ['lb1', 'lb2'], date: '2026-07-01 10:00:00', recurringId: null, isImported: 0,
   }
   const state = initialFormState({ transaction: tx }, [account({})], null)
   expect(state.isNew).toBe(false)
