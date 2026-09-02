@@ -131,6 +131,9 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitGlobal != 60 {
 		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
 	}
+	if c.RateLimitIngest != 60 {
+		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
+	}
 }
 
 func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
@@ -141,6 +144,7 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
 	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -148,8 +152,8 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
 		t.Fatalf("overrides not applied: %+v", c)
 	}
-	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 {
-		t.Fatalf("window/global overrides not applied: %v / %d", c.RateLimitWindow, c.RateLimitGlobal)
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
+		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
 	}
 }
 
