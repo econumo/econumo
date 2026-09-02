@@ -619,6 +619,8 @@ definitions:
         type: string
       name:
         type: string
+      scope:
+        type: string
     type: object
   model.CreatePersonalTokenResult:
     properties:
@@ -629,6 +631,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      scope:
         type: string
       token:
         type: string
@@ -1426,6 +1430,8 @@ definitions:
       lastUsedAt:
         type: string
       name:
+        type: string
+      scope:
         type: string
     type: object
   model.PlanCellResult:

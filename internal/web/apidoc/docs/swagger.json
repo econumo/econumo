@@ -10322,6 +10322,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "scope": {
+                    "type": "string"
                 }
             }
         },
@@ -10338,6 +10341,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 },
                 "token": {
@@ -11558,6 +11564,9 @@
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 }
             }

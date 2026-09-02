@@ -10329,6 +10329,9 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "scope": {
+                    "type": "string"
                 }
             }
         },
@@ -10345,6 +10348,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 },
                 "token": {
@@ -11565,6 +11571,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "scope": {
                     "type": "string"
                 }
             }

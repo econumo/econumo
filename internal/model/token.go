@@ -35,6 +35,15 @@ func ParseTokenScope(s string) (TokenScope, error) {
 	})
 }
 
+// Principal is what a bearer token resolves to: who is calling, through which
+// token row, with what access level and scope.
+type Principal struct {
+	UserID  vo.Id
+	TokenID vo.Id
+	Level   AccessLevel
+	Scope   TokenScope
+}
+
 // AccessToken is one opaque bearer credential. Only the sha256 hash of the
 // token string is stored; the raw token exists client-side only.
 type AccessToken struct {
