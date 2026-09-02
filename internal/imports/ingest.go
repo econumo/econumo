@@ -3,7 +3,6 @@ package imports
 import (
 	"context"
 	"errors"
-	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -159,12 +158,10 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // resolution, and matching/creation. It always leaves exactly one ledger row
 // for a new external key.
 func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent) (string, error) {
-	// Card identity is case-insensitive everywhere in this pipeline (the
-	// account-link lookup already folds case via strings.EqualFold);
-	// canonicalize here too, since the ledger's (source, external_account_id,
-	// external_transaction_id) UNIQUE key is a case-sensitive TEXT comparison
-	// and would otherwise fork a row for "Apple Card" vs "apple card".
-	ev.ExternalAccountID = strings.ToLower(ev.ExternalAccountID)
+	// The ledger stores the card name in its original case (later tasks
+	// display it), so the dedup lookup itself is case-insensitive on the
+	// card name at the query layer (GetLinkByExternalKey) rather than being
+	// canonicalized here.
 	existing, err := s.repo.GetLinkByExternalKey(ctx, src.ID, ev.ExternalAccountID, ev.ExternalTransactionID)
 	if err == nil {
 		if existing.IsSeen() {
@@ -225,9 +222,11 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 		for _, l := range links {
 			provider, seen := providers[l.SourceID]
 			if !seen {
-				if ls, err := s.repo.GetSource(ctx, l.SourceID); err == nil {
-					provider = ls.Provider
+				ls, err := s.repo.GetSource(ctx, l.SourceID)
+				if err != nil {
+					return vo.Id{}, false, err
 				}
+				provider = ls.Provider
 				providers[l.SourceID] = provider
 			}
 			c.Links = append(c.Links, model.ImportCandidateLink{SourceID: l.SourceID, Provider: provider, ExternalAmount: l.ExternalAmount, ExternalPayee: l.ExternalPayee})
@@ -237,6 +236,9 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 	matchEv := ev
 	matchEv.Amount = r.amount // compare in the account's currency
 	matchEv.PostedAt = at
+	// m.CorrectAmount (tip-adopt amount correction) is intentionally not
+	// applied here — the push pipeline only adopts; overwriting the
+	// transaction's amount belongs to the batch/bank-import stage.
 	if m := Match(matchEv, src.ID, candidates, s.cfg); m.Kind != MatchCreate {
 		return m.TransactionID, true, nil
 	}

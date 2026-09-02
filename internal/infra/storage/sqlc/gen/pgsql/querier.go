@@ -123,6 +123,9 @@ type Querier interface {
 	GetImportRunByID(ctx context.Context, id string) (ImportRun, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	// Card identity is case-insensitive (Apple Wallet may report the same card
+	// with different casing between taps), so the account-id half of the key
+	// folds case; external_transaction_id stays exact.
 	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
 	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).

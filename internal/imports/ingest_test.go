@@ -98,7 +98,8 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, userID vo.Id, req mode
 		description = *req.Description
 	}
 	q := f.db.TX.Querier(ctx)
-	if _, err := q.ExecContext(ctx, `INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	query := f.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	if _, err := q.ExecContext(ctx, query,
 		req.Id, userID.String(), req.AccountId, aliasToType(req.Type), req.Amount.String(), description, req.Date, req.Date, req.Date); err != nil {
 		return nil, err
 	}
