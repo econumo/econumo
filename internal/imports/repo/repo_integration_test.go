@@ -120,13 +120,14 @@ func TestRepo_SourceDeleteCascadesEvents(t *testing.T) {
 	}
 	if _, err := repo.GetEvent(ctx, ev.ID); err == nil {
 		t.Fatal("event must cascade with its source")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Errorf("cascaded GetEvent = %T, want NotFound", err)
 	}
 }
 
 // external_amount is NUMERIC(19,8) NOT NULL; omitting ExternalAmount must not
 // leave the column empty (SQLite would accept "" but PostgreSQL rejects it as
-// invalid numeric input). ListLinksByTransaction is a Task-5 stub, so this
-// reads the row back with raw SQL instead of going through the repo.
+// invalid numeric input).
 func TestFixture_ImportTransactionLinkDefaultsExternalAmount(t *testing.T) {
 	_, db := setup(t)
 	ctx := context.Background()
@@ -291,9 +292,13 @@ func TestRepo_SourceDeleteCascadesRunsAndLinks(t *testing.T) {
 	}
 	if _, err := repo.GetRun(ctx, run.ID); err == nil {
 		t.Error("run must cascade with its source")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Errorf("cascaded GetRun = %T, want NotFound", err)
 	}
 	if _, err := repo.GetLinkByExternalKey(ctx, vo.MustParseId(srcID), "card-1", "ext-1"); err == nil {
 		t.Error("link must cascade with its source")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Errorf("cascaded GetLinkByExternalKey = %T, want NotFound", err)
 	}
 }
 
@@ -326,9 +331,9 @@ func TestRepo_RunDeleteDetachesLinks(t *testing.T) {
 	}
 }
 
-// Deferred from the Task 4 review: a nullable FK round-trip with a real,
-// non-nil value. UpdateEventStatus always writes run_id back (even unchanged),
-// so this pins that a genuine run id survives the round trip, not just NULL.
+// A nullable FK round-trip with a real, non-nil value. UpdateEventStatus
+// always writes run_id back (even unchanged), so this pins that a genuine
+// run id survives the round trip, not just NULL.
 func TestRepo_EventStatusUpdatePreservesRunID(t *testing.T) {
 	repo, _ := setup(t)
 	ctx := context.Background()

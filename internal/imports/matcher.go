@@ -64,7 +64,7 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 		}
 	}
 	if len(adopt) > 0 {
-		sort.Slice(adopt, func(i, j int) bool {
+		sort.SliceStable(adopt, func(i, j int) bool {
 			if adopt[i].days != adopt[j].days {
 				return adopt[i].days < adopt[j].days
 			}
@@ -109,7 +109,7 @@ func Match(ev model.IngestEvent, sourceID vo.Id, candidates []model.ImportCandid
 	if len(tips) == 0 {
 		return MatchResult{Kind: MatchCreate}
 	}
-	sort.Slice(tips, func(i, j int) bool {
+	sort.SliceStable(tips, func(i, j int) bool {
 		if !tips[i].delta.Equals(tips[j].delta) {
 			return tips[i].delta.IsLessThan(tips[j].delta)
 		}
