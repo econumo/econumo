@@ -1487,6 +1487,15 @@
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
+    "import": {
+      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Import & export.",
+      "provider_unsupported": "Deze importbron wordt niet ondersteund.",
+      "account_link_exists": "Deze kaart is al gekoppeld.",
+      "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",
+      "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
+      "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
+      "event_not_failed": "Deze gebeurtenis is niet mislukt."
+    },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",

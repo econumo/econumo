@@ -1487,6 +1487,15 @@
       "base_immutable": "Waluty bazowej nie można zmienić.",
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
+    "import": {
+      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Import i eksport.",
+      "provider_unsupported": "Ten dostawca importu nie jest obsługiwany.",
+      "account_link_exists": "Ta karta jest już powiązana.",
+      "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
+      "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
+      "link_not_skipped": "To zdarzenie nie jest pominięte.",
+      "event_not_failed": "To zdarzenie nie zakończyło się błędem."
+    },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",
       "cannot_be_merged": "Nie można scalić wybranych tagów.",

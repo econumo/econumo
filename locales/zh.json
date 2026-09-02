@@ -1487,6 +1487,15 @@
       "base_immutable": "基准货币无法修改。",
       "cannot_be_hidden": "该货币无法隐藏。"
     },
+    "import": {
+      "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → 导入与导出 中连接。",
+      "provider_unsupported": "不支持此导入来源。",
+      "account_link_exists": "此卡已关联。",
+      "currency_mismatch": "卡片货币与账户货币不一致。",
+      "link_not_queued": "此事件不在待审核状态。",
+      "link_not_skipped": "此事件未被跳过。",
+      "event_not_failed": "此事件没有失败。"
+    },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
       "cannot_be_merged": "无法合并所选标签。",

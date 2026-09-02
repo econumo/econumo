@@ -1487,6 +1487,15 @@
       "base_immutable": "The base currency cannot be modified",
       "cannot_be_hidden": "This currency cannot be hidden"
     },
+    "import": {
+      "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Import & export first.",
+      "provider_unsupported": "This import provider is not supported.",
+      "account_link_exists": "This card is already linked.",
+      "currency_mismatch": "The card's currency does not match the account's currency.",
+      "link_not_queued": "This event is not waiting for review.",
+      "link_not_skipped": "This event is not skipped.",
+      "event_not_failed": "This event did not fail."
+    },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",
       "cannot_be_merged": "The selected tags cannot be merged",

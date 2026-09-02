@@ -1487,6 +1487,15 @@
       "base_immutable": "La devise de base ne peut pas être modifiée.",
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
+    "import": {
+      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Import et export.",
+      "provider_unsupported": "Ce fournisseur d'import n'est pas pris en charge.",
+      "account_link_exists": "Cette carte est déjà liée.",
+      "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",
+      "link_not_queued": "Cet événement n'est pas en attente de vérification.",
+      "link_not_skipped": "Cet événement n'est pas ignoré.",
+      "event_not_failed": "Cet événement n'a pas échoué."
+    },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
