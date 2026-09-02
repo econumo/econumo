@@ -29,12 +29,14 @@ Two properties shape the pull side:
    server stores the provider credential as opaque ciphertext it cannot
    decrypt; the key never leaves the browser. A leaked database or backup
    exposes no bank access.
-2. **Sync is triggered by the device, never scheduled by the server.** A
-   server that cannot decrypt a credential cannot sync unattended — that is
-   forced by (1), not a preference. The user clicks "Sync", and the client
-   also syncs on its own when it opens with the key already unlocked, so in
-   practice the data is current whenever the app is looked at. Actual Budget's
-   bank sync is likewise manual-trigger.
+2. **Sync is triggered by the user's client, never scheduled by the server.**
+   A server that cannot decrypt a credential cannot sync unattended — that is
+   forced by (1), not a preference. v1 is a **Sync button** in Settings → Data
+   that works in the web SPA at every viewport (the mobile shell is the same
+   SPA); an automatic sync when the app opens with the key already unlocked
+   is the planned follow-up, so that in practice the data is current whenever
+   the app is looked at. Actual Budget's bank sync is likewise
+   manual-trigger.
 
 The push side involves **no bank credential at all** — the phone authenticates
 with a scoped personal access token and sends data the user's own device
@@ -173,10 +175,11 @@ integrations. Accepted.
   also unreliable in the failure mode that matters least visibly: any deploy
   or OOM empties the cache, so "daily" silently becomes "daily unless we
   shipped", and missing transactions are exactly what a user does not notice.
-  Device-triggered sync (below) covers the same need without a server-side
-  credential lifetime.
-- **True background sync on mobile.** Sync-on-resume is in scope; waking the
-  app on a timer needs a background-runner plugin and is deferred.
+  Client-triggered sync (the Sync button now, sync-on-open as a follow-up)
+  covers the same need without a server-side credential lifetime.
+- **True background sync on mobile.** Waking the app on a timer needs a
+  background-runner plugin and is deferred; sync-on-open/resume is itself a
+  follow-up to the manual button (Part 9).
 - **Pending transactions** on the pull path. Their ids mutate when they post;
   Actual gates this behind a preference and still carries open bugs. Deferred.
   (Push tap-time events are not "pending" rows — they are real transactions,
@@ -784,18 +787,22 @@ Runs for every batch source (pull sync, CSV, queue conversion), per event:
    and triage decisions stick. (`status='queued'` rows are not "seen" — they
    are the queue.)
 2. **Fuzzy adopt** — no link, but an existing transaction in the same account
-   has the same amount within ±3 days. Do not create a duplicate; **add a link
+   has the same amount within ±`ECONUMO_IMPORT_MATCH_DAYS` days (default 3).
+   Do not create a duplicate; **add a link
    to the existing transaction** and count it as `matched`. This is what makes
    the first sync tolerable for anyone who has been entering transactions
    manually or via CSV — otherwise every manual entry gets a twin.
 3. **Cross-source adopt (the tip problem)** — no exact-amount match, but a
    transaction on the same account whose live links include a *push* source
    matches all of:
-   - bank date within **+5 days after** the tap (posting is strictly later);
-   - amount within **±20%** of the tap amount (tips, gas holds, FX);
+   - bank date within **+`ECONUMO_IMPORT_TIP_DAYS` days after** the tap
+     (default 5; posting is strictly later);
+   - amount within **±`ECONUMO_IMPORT_TIP_TOLERANCE`%** of the tap amount
+     (default 20; tips, gas holds, FX);
    - **merchant token-containment**: normalize both strings (lowercase, strip
-     non-alphanumerics, split on whitespace), match when every ≥3-char token
-     of the push merchant appears in the bank payee/description token set —
+     non-alphanumerics, split on whitespace), match when every token of at
+     least `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` characters (default 3) of the
+     push merchant appears in the bank payee/description token set —
      `starbucks` ⊂ `sq starbucks 12345 seattle wa`. Deterministic; no regex,
      no fuzzy library.
    Best candidate = smallest amount delta, then nearest date. On match: add
@@ -806,6 +813,35 @@ Runs for every batch source (pull sync, CSV, queue conversion), per event:
    surfaced in the run summary; the tap-time amount remains auditable on the
    push link.
 4. **Create** — otherwise a new transaction plus its link.
+
+#### Matcher configuration
+
+The four thresholds are guesses until real bank data has been through them,
+so they are **environment variables with defaults**, not constants — an
+instance can be tuned without a release, and the defaults are the spec
+numbers:
+
+| Variable | Default | Range | Used by |
+|---|---|---|---|
+| `ECONUMO_IMPORT_MATCH_DAYS` | `3` | `0`–`31` | stage 2, ± window in days |
+| `ECONUMO_IMPORT_TIP_DAYS` | `5` | `0`–`31` | stage 3, forward window in days |
+| `ECONUMO_IMPORT_TIP_TOLERANCE` | `20` | `0`–`100` | stage 3, percent of the tap amount |
+| `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` | `3` | `1`–`16` | stage 3, shortest merchant token that must be contained |
+
+Parsed once in `config.Load`, strictly: malformed, negative or out-of-range
+values fail at boot (the `ECONUMO_CURRENCY_UPDATE_INTERVAL` precedent), and
+`0` on a window means exact-date only. They are read into one
+`imports.MatcherConfig` struct passed to the matcher, so the matcher itself
+stays a pure function of `(event, candidates, config)` — the property the
+unit tests rely on. Each one is documented in `CLAUDE.md`'s Configuration
+list and `.env.example` in the PR that introduces it (stage 1 for the first
+two, stage 2 for the tip-matching pair).
+
+The queue page's client-side grouping (Part 9) uses the same date, amount and
+token thresholds, so the server merges the effective values into the served
+`econumo-config.js` as `IMPORT_MATCHER` — the same mechanism as
+`BILLING_URL` — rather than letting the SPA carry a second copy of the
+numbers.
 
 Actual's payee-based fuzzy stage is deliberately dropped: their stage 2
 (amount + date + payee) and stage 3 (amount + date) differ only by a payee
@@ -1093,8 +1129,8 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   canonical home).
 - **SimpleFIN** — connect (paste setup token, set the encryption passphrase,
   claim, encrypt, store), unlock (passphrase prompt when the IndexedDB key is
-  absent; "forget this device" clears the local key), account mapping, sync
-  trigger (plus the automatic on-open sync below), run history. The unlock
+  absent; "forget this device" clears the local key), account mapping, the
+  **Sync button** (below), run history. The unlock
   prompt states plainly that a forgotten passphrase is recovered by
   reconnecting, not by support — and offers that path inline, so a stuck user
   is never cornered.
@@ -1132,13 +1168,27 @@ a first-run in-shortcut prompt storing them in the shortcut's own storage),
 and whether the signed file imports cleanly (fallback: a hosted iCloud share
 link — an external dependency, documented).
 
-### Device-triggered sync
+### Sync button, then sync-on-open
 
-The server never schedules a sync, so the client does. On app open — and, in
-the mobile shell, on resume via the `@capacitor/app` listener already
-available — the SPA syncs every enabled pull source in the background.
+The server never schedules a sync, so the client does — and the client is
+the web SPA, at every viewport: the mobile view of the web app is the
+primary daily surface today, the Capacitor shell is not in use yet, so
+nothing about sync may depend on being inside the native app.
 
-Four rules keep this from being obnoxious or expensive:
+**v1 (stage 3): a Sync button in Settings → Data**, per source and one
+"Sync all" above the list, with the last-synced time next to each. Pressing
+it unlocks the key (passphrase prompt only if the IndexedDB key is absent),
+decrypts the access URL, and runs the Part 5 pull flow with a visible
+progress state and the run summary on completion (imported / matched /
+queued / skipped / failed, linking to the run). It is the same control at
+every viewport — a full-width button in the mobile layout, not an icon that
+needs a hover. Errors are shown inline on the source row, and a source whose
+sync failed shows that state until the next successful run.
+
+**Follow-up: sync-on-open.** Once the button exists, the SPA also syncs
+every enabled pull source in the background on app open (and, in the mobile
+shell, on resume via the `@capacitor/app` listener already available). Four
+rules keep that from being obnoxious or expensive:
 
 - **Silent when locked.** It runs only if the non-extractable key is already
   in IndexedDB. A missing key (evicted, cleared, new device) skips the sync
@@ -1159,7 +1209,9 @@ Four rules keep this from being obnoxious or expensive:
 
 This is what replaces a scheduler: not "synced at 3am", but "current whenever
 you look at it". Someone who never opens the app never syncs — an acceptable
-consequence, since they are also not reading their budget.
+consequence, since they are also not reading their budget. Until the
+follow-up lands, "current whenever you look at it" is one tap away in
+Settings → Data.
 
 ### Queue page + banner
 
@@ -1241,6 +1293,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
   amount/sign mapping, timezone/date conversion on both paths, and currency
   conversion (converted amount is what the matcher compares; the original
   survives on the link; a missing rate queues rather than guesses).
+- Config: the four `ECONUMO_IMPORT_*` matcher variables parse strictly
+  (defaults when unset; malformed / negative / out-of-range fail at boot),
+  reach the matcher as one `MatcherConfig`, and the effective values appear
+  in the served `econumo-config.js`.
 - Repo: engine-adapter coverage for all nine tables; `make test-repo-pgsql`.
 - Labels as a set, not a scalar: a rule applying several labels; the applied
   label snapshot round-tripping; rule learning detecting an added label on a
@@ -1303,8 +1359,9 @@ means the core is already proven when they land.
    feature becomes usable.**
 3. **SimpleFIN** — the pull `Provider` seam and its implementation, the
    two-step claim, `importCrypto.ts` (PBKDF2/Argon2id → non-extractable
-   IndexedDB key), sync, device-triggered sync-on-open, run history,
-   per-account error handling.
+   IndexedDB key), the Sync button in Settings → Data (every viewport), run
+   history, per-account error handling. Sync-on-open is a follow-up PR after
+   stage 3, not part of it.
 4. **Rules** — `import_rules`, matching by priority, edit-driven rule
    learning with the editable match value and live match counts, preview and
    backfill, the rules management UI, and the optional `ECONUMO_AI_DSN`
@@ -1325,8 +1382,11 @@ Resolved 2026-09-01, after the spec was approved.
    `run_id` through the SPA's sequential 500-row chunk uploads is a frontend
    contract change unrelated to import correctness. Until it lands, re-uploading
    a CSV still duplicates, as it does today.
-3. **Matcher constants** — ship behind named constants in one file, documented
-   as unvalidated against real bank data.
+3. **Matcher constants** — environment variables with the spec numbers as
+   defaults (`ECONUMO_IMPORT_MATCH_DAYS`, `ECONUMO_IMPORT_TIP_DAYS`,
+   `ECONUMO_IMPORT_TIP_TOLERANCE`, `ECONUMO_IMPORT_TOKEN_MIN_LENGTH`; Part 5,
+   Matcher configuration), so an instance can be tuned without a release
+   while they remain unvalidated against real bank data.
 4. **Multi-currency** — split in two. A whole external account denominated
    differently from its Econumo account is a misconfiguration and is refused at
    link time. A single foreign-currency event on a correct link is converted
@@ -1351,6 +1411,7 @@ Resolved 2026-09-01, after the spec was approved.
 - Pending-transaction support (pull).
 - Balance reconciliation.
 - Additional PAT scopes (e.g. read-only).
+- Sync-on-open / on-resume (Part 9, the follow-up to the Sync button).
 - True periodic background sync on mobile (a Capacitor background-runner
   plugin waking the app on a timer, rather than syncing on resume).
 - CSV adoption of the shared ledger and runs (resolved question 2).
