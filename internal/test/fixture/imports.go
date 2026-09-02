@@ -52,6 +52,9 @@ func (b *Builder) ImportTransactionLink(l ImportTransactionLink) string {
 	if status == "" {
 		status = "linked"
 	}
+	if l.ExternalAmount == "" {
+		l.ExternalAmount = "0.00000000"
+	}
 	posted := l.ExternalPostedAt
 	if posted.IsZero() {
 		posted = b.now()

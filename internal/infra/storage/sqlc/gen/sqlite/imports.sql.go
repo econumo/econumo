@@ -338,6 +338,7 @@ type UpdateImportEventStatusParams struct {
 	ID         string
 }
 
+// Note: sets run_id too so a processed event records the run that consumed it.
 func (q *Queries) UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error {
 	_, err := q.db.ExecContext(ctx, updateImportEventStatus,
 		arg.Status,

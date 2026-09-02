@@ -176,7 +176,7 @@ func parseOptionalID(s *string) (*vo.Id, error) {
 	return &id, nil
 }
 
-// The following are implemented by Task 5, which deletes every stub below.
+// Runs and links are not implemented yet.
 
 func (r *Repo) InsertRun(ctx context.Context, run *model.ImportRun) error {
 	return errors.New("importsrepo: not implemented")

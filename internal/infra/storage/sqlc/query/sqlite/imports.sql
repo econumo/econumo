@@ -23,6 +23,7 @@ FROM import_events
 WHERE id = ?;
 
 -- name: UpdateImportEventStatus :exec
+-- Note: sets run_id too so a processed event records the run that consumed it.
 UPDATE import_events SET status = ?, parse_error = ?, run_id = ? WHERE id = ?;
 
 -- name: InsertImportRun :exec

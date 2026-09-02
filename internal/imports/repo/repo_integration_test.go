@@ -122,3 +122,28 @@ func TestRepo_SourceDeleteCascadesEvents(t *testing.T) {
 		t.Fatal("event must cascade with its source")
 	}
 }
+
+// external_amount is NUMERIC(19,8) NOT NULL; omitting ExternalAmount must not
+// leave the column empty (SQLite would accept "" but PostgreSQL rejects it as
+// invalid numeric input). ListLinksByTransaction is a Task-5 stub, so this
+// reads the row back with raw SQL instead of going through the repo.
+func TestFixture_ImportTransactionLinkDefaultsExternalAmount(t *testing.T) {
+	_, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	srcID := f.ImportSource(fixture.ImportSource{UserID: userA})
+	linkID := f.ImportTransactionLink(fixture.ImportTransactionLink{
+		SourceID:              srcID,
+		ExternalAccountID:     "ext-acct-1",
+		ExternalTransactionID: "ext-txn-1",
+	})
+
+	var amount string
+	row := db.Raw.QueryRowContext(ctx, db.Rebind("SELECT external_amount FROM import_transaction_links WHERE id = ?"), linkID)
+	if err := row.Scan(&amount); err != nil {
+		t.Fatalf("scan external_amount: %v", err)
+	}
+	if vo.NewDecimal(amount).String() != vo.NewDecimal("0").String() {
+		t.Errorf("external_amount default = %q, want normalized 0", amount)
+	}
+}

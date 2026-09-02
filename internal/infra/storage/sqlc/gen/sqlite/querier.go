@@ -463,6 +463,7 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	// Note: sets run_id too so a processed event records the run that consumed it.
 	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
