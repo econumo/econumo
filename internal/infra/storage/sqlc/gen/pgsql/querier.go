@@ -114,6 +114,10 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
+	GetImportRunByID(ctx context.Context, id string) (ImportRun, error)
+	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
+	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -197,6 +201,14 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
+	// the caller reads the row count to learn whether this payload was new.
+	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
+	InsertImportRun(ctx context.Context, arg InsertImportRunParams) error
+	// Transaction import: sources, the push-event inbox, runs, and the link
+	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
+	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
@@ -258,6 +270,7 @@ type Querier interface {
 	ListFolderAccountIDs(ctx context.Context, folderID string) ([]string, error)
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -299,6 +312,9 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	// Note: sets run_id too so a processed event records the run that consumed it.
+	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
+	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
