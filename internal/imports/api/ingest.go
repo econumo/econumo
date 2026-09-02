@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"io"
 	"net/http"
 
@@ -37,7 +38,12 @@ func (h *Handlers) IngestAppleWalletEvent(w http.ResponseWriter, r *http.Request
 	ctx := r.Context()
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxIngestBody))
 	if err != nil {
-		httpx.WriteError(ctx, w, errs.NewValidation("Request body is too large"))
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			httpx.WriteError(ctx, w, errs.NewValidation("Request body is too large"))
+			return
+		}
+		httpx.WriteError(ctx, w, errs.NewValidation("Could not read request body"))
 		return
 	}
 	res, err := h.svc.IngestAppleWallet(ctx, userID, body)

@@ -1,7 +1,7 @@
 == get-source-list GET /api/v1/import/get-source-list [owner] -> 200
 {"success":true,"message":"","data":{"items":[{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":2,"lastSeenAt":"<datetime>"},{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":1,"lastSeenAt":"<datetime>"}]}]}}
 
-== err:create-source-duplicate POST /api/v1/import/create-source [owner] -> 200
+== create-source-idempotent POST /api/v1/import/create-source [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":2,"lastSeenAt":"<datetime>"},{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":1,"lastSeenAt":"<datetime>"}]}}}
 
 == err:create-source-unknown-provider POST /api/v1/import/create-source [guest] -> 400

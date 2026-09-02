@@ -9,8 +9,8 @@ func init() {
 	register(Scenario{Name: "import_sources", Calls: func() []Call {
 		return []Call{
 			{Label: "get-source-list", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "owner"},
-			// Owner already has an apple-wallet source: one per provider per user.
-			{Label: "err:create-source-duplicate", Method: "POST", Path: "/api/v1/import/create-source", Auth: "owner",
+			// Owner already has an apple-wallet source: create is idempotent per (user, provider) and returns it.
+			{Label: "create-source-idempotent", Method: "POST", Path: "/api/v1/import/create-source", Auth: "owner",
 				Body: map[string]any{"provider": "apple-wallet", "name": "Second phone"}},
 			{Label: "err:create-source-unknown-provider", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
 				Body: map[string]any{"provider": "simplefin", "name": "Bank"}},
@@ -53,7 +53,7 @@ func init() {
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard", "accountId": OwnerAccount}},
 			{Label: "unlink-account", Method: "POST", Path: "/api/v1/import/unlink-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet"}},
-			{Label: "err:unlink-account-unknown-card", Method: "POST", Path: "/api/v1/import/unlink-account", Auth: "owner",
+			{Label: "unlink-account-unknown-card-noop", Method: "POST", Path: "/api/v1/import/unlink-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "nope"}},
 			{Label: "get-source-list-after-unlink", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "owner"},
 		}
@@ -118,7 +118,7 @@ func init() {
 					"amount": "12.50", "date": "2026-08-20 17:42:03", "labelIds": []string{}}}},
 			{Label: "get-transaction-import-list", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn2, Auth: "owner"},
 			{Label: "err:get-transaction-import-list-blank", Method: "GET", Path: "/api/v1/import/get-transaction-import-list", Auth: "owner"},
-			{Label: "err:get-transaction-import-list-foreign", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn2, Auth: "guest"},
+			{Label: "get-transaction-import-list-foreign-empty", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn2, Auth: "guest"},
 			// Failed event: retry re-parses the stored payload (still broken -> failed again), then discard.
 			{Label: "retry-event", Method: "POST", Path: "/api/v1/import/retry-event", Auth: "owner",
 				Body: map[string]any{"eventId": ImportEventFailed}},

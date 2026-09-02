@@ -25,7 +25,7 @@
 == unlink-account POST /api/v1/import/unlink-account [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"},{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"}]},"run":null}}
 
-== err:unlink-account-unknown-card POST /api/v1/import/unlink-account [owner] -> 200
+== unlink-account-unknown-card-noop POST /api/v1/import/unlink-account [owner] -> 200
 {"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"},{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"}]},"run":null}}
 
 == get-source-list-after-unlink GET /api/v1/import/get-source-list [owner] -> 200

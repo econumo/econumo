@@ -28,7 +28,7 @@
 == err:get-transaction-import-list-blank GET /api/v1/import/get-transaction-import-list [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"transactionId":["This value should not be blank."]}}
 
-== err:get-transaction-import-list-foreign GET /api/v1/import/get-transaction-import-list?transactionId=d0000000-0000-0000-0000-000000000002 [guest] -> 200
+== get-transaction-import-list-foreign-empty GET /api/v1/import/get-transaction-import-list?transactionId=d0000000-0000-0000-0000-000000000002 [guest] -> 200
 {"success":true,"message":"","data":{"items":[]}}
 
 == retry-event POST /api/v1/import/retry-event [owner] -> 200
