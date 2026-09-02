@@ -32,6 +32,8 @@ func TestAuth_ScopeGate(t *testing.T) {
 		{"ingest on read route", model.TokenScopeIngest, http.MethodGet, "/api/v1/user/get-user-data", http.StatusUnauthorized},
 		{"ingest on other import route", model.TokenScopeIngest, http.MethodPost, "/api/v1/import/create-source", http.StatusUnauthorized},
 		{"empty scope fails closed", model.TokenScope(""), http.MethodGet, "/api/v1/user/get-user-data", http.StatusUnauthorized},
+		{"unknown scope on ingest route", model.TokenScope("admin"), http.MethodPost, "/api/v1/import/ingest-apple-wallet", http.StatusUnauthorized},
+		{"empty scope on ingest route", model.TokenScope(""), http.MethodPost, "/api/v1/import/ingest-apple-wallet", http.StatusUnauthorized},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

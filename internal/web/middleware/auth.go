@@ -106,11 +106,17 @@ func Auth(authn TokenAuthenticator) Middleware {
 				httpx.WriteError(r.Context(), w, err)
 				return
 			}
-			// Scope is checked as "not full" so an empty or unknown stored
-			// scope fails closed. The 401 text is identical to a bad token on
+			// Allowlist, not a denylist: only the two known scopes are admitted
+			// (full anywhere; ingest only under IngestPathPrefix), so an empty
+			// or unknown stored scope is rejected everywhere — the repo read
+			// path does not validate the column, so this gate is the only
+			// place that does. The 401 text is identical to a bad token on
 			// purpose: an ingest credential must not reveal that it is valid
 			// elsewhere.
-			if p.Scope != model.TokenScopeFull && !strings.HasPrefix(r.URL.Path, IngestPathPrefix) {
+			switch {
+			case p.Scope == model.TokenScopeFull:
+			case p.Scope == model.TokenScopeIngest && strings.HasPrefix(r.URL.Path, IngestPathPrefix):
+			default:
 				httpx.WriteError(r.Context(), w, errs.NewUnauthorized("Invalid access token"))
 				return
 			}
