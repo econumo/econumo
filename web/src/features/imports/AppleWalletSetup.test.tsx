@@ -2,11 +2,13 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { AppleWalletSetup, nav, setupDeepLink } from './AppleWalletSetup'
 
 const mockIsIOS = vi.hoisted(() => ({ value: false }))
 vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: () => false }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const source = { id: 's1', provider: 'apple-wallet' as const, name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', cards: [] }
 
@@ -26,6 +28,7 @@ beforeEach(() => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
+  vi.mocked(toast.error).mockClear()
 })
 
 it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
@@ -80,4 +83,25 @@ it('manual recipe reveals the token once, with the server URL and the request bo
   expect(await screen.findByText('eco_pat_manual')).toBeInTheDocument()
   expect(screen.getByText(/ingest-apple-wallet-event/)).toBeInTheDocument()
   expect(screen.getByText(/"occurredAt"/)).toBeInTheDocument()
+})
+
+it('iOS configure toasts the server error and does not mark itself configured when minting fails', async () => {
+  mockIsIOS.value = true
+  server.use(http.post('*/api/v1/user/create-personal-token', () =>
+    HttpResponse.json({ success: false, message: 'Too many attempts. Try again later.', code: 429, errors: {} }, { status: 429 })))
+  const user = userEvent.setup()
+  renderSetup(source)
+  await user.click(screen.getByRole('button', { name: 'Configure on this iPhone' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many attempts. Try again later.'))
+  expect(screen.queryByText('The Shortcut is configured. Your next Apple Pay payment will show up here.')).not.toBeInTheDocument()
+})
+
+it('manual recipe toasts the server error and leaves the panel closed when minting fails', async () => {
+  server.use(http.post('*/api/v1/user/create-personal-token', () =>
+    HttpResponse.json({ success: false, message: 'Too many attempts. Try again later.', code: 429, errors: {} }, { status: 429 })))
+  const user = userEvent.setup()
+  renderSetup(source)
+  await user.click(screen.getByText('Configure manually'))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Too many attempts. Try again later.'))
+  expect(screen.queryByText('Access token (shown once)')).not.toBeInTheDocument()
 })

@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Check, Copy } from 'lucide-react'
+import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { Button } from '@/components/ui/button'
 import { useCreatePersonalToken } from '@/features/settings/security'
+import { apiErrorMessage } from '@/lib/apiError'
 import { copyText } from '@/lib/clipboard'
 import { backendHost } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -56,23 +58,39 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
   const [configured, setConfigured] = useState(false)
   const serverUrl = backendHost()
 
-  const mintToken = async (): Promise<string> => {
-    const created = await createToken.mutateAsync({ name: INGEST_TOKEN_NAME, expiresAt: null, scope: 'ingest' })
-    setToken(created.token)
-    return created.token
+  // Both callers need the same "mint once, reuse" token, and both need the
+  // same failure behavior (toast, no half-finished UI) — centralized here.
+  const mintToken = async (): Promise<string | null> => {
+    try {
+      const created = await createToken.mutateAsync({ name: INGEST_TOKEN_NAME, expiresAt: null, scope: 'ingest' })
+      setToken(created.token)
+      return created.token
+    } catch (err) {
+      toast.error(apiErrorMessage(err))
+      return null
+    }
   }
 
   const configureHere = async () => {
     const value = token ?? (await mintToken())
+    if (!value) {
+      return
+    }
     trackEvent(METRICS.IMPORT_SHORTCUT_CONFIGURE)
     setConfigured(true)
     nav.openDeepLink(setupDeepLink(serverUrl, value))
   }
 
   const revealManual = async () => {
-    setManualOpen(true)
-    if (!token) {
-      await mintToken()
+    if (token) {
+      setManualOpen(true)
+      return
+    }
+    // Only open the panel once the token mint actually succeeds — otherwise
+    // it's stuck showing the '…' placeholder forever.
+    const value = await mintToken()
+    if (value) {
+      setManualOpen(true)
     }
   }
 

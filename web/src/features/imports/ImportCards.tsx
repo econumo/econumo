@@ -23,8 +23,13 @@ export function ImportCards({ source }: { source: ImportSourceDto }) {
   const [unlinkTarget, setUnlinkTarget] = useState<ImportCardDto | null>(null)
   const [accountId, setAccountId] = useState('')
   // link-account requires ownership (the backend rejects shared accounts), so
-  // the picker lists only my own accounts, in the card's currency first
+  // the picker lists only my own accounts. Within that, accounts already in
+  // the card's currency come first (Array#sort is stable, so ties keep their
+  // original account-list order).
   const ownAccounts = accounts.filter((a) => a.owner.id === user?.id)
+  const pickerAccounts = mapTarget
+    ? [...ownAccounts].sort((a, b) => Number(b.currency.code === mapTarget.externalCurrency) - Number(a.currency.code === mapTarget.externalCurrency))
+    : ownAccounts
   const accountName = (id: string) => accounts.find((a) => a.id === id)?.name ?? ''
 
   const submitMap = () => {
@@ -101,7 +106,7 @@ export function ImportCards({ source }: { source: ImportSourceDto }) {
           <label className="text-xs uppercase text-muted-foreground" htmlFor="import-map-account">{t('imports.apple_wallet.cards.map_modal.account')}</label>
           <select id="import-map-account" className="h-11 w-full rounded-md border bg-transparent px-2 text-sm" value={accountId} onChange={(e) => setAccountId(e.target.value)}>
             <option value="" />
-            {ownAccounts.map((a) => (
+            {pickerAccounts.map((a) => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
           </select>

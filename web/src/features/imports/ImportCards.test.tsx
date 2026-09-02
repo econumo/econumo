@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -71,4 +71,14 @@ it('a mapped card shows the account name and unmaps after confirmation', async (
   await user.click(screen.getByRole('button', { name: 'Unmap' }))
   await user.click(await screen.findByRole('button', { name: 'Unmap' , hidden: false }))
   await waitFor(() => expect(called).toBe(true))
+})
+
+it('the account picker lists accounts already in the card\'s currency first', async () => {
+  const eurCard = { ...unmapped, externalCurrency: 'EUR' }
+  const user = userEvent.setup()
+  renderCards({ ...source, cards: [eurCard] })
+  await user.click(await screen.findByRole('button', { name: 'Map to account' }))
+  const select = await screen.findByLabelText('Account')
+  const optionNames = within(select).getAllByRole('option').map((o) => o.textContent)
+  expect(optionNames).toEqual(['', 'Euro Stash', 'Cash', 'Bank', 'Under the mattress'])
 })
