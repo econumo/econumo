@@ -135,7 +135,9 @@ the provider as swappable from day one.
 - **Queue triage is per-event as well as per-account.** A queued transaction
   opens the standard transaction dialog pre-filled for one-off import (no
   account link required), or can be skipped — durably: a skipped event counts
-  as seen and never re-queues.
+  as seen and never re-queues. Per account, the choice is map **or ignore**:
+  an ignored external account (a card, a bank account) skips everything it
+  sends on arrival, so unwanted accounts never occupy the queue.
 
 ### Threat model — what this does and does not protect
 
@@ -373,10 +375,20 @@ event.
 
 ```
 id, source_id, external_account_id, external_name, external_currency,
-account_id           → accounts(id),
+mode                 TEXT NOT NULL ('import'|'ignore'),
+account_id           NULL → accounts(id),   -- NULL only when mode='ignore'
 is_enabled, created_at, updated_at
 UNIQUE(source_id, external_account_id)
+CHECK (mode = 'ignore' OR account_id IS NOT NULL)
 ```
+
+A link is either a mapping (`mode='import'`, account set) or an **ignore**
+(`mode='ignore'`, no account): the external account is known and its events
+are deliberately dropped. Ignoring is the answer to "I don't want this card /
+this bank account in Econumo at all" — without it the only options are
+skipping every event by hand forever, or excluding the card on the device.
+`is_enabled` is orthogonal: it is the dormancy flag the deleted-account rule
+flips (Decisions), and applies to `'import'` links only.
 
 Nothing converts to transactions until a link exists. Unmapped external
 accounts queue their events (Part 6) and are **never auto-created** — this
@@ -400,6 +412,15 @@ the parse-table normalization). The flow the user sees:
 3. Every later tap from that card imports straight into the chosen account.
    Re-mapping is editing the link's `account_id`; existing transactions stay
    where they were imported.
+
+Or, at step 2, **"ignore this card"**: the link is created with
+`mode='ignore'`, the card's queued taps flip to `status='skipped'`, and every
+later tap from it is recorded as `skipped` on arrival — seen, never queued,
+never imported, never nagging. Ignoring is reversible from the card list
+("map instead" turns the ignore into a mapping); taps skipped meanwhile stay
+skipped, un-skippable one by one like any other skip. The same action exists
+for a pull source's bank account (a mortgage or brokerage account SimpleFIN
+returns that has no place in Econumo).
 
 Two consequences of the card being identified **by name only**:
 
@@ -679,7 +700,8 @@ stages; only stages 0–1 have provider-specific code:
    source's `import_account_links`: **exact match, case-insensitive,
    whitespace-normalized — never fuzzy, never auto-created** (a wrong
    account guess is far worse than a queued event). No link → ledger row
-   `status='queued'`.
+   `status='queued'`. An `'ignore'` link → ledger row `status='skipped'`,
+   pipeline ends (the raw event stays, per stage 0).
 3. **Match transaction & import** — the reconciler below; on create, apply
    `import_rules` by priority; unmatched fields stay nil.
    Currency conversion happens here, before the amount is compared to
@@ -703,7 +725,8 @@ stages; only stages 0–1 have provider-specific code:
    transaction's raw JSON slice as an `import_events` row (stage 0), parse,
    then — mapped & enabled → reconcile → apply rules → insert transactions +
    links; **unmapped → store the transactions as queued links** (Part 6)
-   instead of discarding them. Parse failures are recorded on the run and do
+   instead of discarding them; ignored → `skipped` links (seen, counted on
+   the run, never queued). Parse failures are recorded on the run and do
    not kill it.
 5. Discard the credential. Finalize the run. Return
    `{runId, imported, matched, amountsUpdated, queued, skipped, failed, errors}`.
@@ -824,7 +847,8 @@ The synthesized external id is computed from **parsed** values —
 `sha256(account|occurredAt|amount|payee)` — so it stays stable across
 retries even when raw bytes differ (field order, whitespace).
 
-Response: `{status: "created"|"queued"|"duplicate"|"failed"}` — always
+Response: `{status: "created"|"queued"|"skipped"|"duplicate"|"failed"}`
+(`skipped` = the card is ignored) — always
 HTTP 200 once the event is persisted. A 4xx is invisible to an unattended
 automation; a failed event surfaces in the web UI (queue page, "needs
 attention"), where the user sees the raw payload and can retry or discard.
@@ -973,8 +997,9 @@ convention. `GET` for reads, `POST` for every write.
 | GET  | `get-source-list` | Sources with status and `last_synced_at`. |
 | POST | `delete-source` | Remove a source, its links, and its queued rows. |
 | POST | `list-external-accounts` | Proxy: client supplies access URL, server returns accounts for mapping (pull). |
-| POST | `link-account` | Map external account → Econumo account. Triggers the conversion run for queued events. |
-| POST | `unlink-account` | Also purges the account's queued rows. |
+| POST | `link-account` | Map external account → Econumo account (`mode='import'`; also turns an ignore into a mapping). Triggers the conversion run for the account's `queued` rows; `skipped` rows stay skipped. |
+| POST | `ignore-account` | `mode='ignore'` link (created or flipped from a mapping): the account's `queued` rows become `skipped`, future events skip on arrival. |
+| POST | `unlink-account` | Removes the link (either mode); also purges the account's queued rows. |
 | POST | `sync` | The pull flow. Client supplies access URL. |
 | POST | `ingest-apple-wallet-event` | Push ingest (Part 6). Requires `'ingest'`-or-full scope. |
 | GET  | `get-queued-event-list` | Queued links + failed events for the queue page. |
@@ -1027,9 +1052,10 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   reconnecting, not by support — and offers that path inline, so a stuck user
   is never cornered.
 - **Apple Wallet** — setup flow below; the **card list**: every card name the
-  server has seen (from links and queued events) with its mapped Econumo
-  account or an "unmapped — N queued" state and a map action; per-card tap
-  count and last-seen; activity.
+  server has seen (from links and queued events) in one of three states —
+  mapped to an Econumo account, **ignored**, or "unmapped — N queued" — with
+  map / ignore / "map instead" actions; per-card tap count and last-seen;
+  activity. The SimpleFIN source detail lists its bank accounts the same way.
 
 ### Apple Wallet setup — manual recipe first, shortcut file later
 
@@ -1096,7 +1122,8 @@ consequence, since they are also not reading their budget.
   provider badge, grouped **client-side** when they plausibly describe the
   same purchase across providers (amount + date proximity + merchant-token
   overlap; the shared normalizer). Per external account: "map this account"
-  → link dialog → conversion run → result summary. Per row: **tap → the
+  → link dialog → conversion run → result summary, or **"ignore this
+  account"** → its queued rows leave the queue for good. Per row: **tap → the
   standard transaction dialog pre-filled** (parsed values, rules as
   defaults, account picker free) → save = one-off import; or **skip**
   (durable, un-skippable from source detail). A "needs attention" section
@@ -1138,7 +1165,7 @@ not data loss.
 ### Analytics
 
 Per the repository rule, every new user-facing action fires an event. New
-`METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`,
+`METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`, `IMPORT_ACCOUNT_IGNORE`,
 `IMPORT_SYNC` (with an `auto`/`manual` trigger property), `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
 `IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_RUN_DELETE`,
 `IMPORT_RULE_CREATE`, `IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
@@ -1177,7 +1204,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - Card → account: taps from two differently named cards land in two
   accounts; an unmapped card queues and `link-account` converts exactly its
   backlog; a renamed card queues under the new name while the old link is
-  untouched; re-mapping a link moves only future taps.
+  untouched; re-mapping a link moves only future taps; ignoring a card
+  skips its queued rows and every later tap on arrival (ingest answers
+  `skipped`, raw event still stored); "map instead" converts nothing
+  retroactively — the skipped rows need a per-row un-skip.
 - **`apiparity`**: every new route needs a scenario — the guard tests enforce
   that route and scenario counts never shrink. Existing goldens change from
   the `isImported` addition and the PAT `scope` field.
