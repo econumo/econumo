@@ -198,6 +198,16 @@ func New(deps Deps) http.Handler {
 		// the SPA sends no instance identifier — matching the dist default.
 		"INSTANCE_ID": deps.InstanceID,
 		"VERSION":     version,
+		// The matcher thresholds the import queue uses client-side to group
+		// cross-provider duplicates. Stage 2 ships one provider, so the SPA only
+		// types the key today; serving the value now means stage 3 needs no
+		// server change.
+		"IMPORT_MATCHER": map[string]int{
+			"matchDays":       deps.Cfg.ImportMatchDays,
+			"tipDays":         deps.Cfg.ImportTipDays,
+			"tipTolerancePct": deps.Cfg.ImportTipTolerancePct,
+			"tokenMinLength":  deps.Cfg.ImportTokenMinLength,
+		},
 	}
 	// MIN_APP_VERSION is the one key that stays conditional: the app's
 	// version-check treats a present-but-empty value differently from an
