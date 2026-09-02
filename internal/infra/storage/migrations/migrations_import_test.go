@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 // The nine import tables plus access_tokens.scope come from 20260901000000.
@@ -29,11 +30,22 @@ func TestMigration20260901_ImportTablesAndTokenScope(t *testing.T) {
 			t.Errorf("%s: %v", q, err)
 		}
 	}
-	// scope has no default: the column must be supplied on every insert.
+	// scope has no default: the column must be supplied on every insert. Seed a
+	// real user first so the only possible rejection is the missing scope, not
+	// the user_id foreign key (dbtest runs with foreign_keys = ON).
+	userID := fixture.New(t, db).User(fixture.User{})
 	_, err := db.Raw.ExecContext(ctx, db.Rebind(
 		"INSERT INTO access_tokens (id, user_id, kind, token_hash, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?)"),
-		"0f000000-0000-0000-0000-000000000001", "0f000000-0000-0000-0000-0000000000aa", "session", "h", "2026-01-01 00:00:00", "2026-01-01 00:00:00")
+		"0f000000-0000-0000-0000-000000000001", userID, "session", "h", "2026-01-01 00:00:00", "2026-01-01 00:00:00")
 	if err == nil {
 		t.Error("inserting an access token without scope must fail (NOT NULL, no default)")
+	}
+	// The identical row WITH scope must succeed, proving scope (not the FK, not
+	// some other constraint) is what rejected the row above.
+	_, err = db.Raw.ExecContext(ctx, db.Rebind(
+		"INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, created_at, last_used_at) VALUES (?, ?, ?, ?, ?, ?, ?)"),
+		"0f000000-0000-0000-0000-000000000001", userID, "session", "h", "full", "2026-01-01 00:00:00", "2026-01-01 00:00:00")
+	if err != nil {
+		t.Errorf("inserting an access token with scope = 'full' must succeed: %v", err)
 	}
 }
