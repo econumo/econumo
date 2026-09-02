@@ -39,6 +39,7 @@ func (b *Builder) ImportSource(s ImportSource) string {
 type ImportTransactionLink struct {
 	ID                    string
 	SourceID              string
+	EventID               string // "" -> NULL
 	ExternalAccountID     string
 	ExternalTransactionID string
 	TransactionID         string
@@ -46,6 +47,7 @@ type ImportTransactionLink struct {
 	ExternalPayee         string
 	ExternalDescription   string
 	ExternalAmount        string // decimal text, e.g. "12.50000000"
+	ExternalCurrency      string // "" -> NULL
 	ExternalPostedAt      time.Time
 }
 
@@ -64,9 +66,9 @@ func (b *Builder) ImportTransactionLink(l ImportTransactionLink) string {
 		posted = b.now()
 	}
 	b.insert(`INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at)
-		VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, NULL, ?, NULL, NULL, NULL, NULL, ?)`,
-		id, l.SourceID, l.ExternalAccountID, l.ExternalTransactionID, nullable(l.TransactionID), status,
-		l.ExternalPayee, l.ExternalDescription, l.ExternalAmount, posted, b.now())
+		VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL, NULL, NULL, ?)`,
+		id, l.SourceID, nullable(l.EventID), l.ExternalAccountID, l.ExternalTransactionID, nullable(l.TransactionID), status,
+		l.ExternalPayee, l.ExternalDescription, l.ExternalAmount, nullable(l.ExternalCurrency), posted, b.now())
 	return id
 }
 

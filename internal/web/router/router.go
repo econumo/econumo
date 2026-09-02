@@ -159,6 +159,16 @@ func New(deps Deps) http.Handler {
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
 		"BILLING_URL": deps.Cfg.BillingURL,
+		// The matcher thresholds the import queue uses client-side to group
+		// cross-provider duplicates. Stage 2 ships one provider, so the SPA only
+		// types the key today; serving the value now means stage 3 needs no
+		// server change.
+		"IMPORT_MATCHER": map[string]int{
+			"matchDays":       deps.Cfg.ImportMatchDays,
+			"tipDays":         deps.Cfg.ImportTipDays,
+			"tipTolerancePct": deps.Cfg.ImportTipTolerancePct,
+			"tokenMinLength":  deps.Cfg.ImportTokenMinLength,
+		},
 	}
 	if deps.MinAppVersion != "" {
 		overrides["MIN_APP_VERSION"] = deps.MinAppVersion
