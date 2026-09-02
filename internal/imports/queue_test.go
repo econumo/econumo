@@ -44,10 +44,18 @@ func TestGetQueue_ReasonsAndSections(t *testing.T) {
 	h.accounts.deleted = true
 	h.mapCard(t, "Apple Card")
 	q, _ = h.svc.GetQueue(ctx, uA)
+	found := false
 	for _, e := range q.Queued {
-		if e.ExternalAccountId == "Apple Card" && e.Reason != model.ImportQueueReasonAccountDeleted {
+		if e.ExternalAccountId != "Apple Card" {
+			continue
+		}
+		found = true
+		if e.Reason != model.ImportQueueReasonAccountDeleted {
 			t.Errorf("deleted-account reason = %+v", e)
 		}
+	}
+	if !found {
+		t.Errorf("the Apple Card tap must still be queued: %+v", q.Queued)
 	}
 }
 
