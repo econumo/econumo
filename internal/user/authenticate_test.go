@@ -70,6 +70,7 @@ func seedToken(t *testing.T, tokens *userrepo.AccessTokenRepo, userID vo.Id, kin
 	t.Helper()
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: kind, TokenHash: appuser.HashAccessToken(raw),
+		Scope:     model.TokenScopeFull,
 		CreatedAt: authT0, LastUsedAt: authT0, ExpiresAt: exp,
 	}
 	if err := tokens.Insert(context.Background(), tok); err != nil {
@@ -88,18 +89,21 @@ func TestAuthenticate_HappyPathAndCurrentIds(t *testing.T) {
 	exp := authT0.Add(appuser.SessionTTL)
 	tokID := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_happy", &exp)
 
-	gotUser, gotTok, _, err := svc.Authenticate(context.Background(), "eco_ses_happy")
+	p, err := svc.Authenticate(context.Background(), "eco_ses_happy")
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
-	if !gotUser.Equal(uid) || !gotTok.Equal(tokID) {
-		t.Errorf("ids mismatch: user %s token %s", gotUser, gotTok)
+	if !p.UserID.Equal(uid) || !p.TokenID.Equal(tokID) {
+		t.Errorf("ids mismatch: user %s token %s", p.UserID, p.TokenID)
+	}
+	if p.Scope != model.TokenScopeFull {
+		t.Errorf("scope = %q", p.Scope)
 	}
 }
 
 func TestAuthenticate_UnknownToken401(t *testing.T) {
 	svc, _, _, _ := newAuthEnv(t)
-	_, _, _, err := svc.Authenticate(context.Background(), "eco_ses_bogus")
+	_, err := svc.Authenticate(context.Background(), "eco_ses_bogus")
 	if !isUnauthorized(err) {
 		t.Fatalf("want Unauthorized, got %v", err)
 	}
@@ -113,7 +117,7 @@ func TestAuthenticate_ExpiredSession401(t *testing.T) {
 	past := authT0.Add(-time.Hour)
 	seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_expired", &past)
 
-	if _, _, _, err := svc.Authenticate(context.Background(), "eco_ses_expired"); !isUnauthorized(err) {
+	if _, err := svc.Authenticate(context.Background(), "eco_ses_expired"); !isUnauthorized(err) {
 		t.Fatalf("want Unauthorized, got %v", err)
 	}
 }
@@ -132,7 +136,7 @@ func TestAuthenticate_RevokedToken401(t *testing.T) {
 		t.Fatalf("Update: %v", err)
 	}
 
-	if _, _, _, err := svc.Authenticate(ctx, "eco_ses_revoked"); !isUnauthorized(err) {
+	if _, err := svc.Authenticate(ctx, "eco_ses_revoked"); !isUnauthorized(err) {
 		t.Fatalf("want Unauthorized, got %v", err)
 	}
 }
@@ -145,7 +149,7 @@ func TestAuthenticate_SlidingTouchThrottled(t *testing.T) {
 
 	// +2min: inside the throttle window; nothing persisted.
 	clk.now = authT0.Add(2 * time.Minute)
-	if _, _, _, err := svc.Authenticate(ctx, "eco_ses_touch"); err != nil {
+	if _, err := svc.Authenticate(ctx, "eco_ses_touch"); err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 	row, _ := tokens.GetByID(ctx, tokID)
@@ -155,7 +159,7 @@ func TestAuthenticate_SlidingTouchThrottled(t *testing.T) {
 
 	// +6min: past the throttle; last_used_at and expires_at slide.
 	clk.now = authT0.Add(6 * time.Minute)
-	if _, _, _, err := svc.Authenticate(ctx, "eco_ses_touch"); err != nil {
+	if _, err := svc.Authenticate(ctx, "eco_ses_touch"); err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 	row, _ = tokens.GetByID(ctx, tokID)
@@ -174,7 +178,7 @@ func TestAuthenticate_PATExpiryNeverSlides(t *testing.T) {
 	ctx := context.Background()
 
 	clk.now = authT0.Add(6 * time.Minute)
-	if _, _, _, err := svc.Authenticate(ctx, "eco_pat_fixed"); err != nil {
+	if _, err := svc.Authenticate(ctx, "eco_pat_fixed"); err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 	row, _ := tokens.GetByID(ctx, tokID)
@@ -199,12 +203,12 @@ func TestAuthenticate_ReturnsReadonlyWhenAccessLapsed(t *testing.T) {
 		t.Fatalf("lapse access: %v", err)
 	}
 
-	_, _, level, err := svc.Authenticate(context.Background(), "eco_ses_lapsed")
+	p, err := svc.Authenticate(context.Background(), "eco_ses_lapsed")
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
-	if level != model.AccessLevelReadonly {
-		t.Fatalf("level: got %q want readonly", level)
+	if p.Level != model.AccessLevelReadonly {
+		t.Fatalf("level: got %q want readonly", p.Level)
 	}
 }
 
@@ -223,12 +227,12 @@ func TestAuthenticate_PATAlsoReadonlyWhenAccessLapsed(t *testing.T) {
 		t.Fatalf("lapse access: %v", err)
 	}
 
-	_, _, level, err := svc.Authenticate(context.Background(), "eco_pat_lapsed")
+	p, err := svc.Authenticate(context.Background(), "eco_pat_lapsed")
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
-	if level != model.AccessLevelReadonly {
-		t.Fatalf("level: got %q want readonly", level)
+	if p.Level != model.AccessLevelReadonly {
+		t.Fatalf("level: got %q want readonly", p.Level)
 	}
 }
 
@@ -238,11 +242,11 @@ func TestAuthenticate_ReturnsFullForUnexpiredAccess(t *testing.T) {
 	exp := authT0.Add(appuser.SessionTTL)
 	seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_live", &exp)
 
-	_, _, level, err := svc.Authenticate(context.Background(), "eco_ses_live")
+	p, err := svc.Authenticate(context.Background(), "eco_ses_live")
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
-	if level != model.AccessLevelFull {
-		t.Fatalf("level: got %q want full", level)
+	if p.Level != model.AccessLevelFull {
+		t.Fatalf("level: got %q want full", p.Level)
 	}
 }

@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -57,9 +58,12 @@ func NewAccessTokenRepo(driver string, tx *backend.TxManager) *AccessTokenRepo {
 func (r *AccessTokenRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
 func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) error {
+	if _, err := model.ParseTokenScope(string(t.Scope)); err != nil {
+		return fmt.Errorf("access token %s: %w", t.ID, err)
+	}
 	return r.q.InsertAccessToken(ctx, r.db(ctx), insertAccessTokenParams{
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
-		Name: t.Name, UserAgent: t.UserAgent,
+		Scope: string(t.Scope), Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 	})
 }
@@ -88,7 +92,7 @@ func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.Ac
 func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 	return accessTokenRow{
 		ID: row.ID, UserID: row.UserID, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: row.Scope, Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
 	}
@@ -146,7 +150,7 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	}
 	return &model.AccessToken{
 		ID: id, UserID: uid, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: model.TokenScope(row.Scope), Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
 	}, nil

@@ -19,6 +19,7 @@ type AccessToken struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time
 	RevokedAt  *time.Time
+	Scope      string
 }
 
 type Account struct {
@@ -167,6 +168,110 @@ type Folder struct {
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	SortKey   string
+}
+
+type ImportAccountLink struct {
+	ID                string
+	SourceID          string
+	ExternalAccountID string
+	ExternalName      string
+	ExternalCurrency  *string
+	AccountID         *string
+	Mode              string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type ImportCredentialKey struct {
+	UserID        string
+	KeyCiphertext string
+	CreatedAt     time.Time
+}
+
+type ImportEvent struct {
+	ID          string
+	SourceID    string
+	RunID       *string
+	Payload     string
+	PayloadHash string
+	Status      string
+	ParseError  *string
+	ReceivedAt  time.Time
+}
+
+type ImportLinkAppliedLabel struct {
+	LinkID  string
+	LabelID string
+}
+
+type ImportRule struct {
+	ID               string
+	UserID           string
+	SourceID         *string
+	Position         int64
+	MatchPayee       *string
+	MatchDescription *string
+	MatchAmountMin   *string
+	MatchAmountMax   *string
+	Action           string
+	CategoryID       *string
+	PayeeID          *string
+	TagID            *string
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type ImportRuleLabel struct {
+	RuleID  string
+	LabelID string
+}
+
+type ImportRun struct {
+	ID            string
+	UserID        string
+	SourceID      string
+	Provider      string
+	Params        string
+	Status        string
+	ImportedCount int64
+	MatchedCount  int64
+	SkippedCount  int64
+	FailedCount   int64
+	StartedAt     time.Time
+	FinishedAt    *time.Time
+}
+
+type ImportSource struct {
+	ID                   string
+	UserID               string
+	Provider             string
+	Name                 string
+	CredentialCiphertext *string
+	Status               string
+	LastSyncedAt         *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type ImportTransactionLink struct {
+	ID                    string
+	SourceID              string
+	RunID                 *string
+	EventID               *string
+	ExternalAccountID     string
+	ExternalTransactionID string
+	TransactionID         *string
+	Status                string
+	ExternalPayee         string
+	ExternalDescription   string
+	ExternalAmount        string
+	ExternalCurrency      *string
+	ExternalPostedAt      time.Time
+	AppliedCategoryID     *string
+	AppliedPayeeID        *string
+	AppliedTagID          *string
+	AppliedRuleID         *string
+	ImportedAt            time.Time
 }
 
 type Label struct {

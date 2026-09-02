@@ -270,7 +270,8 @@ func (h *harness) issueTokenFor(t *testing.T, userID string) string {
 	exp := now.Add(appuser.SessionTTL)
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
-		TokenHash: appuser.HashAccessToken(raw), CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		TokenHash: appuser.HashAccessToken(raw), Scope: model.TokenScopeFull,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if err := h.tokens.Insert(context.Background(), tok); err != nil {
 		t.Fatalf("seed session: %v", err)

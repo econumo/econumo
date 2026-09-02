@@ -61,6 +61,7 @@ export interface SessionDto {
 export interface PersonalTokenDto {
   id: Id
   name: string
+  scope: 'full' | 'ingest'
   createdAt: string
   lastUsedAt: string
   expiresAt: string | null

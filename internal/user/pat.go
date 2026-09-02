@@ -1,5 +1,5 @@
 // Personal access tokens: user-created bearer credentials for integrations.
-// Full-access (no scopes); optional fixed expiry; never touched by password
+// Scoped (full | ingest); optional fixed expiry; never touched by password
 // changes — only explicit revocation or user:deactivate kills them.
 package user
 
@@ -32,15 +32,17 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req mod
 		return nil, err
 	}
 	name := req.Name
+	// Validate() already guarantees req.Scope parses.
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindPersonal, TokenHash: hash,
-		Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
+		Scope: model.TokenScope(req.Scope),
+		Name:  &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
 	}
 	if err := s.tokens.Insert(ctx, t); err != nil {
 		return nil, err
 	}
 	return &model.CreatePersonalTokenResult{
-		Id: t.ID.String(), Name: name, Token: raw,
+		Id: t.ID.String(), Name: name, Scope: req.Scope, Token: raw,
 		CreatedAt: now.UTC().Format(datetime.Layout),
 		ExpiresAt: formatOptionalDatetime(expiresAt),
 	}, nil
@@ -64,7 +66,7 @@ func (s *Service) ListPersonalTokens(ctx context.Context, userID vo.Id) ([]model
 			name = *rows[i].Name
 		}
 		out = append(out, model.PersonalTokenItem{
-			Id: rows[i].ID.String(), Name: name,
+			Id: rows[i].ID.String(), Name: name, Scope: string(rows[i].Scope),
 			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
 			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
 			ExpiresAt:  formatOptionalDatetime(rows[i].ExpiresAt),
