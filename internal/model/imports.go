@@ -25,6 +25,9 @@ const (
 	ImportRunStatusCompleted = "completed"
 	ImportRunStatusFailed    = "failed"
 	ImportRunStatusPartial   = "partial"
+
+	ImportAccountLinkModeImport = "import"
+	ImportAccountLinkModeIgnore = "ignore"
 )
 
 // Push providers deliver one event per tap and see the transaction before
@@ -45,6 +48,23 @@ type ImportSource struct {
 	LastSyncedAt         *time.Time
 	CreatedAt            time.Time
 	UpdatedAt            time.Time
+}
+
+// ImportAccountLink is the user's decision for one external account (a
+// card name for Apple Wallet): import into AccountID, or ignore. AccountID
+// is nil only in ignore mode (schema CHECK). ExternalCurrency is the
+// currency the provider reported for the card, recorded when the link is
+// created so a currency drift can be refused later.
+type ImportAccountLink struct {
+	ID                vo.Id
+	SourceID          vo.Id
+	ExternalAccountID string
+	ExternalName      string
+	ExternalCurrency  *string
+	AccountID         *vo.Id
+	Mode              string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 type ImportEvent struct {

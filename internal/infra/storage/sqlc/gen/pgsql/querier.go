@@ -39,8 +39,12 @@ type Querier interface {
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteImportAccountLink(ctx context.Context, id string) error
+	DeleteImportEvent(ctx context.Context, id string) error
+	DeleteImportSource(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
+	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.
 	DeleteRecurringLabels(ctx context.Context, recurringTransactionID string) error
@@ -114,10 +118,13 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
 	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
 	GetImportRunByID(ctx context.Context, id string) (ImportRun, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
+	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
 	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
+	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -201,6 +208,7 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error
 	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
 	// the caller reads the row count to learn whether this payload was new.
 	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
@@ -270,6 +278,10 @@ type Querier interface {
 	ListFolderAccountIDs(ctx context.Context, folderID string) ([]string, error)
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
+	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
@@ -312,9 +324,11 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
 	// Note: sets run_id too so a processed event records the run that consumed it.
 	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
+	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
