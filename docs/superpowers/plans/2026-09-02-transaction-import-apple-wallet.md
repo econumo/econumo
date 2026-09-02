@@ -3250,7 +3250,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `de`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Daten.",
+      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Import & Export.",
       "provider_unsupported": "Dieser Import-Anbieter wird nicht unterstützt.",
       "account_link_exists": "Diese Karte ist bereits verknüpft.",
       "currency_mismatch": "Die Währung der Karte stimmt nicht mit der Währung des Kontos überein.",
@@ -3262,7 +3262,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `es`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Datos.",
+      "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Importar y exportar.",
       "provider_unsupported": "Este proveedor de importación no es compatible.",
       "account_link_exists": "Esta tarjeta ya está vinculada.",
       "currency_mismatch": "La moneda de la tarjeta no coincide con la moneda de la cuenta.",
@@ -3274,7 +3274,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `fr`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Données.",
+      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Import et export.",
       "provider_unsupported": "Ce fournisseur d'import n'est pas pris en charge.",
       "account_link_exists": "Cette carte est déjà liée.",
       "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",
@@ -3286,7 +3286,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `it`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Dati.",
+      "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Importa ed esporta.",
       "provider_unsupported": "Questo provider di importazione non è supportato.",
       "account_link_exists": "Questa carta è già collegata.",
       "currency_mismatch": "La valuta della carta non corrisponde alla valuta del conto.",
@@ -3298,7 +3298,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `nl`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Gegevens.",
+      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Import & export.",
       "provider_unsupported": "Deze importbron wordt niet ondersteund.",
       "account_link_exists": "Deze kaart is al gekoppeld.",
       "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",
@@ -3310,7 +3310,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `pl`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Dane.",
+      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Import i eksport.",
       "provider_unsupported": "Ten dostawca importu nie jest obsługiwany.",
       "account_link_exists": "Ta karta jest już powiązana.",
       "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
@@ -3322,7 +3322,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `pt`:
 ```json
     "import": {
-      "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Dados.",
+      "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Importar e exportar.",
       "provider_unsupported": "Este fornecedor de importação não é suportado.",
       "account_link_exists": "Este cartão já está associado.",
       "currency_mismatch": "A moeda do cartão não corresponde à moeda da conta.",
@@ -3334,7 +3334,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `ru`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet не подключён. Сначала подключите его в Настройки → Данные.",
+      "source_not_found": "Apple Wallet не подключён. Сначала подключите его в Настройки → Импорт и экспорт.",
       "provider_unsupported": "Этот источник импорта не поддерживается.",
       "account_link_exists": "Эта карта уже привязана.",
       "currency_mismatch": "Валюта карты не совпадает с валютой счёта.",
@@ -3346,7 +3346,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `uk`:
 ```json
     "import": {
-      "source_not_found": "Apple Wallet не підключено. Спочатку підключіть його в Налаштування → Дані.",
+      "source_not_found": "Apple Wallet не підключено. Спочатку підключіть його в Налаштування → Імпорт та експорт.",
       "provider_unsupported": "Це джерело імпорту не підтримується.",
       "account_link_exists": "Цю картку вже прив'язано.",
       "currency_mismatch": "Валюта картки не збігається з валютою рахунку.",
@@ -3358,7 +3358,7 @@ Run: `go test ./internal/config/ 2>&1 | tail -3` — expected PASS.
 `zh`:
 ```json
     "import": {
-      "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → 数据 中连接。",
+      "source_not_found": "尚未连接 Apple Wallet。请先在 设置 → 导入与导出 中连接。",
       "provider_unsupported": "不支持此导入来源。",
       "account_link_exists": "此卡已关联。",
       "currency_mismatch": "卡片货币与账户货币不一致。",
