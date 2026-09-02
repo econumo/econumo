@@ -47,7 +47,8 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		}
 		// A card that only ever reports one currency is IN that currency; mapping it
 		// onto an account in another one is a misconfiguration, not a conversion job.
-		if cardCode := uniformCurrency(ledger, ext); cardCode != "" && cardCode != accountCode {
+		cardCode := uniformCurrency(ledger, ext)
+		if cardCode != "" && cardCode != accountCode {
 			return &errs.ValidationError{Msg: "Card currency does not match the account", MsgCode: errs.CodeImportCurrencyMismatch}
 		}
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
@@ -61,7 +62,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 			}
 			existing.Mode = model.ImportAccountLinkModeImport // map-instead over an ignored card
 			existing.AccountID = &accountID
-			existing.ExternalCurrency = optionalString(uniformCurrency(ledger, ext))
+			existing.ExternalCurrency = optionalString(cardCode)
 			existing.UpdatedAt = now
 			if err := s.repo.UpdateAccountLink(ctx, existing); err != nil {
 				return err
@@ -69,7 +70,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		} else {
 			if err := s.repo.InsertAccountLink(ctx, &model.ImportAccountLink{
 				ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: ext, ExternalName: ext,
-				ExternalCurrency: optionalString(uniformCurrency(ledger, ext)), AccountID: &accountID,
+				ExternalCurrency: optionalString(cardCode), AccountID: &accountID,
 				Mode: model.ImportAccountLinkModeImport, CreatedAt: now, UpdatedAt: now,
 			}); err != nil {
 				return err
@@ -262,22 +263,15 @@ func (s *Service) UnlinkAccount(ctx context.Context, userID vo.Id, req model.Imp
 			return err
 		}
 		var eventIDs []vo.Id
-		// DeleteQueuedLinksByExternalAccount matches external_account_id
-		// exactly, but the ledger keeps whatever case each tap arrived in;
-		// purge once per distinct spelling this card has queued.
-		seen := map[string]bool{}
 		for _, l := range ledger {
-			if l.Status == model.ImportLinkStatusQueued && strings.EqualFold(l.ExternalAccountID, ext) {
-				if l.EventID != nil {
-					eventIDs = append(eventIDs, *l.EventID)
-				}
-				seen[l.ExternalAccountID] = true
+			if l.Status == model.ImportLinkStatusQueued && strings.EqualFold(l.ExternalAccountID, ext) && l.EventID != nil {
+				eventIDs = append(eventIDs, *l.EventID)
 			}
 		}
-		for spelling := range seen {
-			if err := s.repo.DeleteQueuedLinksByExternalAccount(ctx, src.ID, spelling); err != nil {
-				return err
-			}
+		// the purge folds case in SQL, so one call covers every spelling this
+		// card's taps arrived in
+		if err := s.repo.DeleteQueuedLinksByExternalAccount(ctx, src.ID, ext); err != nil {
+			return err
 		}
 		for _, id := range eventIDs {
 			if err := s.repo.DeleteEvent(ctx, id); err != nil {
