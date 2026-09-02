@@ -547,15 +547,17 @@ to no run — their link's `run_id` is NULL.
 
 ### `import_rules`
 
-Category/payee/tag/label mapping.
+Category/payee/tag/label mapping, or a pattern to skip.
 
 ```
 id, user_id, source_id NULL,       -- NULL = applies to every source
+action      ('classify'|'skip'),
 match_field ('description'|'external_payee'|'external_category'),
 match_type  ('exact'|'contains'|'prefix'),
 match_value, is_case_sensitive,
 target_category_id NULL, target_payee_id NULL, target_tag_id NULL,
 priority, created_at, updated_at
+CHECK (action = 'classify' OR (target_category_id IS NULL AND target_payee_id IS NULL AND target_tag_id IS NULL))
 ```
 
 **One row, multiple nullable targets** — not one row per target kind. Editing a
@@ -568,10 +570,49 @@ A plain dictionary mapping ("external category `Groceries` → my Food category"
 is just `match_field='external_category', match_type='exact'`. Pattern rules
 ("description contains `STARBUCKS`") use `contains`. One table covers both.
 
-Rules only ever **add** classification. A rule that clears a category or strips
-a label is not expressible in v1 and is not wanted: a rule fires on every
-future import of a matching string, so a subtractive rule would silently undo
-the user's own later corrections.
+Classify rules only ever **add** classification. A rule that clears a
+category or strips a label is not expressible in v1 and is not wanted: a rule
+fires on every future import of a matching string, so a subtractive rule would
+silently undo the user's own later corrections.
+
+#### Skip rules
+
+`action='skip'` is the third layer of "I don't want this", after per-event
+skip (triage) and per-account ignore (link mode): **by pattern** — credit-card
+payments that are already the other side of a transfer ("PAYMENT - THANK
+YOU"), Apple Cash top-ups, a subscription tracked elsewhere. A skip rule has
+no targets and no `import_rule_labels` rows (the CHECK covers the columns; the
+service refuses label rows on a skip rule).
+
+Semantics, kept deliberately blunt:
+
+- Evaluated in stage 3, right after currency conversion and **before the
+  matcher**: a matching skip rule ends the pipeline with a ledger row
+  `status='skipped'`, `applied_rule_id` = the rule, no transaction — the same
+  row a hand skip produces, so it counts as seen and never re-queues. Skip
+  rules therefore act only on events that reached stage 3, i.e. whose account
+  is mapped; an unmapped account's events queue regardless.
+- **A matching skip rule beats every classify rule, whatever the priorities.**
+  Skipping makes classification moot, and an "exception" ordering (classify
+  overrides skip for a narrower pattern) is a rabbit hole not worth digging in
+  v1: the user narrows the skip pattern instead. Priority orders classify
+  rules among themselves and orders skip rules in the list; it never decides
+  skip-vs-classify.
+- **No backfill.** `apply-rule` refuses a skip rule: backfilling it would mean
+  deleting already-imported transactions by pattern, which is a destructive
+  action hiding behind a benign-looking button. Existing imports go through
+  `delete-run` / per-transaction delete; the rule covers the future.
+- **Not LLM-suggestable.** `suggest-rules` proposes classify rules only, and
+  the server drops any `skip` row a model returns. A model proposing which
+  money to drop from the books is a different risk class from proposing a
+  category.
+
+The blast radius of a broad pattern (`contains "PAY"`) is the one real
+hazard: money silently missing from the books. Two things bound it: the live
+match count at rule creation shows what the pattern would have caught in
+recent imports, and every rule-skipped row is visible and counted under run
+and source detail (`skipped_count`, with the rule named on the row) — a
+skip is never a silent drop.
 
 ### `import_rule_labels` / `import_link_applied_labels`
 
@@ -703,7 +744,9 @@ stages; only stages 0–1 have provider-specific code:
    `status='queued'`. An `'ignore'` link → ledger row `status='skipped'`,
    pipeline ends (the raw event stays, per stage 0).
 3. **Match transaction & import** — the reconciler below; on create, apply
-   `import_rules` by priority; unmatched fields stay nil.
+   `import_rules` by priority; unmatched fields stay nil. A matching **skip
+   rule** (Part 2) ends the stage first, before the matcher runs: ledger row
+   `status='skipped'`, no transaction.
    Currency conversion happens here, before the amount is compared to
    anything: when the event's currency differs from the linked account's,
    convert with the stored rate for the event's date, and match on the
@@ -786,7 +829,8 @@ tap-time push events with posted bank records, a case Actual does not have.
 - **Payee** — `payee` when the bridge supplies it, else `description`.
 - **Classification** — `import_rules` by priority set category, payee, tag
   and labels; a field no rule assigns stays unset. All four are optional — nil category, nil payee, nil tag
-  and an empty label set are legal everywhere in Econumo.
+  and an empty label set are legal everywhere in Econumo. A matching skip
+  rule means no transaction at all (above).
 
 ### Failure handling
 
@@ -880,7 +924,9 @@ so a one-off import needs **no account link at all**. Saving imports that
 single event through the matcher (its link becomes `linked`, run-less;
 `applied_*` snapshot = what the user saved). **Skip** flips the link to
 `status='skipped'` — seen forever, never re-queued; visible under the run/
-source detail with an "un-skip" (back to queued) escape hatch.
+source detail with an "un-skip" (back to queued) escape hatch. A hand skip
+offers a **skip rule** the same way an edit offers a classify rule (Part 7):
+*"Always skip 'APPLE CASH'?"* with the editable match value and live count.
 
 **At-rest note:** queued pull events keep bank amounts/payees for accounts
 the user may never map. Accepted for v1 (simplicity, and the user sees and
@@ -964,7 +1010,8 @@ the same live match-count preview as edit-driven rules. There is no
 "suggested" state in the schema and no path for unreviewed model output to
 touch data. The server validates every proposed rule before returning it:
 target ids must belong to the user (models hallucinate ids — invalid rows
-are dropped), match types must be in the `exact`/`contains`/`prefix` set.
+are dropped), match types must be in the `exact`/`contains`/`prefix` set,
+and `action` must be `classify` (skip rows are dropped, Part 2).
 
 Configuration is a boot-parsed DSN, exactly the `MAILER_DSN` pattern:
 `ECONUMO_AI_DSN` — e.g. `openai://<api-key>@api.openai.com?model=gpt-5-mini`.
@@ -1014,9 +1061,9 @@ convention. `GET` for reads, `POST` for every write.
 | POST | `delete-run` | Delete transactions + mappings for a run (guardrails in Part 3). |
 | POST | `delete-link` | "Allow re-import" for a single link. |
 | GET  | `get-rule-list` | |
-| POST | `create-rule` / `update-rule` / `delete-rule` | |
+| POST | `create-rule` / `update-rule` / `delete-rule` | `action` is `classify` or `skip`; a skip rule with targets or labels is a validation error. |
 | POST | `preview-rule` | Match counts before applying. |
-| POST | `apply-rule` | Backfill. |
+| POST | `apply-rule` | Backfill; classify rules only (a skip rule → coded 400, Part 2). |
 
 Outside `/import`: `create-personal-token` gains a **required** `scope`
 field (`'full' | 'ingest'`); `get-personal-token-list` returns it.
@@ -1139,7 +1186,8 @@ consequence, since they are also not reading their budget.
   sources reads as e.g. "Apple Wallet 08-15 · SimpleFIN 08-17, amount updated
   4.50 → 5.40").
 - **Rule prompt** — the Part 7 flow.
-- **Rules management** — list, edit, reorder by priority; a **"Suggest
+- **Rules management** — list (skip rules visibly distinct from classify
+  rules), edit, reorder by priority; a **"Suggest
   rules"** action (visible only when the instance advertises `AI_ENABLED`)
   runs the Part 7 LLM flow and presents proposals for per-row
   accept/edit/discard with live match counts.
@@ -1168,7 +1216,8 @@ Per the repository rule, every new user-facing action fires an event. New
 `METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`, `IMPORT_ACCOUNT_IGNORE`,
 `IMPORT_SYNC` (with an `auto`/`manual` trigger property), `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
 `IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_RUN_DELETE`,
-`IMPORT_RULE_CREATE`, `IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
+`IMPORT_RULE_CREATE` (with an `action` property, `classify`/`skip`),
+`IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
 shared hook choke point so every surface is covered once. (Server-side ingest
 hits are not SPA metrics.) `metrics-coverage.test.ts` fails the suite if a
 key is never fired.
@@ -1184,7 +1233,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - Unit: matcher stages (incl. cross-source adopt: tolerance windows, token
   containment, amount-correction-only-if-unedited), rule matching/priority,
   SimpleFIN response normalization, parse rules (amount locale normalization,
-  timestamp fallback, failure taxonomy) + synthesized-id stability,
+  timestamp fallback, failure taxonomy) + synthesized-id stability, skip
+  rules (beats a higher-priority classify rule; produces a seen `skipped`
+  row with the rule recorded; never runs on an unmapped account's events;
+  `apply-rule` refuses it; `suggest-rules` drops model-returned skip rows),
   event-level dedupe vs ledger dedupe, retry-after-parser-fix,
   amount/sign mapping, timezone/date conversion on both paths, and currency
   conversion (converted amount is what the matcher compares; the original
