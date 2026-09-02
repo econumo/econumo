@@ -469,6 +469,115 @@
     "make_recurring": "Als wiederkehrend festlegen",
     "not_posted": "Nicht gebucht"
   },
+  "imports": {
+    "badge": "Importiert",
+    "banner": {
+      "text": "{count} importierte Transaktion wartet auf Prüfung | {count} importierte Transaktionen warten auf Prüfung",
+      "cta": "Prüfen"
+    },
+    "data_page": {
+      "menu_item": "Import & Export",
+      "header": "Import & Export",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
+      "connect": "Apple Wallet einrichten",
+      "connected": "Verbunden",
+      "disconnect": "Trennen",
+      "disconnect_modal": {
+        "title": "Apple Wallet trennen?",
+        "question": "Kartenzuordnungen und die Prüfwarteschlange dieser Verbindung werden entfernt. Bereits importierte Transaktionen bleiben erhalten."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Kurzbefehle laden",
+          "text": "Installiere beide Kurzbefehle auf deinem iPhone.",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. Konfigurieren",
+          "button": "Auf diesem iPhone konfigurieren",
+          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse.",
+          "desktop": "Öffne Einstellungen → Import & Export auf deinem iPhone, um den Kurzbefehl dort zu konfigurieren.",
+          "done": "Der Kurzbefehl ist konfiguriert. Deine nächste Apple-Pay-Zahlung erscheint hier."
+        },
+        "automate": {
+          "title": "3. Automatisieren",
+          "text": "Füge in der Kurzbefehle-App eine Automation hinzu: Transaktion → „Econumo Wallet“ mit der Transaktion als Eingabe ausführen."
+        }
+      },
+      "manual": {
+        "toggle": "Manuell konfigurieren",
+        "token": "Zugriffstoken (wird einmal angezeigt)",
+        "url": "Server",
+        "body": "Anfragetext",
+        "action_1": "Details der Transaktion abrufen → den obigen Anfragetext befüllen",
+        "action_2": "Inhalt der URL abrufen → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Header Authorization: Bearer <token>",
+        "action_4": "Header Content-Type: application/json",
+        "action_5": "Anfragetext: JSON, die Felder oben"
+      },
+      "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
+      "cards": {
+        "header": "Karten",
+        "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",
+        "state": {
+          "mapped": "Zugeordnet",
+          "ignored": "Ignoriert",
+          "unmapped": "Nicht zugeordnet · {count} wartend"
+        },
+        "taps": "{count} Zahlung | {count} Zahlungen",
+        "last_seen": "Zuletzt gesehen {date}",
+        "map": "Konto zuordnen",
+        "map_instead": "Stattdessen zuordnen",
+        "ignore": "Ignorieren",
+        "unlink": "Zuordnung aufheben",
+        "unlink_modal": {
+          "title": "Zuordnung von {card} aufheben?",
+          "question": "Neue Zahlungen dieser Karte warten auf Prüfung, bis du sie erneut zuordnest."
+        },
+        "map_modal": {
+          "header": "{card} zuordnen",
+          "account": "Konto",
+          "submit": "Zuordnen"
+        },
+        "mapped_toast": "{imported} importiert, {matched} abgeglichen, {skipped} übersprungen"
+      }
+    },
+    "queue": {
+      "header": "Importwarteschlange",
+      "empty": "Nichts zu prüfen.",
+      "queued": "Wartet auf Prüfung",
+      "skipped": "Übersprungen",
+      "failed": "Braucht Aufmerksamkeit",
+      "reason": {
+        "unmapped": "Karte nicht zugeordnet",
+        "account_deleted": "Konto gelöscht",
+        "no_rate": "Kein Wechselkurs für {currency}"
+      },
+      "import": "Importieren",
+      "skip": "Überspringen",
+      "unskip": "Wiederherstellen",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen",
+      "received": "Empfangen {date}",
+      "retry_result": {
+        "created": "Importiert",
+        "queued": "Zur Prüfung eingereiht",
+        "skipped": "Übersprungen",
+        "duplicate": "Bereits importiert",
+        "failed": "Schlägt weiterhin fehl"
+      }
+    },
+    "provenance": {
+      "header": "Importiert aus"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Wählen Sie Ihren Avatar",

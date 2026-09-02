@@ -17,6 +17,7 @@ export interface EconumoConfig {
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
+  IMPORT_MATCHER?: { matchDays: number; tipDays: number; tipTolerancePct: number; tokenMinLength: number }
 }
 
 declare global {

@@ -6,4 +6,5 @@ window.econumoConfig = {
   BILLING_URL: '',
   ALLOW_CUSTOM_API: true,
   VERSION: null,
+  IMPORT_MATCHER: { matchDays: 3, tipDays: 5, tipTolerancePct: 20, tokenMinLength: 3 },
 };
