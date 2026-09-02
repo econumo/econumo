@@ -74,6 +74,11 @@ const (
 	// /api/v1/import/ingest-* — every other route must 401 it.
 	IngestToken   = "eco_pat_owner-ingest-token-000000000000000000000000"
 	IngestTokenID = "99999999-9999-9999-9999-999999999999"
+
+	// One import link on Txn2 so get-transaction-list pins isImported=1 on a
+	// real row (Txn1 stays 0). Nothing else reads import_* tables in stage 1.
+	ImportSourcePhone = "0c000000-0000-0000-0000-000000000001"
+	ImportLinkTxn2    = "0d000000-0000-0000-0000-000000000001"
 )
 
 // Seed seeds an identical, cross-module fixture into the given engine via the
@@ -184,4 +189,9 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// role=1 is budget.RoleUser (internal/budget/valueobject.go: admin=0,
 	// user=1, guest=2).
 	f.BudgetAccess(Budget, GuestID, 1, false)
+
+	f.ImportSource(fixture.ImportSource{ID: ImportSourcePhone, UserID: OwnerID, Provider: model.ImportProviderAppleWallet, Name: "iPhone"})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,
+		ExternalAccountID: "wallet", ExternalTransactionID: "tap-1", TransactionID: Txn2,
+		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})
 }

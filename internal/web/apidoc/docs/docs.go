@@ -12288,6 +12288,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "isImported": {
+                    "description": "IsImported is 1 when at least one import link (any provider) points at\nthis transaction — int 0/1 like isArchived. Full provenance is a\nseparate per-transaction read (stage 2), so the list carries only the flag.",
+                    "type": "integer"
+                },
                 "labelIds": {
                     "description": "LabelIds is always a list, never null, so clients can iterate without a\nnil check. A transfer always carries an empty list.",
                     "type": "array",

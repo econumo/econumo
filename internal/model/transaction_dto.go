@@ -34,6 +34,10 @@ type TransactionResult struct {
 	// LabelIds is always a list, never null, so clients can iterate without a
 	// nil check. A transfer always carries an empty list.
 	LabelIds []string `json:"labelIds"`
+	// IsImported is 1 when at least one import link (any provider) points at
+	// this transaction — int 0/1 like isArchived. Full provenance is a
+	// separate per-transaction read (stage 2), so the list carries only the flag.
+	IsImported int `json:"isImported"`
 }
 
 // CreateTransactionRequest is the create-transaction body. amount/amountRecipient
