@@ -384,6 +384,35 @@ avoids the existing CSV failure mode in `findOrCreateAccount`
 (`internal/transaction/import.go:422-440`), where a name matching an unwritable
 shared account silently creates a duplicate own account.
 
+#### Card → account for Apple Wallet
+
+A user with several cards in Apple Pay wants each card's taps to land in a
+chosen Econumo account. That is exactly what a link row is for the
+`'apple-wallet'` source: the `account` field of the pushed payload is the
+card's Wallet display name, the recipe copies it from the trigger's
+"Card or Pass" property, and it becomes `external_account_id` verbatim (after
+the parse-table normalization). The flow the user sees:
+
+1. First tap from a card the server has not seen → the event queues, the
+   banner appears.
+2. Queue page → "map this card" → pick the Econumo account → link row
+   created; the queued taps from that card convert in one run.
+3. Every later tap from that card imports straight into the chosen account.
+   Re-mapping is editing the link's `account_id`; existing transactions stay
+   where they were imported.
+
+Two consequences of the card being identified **by name only**:
+
+- **Renaming a card in Wallet** makes it a new external account: its taps
+  queue again until the new name is mapped. The old link stays (history +
+  `UNIQUE` slot); the user maps the new name to the same account.
+- **Two cards with the same display name** are indistinguishable to the
+  server. The fix is on the device: the Transaction trigger itself can be
+  filtered to a single card, so the user builds **one automation per card**
+  and types a distinct literal into `account` (e.g. `"Visa – joint"`)
+  instead of using the trigger's property. The setup page documents this as
+  the recipe variant for same-named cards; the server needs nothing extra.
+
 There is deliberately **no per-link default category**. Econumo allows nil
 categories on every transaction type (`internal/model/transaction_dto.go:62`
 documents categoryId as optional; there is no category-required check for
@@ -783,7 +812,7 @@ Parse rules (v1):
 
 | Field | Rule | On failure |
 |---|---|---|
-| `account` | trim, collapse inner whitespace; used verbatim as the external account id | missing/empty → parse failure |
+| `account` | trim, collapse inner whitespace; used verbatim as the external account id (the card's Wallet display name, or the literal the user typed for a per-card automation) | missing/empty → parse failure |
 | `amount` | decimal string, tolerant normalization: strip currency symbols and spaces; `.` and `,` both accepted, the **last** separator is the decimal point (`1.234,56` → `1234.56`); must yield a positive decimal | unparseable → parse failure |
 | `currency` | 3-letter ISO code, uppercased; symbols rejected (`$` is ambiguous — the recipe sends the trigger's currency code) | missing/invalid → parse failure |
 | `occurredAt` | RFC3339 **with offset** — the device's local time; the wall-clock date derives from the event's own offset, not `X-Timezone` (a Shortcut sends no meaningful header), stored in the frozen `2006-01-02 15:04:05` format | missing/invalid → **fallback to `received_at`** — a lost timestamp must not lose a purchase; taps reach the server within seconds |
@@ -997,7 +1026,10 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   prompt states plainly that a forgotten passphrase is recovered by
   reconnecting, not by support — and offers that path inline, so a stuck user
   is never cornered.
-- **Apple Wallet** — setup flow below, card mapping, activity.
+- **Apple Wallet** — setup flow below; the **card list**: every card name the
+  server has seen (from links and queued events) with its mapped Econumo
+  account or an "unmapped — N queued" state and a map action; per-card tap
+  count and last-seen; activity.
 
 ### Apple Wallet setup — manual recipe first, shortcut file later
 
@@ -1011,7 +1043,11 @@ button) → the server URL, likewise copyable → step-by-step instructions with
 screenshots for building the automation by hand: new Automation → Transaction
 trigger → Run Immediately → "Get Contents of URL" with the POST body from
 Part 6. Five actions. The page pre-renders the exact JSON body with the user's
-values already substituted, so the user copies rather than composes.
+values already substituted, so the user copies rather than composes. The
+`account` field is the trigger's "Card or Pass" property, so one automation
+covers every card; the page's "same-named cards" note shows the variant with
+the trigger filtered to one card and `account` typed as a literal (Part 2,
+card → account).
 
 **Follow-up:** sign the recipe once with `shortcuts sign --mode anyone`,
 commit it (`web/public/econumo-apple-wallet.shortcut`), and serve it as a
@@ -1138,6 +1174,10 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - Deleted-account interaction: a link whose account is soft-deleted queues its
   events instead of erroring; the account's zeroing correction and the
   importer do not fight.
+- Card → account: taps from two differently named cards land in two
+  accounts; an unmapped card queues and `link-account` converts exactly its
+  backlog; a renamed card queues under the new name while the old link is
+  untouched; re-mapping a link moves only future taps.
 - **`apiparity`**: every new route needs a scenario — the guard tests enforce
   that route and scenario counts never shrink. Existing goldens change from
   the `isImported` addition and the PAT `scope` field.
