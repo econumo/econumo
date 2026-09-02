@@ -42,7 +42,7 @@ export function ImportsDataPage() {
 
         <section className="flex flex-col gap-2">
           <p className="px-1 text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.header')}</p>
-          <AppleWalletSetup source={wallet} />
+          <AppleWalletSetup key={wallet?.id ?? 'none'} source={wallet} />
           {wallet ? <ImportCards source={wallet} /> : null}
         </section>
       </div>
