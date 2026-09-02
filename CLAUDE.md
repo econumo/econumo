@@ -129,8 +129,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the thirteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `imports`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -148,7 +148,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -183,7 +183,12 @@ Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
 keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
-no `repository.go` either.
+no `repository.go` either. `imports` (the bank/phone transaction-import
+subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
+ships in stages: stage 1 is the persistence + matcher core with no HTTP edge
+and no provider, so it has `repository.go` and `repo/` but no `api/` or
+`ports.go` yet; the package name is `imports` (not `import`, a Go keyword)
+while its future routes live under `/api/v1/import/`.
 
 ### Dependency rule
 
@@ -630,7 +635,7 @@ In the distroless image these run via the binary directly, e.g.
 - **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
   Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes) and `personal` (user-created
-  PATs with an optional fixed expiry, full access, shown exactly once at creation).
+  PATs with an optional fixed expiry, shown exactly once at creation).
   Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
   that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
   `"Invalid access token"`). `create-personal-token` requires `scope`.
