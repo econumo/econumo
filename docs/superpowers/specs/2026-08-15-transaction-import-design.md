@@ -82,11 +82,12 @@ the provider as swappable from day one.
   only — the server receives the raw password at login and could derive the
   key. Doing it properly (Bitwarden-style split derivation) would break the
   frozen `login-user` contract.
-- **One passphrase per user, with an optional plaintext hint.** The
-  passphrase unwraps a single data key that every source's credential is
-  encrypted under, so a second bank needs no second passphrase and a
-  passphrase change re-wraps one key. The hint is off by default and is an
-  explicit trade of at-rest strength for recoverability (Part 2).
+- **One passphrase per user, and no stored hint.** The passphrase unwraps a
+  single data key that every source's credential is encrypted under, so a
+  second bank needs no second passphrase and a passphrase change re-wraps one
+  key. A hint would have to be server-side plaintext to be readable when it is
+  needed, putting a clue to the passphrase beside the ciphertext; recovery is
+  "reconnect with a fresh setup token" instead, which costs no data (Part 2).
 - **Key persistence:** a **non-extractable `CryptoKey` in IndexedDB**. Never a
   cookie — cookies are transmitted to the server on every request, which would
   silently destroy the zero-knowledge property.
@@ -309,7 +310,6 @@ The user's client-side key material, one row per user.
 user_id TEXT PRIMARY KEY → users(id) ON DELETE CASCADE,
 wrapped_data_key TEXT,   -- the AES-GCM data key, wrapped by the passphrase-derived key
 kdf              TEXT,   -- {alg, salt, iterations} the client needs to re-derive
-hint             TEXT NOT NULL DEFAULT '',   -- plaintext, optional, user-authored
 created_at, updated_at
 ```
 
@@ -324,38 +324,17 @@ The server stores `wrapped_data_key` and `kdf` as opaque client metadata,
 exactly as it does `credential_ciphertext`; neither is actionable without the
 passphrase.
 
-#### The hint
+No passphrase hint is stored. A hint would have to be server-side plaintext
+to be readable at the only moment it is wanted — a new device, or after an
+IndexedDB eviction — which puts a clue to the passphrase in the same database
+as the ciphertext it protects, weakening the one guarantee this design makes.
 
-`hint` is a short (≤255 chars), optional, user-authored reminder, stored
-**in plaintext** and returned only to the authenticated owner. It exists
-because the key lives in IndexedDB, which browsers evict under storage
-pressure and which a new device does not have — so the passphrase prompt is a
-real recurring moment, not a once-ever one.
-
-It is a deliberate, user-chosen weakening of the at-rest guarantee: a leaked
-database now yields a clue to the passphrase alongside the ciphertext it
-protects. Three things bound that:
-
-- **Optional and empty by default.** A user who wants the full guarantee
-  writes nothing and loses nothing.
-- **Warned at the point of entry**, not buried in docs: the field says
-  plainly that anyone who can read the server's database can read the hint.
-- **Client-side rejection of the obvious mistake.** The browser has both the
-  hint and the passphrase at the moment they are set, so it refuses a hint
-  that equals or contains the passphrase without the server ever seeing
-  either.
-
-Unlike a password vault, forgetting this passphrase is recoverable and costs
-no financial data: already-imported transactions are ordinary rows, and the
-user re-claims a fresh SimpleFIN setup token to reconnect. The "forget this
-device / reconnect" path in Settings → Data is the guaranteed recovery; the
-hint only saves a detour.
-
-There is no unauthenticated way to read a hint — no "email me my hint" route.
-Bitwarden mails theirs precisely to avoid handing hints to anyone who knows an
-address; here the hint sits behind the ordinary session check, so that
-harvesting path does not exist and the hint can simply be shown in the unlock
-prompt where it is useful.
+Recovery is structural instead: forgetting the passphrase costs **no
+financial data**. Already-imported transactions are ordinary rows and stay.
+The user clears the unreadable credential and reconnects with a fresh
+SimpleFIN setup token — the "forget this device / reconnect" path in
+Settings → Data, which must therefore be obvious and documented rather than
+an emergency escape hatch.
 
 ### `import_events`
 
@@ -960,8 +939,8 @@ convention. `GET` for reads, `POST` for every write.
 |---|---|---|
 | POST | `claim-setup-token` | Exchange a SimpleFIN setup token for an access URL. Returned to the **client**, never stored. |
 | POST | `create-source` | Store a source; SimpleFIN sends `credential_ciphertext`, push providers nothing. |
-| GET  | `get-credential-key` | The caller's `wrapped_data_key`, `kdf` and `hint` — what the client needs to unlock on a new device. |
-| POST | `set-credential-key` | Store/replace the wrapped data key, KDF params and hint (a passphrase change re-wraps and rewrites this one row). |
+| GET  | `get-credential-key` | The caller's `wrapped_data_key` + `kdf` — what the client needs to unlock on a new device. |
+| POST | `set-credential-key` | Store/replace the wrapped data key and KDF params (a passphrase change re-wraps and rewrites this one row). |
 | GET  | `get-source-list` | Sources with status and `last_synced_at`. |
 | POST | `delete-source` | Remove a source, its links, and its queued rows. |
 | POST | `list-external-accounts` | Proxy: client supplies access URL, server returns accounts for mapping (pull). |
@@ -1011,13 +990,13 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   (`web/src/features/transactions/{ImportCsvDialog,ExportCsvDialog}.tsx`)
   surfaced here (the transaction-list entry points may stay; this page is the
   canonical home).
-- **SimpleFIN** — connect (paste setup token, set the encryption passphrase
-  and an optional hint, claim, encrypt, store), unlock (passphrase prompt when
-  the IndexedDB key is absent, showing the hint when one is set; "forget this
-  device" clears the local key), account mapping, sync trigger (plus the
-  automatic on-open sync below), run history. Setting the passphrase and
-  editing the hint are the same form; the hint field carries its warning
-  inline and rejects a value containing the passphrase before submit.
+- **SimpleFIN** — connect (paste setup token, set the encryption passphrase,
+  claim, encrypt, store), unlock (passphrase prompt when the IndexedDB key is
+  absent; "forget this device" clears the local key), account mapping, sync
+  trigger (plus the automatic on-open sync below), run history. The unlock
+  prompt states plainly that a forgotten passphrase is recovered by
+  reconnecting, not by support — and offers that path inline, so a stuck user
+  is never cornered.
 - **Apple Wallet** — setup flow below, card mapping, activity.
 
 ### Apple Wallet setup — manual recipe first, shortcut file later
@@ -1170,10 +1149,9 @@ languages — the two-way coverage guard in `internal/test/i18ntest` enforces it
 - LLM seam: the completion transport is an interface, stubbed in tests (no
   network); suggestion validation (hallucinated target ids dropped, match
   types constrained, malformed model output → clean error, never a 500).
-- Credential key: the hint is returned to its owner and to nobody else; a
-  passphrase change re-wraps the data key without touching any source's
-  `credential_ciphertext`; the client-side check rejects a hint containing the
-  passphrase.
+- Credential key: a passphrase change re-wraps the data key without touching
+  any source's `credential_ciphertext`; the key row is readable only by its
+  owner; clearing it leaves imported transactions untouched.
 - Security regression: the access URL must never appear in logs or in any
   persisted column; ingest bodies never logged; production SQLite
   `foreign_keys = ON` assertion.
