@@ -61,7 +61,7 @@ type Querier interface {
 	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
 	// Joins users for access_level/access_until; see the sqlite sibling for why.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
-	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
+	GetAccessTokenByID(ctx context.Context, id string) (GetAccessTokenByIDRow, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
 	// grants to connected users; users_connections is the symmetric user link.
 	// Roles are admin=0, user=1, guest=2.
@@ -212,7 +212,7 @@ type Querier interface {
 	// "make recurring from this transaction" link. UpsertTransaction deliberately
 	// never updates the column, so the link needs its own statement.
 	LinkTransactionToRecurring(ctx context.Context, arg LinkTransactionToRecurringParams) error
-	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error)
+	ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]ListAccessTokensByUserRow, error)
 	// All grants ON one account (for the account's sharedAccess[] embed).
 	ListAccountAccessByAccount(ctx context.Context, accountID string) ([]AccountsAccess, error)
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to

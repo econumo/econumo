@@ -70,6 +70,7 @@ func seedToken(t *testing.T, tokens *userrepo.AccessTokenRepo, userID vo.Id, kin
 	t.Helper()
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: kind, TokenHash: appuser.HashAccessToken(raw),
+		Scope:     model.TokenScopeFull,
 		CreatedAt: authT0, LastUsedAt: authT0, ExpiresAt: exp,
 	}
 	if err := tokens.Insert(context.Background(), tok); err != nil {

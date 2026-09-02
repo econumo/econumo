@@ -34,7 +34,8 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req mod
 	name := req.Name
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindPersonal, TokenHash: hash,
-		Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
+		Scope: model.TokenScopeFull, // Task 2 switches this to the request's scope.
+		Name:  &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
 	}
 	if err := s.tokens.Insert(ctx, t); err != nil {
 		return nil, err
