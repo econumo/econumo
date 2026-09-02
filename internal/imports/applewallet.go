@@ -69,8 +69,11 @@ func ParseAppleWalletEvent(payload []byte, receivedAt time.Time) (model.IngestEv
 	externalID := strings.TrimSpace(p.EventID)
 	if externalID == "" {
 		// Built from the PARSED values so formatting noise between two
-		// deliveries of the same tap cannot fork the id.
-		sum := sha256.Sum256([]byte(account + "|" + postedAt.UTC().Format(time.RFC3339) + "|" + amount + "|" + payee))
+		// deliveries of the same tap cannot fork the id. The account name is
+		// lowercased here too: card identity is case-insensitive, and an
+		// id-less tap re-delivered with different card-name casing must hash
+		// to the same id.
+		sum := sha256.Sum256([]byte(strings.ToLower(account) + "|" + postedAt.UTC().Format(time.RFC3339) + "|" + amount + "|" + payee))
 		externalID = hex.EncodeToString(sum[:])
 	}
 	return model.IngestEvent{

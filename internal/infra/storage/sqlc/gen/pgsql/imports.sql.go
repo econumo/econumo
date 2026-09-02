@@ -38,7 +38,7 @@ func (q *Queries) DeleteImportSource(ctx context.Context, id string) error {
 }
 
 const deleteQueuedImportTransactionLinksByExternalAccount = `-- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
-DELETE FROM import_transaction_links WHERE source_id = $1 AND external_account_id = $2 AND status = 'queued'
+DELETE FROM import_transaction_links WHERE source_id = $1 AND lower(external_account_id) = lower($2) AND status = 'queued'
 `
 
 type DeleteQueuedImportTransactionLinksByExternalAccountParams struct {
@@ -178,7 +178,7 @@ func (q *Queries) GetImportSourceByUserProvider(ctx context.Context, arg GetImpo
 const getImportTransactionLinkByExternalKey = `-- name: GetImportTransactionLinkByExternalKey :one
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links
-WHERE source_id = $1 AND external_account_id = $2 AND external_transaction_id = $3
+WHERE source_id = $1 AND lower(external_account_id) = lower($2) AND external_transaction_id = $3
 `
 
 type GetImportTransactionLinkByExternalKeyParams struct {
@@ -187,6 +187,9 @@ type GetImportTransactionLinkByExternalKeyParams struct {
 	ExternalTransactionID string
 }
 
+// Card identity is case-insensitive (Apple Wallet may report the same card
+// with different casing between taps), so the account-id half of the key
+// folds case; external_transaction_id stays exact.
 func (q *Queries) GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error) {
 	row := q.db.QueryRowContext(ctx, getImportTransactionLinkByExternalKey, arg.SourceID, arg.ExternalAccountID, arg.ExternalTransactionID)
 	var i ImportTransactionLink

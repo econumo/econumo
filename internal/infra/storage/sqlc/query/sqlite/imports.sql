@@ -45,9 +45,12 @@ INSERT INTO import_transaction_links (id, source_id, run_id, event_id, external_
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetImportTransactionLinkByExternalKey :one
+-- Card identity is case-insensitive (Apple Wallet may report the same card
+-- with different casing between taps), so the account-id half of the key
+-- folds case; external_transaction_id stays exact.
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links
-WHERE source_id = ? AND external_account_id = ? AND external_transaction_id = ?;
+WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND external_transaction_id = sqlc.arg(external_transaction_id);
 
 -- name: ListImportTransactionLinksByTransaction :many
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
@@ -118,4 +121,4 @@ WHERE source_id = ?
 ORDER BY external_posted_at DESC, id;
 
 -- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
-DELETE FROM import_transaction_links WHERE source_id = ? AND external_account_id = ? AND status = 'queued';
+DELETE FROM import_transaction_links WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND status = 'queued';
