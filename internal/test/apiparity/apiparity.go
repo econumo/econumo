@@ -13,7 +13,8 @@ type Call struct {
 	Path   string // "/api/v1/…", MAY carry a query string
 
 	// Auth selects which seeded user's token to attach: "owner", "guest",
-	// "readonly" (the lapsed-trial user), or "" (public/no token).
+	// "readonly" (the lapsed-trial user), "ingest" (the owner's ingest-scoped
+	// PAT), or "" (public/no token).
 	Auth string
 
 	Body any // JSON-marshalled when non-nil

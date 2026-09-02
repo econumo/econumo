@@ -134,10 +134,12 @@ export async function getPersonalTokenList(): Promise<PersonalTokenDto[]> {
 }
 
 // expiresAt: a "YYYY-MM-DD HH:mm:ss" datetime, or null for a token that never expires.
+// The Settings UI creates full-scope tokens only; ingest tokens are minted
+// from Settings -> Data in stage 2.
 export async function createPersonalToken(name: string, expiresAt: string | null): Promise<CreatedPersonalTokenDto> {
   const response = await api.post<Envelope<CreatedPersonalTokenDto>>(
     apiUrl('/api/v1/user/create-personal-token'),
-    { name, expiresAt: expiresAt ?? '' },
+    { name, scope: 'full', expiresAt: expiresAt ?? '' },
   )
   return response.data.data
 }

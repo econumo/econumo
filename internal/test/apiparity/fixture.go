@@ -69,6 +69,11 @@ const (
 	GuestSessionID = "66666666-6666-6666-6666-666666666666"
 
 	ReadonlySessionID = "77777777-7777-7777-7777-777777777777"
+
+	// An ingest-scoped PAT of the owner: valid credential, but only on
+	// /api/v1/import/ingest-* — every other route must 401 it.
+	IngestToken   = "eco_pat_owner-ingest-token-000000000000000000000000"
+	IngestTokenID = "99999999-9999-9999-9999-999999999999"
 )
 
 // Seed seeds an identical, cross-module fixture into the given engine via the
@@ -111,6 +116,8 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// scenario exercises the 402 path rather than a 401.
 	f.AccessToken(fixture.AccessToken{ID: ReadonlySessionID, UserID: ReadonlyID, Kind: model.TokenKindSession,
 		TokenHash: appuser.HashAccessToken(ReadonlyToken), UserAgent: "apiparity", ExpiresAt: &ownerExp})
+	f.AccessToken(fixture.AccessToken{ID: IngestTokenID, UserID: OwnerID, Kind: model.TokenKindPersonal,
+		TokenHash: appuser.HashAccessToken(IngestToken), Name: "Phone shortcut", Scope: string(model.TokenScopeIngest)})
 	f.Connect(OwnerID, GuestID)
 
 	// Folders.

@@ -626,6 +626,9 @@ In the distroless image these run via the binary directly, e.g.
   Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes) and `personal` (user-created
   PATs with an optional fixed expiry, full access, shown exactly once at creation).
+  Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
+  that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
+  `"Invalid access token"`). `create-personal-token` requires `scope`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
@@ -681,6 +684,8 @@ data unreadable. Most are also asserted by the test suite.
   authenticator error — no internals leak).
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
+- `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.

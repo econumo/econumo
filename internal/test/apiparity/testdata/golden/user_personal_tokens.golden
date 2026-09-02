@@ -1,11 +1,11 @@
 == create-personal-token POST /api/v1/user/create-personal-token [owner] -> 200
-{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"CI export","token":"<token>","createdAt":"<datetime>","expiresAt":null}}
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"CI export","scope":"full","token":"<token>","createdAt":"<datetime>","expiresAt":null}}
 
 == create-personal-token-expiring POST /api/v1/user/create-personal-token [owner] -> 200
-{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Short lived","token":"<token>","createdAt":"<datetime>","expiresAt":"<datetime>"}}
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Short lived","scope":"full","token":"<token>","createdAt":"<datetime>","expiresAt":"<datetime>"}}
 
 == get-personal-token-list GET /api/v1/user/get-personal-token-list [owner] -> 200
-{"success":true,"message":"","data":[{"id":"<generated-uuid>","name":"CI export","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"Short lived","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":"<datetime>"}]}
+{"success":true,"message":"","data":[{"id":"99999999-9999-9999-9999-999999999999","name":"Phone shortcut","scope":"ingest","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"CI export","scope":"full","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"Short lived","scope":"full","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":"<datetime>"}]}
 
 == err:create-personal-token-past POST /api/v1/user/create-personal-token [owner] -> 400
 {"success":false,"message":"Expiration date must be in the future","code":400,"errors":{}}
@@ -15,4 +15,16 @@
 
 == err:revoke-personal-token-unknown POST /api/v1/user/revoke-personal-token [owner] -> 400
 {"success":false,"message":"Token not found","code":0,"errors":{}}
+
+== create-personal-token-ingest POST /api/v1/user/create-personal-token [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","name":"Phone","scope":"ingest","token":"<token>","createdAt":"<datetime>","expiresAt":null}}
+
+== err:create-personal-token-blank-scope POST /api/v1/user/create-personal-token [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"scope":["This value should not be blank."]}}
+
+== err:create-personal-token-bad-scope POST /api/v1/user/create-personal-token [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"scope":["The value you selected is not a valid choice."]}}
+
+== get-personal-token-list-after GET /api/v1/user/get-personal-token-list [owner] -> 200
+{"success":true,"message":"","data":[{"id":"99999999-9999-9999-9999-999999999999","name":"Phone shortcut","scope":"ingest","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"CI export","scope":"full","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null},{"id":"<generated-uuid>","name":"Short lived","scope":"full","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":"<datetime>"},{"id":"<generated-uuid>","name":"Phone","scope":"ingest","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null}]}
 

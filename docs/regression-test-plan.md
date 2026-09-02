@@ -339,6 +339,9 @@ User C sees none of it.
       token revealed exactly once with copy button; API call with the PAT
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
+- [ ] Create a personal token with scope "full" — it works everywhere; an
+      "ingest" token (create via API) is rejected with 401 on every non-import
+      route.
 
 ## 13. Cross-cutting & platform
 
