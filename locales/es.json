@@ -469,6 +469,115 @@
     "make_recurring": "Hacer recurrente",
     "not_posted": "Sin registrar"
   },
+  "imports": {
+    "badge": "Importada",
+    "banner": {
+      "text": "{count} transacción importada espera revisión | {count} transacciones importadas esperan revisión",
+      "cta": "Revisar"
+    },
+    "data_page": {
+      "menu_item": "Importar y exportar",
+      "header": "Importar y exportar",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "Registra los pagos con Apple Pay automáticamente con un atajo de iPhone. Cada pago se envía a Econumo; asignas cada tarjeta a una cuenta una sola vez.",
+      "connect": "Configurar Apple Wallet",
+      "connected": "Conectado",
+      "disconnect": "Desconectar",
+      "disconnect_modal": {
+        "title": "¿Desconectar Apple Wallet?",
+        "question": "Se eliminarán las asignaciones de tarjetas y la cola de revisión de esta conexión. Las transacciones ya importadas se conservan."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Obtén los atajos",
+          "text": "Instala ambos atajos en tu iPhone.",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. Configura",
+          "button": "Configurar en este iPhone",
+          "text": "Crea un token de acceso para el atajo y se lo entrega junto con la dirección del servidor.",
+          "desktop": "Abre Ajustes → Importar y exportar en tu iPhone para configurar el atajo allí.",
+          "done": "El atajo está configurado. Tu próximo pago con Apple Pay aparecerá aquí."
+        },
+        "automate": {
+          "title": "3. Automatiza",
+          "text": "En la app Atajos añade una automatización: Transacción → Ejecutar \"Econumo Wallet\" con la transacción como entrada."
+        }
+      },
+      "manual": {
+        "toggle": "Configurar manualmente",
+        "token": "Token de acceso (se muestra una vez)",
+        "url": "Servidor",
+        "body": "Cuerpo de la petición",
+        "action_1": "Obtener detalles de la transacción → rellenar el cuerpo de arriba",
+        "action_2": "Obtener contenido de URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Cabecera Authorization: Bearer <token>",
+        "action_4": "Cabecera Content-Type: application/json",
+        "action_5": "Cuerpo de la petición: JSON, los campos de arriba"
+      },
+      "same_named_cards": "Las tarjetas con el mismo nombre en Wallet llegan aquí como una sola tarjeta.",
+      "cards": {
+        "header": "Tarjetas",
+        "empty": "Aún no hay tarjetas — el primer pago con Apple Pay añadirá una.",
+        "state": {
+          "mapped": "Asignada",
+          "ignored": "Ignorada",
+          "unmapped": "Sin asignar · {count} en cola"
+        },
+        "taps": "{count} pago | {count} pagos",
+        "last_seen": "Visto por última vez {date}",
+        "map": "Asignar a una cuenta",
+        "map_instead": "Asignar en su lugar",
+        "ignore": "Ignorar",
+        "unlink": "Desasignar",
+        "unlink_modal": {
+          "title": "¿Desasignar {card}?",
+          "question": "Los nuevos pagos de esta tarjeta esperarán revisión hasta que la asignes de nuevo."
+        },
+        "map_modal": {
+          "header": "Asignar {card}",
+          "account": "Cuenta",
+          "submit": "Asignar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} emparejadas, {skipped} omitidas"
+      }
+    },
+    "queue": {
+      "header": "Cola de importación",
+      "empty": "Nada que revisar.",
+      "queued": "Esperando revisión",
+      "skipped": "Omitidas",
+      "failed": "Requieren atención",
+      "reason": {
+        "unmapped": "Tarjeta sin asignar",
+        "account_deleted": "Cuenta eliminada",
+        "no_rate": "Sin tipo de cambio para {currency}"
+      },
+      "import": "Importar",
+      "skip": "Omitir",
+      "unskip": "Restaurar",
+      "retry": "Reintentar",
+      "discard": "Descartar",
+      "received": "Recibido {date}",
+      "retry_result": {
+        "created": "Importada",
+        "queued": "En cola para revisión",
+        "skipped": "Omitida",
+        "duplicate": "Ya importada",
+        "failed": "Sigue fallando"
+      }
+    },
+    "provenance": {
+      "header": "Importada desde"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Elige tu avatar",

@@ -469,6 +469,115 @@
     "make_recurring": "Make recurring",
     "not_posted": "Not posted"
   },
+  "imports": {
+    "badge": "Imported",
+    "banner": {
+      "text": "{count} imported transaction is waiting for review | {count} imported transactions are waiting for review",
+      "cta": "Review"
+    },
+    "data_page": {
+      "menu_item": "Import & export",
+      "header": "Import & export",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
+      "connect": "Set up Apple Wallet",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "disconnect_modal": {
+        "title": "Disconnect Apple Wallet?",
+        "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Get the Shortcuts",
+          "text": "Install both Shortcuts on your iPhone.",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. Configure",
+          "button": "Configure on this iPhone",
+          "text": "Creates an access token for the Shortcut and hands it over together with the server address.",
+          "desktop": "Open Settings → Import & export on your iPhone to configure the Shortcut there.",
+          "done": "The Shortcut is configured. Your next Apple Pay payment will show up here."
+        },
+        "automate": {
+          "title": "3. Automate",
+          "text": "In the Shortcuts app add an automation: Transaction → Run \"Econumo Wallet\" with the transaction as input."
+        }
+      },
+      "manual": {
+        "toggle": "Configure manually",
+        "token": "Access token (shown once)",
+        "url": "Server",
+        "body": "Request body",
+        "action_1": "Get Details of Transaction → fill the request body above",
+        "action_2": "Get Contents of URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Header Authorization: Bearer <token>",
+        "action_4": "Header Content-Type: application/json",
+        "action_5": "Request Body: JSON, the fields above"
+      },
+      "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "cards": {
+        "header": "Cards",
+        "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "state": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped · {count} queued"
+        },
+        "taps": "{count} tap | {count} taps",
+        "last_seen": "Last seen {date}",
+        "map": "Map to account",
+        "map_instead": "Map instead",
+        "ignore": "Ignore",
+        "unlink": "Unmap",
+        "unlink_modal": {
+          "title": "Unmap {card}?",
+          "question": "New taps from this card will wait for review until you map it again."
+        },
+        "map_modal": {
+          "header": "Map {card}",
+          "account": "Account",
+          "submit": "Map"
+        },
+        "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      }
+    },
+    "queue": {
+      "header": "Import queue",
+      "empty": "Nothing to review.",
+      "queued": "Waiting for review",
+      "skipped": "Skipped",
+      "failed": "Needs attention",
+      "reason": {
+        "unmapped": "Card not mapped",
+        "account_deleted": "Account deleted",
+        "no_rate": "No exchange rate for {currency}"
+      },
+      "import": "Import",
+      "skip": "Skip",
+      "unskip": "Restore",
+      "retry": "Retry",
+      "discard": "Discard",
+      "received": "Received {date}",
+      "retry_result": {
+        "created": "Imported",
+        "queued": "Queued for review",
+        "skipped": "Skipped",
+        "duplicate": "Already imported",
+        "failed": "Still failing"
+      }
+    },
+    "provenance": {
+      "header": "Imported from"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Choose your avatar",

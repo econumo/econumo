@@ -469,6 +469,115 @@
     "make_recurring": "Ustaw jako cykliczną",
     "not_posted": "Niezaksięgowana"
   },
+  "imports": {
+    "badge": "Zaimportowana",
+    "banner": {
+      "text": "{count} zaimportowana transakcja czeka na sprawdzenie | {count} zaimportowane transakcje czekają na sprawdzenie | {count} zaimportowanych transakcji czeka na sprawdzenie",
+      "cta": "Sprawdź"
+    },
+    "data_page": {
+      "menu_item": "Import i eksport",
+      "header": "Import i eksport",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "Zapisuj płatności Apple Pay automatycznie za pomocą skrótu na iPhonie. Każda płatność trafia do Econumo; każdą kartę przypisujesz do konta tylko raz.",
+      "connect": "Skonfiguruj Apple Wallet",
+      "connected": "Połączono",
+      "disconnect": "Rozłącz",
+      "disconnect_modal": {
+        "title": "Rozłączyć Apple Wallet?",
+        "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Pobierz skróty",
+          "text": "Zainstaluj oba skróty na swoim iPhonie.",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. Skonfiguruj",
+          "button": "Skonfiguruj na tym iPhonie",
+          "text": "Tworzy token dostępu dla skrótu i przekazuje go razem z adresem serwera.",
+          "desktop": "Otwórz Ustawienia → Import i eksport na swoim iPhonie, aby tam skonfigurować skrót.",
+          "done": "Skrót jest skonfigurowany. Twoja następna płatność Apple Pay pojawi się tutaj."
+        },
+        "automate": {
+          "title": "3. Zautomatyzuj",
+          "text": "W aplikacji Skróty dodaj automatyzację: Transakcja → Uruchom „Econumo Wallet” z transakcją jako wejściem."
+        }
+      },
+      "manual": {
+        "toggle": "Skonfiguruj ręcznie",
+        "token": "Token dostępu (pokazywany raz)",
+        "url": "Serwer",
+        "body": "Treść żądania",
+        "action_1": "Pobierz szczegóły transakcji → wypełnij treść żądania powyżej",
+        "action_2": "Pobierz zawartość URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Nagłówek Authorization: Bearer <token>",
+        "action_4": "Nagłówek Content-Type: application/json",
+        "action_5": "Treść żądania: JSON, pola powyżej"
+      },
+      "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
+      "cards": {
+        "header": "Karty",
+        "empty": "Brak kart — pierwsza płatność Apple Pay doda kartę.",
+        "state": {
+          "mapped": "Przypisana",
+          "ignored": "Ignorowana",
+          "unmapped": "Nieprzypisana · w kolejce: {count}"
+        },
+        "taps": "{count} płatność | {count} płatności | {count} płatności",
+        "last_seen": "Ostatnio {date}",
+        "map": "Przypisz do konta",
+        "map_instead": "Przypisz mimo to",
+        "ignore": "Ignoruj",
+        "unlink": "Odłącz",
+        "unlink_modal": {
+          "title": "Odłączyć {card}?",
+          "question": "Nowe płatności z tej karty będą czekać na sprawdzenie, dopóki nie przypiszesz jej ponownie."
+        },
+        "map_modal": {
+          "header": "Przypisz {card}",
+          "account": "Konto",
+          "submit": "Przypisz"
+        },
+        "mapped_toast": "zaimportowano: {imported}, dopasowano: {matched}, pominięto: {skipped}"
+      }
+    },
+    "queue": {
+      "header": "Kolejka importu",
+      "empty": "Nic do sprawdzenia.",
+      "queued": "Czeka na sprawdzenie",
+      "skipped": "Pominięte",
+      "failed": "Wymagają uwagi",
+      "reason": {
+        "unmapped": "Karta nieprzypisana",
+        "account_deleted": "Konto usunięte",
+        "no_rate": "Brak kursu dla {currency}"
+      },
+      "import": "Importuj",
+      "skip": "Pomiń",
+      "unskip": "Przywróć",
+      "retry": "Ponów",
+      "discard": "Odrzuć",
+      "received": "Odebrano {date}",
+      "retry_result": {
+        "created": "Zaimportowano",
+        "queued": "W kolejce do sprawdzenia",
+        "skipped": "Pominięto",
+        "duplicate": "Już zaimportowana",
+        "failed": "Nadal się nie udaje"
+      }
+    },
+    "provenance": {
+      "header": "Zaimportowano z"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Wybierz awatar",

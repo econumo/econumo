@@ -469,6 +469,115 @@
     "make_recurring": "设为定期交易",
     "not_posted": "未入账"
   },
+  "imports": {
+    "badge": "已导入",
+    "banner": {
+      "text": "{count} 笔导入的交易等待审核 | {count} 笔导入的交易等待审核",
+      "cta": "审核"
+    },
+    "data_page": {
+      "menu_item": "导入与导出",
+      "header": "导入与导出",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "通过 iPhone 快捷指令自动记录 Apple Pay 付款。每笔付款都会发送到 Econumo；每张卡只需映射到账户一次。",
+      "connect": "设置 Apple Wallet",
+      "connected": "已连接",
+      "disconnect": "断开连接",
+      "disconnect_modal": {
+        "title": "断开 Apple Wallet？",
+        "question": "此连接的卡片映射和审核队列将被删除。已导入的交易会保留。"
+      },
+      "steps": {
+        "install": {
+          "title": "1. 获取快捷指令",
+          "text": "在 iPhone 上安装这两个快捷指令。",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. 配置",
+          "button": "在此 iPhone 上配置",
+          "text": "为快捷指令创建访问令牌，并连同服务器地址一起交给它。",
+          "desktop": "在 iPhone 上打开 设置 → 导入与导出，在那里配置快捷指令。",
+          "done": "快捷指令已配置。您的下一笔 Apple Pay 付款将显示在这里。"
+        },
+        "automate": {
+          "title": "3. 自动化",
+          "text": "在“快捷指令”应用中添加自动化：交易 → 以该交易为输入运行“Econumo Wallet”。"
+        }
+      },
+      "manual": {
+        "toggle": "手动配置",
+        "token": "访问令牌（仅显示一次）",
+        "url": "服务器",
+        "body": "请求正文",
+        "action_1": "获取交易详情 → 填写上方的请求正文",
+        "action_2": "获取 URL 内容 → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "标头 Authorization: Bearer <token>",
+        "action_4": "标头 Content-Type: application/json",
+        "action_5": "请求正文：JSON，上述字段"
+      },
+      "same_named_cards": "Wallet 中同名的卡片在这里会显示为一张卡。",
+      "cards": {
+        "header": "卡片",
+        "empty": "还没有卡片 — 第一笔 Apple Pay 付款会添加一张。",
+        "state": {
+          "mapped": "已映射",
+          "ignored": "已忽略",
+          "unmapped": "未映射 · {count} 笔排队中"
+        },
+        "taps": "{count} 笔付款 | {count} 笔付款",
+        "last_seen": "最近使用 {date}",
+        "map": "映射到账户",
+        "map_instead": "改为映射",
+        "ignore": "忽略",
+        "unlink": "取消映射",
+        "unlink_modal": {
+          "title": "取消映射 {card}？",
+          "question": "在您重新映射之前，这张卡的新付款将等待审核。"
+        },
+        "map_modal": {
+          "header": "映射 {card}",
+          "account": "账户",
+          "submit": "映射"
+        },
+        "mapped_toast": "已导入 {imported}，已匹配 {matched}，已跳过 {skipped}"
+      }
+    },
+    "queue": {
+      "header": "导入队列",
+      "empty": "没有需要审核的内容。",
+      "queued": "等待审核",
+      "skipped": "已跳过",
+      "failed": "需要处理",
+      "reason": {
+        "unmapped": "卡片未映射",
+        "account_deleted": "账户已删除",
+        "no_rate": "没有 {currency} 的汇率"
+      },
+      "import": "导入",
+      "skip": "跳过",
+      "unskip": "恢复",
+      "retry": "重试",
+      "discard": "丢弃",
+      "received": "接收于 {date}",
+      "retry_result": {
+        "created": "已导入",
+        "queued": "已排队等待审核",
+        "skipped": "已跳过",
+        "duplicate": "已导入过",
+        "failed": "仍然失败"
+      }
+    },
+    "provenance": {
+      "header": "导入自"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "选择您的头像",

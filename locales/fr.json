@@ -469,6 +469,115 @@
     "make_recurring": "Rendre récurrente",
     "not_posted": "Non validée"
   },
+  "imports": {
+    "badge": "Importée",
+    "banner": {
+      "text": "{count} transaction importée attend une vérification | {count} transactions importées attendent une vérification",
+      "cta": "Vérifier"
+    },
+    "data_page": {
+      "menu_item": "Import et export",
+      "header": "Import et export",
+      "csv": {
+        "header": "CSV"
+      }
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "intro": "Enregistrez automatiquement vos paiements Apple Pay avec un raccourci iPhone. Chaque paiement est envoyé à Econumo ; vous associez chaque carte à un compte une seule fois.",
+      "connect": "Configurer Apple Wallet",
+      "connected": "Connecté",
+      "disconnect": "Déconnecter",
+      "disconnect_modal": {
+        "title": "Déconnecter Apple Wallet ?",
+        "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Récupérer les raccourcis",
+          "text": "Installez les deux raccourcis sur votre iPhone.",
+          "wallet": "Econumo Wallet",
+          "setup": "Econumo Setup"
+        },
+        "configure": {
+          "title": "2. Configurer",
+          "button": "Configurer sur cet iPhone",
+          "text": "Crée un jeton d'accès pour le raccourci et le lui transmet avec l'adresse du serveur.",
+          "desktop": "Ouvrez Réglages → Import et export sur votre iPhone pour y configurer le raccourci.",
+          "done": "Le raccourci est configuré. Votre prochain paiement Apple Pay apparaîtra ici."
+        },
+        "automate": {
+          "title": "3. Automatiser",
+          "text": "Dans l'app Raccourcis, ajoutez une automatisation : Transaction → Exécuter « Econumo Wallet » avec la transaction en entrée."
+        }
+      },
+      "manual": {
+        "toggle": "Configurer manuellement",
+        "token": "Jeton d'accès (affiché une seule fois)",
+        "url": "Serveur",
+        "body": "Corps de la requête",
+        "action_1": "Obtenir les détails de la transaction → remplir le corps ci-dessus",
+        "action_2": "Obtenir le contenu de l'URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "En-tête Authorization: Bearer <token>",
+        "action_4": "En-tête Content-Type: application/json",
+        "action_5": "Corps de la requête : JSON, les champs ci-dessus"
+      },
+      "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
+      "cards": {
+        "header": "Cartes",
+        "empty": "Pas encore de carte — le premier paiement Apple Pay en ajoutera une.",
+        "state": {
+          "mapped": "Associée",
+          "ignored": "Ignorée",
+          "unmapped": "Non associée · {count} en attente"
+        },
+        "taps": "{count} paiement | {count} paiements",
+        "last_seen": "Vue pour la dernière fois {date}",
+        "map": "Associer à un compte",
+        "map_instead": "Associer plutôt",
+        "ignore": "Ignorer",
+        "unlink": "Dissocier",
+        "unlink_modal": {
+          "title": "Dissocier {card} ?",
+          "question": "Les nouveaux paiements de cette carte attendront une vérification jusqu'à ce que vous l'associiez à nouveau."
+        },
+        "map_modal": {
+          "header": "Associer {card}",
+          "account": "Compte",
+          "submit": "Associer"
+        },
+        "mapped_toast": "{imported} importées, {matched} rapprochées, {skipped} ignorées"
+      }
+    },
+    "queue": {
+      "header": "File d'importation",
+      "empty": "Rien à vérifier.",
+      "queued": "En attente de vérification",
+      "skipped": "Ignorées",
+      "failed": "Nécessitent votre attention",
+      "reason": {
+        "unmapped": "Carte non associée",
+        "account_deleted": "Compte supprimé",
+        "no_rate": "Aucun taux de change pour {currency}"
+      },
+      "import": "Importer",
+      "skip": "Ignorer",
+      "unskip": "Restaurer",
+      "retry": "Réessayer",
+      "discard": "Abandonner",
+      "received": "Reçu {date}",
+      "retry_result": {
+        "created": "Importée",
+        "queued": "En file pour vérification",
+        "skipped": "Ignorée",
+        "duplicate": "Déjà importée",
+        "failed": "Échoue toujours"
+      }
+    },
+    "provenance": {
+      "header": "Importée depuis"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Choisissez votre avatar",
