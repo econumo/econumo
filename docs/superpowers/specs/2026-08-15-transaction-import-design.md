@@ -1140,33 +1140,83 @@ A new Settings subpage consolidating every way data enters or leaves Econumo:
   map / ignore / "map instead" actions; per-card tap count and last-seen;
   activity. The SimpleFIN source detail lists its bank accounts the same way.
 
-### Apple Wallet setup — manual recipe first, shortcut file later
+### Apple Wallet setup — a signed shortcut, configured by deep link
 
-Signing a `.shortcut` file requires the macOS-only `shortcuts` CLI (iOS
-refuses unsigned shortcut files), which the development environment does not
-have. Stage 2 therefore ships the setup flow **without** the artifact, and the
-one-tap file becomes a follow-up done on a Mac.
+The goal is "Get the Shortcut" → a ready-to-run automation with the server
+URL and token already in place. Two facts about the platform shape how that
+can work:
 
-**v1 setup page:** create the `'ingest'`-scoped PAT (shown once, with a copy
-button) → the server URL, likewise copyable → step-by-step instructions with
-screenshots for building the automation by hand: new Automation → Transaction
-trigger → Run Immediately → "Get Contents of URL" with the POST body from
-Part 6. Five actions. The page pre-renders the exact JSON body with the user's
-values already substituted, so the user copies rather than composes. The
-`account` field is the trigger's "Card or Pass" property, so one automation
-covers every card; the page's "same-named cards" note shows the variant with
-the trigger filtered to one card and `account` typed as a literal (Part 2,
-card → account).
+- **A `.shortcut` file must be signed** (iOS ≥15 refuses unsigned ones), and
+  the signature covers the whole plist. Signing runs on a Mac (`shortcuts
+  sign --mode anyone`, or Share → "Anyone" in Shortcuts.app) against Apple's
+  servers; the only Linux implementations need Apple ID keys dumped from a
+  jailbroken device. So the server **cannot mint a per-user file** with the
+  token baked in: the artifact is static, built once on a maintainer's Mac,
+  and per-instance values must reach it some other way.
+- **Automations are not shareable.** A shortcut file carries the actions, not
+  the Transaction trigger; the user always creates the automation on the
+  phone (Automation → Transaction → Run Immediately → pick the shortcut).
+  Four taps, unavoidable.
 
-**Follow-up:** sign the recipe once with `shortcuts sign --mode anyone`,
-commit it (`web/public/econumo-apple-wallet.shortcut`), and serve it as a
-static asset; the setup page then leads with "Get the Shortcut" and keeps the
-manual steps as a fallback. Regeneration is a documented manual step when the
-recipe changes. Two mechanics need a device test at that point: whether the
-shortcut's **import questions** can carry the server URL and token (fallback:
-a first-run in-shortcut prompt storing them in the shortcut's own storage),
-and whether the signed file imports cleanly (fallback: a hosted iCloud share
-link — an external dependency, documented).
+So the design is a static signed shortcut plus a **configuration deep link**:
+
+1. **Install.** "Get the Shortcut" serves two signed files from
+   `web/public/shortcuts/`: **Econumo Wallet** (the automation body) and
+   **Econumo Setup** (writes the configuration). Safari hands each to
+   Shortcuts, which shows the standard "Add Shortcut" sheet.
+2. **Configure — one tap, nothing typed.** The setup page's "Configure on
+   this iPhone" button (rendered only on iOS) creates the `'ingest'`-scoped
+   PAT server-side and opens
+   `shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=<url-encoded JSON {url, token}>`.
+   Econumo Setup receives that text as its input and saves it as
+   `Shortcuts/econumo-wallet.json` in iCloud Drive (the `Save File` action,
+   overwrite on), then shows "Configured". The deep link is handled by the
+   OS on the same device — the token never crosses the network in a URL —
+   and the file holds an ingest-only, revocable token, exactly what the
+   hand-built recipe would hold inside the shortcut itself.
+3. **Automate.** Instructions with screenshots for the four taps.
+
+Econumo Wallet, on every tap: `Get File` (`Shortcuts/econumo-wallet.json`)
+→ `Get Dictionary from Input` → `Get Contents of URL` (POST `{url}/api/v1/import/ingest-apple-wallet-event`,
+`Authorization: Bearer {token}`, JSON body from the trigger's Card or Pass /
+Merchant / Amount / Currency / Date properties, Part 6 shape). Missing
+configuration file → the shortcut stops with a notification pointing at
+Settings → Data, rather than posting garbage. Reconfiguring (new server,
+rotated token) is pressing "Configure" again — the file is overwritten, the
+shortcut is untouched.
+
+Desktop browsers show the "open Settings → Data on your iPhone" note instead
+of the Configure button — the SPA's mobile view is the same page.
+
+**Building the artifacts** (maintainer, on a Mac): author both shortcuts in
+Shortcuts.app, export each with Share → "Anyone" (equivalently
+`shortcuts sign --mode anyone --input … --output …`), commit the signed
+files to `web/public/shortcuts/` and the unsigned plist source (via
+`shortcut-sign extract`) to `web/shortcuts/` with a README, so the recipe is
+reviewable in diffs and re-signable by anyone with a Mac. Regeneration is a
+documented manual step whenever the recipe changes; the served file name
+carries a version (`econumo-wallet-v1.shortcut`) so an installed shortcut
+can be told apart from the current one.
+
+**Fallback that stays:** the manual recipe — PAT shown once with a copy
+button, the server URL, the pre-rendered JSON body with the user's values
+substituted, five actions with screenshots — remains on the page below the
+one-tap path, for anyone whose device cannot import the file. Its "same-named
+cards" note (Part 2, card → account) applies to both paths: a per-card
+automation just points at the same Econumo Wallet shortcut with a literal
+`account` — the shortcut takes an optional text input override for that.
+
+**Rejected:** per-user signing by the server (impossible without Apple ID key
+material; a Mac-hosted signing service would be a third party receiving every
+self-hosted instance's tokens); **import questions** (typing, and unreliable
+across iOS 18.x releases); baking the token into the file (would need
+per-user signing).
+
+**Device test before shipping:** the `Get File` read inside a
+Transaction-triggered run (background, no interaction), `Save File`
+behavior on a device without iCloud Drive enabled (fallback: the on-device
+Shortcuts folder), and a QR code carrying the `shortcuts://` link when the
+user is on the desktop page.
 
 ### Sync button, then sync-on-open
 
@@ -1267,7 +1317,7 @@ not data loss.
 Per the repository rule, every new user-facing action fires an event. New
 `METRICS` keys: `IMPORT_SOURCE_CONNECT`, `IMPORT_ACCOUNT_LINK`, `IMPORT_ACCOUNT_IGNORE`,
 `IMPORT_SYNC` (with an `auto`/`manual` trigger property), `IMPORT_QUEUE_MAP`, `IMPORT_QUEUE_IMPORT`,
-`IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_RUN_DELETE`,
+`IMPORT_QUEUE_SKIP`, `IMPORT_SHORTCUT_DOWNLOAD`, `IMPORT_SHORTCUT_CONFIGURE`, `IMPORT_RUN_DELETE`,
 `IMPORT_RULE_CREATE` (with an `action` property, `classify`/`skip`),
 `IMPORT_RULE_APPLY`, `IMPORT_RULES_SUGGEST`. Fired at the
 shared hook choke point so every surface is covered once. (Server-side ingest
@@ -1355,7 +1405,8 @@ means the core is already proven when they land.
 2. **Apple Wallet** — the `ingest-apple-wallet-event` route and normalizer,
    currency conversion, the queue (page, banner, per-account mapping with its
    conversion run, per-event triage, skip/retry/discard), account links, and
-   the Settings → Data page with the manual setup recipe. **This is where the
+   the Settings → Data page with the signed shortcuts + deep-link
+   configuration and the manual recipe as fallback. **This is where the
    feature becomes usable.**
 3. **SimpleFIN** — the pull `Provider` seam and its implementation, the
    two-step claim, `importCrypto.ts` (PBKDF2/Argon2id → non-extractable
@@ -1392,8 +1443,10 @@ Resolved 2026-09-01, after the spec was approved.
    link time. A single foreign-currency event on a correct link is converted
    with the stored rate for its date, falling back to the queue when no rate
    exists. See Decisions and Part 5 stage 3.
-5. **Shortcut distribution** — stage 2 ships written setup instructions; the
-   signed `.shortcut` file is a follow-up requiring macOS tooling. See Part 9.
+5. **Shortcut distribution** — a static signed shortcut (built once on a
+   Mac) configured through a `shortcuts://run-shortcut` deep link that carries
+   the instance URL and a freshly minted ingest PAT; the written recipe stays
+   as the fallback. Ships in stage 2. See Part 9.
 6. **Raw event retention** — keep everything in v1. An `import:purge-events`
    CLI, mirroring `token:purge`, is the follow-up when the table gets big.
 7. **Suggest-rules prompt shape** — resolved by experiment in stage 4; the
@@ -1415,5 +1468,4 @@ Resolved 2026-09-01, after the spec was approved.
 - True periodic background sync on mobile (a Capacitor background-runner
   plugin waking the app on a timer, rather than syncing on resume).
 - CSV adoption of the shared ledger and runs (resolved question 2).
-- The signed `.shortcut` artifact and its device test (resolved question 5).
 - `import:purge-events` CLI for raw-event retention (resolved question 6).
