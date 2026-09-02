@@ -833,9 +833,10 @@ values fail at boot (the `ECONUMO_CURRENCY_UPDATE_INTERVAL` precedent), and
 `0` on a window means exact-date only. They are read into one
 `imports.MatcherConfig` struct passed to the matcher, so the matcher itself
 stays a pure function of `(event, candidates, config)` — the property the
-unit tests rely on. Each one is documented in `CLAUDE.md`'s Configuration
-list and `.env.example` in the PR that introduces it (stage 1 for the first
-two, stage 2 for the tip-matching pair).
+unit tests rely on. All four are documented in CLAUDE.md's Configuration list
+and .env.example in stage 1, which implements and tests every matcher stage;
+nothing consumes MatcherConfig at composition time until stage 2 wires the
+first provider.
 
 The queue page's client-side grouping (Part 9) uses the same date, amount and
 token thresholds, so the server merges the effective values into the served

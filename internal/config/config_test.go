@@ -560,3 +560,45 @@ func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_ImportMatcherDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportMatchDays != 3 || cfg.ImportTipDays != 5 || cfg.ImportTipTolerancePct != 20 || cfg.ImportTokenMinLength != 3 {
+		t.Errorf("defaults = %d/%d/%d/%d", cfg.ImportMatchDays, cfg.ImportTipDays, cfg.ImportTipTolerancePct, cfg.ImportTokenMinLength)
+	}
+}
+
+func TestLoad_ImportMatcherBounds(t *testing.T) {
+	cases := []struct {
+		key, val string
+		ok       bool
+	}{
+		{"ECONUMO_IMPORT_MATCH_DAYS", "0", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "31", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "32", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "-1", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "three", false},
+		{"ECONUMO_IMPORT_TIP_DAYS", "31", true},
+		{"ECONUMO_IMPORT_TIP_DAYS", "32", false},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "100", true},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "101", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "1", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "0", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "16", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "17", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.key+"="+tc.val, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(tc.key, tc.val)
+			_, err := Load()
+			if (err == nil) != tc.ok {
+				t.Fatalf("Load() err = %v, want ok=%v", err, tc.ok)
+			}
+		})
+	}
+}
