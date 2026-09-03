@@ -30,6 +30,7 @@ import {
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
 import { usePostRecurring } from '@/features/recurring/queries'
+import { useImportQueuedEvent } from '@/features/imports/queries'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
 import {
@@ -68,6 +69,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
   const postRecurring = usePostRecurring()
+  const importQueued = useImportQueuedEvent()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
 
@@ -196,7 +198,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
     const payload = buildPayload(form)
     try {
-      if (params.postRecurring) {
+      if (params.importQueued) {
+        await importQueued.mutateAsync({ linkId: params.importQueued.linkId, transaction: payload })
+      } else if (params.postRecurring) {
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
@@ -213,7 +217,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const dateOnly = dayKey(form.date)
-  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending
+  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
   const title = form.isNew

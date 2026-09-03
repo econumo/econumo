@@ -652,3 +652,33 @@ it('posting a template sends the chips the user actually left checked', async ()
   expect(postBody!.recurringId).toBe('r1')
   expect(postBody!.labelIds).toEqual(['label2'])
 })
+
+it('a queued import posts import-queued-event with the link id and the edited transaction', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/import/import-queued-event', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ isImported: 1 }), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog('/')
+  useUiStore.getState().openTransactionModal({
+    importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' },
+  })
+
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  expect(screen.getByLabelText('Amount')).toHaveValue('12.5')
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByText('Food'))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.linkId).toBe('l1')
+  const tx = body!.transaction as Record<string, unknown>
+  expect(tx.accountId).toBe('a1')
+  expect(tx.amount).toBe('12.5')
+  expect(tx.categoryId).toBe('cat-food')
+  expect(tx.description).toBe('Blue Bottle')
+  expect(tx.date).toBe('2026-08-20 10:42:03')
+})

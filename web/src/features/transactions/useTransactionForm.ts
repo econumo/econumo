@@ -57,6 +57,27 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       date: rt.nextPaymentAt,
     }
   }
+  const iq = params.importQueued
+  if (iq) {
+    const account = accounts.find((a) => a.id === iq.accountId)
+    return {
+      id: uuidv7(),
+      isNew: true,
+      type: iq.type,
+      accountId: iq.accountId || null,
+      accountRecipientId: null,
+      amount: seedAmount(iq.amount, account),
+      amountRecipient: '',
+      categoryId: null,
+      payeeId: null,
+      tagId: null,
+      labelIds: [],
+      // the bank's merchant string is free text; payees are the user's own
+      // entities, so it lands in the description for the user to reclassify
+      description: iq.payee,
+      date: iq.date,
+    }
+  }
   const tx = params.transaction
   if (tx) {
     const account = accounts.find((a) => a.id === tx.accountId)
