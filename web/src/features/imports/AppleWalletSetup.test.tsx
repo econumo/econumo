@@ -49,6 +49,15 @@ it('connect posts create-source', async () => {
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
 
+it('shortcut downloads open outside the app window', () => {
+  renderSetup(source)
+  for (const name of ['econumo-wallet-v1', 'econumo-setup-v1']) {
+    const link = screen.getByRole('link', { name })
+    expect(link).toHaveAttribute('href', `/shortcuts/${name}.shortcut`)
+    expect(link).toHaveAttribute('target', '_blank')
+  }
+})
+
 it('desktop shows the iPhone hint instead of the configure button', () => {
   renderSetup(source)
   expect(screen.getByText('Open Settings → Import & export on your iPhone to configure the Shortcut there.')).toBeInTheDocument()
