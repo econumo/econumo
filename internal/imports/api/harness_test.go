@@ -10,7 +10,6 @@ import (
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -61,7 +60,7 @@ func (fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount string
 // in tests) while the pipeline's own transaction holds the only connection,
 // deadlocking the test.
 type fakeTxns struct {
-	tx      *backend.TxManager
+	db      *dbtest.DB
 	created int
 }
 
@@ -71,10 +70,11 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.Cre
 	if req.Description != nil {
 		desc = *req.Description
 	}
-	q := f.tx.Querier(ctx)
-	if _, err := q.ExecContext(ctx,
+	q := f.db.TX.Querier(ctx)
+	query := f.db.Rebind(
 		`INSERT INTO transactions (id, user_id, account_id, account_recipient_id, category_id, payee_id, tag_id, type, amount, amount_recipient, description, spent_at, created_at, updated_at)
-			VALUES (?, ?, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?, ?, ?)`,
+			VALUES (?, ?, ?, NULL, NULL, NULL, NULL, 0, ?, NULL, ?, ?, ?, ?)`)
+	if _, err := q.ExecContext(ctx, query,
 		req.Id, userA, req.AccountId, req.Amount.String(), desc, req.Date, req.Date, req.Date); err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func newHarness(t *testing.T) *harness {
 	f.User(fixture.User{ID: userA, Email: "a@example.test", Name: "A"})
 	f.Account(fixture.Account{ID: acct1, UserID: userA, CurrencyID: usdID, Name: "Card"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
-	txns := &fakeTxns{tx: db.TX}
+	txns := &fakeTxns{db: db}
 	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
 
 	mux := http.NewServeMux()
