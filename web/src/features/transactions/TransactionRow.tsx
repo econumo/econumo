@@ -1,4 +1,4 @@
-import { Repeat } from 'lucide-react'
+import { ArrowDownToLine, Repeat } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -81,6 +81,11 @@ export function TransactionRow({ transaction: tx, pageAccount, dimmed, titleNote
             // the wrapper carries the tooltip: lucide icons take no title prop
             <span title={t('recurring.preview.header')} className="ml-1 flex shrink-0 items-center">
               <Repeat className="size-3 text-muted-foreground" aria-label={t('recurring.preview.header')} />
+            </span>
+          ) : null}
+          {tx.isImported === 1 ? (
+            <span title={t('imports.badge')} className="ml-1 flex shrink-0 items-center">
+              <ArrowDownToLine className="size-3 text-muted-foreground" aria-label={t('imports.badge')} />
             </span>
           ) : null}
           {titleNote ? <span className="ml-1.5 shrink-0 text-[13px] text-muted-foreground">{titleNote}</span> : null}

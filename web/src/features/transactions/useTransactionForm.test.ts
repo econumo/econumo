@@ -287,3 +287,19 @@ describe('scrubForeignClassifications', () => {
     expect(scrubForeignClassifications(selection, lists, undefined)).toEqual(selection)
   })
 })
+
+it('a queued import seeds a new transaction from the bank data, payee as description', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.id).toMatch(UUID_V7)
+  expect(state.isNew).toBe(true)
+  expect(state.type).toBe('expense')
+  expect(state.accountId).toBe('a1')
+  expect(state.amount).toBe('12.50')
+  expect(state.description).toBe('Blue Bottle')
+  expect(state.date).toBe('2026-08-20 10:42:03')
+  expect(state.categoryId).toBeNull()
+})
