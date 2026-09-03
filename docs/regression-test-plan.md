@@ -168,14 +168,16 @@ navigation (single-pane vs sidebar).
 
 ## 5a. Imports — Apple Wallet
 
-- [ ] Settings → Data group has one row, "Import & export" 📱; the page holds the
-      CSV import/export rows (dialogs open as before) and the Apple Wallet section.
+- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
+      setup, cards, "Import queue" link; back returns to Settings).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
       "Connected" with the three steps; "Disconnect" (confirmation) removes the
       source, its cards and its queue; already-imported transactions stay.
 - [ ] Step 1 links download `econumo-wallet-v1.shortcut` and
-      `econumo-setup-v1.shortcut`.
+      `econumo-setup-v1.shortcut` in a new window (from the home-screen app the
+      Safari sheet closes back to the page, no relaunch needed) 📱.
 - [ ] iOS only 📱: "Configure on this iPhone" mints an ingest PAT (visible under
       Profile → Tokens with scope `ingest`) and opens the Shortcuts app with the
       Setup shortcut prefilled; desktop shows the "open on your iPhone" note instead.
@@ -203,7 +205,7 @@ navigation (single-pane vs sidebar).
       "N imported transactions are waiting for review" + "Review"; the banner
       disappears when the queue empties.
 - [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
-      (→ Import & export page) and "Ignore"; tapping a row opens the add-transaction
+      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
       dialog prefilled (account, amount, merchant as description, posted date);
       saving posts `import-queued-event` — the row leaves the queue and the
       transaction is created with the glyph; Skip moves a row to "Skipped",

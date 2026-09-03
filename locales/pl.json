@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Import i eksport",
-      "header": "Import i eksport",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Import i eksport"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Zapisuj płatności Apple Pay automatycznie za pomocą skrótu na iPhonie. Każda płatność trafia do Econumo; każdą kartę przypisujesz do konta tylko raz.",
       "connect": "Skonfiguruj Apple Wallet",
       "connected": "Połączono",
@@ -503,7 +501,7 @@
           "title": "2. Skonfiguruj",
           "button": "Skonfiguruj na tym iPhonie",
           "text": "Tworzy token dostępu dla skrótu i przekazuje go razem z adresem serwera.",
-          "desktop": "Otwórz Ustawienia → Import i eksport na swoim iPhonie, aby tam skonfigurować skrót.",
+          "desktop": "Otwórz Ustawienia → Apple Wallet na swoim iPhonie, aby tam skonfigurować skrót.",
           "done": "Skrót jest skonfigurowany. Twoja następna płatność Apple Pay pojawi się tutaj."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Tej waluty nie można ukryć."
     },
     "import": {
-      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Import i eksport.",
+      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Apple Wallet.",
       "provider_unsupported": "Ten dostawca importu nie jest obsługiwany.",
       "account_link_exists": "Ta karta jest już powiązana.",
       "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",

@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Import & export",
-      "header": "Import & export",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Import & export"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
       "connect": "Apple Wallet instellen",
       "connected": "Verbonden",
@@ -503,7 +501,7 @@
           "title": "2. Configureren",
           "button": "Configureren op deze iPhone",
           "text": "Maakt een toegangstoken voor de opdracht en geeft het samen met het serveradres door.",
-          "desktop": "Open Instellingen → Import & export op je iPhone om de opdracht daar te configureren.",
+          "desktop": "Open Instellingen → Apple Wallet op je iPhone om de opdracht daar te configureren.",
           "done": "De opdracht is geconfigureerd. Je volgende Apple Pay-betaling verschijnt hier."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
     "import": {
-      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Import & export.",
+      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",
       "provider_unsupported": "Deze importbron wordt niet ondersteund.",
       "account_link_exists": "Deze kaart is al gekoppeld.",
       "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",

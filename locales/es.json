@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Importar y exportar",
-      "header": "Importar y exportar",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Importar y exportar"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Registra los pagos con Apple Pay automáticamente con un atajo de iPhone. Cada pago se envía a Econumo; asignas cada tarjeta a una cuenta una sola vez.",
       "connect": "Configurar Apple Wallet",
       "connected": "Conectado",
@@ -503,7 +501,7 @@
           "title": "2. Configura",
           "button": "Configurar en este iPhone",
           "text": "Crea un token de acceso para el atajo y se lo entrega junto con la dirección del servidor.",
-          "desktop": "Abre Ajustes → Importar y exportar en tu iPhone para configurar el atajo allí.",
+          "desktop": "Abre Ajustes → Apple Wallet en tu iPhone para configurar el atajo allí.",
           "done": "El atajo está configurado. Tu próximo pago con Apple Pay aparecerá aquí."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Esta moneda no se puede ocultar."
     },
     "import": {
-      "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Importar y exportar.",
+      "source_not_found": "Apple Wallet no está conectado. Conéctalo primero en Ajustes → Apple Wallet.",
       "provider_unsupported": "Este proveedor de importación no es compatible.",
       "account_link_exists": "Esta tarjeta ya está vinculada.",
       "currency_mismatch": "La moneda de la tarjeta no coincide con la moneda de la cuenta.",

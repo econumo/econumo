@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Import & Export",
-      "header": "Import & Export",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Import & Export"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
       "connect": "Apple Wallet einrichten",
       "connected": "Verbunden",
@@ -503,7 +501,7 @@
           "title": "2. Konfigurieren",
           "button": "Auf diesem iPhone konfigurieren",
           "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse.",
-          "desktop": "Öffne Einstellungen → Import & Export auf deinem iPhone, um den Kurzbefehl dort zu konfigurieren.",
+          "desktop": "Öffne Einstellungen → Apple Wallet auf deinem iPhone, um den Kurzbefehl dort zu konfigurieren.",
           "done": "Der Kurzbefehl ist konfiguriert. Deine nächste Apple-Pay-Zahlung erscheint hier."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
     },
     "import": {
-      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Import & Export.",
+      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Apple Wallet.",
       "provider_unsupported": "Dieser Import-Anbieter wird nicht unterstützt.",
       "account_link_exists": "Diese Karte ist bereits verknüpft.",
       "currency_mismatch": "Die Währung der Karte stimmt nicht mit der Währung des Kontos überein.",

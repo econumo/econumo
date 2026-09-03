@@ -28,6 +28,7 @@ function renderPage() {
       { path: '/settings', element: <SettingsPage /> },
       { path: '/settings/budgets', element: <div>BUDGETS PAGE</div> },
       { path: '/settings/data', element: <div>DATA PAGE</div> },
+      { path: '/settings/apple-wallet', element: <div>WALLET PAGE</div> },
     ],
     { initialEntries: ['/settings'] },
   )
@@ -93,6 +94,13 @@ it('the Data group links to the Import & export page', async () => {
   renderPage()
   await user.click(await screen.findByText('Import & export'))
   expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
+})
+
+it('the Data group links to the Apple Wallet page', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Apple Wallet'))
+  expect(await screen.findByText('WALLET PAGE')).toBeInTheDocument()
 })
 
 it('shows the new-version menu row above the Finances group when an update is available', async () => {

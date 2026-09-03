@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Import et export",
-      "header": "Import et export",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Import et export"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Enregistrez automatiquement vos paiements Apple Pay avec un raccourci iPhone. Chaque paiement est envoyé à Econumo ; vous associez chaque carte à un compte une seule fois.",
       "connect": "Configurer Apple Wallet",
       "connected": "Connecté",
@@ -503,7 +501,7 @@
           "title": "2. Configurer",
           "button": "Configurer sur cet iPhone",
           "text": "Crée un jeton d'accès pour le raccourci et le lui transmet avec l'adresse du serveur.",
-          "desktop": "Ouvrez Réglages → Import et export sur votre iPhone pour y configurer le raccourci.",
+          "desktop": "Ouvrez Réglages → Apple Wallet sur votre iPhone pour y configurer le raccourci.",
           "done": "Le raccourci est configuré. Votre prochain paiement Apple Pay apparaîtra ici."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Cette devise ne peut pas être masquée."
     },
     "import": {
-      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Import et export.",
+      "source_not_found": "Apple Wallet n'est pas connecté. Connectez-le d'abord dans Paramètres → Apple Wallet.",
       "provider_unsupported": "Ce fournisseur d'import n'est pas pris en charge.",
       "account_link_exists": "Cette carte est déjà liée.",
       "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",

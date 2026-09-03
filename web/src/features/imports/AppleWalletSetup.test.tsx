@@ -60,7 +60,7 @@ it('shortcut downloads open outside the app window', () => {
 
 it('desktop shows the iPhone hint instead of the configure button', () => {
   renderSetup(source)
-  expect(screen.getByText('Open Settings → Import & export on your iPhone to configure the Shortcut there.')).toBeInTheDocument()
+  expect(screen.getByText('Open Settings → Apple Wallet on your iPhone to configure the Shortcut there.')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Configure on this iPhone' })).not.toBeInTheDocument()
 })
 

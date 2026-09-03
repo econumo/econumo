@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Importa ed esporta",
-      "header": "Importa ed esporta",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Importa ed esporta"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Registra automaticamente i pagamenti Apple Pay con un comando rapido per iPhone. Ogni pagamento viene inviato a Econumo; associ ogni carta a un conto una sola volta.",
       "connect": "Configura Apple Wallet",
       "connected": "Connesso",
@@ -503,7 +501,7 @@
           "title": "2. Configura",
           "button": "Configura su questo iPhone",
           "text": "Crea un token di accesso per il comando rapido e glielo consegna insieme all'indirizzo del server.",
-          "desktop": "Apri Impostazioni → Importa ed esporta sul tuo iPhone per configurare lì il comando rapido.",
+          "desktop": "Apri Impostazioni → Apple Wallet sul tuo iPhone per configurare lì il comando rapido.",
           "done": "Il comando rapido è configurato. Il tuo prossimo pagamento Apple Pay comparirà qui."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "Questa valuta non può essere nascosta"
     },
     "import": {
-      "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Importa ed esporta.",
+      "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",
       "provider_unsupported": "Questo provider di importazione non è supportato.",
       "account_link_exists": "Questa carta è già collegata.",
       "currency_mismatch": "La valuta della carta non corrisponde alla valuta del conto.",

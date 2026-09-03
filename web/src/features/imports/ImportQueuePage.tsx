@@ -119,7 +119,7 @@ export function ImportQueuePage() {
                     <span className="font-medium">{first.externalAccountId}</span>
                     {state === 'unmapped' ? (
                       <span className="flex gap-3">
-                        <Link to={RouterPage.SETTINGS_DATA} className="text-primary underline-offset-2 hover:underline">{t('imports.apple_wallet.cards.map')}</Link>
+                        <Link to={RouterPage.SETTINGS_APPLE_WALLET} className="text-primary underline-offset-2 hover:underline">{t('imports.apple_wallet.cards.map')}</Link>
                         <button type="button" className="text-muted-foreground underline-offset-2 hover:underline"
                           disabled={ignore.isPending && ignore.variables?.sourceId === first.sourceId && ignore.variables?.externalAccountId === first.externalAccountId}
                           onClick={() => ignore.mutate({ sourceId: first.sourceId, externalAccountId: first.externalAccountId }, { onError })}>

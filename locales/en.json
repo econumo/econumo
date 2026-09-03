@@ -477,13 +477,11 @@
     },
     "data_page": {
       "menu_item": "Import & export",
-      "header": "Import & export",
-      "csv": {
-        "header": "CSV"
-      }
+      "header": "Import & export"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
       "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
       "connect": "Set up Apple Wallet",
       "connected": "Connected",
@@ -503,7 +501,7 @@
           "title": "2. Configure",
           "button": "Configure on this iPhone",
           "text": "Creates an access token for the Shortcut and hands it over together with the server address.",
-          "desktop": "Open Settings → Import & export on your iPhone to configure the Shortcut there.",
+          "desktop": "Open Settings → Apple Wallet on your iPhone to configure the Shortcut there.",
           "done": "The Shortcut is configured. Your next Apple Pay payment will show up here."
         },
         "automate": {
@@ -1598,7 +1596,7 @@
       "cannot_be_hidden": "This currency cannot be hidden"
     },
     "import": {
-      "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Import & export first.",
+      "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
       "provider_unsupported": "This import provider is not supported.",
       "account_link_exists": "This card is already linked.",
       "currency_mismatch": "The card's currency does not match the account's currency.",
