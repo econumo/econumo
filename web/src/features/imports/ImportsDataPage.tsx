@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronRight } from 'lucide-react'
+import { Link } from 'react-router'
 import { RouterPage } from '@/app/router-pages'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
@@ -44,6 +45,17 @@ export function ImportsDataPage() {
           <p className="px-1 text-xs uppercase text-muted-foreground">{t('imports.apple_wallet.header')}</p>
           <AppleWalletSetup key={wallet?.id ?? 'none'} source={wallet} />
           {wallet ? <ImportCards source={wallet} /> : null}
+          {wallet ? (
+            // the banner (queued-only) is the only other door to /imports/queue, so a
+            // queue holding just skipped/needs-attention rows would otherwise be unreachable
+            <Link
+              to={RouterPage.IMPORT_QUEUE}
+              className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
+            >
+              <span>{t('imports.queue.header')}</span>
+              <ChevronRight className="size-4 text-muted-foreground" />
+            </Link>
+          ) : null}
         </section>
       </div>
 

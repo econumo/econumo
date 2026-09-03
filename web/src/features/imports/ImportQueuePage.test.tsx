@@ -3,12 +3,14 @@ import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { ImportQueuePage } from './ImportQueuePage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const queued = (over: Record<string, unknown> = {}) => ({
   linkId: 'l1', sourceId: 's1', externalAccountId: 'Apple Card', accountId: '', payee: 'Blue Bottle', amount: '12.5',
@@ -37,6 +39,8 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   useUiStore.setState({ transactionModal: null })
+  vi.mocked(toast.error).mockClear()
+  vi.mocked(toast.success).mockClear()
 })
 
 it('shows the empty state when nothing is queued', async () => {
@@ -44,11 +48,13 @@ it('shows the empty state when nothing is queued', async () => {
   expect(await screen.findByText('Nothing to review.')).toBeInTheDocument()
 })
 
-it('groups queued rows by card and opens the prefilled transaction dialog on tap', async () => {
-  renderPage({ queued: [queued(), queued({ linkId: 'l2', payee: 'Whole Foods', amount: '80' })], skipped: [], failed: [] })
+it('groups queued rows by card, formats amounts with moneyFormat, and opens the prefilled transaction dialog on tap', async () => {
+  renderPage({ queued: [queued(), queued({ linkId: 'l2', payee: 'Whole Foods', amount: '1234.5' })], skipped: [], failed: [] })
   const user = userEvent.setup()
   expect(await screen.findByText('Apple Card')).toBeInTheDocument()
   expect(screen.getAllByText(/Card not mapped/)).toHaveLength(2)
+  // thousand separator only shows up once amounts route through moneyFormat
+  expect(screen.getByText('-1,234.5 USD')).toBeInTheDocument()
   await user.click(screen.getByText('Blue Bottle'))
   const params = useUiStore.getState().transactionModal
   expect(params?.importQueued).toEqual({ linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' })
@@ -61,7 +67,7 @@ it('an unmapped card header links to the mapping page', async () => {
   expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
 })
 
-it('skip posts skip-queued-event; a skipped row offers Restore', async () => {
+it('skip posts skip-queued-event; a skipped row offers Restore, labelled with the card', async () => {
   let body: unknown
   server.use(http.post('*/api/v1/import/skip-queued-event', async ({ request }) => {
     body = await request.json()
@@ -69,9 +75,20 @@ it('skip posts skip-queued-event; a skipped row offers Restore', async () => {
   }))
   renderPage({ queued: [queued()], skipped: [], failed: [] })
   const user = userEvent.setup()
-  await user.click(await screen.findByRole('button', { name: 'Skip' }))
+  await user.click(await screen.findByRole('button', { name: 'Skip Blue Bottle' }))
   await waitFor(() => expect(body).toEqual({ linkId: 'l1' }))
-  expect(await screen.findByRole('button', { name: 'Restore' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Restore Blue Bottle' })).toBeInTheDocument()
+  // the skipped section has no group header, so the card name rides in the row itself
+  expect(screen.getByText(/Apple Card ·/)).toBeInTheDocument()
+})
+
+it('a failed skip toasts the server error', async () => {
+  server.use(http.post('*/api/v1/import/skip-queued-event', () =>
+    HttpResponse.json({ success: false, message: 'Row already handled.', code: 400, errors: {} }, { status: 400 })))
+  renderPage({ queued: [queued()], skipped: [], failed: [] })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Skip Blue Bottle' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Row already handled.'))
 })
 
 it('needs-attention rows show the error and payload; retry toasts the outcome; discard removes', async () => {
@@ -92,9 +109,20 @@ it('needs-attention rows show the error and payload; retry toasts the outcome; d
   const section = (await screen.findByText('Needs attention')).parentElement as HTMLElement
   expect(within(section).getByText('amount: This value should not be blank.')).toBeInTheDocument()
   expect(within(section).getByText(/"account":"Apple Card"/)).toBeInTheDocument()
-  await user.click(within(section).getByRole('button', { name: 'Retry' }))
+  await user.click(within(section).getByRole('button', { name: /^Retry/ }))
   await waitFor(() => expect(retried).toEqual({ eventId: 'e9' }))
-  await user.click(within(section).getByRole('button', { name: 'Discard' }))
+  await user.click(within(section).getByRole('button', { name: /^Discard/ }))
   await waitFor(() => expect(discarded).toEqual({ eventId: 'e9' }))
   expect(await screen.findByText('Nothing to review.')).toBeInTheDocument()
+})
+
+it('shows an error state with a retry button when the queue fails to load', async () => {
+  renderPage({ queued: [], skipped: [], failed: [] })
+  // registered after renderPage's own coreHandlers so it wins the override;
+  // both calls are synchronous, so this still lands before the request fires
+  server.use(http.get('*/api/v1/import/get-queued-event-list', () =>
+    HttpResponse.json({ success: false, message: 'Something went wrong. Please try again.', code: 500, errors: {} }, { status: 500 })))
+  expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  expect(screen.queryByText('Nothing to review.')).toBeNull()
 })
