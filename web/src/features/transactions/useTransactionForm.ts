@@ -68,14 +68,15 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
     // account's — prefilling it unconverted into a mismatched-currency
     // account would silently misstate the transaction, so it seeds only when
     // the two currencies agree; the mismatch is surfaced in the dialog instead.
-    const sameCurrency = account?.currency.code.toUpperCase() === iq.currency.toUpperCase()
+    // An account not yet in the cache is not a mismatch — only a CONFIRMED one blanks.
+    const mismatch = account !== undefined && account.currency.code.toUpperCase() !== iq.currency.toUpperCase()
     return {
       id: uuidv7(),
       isNew: true,
       type: iq.type,
       accountId,
       accountRecipientId: null,
-      amount: sameCurrency ? seedAmount(iq.amount, account) : '',
+      amount: mismatch ? '' : seedAmount(iq.amount, account),
       amountRecipient: '',
       categoryId: null,
       payeeId: null,
