@@ -185,10 +185,15 @@ keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
 no `repository.go` either. `imports` (the bank/phone transaction-import
 subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
-ships in stages: stage 1 is the persistence + matcher core with no HTTP edge
-and no provider, so it has `repository.go` and `repo/` but no `api/` or
-`ports.go` yet; the package name is `imports` (not `import`, a Go keyword)
-while its future routes live under `/api/v1/import/`.
+ships in stages: stage 1 (persistence + matcher core) and stage 2 (the Apple
+Wallet push provider) are in; it has `repository.go`, `ports.go` (account /
+currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
+`repo/`, and `api/` with the 14 routes under `/api/v1/import/` (`create-source`,
+`get-source-list`, `delete-source`, `link-account`, `ignore-account`,
+`unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
+`import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
+`discard-event`, `get-transaction-import-list`). The package name is `imports`
+(not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
 
@@ -479,6 +484,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — failed confirm-email attempts per username per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE` — change-email code sends per user per window (default `3`; every send counts).
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE` — failed confirm-email-change attempts per user per window (default `5`; cleared on success).
+  `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -494,6 +500,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
   to the binary's `internal/version.Version`, overridable for demo/staging).
+  `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
+  effective `ECONUMO_IMPORT_*` values) is always merged so the SPA can explain the
+  matcher's windows.
   Flags (`ANALYTICS`, `ALLOW_REGISTRATION`) and `BILLING_URL` are always merged
   (server truth); text/URL keys merge only when non-empty. The composition root
   resolves the FS (`web.DistFS`) and version once in `server.BuildAPI`.
@@ -613,10 +622,12 @@ In the distroless image these run via the binary directly, e.g.
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
-    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`.
+    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`,
+    `/api/v1/import/get-source-list`.
   - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
     `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
-    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
+    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`,
+    `/api/v1/import/ingest-apple-wallet-event`.
 - **Authentication is header-based:** send `Authorization: Bearer <token>` (an opaque
   access token, `eco_ses_*`/`eco_pat_*`; the scheme is case-insensitive). The auth
   middleware resolves the token's sha256 against the `access_tokens` table, rejects
@@ -753,6 +764,15 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Transaction import (Apple Wallet)**: one `import_sources` row per user per
+  provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
+  normalized name and starts `unmapped` — its events queue (`import_transaction_links`
+  with no transaction) until the user maps it to an OWNED account (`link-account`
+  replays the queue in one run) or ignores it. Ingest is scope-gated (`ingest` PATs),
+  exact-duplicate-safe (`(source, external_transaction_id)`), and never fails the
+  request on a bad transaction — parse errors land in `import_events.status = failed`
+  for the queue page's "needs attention" list. Imported transactions read
+  `isImported: 1`; `get-transaction-import-list` is their provenance.
 
 ## Deployment
 

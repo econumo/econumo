@@ -7,7 +7,7 @@ Two signed shortcuts ship as static assets in `web/public/shortcuts/`:
 | `Econumo Setup` | `econumo-setup-v1.shortcut` | Receives `{url, token}` from a `shortcuts://run-shortcut` deep link and writes it to `Shortcuts/econumo-wallet.json` in iCloud Drive. |
 | `Econumo Wallet` | `econumo-wallet-v1.shortcut` | Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
 
-The names are part of the contract: the Settings → Data page opens
+The names are part of the contract: the Settings → Import & export page opens
 `shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=…`, and the
 setup instructions tell the user to point their automation at
 `Econumo Wallet`. Renaming either means changing the SPA.
@@ -16,7 +16,10 @@ setup instructions tell the user to point their automation at
 files are built by hand in Shortcuts.app and committed. The unsigned plist
 source is committed next to this README so the recipe is reviewable in
 diffs; regenerate both whenever the recipe changes and bump the `-vN`
-suffix.
+suffix. The same recipe, reduced to the five actions a user can type in, is
+shown in the SPA under *Configure manually*
+(`web/src/features/imports/AppleWalletSetup.tsx`); keep the URL, headers and
+field names in the two in sync.
 
 ## Contract with the server
 
@@ -43,13 +46,22 @@ Content-Type: application/json
   "amount":     "<Amount, number>",
   "currency":   "<ISO 4217 code>",
   "occurredAt": "<ISO 8601 with offset>",
-  "type":       "expense"
+  "type":       "expense",
+  "eventId":    "<Transaction Identifier, optional>"
 }
 ```
 
-The server answers 200 whenever the event was stored, even if it could not
-be imported (`queued` / `skipped` / `failed` are visible in the web UI), so
-the shortcut has nothing to do with the response.
+`eventId` is optional: when present it is the dedupe key (a re-run of the
+automation for the same tap is `duplicate`); when absent the server derives
+`sha256(account|occurredAt UTC|amount|payee)`. `type` is `expense` or
+`income` (refunds); anything else is a parse error.
+
+The server answers 200 `{"status": "created"|"queued"|"skipped"|"duplicate"|"failed", "eventId": "…"}`
+whenever the event was stored, even if it could not be imported (`queued` /
+`failed` rows are handled on the web queue page), so the shortcut has nothing
+to do with the response. Non-200s: 401 (token revoked — run Setup again),
+402 (read-only access), 429 (the per-user ingest rate limit,
+`ECONUMO_RATE_LIMIT_INGEST`).
 
 ## Build: `Econumo Setup`
 
@@ -66,7 +78,7 @@ Actions, in order:
 2. **Get Dictionary Value** — Get `Value` for `url` in `Dictionary`.
 3. **If** — `Dictionary Value` `does not have any value`
    1. **Show Alert** — title `Econumo`, message
-      `Invalid configuration. Open Settings → Data in Econumo and tap Configure again.`,
+      `Invalid configuration. Open Settings → Import & export in Econumo and tap Configure again.`,
       "Show Cancel Button" off.
    2. **Stop This Shortcut**
    
@@ -89,7 +101,7 @@ Actions, in order:
 1. **Get File** — Service: `iCloud Drive`; File Path:
    `Shortcuts/econumo-wallet.json`; "Error If Not Found": **off**.
 2. **If** — `File` `does not have any value`
-   1. **Show Notification** — `Econumo is not configured. Open Settings → Data in Econumo and tap Configure.`
+   1. **Show Notification** — `Econumo is not configured. Open Settings → Import & export in Econumo and tap Configure.`
    2. **Stop This Shortcut**
    
    **End If**
@@ -118,6 +130,7 @@ Actions, in order:
      | `currency` | Text | `Shortcut Input` › **Amount** › **Currency Code** (see note) |
      | `occurredAt` | Text | `Formatted Date` (step 6) |
      | `type` | Text | `expense` |
+     | `eventId` | Text | `Shortcut Input` › **Transaction Identifier** (omit the row if the picker has no such property) |
 
    Use the Text type for every field, including `amount`: the server parses
    the decimal itself and tolerates locale formatting; a Number field would
@@ -152,7 +165,7 @@ changes server-side; the literal is just another external account name.
 ## Test on a device before signing
 
 1. AirDrop or iCloud-sync both shortcuts to an iPhone.
-2. In Safari on the phone, open Econumo → Settings → Data → Configure.
+2. In Safari on the phone, open Econumo → Settings → Import & export → Configure.
    Shortcuts should open, run `Econumo Setup`, and show the notification.
    Check `Files` → iCloud Drive → Shortcuts → `econumo-wallet.json`.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
