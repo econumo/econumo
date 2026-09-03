@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Haal de opdrachten op",
           "text": "Installeer beide opdrachten op je iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Configureren",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automatiseren",
-          "text": "Voeg in de Opdrachten-app een automatisering toe: Transactie → Voer \"Econumo Wallet\" uit met de transactie als invoer."
+          "text": "Voeg in de Opdrachten-app een automatisering toe: Transactie → Voer \"econumo-wallet-v1\" uit met de transactie als invoer."
         }
       },
       "manual": {

@@ -17,7 +17,7 @@ const maxIngestBody = 64 << 10
 // IngestAppleWalletEvent handles POST /api/v1/import/ingest-apple-wallet-event (auth; ingest- or full-scope token).
 //
 // @Summary     Push an Apple Wallet transaction event
-// @Description Accepts one raw Apple Wallet event as pushed by the "Econumo Wallet" shortcut, stores it, and processes it synchronously: created (a transaction was written), duplicate (already seen), queued (card unmapped / no rate / account deleted), skipped (card ignored) or failed (unparsable payload). The body is never logged.
+// @Description Accepts one raw Apple Wallet event as pushed by the "econumo-wallet-v1" shortcut, stores it, and processes it synchronously: created (a transaction was written), duplicate (already seen), queued (card unmapped / no rate / account deleted), skipped (card ignored) or failed (unparsable payload). The body is never logged.
 // @Tags        Import
 // @Accept      json
 // @Produce     json

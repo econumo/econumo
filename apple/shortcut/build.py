@@ -10,7 +10,8 @@ plists works anywhere with Python 3.
     python3 apple/shortcut/build.py            # plists + signed files
     python3 apple/shortcut/build.py --no-sign  # plists only
 
-Bump VERSION when the recipe changes; the served file names carry it.
+Bump VERSION when the recipe changes; the served file names and the
+shortcut names (which iOS takes from the file name) carry it.
 """
 
 import argparse
@@ -292,10 +293,18 @@ def workflow(name: str, actions: list, color: int) -> dict:
     }
 
 
+# iOS names an imported shortcut after the FILE it came from, ignoring
+# WFWorkflowName, so the display name must equal the served file's basename:
+# the deep link in the SPA and the automation instructions address it by
+# that name.
 SHORTCUTS = {
-    "econumo-setup": ("Econumo Setup", setup_actions, 463140863),  # blue
-    "econumo-wallet": ("Econumo Wallet", wallet_actions, 4292093695),  # green
+    "econumo-setup": (setup_actions, 463140863),  # blue
+    "econumo-wallet": (wallet_actions, 4292093695),  # green
 }
+
+
+def shortcut_name(slug: str) -> str:
+    return f"{slug}-v{VERSION}"
 
 
 def main() -> int:
@@ -303,7 +312,8 @@ def main() -> int:
     parser.add_argument("--no-sign", action="store_true", help="only write the plists")
     args = parser.parse_args()
 
-    for slug, (name, build, color) in SHORTCUTS.items():
+    for slug, (build, color) in SHORTCUTS.items():
+        name = shortcut_name(slug)
         scope(slug)
         source = HERE / f"{slug}.plist"
         with source.open("wb") as fh:
@@ -312,10 +322,10 @@ def main() -> int:
         if args.no_sign:
             continue
         PUBLIC.mkdir(parents=True, exist_ok=True)
-        signed = PUBLIC / f"{slug}-v{VERSION}.shortcut"
+        signed = PUBLIC / f"{name}.shortcut"
         # `shortcuts sign` refuses any input not named *.shortcut.
         with tempfile.TemporaryDirectory() as tmp:
-            unsigned = Path(tmp) / f"{name}.shortcut"
+            unsigned = Path(tmp) / signed.name
             unsigned.write_bytes(source.read_bytes())
             subprocess.run(
                 ["shortcuts", "sign", "--mode", "anyone", "--input", str(unsigned), "--output", str(signed)],

@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Kurzbefehle laden",
           "text": "Installiere beide Kurzbefehle auf deinem iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Konfigurieren",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automatisieren",
-          "text": "Füge in der Kurzbefehle-App eine Automation hinzu: Transaktion → „Econumo Wallet“ mit der Transaktion als Eingabe ausführen."
+          "text": "Füge in der Kurzbefehle-App eine Automation hinzu: Transaktion → „econumo-wallet-v1“ mit der Transaktion als Eingabe ausführen."
         }
       },
       "manual": {

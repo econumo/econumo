@@ -33,7 +33,7 @@ beforeEach(() => {
 
 it('setupDeepLink encodes the JSON input for the Setup shortcut', () => {
   expect(setupDeepLink('https://eco.example', 'eco_pat_x')).toBe(
-    'shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=' + encodeURIComponent('{"url":"https://eco.example","token":"eco_pat_x"}'),
+    'shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=' + encodeURIComponent('{"url":"https://eco.example","token":"eco_pat_x"}'),
   )
 })
 
@@ -69,7 +69,7 @@ it('iOS configure mints an ingest token and opens the shortcuts deep link', asyn
   await user.click(screen.getByRole('button', { name: 'Configure on this iPhone' }))
   await waitFor(() => expect(assigned).toHaveLength(1))
   expect(body).toEqual({ name: 'Apple Wallet', scope: 'ingest', expiresAt: '' })
-  expect(assigned[0].startsWith('shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=')).toBe(true)
+  expect(assigned[0].startsWith('shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=')).toBe(true)
   expect(decodeURIComponent(assigned[0].split('text=')[1])).toContain('"token":"eco_pat_new"')
   spy.mockRestore()
 })

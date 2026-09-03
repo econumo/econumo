@@ -14,8 +14,12 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { isIOS } from '@/lib/platform'
 import { useCreateImportSource, useDeleteImportSource } from './queries'
 
-export const WALLET_SHORTCUT_URL = '/shortcuts/econumo-wallet-v1.shortcut'
-export const SETUP_SHORTCUT_URL = '/shortcuts/econumo-setup-v1.shortcut'
+// iOS names an installed shortcut after the file it was imported from, so
+// the served basename IS the name the deep link and the automation address.
+export const WALLET_SHORTCUT_NAME = 'econumo-wallet-v1'
+export const SETUP_SHORTCUT_NAME = 'econumo-setup-v1'
+export const WALLET_SHORTCUT_URL = `/shortcuts/${WALLET_SHORTCUT_NAME}.shortcut`
+export const SETUP_SHORTCUT_URL = `/shortcuts/${SETUP_SHORTCUT_NAME}.shortcut`
 const INGEST_TOKEN_NAME = 'Apple Wallet'
 
 // The Setup shortcut takes one text input: JSON with the server URL and the
@@ -23,7 +27,7 @@ const INGEST_TOKEN_NAME = 'Apple Wallet'
 // never disagree about the shape.
 export function setupDeepLink(url: string, token: string): string {
   const input = encodeURIComponent(JSON.stringify({ url, token }))
-  return `shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=${input}`
+  return `shortcuts://run-shortcut?name=${encodeURIComponent(SETUP_SHORTCUT_NAME)}&input=text&text=${input}`
 }
 
 // Indirected through a stable object (not a bare function export) so tests

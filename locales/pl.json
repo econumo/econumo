@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Pobierz skróty",
           "text": "Zainstaluj oba skróty na swoim iPhonie.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Skonfiguruj",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Zautomatyzuj",
-          "text": "W aplikacji Skróty dodaj automatyzację: Transakcja → Uruchom „Econumo Wallet” z transakcją jako wejściem."
+          "text": "W aplikacji Skróty dodaj automatyzację: Transakcja → Uruchom „econumo-wallet-v1” z transakcją jako wejściem."
         }
       },
       "manual": {

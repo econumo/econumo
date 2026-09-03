@@ -5298,7 +5298,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Accepts one raw Apple Wallet event as pushed by the \"Econumo Wallet\" shortcut, stores it, and processes it synchronously: created (a transaction was written), duplicate (already seen), queued (card unmapped / no rate / account deleted), skipped (card ignored) or failed (unparsable payload). The body is never logged.",
+                "description": "Accepts one raw Apple Wallet event as pushed by the \"econumo-wallet-v1\" shortcut, stores it, and processes it synchronously: created (a transaction was written), duplicate (already seen), queued (card unmapped / no rate / account deleted), skipped (card ignored) or failed (unparsable payload). The body is never logged.",
                 "consumes": [
                     "application/json"
                 ],

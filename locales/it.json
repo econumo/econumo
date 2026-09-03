@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Scarica i comandi rapidi",
           "text": "Installa entrambi i comandi rapidi sul tuo iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Configura",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automatizza",
-          "text": "Nell'app Comandi rapidi aggiungi un'automazione: Transazione → Esegui \"Econumo Wallet\" con la transazione come input."
+          "text": "Nell'app Comandi rapidi aggiungi un'automazione: Transazione → Esegui \"econumo-wallet-v1\" con la transazione come input."
         }
       },
       "manual": {

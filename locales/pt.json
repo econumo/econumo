@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Obter os atalhos",
           "text": "Instale ambos os atalhos no seu iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Configurar",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automatizar",
-          "text": "Na app Atalhos adicione uma automatização: Transação → Executar \"Econumo Wallet\" com a transação como entrada."
+          "text": "Na app Atalhos adicione uma automatização: Transação → Executar \"econumo-wallet-v1\" com a transação como entrada."
         }
       },
       "manual": {
