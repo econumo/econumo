@@ -1,0 +1,33 @@
+== err:link-account-currency-mismatch POST /api/v1/import/link-account [owner] -> 400
+{"success":false,"message":"The card's currency does not match the account's currency.","code":400,"errors":{}}
+
+== err:link-account-not-owned POST /api/v1/import/link-account [owner] -> 400
+{"success":false,"message":"Account not found","code":0,"errors":{}}
+
+== link-account POST /api/v1/import/link-account [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"USD","state":"mapped","accountId":"a0000000-0000-0000-0000-000000000001","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"},{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":1,"lastSeenAt":"<datetime>"}]},"run":{"id":"<generated-uuid>","status":"completed","importedCount":1,"matchedCount":0,"skippedCount":0,"failedCount":0}}}
+
+== err:link-account-again POST /api/v1/import/link-account [owner] -> 400
+{"success":false,"message":"This card is already linked.","code":400,"errors":{}}
+
+== get-queued-event-list-after-link GET /api/v1/import/get-queued-event-list [owner] -> 200
+{"success":true,"message":"","data":{"queued":[{"linkId":"0d000000-0000-0000-0000-000000000003","sourceId":"0c000000-0000-0000-0000-000000000001","externalAccountId":"eurocard","accountId":"","payee":"Bakery","amount":"3","currency":"EUR","type":"expense","postedAt":"<datetime>","reason":"unmapped"}],"skipped":[],"failed":[{"eventId":"0e000000-0000-0000-0000-000000000002","sourceId":"0c000000-0000-0000-0000-000000000001","receivedAt":"<datetime>","error":"amount must be a positive number","payload":"{\"account\":\"wallet\",\"payee\":\"Broken\",\"amount\":\"lots\",\"currency\":\"USD\"}"}]}}
+
+== get-transaction-import-list-no-provenance GET /api/v1/import/get-transaction-import-list?transactionId=d0000000-0000-0000-0000-000000000001 [owner] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+
+== ignore-account POST /api/v1/import/ignore-account [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"USD","state":"mapped","accountId":"a0000000-0000-0000-0000-000000000001","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"},{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"}]},"run":null}}
+
+== err:link-ignored-card-currency-mismatch POST /api/v1/import/link-account [owner] -> 400
+{"success":false,"message":"The card's currency does not match the account's currency.","code":400,"errors":{}}
+
+== unlink-account POST /api/v1/import/unlink-account [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"},{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"}]},"run":null}}
+
+== unlink-account-unknown-card-noop POST /api/v1/import/unlink-account [owner] -> 200
+{"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"},{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"}]},"run":null}}
+
+== get-source-list-after-unlink GET /api/v1/import/get-source-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"ignored","accountId":"","queuedCount":0,"tapCount":1,"lastSeenAt":"<datetime>"},{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":0,"tapCount":2,"lastSeenAt":"<datetime>"}]}]}}
+

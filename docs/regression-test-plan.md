@@ -152,9 +152,10 @@ navigation (single-pane vs sidebar).
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today".
-- [ ] Transaction list rows carry `isImported` (0/1) in the API response; a
-      transaction with an import link (any provider) reads 1, hand-entered
-      reads 0 (no UI badge yet — stage 2 of the import feature).
+- [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
+      imported row shows the import glyph (tooltip "Imported"), hand-entered
+      rows do not; the preview dialog of an imported row lists "Imported from"
+      (source · card · merchant amount currency · posted time).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -164,6 +165,61 @@ navigation (single-pane vs sidebar).
       detailed, good rows imported.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
+
+## 5a. Imports — Apple Wallet
+
+- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
+      setup, cards, "Import queue" link; back returns to Settings).
+- [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
+      second device does not create a second source); the section flips to
+      "Connected" with the three steps; "Disconnect" (confirmation) removes the
+      source, its cards and its queue; already-imported transactions stay.
+- [ ] Step 1 links download `econumo-wallet-v1.shortcut` and
+      `econumo-setup-v1.shortcut` in a new window (from the home-screen app the
+      Safari sheet closes back to the page, no relaunch needed) 📱.
+- [ ] iOS only 📱: "Configure on this iPhone" mints an ingest PAT (visible under
+      Profile → Tokens with scope `ingest`) and opens the Shortcuts app with the
+      Setup shortcut prefilled; desktop shows the "open on your iPhone" note instead.
+- [ ] "Configure manually" reveals the token once (copy button), the server URL,
+      the request body and the five Shortcuts actions.
+- [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
+      → `status: queued` for an unmapped card; the card appears in the list as
+      "Unmapped · 1 queued", tap count and last-seen date update per event; a
+      `full` PAT / session token is accepted too; an `ingest` PAT on any other route
+      is 401.
+- [ ] Same payload twice → `duplicate`, no second row; a body without `account`
+      or with a bad currency → `status: failed`, row in "Needs attention" with the
+      error text and the raw payload; Retry re-parses (toast with the outcome),
+      Discard removes it.
+- [ ] Map card → account (owned accounts only in the picker; shared accounts
+      absent): the queue replays — toast "N imported, N matched, N skipped";
+      imported transactions appear on the account with the glyph; a same-amount
+      hand-entered transaction within ±3 days is adopted (no duplicate) and shows
+      the provenance card.
+- [ ] Currency mismatch (card USD → EUR account) is refused with the "Card
+      currency does not match the account" error; an ignored card offers
+      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
+      new taps queue again.
+- [ ] Review banner 📱: with queued rows, every page except the queue shows
+      "N imported transactions are waiting for review" + "Review"; the banner
+      disappears when the queue empties.
+- [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
+      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
+      dialog prefilled (account, amount, merchant as description, posted date);
+      saving posts `import-queued-event` — the row leaves the queue and the
+      transaction is created with the glyph; Skip moves a row to "Skipped",
+      Restore brings it back.
+- [ ] A second tap with the same amount on the same card within ±3 days of a
+      hand-entered transaction of that amount is adopted (no duplicate); a tap
+      already linked from this source is never adopted twice.
+- [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
+      frozen envelope.
+- [ ] A tap whose merchant name exceeds 255 characters is imported with the
+      name cut to 255 (no failed row).
+- [ ] Manually importing a queued row whose card currency differs from the
+      chosen account's opens the dialog with an EMPTY amount and a "Card
+      amount: … EUR" line; a same-currency row is prefilled.
 
 ## 6. Recurring transactions
 
@@ -343,8 +399,9 @@ User C sees none of it.
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
 - [ ] Create a personal token with scope "full" — it works everywhere; an
-      "ingest" token (create via API) is rejected with 401 on every non-import
-      route.
+      "ingest" token (created via "Configure on this iPhone" or the API) is
+      rejected with 401 on every non-import route and accepted on
+      `import/ingest-apple-wallet-event`.
 
 ## 13. Cross-cutting & platform
 

@@ -469,6 +469,114 @@
     "make_recurring": "Tornar recorrente",
     "not_posted": "Não lançada"
   },
+  "imports": {
+    "badge": "Importada",
+    "banner": {
+      "text": "{count} transação importada aguarda revisão | {count} transações importadas aguardam revisão",
+      "cta": "Rever"
+    },
+    "data_page": {
+      "menu_item": "Importar e exportar",
+      "header": "Importar e exportar"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Registe pagamentos Apple Pay automaticamente com um atalho do iPhone. Cada pagamento é enviado ao Econumo; associa cada cartão a uma conta uma única vez.",
+      "connect": "Configurar Apple Wallet",
+      "connected": "Ligado",
+      "disconnect": "Desligar",
+      "disconnect_modal": {
+        "title": "Desligar o Apple Wallet?",
+        "question": "As associações de cartões e a fila de revisão desta ligação serão removidas. As transações já importadas mantêm-se."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Obter os atalhos",
+          "text": "Instale ambos os atalhos no seu iPhone.",
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
+        },
+        "configure": {
+          "title": "2. Configurar",
+          "button": "Configurar neste iPhone",
+          "text": "Cria um token de acesso para o atalho e entrega-o juntamente com o endereço do servidor.",
+          "desktop": "Abra Definições → Apple Wallet no seu iPhone para configurar o atalho lá.",
+          "done": "O atalho está configurado. O seu próximo pagamento Apple Pay aparecerá aqui."
+        },
+        "automate": {
+          "title": "3. Automatizar",
+          "text": "Na app Atalhos adicione uma automatização: Transação → Executar \"econumo-wallet-v1\" com a transação como entrada."
+        }
+      },
+      "manual": {
+        "toggle": "Configurar manualmente",
+        "token": "Token de acesso (mostrado uma vez)",
+        "url": "Servidor",
+        "body": "Corpo do pedido",
+        "action_1": "Obter detalhes da transação → preencher o corpo acima",
+        "action_2": "Obter conteúdo do URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Cabeçalho Authorization: Bearer <token>",
+        "action_4": "Cabeçalho Content-Type: application/json",
+        "action_5": "Corpo do pedido: JSON, os campos acima"
+      },
+      "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
+      "cards": {
+        "header": "Cartões",
+        "empty": "Ainda sem cartões — o primeiro pagamento Apple Pay adiciona um.",
+        "state": {
+          "mapped": "Associado",
+          "ignored": "Ignorado",
+          "unmapped": "Sem associação · {count} em fila"
+        },
+        "taps": "{count} pagamento | {count} pagamentos",
+        "last_seen": "Visto pela última vez {date}",
+        "map": "Associar a uma conta",
+        "map_instead": "Associar em vez disso",
+        "ignore": "Ignorar",
+        "unlink": "Desassociar",
+        "unlink_modal": {
+          "title": "Desassociar {card}?",
+          "question": "Novos pagamentos deste cartão aguardarão revisão até o associar novamente."
+        },
+        "map_modal": {
+          "header": "Associar {card}",
+          "account": "Conta",
+          "submit": "Associar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
+      }
+    },
+    "queue": {
+      "header": "Fila de importação",
+      "empty": "Nada para rever.",
+      "card_amount": "Valor do cartão: {amount} {currency}",
+      "queued": "A aguardar revisão",
+      "skipped": "Ignoradas",
+      "failed": "Precisam de atenção",
+      "reason": {
+        "unmapped": "Cartão sem associação",
+        "account_deleted": "Conta eliminada",
+        "no_rate": "Sem taxa de câmbio para {currency}"
+      },
+      "import": "Importar",
+      "skip": "Ignorar",
+      "unskip": "Repor",
+      "retry": "Tentar novamente",
+      "discard": "Descartar",
+      "received": "Recebido {date}",
+      "retry_result": {
+        "created": "Importada",
+        "queued": "Em fila para revisão",
+        "skipped": "Ignorada",
+        "duplicate": "Já importada",
+        "failed": "Continua a falhar"
+      }
+    },
+    "provenance": {
+      "header": "Importada de"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Escolha o seu avatar",
@@ -1486,6 +1594,15 @@
       "in_use": "A moeda está a ser utilizada e não pode ser eliminada.",
       "base_immutable": "A moeda base não pode ser alterada.",
       "cannot_be_hidden": "Esta moeda não pode ser ocultada."
+    },
+    "import": {
+      "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Apple Wallet.",
+      "provider_unsupported": "Este fornecedor de importação não é suportado.",
+      "account_link_exists": "Este cartão já está associado.",
+      "currency_mismatch": "A moeda do cartão não corresponde à moeda da conta.",
+      "link_not_queued": "Este evento não está a aguardar revisão.",
+      "link_not_skipped": "Este evento não está ignorado.",
+      "event_not_failed": "Este evento não falhou."
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",

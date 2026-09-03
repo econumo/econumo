@@ -126,6 +126,13 @@ export const METRICS = {
   UI_MODAL_TRANSACTION_CLOSE: 'appUIModalTransactionClose',
   UI_MODAL_RECURRING_OPEN: 'appUIModalRecurringOpen',
   UI_MODAL_RECURRING_CLOSE: 'appUIModalRecurringClose',
+  IMPORT_SOURCE_CONNECT: 'appImportSourceConnect',
+  IMPORT_ACCOUNT_LINK: 'appImportAccountLink',
+  IMPORT_ACCOUNT_IGNORE: 'appImportAccountIgnore',
+  IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
+  IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
+  IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
+  IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

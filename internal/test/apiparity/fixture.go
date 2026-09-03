@@ -79,6 +79,11 @@ const (
 	// real row (Txn1 stays 0). Nothing else reads import_* tables in stage 1.
 	ImportSourcePhone = "0c000000-0000-0000-0000-000000000001"
 	ImportLinkTxn2    = "0d000000-0000-0000-0000-000000000001"
+
+	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
+	ImportLinkQueued  = "0d000000-0000-0000-0000-000000000002" // "wallet" tap-2, queued (card unmapped)
+	ImportEventFailed = "0e000000-0000-0000-0000-000000000002" // unparsable payload awaiting retry/discard
+	ImportLinkEuro    = "0d000000-0000-0000-0000-000000000003" // "eurocard" tap-9, queued, EUR
 )
 
 // Seed seeds an identical, cross-module fixture into the given engine via the
@@ -194,4 +199,27 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,
 		ExternalAccountID: "wallet", ExternalTransactionID: "tap-1", TransactionID: Txn2,
 		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})
+
+	// A queued tap on the same "wallet" card: 12.50 at "Shop" received at
+	// ClockTime. Txn1 has the same amount but is seeded at the fixture
+	// builder's fixed base clock (2024-04-01), far outside the matcher's
+	// window around ClockTime (effectively "now"), so link-account's
+	// conversion run CREATES a transaction (importedCount 1) rather than
+	// adopting Txn1 — the adopt path itself is covered at the unit level
+	// (internal/imports/accountlink_test.go, matcher_test.go).
+	f.ImportEvent(fixture.ImportEvent{ID: ImportEventQueued, SourceID: ImportSourcePhone,
+		Payload:    `{"account":"wallet","payee":"Shop","amount":"12.50","currency":"USD","eventId":"tap-2"}`,
+		ReceivedAt: ClockTime})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkQueued, SourceID: ImportSourcePhone, EventID: ImportEventQueued,
+		ExternalAccountID: "wallet", ExternalTransactionID: "tap-2", Status: model.ImportLinkStatusQueued,
+		ExternalPayee: "Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
+	// A card that only ever reported EUR: mapping it onto the USD OwnerAccount
+	// is the currency-mismatch refusal.
+	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkEuro, SourceID: ImportSourcePhone,
+		ExternalAccountID: "eurocard", ExternalTransactionID: "tap-9", Status: model.ImportLinkStatusQueued,
+		ExternalPayee: "Bakery", ExternalAmount: "3.00000000", ExternalCurrency: "EUR", ExternalPostedAt: ClockTime})
+	// A failed event (unparsable amount) for the retry/discard scenarios.
+	f.ImportEvent(fixture.ImportEvent{ID: ImportEventFailed, SourceID: ImportSourcePhone,
+		Payload: `{"account":"wallet","payee":"Broken","amount":"lots","currency":"USD"}`,
+		Status:  model.ImportEventStatusFailed, ParseError: "amount must be a positive number", ReceivedAt: ClockTime})
 }

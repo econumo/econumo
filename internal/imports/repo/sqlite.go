@@ -54,3 +54,59 @@ func (sqliteQuerier) GetImportTransactionLinkByExternalKey(ctx context.Context, 
 func (sqliteQuerier) ListImportTransactionLinksByTransaction(ctx context.Context, db backend.DBTX, transactionID *string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksByTransaction(ctx, transactionID)
 }
+
+func (sqliteQuerier) GetImportSourceByUserProvider(ctx context.Context, db backend.DBTX, p sourceByUserProviderPs) (sourceRow, error) {
+	return sqlitegen.New(db).GetImportSourceByUserProvider(ctx, p)
+}
+
+func (sqliteQuerier) ListImportSourcesByUser(ctx context.Context, db backend.DBTX, userID string) ([]sourceRow, error) {
+	return sqlitegen.New(db).ListImportSourcesByUser(ctx, userID)
+}
+
+func (sqliteQuerier) DeleteImportSource(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportSource(ctx, id)
+}
+
+func (sqliteQuerier) InsertImportAccountLink(ctx context.Context, db backend.DBTX, p insertAccountLinkParams) error {
+	return sqlitegen.New(db).InsertImportAccountLink(ctx, p)
+}
+
+func (sqliteQuerier) UpdateImportAccountLink(ctx context.Context, db backend.DBTX, p updateAccountLinkParams) error {
+	return sqlitegen.New(db).UpdateImportAccountLink(ctx, p)
+}
+
+func (sqliteQuerier) DeleteImportAccountLink(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportAccountLink(ctx, id)
+}
+
+func (sqliteQuerier) GetImportAccountLinkByID(ctx context.Context, db backend.DBTX, id string) (accountLinkRow, error) {
+	return sqlitegen.New(db).GetImportAccountLinkByID(ctx, id)
+}
+
+func (sqliteQuerier) ListImportAccountLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]accountLinkRow, error) {
+	return sqlitegen.New(db).ListImportAccountLinksBySource(ctx, sourceID)
+}
+
+func (sqliteQuerier) DeleteImportEvent(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportEvent(ctx, id)
+}
+
+func (sqliteQuerier) ListImportEventsBySourceStatus(ctx context.Context, db backend.DBTX, p eventsBySourceStatusPs) ([]eventRow, error) {
+	return sqlitegen.New(db).ListImportEventsBySourceStatus(ctx, p)
+}
+
+func (sqliteQuerier) GetImportTransactionLinkByID(ctx context.Context, db backend.DBTX, id string) (linkRow, error) {
+	return sqlitegen.New(db).GetImportTransactionLinkByID(ctx, id)
+}
+
+func (sqliteQuerier) UpdateImportTransactionLink(ctx context.Context, db backend.DBTX, p updateLinkParams) error {
+	return sqlitegen.New(db).UpdateImportTransactionLink(ctx, p)
+}
+
+func (sqliteQuerier) ListImportTransactionLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksBySource(ctx, sourceID)
+}
+
+func (sqliteQuerier) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error {
+	return sqlitegen.New(db).DeleteQueuedImportTransactionLinksByExternalAccount(ctx, p)
+}

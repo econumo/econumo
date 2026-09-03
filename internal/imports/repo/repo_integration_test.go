@@ -364,3 +364,153 @@ func TestRepo_EventStatusUpdatePreservesRunID(t *testing.T) {
 		t.Errorf("RunID = %v, want %v", got.RunID, run.ID)
 	}
 }
+
+func TestRepo_SourceByUserProviderListDelete(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	if _, err := repo.GetSourceByUserProvider(ctx, vo.MustParseId(userA), model.ImportProviderAppleWallet); err == nil {
+		t.Fatal("GetSourceByUserProvider(miss) must error")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("miss = %T, want NotFound", err)
+	}
+	src := newSource("0c000000-0000-0000-0000-000000000001")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetSourceByUserProvider(ctx, src.UserID, model.ImportProviderAppleWallet)
+	if err != nil || got.ID != src.ID {
+		t.Fatalf("GetSourceByUserProvider = %+v, %v", got, err)
+	}
+	list, err := repo.ListSourcesByUser(ctx, src.UserID)
+	if err != nil || len(list) != 1 || list[0].ID != src.ID {
+		t.Fatalf("ListSourcesByUser = %+v, %v", list, err)
+	}
+	if err := repo.DeleteSource(ctx, src.ID); err != nil {
+		t.Fatal(err)
+	}
+	if list, _ := repo.ListSourcesByUser(ctx, src.UserID); len(list) != 0 {
+		t.Fatalf("after delete: %+v", list)
+	}
+}
+
+func TestRepo_AccountLinkRoundTrip(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000001")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	acct := vo.MustParseId(acct1)
+	l := &model.ImportAccountLink{
+		ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: "Apple Card", ExternalName: "Apple Card",
+		Mode: model.ImportAccountLinkModeIgnore, CreatedAt: fixedTime, UpdatedAt: fixedTime,
+	}
+	if err := repo.InsertAccountLink(ctx, l); err != nil {
+		t.Fatalf("InsertAccountLink: %v", err)
+	}
+	got, err := repo.GetAccountLink(ctx, l.ID)
+	if err != nil || got.Mode != model.ImportAccountLinkModeIgnore || got.AccountID != nil || got.ExternalCurrency != nil {
+		t.Fatalf("GetAccountLink = %+v, %v", got, err)
+	}
+	usd := "USD"
+	l.Mode, l.AccountID, l.ExternalCurrency = model.ImportAccountLinkModeImport, &acct, &usd
+	if err := repo.UpdateAccountLink(ctx, l); err != nil {
+		t.Fatalf("UpdateAccountLink: %v", err)
+	}
+	list, err := repo.ListAccountLinksBySource(ctx, src.ID)
+	if err != nil || len(list) != 1 || list[0].AccountID == nil || *list[0].AccountID != acct || *list[0].ExternalCurrency != "USD" {
+		t.Fatalf("ListAccountLinksBySource = %+v, %v", list, err)
+	}
+	// (source_id, external_account_id) is unique
+	dup := *l
+	dup.ID = vo.NewId()
+	if err := repo.InsertAccountLink(ctx, &dup); err == nil {
+		t.Fatal("duplicate external account must fail")
+	}
+	if err := repo.DeleteAccountLink(ctx, l.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetAccountLink(ctx, l.ID); err == nil {
+		t.Fatal("GetAccountLink after delete must error")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("= %T, want NotFound", err)
+	}
+}
+
+func TestRepo_EventListDelete(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000001")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	perr := "bad amount"
+	failed := &model.ImportEvent{ID: vo.NewId(), SourceID: src.ID, Payload: `{"a":1}`, PayloadHash: "h1", Status: model.ImportEventStatusFailed, ParseError: &perr, ReceivedAt: fixedTime}
+	ok := &model.ImportEvent{ID: vo.NewId(), SourceID: src.ID, Payload: `{"a":2}`, PayloadHash: "h2", Status: model.ImportEventStatusProcessed, ReceivedAt: fixedTime}
+	for _, e := range []*model.ImportEvent{failed, ok} {
+		if _, err := repo.InsertEvent(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	list, err := repo.ListEventsBySourceStatus(ctx, src.ID, model.ImportEventStatusFailed)
+	if err != nil || len(list) != 1 || list[0].ID != failed.ID || *list[0].ParseError != "bad amount" {
+		t.Fatalf("ListEventsBySourceStatus = %+v, %v", list, err)
+	}
+	if err := repo.DeleteEvent(ctx, failed.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := repo.GetEvent(ctx, failed.ID); err == nil {
+		t.Fatal("GetEvent after delete must error")
+	}
+}
+
+func TestRepo_LinkGetUpdateListPurge(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000001")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	mk := func(ext string, status string, posted time.Time) *model.ImportTransactionLink {
+		return &model.ImportTransactionLink{
+			ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: "Apple Card", ExternalTransactionID: ext, Status: status,
+			ExternalPayee: "Shop", ExternalAmount: "12.50000000", ExternalPostedAt: posted, ImportedAt: fixedTime,
+		}
+	}
+	q1 := mk("t1", model.ImportLinkStatusQueued, fixedTime)
+	q2 := mk("t2", model.ImportLinkStatusQueued, fixedTime.Add(time.Hour))
+	seen := mk("t3", model.ImportLinkStatusSkipped, fixedTime.Add(2*time.Hour))
+	for _, l := range []*model.ImportTransactionLink{q1, q2, seen} {
+		if err := repo.InsertLink(ctx, l); err != nil {
+			t.Fatal(err)
+		}
+	}
+	got, err := repo.GetLink(ctx, q1.ID)
+	if err != nil || got.ExternalTransactionID != "t1" {
+		t.Fatalf("GetLink = %+v, %v", got, err)
+	}
+	list, err := repo.ListLinksBySource(ctx, src.ID)
+	if err != nil || len(list) != 3 || list[0].ID != seen.ID || list[2].ID != q1.ID {
+		t.Fatalf("ListLinksBySource order = %+v, %v", list, err)
+	}
+	eur := "EUR"
+	q1.Status, q1.ExternalAmount, q1.ExternalCurrency = model.ImportLinkStatusSkipped, "11.00000000", &eur
+	if err := repo.UpdateLink(ctx, q1); err != nil {
+		t.Fatalf("UpdateLink: %v", err)
+	}
+	if got, _ := repo.GetLink(ctx, q1.ID); got.Status != model.ImportLinkStatusSkipped || got.ExternalAmount != vo.NewDecimal("11.00000000").String() || *got.ExternalCurrency != "EUR" {
+		t.Fatalf("after UpdateLink = %+v", got)
+	}
+	if err := repo.DeleteQueuedLinksByExternalAccount(ctx, src.ID, "Apple Card"); err != nil {
+		t.Fatal(err)
+	}
+	list, _ = repo.ListLinksBySource(ctx, src.ID)
+	if len(list) != 2 { // q2 (queued) purged; q1 (now skipped) and seen survive
+		t.Fatalf("after purge = %+v", list)
+	}
+	if _, err := repo.GetLink(ctx, vo.NewId()); err == nil {
+		t.Fatal("GetLink(miss) must error")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("= %T, want NotFound", err)
+	}
+}

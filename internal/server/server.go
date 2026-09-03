@@ -37,6 +37,9 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	appimports "github.com/econumo/econumo/internal/imports"
+	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
@@ -174,6 +177,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
 			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+			appimports.RateScopeIngest:          cfg.RateLimitIngest,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -327,6 +331,23 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
+	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
+	importsSvc := appimports.NewService(
+		importsRepo,
+		NewImportsAccountReader(accountSvc, currencyLookup),
+		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
+		transactionSvc,
+		NewImportsTransactionLister(transactionRepo),
+		authLimiter, txm, clk,
+		appimports.MatcherConfig{
+			MatchDays:       cfg.ImportMatchDays,
+			TipDays:         cfg.ImportTipDays,
+			TipTolerancePct: cfg.ImportTipTolerancePct,
+			TokenMinLength:  cfg.ImportTokenMinLength,
+		},
+	)
+	importsHandlers := handlerimports.NewHandlers(importsSvc)
+
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
 	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
@@ -347,6 +368,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlerimports.RegisterAPI(importsHandlers, authn),
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
 	)

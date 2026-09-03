@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts, fixtureLabels, fixtureOwner, fixtureUsd } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
 import { useUiStore } from '@/app/uiStore'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
@@ -651,4 +652,56 @@ it('posting a template sends the chips the user actually left checked', async ()
   await waitFor(() => expect(postBody).toBeDefined())
   expect(postBody!.recurringId).toBe('r1')
   expect(postBody!.labelIds).toEqual(['label2'])
+})
+
+it('a queued import posts import-queued-event with the link id and the edited transaction', async () => {
+  let body: Record<string, unknown> | undefined
+  server.use(
+    http.post('*/api/v1/import/import-queued-event', async ({ request }) => {
+      body = (await request.json()) as Record<string, unknown>
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho({ isImported: 1 }), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  const queryClient = renderDialog('/')
+  // the real flow always opens this dialog from the queue page, which has
+  // already loaded accounts into the shared cache — seed it the same way so
+  // the currency-match check below does not race the accounts fetch
+  queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+  useUiStore.getState().openTransactionModal({
+    importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' },
+  })
+
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  expect(screen.getByLabelText('Amount')).toHaveValue('12.50')
+  // same-currency card amount line is shown regardless
+  expect(screen.getByText('Card amount: 12.5 USD')).toBeInTheDocument()
+  await user.click(screen.getByRole('combobox', { name: 'Category' }))
+  await user.click(await screen.findByText('Food'))
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+
+  await waitFor(() => expect(body).toBeDefined())
+  expect(body!.linkId).toBe('l1')
+  const tx = body!.transaction as Record<string, unknown>
+  expect(tx.accountId).toBe('a1')
+  expect(tx.amount).toBe('12.5')
+  expect(tx.categoryId).toBe('cat-food')
+  expect(tx.description).toBe('Blue Bottle')
+  expect(tx.date).toBe('2026-08-20 10:42:03')
+})
+
+it('a queued import in a foreign currency opens with an empty amount and shows the card amount', async () => {
+  const user = userEvent.setup()
+  const queryClient = renderDialog('/')
+  queryClient.setQueryData(queryKeys.accounts, fixtureAccounts)
+  useUiStore.getState().openTransactionModal({
+    importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'EUR', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' },
+  })
+
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  // a1 is USD: the EUR tap amount must NOT be prefilled as if it were USD
+  expect(screen.getByLabelText('Amount')).toHaveValue('')
+  expect(screen.getByText('Card amount: 12.5 EUR')).toBeInTheDocument()
+  await user.type(screen.getByLabelText('Amount'), '11')
+  expect(screen.getByLabelText('Amount')).toHaveValue('11')
 })

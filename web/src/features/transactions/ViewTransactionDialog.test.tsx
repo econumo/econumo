@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner } from '@/test/fixtures'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -231,4 +232,22 @@ it('renders no labels card when the transaction has no labels', async () => {
   await screen.findByRole('button', { name: 'Edit' })
   expect(screen.queryByText('health')).toBeNull()
   expect(screen.queryByText('Label')).toBeNull()
+})
+
+it('lists the import provenance for an imported transaction', async () => {
+  server.use(http.get('*/api/v1/import/get-transaction-import-list', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [{
+      id: 'l1', sourceId: 's1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'Apple Card',
+      externalTransactionId: 'evt-1', externalPayee: 'Blue Bottle', externalAmount: '12.5', externalCurrency: 'USD',
+      externalPostedAt: '2026-08-20 10:42:03', status: 'imported', importedAt: '2026-08-20 10:42:05',
+    }] } })))
+  renderView({ transaction: { ...fixtureTransaction, isImported: 1 } as ViewTransaction })
+  expect(await screen.findByText('Imported from')).toBeInTheDocument()
+  expect(screen.getByText(/Apple Card/)).toBeInTheDocument()
+  expect(screen.getByText(/Blue Bottle/)).toBeInTheDocument()
+})
+
+it('fetches no provenance for a hand-entered transaction', () => {
+  renderView({ transaction: { ...fixtureTransaction, isImported: 0 } as ViewTransaction })
+  expect(screen.queryByText('Imported from')).toBeNull()
 })

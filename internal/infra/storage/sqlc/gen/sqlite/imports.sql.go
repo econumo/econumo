@@ -10,6 +10,70 @@ import (
 	"time"
 )
 
+const deleteImportAccountLink = `-- name: DeleteImportAccountLink :exec
+DELETE FROM import_account_links WHERE id = ?
+`
+
+func (q *Queries) DeleteImportAccountLink(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportAccountLink, id)
+	return err
+}
+
+const deleteImportEvent = `-- name: DeleteImportEvent :exec
+DELETE FROM import_events WHERE id = ?
+`
+
+func (q *Queries) DeleteImportEvent(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportEvent, id)
+	return err
+}
+
+const deleteImportSource = `-- name: DeleteImportSource :exec
+DELETE FROM import_sources WHERE id = ?
+`
+
+func (q *Queries) DeleteImportSource(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportSource, id)
+	return err
+}
+
+const deleteQueuedImportTransactionLinksByExternalAccount = `-- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
+DELETE FROM import_transaction_links WHERE source_id = ?1 AND lower(external_account_id) = lower(?2) AND status = 'queued'
+`
+
+type DeleteQueuedImportTransactionLinksByExternalAccountParams struct {
+	SourceID          string
+	ExternalAccountID string
+}
+
+func (q *Queries) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error {
+	_, err := q.db.ExecContext(ctx, deleteQueuedImportTransactionLinksByExternalAccount, arg.SourceID, arg.ExternalAccountID)
+	return err
+}
+
+const getImportAccountLinkByID = `-- name: GetImportAccountLinkByID :one
+SELECT id, source_id, external_account_id, external_name, external_currency, account_id, mode, created_at, updated_at
+FROM import_account_links
+WHERE id = ?
+`
+
+func (q *Queries) GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error) {
+	row := q.db.QueryRowContext(ctx, getImportAccountLinkByID, id)
+	var i ImportAccountLink
+	err := row.Scan(
+		&i.ID,
+		&i.SourceID,
+		&i.ExternalAccountID,
+		&i.ExternalName,
+		&i.ExternalCurrency,
+		&i.AccountID,
+		&i.Mode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getImportEventByID = `-- name: GetImportEventByID :one
 SELECT id, source_id, run_id, payload, payload_hash, status, parse_error, received_at
 FROM import_events
@@ -81,10 +145,40 @@ func (q *Queries) GetImportSourceByID(ctx context.Context, id string) (ImportSou
 	return i, err
 }
 
+const getImportSourceByUserProvider = `-- name: GetImportSourceByUserProvider :one
+SELECT id, user_id, provider, name, credential_ciphertext, status, last_synced_at, created_at, updated_at
+FROM import_sources
+WHERE user_id = ? AND provider = ?
+ORDER BY created_at, id
+LIMIT 1
+`
+
+type GetImportSourceByUserProviderParams struct {
+	UserID   string
+	Provider string
+}
+
+func (q *Queries) GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error) {
+	row := q.db.QueryRowContext(ctx, getImportSourceByUserProvider, arg.UserID, arg.Provider)
+	var i ImportSource
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Provider,
+		&i.Name,
+		&i.CredentialCiphertext,
+		&i.Status,
+		&i.LastSyncedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getImportTransactionLinkByExternalKey = `-- name: GetImportTransactionLinkByExternalKey :one
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links
-WHERE source_id = ? AND external_account_id = ? AND external_transaction_id = ?
+WHERE source_id = ?1 AND lower(external_account_id) = lower(?2) AND external_transaction_id = ?3
 `
 
 type GetImportTransactionLinkByExternalKeyParams struct {
@@ -93,6 +187,9 @@ type GetImportTransactionLinkByExternalKeyParams struct {
 	ExternalTransactionID string
 }
 
+// Card identity is case-insensitive (Apple Wallet may report the same card
+// with different casing between taps), so the account-id half of the key
+// folds case; external_transaction_id stays exact.
 func (q *Queries) GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error) {
 	row := q.db.QueryRowContext(ctx, getImportTransactionLinkByExternalKey, arg.SourceID, arg.ExternalAccountID, arg.ExternalTransactionID)
 	var i ImportTransactionLink
@@ -117,6 +214,70 @@ func (q *Queries) GetImportTransactionLinkByExternalKey(ctx context.Context, arg
 		&i.ImportedAt,
 	)
 	return i, err
+}
+
+const getImportTransactionLinkByID = `-- name: GetImportTransactionLinkByID :one
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE id = ?
+`
+
+func (q *Queries) GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error) {
+	row := q.db.QueryRowContext(ctx, getImportTransactionLinkByID, id)
+	var i ImportTransactionLink
+	err := row.Scan(
+		&i.ID,
+		&i.SourceID,
+		&i.RunID,
+		&i.EventID,
+		&i.ExternalAccountID,
+		&i.ExternalTransactionID,
+		&i.TransactionID,
+		&i.Status,
+		&i.ExternalPayee,
+		&i.ExternalDescription,
+		&i.ExternalAmount,
+		&i.ExternalCurrency,
+		&i.ExternalPostedAt,
+		&i.AppliedCategoryID,
+		&i.AppliedPayeeID,
+		&i.AppliedTagID,
+		&i.AppliedRuleID,
+		&i.ImportedAt,
+	)
+	return i, err
+}
+
+const insertImportAccountLink = `-- name: InsertImportAccountLink :exec
+INSERT INTO import_account_links (id, source_id, external_account_id, external_name, external_currency, account_id, mode, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertImportAccountLinkParams struct {
+	ID                string
+	SourceID          string
+	ExternalAccountID string
+	ExternalName      string
+	ExternalCurrency  *string
+	AccountID         *string
+	Mode              string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+func (q *Queries) InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportAccountLink,
+		arg.ID,
+		arg.SourceID,
+		arg.ExternalAccountID,
+		arg.ExternalName,
+		arg.ExternalCurrency,
+		arg.AccountID,
+		arg.Mode,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
 }
 
 const insertImportEvent = `-- name: InsertImportEvent :execrows
@@ -278,6 +439,179 @@ func (q *Queries) InsertImportTransactionLink(ctx context.Context, arg InsertImp
 	return err
 }
 
+const listImportAccountLinksBySource = `-- name: ListImportAccountLinksBySource :many
+SELECT id, source_id, external_account_id, external_name, external_currency, account_id, mode, created_at, updated_at
+FROM import_account_links
+WHERE source_id = ?
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportAccountLinksBySource, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportAccountLink{}
+	for rows.Next() {
+		var i ImportAccountLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.ExternalAccountID,
+			&i.ExternalName,
+			&i.ExternalCurrency,
+			&i.AccountID,
+			&i.Mode,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportEventsBySourceStatus = `-- name: ListImportEventsBySourceStatus :many
+SELECT id, source_id, run_id, payload, payload_hash, status, parse_error, received_at
+FROM import_events
+WHERE source_id = ? AND status = ?
+ORDER BY received_at DESC, id
+`
+
+type ListImportEventsBySourceStatusParams struct {
+	SourceID string
+	Status   string
+}
+
+func (q *Queries) ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error) {
+	rows, err := q.db.QueryContext(ctx, listImportEventsBySourceStatus, arg.SourceID, arg.Status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportEvent{}
+	for rows.Next() {
+		var i ImportEvent
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.Payload,
+			&i.PayloadHash,
+			&i.Status,
+			&i.ParseError,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportSourcesByUser = `-- name: ListImportSourcesByUser :many
+SELECT id, user_id, provider, name, credential_ciphertext, status, last_synced_at, created_at, updated_at
+FROM import_sources
+WHERE user_id = ?
+ORDER BY created_at, id
+`
+
+func (q *Queries) ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error) {
+	rows, err := q.db.QueryContext(ctx, listImportSourcesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportSource{}
+	for rows.Next() {
+		var i ImportSource
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Provider,
+			&i.Name,
+			&i.CredentialCiphertext,
+			&i.Status,
+			&i.LastSyncedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportTransactionLinksBySource = `-- name: ListImportTransactionLinksBySource :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE source_id = ?
+ORDER BY external_posted_at DESC, id
+`
+
+func (q *Queries) ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportTransactionLinksBySource, sourceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportTransactionLink{}
+	for rows.Next() {
+		var i ImportTransactionLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.EventID,
+			&i.ExternalAccountID,
+			&i.ExternalTransactionID,
+			&i.TransactionID,
+			&i.Status,
+			&i.ExternalPayee,
+			&i.ExternalDescription,
+			&i.ExternalAmount,
+			&i.ExternalCurrency,
+			&i.ExternalPostedAt,
+			&i.AppliedCategoryID,
+			&i.AppliedPayeeID,
+			&i.AppliedTagID,
+			&i.AppliedRuleID,
+			&i.ImportedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImportTransactionLinksByTransaction = `-- name: ListImportTransactionLinksByTransaction :many
 SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
 FROM import_transaction_links
@@ -327,6 +661,29 @@ func (q *Queries) ListImportTransactionLinksByTransaction(ctx context.Context, t
 	return items, nil
 }
 
+const updateImportAccountLink = `-- name: UpdateImportAccountLink :exec
+UPDATE import_account_links SET external_currency = ?, account_id = ?, mode = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateImportAccountLinkParams struct {
+	ExternalCurrency *string
+	AccountID        *string
+	Mode             string
+	UpdatedAt        time.Time
+	ID               string
+}
+
+func (q *Queries) UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error {
+	_, err := q.db.ExecContext(ctx, updateImportAccountLink,
+		arg.ExternalCurrency,
+		arg.AccountID,
+		arg.Mode,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
 const updateImportEventStatus = `-- name: UpdateImportEventStatus :exec
 UPDATE import_events SET status = ?, parse_error = ?, run_id = ? WHERE id = ?
 `
@@ -373,6 +730,41 @@ func (q *Queries) UpdateImportRun(ctx context.Context, arg UpdateImportRunParams
 		arg.SkippedCount,
 		arg.FailedCount,
 		arg.FinishedAt,
+		arg.ID,
+	)
+	return err
+}
+
+const updateImportTransactionLink = `-- name: UpdateImportTransactionLink :exec
+UPDATE import_transaction_links
+SET run_id = ?, transaction_id = ?, status = ?, external_amount = ?, external_currency = ?, applied_category_id = ?, applied_payee_id = ?, applied_tag_id = ?, applied_rule_id = ?
+WHERE id = ?
+`
+
+type UpdateImportTransactionLinkParams struct {
+	RunID             *string
+	TransactionID     *string
+	Status            string
+	ExternalAmount    string
+	ExternalCurrency  *string
+	AppliedCategoryID *string
+	AppliedPayeeID    *string
+	AppliedTagID      *string
+	AppliedRuleID     *string
+	ID                string
+}
+
+func (q *Queries) UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error {
+	_, err := q.db.ExecContext(ctx, updateImportTransactionLink,
+		arg.RunID,
+		arg.TransactionID,
+		arg.Status,
+		arg.ExternalAmount,
+		arg.ExternalCurrency,
+		arg.AppliedCategoryID,
+		arg.AppliedPayeeID,
+		arg.AppliedTagID,
+		arg.AppliedRuleID,
 		arg.ID,
 	)
 	return err

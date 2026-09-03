@@ -469,6 +469,114 @@
     "make_recurring": "Make recurring",
     "not_posted": "Not posted"
   },
+  "imports": {
+    "badge": "Imported",
+    "banner": {
+      "text": "{count} imported transaction is waiting for review | {count} imported transactions are waiting for review",
+      "cta": "Review"
+    },
+    "data_page": {
+      "menu_item": "Import & export",
+      "header": "Import & export"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
+      "connect": "Set up Apple Wallet",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "disconnect_modal": {
+        "title": "Disconnect Apple Wallet?",
+        "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Get the Shortcuts",
+          "text": "Install both Shortcuts on your iPhone.",
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
+        },
+        "configure": {
+          "title": "2. Configure",
+          "button": "Configure on this iPhone",
+          "text": "Creates an access token for the Shortcut and hands it over together with the server address.",
+          "desktop": "Open Settings → Apple Wallet on your iPhone to configure the Shortcut there.",
+          "done": "The Shortcut is configured. Your next Apple Pay payment will show up here."
+        },
+        "automate": {
+          "title": "3. Automate",
+          "text": "In the Shortcuts app add an automation: Transaction → Run \"econumo-wallet-v1\" with the transaction as input."
+        }
+      },
+      "manual": {
+        "toggle": "Configure manually",
+        "token": "Access token (shown once)",
+        "url": "Server",
+        "body": "Request body",
+        "action_1": "Get Details of Transaction → fill the request body above",
+        "action_2": "Get Contents of URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Header Authorization: Bearer <token>",
+        "action_4": "Header Content-Type: application/json",
+        "action_5": "Request Body: JSON, the fields above"
+      },
+      "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "cards": {
+        "header": "Cards",
+        "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "state": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped · {count} queued"
+        },
+        "taps": "{count} tap | {count} taps",
+        "last_seen": "Last seen {date}",
+        "map": "Map to account",
+        "map_instead": "Map instead",
+        "ignore": "Ignore",
+        "unlink": "Unmap",
+        "unlink_modal": {
+          "title": "Unmap {card}?",
+          "question": "New taps from this card will wait for review until you map it again."
+        },
+        "map_modal": {
+          "header": "Map {card}",
+          "account": "Account",
+          "submit": "Map"
+        },
+        "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      }
+    },
+    "queue": {
+      "header": "Import queue",
+      "empty": "Nothing to review.",
+      "card_amount": "Card amount: {amount} {currency}",
+      "queued": "Waiting for review",
+      "skipped": "Skipped",
+      "failed": "Needs attention",
+      "reason": {
+        "unmapped": "Card not mapped",
+        "account_deleted": "Account deleted",
+        "no_rate": "No exchange rate for {currency}"
+      },
+      "import": "Import",
+      "skip": "Skip",
+      "unskip": "Restore",
+      "retry": "Retry",
+      "discard": "Discard",
+      "received": "Received {date}",
+      "retry_result": {
+        "created": "Imported",
+        "queued": "Queued for review",
+        "skipped": "Skipped",
+        "duplicate": "Already imported",
+        "failed": "Still failing"
+      }
+    },
+    "provenance": {
+      "header": "Imported from"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Choose your avatar",
@@ -1486,6 +1594,15 @@
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
       "cannot_be_hidden": "This currency cannot be hidden"
+    },
+    "import": {
+      "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
+      "provider_unsupported": "This import provider is not supported.",
+      "account_link_exists": "This card is already linked.",
+      "currency_mismatch": "The card's currency does not match the account's currency.",
+      "link_not_queued": "This event is not waiting for review.",
+      "link_not_skipped": "This event is not skipped.",
+      "event_not_failed": "This event did not fail."
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",

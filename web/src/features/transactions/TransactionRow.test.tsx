@@ -113,6 +113,16 @@ it('shows reporting tags even when the transaction has no budget tag', () => {
   expect(row).toHaveTextContent('Kitty')
 })
 
+it('marks an imported transaction with the import glyph', () => {
+  renderRow({ isImported: 1 })
+  expect(screen.getByLabelText('Imported')).toBeInTheDocument()
+})
+
+it('shows no import glyph on a hand-entered transaction', () => {
+  renderRow({ isImported: 0 })
+  expect(screen.queryByLabelText('Imported')).toBeNull()
+})
+
 it('never promotes a reporting tag to the row title', () => {
   // the title chain is category -> description -> budget tag -> payee; a
   // reporting tag stays a badge, so a title-less row reads "Uncategorized"

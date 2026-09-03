@@ -14,17 +14,24 @@ import (
 )
 
 type (
-	sourceRow           = sqlitegen.ImportSource
-	eventRow            = sqlitegen.ImportEvent
-	runRow              = sqlitegen.ImportRun
-	linkRow             = sqlitegen.ImportTransactionLink
-	insertSourceParams  = sqlitegen.InsertImportSourceParams
-	insertEventParams   = sqlitegen.InsertImportEventParams
-	updateEventParams   = sqlitegen.UpdateImportEventStatusParams
-	insertRunParams     = sqlitegen.InsertImportRunParams
-	updateRunParams     = sqlitegen.UpdateImportRunParams
-	insertLinkParams    = sqlitegen.InsertImportTransactionLinkParams
-	linkByExternalKeyPs = sqlitegen.GetImportTransactionLinkByExternalKeyParams
+	sourceRow               = sqlitegen.ImportSource
+	eventRow                = sqlitegen.ImportEvent
+	runRow                  = sqlitegen.ImportRun
+	linkRow                 = sqlitegen.ImportTransactionLink
+	insertSourceParams      = sqlitegen.InsertImportSourceParams
+	insertEventParams       = sqlitegen.InsertImportEventParams
+	updateEventParams       = sqlitegen.UpdateImportEventStatusParams
+	insertRunParams         = sqlitegen.InsertImportRunParams
+	updateRunParams         = sqlitegen.UpdateImportRunParams
+	insertLinkParams        = sqlitegen.InsertImportTransactionLinkParams
+	linkByExternalKeyPs     = sqlitegen.GetImportTransactionLinkByExternalKeyParams
+	accountLinkRow          = sqlitegen.ImportAccountLink
+	insertAccountLinkParams = sqlitegen.InsertImportAccountLinkParams
+	updateAccountLinkParams = sqlitegen.UpdateImportAccountLinkParams
+	sourceByUserProviderPs  = sqlitegen.GetImportSourceByUserProviderParams
+	eventsBySourceStatusPs  = sqlitegen.ListImportEventsBySourceStatusParams
+	updateLinkParams        = sqlitegen.UpdateImportTransactionLinkParams
+	purgeQueuedLinksParams  = sqlitegen.DeleteQueuedImportTransactionLinksByExternalAccountParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -43,6 +50,21 @@ type querier interface {
 	InsertImportTransactionLink(ctx context.Context, db backend.DBTX, p insertLinkParams) error
 	GetImportTransactionLinkByExternalKey(ctx context.Context, db backend.DBTX, p linkByExternalKeyPs) (linkRow, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, db backend.DBTX, transactionID *string) ([]linkRow, error)
+
+	GetImportSourceByUserProvider(ctx context.Context, db backend.DBTX, p sourceByUserProviderPs) (sourceRow, error)
+	ListImportSourcesByUser(ctx context.Context, db backend.DBTX, userID string) ([]sourceRow, error)
+	DeleteImportSource(ctx context.Context, db backend.DBTX, id string) error
+	InsertImportAccountLink(ctx context.Context, db backend.DBTX, p insertAccountLinkParams) error
+	UpdateImportAccountLink(ctx context.Context, db backend.DBTX, p updateAccountLinkParams) error
+	DeleteImportAccountLink(ctx context.Context, db backend.DBTX, id string) error
+	GetImportAccountLinkByID(ctx context.Context, db backend.DBTX, id string) (accountLinkRow, error)
+	ListImportAccountLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]accountLinkRow, error)
+	DeleteImportEvent(ctx context.Context, db backend.DBTX, id string) error
+	ListImportEventsBySourceStatus(ctx context.Context, db backend.DBTX, p eventsBySourceStatusPs) ([]eventRow, error)
+	GetImportTransactionLinkByID(ctx context.Context, db backend.DBTX, id string) (linkRow, error)
+	UpdateImportTransactionLink(ctx context.Context, db backend.DBTX, p updateLinkParams) error
+	ListImportTransactionLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]linkRow, error)
+	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error
 }
 
 type Repo struct {
@@ -301,4 +323,158 @@ func linkFromRow(row linkRow) (*model.ImportTransactionLink, error) {
 		*f.dst = v
 	}
 	return l, nil
+}
+
+func (r *Repo) GetSourceByUserProvider(ctx context.Context, userID vo.Id, provider string) (*model.ImportSource, error) {
+	row, err := r.q.GetImportSourceByUserProvider(ctx, r.db(ctx), sourceByUserProviderPs{UserID: userID.String(), Provider: provider})
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Import source not found")
+		}
+		return nil, err
+	}
+	return sourceFromRow(row)
+}
+
+func (r *Repo) ListSourcesByUser(ctx context.Context, userID vo.Id) ([]model.ImportSource, error) {
+	rows, err := r.q.ListImportSourcesByUser(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportSource, 0, len(rows))
+	for _, row := range rows {
+		s, err := sourceFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *s)
+	}
+	return out, nil
+}
+
+func (r *Repo) DeleteSource(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteImportSource(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) InsertAccountLink(ctx context.Context, l *model.ImportAccountLink) error {
+	return r.q.InsertImportAccountLink(ctx, r.db(ctx), insertAccountLinkParams{
+		ID: l.ID.String(), SourceID: l.SourceID.String(), ExternalAccountID: l.ExternalAccountID, ExternalName: l.ExternalName,
+		ExternalCurrency: l.ExternalCurrency, AccountID: optionalID(l.AccountID), Mode: l.Mode, CreatedAt: l.CreatedAt, UpdatedAt: l.UpdatedAt,
+	})
+}
+
+func (r *Repo) UpdateAccountLink(ctx context.Context, l *model.ImportAccountLink) error {
+	return r.q.UpdateImportAccountLink(ctx, r.db(ctx), updateAccountLinkParams{
+		ExternalCurrency: l.ExternalCurrency, AccountID: optionalID(l.AccountID), Mode: l.Mode, UpdatedAt: l.UpdatedAt, ID: l.ID.String(),
+	})
+}
+
+func (r *Repo) DeleteAccountLink(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteImportAccountLink(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) GetAccountLink(ctx context.Context, id vo.Id) (*model.ImportAccountLink, error) {
+	row, err := r.q.GetImportAccountLinkByID(ctx, r.db(ctx), id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Import account link not found")
+		}
+		return nil, err
+	}
+	return accountLinkFromRow(row)
+}
+
+func (r *Repo) ListAccountLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportAccountLink, error) {
+	rows, err := r.q.ListImportAccountLinksBySource(ctx, r.db(ctx), sourceID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportAccountLink, 0, len(rows))
+	for _, row := range rows {
+		l, err := accountLinkFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *l)
+	}
+	return out, nil
+}
+
+func accountLinkFromRow(row accountLinkRow) (*model.ImportAccountLink, error) {
+	id, err := vo.ParseId(row.ID)
+	if err != nil {
+		return nil, err
+	}
+	sourceID, err := vo.ParseId(row.SourceID)
+	if err != nil {
+		return nil, err
+	}
+	accountID, err := parseOptionalID(row.AccountID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.ImportAccountLink{
+		ID: id, SourceID: sourceID, ExternalAccountID: row.ExternalAccountID, ExternalName: row.ExternalName,
+		ExternalCurrency: row.ExternalCurrency, AccountID: accountID, Mode: row.Mode, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
+	}, nil
+}
+
+func (r *Repo) DeleteEvent(ctx context.Context, id vo.Id) error {
+	return r.q.DeleteImportEvent(ctx, r.db(ctx), id.String())
+}
+
+func (r *Repo) ListEventsBySourceStatus(ctx context.Context, sourceID vo.Id, status string) ([]model.ImportEvent, error) {
+	rows, err := r.q.ListImportEventsBySourceStatus(ctx, r.db(ctx), eventsBySourceStatusPs{SourceID: sourceID.String(), Status: status})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportEvent, 0, len(rows))
+	for _, row := range rows {
+		e, err := eventFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *e)
+	}
+	return out, nil
+}
+
+func (r *Repo) GetLink(ctx context.Context, id vo.Id) (*model.ImportTransactionLink, error) {
+	row, err := r.q.GetImportTransactionLinkByID(ctx, r.db(ctx), id.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Import link not found")
+		}
+		return nil, err
+	}
+	return linkFromRow(row)
+}
+
+func (r *Repo) UpdateLink(ctx context.Context, l *model.ImportTransactionLink) error {
+	return r.q.UpdateImportTransactionLink(ctx, r.db(ctx), updateLinkParams{
+		RunID: optionalID(l.RunID), TransactionID: optionalID(l.TransactionID), Status: l.Status,
+		ExternalAmount: l.ExternalAmount, ExternalCurrency: l.ExternalCurrency,
+		AppliedCategoryID: optionalID(l.AppliedCategoryID), AppliedPayeeID: optionalID(l.AppliedPayeeID),
+		AppliedTagID: optionalID(l.AppliedTagID), AppliedRuleID: optionalID(l.AppliedRuleID), ID: l.ID.String(),
+	})
+}
+
+func (r *Repo) ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error) {
+	rows, err := r.q.ListImportTransactionLinksBySource(ctx, r.db(ctx), sourceID.String())
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportTransactionLink, 0, len(rows))
+	for _, row := range rows {
+		l, err := linkFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *l)
+	}
+	return out, nil
+}
+
+func (r *Repo) DeleteQueuedLinksByExternalAccount(ctx context.Context, sourceID vo.Id, externalAccountID string) error {
+	return r.q.DeleteQueuedImportTransactionLinksByExternalAccount(ctx, r.db(ctx), purgeQueuedLinksParams{SourceID: sourceID.String(), ExternalAccountID: externalAccountID})
 }

@@ -469,6 +469,114 @@
     "make_recurring": "Terugkerend maken",
     "not_posted": "Niet geboekt"
   },
+  "imports": {
+    "badge": "Geïmporteerd",
+    "banner": {
+      "text": "{count} geïmporteerde transactie wacht op controle | {count} geïmporteerde transacties wachten op controle",
+      "cta": "Controleren"
+    },
+    "data_page": {
+      "menu_item": "Import & export",
+      "header": "Import & export"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
+      "connect": "Apple Wallet instellen",
+      "connected": "Verbonden",
+      "disconnect": "Verbinding verbreken",
+      "disconnect_modal": {
+        "title": "Apple Wallet loskoppelen?",
+        "question": "Kaartkoppelingen en de controlewachtrij van deze verbinding worden verwijderd. Al geïmporteerde transacties blijven staan."
+      },
+      "steps": {
+        "install": {
+          "title": "1. Haal de opdrachten op",
+          "text": "Installeer beide opdrachten op je iPhone.",
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
+        },
+        "configure": {
+          "title": "2. Configureren",
+          "button": "Configureren op deze iPhone",
+          "text": "Maakt een toegangstoken voor de opdracht en geeft het samen met het serveradres door.",
+          "desktop": "Open Instellingen → Apple Wallet op je iPhone om de opdracht daar te configureren.",
+          "done": "De opdracht is geconfigureerd. Je volgende Apple Pay-betaling verschijnt hier."
+        },
+        "automate": {
+          "title": "3. Automatiseren",
+          "text": "Voeg in de Opdrachten-app een automatisering toe: Transactie → Voer \"econumo-wallet-v1\" uit met de transactie als invoer."
+        }
+      },
+      "manual": {
+        "toggle": "Handmatig configureren",
+        "token": "Toegangstoken (eenmalig getoond)",
+        "url": "Server",
+        "body": "Verzoektekst",
+        "action_1": "Details van transactie ophalen → vul de verzoektekst hierboven in",
+        "action_2": "Inhoud van URL ophalen → POST {url}/api/v1/import/ingest-apple-wallet-event",
+        "action_3": "Header Authorization: Bearer <token>",
+        "action_4": "Header Content-Type: application/json",
+        "action_5": "Verzoektekst: JSON, de velden hierboven"
+      },
+      "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
+      "cards": {
+        "header": "Kaarten",
+        "empty": "Nog geen kaarten — de eerste Apple Pay-betaling voegt er een toe.",
+        "state": {
+          "mapped": "Gekoppeld",
+          "ignored": "Genegeerd",
+          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+        },
+        "taps": "{count} betaling | {count} betalingen",
+        "last_seen": "Laatst gezien {date}",
+        "map": "Koppelen aan rekening",
+        "map_instead": "Toch koppelen",
+        "ignore": "Negeren",
+        "unlink": "Ontkoppelen",
+        "unlink_modal": {
+          "title": "{card} ontkoppelen?",
+          "question": "Nieuwe betalingen van deze kaart wachten op controle tot je haar opnieuw koppelt."
+        },
+        "map_modal": {
+          "header": "{card} koppelen",
+          "account": "Rekening",
+          "submit": "Koppelen"
+        },
+        "mapped_toast": "{imported} geïmporteerd, {matched} gematcht, {skipped} overgeslagen"
+      }
+    },
+    "queue": {
+      "header": "Importwachtrij",
+      "empty": "Niets te controleren.",
+      "card_amount": "Kaartbedrag: {amount} {currency}",
+      "queued": "Wacht op controle",
+      "skipped": "Overgeslagen",
+      "failed": "Aandacht nodig",
+      "reason": {
+        "unmapped": "Kaart niet gekoppeld",
+        "account_deleted": "Rekening verwijderd",
+        "no_rate": "Geen wisselkoers voor {currency}"
+      },
+      "import": "Importeren",
+      "skip": "Overslaan",
+      "unskip": "Herstellen",
+      "retry": "Opnieuw proberen",
+      "discard": "Verwijderen",
+      "received": "Ontvangen {date}",
+      "retry_result": {
+        "created": "Geïmporteerd",
+        "queued": "In wachtrij voor controle",
+        "skipped": "Overgeslagen",
+        "duplicate": "Al geïmporteerd",
+        "failed": "Mislukt nog steeds"
+      }
+    },
+    "provenance": {
+      "header": "Geïmporteerd uit"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Kies uw avatar",
@@ -1486,6 +1594,15 @@
       "in_use": "De valuta is in gebruik en kan niet worden verwijderd.",
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
+    },
+    "import": {
+      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",
+      "provider_unsupported": "Deze importbron wordt niet ondersteund.",
+      "account_link_exists": "Deze kaart is al gekoppeld.",
+      "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",
+      "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
+      "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
+      "event_not_failed": "Deze gebeurtenis is niet mislukt."
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
