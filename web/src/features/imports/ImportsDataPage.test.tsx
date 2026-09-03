@@ -47,6 +47,7 @@ it('offers Apple Wallet setup when no source exists', async () => {
   expect(await screen.findByText('Apple Wallet')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Set up Apple Wallet' })).toBeInTheDocument()
   expect(screen.queryByText('Cards')).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Import queue' })).toBeNull()
 })
 
 it('shows the connected state and the card list when a source exists', async () => {
@@ -56,4 +57,10 @@ it('shows the connected state and the card list when a source exists', async () 
   expect(screen.getByText('Apple Card')).toBeInTheDocument()
   expect(screen.getByText('Unmapped · 2 queued')).toBeInTheDocument()
   expect(screen.getByText('3 taps')).toBeInTheDocument()
+})
+
+it('links to the import queue once a source is connected', async () => {
+  server.use(...coreHandlers({ importSources: [wireSource] }))
+  renderPage()
+  expect(await screen.findByRole('link', { name: 'Import queue' })).toHaveAttribute('href', '/imports/queue')
 })

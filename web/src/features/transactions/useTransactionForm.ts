@@ -59,12 +59,16 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
   }
   const iq = params.importQueued
   if (iq) {
-    const account = accounts.find((a) => a.id === iq.accountId)
+    // an unmapped card's row carries accountId: '' — fall back to the first
+    // account exactly like a fresh, unprefilled transaction would, so the
+    // account select is never left blank (a blank select silently blocks submit)
+    const accountId = iq.accountId || accounts[0]?.id || null
+    const account = accounts.find((a) => a.id === accountId)
     return {
       id: uuidv7(),
       isNew: true,
       type: iq.type,
-      accountId: iq.accountId || null,
+      accountId,
       accountRecipientId: null,
       amount: seedAmount(iq.amount, account),
       amountRecipient: '',

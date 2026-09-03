@@ -303,3 +303,12 @@ it('a queued import seeds a new transaction from the bank data, payee as descrip
   expect(state.date).toBe('2026-08-20 10:42:03')
   expect(state.categoryId).toBeNull()
 })
+
+it('an unmapped queued import (accountId "") defaults to the first account, not a blank select', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({ id: 'a1' }), account({ id: 'a2' })],
+    null,
+  )
+  expect(state.accountId).toBe('a1')
+})
