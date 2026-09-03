@@ -94,7 +94,7 @@
 					<key>Value</key>
 					<dict>
 						<key>string</key>
-						<string>Invalid configuration. Open Settings → Import &amp; export in Econumo and tap Configure again.</string>
+						<string>Invalid configuration. Open Settings → Apple Wallet in Econumo and tap Configure again.</string>
 					</dict>
 					<key>WFSerializationType</key>
 					<string>WFTextTokenString</string>

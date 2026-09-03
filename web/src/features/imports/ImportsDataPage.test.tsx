@@ -8,11 +8,6 @@ import { ImportsDataPage } from './ImportsDataPage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
 
-const wireSource = {
-  id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00',
-  cards: [{ externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped', accountId: '', queuedCount: 2, tapCount: 3, lastSeenAt: '2026-08-20 17:42:03' }],
-}
-
 function renderPage() {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter([{ path: '/settings/data', element: <ImportsDataPage /> }], { initialEntries: ['/settings/data'] })
@@ -41,26 +36,9 @@ it('renders the CSV rows and opens the import dialog', async () => {
   expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
 })
 
-it('offers Apple Wallet setup when no source exists', async () => {
+it('holds no Apple Wallet section — that has its own page', async () => {
   server.use(...coreHandlers())
   renderPage()
-  expect(await screen.findByText('Apple Wallet')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Set up Apple Wallet' })).toBeInTheDocument()
-  expect(screen.queryByText('Cards')).not.toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: 'Import queue' })).toBeNull()
-})
-
-it('shows the connected state and the card list when a source exists', async () => {
-  server.use(...coreHandlers({ importSources: [wireSource] }))
-  renderPage()
-  expect(await screen.findByText('Connected')).toBeInTheDocument()
-  expect(screen.getByText('Apple Card')).toBeInTheDocument()
-  expect(screen.getByText('Unmapped · 2 queued')).toBeInTheDocument()
-  expect(screen.getByText('3 taps')).toBeInTheDocument()
-})
-
-it('links to the import queue once a source is connected', async () => {
-  server.use(...coreHandlers({ importSources: [wireSource] }))
-  renderPage()
-  expect(await screen.findByRole('link', { name: 'Import queue' })).toHaveAttribute('href', '/imports/queue')
+  await screen.findByText('Import & export')
+  expect(screen.queryByText('Apple Wallet')).not.toBeInTheDocument()
 })

@@ -10,7 +10,7 @@ Two signed shortcuts ship as static assets in `web/public/shortcuts/`:
 iOS names an imported shortcut after the file it came from and ignores the
 embedded `WFWorkflowName`, so the shortcut names ARE the served basenames
 (`build.py` derives both from the slug and `VERSION`). The names are part of
-the contract: the Settings → Import & export page opens
+the contract: the Settings → Apple Wallet page opens
 `shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=…`, and the
 setup instructions tell the user to point their automation at
 `econumo-wallet-v1` (`WALLET_SHORTCUT_NAME` / `SETUP_SHORTCUT_NAME` in
@@ -96,7 +96,7 @@ What `build.py` emits, in Shortcuts.app terms. Input arrives as
 2. **Get Dictionary Value** — Get `Value` for `url` in `Dictionary`.
 3. **If** — `Dictionary Value` `does not have any value` (no Otherwise)
    1. **Show Alert** — title `Econumo`, message
-      `Invalid configuration. Open Settings → Import & export in Econumo and tap Configure again.`,
+      `Invalid configuration. Open Settings → Apple Wallet in Econumo and tap Configure again.`,
       "Show Cancel Button" off.
    2. **Stop This Shortcut**
 
@@ -116,7 +116,7 @@ What `build.py` emits, in Shortcuts.app terms. Input arrives as
 1. **Get File** — File Path: `econumo-wallet.json` (iCloud Drive ›
    Shortcuts); "Show Document Picker" off; "Error If Not Found": **off**.
 2. **If** — `File` `does not have any value` (no Otherwise)
-   1. **Show Notification** — `Econumo is not configured. Open Settings → Import & export in Econumo and tap Configure.`
+   1. **Show Notification** — `Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure.`
    2. **Stop This Shortcut**
 
    **End If**
@@ -189,7 +189,7 @@ never exercised on a device by the build — this pass is what proves them.
    because it is not signed" error. After adding, the names in the
    library are `econumo-setup-v1` and `econumo-wallet-v1` (iOS takes them
    from the file name, which is why the recipe names match the files).
-2. In Safari on the phone, open Econumo → Settings → Import & export → Configure.
+2. In Safari on the phone, open Econumo → Settings → Apple Wallet → Configure.
    Shortcuts should open, run `econumo-setup-v1`, and show the notification.
    Check `Files` → iCloud Drive → Shortcuts → `econumo-wallet.json`.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →

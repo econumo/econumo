@@ -61,7 +61,7 @@
 					<key>Value</key>
 					<dict>
 						<key>string</key>
-						<string>Econumo is not configured. Open Settings → Import &amp; export in Econumo and tap Configure.</string>
+						<string>Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure.</string>
 					</dict>
 					<key>WFSerializationType</key>
 					<string>WFTextTokenString</string>

@@ -25,7 +25,7 @@ function renderPage(importQueue: unknown) {
   server.use(...coreHandlers({ importSources: [source], importQueue }))
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
-    [{ path: '/imports/queue', element: <ImportQueuePage /> }, { path: '/settings/data', element: <div>DATA PAGE</div> }],
+    [{ path: '/imports/queue', element: <ImportQueuePage /> }, { path: '/settings/apple-wallet', element: <div>WALLET PAGE</div> }],
     { initialEntries: ['/imports/queue'] },
   )
   render(
@@ -64,7 +64,7 @@ it('an unmapped card header links to the mapping page', async () => {
   renderPage({ queued: [queued()], skipped: [], failed: [] })
   const user = userEvent.setup()
   await user.click(await screen.findByRole('link', { name: 'Map to account' }))
-  expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
+  expect(await screen.findByText('WALLET PAGE')).toBeInTheDocument()
 })
 
 it('skip posts skip-queued-event; a skipped row offers Restore, labelled with the card', async () => {

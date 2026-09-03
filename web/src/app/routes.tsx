@@ -24,6 +24,7 @@ import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
 import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
+import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
 import { ImportQueuePage } from '@/features/imports/ImportQueuePage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
@@ -67,6 +68,7 @@ export function createRouter() {
                 { path: '/settings/budgets', element: <BudgetsPage /> },
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
                 { path: '/settings/data', element: <ImportsDataPage /> },
+                { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
                 { path: '/imports/queue', element: <ImportQueuePage /> },
               ],
             },

@@ -30,10 +30,10 @@ PUBLIC = REPO_ROOT / "web" / "public" / "shortcuts"
 CONFIG_FILE = "econumo-wallet.json"  # relative to iCloud Drive › Shortcuts
 INGEST_PATH = "/api/v1/import/ingest-apple-wallet-event"
 NOT_CONFIGURED = (
-    "Econumo is not configured. Open Settings → Import & export in Econumo and tap Configure."
+    "Econumo is not configured. Open Settings → Apple Wallet in Econumo and tap Configure."
 )
 INVALID_CONFIG = (
-    "Invalid configuration. Open Settings → Import & export in Econumo and tap Configure again."
+    "Invalid configuration. Open Settings → Apple Wallet in Econumo and tap Configure again."
 )
 
 PLACEHOLDER = "￼"  # U+FFFC marks a variable inside a token string
