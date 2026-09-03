@@ -8,7 +8,7 @@ declare global {
 }
 
 // prefix "app" is required! These are the frozen dataLayer (GTM/liltag) names;
-// PostHog event names derive from them via posthogEventName().
+// collector event names derive from them via analyticsEventName().
 export const METRICS = {
   PAGE_VIEW: 'appPageView',
   USER_LOGIN: 'appUserLogin',
@@ -150,9 +150,9 @@ export function viewMode(width: number = window.innerWidth): 'mobile' | 'tablet'
   return 'desktop'
 }
 
-// PostHog names: the frozen dataLayer prefix+camelCase becomes snake_case,
+// Collector names: the frozen dataLayer prefix+camelCase becomes snake_case,
 // e.g. appUIModalTransactionOpen -> ui_modal_transaction_open.
-export function posthogEventName(metric: string): string {
+export function analyticsEventName(metric: string): string {
   return metric
     .replace(/^app/, '')
     .replace(/([A-Z]+)(?=[A-Z][a-z])/g, '$1_')
@@ -160,7 +160,7 @@ export function posthogEventName(metric: string): string {
     .toLowerCase()
 }
 
-// There is no PostHog SDK and no person profile to hang a super property on
+// There is no analytics SDK and no persisted profile to hang a default attribute on
 // (see lib/analytics.ts) — per-event accuracy comes from stamping the state
 // at capture time from this module-level value, refreshed wherever user data
 // lands (login, get-user-data).
@@ -192,7 +192,7 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     const host = analyticsDomain()
     // The synthetic "self-hosted" host keeps real hostnames out of the URL;
     // only econumo.com domains appear verbatim.
-    capture(posthogEventName(metric), {
+    capture(analyticsEventName(metric), {
       host,
       self_hosted: host === 'self-hosted',
       locale: locale(),

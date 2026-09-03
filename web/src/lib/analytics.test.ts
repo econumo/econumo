@@ -5,6 +5,9 @@ type AnalyticsModule = typeof import('./analytics')
 let analytics: AnalyticsModule
 let fetchMock: ReturnType<typeof vi.fn>
 
+const COLLECTOR = 'https://t.kuznetsov.dev/api/events'
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
 beforeEach(async () => {
   vi.useFakeTimers()
   fetchMock = vi.fn(() => Promise.resolve(new Response()))
@@ -18,7 +21,13 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-function sentPayload(call = 0): { api_key: string; batch: Array<Record<string, unknown>> } {
+interface Envelope {
+  key: string
+  attributes: Record<string, unknown>
+  events: Array<Record<string, unknown>>
+}
+
+function sentPayload(call = 0): Envelope {
   const init = fetchMock.mock.calls[call][1] as RequestInit
   return JSON.parse(init.body as string)
 }
@@ -36,33 +45,43 @@ describe('analyticsDomain', () => {
 })
 
 describe('capture', () => {
-  it('batches and flushes on the timer with the PostHog payload shape', () => {
-    analytics.capture('appTransactionCreate', { locale: 'en' })
+  it('batches and flushes on the timer with the collector envelope shape', () => {
+    analytics.capture('transaction_create', { locale: 'en' })
     expect(fetchMock).not.toHaveBeenCalled()
     vi.advanceTimersByTime(10_000)
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe('https://us.i.posthog.com/batch/')
+    expect(url).toBe(COLLECTOR)
     expect(init.method).toBe('POST')
     expect(init.keepalive).toBe(true)
+    // text/plain keeps the POST CORS-simple (no preflight) and matches what
+    // sendBeacon sends for a string body, so both transports look identical.
+    expect(init.headers).toEqual({ 'Content-Type': 'text/plain' })
     const payload = sentPayload()
-    expect(payload.api_key).toMatch(/^phc_/)
-    expect(payload.batch).toHaveLength(1)
-    expect(payload.batch[0].event).toBe('appTransactionCreate')
-    expect(payload.batch[0].timestamp).toBeTruthy()
-    expect(payload.batch[0].properties).toMatchObject({
-      locale: 'en',
-      $process_person_profile: false,
-    })
+    expect(payload.key).toMatch(/^ak_/)
+    expect(payload.events).toHaveLength(1)
+    expect(payload.events[0].name).toBe('transaction_create')
+    expect(payload.events[0].ts).toBeTruthy()
+    expect(payload.events[0].attributes).toEqual({ locale: 'en' })
   })
 
-  it('uses one in-memory distinct_id per page load', () => {
+  it('gives every event its own id, so a replayed batch dedupes server-side', () => {
     analytics.capture('a')
     analytics.capture('b')
     vi.advanceTimersByTime(10_000)
-    const { batch } = sentPayload()
-    expect(batch[0].distinct_id).toBe(batch[1].distinct_id)
-    expect(batch[0].distinct_id).toMatch(/^[0-9a-f-]{36}$/)
+    const { events } = sentPayload()
+    expect(events[0].id).toMatch(UUID_RE)
+    expect(events[0].id).not.toBe(events[1].id)
+  })
+
+  it('uses one in-memory $install_id per page load', () => {
+    analytics.capture('a')
+    vi.advanceTimersByTime(10_000)
+    const first = sentPayload().attributes.$install_id
+    analytics.capture('b')
+    vi.advanceTimersByTime(10_000)
+    expect(sentPayload(1).attributes.$install_id).toBe(first)
+    expect(first).toMatch(UUID_RE)
     expect(document.cookie).toBe('')
     expect(localStorage.length).toBe(0)
   })
@@ -72,7 +91,7 @@ describe('capture', () => {
       analytics.capture(`event-${i}`)
     }
     expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sentPayload().batch).toHaveLength(10)
+    expect(sentPayload().events).toHaveLength(10)
     // The timer was cleared by the size-triggered flush: nothing further goes out.
     vi.advanceTimersByTime(10_000)
     expect(fetchMock).toHaveBeenCalledTimes(1)
@@ -86,19 +105,21 @@ describe('capture', () => {
     // No unhandled rejection, and the queue restarts empty.
     analytics.capture('b')
     vi.advanceTimersByTime(10_000)
-    expect(sentPayload(1).batch).toHaveLength(1)
+    expect(sentPayload(1).events).toHaveLength(1)
   })
 
   // crypto.randomUUID exists only in secure contexts, so a self-hosted instance
   // reached over http://<lan-ip> does not have it (issue #197).
-  it('assigns a distinct_id in an insecure context, where crypto.randomUUID is absent', async () => {
+  it('assigns an $install_id in an insecure context, where crypto.randomUUID is absent', async () => {
     const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto)
     vi.stubGlobal('crypto', { getRandomValues })
     vi.resetModules()
     const insecure = await import('./analytics')
     insecure.capture('a')
     vi.advanceTimersByTime(10_000)
-    expect(sentPayload().batch[0].distinct_id).toMatch(/^[0-9a-f-]{36}$/)
+    const payload = sentPayload()
+    expect(payload.attributes.$install_id).toMatch(UUID_RE)
+    expect(payload.events[0].id).toMatch(UUID_RE)
   })
 
   it('sends the tail via sendBeacon when the tab hides', () => {
@@ -109,8 +130,8 @@ describe('capture', () => {
     document.dispatchEvent(new Event('visibilitychange'))
     expect(beacon).toHaveBeenCalledTimes(1)
     const [url, body] = beacon.mock.calls[0] as unknown as [string, string]
-    expect(url).toBe('https://us.i.posthog.com/batch/')
-    expect(JSON.parse(body).batch).toHaveLength(1)
+    expect(url).toBe(COLLECTOR)
+    expect(JSON.parse(body).events).toHaveLength(1)
     expect(fetchMock).not.toHaveBeenCalled()
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })

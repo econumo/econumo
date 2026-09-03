@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { METRICS, posthogEventName, scrubbedPage, trackEvent, viewMode, setAnalyticsAccessState } from './metrics'
+import { METRICS, analyticsEventName, scrubbedPage, trackEvent, viewMode, setAnalyticsAccessState } from './metrics'
 import { capture } from './analytics'
 
 vi.mock('./analytics', async (importOriginal) => {
@@ -23,7 +23,7 @@ it('pushes the event with context to the dataLayer', () => {
   expect(entry.eventContext).toMatchObject({ selfHosted: false, locale: 'en' })
 })
 
-describe('PostHog capture', () => {
+describe('collector capture', () => {
   it('captures with the whitelisted properties only', () => {
     window.history.replaceState({}, '', '/budgets/01980e2c-1111-7000-8000-123456789abc/details')
     trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
@@ -54,7 +54,7 @@ describe('PostHog capture', () => {
   })
 })
 
-describe('posthogEventName', () => {
+describe('analyticsEventName', () => {
   it.each([
     ['appPageView', 'page_view'],
     ['appTransactionCreate', 'transaction_create'],
@@ -62,7 +62,7 @@ describe('posthogEventName', () => {
     ['appApiAccountOrderList', 'api_account_order_list'],
     ['appBudgetTransferEnvelopeBudget', 'budget_transfer_envelope_budget'],
   ])('%s -> %s', (metric, expected) => {
-    expect(posthogEventName(metric)).toBe(expected)
+    expect(analyticsEventName(metric)).toBe(expected)
   })
 })
 
