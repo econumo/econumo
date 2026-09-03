@@ -501,8 +501,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
   to the binary's `internal/version.Version`, overridable for demo/staging).
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
-  effective `ECONUMO_IMPORT_*` values) is always merged so the SPA can explain the
-  matcher's windows.
+  effective `ECONUMO_IMPORT_*` values) is always merged (typed on `EconumoConfig`,
+  not consumed by any surface yet).
   Flags (`ANALYTICS`, `ALLOW_REGISTRATION`) and `BILLING_URL` are always merged
   (server truth); text/URL keys merge only when non-empty. The composition root
   resolves the FS (`web.DistFS`) and version once in `server.BuildAPI`.

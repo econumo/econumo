@@ -552,6 +552,7 @@
     "queue": {
       "header": "Coda di importazione",
       "empty": "Niente da rivedere.",
+      "card_amount": "Importo della carta: {amount} {currency}",
       "queued": "In attesa di revisione",
       "skipped": "Saltate",
       "failed": "Richiedono attenzione",

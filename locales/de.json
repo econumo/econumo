@@ -552,6 +552,7 @@
     "queue": {
       "header": "Importwarteschlange",
       "empty": "Nichts zu prüfen.",
+      "card_amount": "Kartenbetrag: {amount} {currency}",
       "queued": "Wartet auf Prüfung",
       "skipped": "Übersprungen",
       "failed": "Braucht Aufmerksamkeit",

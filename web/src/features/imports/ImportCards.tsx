@@ -83,7 +83,13 @@ export function ImportCards({ source }: { source: ImportSourceDto }) {
               {card.state === 'unmapped' ? (
                 <>
                   <Button type="button" size="sm" onClick={() => setMapTarget(card)}>{t('imports.apple_wallet.cards.map')}</Button>
-                  <Button type="button" size="sm" variant="secondary" disabled={ignore.isPending} onClick={() => ignore.mutate({ sourceId: source.id, externalAccountId: card.externalAccountId })}>
+                  <Button
+                    type="button" size="sm" variant="secondary" disabled={ignore.isPending}
+                    onClick={() => ignore.mutate(
+                      { sourceId: source.id, externalAccountId: card.externalAccountId },
+                      { onError: (err) => toast.error(apiErrorMessage(err)) },
+                    )}
+                  >
                     {t('imports.apple_wallet.cards.ignore')}
                   </Button>
                 </>
@@ -124,7 +130,10 @@ export function ImportCards({ source }: { source: ImportSourceDto }) {
           const card = unlinkTarget
           setUnlinkTarget(null)
           if (card) {
-            unlink.mutate({ sourceId: source.id, externalAccountId: card.externalAccountId })
+            unlink.mutate(
+              { sourceId: source.id, externalAccountId: card.externalAccountId },
+              { onError: (err) => toast.error(apiErrorMessage(err)) },
+            )
           }
         }}
         title={t('imports.apple_wallet.cards.unlink_modal.title', { card: unlinkTarget?.externalName ?? '' })}

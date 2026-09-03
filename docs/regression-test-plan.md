@@ -195,9 +195,10 @@ navigation (single-pane vs sidebar).
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
-- [ ] Currency mismatch (card USD → EUR account) is refused with a field error on
-      the account; an ignored card offers "Map instead"; "Unmap" (confirmation)
-      returns the card to unmapped and new taps queue again.
+- [ ] Currency mismatch (card USD → EUR account) is refused with the "Card
+      currency does not match the account" error; an ignored card offers
+      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
+      new taps queue again.
 - [ ] Review banner 📱: with queued rows, every page except the queue shows
       "N imported transactions are waiting for review" + "Review"; the banner
       disappears when the queue empties.
@@ -207,11 +208,16 @@ navigation (single-pane vs sidebar).
       saving posts `import-queued-event` — the row leaves the queue and the
       transaction is created with the glyph; Skip moves a row to "Skipped",
       Restore brings it back.
-- [ ] Tip adopt: a tap for 40.00 at "Blue Bottle" followed within 5 days by a
-      posted 48.00 "BLUE BOTTLE COFFEE" from another source adopts (amount
-      corrected to 48.00) rather than creating a second transaction.
+- [ ] A second tap with the same amount on the same card within ±3 days of a
+      hand-entered transaction of that amount is adopted (no duplicate); a tap
+      already linked from this source is never adopted twice.
 - [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
       frozen envelope.
+- [ ] A tap whose merchant name exceeds 255 characters is imported with the
+      name cut to 255 (no failed row).
+- [ ] Manually importing a queued row whose card currency differs from the
+      chosen account's opens the dialog with an EMPTY amount and a "Card
+      amount: … EUR" line; a same-currency row is prefilled.
 
 ## 6. Recurring transactions
 

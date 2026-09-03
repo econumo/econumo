@@ -73,6 +73,9 @@ func TestImportQueuedEvent(t *testing.T) {
 	if err != nil || res.Item.Id == "" {
 		t.Fatalf("import = %+v, %v", res, err)
 	}
+	if res.Item.IsImported != 1 {
+		t.Errorf("isImported = %d, want 1", res.Item.IsImported)
+	}
 	link, _ := h.repo.GetLink(ctx, vo.MustParseId(linkID))
 	if link.Status != model.ImportLinkStatusLinked || link.TransactionID == nil || link.TransactionID.String() != res.Item.Id || link.AppliedCategoryID == nil || link.AppliedCategoryID.String() != cat {
 		t.Errorf("link after import = %+v", link)

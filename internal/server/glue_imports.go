@@ -65,6 +65,7 @@ type importsCurrencyCodeLookup interface {
 type importsRateSource interface {
 	BaseCurrencyID(ctx context.Context) (vo.Id, error)
 	AverageRates(ctx context.Context, start, end time.Time) ([]model.FullRate, error)
+	SnappedRatePeriod(ctx context.Context, start, end time.Time) (time.Time, time.Time, error)
 }
 
 type importsConvertor interface {
@@ -101,6 +102,18 @@ func (c *ImportsCurrencyConverter) Convert(ctx context.Context, userID vo.Id, fr
 	baseID, err := c.rates.BaseCurrencyID(ctx)
 	if err != nil {
 		return "", false, err
+	}
+	// The provider snaps [start,end) to the month of the latest published
+	// rate at or before end, which can be arbitrarily older than the tap — a
+	// currency last rated three months ago must queue as no-rate rather than
+	// silently convert at a stale month's average.
+	realStart, _, err := c.rates.SnappedRatePeriod(ctx, start, end)
+	if err != nil {
+		return "", false, err
+	}
+	atUTC := at.UTC()
+	if realStart.Year() != atUTC.Year() || realStart.Month() != atUTC.Month() {
+		return "", false, nil
 	}
 	rates, err := c.rates.AverageRates(ctx, start, end)
 	if err != nil {

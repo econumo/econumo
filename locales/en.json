@@ -552,6 +552,7 @@
     "queue": {
       "header": "Import queue",
       "empty": "Nothing to review.",
+      "card_amount": "Card amount: {amount} {currency}",
       "queued": "Waiting for review",
       "skipped": "Skipped",
       "failed": "Needs attention",

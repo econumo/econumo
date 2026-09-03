@@ -552,6 +552,7 @@
     "queue": {
       "header": "Cola de importación",
       "empty": "Nada que revisar.",
+      "card_amount": "Importe de la tarjeta: {amount} {currency}",
       "queued": "Esperando revisión",
       "skipped": "Omitidas",
       "failed": "Requieren atención",

@@ -552,6 +552,7 @@
     "queue": {
       "header": "Kolejka importu",
       "empty": "Nic do sprawdzenia.",
+      "card_amount": "Kwota z karty: {amount} {currency}",
       "queued": "Czeka na sprawdzenie",
       "skipped": "Pominięte",
       "failed": "Wymagają uwagi",

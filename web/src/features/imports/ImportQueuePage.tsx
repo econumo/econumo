@@ -58,7 +58,7 @@ export function ImportQueuePage() {
 
   const review = (row: ImportQueuedEventDto) =>
     openTransactionModal({
-      importQueued: { linkId: row.linkId, type: row.type, accountId: row.accountId, amount: row.amount, payee: row.payee, date: row.postedAt },
+      importQueued: { linkId: row.linkId, type: row.type, accountId: row.accountId, amount: row.amount, currency: row.currency, payee: row.payee, date: row.postedAt },
     })
 
   const retryResultText = (status: string) =>

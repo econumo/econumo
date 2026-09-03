@@ -49,7 +49,7 @@ func (r CreateImportSourceRequest) Validate() error {
 		return err
 	}
 	if r.Provider != ImportProviderAppleWallet {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "provider", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice})
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "provider", Message: "This import provider is not supported.", Code: errs.CodeImportProviderUnsupported})
 	}
 	return nil
 }

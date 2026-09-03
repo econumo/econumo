@@ -552,6 +552,7 @@
     "queue": {
       "header": "Importwachtrij",
       "empty": "Niets te controleren.",
+      "card_amount": "Kaartbedrag: {amount} {currency}",
       "queued": "Wacht op controle",
       "skipped": "Overgeslagen",
       "failed": "Aandacht nodig",

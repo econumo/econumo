@@ -1,6 +1,7 @@
 package imports
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 	"time"
@@ -72,6 +73,52 @@ func TestParseAppleWalletEvent_DefaultsAndSynthesizedID(t *testing.T) {
 	inc, err := ParseAppleWalletEvent([]byte(`{"account":"Apple Card","amount":"1","currency":"USD","type":"income","occurredAt":"yesterday"}`), received)
 	if err != nil || inc.Type != model.TransactionTypeIncome || !inc.PostedAt.Equal(received) {
 		t.Errorf("income/fallback: %+v, %v", inc, err)
+	}
+}
+
+func TestParseAppleWalletEvent_TruncatesLongPayee(t *testing.T) {
+	longPayee := strings.Repeat("é", 300)
+	payload, err := json.Marshal(map[string]any{
+		"account": "Apple Card", "payee": longPayee, "amount": "1", "currency": "USD", "eventId": "evt-long",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev, err := ParseAppleWalletEvent(payload, received)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := []rune(ev.Payee); len(got) != 255 {
+		t.Errorf("payee = %d runes, want 255", len(got))
+	}
+	if ev.Payee != strings.Repeat("é", 255) {
+		t.Errorf("payee = %q, want first 255 runes of the original", ev.Payee)
+	}
+
+	// the derived id must match between the long payload and one pre-truncated
+	// to 255 runes, since the account/amount/currency/occurredAt are identical.
+	truncated, err := json.Marshal(map[string]any{
+		"account": "Apple Card", "payee": strings.Repeat("é", 255), "amount": "1", "currency": "USD",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	untrimmed, err := json.Marshal(map[string]any{
+		"account": "Apple Card", "payee": longPayee, "amount": "1", "currency": "USD",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	evA, err := ParseAppleWalletEvent(truncated, received)
+	if err != nil {
+		t.Fatal(err)
+	}
+	evB, err := ParseAppleWalletEvent(untrimmed, received)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evA.ExternalTransactionID != evB.ExternalTransactionID {
+		t.Errorf("synthesized id must match for the long and pre-truncated payload: %q vs %q", evA.ExternalTransactionID, evB.ExternalTransactionID)
 	}
 }
 
