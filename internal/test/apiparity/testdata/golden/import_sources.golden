@@ -5,7 +5,7 @@
 {"success":true,"message":"","data":{"item":{"id":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","name":"iPhone","status":"active","createdAt":"<datetime>","cards":[{"externalAccountId":"wallet","externalName":"wallet","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":2,"lastSeenAt":"<datetime>"},{"externalAccountId":"eurocard","externalName":"eurocard","externalCurrency":"","state":"unmapped","accountId":"","queuedCount":1,"tapCount":1,"lastSeenAt":"<datetime>"}]}}}
 
 == err:create-source-unknown-provider POST /api/v1/import/create-source [guest] -> 400
-{"success":false,"message":"Form validation error","code":400,"errors":{"provider":["The value you selected is not a valid choice."]}}
+{"success":false,"message":"Form validation error","code":400,"errors":{"provider":["This import provider is not supported."]}}
 
 == create-source POST /api/v1/import/create-source [guest] -> 200
 {"success":true,"message":"","data":{"item":{"id":"<generated-uuid>","provider":"apple-wallet","name":"Guest phone","status":"active","createdAt":"<datetime>","cards":[]}}}

@@ -290,7 +290,7 @@ describe('scrubForeignClassifications', () => {
 
 it('a queued import seeds a new transaction from the bank data, payee as description', () => {
   const state = initialFormState(
-    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
     [account({})],
     null,
   )
@@ -306,9 +306,27 @@ it('a queued import seeds a new transaction from the bank data, payee as descrip
 
 it('an unmapped queued import (accountId "") defaults to the first account, not a blank select', () => {
   const state = initialFormState(
-    { importQueued: { linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
     [account({ id: 'a1' }), account({ id: 'a2' })],
     null,
   )
   expect(state.accountId).toBe('a1')
+})
+
+it('seeds the amount when the queued row currency matches the account (case-insensitive)', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'usd', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.amount).toBe('12.50')
+})
+
+it('leaves the amount blank when the queued row currency does not match the account, so a foreign amount is never misprefilled', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'EUR', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.amount).toBe('')
 })

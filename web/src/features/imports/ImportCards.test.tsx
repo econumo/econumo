@@ -2,10 +2,13 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
+import { toast } from 'sonner'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureAccounts } from '@/test/fixtures'
 import type { ImportSourceDto } from '@/api/dto/imports'
 import { ImportCards } from './ImportCards'
+
+vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const unmapped = { externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 2, tapCount: 3, lastSeenAt: '2026-08-20 17:42:03' }
 const source: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', cards: [unmapped] }
@@ -26,6 +29,7 @@ beforeEach(() => {
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   server.use(...coreHandlers())
+  vi.mocked(toast.error).mockClear()
 })
 
 it('map opens the account picker and posts link-account, then toasts the run counts', async () => {
@@ -57,6 +61,15 @@ it('ignore posts ignore-account; an ignored card offers "Map instead"', async ()
   await waitFor(() => expect(called).toBe(true))
   renderCards({ ...source, cards: [{ ...unmapped, state: 'ignored' }] })
   expect(screen.getByRole('button', { name: 'Map instead' })).toBeInTheDocument()
+})
+
+it('a failed ignore toasts the server error', async () => {
+  server.use(http.post('*/api/v1/import/ignore-account', () =>
+    HttpResponse.json({ success: false, message: 'Card not found.', code: 400, errors: {} }, { status: 400 })))
+  const user = userEvent.setup()
+  renderCards(source)
+  await user.click(await screen.findByRole('button', { name: 'Ignore' }))
+  await waitFor(() => expect(toast.error).toHaveBeenCalledWith('Card not found.'))
 })
 
 it('a mapped card shows the account name and unmaps after confirmation', async () => {

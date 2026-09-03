@@ -339,6 +339,14 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <CalculatorInput id="tx-amount" autoFocus placeholder={t('transactions.modal.form.amount.label')} value={form.amount} onChange={setAmount} />
         </div>
         {errors.amount ? <p className="pb-1 text-sm text-destructive">{errors.amount}</p> : null}
+        {params.importQueued ? (
+          <p className="pb-1 text-sm text-muted-foreground">
+            {t('imports.queue.card_amount', {
+              amount: moneyFormat(params.importQueued.amount, null, { showCurrency: false, useNativePrecision: false }),
+              currency: params.importQueued.currency,
+            })}
+          </p>
+        ) : null}
       </div>
 
       {isTransfer ? (

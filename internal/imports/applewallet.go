@@ -66,6 +66,9 @@ func ParseAppleWalletEvent(payload []byte, receivedAt time.Time) (model.IngestEv
 		postedAt = t
 	}
 	payee := strings.TrimSpace(p.Payee)
+	if runes := []rune(payee); len(runes) > 255 {
+		payee = string(runes[:255])
+	}
 	externalID := strings.TrimSpace(p.EventID)
 	if externalID == "" {
 		// Built from the PARSED values so formatting noise between two

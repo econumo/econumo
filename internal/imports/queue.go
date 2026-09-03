@@ -118,6 +118,9 @@ func (s *Service) ImportQueuedEvent(ctx context.Context, userID vo.Id, req model
 		if err := s.repo.UpdateLink(ctx, link); err != nil {
 			return err
 		}
+		// CreateTransaction built res before the link existed, so it reports
+		// isImported: 0 for a transaction that is, as of this line, imported.
+		res.Item.IsImported = 1
 		out = res
 		return nil
 	})

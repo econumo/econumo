@@ -64,13 +64,18 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
     // account select is never left blank (a blank select silently blocks submit)
     const accountId = iq.accountId || accounts[0]?.id || null
     const account = accounts.find((a) => a.id === accountId)
+    // A queued row's amount is denominated in the card's currency, not the
+    // account's — prefilling it unconverted into a mismatched-currency
+    // account would silently misstate the transaction, so it seeds only when
+    // the two currencies agree; the mismatch is surfaced in the dialog instead.
+    const sameCurrency = account?.currency.code.toUpperCase() === iq.currency.toUpperCase()
     return {
       id: uuidv7(),
       isNew: true,
       type: iq.type,
       accountId,
       accountRecipientId: null,
-      amount: seedAmount(iq.amount, account),
+      amount: sameCurrency ? seedAmount(iq.amount, account) : '',
       amountRecipient: '',
       categoryId: null,
       payeeId: null,

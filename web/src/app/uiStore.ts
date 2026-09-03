@@ -14,6 +14,7 @@ export interface ImportQueuedPrefill {
   type: TransactionType
   accountId: Id
   amount: string
+  currency: string
   payee: string
   date: string
 }

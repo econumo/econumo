@@ -57,7 +57,7 @@ it('groups queued rows by card, formats amounts with moneyFormat, and opens the 
   expect(screen.getByText('-1,234.5 USD')).toBeInTheDocument()
   await user.click(screen.getByText('Blue Bottle'))
   const params = useUiStore.getState().transactionModal
-  expect(params?.importQueued).toEqual({ linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' })
+  expect(params?.importQueued).toEqual({ linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' })
 })
 
 it('an unmapped card header links to the mapping page', async () => {

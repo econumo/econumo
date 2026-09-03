@@ -552,6 +552,7 @@
     "queue": {
       "header": "File d'importation",
       "empty": "Rien à vérifier.",
+      "card_amount": "Montant de la carte : {amount} {currency}",
       "queued": "En attente de vérification",
       "skipped": "Ignorées",
       "failed": "Nécessitent votre attention",

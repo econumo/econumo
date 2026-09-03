@@ -54,7 +54,8 @@ Content-Type: application/json
 `eventId` is optional: when present it is the dedupe key (a re-run of the
 automation for the same tap is `duplicate`); when absent the server derives
 `sha256(lower(account)|occurredAt UTC|amount|payee)`. `type` is `expense` or
-`income` (refunds); anything else is a parse error.
+`income` (refunds); anything else is a parse error. `payee` is stored up to
+255 characters.
 
 The server answers 200 `{"status": "created"|"queued"|"skipped"|"duplicate"|"failed", "eventId": "…"}`
 whenever the event was stored, even if it could not be imported (`queued` /

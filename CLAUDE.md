@@ -543,8 +543,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   already populated and a real id is present from the very first boot.
   `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
-  effective `ECONUMO_IMPORT_*` values) is always present so the SPA can explain
-  the matcher's windows.
+  effective `ECONUMO_IMPORT_*` values) is always present (typed on
+  `EconumoConfig`, not consumed by any surface yet).
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS

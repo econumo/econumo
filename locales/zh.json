@@ -552,6 +552,7 @@
     "queue": {
       "header": "导入队列",
       "empty": "没有需要审核的内容。",
+      "card_amount": "卡片金额：{amount} {currency}",
       "queued": "等待审核",
       "skipped": "已跳过",
       "failed": "需要处理",
