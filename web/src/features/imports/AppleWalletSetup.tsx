@@ -122,11 +122,14 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
         <li className="flex flex-col gap-1">
           <span className="font-medium">{t('imports.apple_wallet.steps.install.title')}</span>
           <span className="text-muted-foreground">{t('imports.apple_wallet.steps.install.text')}</span>
+          {/* target=_blank: from the home-screen (standalone) app a same-window
+              navigation to the file has no back button, so the user had to
+              relaunch the app to fetch the second shortcut. */}
           <div className="flex flex-wrap gap-2 pt-1">
-            <a href={WALLET_SHORTCUT_URL} download onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet' })} className="rounded-md border px-3 py-2">
+            <a href={WALLET_SHORTCUT_URL} download target="_blank" rel="noopener" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'wallet' })} className="rounded-md border px-3 py-2">
               {t('imports.apple_wallet.steps.install.wallet')}
             </a>
-            <a href={SETUP_SHORTCUT_URL} download onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'setup' })} className="rounded-md border px-3 py-2">
+            <a href={SETUP_SHORTCUT_URL} download target="_blank" rel="noopener" onClick={() => trackEvent(METRICS.IMPORT_SHORTCUT_DOWNLOAD, { shortcut: 'setup' })} className="rounded-md border px-3 py-2">
               {t('imports.apple_wallet.steps.install.setup')}
             </a>
           </div>
