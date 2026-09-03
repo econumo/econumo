@@ -2,15 +2,22 @@
 
 Two signed shortcuts ship as static assets in `web/public/shortcuts/`:
 
-| Shortcut name (exact) | Served as | Job |
+| Shortcut name = file name | Served as | Job |
 |---|---|---|
-| `Econumo Setup` | `econumo-setup-v1.shortcut` | Receives `{url, token}` from a `shortcuts://run-shortcut` deep link and writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder. |
-| `Econumo Wallet` | `econumo-wallet-v1.shortcut` | Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
+| `econumo-setup-v1` | `econumo-setup-v1.shortcut` | Receives `{url, token}` from a `shortcuts://run-shortcut` deep link and writes it to `econumo-wallet.json` in the iCloud Drive › Shortcuts folder. |
+| `econumo-wallet-v1` | `econumo-wallet-v1.shortcut` | Run by the user's Transaction automation: reads that file and POSTs the tap to `ingest-apple-wallet-event`. |
 
-The names are part of the contract: the Settings → Import & export page opens
-`shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=…`, and the
+iOS names an imported shortcut after the file it came from and ignores the
+embedded `WFWorkflowName`, so the shortcut names ARE the served basenames
+(`build.py` derives both from the slug and `VERSION`). The names are part of
+the contract: the Settings → Import & export page opens
+`shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=…`, and the
 setup instructions tell the user to point their automation at
-`Econumo Wallet`. Renaming either means changing the SPA.
+`econumo-wallet-v1` (`WALLET_SHORTCUT_NAME` / `SETUP_SHORTCUT_NAME` in
+`web/src/features/imports/AppleWalletSetup.tsx`, plus the
+`imports.apple_wallet.steps.*` catalogue strings). A `VERSION` bump therefore
+renames the shortcuts too: update the SPA constants and the catalogues in
+the same commit, and expect users to reinstall and repoint their automation.
 
 ## How the files are made
 
@@ -33,9 +40,9 @@ extract anything from it because the plist source is what is committed.
 Action UUIDs are deterministic (uuid5 of a per-shortcut counter), so
 rebuilding without a recipe change produces a byte-identical plist and only
 the signature bytes differ. When the recipe changes, bump `VERSION` in
-`build.py` (`-v1` → `-v2`), rebuild, and update the links in the SPA; the
-old file may stay so an already-installed shortcut keeps its download link
-working.
+`build.py` (`-v1` → `-v2`), rebuild, and update the names and links in the SPA and
+catalogues; the old file may stay so an already-installed shortcut keeps
+its download link working.
 
 The same recipe, reduced to the five actions a user can type in, is shown in
 the SPA under *Configure manually*
@@ -79,7 +86,7 @@ The server answers 200 whenever the event was stored, even if it could not
 be imported (`queued` / `skipped` / `failed` are visible in the web UI), so
 the shortcut has nothing to do with the response.
 
-## Recipe: `Econumo Setup`
+## Recipe: `econumo-setup-v1`
 
 What `build.py` emits, in Shortcuts.app terms. Input arrives as
 **Shortcut Input** from the `run-shortcut` URL; "Show in Share Sheet" is off.
@@ -102,7 +109,7 @@ What `build.py` emits, in Shortcuts.app terms. Input arrives as
 6. **Show Notification** — `Econumo configured for` + `Dictionary Value`
    (the `url` value from step 2).
 
-## Recipe: `Econumo Wallet`
+## Recipe: `econumo-wallet-v1`
 
 "Show in Share Sheet" off.
 
@@ -166,7 +173,7 @@ refund imports as an expense with a positive amount and needs a hand fix.
 
 Two cards with the same display name are indistinguishable to the server,
 because `account` is the card name. The user-side fix: duplicate
-`Econumo Wallet` (right-click → Duplicate), rename it (`Econumo Wallet —
+`econumo-wallet-v1` (right-click → Duplicate), rename it (`econumo-wallet-v1
 Visa joint`), replace the `account` value with a typed literal, and point a
 Transaction automation filtered to that one card at the copy. Nothing
 changes server-side; the literal is just another external account name.
@@ -179,15 +186,14 @@ never exercised on a device by the build — this pass is what proves them.
 
 1. Open both served `.shortcut` files on an iPhone in Safari (or AirDrop
    them). The "Add Shortcut" sheet must appear without a "cannot be opened
-   because it is not signed" error. After adding, check the names in the
-   library are exactly `Econumo Setup` and `Econumo Wallet` — iOS may use
-   the file name rather than the embedded name; rename if so, and if it
-   does, switch the served file names to the display names.
+   because it is not signed" error. After adding, the names in the
+   library are `econumo-setup-v1` and `econumo-wallet-v1` (iOS takes them
+   from the file name, which is why the recipe names match the files).
 2. In Safari on the phone, open Econumo → Settings → Import & export → Configure.
-   Shortcuts should open, run `Econumo Setup`, and show the notification.
+   Shortcuts should open, run `econumo-setup-v1`, and show the notification.
    Check `Files` → iCloud Drive → Shortcuts → `econumo-wallet.json`.
 3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
-   any card, any type → **Run Immediately** → `Econumo Wallet`.
+   any card, any type → **Run Immediately** → `econumo-wallet-v1`.
 4. Make an Apple Pay purchase and watch the event appear on the Econumo
    queue page or as an imported transaction. Check the stored event: card
    name and merchant filled, `amount` a bare number, `currency` a 3-letter

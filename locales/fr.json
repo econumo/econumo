@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Récupérer les raccourcis",
           "text": "Installez les deux raccourcis sur votre iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Configurer",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automatiser",
-          "text": "Dans l'app Raccourcis, ajoutez une automatisation : Transaction → Exécuter « Econumo Wallet » avec la transaction en entrée."
+          "text": "Dans l'app Raccourcis, ajoutez une automatisation : Transaction → Exécuter « econumo-wallet-v1 » avec la transaction en entrée."
         }
       },
       "manual": {

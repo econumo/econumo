@@ -14,7 +14,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// appleWalletPayload is what the "Econumo Wallet" shortcut POSTs. amount is
+// appleWalletPayload is what the "econumo-wallet-v1" shortcut POSTs. amount is
 // untyped because Shortcuts serializes numbers as numbers and text as text
 // depending on how the automation was built.
 type appleWalletPayload struct {

@@ -496,8 +496,8 @@
         "install": {
           "title": "1. 获取快捷指令",
           "text": "在 iPhone 上安装这两个快捷指令。",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. 配置",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. 自动化",
-          "text": "在“快捷指令”应用中添加自动化：交易 → 以该交易为输入运行“Econumo Wallet”。"
+          "text": "在“快捷指令”应用中添加自动化：交易 → 以该交易为输入运行“econumo-wallet-v1”。"
         }
       },
       "manual": {

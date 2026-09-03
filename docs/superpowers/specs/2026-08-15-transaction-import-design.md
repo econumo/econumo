@@ -1163,14 +1163,14 @@ can work:
 So the design is a static signed shortcut plus a **configuration deep link**:
 
 1. **Install.** "Get the Shortcut" serves two signed files from
-   `web/public/shortcuts/`: **Econumo Wallet** (the automation body) and
-   **Econumo Setup** (writes the configuration). Safari hands each to
+   `web/public/shortcuts/`: **econumo-wallet-v1** (the automation body) and
+   **econumo-setup-v1** (writes the configuration). Safari hands each to
    Shortcuts, which shows the standard "Add Shortcut" sheet.
 2. **Configure — one tap, nothing typed.** The setup page's "Configure on
    this iPhone" button (rendered only on iOS) creates the `'ingest'`-scoped
    PAT server-side and opens
-   `shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=<url-encoded JSON {url, token}>`.
-   Econumo Setup receives that text as its input and saves it as
+   `shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=<url-encoded JSON {url, token}>`.
+   econumo-setup-v1 receives that text as its input and saves it as
    `Shortcuts/econumo-wallet.json` in iCloud Drive (the `Save File` action,
    overwrite on), then shows "Configured". The deep link is handled by the
    OS on the same device — the token never crosses the network in a URL —
@@ -1178,7 +1178,7 @@ So the design is a static signed shortcut plus a **configuration deep link**:
    hand-built recipe would hold inside the shortcut itself.
 3. **Automate.** Instructions with screenshots for the four taps.
 
-Econumo Wallet, on every tap: `Get File` (`Shortcuts/econumo-wallet.json`)
+econumo-wallet-v1, on every tap: `Get File` (`Shortcuts/econumo-wallet.json`)
 → `Get Dictionary from Input` → `Get Contents of URL` (POST `{url}/api/v1/import/ingest-apple-wallet-event`,
 `Authorization: Bearer {token}`, JSON body from the trigger's Card or Pass /
 Merchant / Amount / Currency / Date properties, Part 6 shape). Missing
@@ -1204,7 +1204,7 @@ button, the server URL, the pre-rendered JSON body with the user's values
 substituted, five actions with screenshots — remains on the page below the
 one-tap path, for anyone whose device cannot import the file. Its "same-named
 cards" note (Part 2, card → account) applies to both paths: the user
-duplicates Econumo Wallet, replaces the `account` value with a literal, and
+duplicates econumo-wallet-v1, replaces the `account` value with a literal, and
 points a per-card automation at the copy (a Transaction automation cannot
 pass extra input, so a copy is the only way to vary the label).
 

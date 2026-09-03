@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Get the Shortcuts",
           "text": "Install both Shortcuts on your iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Configure",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Automate",
-          "text": "In the Shortcuts app add an automation: Transaction → Run \"Econumo Wallet\" with the transaction as input."
+          "text": "In the Shortcuts app add an automation: Transaction → Run \"econumo-wallet-v1\" with the transaction as input."
         }
       },
       "manual": {

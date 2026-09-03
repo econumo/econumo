@@ -496,8 +496,8 @@
         "install": {
           "title": "1. Установите команды",
           "text": "Установите обе команды на iPhone.",
-          "wallet": "Econumo Wallet",
-          "setup": "Econumo Setup"
+          "wallet": "econumo-wallet-v1",
+          "setup": "econumo-setup-v1"
         },
         "configure": {
           "title": "2. Настройте",
@@ -508,7 +508,7 @@
         },
         "automate": {
           "title": "3. Автоматизируйте",
-          "text": "В приложении «Команды» добавьте автоматизацию: Транзакция → Запустить «Econumo Wallet», передав транзакцию на вход."
+          "text": "В приложении «Команды» добавьте автоматизацию: Транзакция → Запустить «econumo-wallet-v1», передав транзакцию на вход."
         }
       },
       "manual": {

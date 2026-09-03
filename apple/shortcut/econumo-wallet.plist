@@ -567,7 +567,7 @@
 	<key>WFWorkflowMinimumClientVersionString</key>
 	<string>900</string>
 	<key>WFWorkflowName</key>
-	<string>Econumo Wallet</string>
+	<string>econumo-wallet-v1</string>
 	<key>WFWorkflowOutputContentItemClasses</key>
 	<array/>
 	<key>WFWorkflowTypes</key>
