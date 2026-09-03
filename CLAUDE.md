@@ -769,7 +769,7 @@ data unreadable. Most are also asserted by the test suite.
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`
   with no transaction) until the user maps it to an OWNED account (`link-account`
   replays the queue in one run) or ignores it. Ingest is scope-gated (`ingest` PATs),
-  exact-duplicate-safe (`(source, external_transaction_id)`), and never fails the
+  exact-duplicate-safe (`(source, external_account_id, external_transaction_id)`), and never fails the
   request on a bad transaction — parse errors land in `import_events.status = failed`
   for the queue page's "needs attention" list. Imported transactions read
   `isImported: 1`; `get-transaction-import-list` is their provenance.
