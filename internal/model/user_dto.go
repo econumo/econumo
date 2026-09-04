@@ -29,6 +29,7 @@ type CurrentUserResult struct {
 	Name         string         `json:"name"`
 	Email        string         `json:"email"`
 	Avatar       string         `json:"avatar"`
+	CreatedAt    string         `json:"createdAt"`
 	Options      []OptionResult `json:"options"`
 	Currency     string         `json:"currency"`
 	ReportPeriod string         `json:"reportPeriod"`

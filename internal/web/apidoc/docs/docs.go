@@ -10594,6 +10594,9 @@ const docTemplate = `{
                 "avatar": {
                     "type": "string"
                 },
+                "createdAt": {
+                    "type": "string"
+                },
                 "currency": {
                     "type": "string"
                 },
