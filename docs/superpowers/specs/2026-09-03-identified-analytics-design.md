@@ -262,11 +262,13 @@ The variable stops reaching the application: it is removed from the
 `INSTANCE_ID`). Analytics default to on.
 
 `config.Config.Analytics` **stays**, with its current strict parse, marked
-deprecated and consumed by exactly one code path:
-`migration:seed-analytics-option` (§7). This mirrors `ECONUMO_DATA_SALT`, which
-is likewise ignored by the API and read only by `data:remove-salt` via
-`c.cfg.DataSalt`, and is documented next to it in CLAUDE.md. `.env.example`
-drops the entry.
+deprecated and consumed by exactly two code paths, both through
+`Service.analyticsDefault`: the backfill migration (§7) and registration
+seeding (§5.1), the latter covering self-service registration and CLI/admin
+user creation alike. It is therefore not fully inert like `ECONUMO_DATA_SALT`,
+which is read only by `data:remove-salt` — the variable still decides what a
+NEW user's preference starts as, it simply no longer gates anything at
+runtime. `.env.example` drops the entry; CLAUDE.md documents the distinction.
 
 The migration's one-time read is what makes the removal safe: without it, every
 self-hoster who set `ECONUMO_ANALYTICS=false` would silently resume sending
