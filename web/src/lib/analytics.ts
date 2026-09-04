@@ -34,6 +34,15 @@ let groupId: string | null = null
 let groupName: string | null = null
 
 export function setAnalyticsUser(id: string | null): void {
+  if (id === userId) {
+    return
+  }
+  // Drain the queue under the outgoing identity first: capture() does not
+  // snapshot who was current when an event was queued, so without this a
+  // batch still sitting in the queue at an identity change would flush under
+  // the new (or cleared) userId, misattributing it across people on a shared
+  // device — the same class of leak the install-id re-mint below guards.
+  flush()
   userId = id
 }
 
@@ -42,10 +51,11 @@ export function setAnalyticsGroup(id: string, name: string): void {
   groupName = name
 }
 
-// Called on logout. The install id is re-minted alongside so the next person on
-// a shared browser inherits nothing; the group is the deployment, not the
-// person, so it stays.
+// Called on logout. Flush first for the same reason as setAnalyticsUser, then
+// re-mint the install id so the next person on a shared browser inherits
+// nothing; the group is the deployment, not the person, so it stays.
 export function resetAnalyticsIdentity(): void {
+  flush()
   userId = null
   installId = uuidv4()
 }

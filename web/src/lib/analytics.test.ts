@@ -161,4 +161,42 @@ describe('capture', () => {
     // The group is the deployment, not the person, so it survives logout.
     expect(second.attributes.$group_id).toBe('a3f19c02b7d4')
   })
+
+  it('drains a queued event under the outgoing user before switching to a new one', () => {
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.capture('queued_by_a')
+    // No flush yet: this event is still sitting in the queue when identity changes.
+    analytics.resetAnalyticsIdentity()
+    analytics.setAnalyticsUser('b'.repeat(32))
+    analytics.capture('by_b')
+    vi.advanceTimersByTime(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const first = sentPayload(0)
+    expect(first.events).toHaveLength(1)
+    expect(first.events[0].name).toBe('queued_by_a')
+    expect(first.attributes.$user_id).toBe('a'.repeat(32))
+
+    const second = sentPayload(1)
+    expect(second.events.map((e) => e.name)).not.toContain('queued_by_a')
+    expect(second.attributes.$user_id).toBe('b'.repeat(32))
+  })
+
+  it('does not retroactively attribute a queued anonymous event to a user who logs in after', () => {
+    analytics.capture('queued_anonymous')
+    // No flush yet: this event is still sitting in the queue when the user logs in.
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.capture('by_a')
+    vi.advanceTimersByTime(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const first = sentPayload(0)
+    expect(first.events).toHaveLength(1)
+    expect(first.events[0].name).toBe('queued_anonymous')
+    expect(first.attributes.$user_id).toBeUndefined()
+
+    const second = sentPayload(1)
+    expect(second.events.map((e) => e.name)).not.toContain('queued_anonymous')
+    expect(second.attributes.$user_id).toBe('a'.repeat(32))
+  })
 })
