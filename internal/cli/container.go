@@ -98,7 +98,7 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		userRepo, txm, encodeSvc, hasher, accessTokens, server.NewUserCurrencyLookup(currencyLookup), budgetExistence,
 		passwordReqRepo, resetMailer, emailVerificationRepo, nil,
 		emailChangeRepo, nil,
-		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
+		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification, cfg.Analytics,
 	)
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)

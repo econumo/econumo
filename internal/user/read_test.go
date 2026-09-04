@@ -39,7 +39,7 @@ func newHarness(t *testing.T) *readHarness {
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 0, false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 0, false, true)
 	readRepo := userrepo.NewReadRepo(db.Engine, db.TX)
 	readSvc := appuser.NewReadService(readRepo, enc, clk)
 	return &readHarness{svc: svc, read: readSvc}

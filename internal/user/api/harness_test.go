@@ -107,12 +107,12 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	rec := &recordingMailer{}
 	resetMailer := mailer.NewResetSender(rec, "", "")
 
-	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true, Analytics: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
 	svc := appuser.NewService(repo, txm, encode, hasher, tokens, server.NewUserCurrencyLookup(currency), budgets, passwordReqs, resetMailer,
 		userrepo.NewEmailVerificationRepo("sqlite", txm), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", txm), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, 0, false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, cfg.AllowRegistration, 0, false, cfg.Analytics)
 	readSvc := appuser.NewReadService(readRepo, encode, clk)
 	billing := appuser.NewBillingService(
 		"https://pay.example.test/cloud/",

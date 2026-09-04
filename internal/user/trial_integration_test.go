@@ -22,7 +22,7 @@ type trialClock struct{}
 
 func (trialClock) Now() time.Time { return trialNow }
 
-func newTrialSvc(t *testing.T, db *dbtest.DB, trialDays int) (*appuser.Service, *userrepo.Repo, *auth.EncodeService) {
+func newTrialSvc(t *testing.T, db *dbtest.DB, trialDays int, analyticsDefault bool) (*appuser.Service, *userrepo.Repo, *auth.EncodeService) {
 	t.Helper()
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
@@ -33,13 +33,13 @@ func newTrialSvc(t *testing.T, db *dbtest.DB, trialDays int) (*appuser.Service, 
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), trialClock{}, nil, true, trialDays, false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), trialClock{}, nil, true, trialDays, false, analyticsDefault)
 	return svc, repo, enc
 }
 
 func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, _ := newTrialSvc(t, db, 30)
+	svc, repo, _ := newTrialSvc(t, db, 30, true)
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{
@@ -66,7 +66,7 @@ func TestRegister_GrantsTrialWhenEnabled(t *testing.T) {
 
 func TestRegister_NoTrialByDefault(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, _ := newTrialSvc(t, db, 0)
+	svc, repo, _ := newTrialSvc(t, db, 0, true)
 	ctx := context.Background()
 
 	if _, err := svc.Register(ctx, model.RegisterRequest{
@@ -86,7 +86,7 @@ func TestRegister_NoTrialByDefault(t *testing.T) {
 
 func TestAdminCreateUser_NeverGrantsTrial(t *testing.T) {
 	db := dbtest.New(t)
-	svc, repo, _ := newTrialSvc(t, db, 30)
+	svc, repo, _ := newTrialSvc(t, db, 30, true)
 	ctx := context.Background()
 
 	if _, err := svc.AdminCreateUser(ctx, "Ops User", "ops@econumo.test", "secretpass"); err != nil {

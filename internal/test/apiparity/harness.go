@@ -86,6 +86,7 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
 		CurrencyBase:       "USD",
 		AllowRegistration:  true,
+		Analytics:          true,
 		DataSalt:           ignoredDataSalt, // set on purpose; the API must ignore it
 		CORSAllowedOrigins: []string{"*"},
 		// Production-default auth rate limits: existing auth scenarios stay far
