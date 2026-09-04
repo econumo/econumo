@@ -49,3 +49,22 @@ it('restores lost keys from Preferences without clobbering live ones', async () 
   expect(localStorage.getItem('token')).toBe('eco_ses_live')
   expect(localStorage.getItem('backendHost')).toBe('"https://my.server.example"')
 })
+
+// The opt-out must be mirrored: WKWebView can evict localStorage under
+// storage pressure while the token survives (also mirrored), which would
+// otherwise silently resume analytics for a user who had turned it off.
+it('mirrors the analytics opt-out so it survives localStorage eviction', () => {
+  const store = new Map<string, string>()
+  const prefs = installPrefs(store)
+  mirrorWrite('analyticsOptOut', 'true')
+  expect(prefs.set).toHaveBeenCalledWith({ key: 'analyticsOptOut', value: 'true' })
+})
+
+it('restores an evicted analytics opt-out from Preferences', async () => {
+  const store = new Map([['analyticsOptOut', 'true']])
+  installPrefs(store)
+  // localStorage lost the key (simulated eviction); the token survived.
+  localStorage.setItem('token', 'eco_ses_live')
+  await restoreNativeStorage()
+  expect(localStorage.getItem('analyticsOptOut')).toBe('true')
+})

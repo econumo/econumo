@@ -57,6 +57,9 @@ describe('capture', () => {
     // text/plain keeps the POST CORS-simple (no preflight) and matches what
     // sendBeacon sends for a string body, so both transports look identical.
     expect(init.headers).toEqual({ 'Content-Type': 'text/plain' })
+    // Origin cannot be suppressed (mandatory on a non-GET/HEAD fetch), but
+    // Referer can be, and this is what suppresses it.
+    expect(init.referrerPolicy).toBe('no-referrer')
     const payload = sentPayload()
     expect(payload.key).toMatch(/^ak_/)
     expect(payload.events).toHaveLength(1)

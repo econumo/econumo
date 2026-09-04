@@ -118,6 +118,9 @@ function flush(): void {
     // text/plain keeps the request CORS-simple, so no preflight round trip.
     headers: { 'Content-Type': 'text/plain' },
     keepalive: true,
+    // Origin is mandatory on a non-GET/HEAD fetch and cannot be suppressed;
+    // this at least kills Referer, which would otherwise also leak the URL.
+    referrerPolicy: 'no-referrer',
     body,
   }).catch(() => {
     // Dropped on purpose: analytics must never break or noisy-log the app.

@@ -25,7 +25,6 @@ end-to-end journeys.
    DATABASE_URL="sqlite:///tmp/econumo-regression.sqlite" \
    PORT=8181 \
    ECONUMO_ALLOW_REGISTRATION=true \
-   ECONUMO_ANALYTICS=false \
    ECONUMO_EMAIL_VERIFICATION=false \
    ECONUMO_ADMIN_PORT= ECONUMO_ADMIN_TOKEN= ECONUMO_BILLING_URL= ECONUMO_DATA_SALT= \
    ./econumo serve

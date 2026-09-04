@@ -1,8 +1,5 @@
 import { createAppQueryClient } from '@/lib/queryPersist'
 import { setAnalyticsQueryClient } from '@/lib/analyticsProfile'
-import { setAnalyticsGroup } from '@/lib/analytics'
-import { analyticsHost } from '@/lib/metrics'
-import { getInstanceId } from '@/lib/config'
 
 // The app-wide singleton — importable outside the React tree (the 402
 // interceptor invalidates the user query through it).
@@ -12,10 +9,7 @@ export const queryClient = createAppQueryClient()
 // cache without threading the client through every call site.
 setAnalyticsQueryClient(queryClient)
 
-// The group identifies the deployment, not a person, so it is set once at
-// boot rather than per-user; an unconfigured instance id skips the call
-// rather than registering an "unknown" group.
-const instanceId = getInstanceId()
-if (instanceId) {
-  setAnalyticsGroup(instanceId, analyticsHost())
-}
+// The analytics group ($group_id/$group_name) is resolved lazily inside
+// trackEvent() (web/src/lib/metrics.ts), not here: in the mobile app this
+// module evaluates before fetchServerConfig() merges the real INSTANCE_ID,
+// so a fixed module-scope call would never see it.

@@ -278,7 +278,9 @@ per-instance group (`$group_id`, the bare per-deployment digest from
 carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
 `selfhosted_<instance-digest>` (`isCloudHost`/`analyticsHost` in
 `web/src/lib/metrics.ts`), so a self-hosted deployment's real hostname never
-leaves the browser; `current_url` is built from that same synthetic host),
+appears in an event payload (the browser's request still discloses it via the
+mandatory `Origin` header, which the collector does not record); `current_url`
+is built from that same synthetic host),
 plus batch-level account-profile counts (connections, accounts,
 categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
 `analytics` option (`users_options`, on by default) gates capture: it silences
@@ -516,8 +518,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   preference now, not instance-wide (see `ECONUMO_ANALYTICS` above). `INSTANCE_ID`
   is the one merged key with no matching env var: it carries the per-deployment
   digest (`internal/infra/instance`, resolved against the migrated database) and
-  is merged whenever non-empty, which in practice is every boot past the first
-  (an unmigrated database leaves the key absent, so the SPA sends no instance).
+  is merged whenever non-empty; `migrate.Run` always runs before `server.Build`
+  (`cmd/econumo/main.go`), so `schema_migrations` is already populated and the
+  key is present from the very first boot.
   Flags (`ALLOW_REGISTRATION`) and `BILLING_URL` are always merged (server truth);
   text/URL keys, including `INSTANCE_ID`, merge only when non-empty. The
   composition root resolves the FS (`web.DistFS`), version, and instance id once

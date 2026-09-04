@@ -58,11 +58,20 @@ We do not send any of the following to our analytics system:
 - The names of your accounts, categories, payees, or tags.
 - The contents of any transaction.
 - Your email address or your name.
-- For self-hosted installations, the installation's hostname or network
-  address. The "instance identifier" mentioned above is a one-way derived
-  value with no relationship to your server's address; it exists only so we
-  can tell installations apart from one another, not to locate or identify
-  them.
+- Your installation's hostname or network address, in the analytics **event
+  data** we record. The "instance identifier" mentioned above is a one-way
+  derived value with no relationship to your server's address; it exists only
+  so we can tell installations apart from one another, not to locate or
+  identify them.
+
+  <!-- TODO(owner, before publishing): verify this against the collector
+  before this goes live. The browser necessarily discloses your installation's
+  origin (hostname) and IP address to our collector as part of making the
+  request — this is unavoidable for any HTTP request, ours included. Our
+  intent, and our understanding of the collector's behavior, is that these are
+  discarded at ingestion and never written to the event data described above.
+  This bullet must not be published until that is confirmed against the
+  collector's actual behavior, not just its documented intent. -->
 
 ### The pseudonymous identifier, plainly stated
 
@@ -119,6 +128,12 @@ publication.]
 - The retention/third-party paragraph has an open bracket that needs the
   Twillingate DPA retention terms filled in before this goes live — do not
   publish with the placeholder still in place.
+- The "What we do not collect" bullet about hostname/network address carries
+  a TODO for the same reason: every collector request necessarily carries the
+  installation's real `Origin` header and source IP (this cannot be
+  suppressed — it is how HTTP works), and the policy's claim that these are
+  discarded at ingestion is our intent, not something verified from this repo.
+  Confirm it against the collector's actual behavior before publishing.
 - This wording was drafted against the implementation in
   `docs/superpowers/specs/2026-09-03-identified-analytics-design.md`; if that
   design changes before shipping (e.g. the attribute list, what counts are

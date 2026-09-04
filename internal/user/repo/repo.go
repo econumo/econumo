@@ -214,6 +214,19 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	return nil
 }
 
+// UpsertOption writes a single option row only — no user-row write, no other
+// option touched. Narrower than Save, which upserts the whole aggregate.
+func (r *Repo) UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error {
+	return r.q.UpsertUserOption(ctx, r.db(ctx), optionParams{
+		ID:        o.ID.String(),
+		UserID:    userID.String(),
+		Name:      o.Name,
+		Value:     o.Value,
+		CreatedAt: o.CreatedAt,
+		UpdatedAt: o.UpdatedAt,
+	})
+}
+
 // UpdateLanguage persists the user's last selected UI language, write-only
 // (see user.Repository.UpdateLanguage). A missing id simply affects 0 rows.
 func (r *Repo) UpdateLanguage(ctx context.Context, id vo.Id, language string) error {

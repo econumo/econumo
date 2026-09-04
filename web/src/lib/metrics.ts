@@ -1,7 +1,7 @@
-import { capture, setAnalyticsContext } from './analytics'
+import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
 import { profileAttributes } from './analyticsProfile'
-import { getInstanceId, getVersion, locale, selfHosted } from './config'
+import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
 
 declare global {
@@ -174,20 +174,36 @@ export function setAnalyticsAccessState(state: string | null): void {
   currentAccessState = state
 }
 
-export function isCloudHost(hostname: string = window.location.hostname): boolean {
+// In a Capacitor WebView window.location.hostname is always 'localhost', so
+// the app must derive the effective host from the configured backend instead
+// (mirrors the web path exactly when not running natively).
+function currentHostname(): string {
+  if (!isNativeApp()) {
+    return window.location.hostname
+  }
+  try {
+    return new URL(backendHost()).hostname
+  } catch {
+    return window.location.hostname
+  }
+}
+
+export function isCloudHost(hostname: string = currentHostname()): boolean {
   return hostname === 'econumo.com' || hostname.endsWith('.econumo.com')
 }
 
-// Self-hosted hostnames never leave the browser: the deployment is identified
-// by the server-derived instance digest instead.
-export function analyticsHost(hostname: string = window.location.hostname): string {
+// The real hostname never appears in an event PAYLOAD — self-hosted deployments
+// are identified by the server-derived instance digest instead. The browser's
+// request itself still discloses the origin via the mandatory Origin header
+// (and Referer, absent an explicit no-referrer policy); see analytics.ts.
+export function analyticsHost(hostname: string = currentHostname()): string {
   if (isCloudHost(hostname)) {
     return hostname
   }
   return `selfhosted_${getInstanceId() || 'unknown'}`
 }
 
-export function deploymentKind(hostname: string = window.location.hostname): 'cloud' | 'self-hosted' {
+export function deploymentKind(hostname: string = currentHostname()): 'cloud' | 'self-hosted' {
   return isCloudHost(hostname) ? 'cloud' : 'self-hosted'
 }
 
@@ -206,6 +222,14 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // an opt-out must gate here, before either one fires.
   if (!analyticsAllowed()) {
     return
+  }
+  // Resolved on every call rather than once at module load: in the mobile app
+  // this module evaluates before the async fetchServerConfig() merges the
+  // real INSTANCE_ID, so a fixed-at-import read would leave the group unset
+  // for the whole session. The cost is two cheap string reads per event.
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    setAnalyticsGroup(instanceId, analyticsHost())
   }
   // Batch-level (session-wide) attributes: recomputed on every call rather
   // than fixed at module load, since the profile counts change as the query

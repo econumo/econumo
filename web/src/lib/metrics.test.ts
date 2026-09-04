@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   METRICS,
   analyticsEventName,
@@ -13,6 +13,7 @@ import {
 import { capture } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
+import { backendHost, selfHosted } from './config'
 
 vi.mock('./analytics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./analytics')>()
@@ -134,6 +135,55 @@ describe('scrubbedPage', () => {
     ['/', ''],
   ])('%s -> %s', (path, expected) => {
     expect(scrubbedPage(path)).toBe(expected)
+  })
+})
+
+describe('analytics group', () => {
+  // The mobile app's main.tsx statically imports the module that used to set
+  // the group at module scope, before the async fetchServerConfig() merges
+  // the real INSTANCE_ID — so a fixed-at-import read would leave the group
+  // unset for the whole session. The group must therefore be resolved fresh
+  // on every trackEvent call, so a late-arriving INSTANCE_ID still takes
+  // effect on the very next event.
+  it('picks up an INSTANCE_ID that arrives after module evaluation', () => {
+    const groupSpy = vi.spyOn(analyticsModule, 'setAnalyticsGroup')
+
+    trackEvent(METRICS.USER_LOGIN)
+    expect(groupSpy).not.toHaveBeenCalled()
+
+    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
+    trackEvent(METRICS.USER_LOGIN)
+    expect(groupSpy).toHaveBeenCalledWith('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+  })
+})
+
+describe('native app host resolution', () => {
+  afterEach(() => {
+    delete (window as { Capacitor?: unknown }).Capacitor
+  })
+
+  // window.location.hostname is always 'localhost' inside a Capacitor
+  // WebView, so the effective host must come from the configured backend.
+  it('treats the Econumo Cloud backend as cloud in the native app', () => {
+    window.Capacitor = { isNativePlatform: () => true }
+    selfHosted(true)
+    backendHost('https://app.econumo.com')
+    expect(isCloudHost()).toBe(true)
+    expect(deploymentKind()).toBe('cloud')
+  })
+
+  it('treats a configured self-hosted backend as self-hosted in the native app', () => {
+    window.Capacitor = { isNativePlatform: () => true }
+    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
+    selfHosted(true)
+    backendHost('https://my.server.example')
+    expect(isCloudHost()).toBe(false)
+    expect(deploymentKind()).toBe('self-hosted')
+    expect(analyticsHost()).toBe('selfhosted_a3f19c02b7d4')
+  })
+
+  it('falls back to window.location.hostname on the web (unchanged behavior)', () => {
+    expect(isCloudHost()).toBe(false)
   })
 })
 
