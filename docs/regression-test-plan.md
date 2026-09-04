@@ -326,6 +326,10 @@ User C sees none of it.
 - [ ] Name inline edit with validation (length limits).
 - [ ] Default currency picker and language dialog persist (language also
       server-side — a relogin/other device keeps it).
+- [ ] Analytics toggle (Settings → Profile → privacy): switching it off
+      persists across a reload; log out and back in — the toggle still reads
+      off; a read-only user (lapsed trial) can still flip it, unlike other
+      writes on that account.
 - [ ] **Change password**: wrong old password rejected; success revokes all
       *other* sessions (verify: second browser session is logged out, current
       one stays).
