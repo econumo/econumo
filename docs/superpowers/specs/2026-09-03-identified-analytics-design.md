@@ -11,7 +11,8 @@ Anonymous mode salts and daily-rotates every identifier, so nothing links across
 days: no retention curves, no "how many users does this instance have", no
 per-user funnels. The collector supports an `identified` mode that stores
 `$user_id` as given; this design adopts it while keeping raw identifiers —
-account ids, hostnames, names — out of the analytics store.
+account ids, self-hosted hostnames, user names — out of the analytics store.
+Cloud hostnames are sent verbatim, as they always have been.
 
 ## 2. Privacy position
 
@@ -266,8 +267,10 @@ deprecated and consumed by exactly one code path:
 is likewise ignored by the API and read only by `data:remove-salt` via
 `c.cfg.DataSalt`, and is documented next to it in CLAUDE.md. `.env.example`
 drops the entry.
-Without it, every self-hoster who set `ECONUMO_ANALYTICS=false` would silently
-resume sending events on upgrade, since users default to on.
+
+The migration's one-time read is what makes the removal safe: without it, every
+self-hoster who set `ECONUMO_ANALYTICS=false` would silently resume sending
+events on upgrade, since users default to on.
 
 Accepted consequence: after this, a self-hosted operator has no instance-level
 control. Their users can each opt out; the operator cannot decide for the
