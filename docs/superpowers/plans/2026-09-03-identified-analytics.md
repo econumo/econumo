@@ -209,8 +209,10 @@ git commit -m "feat(web): add synchronous sha256 and the analytics user digest"
 ### Task 2: `createdAt` on the current-user payload
 
 **Files:**
-- Modify: `internal/model/user_dto.go` (`CurrentUserResult`), `internal/user/usecase.go` (`toCurrentUserWithEmail`)
+- Modify: `internal/model/user_dto.go` (`CurrentUserResult`), `internal/user/usecase.go` (`toCurrentUserWithEmail`), `internal/user/read.go` (`ReadService.currentUser`), `internal/model/user_view.go`, `internal/user/repo/read.go`, `internal/infra/storage/sqlc/query/{sqlite,pgsql}/user_read.sql` (+ `sqlc generate`)
 - Test: `internal/user/read_test.go` (add a case; create the file only if absent)
+
+**Both DTO paths must be populated.** `login-user`/`register-user` go through the write service's `toCurrentUserWithEmail`, but `get-user-data` — the endpoint the SPA caches and Task 11 reads — is served by the separate CQRS `ReadService.currentUser`, backed by the `GetUserView` query. Changing only the write path ships `createdAt: ""` on the endpoint that matters.
 
 **Interfaces:**
 - Consumes: nothing.
