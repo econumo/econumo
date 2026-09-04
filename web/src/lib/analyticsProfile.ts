@@ -4,6 +4,8 @@
 
 import type { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
+import type { AccountDto } from '@/api/dto/account'
+import { isPendingForMe } from '@/features/connections/shared'
 
 let client: QueryClient | null = null
 
@@ -33,17 +35,26 @@ export function profileAttributes(): Record<string, number> {
     return out
   }
 
+  const user = client.getQueryData<{ id?: string; createdAt?: string }>(queryKeys.user)
+
   // useAccounts() caches the raw get-account-list response: AccountDto[],
-  // flat (folderId directly on the item, not wrapped in AccountItemDto).
-  const accounts = list<{ folderId: string | null }>(queryKeys.accounts)
+  // flat (folderId directly on the item, not wrapped in AccountItemDto). The
+  // raw list also includes pending-for-me share invites the recipient has not
+  // accepted yet (an inert placeholder row) — useAccounts() strips those via
+  // its `select`, but getQueryData bypasses select, so this must filter them
+  // out too, or a pile of unaccepted invites reads as "accounts I own."
+  // Filtering needs "me," so if the user query hasn't loaded, the count is
+  // not-yet-known rather than risking an unfiltered (skewed) number.
+  const accounts = list<AccountDto>(queryKeys.accounts)
   const folders = list<{ id: string; isVisible: 0 | 1 }>(queryKeys.folders)
-  if (accounts) {
-    out.accounts = accounts.length
+  if (accounts && user?.id) {
+    const mine = accounts.filter((a) => !isPendingForMe(a, user.id))
+    out.accounts = mine.length
     if (folders) {
       // Accounts have no visibility of their own; a hidden folder hides them,
       // and an unfoldered account (folderId: null) counts as visible.
       const hidden = new Set(folders.filter((f) => f.isVisible === 0).map((f) => f.id))
-      out.accounts_hidden = accounts.filter((a) => a.folderId !== null && hidden.has(a.folderId)).length
+      out.accounts_hidden = mine.filter((a) => a.folderId !== null && hidden.has(a.folderId)).length
     }
   }
 
@@ -56,7 +67,6 @@ export function profileAttributes(): Record<string, number> {
     out.connections = connections.length
   }
 
-  const user = client.getQueryData<{ createdAt?: string }>(queryKeys.user)
   if (user?.createdAt) {
     // "2006-01-02 15:04:05" UTC; a cohort label, so it is read verbatim
     // rather than parsed as a local Date (which would drift across zones).
