@@ -51,6 +51,7 @@ type querier interface {
 	GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error)
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error)
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
+	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
@@ -136,6 +137,24 @@ func (r *Repo) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 
 func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {
 	raw, err := r.q.ListUserIDs(ctx, r.db(ctx))
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]vo.Id, 0, len(raw))
+	for _, s := range raw {
+		id, perr := vo.ParseId(s)
+		if perr != nil {
+			return nil, perr
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
+// ListUserIDsMissingOption returns every user id with no row for the given
+// option name (e.g. the analytics preference backfill).
+func (r *Repo) ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.Id, error) {
+	raw, err := r.q.ListUserIDsMissingOption(ctx, r.db(ctx), name)
 	if err != nil {
 		return nil, err
 	}

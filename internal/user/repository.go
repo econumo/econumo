@@ -38,6 +38,10 @@ type Repository interface {
 	// registration).
 	ListIDs(ctx context.Context) ([]vo.Id, error)
 
+	// ListUserIDsMissingOption returns every user id with no row for the given
+	// option name; it exists for the analytics-preference backfill.
+	ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.Id, error)
+
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).
 	GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error)

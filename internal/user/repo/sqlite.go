@@ -30,6 +30,10 @@ func (sqliteQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string
 	return sqlitegen.New(db).ListUserIDs(ctx)
 }
 
+func (sqliteQuerier) ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error) {
+	return sqlitegen.New(db).ListUserIDsMissingOption(ctx, name)
+}
+
 func (sqliteQuerier) UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error {
 	return sqlitegen.New(db).UpsertUser(ctx, p)
 }

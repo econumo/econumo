@@ -165,6 +165,32 @@ func TestUserRepo_ListIDs(t *testing.T) {
 	}
 }
 
+func TestUserRepo_ListUserIDsMissingOption(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	with := newTestUser(vo.MustParseId(userA), userA+"@example.test", "With", "", "h", "s", true, fixedTime, fixedTime, nil)
+	without := newTestUser(vo.MustParseId(userB), userB+"@example.test", "Without", "", "h", "s", true, fixedTime, fixedTime, nil)
+	for _, u := range []*model.User{with, without} {
+		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+			t.Fatalf("Save %s: %v", u.ID, err)
+		}
+	}
+
+	with.SetAnalytics(true, repo.NextIdentity(), fixedTime)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, with) }); err != nil {
+		t.Fatalf("Save with option: %v", err)
+	}
+
+	ids, err := repo.ListUserIDsMissingOption(ctx, model.OptionAnalytics)
+	if err != nil {
+		t.Fatalf("ListUserIDsMissingOption: %v", err)
+	}
+	if len(ids) != 1 || ids[0] != without.ID {
+		t.Fatalf("ids = %v, want [%v]", ids, without.ID)
+	}
+}
+
 func TestUserRepo_GetOptions(t *testing.T) {
 	repo, _, db := newRepos(t)
 	ctx := context.Background()

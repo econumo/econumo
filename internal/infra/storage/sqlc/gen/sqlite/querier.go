@@ -408,6 +408,12 @@ type Querier interface {
 	// stable tie-break so row order is deterministic across engines.
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]Transaction, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
+	// Ordered by id so the backfill is deterministic across engines and reruns.
+	// A LEFT JOIN + IS NULL, not NOT EXISTS: sqlc's sqlite parser fails to detect
+	// the '?' when it sits inside a NOT EXISTS subquery (drops it from the
+	// generated function signature while leaving it in the SQL text), so the join
+	// form is used to keep the parameter visible to codegen.
+	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
