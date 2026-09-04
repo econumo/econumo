@@ -10,7 +10,7 @@ interface PreferencesPlugin {
 // whose loss logs the user out or strands them on the wrong server. Values are
 // mirrored verbatim (storage.ts JSON-encodes non-token keys), so restore is a
 // straight copy back.
-const MIRRORED_KEYS: readonly string[] = ['token', 'backendHost', 'selfHosted']
+const MIRRORED_KEYS: readonly string[] = ['token', 'backendHost', 'selfHosted', 'analyticsOptOut']
 
 function prefs(): PreferencesPlugin | null {
   return nativePlugin<PreferencesPlugin>('Preferences')

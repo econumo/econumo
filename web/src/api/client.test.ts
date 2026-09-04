@@ -4,6 +4,7 @@ import { server } from '@/test/msw'
 import { api, apiUrl } from './client'
 import { setToken, getToken } from '@/lib/storage'
 import { queryClient } from '@/app/queryClient'
+import * as analyticsModule from '@/lib/analytics'
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }))
 
@@ -57,6 +58,19 @@ it('on 401 purges the token and redirects to /login?reason=expired', async () =>
   await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
   expect(getToken()).toBeNull()
   expect(assign).toHaveBeenCalledWith('/login?reason=expired')
+})
+
+it('on 401 resets the analytics identity so the next person on a shared browser is not linked', async () => {
+  const resetSpy = vi.spyOn(analyticsModule, 'resetAnalyticsIdentity')
+  server.use(
+    http.get('*/api/v1/secure', () =>
+      HttpResponse.json({ success: false, message: 'Unauthorized', code: 0, errors: {} }, { status: 401 }),
+    ),
+  )
+  setToken('expired-tok')
+  await expect(api.get(apiUrl('/api/v1/secure'))).rejects.toThrow()
+  expect(resetSpy).toHaveBeenCalledTimes(1)
+  resetSpy.mockRestore()
 })
 
 it('does NOT redirect on 401 from login-user (invalid credentials case)', async () => {

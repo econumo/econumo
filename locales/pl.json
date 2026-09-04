@@ -607,7 +607,8 @@
           "groups": {
             "personal_details": "Dane osobowe",
             "preferences": "Preferencje",
-            "security": "Bezpieczeństwo"
+            "security": "Bezpieczeństwo",
+            "privacy": "Prywatność"
           },
           "currency": {
             "label": "Waluta"
@@ -679,6 +680,10 @@
             },
             "revoke": "Odwołaj",
             "confirm_revoke": "Odwołać ten token? Integracje, które go używają, natychmiast przestaną działać."
+          },
+          "analytics": {
+            "label": "Udostępniaj dane użytkowania",
+            "description": "Pomaga ulepszać Econumo. Nigdy nie obejmuje Twoich danych finansowych."
           }
         }
       }

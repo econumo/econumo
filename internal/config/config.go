@@ -19,12 +19,16 @@ type Config struct {
 	DatabaseDriver string // "sqlite" | "postgresql" — DERIVED from DatabaseURL's scheme
 
 	// Econumo behavior
-	CurrencyBase               string // default "USD"
-	AllowRegistration          bool
-	DataSalt                   string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
-	SQLiteBusyTimeout          int
-	CheckUpdates               bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
-	Analytics                  bool // ECONUMO_ANALYTICS: SPA sends anonymous product events to Twillingate (default true)
+	CurrencyBase      string // default "USD"
+	AllowRegistration bool
+	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
+	SQLiteBusyTimeout int
+	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	// Analytics is ECONUMO_ANALYTICS: DEPRECATED. It no longer gates anything at
+	// runtime — the per-user preference does — and reaches the app only through
+	// Service.analyticsDefault, which seeds a new user's preference and the
+	// one-time migration:seed-analytics-option backfill.
+	Analytics                  bool
 	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)

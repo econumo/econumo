@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { analyticsAllowed } from '@/lib/analyticsPreference'
 import * as userApi from './user'
 
 const user = {
@@ -84,6 +85,39 @@ it('updateAvatar posts icon/color to update-avatar and returns the refreshed use
   const result = await userApi.updateAvatar('pets', 'teal')
   expect(body).toEqual({ icon: 'pets', color: 'teal' })
   expect(result.avatar).toBe('pets')
+})
+
+// Real translation, not a mock of it: these go through the actual
+// options.find(...).value !== '0' logic in login()/getUserData() and assert
+// the resulting mirror through analyticsAllowed(), so a "simplification"
+// like switching to `=== '1'` (which would silently opt everyone out on any
+// unrecognized/absent value) fails these tests.
+describe('analytics preference mirror', () => {
+  const cases: [string, { name: string; value: string | null }[], boolean][] = [
+    ["analytics: '0'", [{ name: 'analytics', value: '0' }], false],
+    ["analytics: '1'", [{ name: 'analytics', value: '1' }], true],
+    ['no analytics entry', [], true],
+  ]
+
+  it.each(cases)('login with %s -> analyticsAllowed() is %s', async (_label, options, expected) => {
+    server.use(
+      http.post('*/api/v1/user/login-user', () =>
+        HttpResponse.json({ user: { ...user, options }, token: 'jwt-token' }),
+      ),
+    )
+    await userApi.login('ada@example.test', 'secret')
+    expect(analyticsAllowed()).toBe(expected)
+  })
+
+  it.each(cases)('getUserData with %s -> analyticsAllowed() is %s', async (_label, options, expected) => {
+    server.use(
+      http.get('*/api/v1/user/get-user-data', () =>
+        HttpResponse.json({ success: true, message: '', data: { user: { ...user, options } } }),
+      ),
+    )
+    await userApi.getUserData()
+    expect(analyticsAllowed()).toBe(expected)
+  })
 })
 
 it('remindPassword and resetPassword hit their endpoints', async () => {

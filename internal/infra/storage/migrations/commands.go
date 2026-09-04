@@ -28,4 +28,7 @@ func init() {
 	// deleted account; 20260817000002.sql seeds membership and drops the
 	// blacklist. See docs/superpowers/specs/2026-08-16-budget-account-membership-design.md §2.
 	RegisterCommand("20260817000001", "migration:zero-deleted-accounts")
+	// No SQL file: the value comes from the deprecated ECONUMO_ANALYTICS, which
+	// SQL cannot read, and each row needs a UUIDv7 id SQLite cannot mint.
+	RegisterCommand("20260903000000", "migration:seed-analytics-option")
 }

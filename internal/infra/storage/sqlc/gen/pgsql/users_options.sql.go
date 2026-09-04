@@ -49,6 +49,40 @@ func (q *Queries) GetUserOptions(ctx context.Context, userID string) ([]UsersOpt
 	return items, nil
 }
 
+const listUserIDsMissingOption = `-- name: ListUserIDsMissingOption :many
+SELECT u.id
+FROM users u
+LEFT JOIN users_options o ON o.user_id = u.id AND o.name = $1
+WHERE o.user_id IS NULL
+ORDER BY u.id
+`
+
+// Ordered by id so the backfill is deterministic across engines and reruns.
+// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
+// engines even though postgresql's parser handles NOT EXISTS params fine).
+func (q *Queries) ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, listUserIDsMissingOption, name)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertUserOption = `-- name: UpsertUserOption :exec
 INSERT INTO users_options (id, user_id, name, value, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $5, $6)

@@ -40,7 +40,7 @@ func optionValue(t *testing.T, opts []model.OptionResult, name string) string {
 
 func TestProfileCurrency_StoredAsID_WireShowsCode(t *testing.T) {
 	db := dbtest.New(t)
-	svc, _, _ := newTrialSvc(t, db, 0)
+	svc, _, _ := newTrialSvc(t, db, 0, true)
 	ctx := context.Background()
 
 	res, err := svc.Register(ctx, model.RegisterRequest{
@@ -94,7 +94,7 @@ func TestProfileCurrency_StoredAsID_WireShowsCode(t *testing.T) {
 // violation means real corruption that must surface.
 func TestProfileCurrency_DanglingID_Errors(t *testing.T) {
 	db := dbtest.New(t)
-	svc, _, _ := newTrialSvc(t, db, 0)
+	svc, _, _ := newTrialSvc(t, db, 0, true)
 	ctx := context.Background()
 
 	res, err := svc.Register(ctx, model.RegisterRequest{

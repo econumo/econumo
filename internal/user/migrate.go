@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/model"
 )
 
 // MigrateRemoveDataSalt decrypts every user's email back to plaintext (AES
@@ -70,4 +71,44 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 		return 0, 0, err
 	}
 	return migrated, skipped, nil
+}
+
+// SeedAnalyticsOption writes the analytics preference row for every user that
+// has none, using the deprecated ECONUMO_ANALYTICS value as the seed so an
+// operator who disabled analytics before the per-user preference existed does
+// not silently start sending events again. Idempotent: users that already hold
+// the option are skipped, so a rerun is a no-op.
+//
+// Writes ONLY the analytics option row via Repo.UpsertOption, not the whole
+// user aggregate: this runs synchronously at boot, before the listener binds,
+// over every user on the instance, so a GetByID+Save (whole user row plus
+// every one of that user's other option rows) per user does not scale — on a
+// large instance it can block startup for minutes. The whole sweep still runs
+// in one transaction, so a mid-run failure rolls everything back and a retry
+// converges (WHERE NOT EXISTS makes it safe to re-run either way).
+func (s *Service) SeedAnalyticsOption(ctx context.Context) (int, error) {
+	var seeded int
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		ids, err := s.repo.ListUserIDsMissingOption(ctx, model.OptionAnalytics)
+		if err != nil {
+			return err
+		}
+		now := s.clock.Now()
+		value := "0"
+		if s.analyticsDefault {
+			value = "1"
+		}
+		for _, id := range ids {
+			opt := model.NewUserOption(s.repo.NextIdentity(), model.OptionAnalytics, &value, now)
+			if serr := s.repo.UpsertOption(ctx, id, opt); serr != nil {
+				return serr
+			}
+			seeded++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return seeded, nil
 }

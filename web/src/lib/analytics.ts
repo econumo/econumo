@@ -1,8 +1,10 @@
 // Twillingate capture transport — the only file that knows the collector exists.
-// Anonymous by construction: $install_id is a random per-page-load value held in
-// memory (never persisted anywhere), and only the whitelisted attributes built by
-// the caller ever leave the browser. The collector salts and daily-rotates the
-// id on its side, so nothing links a visitor across days.
+// Identified, not anonymous: once set, every batch carries a hashed user id
+// ($user_id, opaque — never the raw id or $user_name) and a per-instance group
+// ($group_id/$group_name identifying the deployment, not the person). Nothing
+// is written to the device — $install_id and the identity fields all live in
+// memory only, cleared by resetAnalyticsIdentity on logout (the group survives,
+// since it describes the instance rather than the visitor).
 // Wire format: POST /api/events, one batch per flush.
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
@@ -23,15 +25,47 @@ interface CapturedEvent {
 // Not crypto.randomUUID: that one is secure-context-only, so it is missing on a
 // self-hosted instance served over plain http://<lan-ip>, and this module-level
 // call would take the whole SPA down there. uuid falls back to getRandomValues.
-const installId = uuidv4()
+let installId = uuidv4()
 let queue: CapturedEvent[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
 
-export function analyticsDomain(hostname: string = window.location.hostname): string {
-  if (hostname === 'econumo.com' || hostname.endsWith('.econumo.com')) {
-    return hostname
+let userId: string | null = null
+let groupId: string | null = null
+let groupName: string | null = null
+// Batch-level (not per-event) attributes — host/platform/version facts that
+// hold for the whole session, set once by the caller rather than recomputed
+// on every capture().
+let batchContext: Record<string, unknown> = {}
+
+export function setAnalyticsContext(attrs: Record<string, unknown>): void {
+  batchContext = attrs
+}
+
+export function setAnalyticsUser(id: string | null): void {
+  if (id === userId) {
+    return
   }
-  return 'self-hosted'
+  // Drain the queue under the outgoing identity first: capture() does not
+  // snapshot who was current when an event was queued, so without this a
+  // batch still sitting in the queue at an identity change would flush under
+  // the new (or cleared) userId, misattributing it across people on a shared
+  // device — the same class of leak the install-id re-mint below guards.
+  flush()
+  userId = id
+}
+
+export function setAnalyticsGroup(id: string, name: string): void {
+  groupId = id
+  groupName = name
+}
+
+// Called on logout. Flush first for the same reason as setAnalyticsUser, then
+// re-mint the install id so the next person on a shared browser inherits
+// nothing; the group is the deployment, not the person, so it stays.
+export function resetAnalyticsIdentity(): void {
+  flush()
+  userId = null
+  installId = uuidv4()
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {
@@ -62,7 +96,12 @@ function takeBatch(): string | null {
   // and beacons are the only transport that survives page teardown.
   const body = JSON.stringify({
     key: INGEST_KEY,
-    attributes: { $install_id: installId },
+    attributes: {
+      ...batchContext,
+      $install_id: installId,
+      ...(userId ? { $user_id: userId } : {}),
+      ...(groupId ? { $group_id: groupId, $group_name: groupName } : {}),
+    },
     events: queue,
   })
   queue = []
@@ -79,6 +118,9 @@ function flush(): void {
     // text/plain keeps the request CORS-simple, so no preflight round trip.
     headers: { 'Content-Type': 'text/plain' },
     keepalive: true,
+    // Origin is mandatory on a non-GET/HEAD fetch and cannot be suppressed;
+    // this at least kills Referer, which would otherwise also leak the URL.
+    referrerPolicy: 'no-referrer',
     body,
   }).catch(() => {
     // Dropped on purpose: analytics must never break or noisy-log the app.

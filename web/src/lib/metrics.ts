@@ -1,5 +1,8 @@
-import { analyticsDomain, capture } from './analytics'
-import { analyticsEnabled, getVersion, locale, selfHosted } from './config'
+import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { analyticsAllowed } from './analyticsPreference'
+import { profileAttributes } from './analyticsProfile'
+import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
+import { isNativeApp } from './platform'
 
 declare global {
   interface Window {
@@ -19,6 +22,7 @@ export const METRICS = {
   USER_UPDATE_PASSWORD: 'appUserUpdatePassword',
   USER_CHANGE_EMAIL: 'appUserChangeEmail',
   USER_UPDATE_CURRENCY: 'appUserUpdateCurrency',
+  USER_UPDATE_ANALYTICS: 'appUserUpdateAnalytics',
   CURRENCY_CREATE: 'appCurrencyCreate',
   CURRENCY_UPDATE: 'appCurrencyUpdate',
   CURRENCY_DELETE: 'appCurrencyDelete',
@@ -170,10 +174,71 @@ export function setAnalyticsAccessState(state: string | null): void {
   currentAccessState = state
 }
 
+// In a Capacitor WebView window.location.hostname is always 'localhost', so
+// the app must derive the effective host from the configured backend instead
+// (mirrors the web path exactly when not running natively).
+function currentHostname(): string {
+  if (!isNativeApp()) {
+    return window.location.hostname
+  }
+  try {
+    return new URL(backendHost()).hostname
+  } catch {
+    return window.location.hostname
+  }
+}
+
+export function isCloudHost(hostname: string = currentHostname()): boolean {
+  return hostname === 'econumo.com' || hostname.endsWith('.econumo.com')
+}
+
+// The real hostname never appears in an event PAYLOAD — self-hosted deployments
+// are identified by the server-derived instance digest instead. The browser's
+// request itself still discloses the origin via the mandatory Origin header
+// (and Referer, absent an explicit no-referrer policy); see analytics.ts.
+export function analyticsHost(hostname: string = currentHostname()): string {
+  if (isCloudHost(hostname)) {
+    return hostname
+  }
+  return `selfhosted_${getInstanceId() || 'unknown'}`
+}
+
+export function deploymentKind(hostname: string = currentHostname()): 'cloud' | 'self-hosted' {
+  return isCloudHost(hostname) ? 'cloud' : 'self-hosted'
+}
+
+export function analyticsPlatform(): 'web' | 'ios' | 'android' {
+  if (!isNativeApp()) {
+    return 'web'
+  }
+  return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
+}
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
   }
+  // Both sinks are third-party (liltag/GTM tags read the dataLayer too), so
+  // an opt-out must gate here, before either one fires.
+  if (!analyticsAllowed()) {
+    return
+  }
+  // Resolved on every call rather than once at module load: in the mobile app
+  // this module evaluates before the async fetchServerConfig() merges the
+  // real INSTANCE_ID, so a fixed-at-import read would leave the group unset
+  // for the whole session. The cost is two cheap string reads per event.
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    setAnalyticsGroup(instanceId, analyticsHost())
+  }
+  // Batch-level (session-wide) attributes: recomputed on every call rather
+  // than fixed at module load, since the profile counts change as the query
+  // cache fills in behind the boot loader.
+  setAnalyticsContext({
+    $app_version: getVersion(),
+    $platform: analyticsPlatform(),
+    ...profileAttributes(),
+  })
   window.dataLayer = window.dataLayer || []
   window.dataLayer.push({
     event: metric,
@@ -188,15 +253,12 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   })
   // Per-field/modal micro-interactions stay dataLayer-only: they dominate
   // event volume without informing any product decision.
-  if (analyticsEnabled() && !metric.startsWith('appUIModal')) {
-    const host = analyticsDomain()
-    // The synthetic "self-hosted" host keeps real hostnames out of the URL;
-    // only econumo.com domains appear verbatim.
+  if (!metric.startsWith('appUIModal')) {
+    const host = analyticsHost()
     capture(analyticsEventName(metric), {
       host,
-      self_hosted: host === 'self-hosted',
+      deployment: deploymentKind(),
       locale: locale(),
-      version: getVersion(),
       mode: viewMode(),
       current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
       ...(currentAccessState ? { access_state: currentAccessState } : {}),

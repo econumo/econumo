@@ -32,15 +32,15 @@ function sentPayload(call = 0): Envelope {
   return JSON.parse(init.body as string)
 }
 
-describe('analyticsDomain', () => {
-  it.each([
-    ['econumo.com', 'econumo.com'],
-    ['app.econumo.com', 'app.econumo.com'],
-    ['myeconumo.com', 'self-hosted'],
-    ['budget.example.org', 'self-hosted'],
-    ['localhost', 'self-hosted'],
-  ])('%s -> %s', (hostname, expected) => {
-    expect(analytics.analyticsDomain(hostname)).toBe(expected)
+describe('setAnalyticsContext', () => {
+  it('spreads the given attributes into every flushed batch, not per-event', () => {
+    analytics.setAnalyticsContext({ $app_version: 'v1.2.3', $platform: 'web' })
+    analytics.capture('a')
+    vi.advanceTimersByTime(10_000)
+    const { attributes, events } = sentPayload()
+    expect(attributes.$app_version).toBe('v1.2.3')
+    expect(attributes.$platform).toBe('web')
+    expect(events[0].attributes).toEqual({})
   })
 })
 
@@ -57,6 +57,9 @@ describe('capture', () => {
     // text/plain keeps the POST CORS-simple (no preflight) and matches what
     // sendBeacon sends for a string body, so both transports look identical.
     expect(init.headers).toEqual({ 'Content-Type': 'text/plain' })
+    // Origin cannot be suppressed (mandatory on a non-GET/HEAD fetch), but
+    // Referer can be, and this is what suppresses it.
+    expect(init.referrerPolicy).toBe('no-referrer')
     const payload = sentPayload()
     expect(payload.key).toMatch(/^ak_/)
     expect(payload.events).toHaveLength(1)
@@ -134,5 +137,69 @@ describe('capture', () => {
     expect(JSON.parse(body).events).toHaveLength(1)
     expect(fetchMock).not.toHaveBeenCalled()
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+  })
+
+  it('carries identity on the batch and drops it on reset', () => {
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+
+    analytics.capture('test_event')
+    vi.advanceTimersByTime(10_000)
+
+    const first = sentPayload()
+    expect(first.attributes.$user_id).toBe('a'.repeat(32))
+    expect(first.attributes.$group_id).toBe('a3f19c02b7d4')
+    expect(first.attributes.$group_name).toBe('selfhosted_a3f19c02b7d4')
+    expect(first.attributes.$user_name).toBeUndefined()
+    const installId = first.attributes.$install_id
+
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('after_logout')
+    vi.advanceTimersByTime(10_000)
+
+    const second = sentPayload(1)
+    expect(second.attributes.$user_id).toBeUndefined()
+    // A fresh install id so the next person on a shared browser is not linked.
+    expect(second.attributes.$install_id).not.toBe(installId)
+    // The group is the deployment, not the person, so it survives logout.
+    expect(second.attributes.$group_id).toBe('a3f19c02b7d4')
+  })
+
+  it('drains a queued event under the outgoing user before switching to a new one', () => {
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.capture('queued_by_a')
+    // No flush yet: this event is still sitting in the queue when identity changes.
+    analytics.resetAnalyticsIdentity()
+    analytics.setAnalyticsUser('b'.repeat(32))
+    analytics.capture('by_b')
+    vi.advanceTimersByTime(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const first = sentPayload(0)
+    expect(first.events).toHaveLength(1)
+    expect(first.events[0].name).toBe('queued_by_a')
+    expect(first.attributes.$user_id).toBe('a'.repeat(32))
+
+    const second = sentPayload(1)
+    expect(second.events.map((e) => e.name)).not.toContain('queued_by_a')
+    expect(second.attributes.$user_id).toBe('b'.repeat(32))
+  })
+
+  it('does not retroactively attribute a queued anonymous event to a user who logs in after', () => {
+    analytics.capture('queued_anonymous')
+    // No flush yet: this event is still sitting in the queue when the user logs in.
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.capture('by_a')
+    vi.advanceTimersByTime(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    const first = sentPayload(0)
+    expect(first.events).toHaveLength(1)
+    expect(first.events[0].name).toBe('queued_anonymous')
+    expect(first.attributes.$user_id).toBeUndefined()
+
+    const second = sentPayload(1)
+    expect(second.events.map((e) => e.name)).not.toContain('queued_anonymous')
+    expect(second.attributes.$user_id).toBe('a'.repeat(32))
   })
 })

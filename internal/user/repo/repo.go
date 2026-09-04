@@ -51,6 +51,7 @@ type querier interface {
 	GetUserByEmail(ctx context.Context, db backend.DBTX, email string) (userRow, error)
 	ExistsUserByEmail(ctx context.Context, db backend.DBTX, email string) (bool, error)
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
+	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
@@ -150,6 +151,24 @@ func (r *Repo) ListIDs(ctx context.Context) ([]vo.Id, error) {
 	return ids, nil
 }
 
+// ListUserIDsMissingOption returns every user id with no row for the given
+// option name (e.g. the analytics preference backfill).
+func (r *Repo) ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.Id, error) {
+	raw, err := r.q.ListUserIDsMissingOption(ctx, r.db(ctx), name)
+	if err != nil {
+		return nil, err
+	}
+	ids := make([]vo.Id, 0, len(raw))
+	for _, s := range raw {
+		id, perr := vo.ParseId(s)
+		if perr != nil {
+			return nil, perr
+		}
+		ids = append(ids, id)
+	}
+	return ids, nil
+}
+
 func (r *Repo) GetOptions(ctx context.Context, userID vo.Id) ([]model.UserOption, error) {
 	rows, err := r.q.GetUserOptions(ctx, r.db(ctx), userID.String())
 	if err != nil {
@@ -193,6 +212,19 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		}
 	}
 	return nil
+}
+
+// UpsertOption writes a single option row only — no user-row write, no other
+// option touched. Narrower than Save, which upserts the whole aggregate.
+func (r *Repo) UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error {
+	return r.q.UpsertUserOption(ctx, r.db(ctx), optionParams{
+		ID:        o.ID.String(),
+		UserID:    userID.String(),
+		Name:      o.Name,
+		Value:     o.Value,
+		CreatedAt: o.CreatedAt,
+		UpdatedAt: o.UpdatedAt,
+	})
 }
 
 // UpdateLanguage persists the user's last selected UI language, write-only

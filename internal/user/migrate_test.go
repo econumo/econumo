@@ -31,7 +31,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo("sqlite", db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false, true)
 	return svc, hasher
 }
 
@@ -135,5 +135,105 @@ func TestMigrateRemoveDataSaltEmptySaltRefused(t *testing.T) {
 	svc, _, _ := newUserSvc(t, db)
 	if _, _, err := svc.MigrateRemoveDataSalt(context.Background(), ""); err == nil {
 		t.Fatal("expected an error for an empty salt, got nil")
+	}
+}
+
+func TestSeedAnalyticsOption(t *testing.T) {
+	h := newHarnessWithAnalyticsDefault(t, false)
+	a := h.insertUserWithoutOptions(t, "a@example.test") // raw repo insert, no analytics row
+	b := h.insertUserWithoutOptions(t, "b@example.test")
+
+	n, err := h.svc.SeedAnalyticsOption(context.Background())
+	if err != nil {
+		t.Fatalf("SeedAnalyticsOption: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("seeded = %d, want 2", n)
+	}
+	for _, id := range []vo.Id{a.ID, b.ID} {
+		u, gerr := h.repo.GetByID(context.Background(), id)
+		if gerr != nil {
+			t.Fatalf("GetByID: %v", gerr)
+		}
+		if u.AnalyticsEnabled() {
+			t.Fatalf("user %s: analytics enabled, want the config default (off)", id)
+		}
+	}
+
+	// Idempotent: a rerun writes nothing and leaves values alone.
+	again, err := h.svc.SeedAnalyticsOption(context.Background())
+	if err != nil {
+		t.Fatalf("rerun: %v", err)
+	}
+	if again != 0 {
+		t.Fatalf("rerun seeded = %d, want 0", again)
+	}
+}
+
+// countingRepo wraps the real repo to count calls to the whole-aggregate
+// path (GetByID+Save). The boot-time seeding sweep must not use it: on a
+// large instance, a GetByID+Save per user (user row plus every one of that
+// user's other option rows, ~6 statements) run synchronously before the
+// listener binds does not scale.
+type countingRepo struct {
+	*userrepo.Repo
+	getByIDCalls int
+	saveCalls    int
+}
+
+func (r *countingRepo) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
+	r.getByIDCalls++
+	return r.Repo.GetByID(ctx, id)
+}
+
+func (r *countingRepo) Save(ctx context.Context, u *model.User) error {
+	r.saveCalls++
+	return r.Repo.Save(ctx, u)
+}
+
+func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
+	db := dbtest.New(t)
+	base := userrepo.NewRepo(db.Engine, db.TX)
+	spy := &countingRepo{Repo: base}
+	enc := auth.NewEncodeService("")
+	hasher := auth.NewPasswordHasher()
+	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	lookup := currencyrepo.New(db.Engine, db.TX)
+	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
+	svc := appuser.NewService(spy, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
+		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
+		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, true, 0, false, true)
+
+	ctx := context.Background()
+	now := clock.New().Now()
+	id := base.NextIdentity()
+	u := model.NewUser(id, "seed@example.test", "Seed User", "face:fuchsia", "hash", "salt", now)
+	// Seeded through the base repo directly, bypassing the spy's counters, so
+	// only SeedAnalyticsOption's own repo calls are measured below.
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return base.Save(ctx, u) }); err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+
+	n, err := svc.SeedAnalyticsOption(ctx)
+	if err != nil {
+		t.Fatalf("SeedAnalyticsOption: %v", err)
+	}
+	if n != 1 {
+		t.Fatalf("seeded = %d, want 1", n)
+	}
+	if spy.getByIDCalls != 0 {
+		t.Errorf("GetByID called %d times, want 0 — the migration must not hydrate the full user aggregate", spy.getByIDCalls)
+	}
+	if spy.saveCalls != 0 {
+		t.Errorf("Save called %d times, want 0 — the migration must write only the option row via UpsertOption", spy.saveCalls)
+	}
+
+	got, gerr := base.GetByID(ctx, id)
+	if gerr != nil {
+		t.Fatalf("GetByID: %v", gerr)
+	}
+	if !got.AnalyticsEnabled() {
+		t.Error("analytics option not written correctly by UpsertOption")
 	}
 }

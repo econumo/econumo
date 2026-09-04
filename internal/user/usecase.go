@@ -45,6 +45,7 @@ type Service struct {
 	allowRegistration   bool
 	trialDays           int
 	emailVerification   bool
+	analyticsDefault    bool
 }
 
 func NewService(
@@ -67,6 +68,7 @@ func NewService(
 	allowRegistration bool,
 	trialDays int,
 	emailVerification bool,
+	analyticsDefault bool,
 ) *Service {
 	return &Service{
 		repo:                repo,
@@ -88,6 +90,7 @@ func NewService(
 		allowRegistration:   allowRegistration,
 		trialDays:           trialDays,
 		emailVerification:   emailVerification,
+		analyticsDefault:    analyticsDefault,
 	}
 }
 
@@ -176,6 +179,7 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Name:         u.Name,
 		Email:        email,
 		Avatar:       u.Avatar,
+		CreatedAt:    datetime.FormatOrEmpty(&u.CreatedAt),
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),

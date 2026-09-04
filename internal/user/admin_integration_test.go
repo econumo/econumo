@@ -40,7 +40,7 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false, true)
 	return svc, enc, hasher
 }
 

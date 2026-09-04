@@ -30,6 +30,12 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// UpsertOption writes a single option row without touching the user row or
+	// any other option — the narrow write the analytics-preference backfill
+	// needs (Save would rewrite the whole user aggregate per row, which does
+	// not scale to a boot-time sweep over every user).
+	UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error
+
 	// UpdateLanguage persists the user's last selected UI language. Kept out of
 	// Save/UpsertUser so profile mutations cannot clobber it.
 	UpdateLanguage(ctx context.Context, id vo.Id, language string) error
@@ -37,6 +43,10 @@ type Repository interface {
 	// ListIDs returns all user ids (for the optional connect-users flow on
 	// registration).
 	ListIDs(ctx context.Context) ([]vo.Id, error)
+
+	// ListUserIDsMissingOption returns every user id with no row for the given
+	// option name; it exists for the analytics-preference backfill.
+	ListUserIDsMissingOption(ctx context.Context, name string) ([]vo.Id, error)
 
 	// GetOptions loads just the option rows for a user (used by get-option-list,
 	// which does not need the full aggregate).

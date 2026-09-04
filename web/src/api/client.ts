@@ -7,6 +7,7 @@ import i18n from '@/app/i18n'
 import { queryClient } from '@/app/queryClient'
 import { queryKeys } from '@/app/queryKeys'
 import { navigateTo } from '@/app/routerRef'
+import { resetAnalyticsIdentity } from '@/lib/analytics'
 
 export const api = axios.create()
 
@@ -29,6 +30,10 @@ api.interceptors.response.use(
     const url: string = error.config?.url ?? ''
     if (status === 401 && !url.includes('/api/v1/user/login-user')) {
       removeToken()
+      // No page reload happens here (client-side navigation only), so the
+      // analytics module state would otherwise survive and misattribute the
+      // next person's login/register events on a shared browser.
+      resetAnalyticsIdentity()
       navigateTo('/login?reason=expired')
     }
     if (status === 402) {

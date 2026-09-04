@@ -98,6 +98,12 @@ type Deps struct {
 	// so this leaf never imports the version package). The web SPA ships
 	// embedded, so it can never be stale and ignores the key.
 	MinAppVersion string
+
+	// InstanceID is the per-deployment digest merged into the served
+	// econumo-config.js as INSTANCE_ID (instance.ID, resolved by the
+	// composition root against the migrated database). Empty (an unmigrated
+	// database) leaves the key absent, so the SPA sends no instance.
+	InstanceID string
 }
 
 // New builds the root http.Handler from deps.
@@ -153,7 +159,6 @@ func New(deps Deps) http.Handler {
 	// they always come from the backend; text/URL values are merged only when
 	// non-empty, leaving the embedded default in place otherwise.
 	overrides := map[string]any{
-		"ANALYTICS":          deps.Cfg.Analytics,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
@@ -168,6 +173,11 @@ func New(deps Deps) http.Handler {
 	// always matches the served binary.
 	if deps.SPAVersion != "" {
 		overrides["VERSION"] = deps.SPAVersion
+	}
+	// Identifies the deployment in product analytics; empty on a database that
+	// has not been migrated, in which case the SPA sends no instance.
+	if deps.InstanceID != "" {
+		overrides["INSTANCE_ID"] = deps.InstanceID
 	}
 	if deps.Cfg.AllowCustomAPI != nil {
 		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI

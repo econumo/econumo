@@ -1,4 +1,4 @@
-import { analyticsEnabled, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getBillingUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getBillingUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -67,17 +67,14 @@ describe('locale and version', () => {
   })
 })
 
-describe('analyticsEnabled', () => {
-  it.each([
-    [undefined, true],
-    [true, true],
-    ['true', true],
-    [false, false],
-    ['false', false],
-    ['garbage', true], // unknown fails OPEN: enabled-by-default contract
-  ])('ANALYTICS=%s -> %s', (value, expected) => {
-    window.econumoConfig = { ANALYTICS: value as boolean | string | undefined }
-    expect(analyticsEnabled()).toBe(expected)
+describe('getInstanceId', () => {
+  it('returns the empty string when unset', () => {
+    expect(getInstanceId()).toBe('')
+  })
+
+  it('returns the configured instance id', () => {
+    window.econumoConfig = { INSTANCE_ID: 'a3f19c02b7d4' }
+    expect(getInstanceId()).toBe('a3f19c02b7d4')
   })
 })
 
