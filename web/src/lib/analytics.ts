@@ -1,8 +1,10 @@
 // Twillingate capture transport — the only file that knows the collector exists.
-// Anonymous by construction: $install_id is a random per-page-load value held in
-// memory (never persisted anywhere), and only the whitelisted attributes built by
-// the caller ever leave the browser. The collector salts and daily-rotates the
-// id on its side, so nothing links a visitor across days.
+// Identified, not anonymous: once set, every batch carries a hashed user id
+// ($user_id, opaque — never the raw id or $user_name) and a per-instance group
+// ($group_id/$group_name identifying the deployment, not the person). Nothing
+// is written to the device — $install_id and the identity fields all live in
+// memory only, cleared by resetAnalyticsIdentity on logout (the group survives,
+// since it describes the instance rather than the visitor).
 // Wire format: POST /api/events, one batch per flush.
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
@@ -23,9 +25,30 @@ interface CapturedEvent {
 // Not crypto.randomUUID: that one is secure-context-only, so it is missing on a
 // self-hosted instance served over plain http://<lan-ip>, and this module-level
 // call would take the whole SPA down there. uuid falls back to getRandomValues.
-const installId = uuidv4()
+let installId = uuidv4()
 let queue: CapturedEvent[] = []
 let timer: ReturnType<typeof setTimeout> | null = null
+
+let userId: string | null = null
+let groupId: string | null = null
+let groupName: string | null = null
+
+export function setAnalyticsUser(id: string | null): void {
+  userId = id
+}
+
+export function setAnalyticsGroup(id: string, name: string): void {
+  groupId = id
+  groupName = name
+}
+
+// Called on logout. The install id is re-minted alongside so the next person on
+// a shared browser inherits nothing; the group is the deployment, not the
+// person, so it stays.
+export function resetAnalyticsIdentity(): void {
+  userId = null
+  installId = uuidv4()
+}
 
 export function analyticsDomain(hostname: string = window.location.hostname): string {
   if (hostname === 'econumo.com' || hostname.endsWith('.econumo.com')) {
@@ -62,7 +85,11 @@ function takeBatch(): string | null {
   // and beacons are the only transport that survives page teardown.
   const body = JSON.stringify({
     key: INGEST_KEY,
-    attributes: { $install_id: installId },
+    attributes: {
+      $install_id: installId,
+      ...(userId ? { $user_id: userId } : {}),
+      ...(groupId ? { $group_id: groupId, $group_name: groupName } : {}),
+    },
     events: queue,
   })
   queue = []

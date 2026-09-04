@@ -135,4 +135,30 @@ describe('capture', () => {
     expect(fetchMock).not.toHaveBeenCalled()
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })
+
+  it('carries identity on the batch and drops it on reset', () => {
+    analytics.setAnalyticsUser('a'.repeat(32))
+    analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+
+    analytics.capture('test_event')
+    vi.advanceTimersByTime(10_000)
+
+    const first = sentPayload()
+    expect(first.attributes.$user_id).toBe('a'.repeat(32))
+    expect(first.attributes.$group_id).toBe('a3f19c02b7d4')
+    expect(first.attributes.$group_name).toBe('selfhosted_a3f19c02b7d4')
+    expect(first.attributes.$user_name).toBeUndefined()
+    const installId = first.attributes.$install_id
+
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('after_logout')
+    vi.advanceTimersByTime(10_000)
+
+    const second = sentPayload(1)
+    expect(second.attributes.$user_id).toBeUndefined()
+    // A fresh install id so the next person on a shared browser is not linked.
+    expect(second.attributes.$install_id).not.toBe(installId)
+    // The group is the deployment, not the person, so it survives logout.
+    expect(second.attributes.$group_id).toBe('a3f19c02b7d4')
+  })
 })
