@@ -25,7 +25,7 @@ Twillingate JS SDK**, whose `identified` mode persists a visitor id in
 Under GDPR the events become personal data, so the design ships three things
 together: disclosure (privacy-policy revision), a lawful basis (legitimate
 interest), and a working right to object (the Settings toggle). The
-localStorage mirror of the opt-out (§6.4) is a user-preference store, the
+localStorage mirror of the opt-out (§5.4) is a user-preference store, the
 ePrivacy-exempt category, and does not disturb the above.
 
 `$user_name` is never sent. In identified mode the collector stores it
@@ -207,14 +207,18 @@ liltag/GTM tags are third-party, so an objection must stop them too.
 
 ## 6. Removing ECONUMO_ANALYTICS
 
-The variable is deleted from `internal/config` (field, strict parse, boot
-failure, tests), from the `econumo-config.js` merge, from `analyticsEnabled()`
-in `web/src/lib/config.ts` and `EconumoConfig`, and from `MERGED_KEYS` in
-`appConfig.ts` (replaced there by `INSTANCE_ID`). Analytics default to on.
+The variable stops reaching the application: it is removed from the
+`econumo-config.js` merge in `server.BuildAPI`, from `analyticsEnabled()` and
+`EconumoConfig` in `web/src/lib/config.ts`, from every call site in
+`metrics.ts`, and from `MERGED_KEYS` in `appConfig.ts` (replaced there by
+`INSTANCE_ID`). Analytics default to on.
 
-**One code path still reads it**: `migration:seed-analytics-option` (§7). This
-is the same shape as `ECONUMO_DATA_SALT` — deprecated and ignored by the app,
-honored by exactly one migration — and is documented next to it in CLAUDE.md.
+`config.Config.Analytics` **stays**, with its current strict parse, marked
+deprecated and consumed by exactly one code path:
+`migration:seed-analytics-option` (§7). This mirrors `ECONUMO_DATA_SALT`, which
+is likewise ignored by the API and read only by `data:remove-salt` via
+`c.cfg.DataSalt`, and is documented next to it in CLAUDE.md. `.env.example`
+drops the entry.
 Without it, every self-hoster who set `ECONUMO_ANALYTICS=false` would silently
 resume sending events on upgrade, since users default to on.
 
@@ -229,7 +233,7 @@ a command step with no `.sql` file, in the shape of `migration:zero-deleted-acco
 A SQL migration cannot do this job: it cannot read the environment, and it
 cannot mint UUIDv7 ids (SQLite has no UUID function).
 
-The command reads `ECONUMO_ANALYTICS` from the environment, selects users with
+The command reads `c.cfg.Analytics` (§6), selects users with
 no `analytics` option row, and inserts one each with a fresh UUIDv7 valued
 `"0"` when the variable says false and `"1"` otherwise, in one transaction,
 printing the count. Idempotent through `WHERE NOT EXISTS`. It lives in
