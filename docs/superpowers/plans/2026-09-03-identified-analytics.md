@@ -1217,10 +1217,20 @@ export function setAnalyticsGroup(id: string, name: string): void {
 // a shared browser inherits nothing; the group is the deployment, not the
 // person, so it stays.
 export function resetAnalyticsIdentity(): void {
+  flush()
   userId = null
   installId = uuidv4()
 }
 ```
+
+**Identity transitions must flush first.** Batch attributes are resolved in
+`takeBatch` at flush time, not at capture time, so a queue left pending across a
+logout/login would be transmitted under the *incoming* user's id — a
+cross-person misattribution on a shared device. `flush()` at the top of
+`resetAnalyticsIdentity`, and in `setAnalyticsUser` whenever the id actually
+changes, drains the queue under the outgoing identity. This is safe
+synchronously: `takeBatch` builds the request body before the `fetch` is
+deferred.
 
 In `takeBatch`, replace the fixed attributes object with:
 
