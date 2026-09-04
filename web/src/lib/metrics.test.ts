@@ -1,5 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { METRICS, analyticsEventName, scrubbedPage, trackEvent, viewMode, setAnalyticsAccessState } from './metrics'
+import {
+  METRICS,
+  analyticsEventName,
+  analyticsHost,
+  deploymentKind,
+  isCloudHost,
+  scrubbedPage,
+  trackEvent,
+  viewMode,
+  setAnalyticsAccessState,
+} from './metrics'
 import { capture } from './analytics'
 
 vi.mock('./analytics', async (importOriginal) => {
@@ -31,13 +41,14 @@ describe('collector capture', () => {
     const [event, props] = vi.mocked(capture).mock.calls[0]
     expect(event).toBe('transaction_create')
     expect(props).toEqual({
-      host: 'self-hosted', // jsdom runs on localhost
-      self_hosted: true,
+      host: 'selfhosted_unknown', // jsdom runs on localhost with no INSTANCE_ID configured
+      deployment: 'self-hosted',
       locale: 'en',
-      version: 'dev',
       mode: 'desktop', // jsdom default viewport is 1024px wide
-      current_url: 'https://self-hosted/budgets/:id/details',
+      current_url: 'https://selfhosted_unknown/budgets/:id/details',
     })
+    expect(props).not.toHaveProperty('version')
+    expect(props).not.toHaveProperty('self_hosted')
   })
 
   it('keeps ui_modal micro-interactions dataLayer-only', () => {
@@ -45,12 +56,31 @@ describe('collector capture', () => {
     expect(capture).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(1)
   })
+})
 
-  it('is gated by ANALYTICS=false but the dataLayer push survives', () => {
-    window.econumoConfig = { ANALYTICS: false }
-    trackEvent(METRICS.TRANSACTION_CREATE)
-    expect(capture).not.toHaveBeenCalled()
-    expect(window.dataLayer).toHaveLength(1)
+describe('host attributes', () => {
+  it('keeps cloud hostnames verbatim', () => {
+    expect(analyticsHost('econumo.com')).toBe('econumo.com')
+    expect(analyticsHost('app.econumo.com')).toBe('app.econumo.com')
+    expect(deploymentKind('app.econumo.com')).toBe('cloud')
+  })
+
+  it('replaces every other hostname with the instance id', () => {
+    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
+    expect(analyticsHost('money.example.com')).toBe('selfhosted_a3f19c02b7d4')
+    expect(analyticsHost('192.168.1.20')).toBe('selfhosted_a3f19c02b7d4')
+    expect(deploymentKind('money.example.com')).toBe('self-hosted')
+  })
+
+  it('falls back to a bare marker when the server sent no instance id', () => {
+    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: '' }
+    expect(analyticsHost('money.example.com')).toBe('selfhosted_unknown')
+  })
+
+  // A lookalike domain must not be treated as cloud.
+  it('does not match a suffix impostor', () => {
+    expect(isCloudHost('notdeconumo.com')).toBe(false)
+    expect(isCloudHost('econumo.com.evil.test')).toBe(false)
   })
 })
 

@@ -32,6 +32,14 @@ let timer: ReturnType<typeof setTimeout> | null = null
 let userId: string | null = null
 let groupId: string | null = null
 let groupName: string | null = null
+// Batch-level (not per-event) attributes — host/platform/version facts that
+// hold for the whole session, set once by the caller rather than recomputed
+// on every capture().
+let batchContext: Record<string, unknown> = {}
+
+export function setAnalyticsContext(attrs: Record<string, unknown>): void {
+  batchContext = attrs
+}
 
 export function setAnalyticsUser(id: string | null): void {
   if (id === userId) {
@@ -58,13 +66,6 @@ export function resetAnalyticsIdentity(): void {
   flush()
   userId = null
   installId = uuidv4()
-}
-
-export function analyticsDomain(hostname: string = window.location.hostname): string {
-  if (hostname === 'econumo.com' || hostname.endsWith('.econumo.com')) {
-    return hostname
-  }
-  return 'self-hosted'
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {
@@ -96,6 +97,7 @@ function takeBatch(): string | null {
   const body = JSON.stringify({
     key: INGEST_KEY,
     attributes: {
+      ...batchContext,
       $install_id: installId,
       ...(userId ? { $user_id: userId } : {}),
       ...(groupId ? { $group_id: groupId, $group_name: groupName } : {}),

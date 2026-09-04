@@ -32,15 +32,15 @@ function sentPayload(call = 0): Envelope {
   return JSON.parse(init.body as string)
 }
 
-describe('analyticsDomain', () => {
-  it.each([
-    ['econumo.com', 'econumo.com'],
-    ['app.econumo.com', 'app.econumo.com'],
-    ['myeconumo.com', 'self-hosted'],
-    ['budget.example.org', 'self-hosted'],
-    ['localhost', 'self-hosted'],
-  ])('%s -> %s', (hostname, expected) => {
-    expect(analytics.analyticsDomain(hostname)).toBe(expected)
+describe('setAnalyticsContext', () => {
+  it('spreads the given attributes into every flushed batch, not per-event', () => {
+    analytics.setAnalyticsContext({ $app_version: 'v1.2.3', $platform: 'web' })
+    analytics.capture('a')
+    vi.advanceTimersByTime(10_000)
+    const { attributes, events } = sentPayload()
+    expect(attributes.$app_version).toBe('v1.2.3')
+    expect(attributes.$platform).toBe('web')
+    expect(events[0].attributes).toEqual({})
   })
 })
 

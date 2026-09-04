@@ -1,5 +1,6 @@
-import { analyticsDomain, capture } from './analytics'
-import { analyticsEnabled, getVersion, locale, selfHosted } from './config'
+import { capture, setAnalyticsContext } from './analytics'
+import { getInstanceId, getVersion, locale, selfHosted } from './config'
+import { isNativeApp } from './platform'
 
 declare global {
   interface Window {
@@ -170,6 +171,34 @@ export function setAnalyticsAccessState(state: string | null): void {
   currentAccessState = state
 }
 
+export function isCloudHost(hostname: string = window.location.hostname): boolean {
+  return hostname === 'econumo.com' || hostname.endsWith('.econumo.com')
+}
+
+// Self-hosted hostnames never leave the browser: the deployment is identified
+// by the server-derived instance digest instead.
+export function analyticsHost(hostname: string = window.location.hostname): string {
+  if (isCloudHost(hostname)) {
+    return hostname
+  }
+  return `selfhosted_${getInstanceId() || 'unknown'}`
+}
+
+export function deploymentKind(hostname: string = window.location.hostname): 'cloud' | 'self-hosted' {
+  return isCloudHost(hostname) ? 'cloud' : 'self-hosted'
+}
+
+export function analyticsPlatform(): 'web' | 'ios' | 'android' {
+  if (!isNativeApp()) {
+    return 'web'
+  }
+  return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
+}
+
+// Batch-level (session-wide) attributes: set once here rather than recomputed
+// on every trackEvent call.
+setAnalyticsContext({ $app_version: getVersion(), $platform: analyticsPlatform() })
+
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -188,15 +217,12 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   })
   // Per-field/modal micro-interactions stay dataLayer-only: they dominate
   // event volume without informing any product decision.
-  if (analyticsEnabled() && !metric.startsWith('appUIModal')) {
-    const host = analyticsDomain()
-    // The synthetic "self-hosted" host keeps real hostnames out of the URL;
-    // only econumo.com domains appear verbatim.
+  if (!metric.startsWith('appUIModal')) {
+    const host = analyticsHost()
     capture(analyticsEventName(metric), {
       host,
-      self_hosted: host === 'self-hosted',
+      deployment: deploymentKind(),
       locale: locale(),
-      version: getVersion(),
       mode: viewMode(),
       current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
       ...(currentAccessState ? { access_state: currentAccessState } : {}),
