@@ -1,4 +1,5 @@
 import { capture, setAnalyticsContext } from './analytics'
+import { profileAttributes } from './analyticsProfile'
 import { getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
 
@@ -195,14 +196,18 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
 }
 
-// Batch-level (session-wide) attributes: set once here rather than recomputed
-// on every trackEvent call.
-setAnalyticsContext({ $app_version: getVersion(), $platform: analyticsPlatform() })
-
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
   }
+  // Batch-level (session-wide) attributes: recomputed on every call rather
+  // than fixed at module load, since the profile counts change as the query
+  // cache fills in behind the boot loader.
+  setAnalyticsContext({
+    $app_version: getVersion(),
+    $platform: analyticsPlatform(),
+    ...profileAttributes(),
+  })
   window.dataLayer = window.dataLayer || []
   window.dataLayer.push({
     event: metric,
