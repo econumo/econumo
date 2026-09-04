@@ -274,8 +274,12 @@ via its documented `NOT_WIRED` list. Analytics are identified, not anonymous:
 every batch carries a hashed user id (`$user_id`, a truncated SHA-256 over the
 user's id, computed client-side in `web/src/lib/analyticsId.ts`) and a
 per-instance group (`$group_id`, the bare per-deployment digest from
-`internal/infra/instance`; `$group_name`, the same `host` string described
-below), plus batch-level account-profile counts (connections, accounts,
+`internal/infra/instance`; `$group_name`, the same `host` value every event
+carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
+`selfhosted_<instance-digest>` (`isCloudHost`/`analyticsHost` in
+`web/src/lib/metrics.ts`), so a self-hosted deployment's real hostname never
+leaves the browser; `current_url` is built from that same synthetic host),
+plus batch-level account-profile counts (connections, accounts,
 categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
 `analytics` option (`users_options`, on by default) gates capture: it silences
 both the Twillingate collector and the `window.dataLayer`/liltag push, is
@@ -627,7 +631,7 @@ also invoked automatically at boot as migration step `20260817000001`.
 
 `migration:seed-analytics-option` backfills the per-user `analytics`
 `users_options` row for every user that has none, seeded from the deprecated
-`ECONUMO_ANALYTICS` value (see below); idempotent, and invoked automatically at
+`ECONUMO_ANALYTICS` value (above); idempotent, and invoked automatically at
 boot as migration step `20260903000000`.
 
 In the distroless image these run via the binary directly, e.g.
