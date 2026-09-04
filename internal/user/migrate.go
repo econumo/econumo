@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/econumo/econumo/internal/infra/auth"
+	"github.com/econumo/econumo/internal/model"
 )
 
 // MigrateRemoveDataSalt decrypts every user's email back to plaintext (AES
@@ -70,4 +71,36 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 		return 0, 0, err
 	}
 	return migrated, skipped, nil
+}
+
+// SeedAnalyticsOption writes the analytics preference row for every user that
+// has none, using the deprecated ECONUMO_ANALYTICS value as the seed so an
+// operator who disabled analytics before the per-user preference existed does
+// not silently start sending events again. Idempotent: users that already hold
+// the option are skipped, so a rerun is a no-op.
+func (s *Service) SeedAnalyticsOption(ctx context.Context) (int, error) {
+	var seeded int
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		ids, err := s.repo.ListUserIDsMissingOption(ctx, model.OptionAnalytics)
+		if err != nil {
+			return err
+		}
+		now := s.clock.Now()
+		for _, id := range ids {
+			u, gerr := s.repo.GetByID(ctx, id)
+			if gerr != nil {
+				return gerr
+			}
+			u.SetAnalytics(s.analyticsDefault, s.repo.NextIdentity(), now)
+			if serr := s.repo.Save(ctx, u); serr != nil {
+				return serr
+			}
+			seeded++
+		}
+		return nil
+	})
+	if err != nil {
+		return 0, err
+	}
+	return seeded, nil
 }

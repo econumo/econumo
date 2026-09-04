@@ -28,6 +28,18 @@ func migrationCommands() []command {
 				return nil
 			},
 		},
+		{
+			name:    "migration:seed-analytics-option",
+			summary: "write the per-user analytics preference for users that have none, seeded from ECONUMO_ANALYTICS (idempotent)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				n, err := c.user.SeedAnalyticsOption(ctx)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("seeded %d analytics preference(s)\n", n)
+				return nil
+			},
+		},
 	}
 }
 

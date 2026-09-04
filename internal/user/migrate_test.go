@@ -137,3 +137,35 @@ func TestMigrateRemoveDataSaltEmptySaltRefused(t *testing.T) {
 		t.Fatal("expected an error for an empty salt, got nil")
 	}
 }
+
+func TestSeedAnalyticsOption(t *testing.T) {
+	h := newHarnessWithAnalyticsDefault(t, false)
+	a := h.insertUserWithoutOptions(t, "a@example.test") // raw repo insert, no analytics row
+	b := h.insertUserWithoutOptions(t, "b@example.test")
+
+	n, err := h.svc.SeedAnalyticsOption(context.Background())
+	if err != nil {
+		t.Fatalf("SeedAnalyticsOption: %v", err)
+	}
+	if n != 2 {
+		t.Fatalf("seeded = %d, want 2", n)
+	}
+	for _, id := range []vo.Id{a.ID, b.ID} {
+		u, gerr := h.repo.GetByID(context.Background(), id)
+		if gerr != nil {
+			t.Fatalf("GetByID: %v", gerr)
+		}
+		if u.AnalyticsEnabled() {
+			t.Fatalf("user %s: analytics enabled, want the config default (off)", id)
+		}
+	}
+
+	// Idempotent: a rerun writes nothing and leaves values alone.
+	again, err := h.svc.SeedAnalyticsOption(context.Background())
+	if err != nil {
+		t.Fatalf("rerun: %v", err)
+	}
+	if again != 0 {
+		t.Fatalf("rerun seeded = %d, want 0", again)
+	}
+}
