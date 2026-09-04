@@ -73,8 +73,13 @@ The same digest identifies the instance as a Twillingate **group**: every batch
 carries `$group_id` equal to the bare 12-hex value, for cloud and self-hosted
 alike — never the host string. Per-instance activity and per-instance user
 counts then come from the collector's own group surfaces rather than ad-hoc
-SQL, and the group dimension carries no hostname at all. Cloud and demo are
-separate databases and therefore separate groups. No `$group_name` is sent.
+SQL. Cloud and demo are separate databases and therefore separate groups.
+
+`$group_name` carries the `host` value of §4, so the collector's group surfaces
+read `app.econumo.com`, `demo.econumo.com`, `selfhosted_a3f19c02b7d4` instead
+of bare digests. This discloses no real hostname: `host` is already synthetic
+for everything outside `*.econumo.com`. `$group_name` is persisted in both
+identity modes.
 
 The self-hosted `host` embeds the same digest (`selfhosted_<group>`), so the
 two dimensions join trivially. `$group_id` is stored raw in both identity modes
@@ -317,7 +322,7 @@ lagged its source before.
 
 ## 10. Non-goals
 
-No consent banner or consent gate. No `$user_name`. No `$group_name`. No
+No consent banner or consent gate. No `$user_name`. No
 `host_kind` attribute (`deployment` carries the only distinction asked for; the
 four-value variant that would have shown deployment shape was dropped). No
 server-side pageviews. No changes to how cloud hostnames are reported.
