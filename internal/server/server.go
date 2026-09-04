@@ -41,6 +41,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/i18n"
+	"github.com/econumo/econumo/internal/infra/instance"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
@@ -388,6 +389,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	if spaVersion == "" {
 		spaVersion = version.Version
 	}
+	// Failure here must not stop the server: analytics are not load-bearing.
+	instanceID, err := instance.ID(context.Background(), db)
+	if err != nil {
+		slog.Warn("instance id unavailable", "err", err)
+		instanceID = ""
+	}
 	return router.New(router.Deps{
 		Cfg:                cfg,
 		DB:                 pinger{db},
@@ -397,6 +404,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SPA:                spaFS,
 		SPAVersion:         spaVersion,
 		MinAppVersion:      compat.MinAppVersion,
+		InstanceID:         instanceID,
 	}), adminHandler, rateUpdater, nil
 }
 
