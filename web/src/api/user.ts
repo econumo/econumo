@@ -78,6 +78,11 @@ export async function updateCurrency(currency: string): Promise<CurrentUserDto> 
   return response.data.data.user
 }
 
+export async function updateAnalytics(enabled: boolean): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-analytics'), { enabled })
+  return response.data.data.user
+}
+
 export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-budget'), { value: budgetId })
   return response.data.data.user

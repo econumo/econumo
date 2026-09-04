@@ -22,6 +22,7 @@ export const METRICS = {
   USER_UPDATE_PASSWORD: 'appUserUpdatePassword',
   USER_CHANGE_EMAIL: 'appUserChangeEmail',
   USER_UPDATE_CURRENCY: 'appUserUpdateCurrency',
+  USER_UPDATE_ANALYTICS: 'appUserUpdateAnalytics',
   CURRENCY_CREATE: 'appCurrencyCreate',
   CURRENCY_UPDATE: 'appCurrencyUpdate',
   CURRENCY_DELETE: 'appCurrencyDelete',

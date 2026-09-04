@@ -607,7 +607,8 @@
           "groups": {
             "personal_details": "Persoonlijke gegevens",
             "preferences": "Voorkeuren",
-            "security": "Beveiliging"
+            "security": "Beveiliging",
+            "privacy": "Privacy"
           },
           "currency": {
             "label": "Valuta"
@@ -679,6 +680,10 @@
             },
             "revoke": "Intrekken",
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
+          },
+          "analytics": {
+            "label": "Gebruiksgegevens delen",
+            "description": "Helpt Econumo te verbeteren. Bevat nooit je financiële gegevens."
           }
         }
       }

@@ -199,6 +199,27 @@ it('clicking the avatar opens the avatar picker dialog', async () => {
   expect(within(dialog).getByText('Choose your avatar')).toBeInTheDocument()
 })
 
+it('toggles the analytics preference', async () => {
+  let body: unknown
+  server.use(
+    http.post('*/api/v1/user/update-analytics', async ({ request }) => {
+      body = await request.json()
+      return HttpResponse.json({
+        success: true, message: '',
+        data: { user: { ...fixtureUser, options: [...fixtureUser.options, { name: 'analytics', value: '0' }] } },
+      })
+    }),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const toggle = await screen.findByRole('switch', { name: /share usage data/i })
+  expect(toggle).toBeChecked()
+
+  await user.click(toggle)
+
+  await waitFor(() => expect(body).toEqual({ enabled: false }))
+})
+
 it('logout confirm has the exact copy and navigates', async () => {
   const user = userEvent.setup()
   renderPage()

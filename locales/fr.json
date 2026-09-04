@@ -607,7 +607,8 @@
           "groups": {
             "personal_details": "Informations personnelles",
             "preferences": "Préférences",
-            "security": "Sécurité"
+            "security": "Sécurité",
+            "privacy": "Confidentialité"
           },
           "currency": {
             "label": "Devise"
@@ -679,6 +680,10 @@
             },
             "revoke": "Révoquer",
             "confirm_revoke": "Révoquer ce jeton ? Les intégrations qui l’utilisent cesseront de fonctionner immédiatement."
+          },
+          "analytics": {
+            "label": "Partager les données d'utilisation",
+            "description": "Aide à améliorer Econumo. N'inclut jamais vos données financières."
           }
         }
       }

@@ -3,6 +3,7 @@ import { Check, ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useNavigate } from 'react-router'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { LanguageDialog } from '@/components/LanguageDialog'
 import { getLocaleOptions } from '@/lib/config'
@@ -15,7 +16,8 @@ import { apiFieldErrors } from '@/lib/apiError'
 import { isNotEmpty, isValidName } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useUserData, useUpdateName, useUpdateCurrency, userCurrencyId } from '@/features/user/queries'
+import { UserOptions } from '@/api/dto/user'
+import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, userCurrencyId, userOption } from '@/features/user/queries'
 import { SettingsShell } from './SettingsShell'
 
 
@@ -28,6 +30,8 @@ export function ProfilePage() {
   const { data: currencies } = useCurrencies()
   const updateCurrency = useUpdateCurrency()
   const currentCurrencyId = userCurrencyId(user)
+  const updateAnalytics = useUpdateAnalytics()
+  const analyticsOn = userOption(user, UserOptions.ANALYTICS) !== '0'
 
   const [name, setName] = useState('')
   const [nameError, setNameError] = useState<string | null>(null)
@@ -160,6 +164,23 @@ export function ProfilePage() {
           <ChevronRight className="size-4" />
         </span>
       </button>
+
+      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
+        {t('user.page.settings.profile.groups.privacy')}
+      </p>
+      <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
+        <label htmlFor="profile-analytics" className="text-sm">
+          {t('user.page.settings.profile.analytics.label')}
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t('user.page.settings.profile.analytics.description')}
+          </span>
+        </label>
+        <Switch
+          id="profile-analytics"
+          checked={analyticsOn}
+          onCheckedChange={(checked) => updateAnalytics.mutate(checked)}
+        />
+      </div>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.security')}
