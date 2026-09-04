@@ -218,6 +218,28 @@ type UpdateLanguageResult struct {
 }
 
 // ---------------------------------------------------------------------------
+// update-analytics
+// ---------------------------------------------------------------------------
+
+// UpdateAnalyticsRequest is the update-analytics request body. Enabled is a
+// pointer so an absent field is a validation error rather than a silent false.
+type UpdateAnalyticsRequest struct {
+	Enabled *bool `json:"enabled"`
+}
+
+func (r UpdateAnalyticsRequest) Validate() error {
+	if r.Enabled == nil {
+		return errs.NewValidation("Validation failed", errs.FieldError{Key: "enabled", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	return nil
+}
+
+// UpdateAnalyticsResult is the update-analytics response.
+type UpdateAnalyticsResult struct {
+	User CurrentUserResult `json:"user"`
+}
+
+// ---------------------------------------------------------------------------
 // update-password
 // ---------------------------------------------------------------------------
 

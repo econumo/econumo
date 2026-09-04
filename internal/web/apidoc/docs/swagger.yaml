@@ -2007,6 +2007,16 @@ definitions:
       user:
         $ref: '#/definitions/model.CurrentUserResult'
     type: object
+  model.UpdateAnalyticsRequest:
+    properties:
+      enabled:
+        type: boolean
+    type: object
+  model.UpdateAnalyticsResult:
+    properties:
+      user:
+        $ref: '#/definitions/model.CurrentUserResult'
+    type: object
   model.UpdateAvatarRequest:
     properties:
       color:
@@ -7680,6 +7690,48 @@ paths:
       security:
       - Bearer: []
       summary: Revoke a session
+      tags:
+      - User
+  /api/v1/user/update-analytics:
+    post:
+      consumes:
+      - application/json
+      description: Enables or disables product analytics for the authenticated user
+        and returns the refreshed user.
+      parameters:
+      - description: Update analytics request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateAnalyticsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateAnalyticsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update analytics preference
       tags:
       - User
   /api/v1/user/update-avatar:

@@ -74,6 +74,23 @@ func (s *Service) UpdateReportPeriod(ctx context.Context, userID vo.Id, req mode
 	return &model.UpdateReportPeriodResult{User: cur}, nil
 }
 
+// UpdateAnalytics writes the caller's product-analytics preference and returns
+// the refreshed current user.
+func (s *Service) UpdateAnalytics(ctx context.Context, userID vo.Id, req model.UpdateAnalyticsRequest) (*model.UpdateAnalyticsResult, error) {
+	u, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.SetAnalytics(*req.Enabled, s.repo.NextIdentity(), now)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	cur, err := s.toCurrentUser(ctx, u)
+	if err != nil {
+		return nil, err
+	}
+	return &model.UpdateAnalyticsResult{User: cur}, nil
+}
+
 // UpdateLanguage persists the caller's UI language. Write-only: nothing reads
 // it yet; it exists so future background emails can render in the user's
 // language. Deliberately not via mutate/Save (a dedicated UPDATE keeps the
