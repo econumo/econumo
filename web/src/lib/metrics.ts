@@ -1,4 +1,5 @@
 import { capture, setAnalyticsContext } from './analytics'
+import { analyticsAllowed } from './analyticsPreference'
 import { profileAttributes } from './analyticsProfile'
 import { getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
@@ -198,6 +199,11 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
 
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
+    return
+  }
+  // Both sinks are third-party (liltag/GTM tags read the dataLayer too), so
+  // an opt-out must gate here, before either one fires.
+  if (!analyticsAllowed()) {
     return
   }
   // Batch-level (session-wide) attributes: recomputed on every call rather

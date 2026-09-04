@@ -8,6 +8,7 @@ export const fixtureUser = {
   avatar: 'face:emerald',
   accessLevel: 'full' as const,
   accessUntil: '',
+  createdAt: '2024-01-01 00:00:00',
   options: [
     { name: 'currency', value: 'USD' },
     { name: 'currency_id', value: 'cur-usd' },

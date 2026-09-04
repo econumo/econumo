@@ -11,6 +11,8 @@ import {
   setAnalyticsAccessState,
 } from './metrics'
 import { capture } from './analytics'
+import * as analyticsModule from './analytics'
+import { rememberAnalyticsPreference } from './analyticsPreference'
 
 vi.mock('./analytics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./analytics')>()
@@ -19,9 +21,21 @@ vi.mock('./analytics', async (importOriginal) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  localStorage.clear()
   window.econumoConfig = {}
   window.dataLayer = []
   window.history.replaceState({}, '', '/')
+})
+
+it('sends nothing to either sink when opted out', () => {
+  const captureSpy = vi.spyOn(analyticsModule, 'capture')
+  window.dataLayer = []
+  rememberAnalyticsPreference(false)
+
+  trackEvent(METRICS.ACCOUNT_CREATE)
+
+  expect(captureSpy).not.toHaveBeenCalled()
+  expect(window.dataLayer).toHaveLength(0)
 })
 
 it('pushes the event with context to the dataLayer', () => {
