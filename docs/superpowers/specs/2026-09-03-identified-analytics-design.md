@@ -69,15 +69,17 @@ instance = sha256("econumo:instance:v1:" + version + "|" + applied_at).hex[:12]
 precision) before hashing, so the two drivers' timestamp representations cannot
 produce different digests for the same instance.
 
-The same value identifies the instance as a Twillingate **group**: every batch
-carries `$group_id` equal to the `host` value of §4 (`app.econumo.com`,
-`demo.econumo.com`, `selfhosted_a3f19c02b7d4`), so per-instance activity and
-per-instance user counts come from the collector's own group surfaces rather
-than from ad-hoc SQL. No `$group_name` is sent — it would be the hostname.
-`$group_id` is stored raw in both identity modes by design; ours is a digest of
-an install timestamp, so it discloses nothing `host` does not already carry,
-but note that a single-user self-hosted instance is a single-person group and
-should be treated as personal data.
+The same digest identifies the instance as a Twillingate **group**: every batch
+carries `$group_id` equal to the bare 12-hex value, for cloud and self-hosted
+alike — never the host string. Per-instance activity and per-instance user
+counts then come from the collector's own group surfaces rather than ad-hoc
+SQL, and the group dimension carries no hostname at all. Cloud and demo are
+separate databases and therefore separate groups. No `$group_name` is sent.
+
+The self-hosted `host` embeds the same digest (`selfhosted_<group>`), so the
+two dimensions join trivially. `$group_id` is stored raw in both identity modes
+by design; note that a single-user self-hosted instance is a single-person
+group and should be treated as personal data.
 
 Resolved once in `server.BuildAPI` and merged into the served
 `econumo-config.js` as `INSTANCE_ID`, preserving `spa.Handler`'s "overrides are
@@ -123,17 +125,18 @@ literal `'self-hosted'` string that no longer exists.
 
 ### 4.1 Versions
 
-The custom `version` attribute is ambiguous: on the web the SPA is embedded in
-the binary, so its value is both the client and the server version, but in the
-mobile app `VERSION` is deliberately absent from the `MERGED_KEYS` allowlist,
-so it reports the app build and the server's version is never sent at all.
-Replaced by an explicit pair:
+The custom `version` attribute is replaced by two reserved keys, which the
+collector rolls up automatically and which therefore must not be declared:
 
-- `$app_version` (reserved; rolls up automatically, no declaration) — the
-  client build, `getVersion()`.
-- `$platform` (reserved) — `web`, `ios` or `android`.
-- `server_version` (custom) — `useServerConfig().serverVersion` in app mode,
-  `getVersion()` on the web, where the merged `VERSION` is server truth.
+- `$app_version` — the client build, `getVersion()`.
+- `$platform` — `web`, `ios` or `android`.
+
+On the web these report the server's version too, because the SPA is embedded
+in the binary and the merged `VERSION` is server truth. In the mobile app
+`VERSION` is deliberately absent from the `MERGED_KEYS` allowlist, so
+`$app_version` is the app build and the server's version is not reported;
+an instance used exclusively through the app therefore has no version signal.
+Accepted: web users cover the version question for every instance that has any.
 
 The build plumbing is already correct and needs no change: `mobile-testflight`
 exports `ECONUMO_VERSION = v$(APP_VERSION)`, and the Docker build passes the
@@ -182,7 +185,7 @@ date. This is the section's one backend change: `CurrentUserResult` gains
 carries `CreatedAt`).
 
 The project's declared attributes become: `access_state`, `host`, `locale`,
-`mode`, `deployment`, `server_version`, `signup_year`, `signup_month`,
+`mode`, `deployment`, `signup_year`, `signup_month`,
 `connections`, `accounts`, `accounts_hidden`, `categories`,
 `categories_archived`, `payees`, `payees_archived`, `tags`, `tags_archived`.
 `version` is dropped; `$app_version` and `$platform` are reserved keys and must
