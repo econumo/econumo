@@ -69,6 +69,16 @@ instance = sha256("econumo:instance:v1:" + version + "|" + applied_at).hex[:12]
 precision) before hashing, so the two drivers' timestamp representations cannot
 produce different digests for the same instance.
 
+The same value identifies the instance as a Twillingate **group**: every batch
+carries `$group_id` equal to the `host` value of §4 (`app.econumo.com`,
+`demo.econumo.com`, `selfhosted_a3f19c02b7d4`), so per-instance activity and
+per-instance user counts come from the collector's own group surfaces rather
+than from ad-hoc SQL. No `$group_name` is sent — it would be the hostname.
+`$group_id` is stored raw in both identity modes by design; ours is a digest of
+an install timestamp, so it discloses nothing `host` does not already carry,
+but note that a single-user self-hosted instance is a single-person group and
+should be treated as personal data.
+
 Resolved once in `server.BuildAPI` and merged into the served
 `econumo-config.js` as `INSTANCE_ID`, preserving `spa.Handler`'s "overrides are
 fixed for the process lifetime" property. Added to `MERGED_KEYS` in
@@ -111,6 +121,28 @@ linked to the previous one.
 `isCloudHost(hostname)` predicate, since the old check compared against the
 literal `'self-hosted'` string that no longer exists.
 
+### 4.1 Versions
+
+The custom `version` attribute is ambiguous: on the web the SPA is embedded in
+the binary, so its value is both the client and the server version, but in the
+mobile app `VERSION` is deliberately absent from the `MERGED_KEYS` allowlist,
+so it reports the app build and the server's version is never sent at all.
+Replaced by an explicit pair:
+
+- `$app_version` (reserved; rolls up automatically, no declaration) — the
+  client build, `getVersion()`.
+- `$platform` (reserved) — `web`, `ios` or `android`.
+- `server_version` (custom) — `useServerConfig().serverVersion` in app mode,
+  `getVersion()` on the web, where the merged `VERSION` is server truth.
+
+The build plumbing is already correct and needs no change: `mobile-testflight`
+exports `ECONUMO_VERSION = v$(APP_VERSION)`, and the Docker build passes the
+release version, so only local dev builds report `dev`.
+
+Dropping the custom `version` splits history the same way `deployment` does.
+
+### 4.2 Deployment and profile
+
 `self_hosted` (boolean) is **renamed** to `deployment` (`cloud` |
 `self-hosted`). History splits at the switch: older rows carry the boolean,
 newer ones the string, and a query spanning both must coalesce. Existing
@@ -141,13 +173,20 @@ adapters, per-engine COUNT queries, and six extra counts on every
 
 Counts are sent raw, not bucketed — SQL can bucket later, but cannot unbucket.
 
-User creation date is **out of scope** (it would be the only backend DTO
-change in this section).
+Registration date ships as a stable cohort pair, `signup_year` (e.g. `2026`)
+and `signup_month` (`1`-`12`), read in UTC. The pair is preferred over a single
+"months old" value because a cohort label never drifts, while an age attribute
+changes for every user every month; age stays derivable in SQL from the event
+date. This is the section's one backend change: `CurrentUserResult` gains
+`createdAt` in the frozen `2006-01-02 15:04:05` layout (the entity already
+carries `CreatedAt`).
 
 The project's declared attributes become: `access_state`, `host`, `locale`,
-`mode`, `version`, `deployment`, `connections`, `accounts`, `accounts_hidden`,
-`categories`, `categories_archived`, `payees`, `payees_archived`, `tags`,
-`tags_archived`.
+`mode`, `deployment`, `server_version`, `signup_year`, `signup_month`,
+`connections`, `accounts`, `accounts_hidden`, `categories`,
+`categories_archived`, `payees`, `payees_archived`, `tags`, `tags_archived`.
+`version` is dropped; `$app_version` and `$platform` are reserved keys and must
+**not** be declared (the collector ignores `$`-prefixed entries in the list).
 
 ## 5. The opt-out preference
 
@@ -262,7 +301,8 @@ lagged its source before.
 - Go: `update-analytics` handler and use-case tests, the middleware
   read-only-allowlist test, the migration command's idempotency test.
 - `internal/test/apiparity` scenario for the new route plus golden regeneration;
-  `mcpparity` `get_user` goldens (the options array grows by one); `make swagger`.
+  `mcpparity` `get_user` goldens (the options array grows by one, and every
+  current-user payload gains `createdAt`); `make swagger`.
 - i18n keys in all 11 catalogues.
 - `docs/regression-test-plan.md` items for the toggle.
 - `.env.example` and CLAUDE.md: remove `ECONUMO_ANALYTICS`, document the
@@ -274,7 +314,7 @@ lagged its source before.
 
 ## 10. Non-goals
 
-No consent banner or consent gate. No `$user_name`. No user creation date. No
+No consent banner or consent gate. No `$user_name`. No `$group_name`. No
 `host_kind` attribute (`deployment` carries the only distinction asked for; the
 four-value variant that would have shown deployment shape was dropped). No
 server-side pageviews. No changes to how cloud hostnames are reported.
