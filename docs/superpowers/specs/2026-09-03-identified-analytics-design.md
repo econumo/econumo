@@ -212,8 +212,9 @@ and no new DTO field** — it rides the existing array like `currency_id` does.
   writes it, **appending the option when the row is missing** (`Repo.Save`
   upserts every entry in `u.Options`), so users predating the option need no
   special handling.
-- Registration calls `SetAnalytics(analyticsDefault, nextID(), now)` after
-  `SeedDefaultOptions`, so one code path creates the row.
+- Registration calls `SetAnalytics(true, nextID(), now)` after
+  `SeedDefaultOptions`, so one code path creates the row — unconditionally
+  enabled; `ECONUMO_ANALYTICS` does not reach this path (see §6).
 
 ### 5.2 Endpoint
 
@@ -262,13 +263,13 @@ The variable stops reaching the application: it is removed from the
 `INSTANCE_ID`). Analytics default to on.
 
 `config.Config.Analytics` **stays**, with its current strict parse, marked
-deprecated and consumed by exactly two code paths, both through
-`Service.analyticsDefault`: the backfill migration (§7) and registration
-seeding (§5.1), the latter covering self-service registration and CLI/admin
-user creation alike. It is therefore not fully inert like `ECONUMO_DATA_SALT`,
-which is read only by `data:remove-salt` — the variable still decides what a
-NEW user's preference starts as, it simply no longer gates anything at
-runtime. `.env.example` drops the entry; CLAUDE.md documents the distinction.
+deprecated and consumed by exactly one code path: the CLI reads `c.cfg.Analytics`
+and passes it as an argument into the backfill migration (§7). `user.Service`
+carries no knowledge of it at all — registration (§5.1) always seeds enabled.
+This makes it genuinely parallel to `ECONUMO_DATA_SALT`, which is read only by
+`data:remove-salt`: fully inert once the one-time migration has run, and safe
+to remove from the environment at that point. `.env.example` drops the entry;
+CLAUDE.md documents the distinction.
 
 The migration's one-time read is what makes the removal safe: without it, every
 self-hoster who set `ECONUMO_ANALYTICS=false` would silently resume sending
@@ -285,12 +286,13 @@ a command step with no `.sql` file, in the shape of `migration:zero-deleted-acco
 A SQL migration cannot do this job: it cannot read the environment, and it
 cannot mint UUIDv7 ids (SQLite has no UUID function).
 
-The command reads `c.cfg.Analytics` (§6), selects users with
-no `analytics` option row, and inserts one each with a fresh UUIDv7 valued
-`"0"` when the variable says false and `"1"` otherwise, in one transaction,
-printing the count. Idempotent through `WHERE NOT EXISTS`. It lives in
-`internal/cli/migration_commands.go` over a new `user.Service` method, mirroring
-`account.ZeroDeletedAccounts`.
+The command reads `c.cfg.Analytics` (§6) and passes it as the `enabled`
+argument to `user.Service.SeedAnalyticsOption(ctx, enabled)`, which selects
+users with no `analytics` option row and inserts one each with a fresh UUIDv7
+valued `"0"` when the argument is false and `"1"` otherwise, in one
+transaction, printing the count. Idempotent through `WHERE NOT EXISTS`. It
+lives in `internal/cli/migration_commands.go` over a new `user.Service`
+method, mirroring `account.ZeroDeletedAccounts`.
 
 The runner records the version once, so flipping the variable afterwards does
 nothing — by then the variable no longer exists.

@@ -32,7 +32,7 @@ func migrationCommands() []command {
 			name:    "migration:seed-analytics-option",
 			summary: "write the per-user analytics preference for users that have none, seeded from ECONUMO_ANALYTICS (idempotent)",
 			run: func(ctx context.Context, c *container, args []string) error {
-				n, err := c.user.SeedAnalyticsOption(ctx)
+				n, err := c.user.SeedAnalyticsOption(ctx, c.cfg.Analytics)
 				if err != nil {
 					return err
 				}

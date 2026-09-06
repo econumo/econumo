@@ -74,10 +74,11 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 }
 
 // SeedAnalyticsOption writes the analytics preference row for every user that
-// has none, using the deprecated ECONUMO_ANALYTICS value as the seed so an
-// operator who disabled analytics before the per-user preference existed does
-// not silently start sending events again. Idempotent: users that already hold
-// the option are skipped, so a rerun is a no-op.
+// has none, using enabled (the deprecated ECONUMO_ANALYTICS value, read by the
+// caller) as the seed so an operator who disabled analytics before the
+// per-user preference existed does not silently start sending events again.
+// Idempotent: users that already hold the option are skipped, so a rerun is a
+// no-op.
 //
 // Writes ONLY the analytics option row via Repo.UpsertOption, not the whole
 // user aggregate: this runs synchronously at boot, before the listener binds,
@@ -86,7 +87,7 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 // large instance it can block startup for minutes. The whole sweep still runs
 // in one transaction, so a mid-run failure rolls everything back and a retry
 // converges (WHERE NOT EXISTS makes it safe to re-run either way).
-func (s *Service) SeedAnalyticsOption(ctx context.Context) (int, error) {
+func (s *Service) SeedAnalyticsOption(ctx context.Context, enabled bool) (int, error) {
 	var seeded int
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		ids, err := s.repo.ListUserIDsMissingOption(ctx, model.OptionAnalytics)
@@ -95,7 +96,7 @@ func (s *Service) SeedAnalyticsOption(ctx context.Context) (int, error) {
 		}
 		now := s.clock.Now()
 		value := "0"
-		if s.analyticsDefault {
+		if enabled {
 			value = "1"
 		}
 		for _, id := range ids {

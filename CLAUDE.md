@@ -451,19 +451,19 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
-- `ECONUMO_ANALYTICS` — **Deprecated.** Product analytics is now a per-user `users_options`
-  preference (default on, toggled in Settings via `update-analytics`), not an
+- `ECONUMO_ANALYTICS` — **Deprecated and IGNORED by the application**, genuinely parallel
+  to `ECONUMO_DATA_SALT` now: read by exactly one migration, safe to delete once that
+  migration has run. Product analytics is now a per-user `users_options` preference
+  (default on for every new user, toggled in Settings via `update-analytics`), not an
   instance-wide switch, so this variable no longer reaches the SPA or the served
   config at all — it is dropped from the `econumo-config.js` merge entirely (see
-  `INSTANCE_ID` below). It survives in `config.Config` for exactly two consumers, both
-  transitional: it seeds the `analytics` option for every NEWLY created user (self-service
-  registration and CLI `user:create`, `s.analyticsDefault` in `internal/user`) until it is
-  removed, and it is the one-time seed value `migration:seed-analytics-option` (above)
-  reads to backfill the option for pre-existing users (`false` seeds opted out; anything
-  else, including unset, seeds opted in). Unlike `ECONUMO_DATA_SALT`, it is not yet fully
-  inert — an operator who leaves it set to `false` keeps every subsequently created user
-  opted out by default, so removing it (after running the backfill migration) is what
-  hands the on-by-default behavior to new signups too. Server-owned SPA config keys reach
+  `INSTANCE_ID` below) and no longer influences registration either way. Its one
+  consumer: the CLI reads `c.cfg.Analytics` and passes it into
+  `migration:seed-analytics-option` (above), the one-time backfill that seeds the
+  `analytics` option for users predating it (`false` seeds opted out; anything else,
+  including unset, seeds opted in). Once that migration has run on an instance, the
+  variable does nothing — the runner records the version and never reruns it — so it
+  can be removed from the environment. Server-owned SPA config keys reach
   the frontend via an `Object.assign(window.econumoConfig, …)` line the SPA handler
   appends to the served `/econumo-config.js`; the embedded dist file's static values are
   the fallback when a key is not overridden. `ALLOW_REGISTRATION` is always merged

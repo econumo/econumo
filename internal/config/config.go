@@ -25,9 +25,10 @@ type Config struct {
 	SQLiteBusyTimeout int
 	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 	// Analytics is ECONUMO_ANALYTICS: DEPRECATED. It no longer gates anything at
-	// runtime — the per-user preference does — and reaches the app only through
-	// Service.analyticsDefault, which seeds a new user's preference and the
-	// one-time migration:seed-analytics-option backfill.
+	// runtime — the per-user preference does — and no longer seeds new users
+	// either (they always start opted in). It reaches the app through exactly
+	// one path: the CLI reads it to seed the one-time
+	// migration:seed-analytics-option backfill for users predating the option.
 	Analytics                  bool
 	TrialDays                  int  // ECONUMO_TRIAL: length in days of the trial granted to a new self-service registration; 0 (default, also "none"/empty) grants no trial, i.e. permanent full access
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)

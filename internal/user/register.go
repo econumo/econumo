@@ -73,7 +73,10 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 
 	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
-	u.SetAnalytics(s.analyticsDefault, s.repo.NextIdentity(), now)
+	// Analytics default to on for every new user; the deprecated ECONUMO_ANALYTICS
+	// variable governs only the one-time migration:seed-analytics-option backfill
+	// of pre-existing users, not this path.
+	u.SetAnalytics(true, s.repo.NextIdentity(), now)
 	// The currency option stores an ID: seed the resolved default. Reads treat
 	// a user without a live currency id as data corruption, so a missing
 	// default-currency row fails registration instead of minting such a user.

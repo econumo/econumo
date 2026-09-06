@@ -31,7 +31,7 @@ func newSaltFreeUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.Pa
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo("sqlite", db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo("sqlite", db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false, true)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
 	return svc, hasher
 }
 
@@ -139,11 +139,11 @@ func TestMigrateRemoveDataSaltEmptySaltRefused(t *testing.T) {
 }
 
 func TestSeedAnalyticsOption(t *testing.T) {
-	h := newHarnessWithAnalyticsDefault(t, false)
+	h := newRegisterHarness(t)
 	a := h.insertUserWithoutOptions(t, "a@example.test") // raw repo insert, no analytics row
 	b := h.insertUserWithoutOptions(t, "b@example.test")
 
-	n, err := h.svc.SeedAnalyticsOption(context.Background())
+	n, err := h.svc.SeedAnalyticsOption(context.Background(), false)
 	if err != nil {
 		t.Fatalf("SeedAnalyticsOption: %v", err)
 	}
@@ -156,12 +156,12 @@ func TestSeedAnalyticsOption(t *testing.T) {
 			t.Fatalf("GetByID: %v", gerr)
 		}
 		if u.AnalyticsEnabled() {
-			t.Fatalf("user %s: analytics enabled, want the config default (off)", id)
+			t.Fatalf("user %s: analytics enabled, want the passed-in default (off)", id)
 		}
 	}
 
 	// Idempotent: a rerun writes nothing and leaves values alone.
-	again, err := h.svc.SeedAnalyticsOption(context.Background())
+	again, err := h.svc.SeedAnalyticsOption(context.Background(), false)
 	if err != nil {
 		t.Fatalf("rerun: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
 	svc := appuser.NewService(spy, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
-		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, true, 0, false, true)
+		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, true, 0, false)
 
 	ctx := context.Background()
 	now := clock.New().Now()
@@ -215,7 +215,7 @@ func TestSeedAnalyticsOptionWritesOnlyTheOptionRow(t *testing.T) {
 		t.Fatalf("seed user: %v", err)
 	}
 
-	n, err := svc.SeedAnalyticsOption(ctx)
+	n, err := svc.SeedAnalyticsOption(ctx, true)
 	if err != nil {
 		t.Fatalf("SeedAnalyticsOption: %v", err)
 	}

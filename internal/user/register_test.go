@@ -19,10 +19,10 @@ type registerHarness struct {
 	db   *dbtest.DB
 }
 
-func newHarnessWithAnalyticsDefault(t *testing.T, analyticsDefault bool) *registerHarness {
+func newRegisterHarness(t *testing.T) *registerHarness {
 	t.Helper()
 	db := dbtest.New(t)
-	svc, repo, _ := newTrialSvc(t, db, 0, analyticsDefault)
+	svc, repo, _ := newTrialSvc(t, db, 0)
 	return &registerHarness{svc: svc, repo: repo, db: db}
 }
 
@@ -57,26 +57,19 @@ func (h *registerHarness) insertUserWithoutOptions(t *testing.T, email string) *
 	return u
 }
 
-func TestRegisterSeedsAnalyticsOptionFromConfig(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		def  bool
-		want string
-	}{
-		{"default on", true, "1"},
-		{"default off", false, "0"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			h := newHarnessWithAnalyticsDefault(t, tc.def)
-			u := h.registerUser(t, "seed@example.test")
+// TestRegisterAlwaysSeedsAnalyticsEnabled asserts a new user is seeded opted
+// in regardless of the deprecated ECONUMO_ANALYTICS config value: the
+// config no longer reaches this path (it feeds only the one-time
+// migration:seed-analytics-option backfill of pre-existing users).
+func TestRegisterAlwaysSeedsAnalyticsEnabled(t *testing.T) {
+	h := newRegisterHarness(t)
+	u := h.registerUser(t, "seed@example.test")
 
-			o := u.Option(model.OptionAnalytics)
-			if o == nil || o.Value == nil {
-				t.Fatal("analytics option not seeded")
-			}
-			if *o.Value != tc.want {
-				t.Fatalf("value = %q, want %q", *o.Value, tc.want)
-			}
-		})
+	o := u.Option(model.OptionAnalytics)
+	if o == nil || o.Value == nil {
+		t.Fatal("analytics option not seeded")
+	}
+	if *o.Value != "1" {
+		t.Fatalf("value = %q, want %q", *o.Value, "1")
 	}
 }

@@ -318,6 +318,13 @@ func TestMigrationSeedAnalyticsOption_CommandAndRunner(t *testing.T) {
 	if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users_options WHERE name = 'analytics'`).Scan(&n); err != nil || n != 2 {
 		t.Fatalf("analytics rows=%d err=%v, want 2", n, err)
 	}
+	// ECONUMO_ANALYTICS is unset here, and config.Load defaults it to true, so
+	// the seeded rows must read "1" — proving the command actually threads
+	// c.cfg.Analytics into SeedAnalyticsOption rather than hardcoding a value.
+	var value string
+	if err := c.db.QueryRowContext(ctx, `SELECT value FROM users_options WHERE name = 'analytics' AND user_id = ?`, userA).Scan(&value); err != nil || value != "1" {
+		t.Fatalf("analytics value=%q err=%v, want \"1\" (config default)", value, err)
+	}
 	// second run is a no-op: no new rows, existing ones untouched
 	if code := Run([]string{"migration:seed-analytics-option"}); code != 0 {
 		t.Fatalf("exit code %d", code)
@@ -335,6 +342,34 @@ func TestMigrationSeedAnalyticsOption_CommandAndRunner(t *testing.T) {
 	}
 	if err := c.db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users_options WHERE name = 'analytics'`).Scan(&n); err != nil || n != 3 {
 		t.Fatalf("analytics rows after runner=%d err=%v, want 3", n, err)
+	}
+}
+
+// TestMigrationSeedAnalyticsOption_PassesConfigValueThrough proves the
+// command reads ECONUMO_ANALYTICS (via c.cfg.Analytics) rather than a
+// hardcoded default: with the variable explicitly set to false, the seeded
+// rows must read "0".
+func TestMigrationSeedAnalyticsOption_PassesConfigValueThrough(t *testing.T) {
+	cliEnv(t)
+	t.Setenv("ECONUMO_ANALYTICS", "false")
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	userA := vo.NewId().String()
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at) VALUES (?,?,?,'U','','x','','2026-01-01 00:00:00','2026-01-01 00:00:00')`, userA, userA, userA+"@e.test"); err != nil {
+		t.Fatalf("insert user: %v", err)
+	}
+
+	if code := Run([]string{"migration:seed-analytics-option"}); code != 0 {
+		t.Fatalf("exit code %d", code)
+	}
+	var value string
+	if err := c.db.QueryRowContext(ctx, `SELECT value FROM users_options WHERE name = 'analytics' AND user_id = ?`, userA).Scan(&value); err != nil || value != "0" {
+		t.Fatalf("analytics value=%q err=%v, want \"0\" (ECONUMO_ANALYTICS=false)", value, err)
 	}
 }
 
