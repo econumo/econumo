@@ -8,7 +8,15 @@
 
 **Tech Stack:** Go (stdlib `net/http`, sqlc, `modernc.org/sqlite` + `pgx`), React 19 + TypeScript + TanStack Query + vitest, Twillingate MCP for collector config.
 
-**Spec:** `docs/superpowers/specs/2026-09-03-identified-analytics-design.md` — read it first; this plan implements it and does not repeat its reasoning.
+**Spec:** `docs/superpowers/specs/2026-09-03-identified-analytics-design.md`
+
+> **Superseded in places.** This plan is a historical artifact: several of its
+> statements were corrected during execution (the CQRS read path in Task 2, the
+> accounts cache shape in Task 11, flushing before identity transitions in
+> Task 9), and a later change removed `Service.analyticsDefault` entirely —
+> `ECONUMO_ANALYTICS` now reaches the app only through the CLI migration, and
+> registration always seeds the preference enabled. The design spec and the
+> code are authoritative where they disagree with what follows. — read it first; this plan implements it and does not repeat its reasoning.
 
 ## Global Constraints
 

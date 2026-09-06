@@ -107,7 +107,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	rec := &recordingMailer{}
 	resetMailer := mailer.NewResetSender(rec, "", "")
 
-	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true, Analytics: true}
+	cfg := config.Config{CORSAllowedOrigins: []string{"*"}, AllowRegistration: true}
 	tokens := userrepo.NewAccessTokenRepo("sqlite", txm)
 	svc := appuser.NewService(repo, txm, encode, hasher, tokens, server.NewUserCurrencyLookup(currency), budgets, passwordReqs, resetMailer,
 		userrepo.NewEmailVerificationRepo("sqlite", txm), nil,

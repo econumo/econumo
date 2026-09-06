@@ -451,7 +451,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
-- `ECONUMO_ANALYTICS` — **Deprecated and IGNORED by the application**, genuinely parallel
+- `ECONUMO_ANALYTICS` — **Deprecated and IGNORED outside the one-time migration**, genuinely parallel
   to `ECONUMO_DATA_SALT` now: read by exactly one migration, safe to delete once that
   migration has run. Product analytics is now a per-user `users_options` preference
   (default on for every new user, toggled in Settings via `update-analytics`), not an
