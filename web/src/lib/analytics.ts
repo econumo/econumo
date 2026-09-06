@@ -9,7 +9,9 @@
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
 
-const COLLECTOR_URL = 'https://t.kuznetsov.dev/api/events'
+// t.econumo.com is a DNS alias for the same Twillingate collector/project/ingest
+// key as t.kuznetsov.dev — not a different service, just a project-branded hostname.
+const COLLECTOR_URL = 'https://t.econumo.com/api/events'
 // An ingest key is public by design (it can only ingest events).
 const INGEST_KEY = 'ak_be90b906b92397705359981ebced78ef'
 const FLUSH_AT = 10

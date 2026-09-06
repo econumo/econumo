@@ -64,14 +64,14 @@ We do not send any of the following to our analytics system:
   so we can tell installations apart from one another, not to locate or
   identify them.
 
-  <!-- TODO(owner, before publishing): verify this against the collector
-  before this goes live. The browser necessarily discloses your installation's
-  origin (hostname) and IP address to our collector as part of making the
-  request — this is unavoidable for any HTTP request, ours included. Our
-  intent, and our understanding of the collector's behavior, is that these are
-  discarded at ingestion and never written to the event data described above.
-  This bullet must not be published until that is confirmed against the
-  collector's actual behavior, not just its documented intent. -->
+  <!-- TODO(owner, before publishing): confirm this against the collector's
+  actual behavior before this goes live. The browser necessarily discloses
+  your installation's origin (hostname) and IP address to our collector as
+  part of making the request — this is unavoidable for any HTTP request, ours
+  included. We operate this collector ourselves, so this is our own
+  configuration to confirm, not a claim about a vendor's system — but it must
+  still be confirmed against what the collector actually does, not just what
+  we intended it to do, before this bullet is published. -->
 
 ### The pseudonymous identifier, plainly stated
 
@@ -112,11 +112,15 @@ your mind, you can turn it back on the same way.
 
 ### Retention and third parties
 
-Analytics data is retained by our analytics provider, Twillingate, under
-their own data-processing terms with us, and is not sold or shared with
-advertisers. [Retention period and any additional Twillingate-specific
-disclosures to be confirmed against our data-processing agreement before
-publication.]
+There is no third party here: Econumo's author operates the analytics
+collector himself, on infrastructure he runs, using his own tooling. He is
+the only person who ever sees this data. Nothing is sold, shared with
+advertisers, or handed to anyone else.
+
+<!-- TODO(owner, before publishing): state the retention period. This is the
+author's own configuration of the collector rather than a vendor's terms, but
+it is still an open value — fill in how long events are kept before this goes
+live. -->
 
 ---
 
@@ -125,15 +129,17 @@ publication.]
 - The "[DATE — to be filled in on publication]" placeholder should be set to
   the day the new analytics behavior actually starts sending identified
   events in production, not the day the policy is edited.
-- The retention/third-party paragraph has an open bracket that needs the
-  Twillingate DPA retention terms filled in before this goes live — do not
-  publish with the placeholder still in place.
+- The retention paragraph carries a TODO for the actual retention period —
+  it's the author's own collector configuration, not a vendor's terms, but it
+  still needs a real value filled in before this goes live.
 - The "What we do not collect" bullet about hostname/network address carries
   a TODO for the same reason: every collector request necessarily carries the
   installation's real `Origin` header and source IP (this cannot be
-  suppressed — it is how HTTP works), and the policy's claim that these are
-  discarded at ingestion is our intent, not something verified from this repo.
-  Confirm it against the collector's actual behavior before publishing.
+  suppressed — it is how HTTP works). Since the author runs the collector
+  himself, confirming that these are discarded at ingestion is his own
+  configuration to verify, not a vendor's claim to take on faith — but it must
+  still be confirmed against the collector's actual behavior before
+  publishing.
 - This wording was drafted against the implementation in
   `docs/superpowers/specs/2026-09-03-identified-analytics-design.md`; if that
   design changes before shipping (e.g. the attribute list, what counts are

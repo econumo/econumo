@@ -5,7 +5,7 @@ type AnalyticsModule = typeof import('./analytics')
 let analytics: AnalyticsModule
 let fetchMock: ReturnType<typeof vi.fn>
 
-const COLLECTOR = 'https://t.kuznetsov.dev/api/events'
+const COLLECTOR = 'https://t.econumo.com/api/events'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 beforeEach(async () => {
