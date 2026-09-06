@@ -682,8 +682,8 @@
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
           },
           "analytics": {
-            "label": "Gebruiksgegevens delen",
-            "description": "Helpt Econumo te verbeteren. Bevat nooit je financiële gegevens."
+            "label": "Gebruiksstatistieken delen",
+            "description": "Helpt ons Econumo te verbeteren. Financiële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
           }
         }
       }

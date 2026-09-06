@@ -212,7 +212,7 @@ it('toggles the analytics preference', async () => {
   )
   const user = userEvent.setup()
   renderPage()
-  const toggle = await screen.findByRole('switch', { name: /share usage data/i })
+  const toggle = await screen.findByRole('switch', { name: /share usage statistics/i })
   expect(toggle).toBeChecked()
 
   await user.click(toggle)

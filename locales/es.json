@@ -682,8 +682,8 @@
             "confirm_revoke": "¿Revocar este token? Las integraciones que lo usen dejarán de funcionar de inmediato."
           },
           "analytics": {
-            "label": "Compartir datos de uso",
-            "description": "Ayuda a mejorar Econumo. Nunca incluye tus datos financieros."
+            "label": "Compartir estadísticas de uso",
+            "description": "Nos ayuda a mejorar Econumo. Los datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
           }
         }
       }

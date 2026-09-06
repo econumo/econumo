@@ -1808,8 +1808,8 @@ Import `Switch` from `@/components/ui/switch`, and `userOption`/`UserOptions` fr
 Add three keys to `locales/en.json` under the existing `user.page.settings.profile` structure — `groups.privacy`, `analytics.label`, `analytics.description` — then the same keys with real translations in the other ten catalogues (`de`, `es`, `fr`, `it`, `nl`, `pl`, `pt`, `ru`, `uk`, `zh`). English text:
 
 - `groups.privacy`: `"Privacy"`
-- `analytics.label`: `"Share usage data"`
-- `analytics.description`: `"Helps improve Econumo. Never includes your financial data."`
+- `analytics.label`: `"Share usage statistics"`
+- `analytics.description`: `"Helps us improve Econumo. Financial data and personal information — name, email — are never sent."`
 
 - [ ] **Step 6: Run tests**
 
