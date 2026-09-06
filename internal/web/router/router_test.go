@@ -287,10 +287,10 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 	}
 }
 
-// INSTANCE_ID identifies the deployment in product analytics; it is merged
-// only when the composition root resolved one (instance.ID returns "" on an
-// unmigrated database, in which case the key stays absent and the SPA sends
-// no instance).
+// INSTANCE_ID identifies the deployment in product analytics; the key is
+// always present, carrying whatever the composition root resolved
+// (instance.ID returns "" on an unmigrated database, in which case the value
+// is "" and the SPA sends no instance).
 func TestRuntimeConfigOverrides_InstanceID(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {

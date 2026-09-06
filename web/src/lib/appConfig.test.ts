@@ -10,7 +10,17 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const SERVED = `window.econumoConfig = {
+// The current server (internal/web/router builds the complete map,
+// internal/web/spa writes it verbatim) emits the whole document as a single
+// assignment.
+const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x"};
+`
+
+// The app can be pointed at any user-chosen backend, including one running an
+// Econumo version older than this change, which still serves the dist file
+// plus an Object.assign merge suffix (two statements). evalConfigScript must
+// keep parsing this shape too.
+const SERVED_LEGACY_TWO_STATEMENT = `window.econumoConfig = {
   ALLOW_REGISTRATION: true,
   INSTANCE_ID: '',
   VERSION: null,
@@ -18,7 +28,7 @@ const SERVED = `window.econumoConfig = {
 Object.assign(window.econumoConfig, {"ALLOW_REGISTRATION":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x"});
 `
 
-it('evaluates the served config script including the server suffix', () => {
+it('evaluates the served config script (current single-assignment format)', () => {
   expect(evalConfigScript(SERVED)).toMatchObject({
     ALLOW_REGISTRATION: false,
     INSTANCE_ID: 'a3f19c02b7d4',
@@ -26,6 +36,15 @@ it('evaluates the served config script including the server suffix', () => {
     MIN_APP_VERSION: 'v1.1.0',
   })
   expect(evalConfigScript('not js {')).toBeNull()
+})
+
+it('evaluates a legacy two-statement response from a pre-change server', () => {
+  expect(evalConfigScript(SERVED_LEGACY_TWO_STATEMENT)).toMatchObject({
+    ALLOW_REGISTRATION: false,
+    INSTANCE_ID: 'a3f19c02b7d4',
+    VERSION: 'v1.4.2',
+    MIN_APP_VERSION: 'v1.1.0',
+  })
 })
 
 it('merges only the allowlist and stores the version handshake separately', async () => {

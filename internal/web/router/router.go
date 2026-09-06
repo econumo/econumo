@@ -89,7 +89,9 @@ type Deps struct {
 
 	// SPAVersion is the version string merged into the served econumo-config.js
 	// as VERSION (the binary version, or the ECONUMO_VERSION override), resolved
-	// by the composition root. Empty is tolerated (the embedded default remains).
+	// by the composition root. Empty is tolerated: VERSION is still emitted, as
+	// JSON null (never happens in production — server.BuildAPI always resolves
+	// a non-empty value).
 	SPAVersion string
 
 	// MinAppVersion is merged into the served econumo-config.js as
@@ -102,7 +104,8 @@ type Deps struct {
 	// InstanceID is the per-deployment digest merged into the served
 	// econumo-config.js as INSTANCE_ID (instance.ID, resolved by the
 	// composition root against the migrated database). Empty (an unmigrated
-	// database) leaves the key absent, so the SPA sends no instance.
+	// database) is still emitted as "" — the key is always present — so the
+	// SPA sends no instance.
 	InstanceID string
 }
 

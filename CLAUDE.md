@@ -255,8 +255,12 @@ tools/prompts from an `internal/<feature>/mcp/` package, composed at
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
 (shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
-router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
-`public/econumo-config.js` (`window.econumoConfig`); the UI version label is
+router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config
+(`window.econumoConfig`) is served at `/econumo-config.js`: for a running
+instance the Go server generates the whole document (see the "Web UI config"
+bullet below); `public/econumo-config.js` is only the static fallback used
+when there is no Go server in front of the SPA (the mobile app's bundled
+WebView, `pnpm dev` without a backend). The UI version label is
 `ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
