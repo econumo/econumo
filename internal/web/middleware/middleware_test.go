@@ -617,6 +617,15 @@ func TestReadonlyReachesBillingLink(t *testing.T) {
 	}
 }
 
+// A restricted user must still be able to withdraw from analytics: an objection
+// that only works while you are paying is not an objection.
+func TestReadonlyMayUpdateAnalytics(t *testing.T) {
+	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/update-analytics", readonlyStub())
+	if !ran || rec.Code == http.StatusPaymentRequired {
+		t.Fatalf("status = %d, ran = %v, want the handler to run", rec.Code, ran)
+	}
+}
+
 func TestAuth_CreatePersonalTokenIsNotAllowlisted(t *testing.T) {
 	rec, ran := authRequest(t, http.MethodPost, "/api/v1/user/create-personal-token", readonlyStub())
 	if rec.Code != http.StatusPaymentRequired {

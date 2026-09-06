@@ -29,6 +29,10 @@ func (pgsqlQuerier) ListUserIDs(ctx context.Context, db backend.DBTX) ([]string,
 	return pgsqlgen.New(db).ListUserIDs(ctx)
 }
 
+func (pgsqlQuerier) ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error) {
+	return pgsqlgen.New(db).ListUserIDsMissingOption(ctx, name)
+}
+
 func (pgsqlQuerier) UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error {
 	return pgsqlgen.New(db).UpsertUser(ctx, pgsqlgen.UpsertUserParams(p))
 }

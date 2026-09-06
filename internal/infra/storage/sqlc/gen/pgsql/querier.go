@@ -273,6 +273,10 @@ type Querier interface {
 	ListTagsByOwner(ctx context.Context, userID string) ([]Tag, error)
 	ListTransactionsByAccount(ctx context.Context, arg ListTransactionsByAccountParams) ([]ListTransactionsByAccountRow, error)
 	ListUserIDs(ctx context.Context) ([]string, error)
+	// Ordered by id so the backfill is deterministic across engines and reruns.
+	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
+	// engines even though postgresql's parser handles NOT EXISTS params fine).
+	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)

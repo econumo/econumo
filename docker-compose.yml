@@ -19,8 +19,6 @@ services:
       - "8181:80"
     volumes:
       - db:/app/var/db
-      # Override the SPA runtime config by mounting your own file:
-      #- ./econumo-config.js:/app/spa/econumo-config.js:ro
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/econumo", "healthcheck"]

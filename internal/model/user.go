@@ -22,6 +22,7 @@ const (
 	OptionReportPeriod = "report_period"
 	OptionBudget       = "budget"
 	OptionOnboarding   = "onboarding"
+	OptionAnalytics    = "analytics"
 
 	DefaultCurrency     = "USD"
 	DefaultReportPeriod = "monthly"
@@ -152,6 +153,17 @@ func (u *User) ReportPeriod() string {
 	return DefaultReportPeriod
 }
 
+// AnalyticsEnabled reports the user's product-analytics preference. Absent or
+// empty reads as enabled: rows predating the option, and any user the backfill
+// migration has not reached, default to the shipped behaviour.
+func (u *User) AnalyticsEnabled() bool {
+	o := u.Option(OptionAnalytics)
+	if o == nil || o.Value == nil || *o.Value == "" {
+		return true
+	}
+	return *o.Value != "0"
+}
+
 func (u *User) UpdateName(name string, now time.Time) {
 	u.Name = name
 	u.UpdatedAt = now
@@ -226,6 +238,21 @@ func (u *User) UpdateReportPeriod(period string, now time.Time) {
 		v := period
 		o.setValue(&v, now)
 	}
+}
+
+// SetAnalytics writes the preference, appending the option row when the user
+// has none — unlike the other option setters, which no-op on a missing row.
+// id is consumed only in that case.
+func (u *User) SetAnalytics(enabled bool, id vo.Id, now time.Time) {
+	v := "0"
+	if enabled {
+		v = "1"
+	}
+	if o := u.Option(OptionAnalytics); o != nil {
+		o.setValue(&v, now)
+		return
+	}
+	u.Options = append(u.Options, NewUserOption(id, OptionAnalytics, &v, now))
 }
 
 // UpdateBudget sets the user's active budget option.

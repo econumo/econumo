@@ -176,6 +176,7 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		Name:         u.Name,
 		Email:        email,
 		Avatar:       u.Avatar,
+		CreatedAt:    datetime.FormatOrEmpty(&u.CreatedAt),
 		Options:      options,
 		Currency:     code,
 		ReportPeriod: u.ReportPeriod(),

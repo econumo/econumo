@@ -25,19 +25,24 @@ const indexFile = "index.html"
 func Handler(fsys fs.FS, overrides map[string]any) http.Handler {
 	fileServer := http.FileServerFS(fsys)
 
-	// The runtime config is the one templated response: the dist file plus a
-	// merge of the server-owned keys, so the instance's environment genuinely
-	// controls the shipped SPA. Overrides are fixed for the process lifetime,
-	// so the merge line is built once here (encoding/json sorts map keys —
-	// the output is deterministic). Keys the server does not own stay
-	// whatever the dist file says.
-	var configSuffix []byte
+	// The runtime config is the one templated response. When the caller
+	// supplies a config map (production: internal/web/router always builds a
+	// COMPLETE one, every key with its default filled in Go), the served
+	// document is generated ENTIRELY from it — the dist file is never read,
+	// so its content is irrelevant once a map is supplied. The map is fixed
+	// for the process lifetime, so the document is built once here
+	// (encoding/json sorts map keys — the output is deterministic). Nil/empty
+	// overrides fall back to serving the dist file verbatim below: that is
+	// the seam several tests use, and the reason the dist file's defaults
+	// still matter for the mobile app bundle and `pnpm dev` without a backend
+	// (neither has a Go process in front of it to generate this document).
+	var runtimeConfig []byte
 	if len(overrides) > 0 {
-		merged, err := json.Marshal(overrides)
+		marshaled, err := json.Marshal(overrides)
 		if err != nil {
 			panic(fmt.Sprintf("spa: unmarshalable config overrides: %v", err))
 		}
-		configSuffix = fmt.Appendf(nil, "\nObject.assign(window.econumoConfig, %s);\n", merged)
+		runtimeConfig = fmt.Appendf(nil, "window.econumoConfig = %s;\n", marshaled)
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Clean the request path to prevent directory traversal. path.Clean on
@@ -54,8 +59,8 @@ func Handler(fsys fs.FS, overrides map[string]any) http.Handler {
 			return
 		}
 
-		if cleaned == "/econumo-config.js" && configSuffix != nil {
-			serveRuntimeConfig(w, r, fsys, configSuffix)
+		if cleaned == "/econumo-config.js" && runtimeConfig != nil {
+			serveRuntimeConfig(w, runtimeConfig)
 			return
 		}
 
@@ -98,16 +103,10 @@ func Handler(fsys fs.FS, overrides map[string]any) http.Handler {
 	})
 }
 
-func serveRuntimeConfig(w http.ResponseWriter, r *http.Request, fsys fs.FS, configSuffix []byte) {
-	content, err := fs.ReadFile(fsys, "econumo-config.js")
-	if err != nil {
-		http.NotFound(w, r)
-		return
-	}
+func serveRuntimeConfig(w http.ResponseWriter, content []byte) {
 	w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Write(content)
-	w.Write(configSuffix)
 }
 
 // setCacheControl picks the caching policy by path. Vite-fingerprinted files

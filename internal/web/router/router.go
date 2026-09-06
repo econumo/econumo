@@ -89,7 +89,9 @@ type Deps struct {
 
 	// SPAVersion is the version string merged into the served econumo-config.js
 	// as VERSION (the binary version, or the ECONUMO_VERSION override), resolved
-	// by the composition root. Empty is tolerated (the embedded default remains).
+	// by the composition root. Empty is tolerated: VERSION is still emitted, as
+	// JSON null (never happens in production — server.BuildAPI always resolves
+	// a non-empty value).
 	SPAVersion string
 
 	// MinAppVersion is merged into the served econumo-config.js as
@@ -98,6 +100,13 @@ type Deps struct {
 	// so this leaf never imports the version package). The web SPA ships
 	// embedded, so it can never be stale and ignores the key.
 	MinAppVersion string
+
+	// InstanceID is the per-deployment digest merged into the served
+	// econumo-config.js as INSTANCE_ID (instance.ID, resolved by the
+	// composition root against the migrated database). Empty (an unmigrated
+	// database) is still emitted as "" — the key is always present — so the
+	// SPA sends no instance.
+	InstanceID string
 }
 
 // New builds the root http.Handler from deps.
@@ -146,37 +155,56 @@ func New(deps Deps) http.Handler {
 	// SPA catch-all. Not wrapped in the API global chain (static assets do not
 	// need request-id/cors/timezone); spa.Handler refuses /api and /_ paths so
 	// it never shadows the server-side groups.
-	// The env-driven config keys are merged into the served econumo-config.js so
-	// .env values reach the frontend. One rule: the backend value overwrites the
-	// embedded default whenever it is present. Flags and VERSION are always
-	// present (a bool is never blank; VERSION defaults to the binary version), so
-	// they always come from the backend; text/URL values are merged only when
-	// non-empty, leaving the embedded default in place otherwise.
+	// The served econumo-config.js is now generated ENTIRELY here — spa.Handler
+	// writes this map verbatim, with no merge against the dist file — so every
+	// key ships with a default, matching exactly what web/public/econumo-config.js
+	// hard-codes for the two contexts with no Go server in front of them (the
+	// mobile app bundle, `pnpm dev` without a backend; see that file's header).
+	// One rule: the backend value overwrites the default whenever it is present.
+	allowCustomAPI := true
+	if deps.Cfg.AllowCustomAPI != nil {
+		allowCustomAPI = *deps.Cfg.AllowCustomAPI
+	}
+	liltagConfigURL := "/liltag-config.json"
+	if deps.Cfg.LiltagConfigURL != "" {
+		liltagConfigURL = deps.Cfg.LiltagConfigURL
+	}
+	// The dist default is the JS NUMBER 0, not the string "0" — LiltagCacheTTL
+	// is a plain string field (a raw seconds value passed through to the SPA),
+	// so an explicit override stays a JSON string while the untouched default
+	// preserves the dist file's original type rather than tidying it to match.
+	var liltagCacheTTL any = 0
+	if deps.Cfg.LiltagCacheTTL != "" {
+		liltagCacheTTL = deps.Cfg.LiltagCacheTTL
+	}
+	// The dist default is JS null. deps.SPAVersion is always non-empty in
+	// production (server.BuildAPI falls back to the binary version when
+	// ECONUMO_VERSION is unset), so an empty value here only happens when a
+	// caller builds Deps directly (tests).
+	var version any
+	if deps.SPAVersion != "" {
+		version = deps.SPAVersion
+	}
 	overrides := map[string]any{
-		"ANALYTICS":          deps.Cfg.Analytics,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
-		"BILLING_URL": deps.Cfg.BillingURL,
+		"BILLING_URL":       deps.Cfg.BillingURL,
+		"ALLOW_CUSTOM_API":  allowCustomAPI,
+		"LILTAG_CONFIG_URL": liltagConfigURL,
+		"LILTAG_CACHE_TTL":  liltagCacheTTL,
+		// Empty on a database that has not been migrated yet, in which case
+		// the SPA sends no instance identifier — matching the dist default.
+		"INSTANCE_ID": deps.InstanceID,
+		"VERSION":     version,
 	}
+	// MIN_APP_VERSION is the one key that stays conditional: the app's
+	// version-check treats a present-but-empty value differently from an
+	// absent one, so an unset floor is omitted entirely rather than emitted
+	// as "" (the dist file has no key for it either).
 	if deps.MinAppVersion != "" {
 		overrides["MIN_APP_VERSION"] = deps.MinAppVersion
-	}
-	// The running binary's version (or the ECONUMO_VERSION override), resolved by
-	// the composition root; always non-empty in production, so the UI label
-	// always matches the served binary.
-	if deps.SPAVersion != "" {
-		overrides["VERSION"] = deps.SPAVersion
-	}
-	if deps.Cfg.AllowCustomAPI != nil {
-		overrides["ALLOW_CUSTOM_API"] = *deps.Cfg.AllowCustomAPI
-	}
-	if deps.Cfg.LiltagConfigURL != "" {
-		overrides["LILTAG_CONFIG_URL"] = deps.Cfg.LiltagConfigURL
-	}
-	if deps.Cfg.LiltagCacheTTL != "" {
-		overrides["LILTAG_CACHE_TTL"] = deps.Cfg.LiltagCacheTTL
 	}
 	// The SPA is always embedded in the binary; deps.SPA is the injection seam
 	// for tests. A nil value falls back to the embedded FS.

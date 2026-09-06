@@ -607,7 +607,8 @@
           "groups": {
             "personal_details": "个人信息",
             "preferences": "偏好设置",
-            "security": "安全"
+            "security": "安全",
+            "privacy": "隐私"
           },
           "currency": {
             "label": "货币"
@@ -679,6 +680,10 @@
             },
             "revoke": "撤销",
             "confirm_revoke": "确定要撤销此令牌吗？使用该令牌的集成将立即停止工作。"
+          },
+          "analytics": {
+            "label": "分享使用统计",
+            "description": "帮助我们改进 Econumo。财务数据和个人信息（姓名、邮箱）绝不会被发送。"
           }
         }
       }

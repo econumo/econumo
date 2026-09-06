@@ -335,6 +335,44 @@ func TestEqualStrPtr(t *testing.T) {
 	}
 }
 
+func TestAnalyticsOption(t *testing.T) {
+	now := time.Date(2026, 9, 3, 10, 0, 0, 0, time.UTC)
+	u := &User{}
+
+	if !u.AnalyticsEnabled() {
+		t.Fatal("absent option must read as enabled")
+	}
+
+	// Missing row: SetAnalytics appends one, so users predating the option work.
+	u.SetAnalytics(false, vo.NewId(), now)
+	if len(u.Options) != 1 || u.Options[0].Name != OptionAnalytics {
+		t.Fatalf("options = %+v, want one analytics row", u.Options)
+	}
+	if got := *u.Options[0].Value; got != "0" {
+		t.Fatalf("value = %q, want \"0\"", got)
+	}
+	if u.AnalyticsEnabled() {
+		t.Fatal("AnalyticsEnabled = true after opting out")
+	}
+
+	// Existing row: updated in place, no second row, no new id.
+	id := u.Options[0].ID
+	later := now.Add(time.Hour)
+	u.SetAnalytics(true, vo.NewId(), later)
+	if len(u.Options) != 1 {
+		t.Fatalf("options = %d, want 1", len(u.Options))
+	}
+	if u.Options[0].ID != id {
+		t.Fatal("existing option id was replaced")
+	}
+	if !u.AnalyticsEnabled() {
+		t.Fatal("AnalyticsEnabled = false after opting in")
+	}
+	if !u.Options[0].UpdatedAt.Equal(later) {
+		t.Fatalf("UpdatedAt = %v, want %v", u.Options[0].UpdatedAt, later)
+	}
+}
+
 func TestOptionConstants_Pinned(t *testing.T) {
 	// These names + defaults are part of the wire/storage contract.
 	pins := map[string]string{

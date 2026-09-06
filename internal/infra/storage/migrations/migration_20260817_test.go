@@ -56,8 +56,12 @@ func TestMigration20260817_SeedsMembershipAndDropsBlacklist(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	if len(calls) != 1 || calls[0] != "migration:zero-deleted-accounts" {
-		t.Fatalf("command steps = %v", calls)
+	// Both command steps registered after the membership schema version run:
+	// zero-deleted-accounts (20260817000001) and the analytics backfill
+	// (20260903000000).
+	wantCalls := []string{"migration:zero-deleted-accounts", "migration:seed-analytics-option"}
+	if len(calls) != len(wantCalls) || calls[0] != wantCalls[0] || calls[1] != wantCalls[1] {
+		t.Fatalf("command steps = %v, want %v", calls, wantCalls)
 	}
 	got := idsInKeyOrder(t, db, `SELECT account_id FROM budgets_accounts WHERE budget_id = 'b1' ORDER BY account_id`)
 	assertSame(t, got, []string{"a-del-after", "a-live", "a-member"}, "seeded members")

@@ -4,8 +4,9 @@ import { backendHost } from './config'
 
 // The app bundles a static econumo-config.js; the user's server holds the
 // instance truth. Only these keys may cross over — everything else keeps its
-// bundled default by design.
-const MERGED_KEYS = ['ALLOW_REGISTRATION', 'ANALYTICS'] as const
+// bundled default by design. INSTANCE_ID is server truth too: an app pointed
+// at a self-hosted backend must report that backend's instance, not none.
+const MERGED_KEYS = ['ALLOW_REGISTRATION', 'INSTANCE_ID'] as const
 
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in
@@ -21,9 +22,10 @@ export const useServerConfig = create<{
   minAppVersion: null,
 }))
 
-// The served file is executable JS (`window.econumoConfig = {...}` plus an
-// Object.assign suffix the server appends), not JSON — run it against a stub
-// window instead of parsing it.
+// The served file is executable JS (`window.econumoConfig = {...};`, generated
+// whole by the Go server — see internal/web/router — or the static
+// public/econumo-config.js fallback), not JSON — run it against a stub window
+// instead of parsing it.
 export function evalConfigScript(text: string): Record<string, unknown> | null {
   try {
     const stub: { econumoConfig: Record<string, unknown> } = { econumoConfig: {} }

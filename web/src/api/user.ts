@@ -1,7 +1,11 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import { UserOptions } from './dto/user'
 import { deriveAccessState } from '@/lib/access'
+import { analyticsUserId } from '@/lib/analyticsId'
+import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
+import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
 
 // login-user is the one endpoint that responds with a bare {token, user}
@@ -10,6 +14,8 @@ export async function login(username: string, password: string): Promise<UserLog
   const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/user/login-user'), { username, password })
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
+  setAnalyticsUser(analyticsUserId(user.id))
+  rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }
 
@@ -72,6 +78,11 @@ export async function updateCurrency(currency: string): Promise<CurrentUserDto> 
   return response.data.data.user
 }
 
+export async function updateAnalytics(enabled: boolean): Promise<CurrentUserDto> {
+  const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-analytics'), { enabled })
+  return response.data.data.user
+}
+
 export async function updateDefaultBudget(budgetId: Id): Promise<CurrentUserDto> {
   const response = await api.post<CurrentUserResponseDto>(apiUrl('/api/v1/user/update-budget'), { value: budgetId })
   return response.data.data.user
@@ -81,6 +92,8 @@ export async function getUserData(): Promise<CurrentUserDto> {
   const response = await api.get<CurrentUserResponseDto>(apiUrl('/api/v1/user/get-user-data'))
   const user = response.data.data.user
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
+  setAnalyticsUser(analyticsUserId(user.id))
+  rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return user
 }
 

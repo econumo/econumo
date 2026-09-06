@@ -7,7 +7,7 @@
 -- The user's display fields for get-user-data / the login response user
 -- object, plus the raw access_level/access_until columns (the service
 -- collapses them against the clock before putting them on the wire).
-SELECT id, email, name, avatar, access_level, access_until
+SELECT id, email, name, avatar, access_level, access_until, created_at
 FROM users
 WHERE id = ?;
 

@@ -50,8 +50,10 @@ var ctxKeyTokenID ctxKeyTokenIDType
 // email address would be indefensible; create-billing-link is how a lapsed
 // user reaches the payment portal, so blocking it would 402 exactly the
 // person trying to fix their access; create-personal-token is excluded
-// because it mints new write-capable credentials. Account deletion joins this
-// list when it exists.
+// because it mints new write-capable credentials. update-analytics belongs
+// here because withdrawing consent to product analytics is a privacy right,
+// not a paid feature — it must work regardless of access level. Account
+// deletion joins this list when it exists.
 //
 // Exported so a guard test (internal/test/apiparity) can assert every path
 // here is still a real registered route, catching a route rename that would
@@ -74,6 +76,7 @@ var ReadonlyAllowedPaths = map[string]bool{
 	"/api/v1/user/request-email-change":     true,
 	"/api/v1/user/confirm-email-change":     true,
 	"/api/v1/user/resend-email-change-code": true,
+	"/api/v1/user/update-analytics":         true,
 }
 
 // Auth builds the authentication middleware. It reads the

@@ -6,6 +6,7 @@ export const UserOptions = {
   REPORT_PERIOD: 'report_period',
   BUDGET: 'budget',
   ONBOARDING: 'onboarding',
+  ANALYTICS: 'analytics',
 } as const
 export type UserOptions = (typeof UserOptions)[keyof typeof UserOptions]
 
@@ -29,6 +30,8 @@ export interface CurrentUserDto {
   accessLevel: 'full' | 'readonly'
   /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC; '' = no expiry */
   accessUntil: string
+  /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC */
+  createdAt: string
   /** @deprecated */
   currency: string
   /** @deprecated */

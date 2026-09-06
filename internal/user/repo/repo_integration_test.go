@@ -15,9 +15,11 @@ import (
 )
 
 const (
-	userA = "11111111-1111-1111-1111-111111111111"
-	userB = "22222222-2222-2222-2222-222222222222"
-	optID = "00000000-0000-0000-0000-0000000000a1"
+	userA  = "11111111-1111-1111-1111-111111111111"
+	userB  = "22222222-2222-2222-2222-222222222222"
+	userC  = "33333333-3333-3333-3333-333333333333"
+	optID  = "00000000-0000-0000-0000-0000000000a1"
+	optID2 = "00000000-0000-0000-0000-0000000000a2"
 )
 
 var fixedTime = time.Date(2024, 4, 1, 12, 0, 0, 0, time.UTC)
@@ -162,6 +164,39 @@ func TestUserRepo_ListIDs(t *testing.T) {
 	}
 	if len(ids) != 2 {
 		t.Errorf("want 2 ids, got %d", len(ids))
+	}
+}
+
+func TestUserRepo_ListUserIDsMissingOption(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+
+	with := newTestUser(vo.MustParseId(userA), userA+"@example.test", "With", "", "h", "s", true, fixedTime, fixedTime, nil)
+	without := newTestUser(vo.MustParseId(userB), userB+"@example.test", "Without", "", "h", "s", true, fixedTime, fixedTime, nil)
+	// otherOption has an option row, but never one named analytics: it discriminates a query
+	// that filters by name from a weaker one that only checks "has any option row at all"
+	// (both would agree on `with`/`without` alone).
+	themeVal := "dark"
+	otherOption := newTestUser(vo.MustParseId(userC), userC+"@example.test", "OtherOption", "", "h", "s", true, fixedTime, fixedTime,
+		[]model.UserOption{model.ReconstituteUserOption(vo.MustParseId(optID2), "theme", &themeVal, fixedTime, fixedTime)})
+	for _, u := range []*model.User{with, without, otherOption} {
+		if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+			t.Fatalf("Save %s: %v", u.ID, err)
+		}
+	}
+
+	with.SetAnalytics(true, repo.NextIdentity(), fixedTime)
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, with) }); err != nil {
+		t.Fatalf("Save with option: %v", err)
+	}
+
+	ids, err := repo.ListUserIDsMissingOption(ctx, model.OptionAnalytics)
+	if err != nil {
+		t.Fatalf("ListUserIDsMissingOption: %v", err)
+	}
+	want := []vo.Id{without.ID, otherOption.ID}
+	if len(ids) != len(want) || ids[0] != want[0] || ids[1] != want[1] {
+		t.Fatalf("ids = %v, want %v", ids, want)
 	}
 }
 

@@ -154,6 +154,7 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		Name:         u.Name,
 		Email:        email,
 		Avatar:       u.Avatar,
+		CreatedAt:    datetime.FormatOrEmpty(&u.CreatedAt),
 		Options:      options,
 		Currency:     currencyCode,
 		ReportPeriod: reportPeriod,

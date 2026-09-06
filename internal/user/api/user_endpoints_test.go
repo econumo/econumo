@@ -462,3 +462,26 @@ func TestGetUserData_CarriesAccessState(t *testing.T) {
 		t.Fatalf("accessUntil = %q, want empty for a user with no expiry", wrapper.User.AccessUntil)
 	}
 }
+
+func TestUpdateAnalytics(t *testing.T) {
+	h := newHarness(t)
+	token := h.issueToken(t)
+
+	status, env := h.do(t, http.MethodPost, "/api/v1/user/update-analytics", token, map[string]any{
+		"enabled": false,
+	})
+	if status != http.StatusOK {
+		t.Fatalf("status = %d, want 200: %s", status, env.raw)
+	}
+	if !strings.Contains(string(env.raw), `{"name":"analytics","value":"0"}`) {
+		t.Fatalf("analytics option missing from response: %s", env.raw)
+	}
+
+	status, env = h.do(t, http.MethodPost, "/api/v1/user/update-analytics", token, map[string]any{})
+	if status != http.StatusBadRequest {
+		t.Fatalf("missing enabled: status = %d, want 400: %s", status, env.raw)
+	}
+	if !strings.Contains(string(env.raw), "This value should not be blank.") {
+		t.Fatalf("unexpected body: %s", env.raw)
+	}
+}

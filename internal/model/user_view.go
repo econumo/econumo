@@ -24,6 +24,7 @@ type UserViewRow struct {
 	Avatar      string
 	AccessLevel AccessLevel
 	AccessUntil *time.Time
+	CreatedAt   time.Time
 }
 
 type OptionViewRow struct {

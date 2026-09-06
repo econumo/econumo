@@ -61,10 +61,12 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION` and `ANALYTICS` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
-store). App and server version-check each other in BOTH directions, one hard
-floor per side; both floors live in the single shared `compat/versions.json`
+store) — an app pointed at a self-hosted backend must report that backend's
+instance in product analytics, not none. App and server version-check each
+other in BOTH directions, one hard floor per side; both floors live in the
+single shared `compat/versions.json`
 (Go embeds it, the SPA imports it — same pattern as `locales/`):
 `minServerVersion` is the oldest server the app accepts, `minAppVersion`
 (served as `MIN_APP_VERSION`) the oldest app the server accepts — crossing
@@ -253,8 +255,12 @@ tools/prompts from an `internal/<feature>/mcp/` package, composed at
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
 (shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
-router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config is read from
-`public/econumo-config.js` (`window.econumoConfig`); the UI version label is
+router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config
+(`window.econumoConfig`) is served at `/econumo-config.js`: for a running
+instance the Go server generates the whole document (see the "Web UI config"
+bullet below); `public/econumo-config.js` is only the static fallback used
+when there is no Go server in front of the SPA (the mobile app's bundled
+WebView, `pnpm dev` without a backend). The UI version label is
 `ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
 same name sets it per image build, default `dev`). Lint is oxlint, tests are
 vitest (`pnpm test`).
@@ -268,7 +274,24 @@ short-circuit, e.g. the classification creates). Prefer the shared hook/store
 choke point over per-page call sites so every surface (pages, dialogs, inline
 creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
 suite if a `METRICS` key is never fired; a catalogue key may only be excused
-via its documented `NOT_WIRED` list.
+via its documented `NOT_WIRED` list. Analytics are identified, not anonymous:
+every batch carries a hashed user id (`$user_id`, a truncated SHA-256 over the
+user's id, computed client-side in `web/src/lib/analyticsId.ts`) and a
+per-instance group (`$group_id`, the bare per-deployment digest from
+`internal/infra/instance`; `$group_name`, the same `host` value every event
+carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
+`selfhosted_<instance-digest>` (`isCloudHost`/`analyticsHost` in
+`web/src/lib/metrics.ts`), so a self-hosted deployment's real hostname never
+appears in an event payload (the browser's request still discloses it via the
+mandatory `Origin` header, which the collector does not record); `current_url`
+is built from that same synthetic host),
+plus batch-level account-profile counts (connections, accounts,
+categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
+`analytics` option (`users_options`, on by default) gates capture: it silences
+both the Twillingate collector and the `window.dataLayer`/liltag push, is
+mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
+resolves after the first pageview), and is toggled via
+`POST /api/v1/user/update-analytics`.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
@@ -432,14 +455,21 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
 - `ECONUMO_CURRENCY_BASE` — base currency (default `USD`).
 - `ECONUMO_CHECK_UPDATES` — daily check for new releases against `econumo.com/releases/latest.json` (single server-side request; result served to the SPA via `get-update-info`). `false` disables it.
-- `ECONUMO_ANALYTICS` — anonymous product analytics from the SPA to Twillingate (default `true`).
-  `false` disables it instance-wide. Malformed values fail at boot (strict parse, unlike
-  the other booleans). Server-owned SPA config keys reach the frontend via an
-  `Object.assign(window.econumoConfig, …)` line the SPA handler appends to the served
-  `/econumo-config.js`; the embedded dist file's static values are the fallback when a
-  key is not overridden. `ANALYTICS` and `ALLOW_REGISTRATION` are always merged
-  (server truth); `ECONUMO_ALLOW_CUSTOM_API` merges `ALLOW_CUSTOM_API` only when set
-  (unset = keep the dist value).
+- `ECONUMO_ANALYTICS` — **Deprecated and IGNORED outside the one-time migration**, genuinely parallel
+  to `ECONUMO_DATA_SALT` now: read by exactly one migration, safe to delete once that
+  migration has run. Product analytics is now a per-user `users_options` preference
+  (default on for every new user, toggled in Settings via `update-analytics`), not an
+  instance-wide switch, so this variable no longer reaches the SPA or the served
+  config at all — it is dropped from the `econumo-config.js` merge entirely (see
+  `INSTANCE_ID` below) and no longer influences registration either way. Its one
+  consumer: the CLI reads `c.cfg.Analytics` and passes it into
+  `migration:seed-analytics-option` (above), the one-time backfill that seeds the
+  `analytics` option for users predating it (`false` seeds opted out; anything else,
+  including unset, seeds opted in). Once that migration has run on an instance, the
+  variable does nothing — the runner records the version and never reruns it — so it
+  can be removed from the environment. `ANALYTICS` itself carries no served
+  config key at all (see the "Web UI config" bullet below for how the rest of
+  `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -475,18 +505,37 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
 - **Web UI config** — the SPA is ALWAYS embedded in the binary (`web/embed.go`,
-  `//go:embed all:dist`); there is no disk-serving mode. Instance-specific
-  values reach the frontend by being merged into the served `econumo-config.js`
-  at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
-  `internal/web/spa`). One rule: the backend value overwrites the embedded
-  default when present. Each key maps to `ECONUMO_<KEY>`:
-  `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
-  from a URL instead of the bundled `liltag-config.json`),
-  `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
-  to the binary's `internal/version.Version`, overridable for demo/staging).
-  Flags (`ANALYTICS`, `ALLOW_REGISTRATION`) and `BILLING_URL` are always merged
-  (server truth); text/URL keys merge only when non-empty. The composition root
-  resolves the FS (`web.DistFS`) and version once in `server.BuildAPI`.
+  `//go:embed all:dist`); there is no disk-serving mode. For a server-served
+  instance, `internal/web/router` builds the COMPLETE `window.econumoConfig`
+  document in Go — every key, with its default filled in when the environment
+  does not override it — and `internal/web/spa` writes that document verbatim
+  as the served `econumo-config.js`; the embedded dist file
+  (`web/public/econumo-config.js`) is never read in this path. One rule: the
+  backend value overwrites the default when present. Most keys map to
+  `ECONUMO_<KEY>`: `ECONUMO_ALLOW_CUSTOM_API` (default `true`),
+  `ECONUMO_LILTAG_CONFIG_URL` (default `/liltag-config.json`; load liltag
+  config from a URL instead of the bundled `liltag-config.json`),
+  `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
+  (UI version label; default `null`, resolved to the binary's
+  `internal/version.Version` before reaching the router, overridable for
+  demo/staging). `ANALYTICS` no longer exists as a config key — analytics is a
+  per-user preference now, not instance-wide (see `ECONUMO_ANALYTICS` above).
+  `INSTANCE_ID` is the one key with no matching env var: it carries the
+  per-deployment digest (`internal/infra/instance`, resolved against the
+  migrated database), defaulting to `""` when unresolved; `migrate.Run` always
+  runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
+  already populated and a real id is present from the very first boot.
+  `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
+  `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
+  when empty, since the app's version-check treats a present-but-empty value
+  differently from an absent one. The composition root resolves the FS
+  (`web.DistFS`), version, and instance id once in `server.BuildAPI`.
+  `web/public/econumo-config.js` itself is a fallback baseline, not a source
+  of defaults for a served instance — it only matters for the mobile app's
+  bundled WebView and `pnpm dev` without a backend running (see that file's
+  header comment); mounting a replacement file over it in a container has no
+  effect (there is no disk-serving mode to read it from — use the `ECONUMO_*`
+  variables above instead).
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.
@@ -565,6 +614,7 @@ token:purge [days]
 data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
+migration:seed-analytics-option
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -593,6 +643,11 @@ schema-version mismatch between source and target.
 deleted)" correction so every deleted account's balance is zero; idempotent;
 also invoked automatically at boot as migration step `20260817000001`.
 
+`migration:seed-analytics-option` backfills the per-user `analytics`
+`users_options` row for every user that has none, seeded from the deprecated
+`ECONUMO_ANALYTICS` value (above); idempotent, and invoked automatically at
+boot as migration step `20260903000000`.
+
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
 
@@ -618,7 +673,9 @@ In the distroless image these run via the binary directly, e.g.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update, email change); `GET` reads are never restricted.
+  revocation, password update, email change — plus `update-analytics`: withdrawing
+  from product analytics is a privacy right, not a paid feature, so it must work
+  regardless of access level); `GET` reads are never restricted.
 
 ## Authentication
 

@@ -6,6 +6,7 @@ import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { getBillingUrl } from '@/lib/config'
 import { accessDaysLeft, deriveAccessState } from '@/lib/access'
 import type { AccessState } from '@/lib/access'
@@ -130,6 +131,28 @@ export function useCompleteOnboarding() {
     onSuccess: (user) => {
       queryClient.setQueryData(queryKeys.user, user)
       trackEvent(METRICS.USER_COMPLETE_ONBOARDING)
+    },
+  })
+}
+
+export function useUpdateAnalytics() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (enabled: boolean) => {
+      // Fired before the write so an opting-out user's last event still lands;
+      // opting in is tracked after, once events are allowed again.
+      if (!enabled) {
+        trackEvent(METRICS.USER_UPDATE_ANALYTICS, { enabled })
+      }
+      const user = await userApi.updateAnalytics(enabled)
+      rememberAnalyticsPreference(enabled)
+      if (enabled) {
+        trackEvent(METRICS.USER_UPDATE_ANALYTICS, { enabled })
+      }
+      return user
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData(queryKeys.user, user)
     },
   })
 }
