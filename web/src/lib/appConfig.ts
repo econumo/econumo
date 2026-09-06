@@ -22,9 +22,10 @@ export const useServerConfig = create<{
   minAppVersion: null,
 }))
 
-// The served file is executable JS (`window.econumoConfig = {...}` plus an
-// Object.assign suffix the server appends), not JSON — run it against a stub
-// window instead of parsing it.
+// The served file is executable JS (`window.econumoConfig = {...};`, generated
+// whole by the Go server — see internal/web/router — or the static
+// public/econumo-config.js fallback), not JSON — run it against a stub window
+// instead of parsing it.
 export function evalConfigScript(text: string): Record<string, unknown> | null {
   try {
     const stub: { econumoConfig: Record<string, unknown> } = { econumoConfig: {} }

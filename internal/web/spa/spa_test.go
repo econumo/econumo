@@ -92,21 +92,21 @@ func TestSPA_CacheHeaders(t *testing.T) {
 	}
 }
 
+// When the caller supplies a config map (the production case: internal/web/router
+// always builds a COMPLETE map, one entry per key, defaults filled in Go), the
+// served document is generated entirely from it — no read of the dist file, no
+// merge suffix. This is the whole point of Change 1: defaults move from JS to Go.
 func TestSPA_RuntimeConfigOverride(t *testing.T) {
-	h := Handler(newSPAFS(t), map[string]any{"ANALYTICS": false, "ALLOW_REGISTRATION": true})
+	h := Handler(newSPAFS(t), map[string]any{"ALLOW_REGISTRATION": true, "VERSION": nil})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", rec.Code)
 	}
-	body := rec.Body.String()
-	if !strings.HasPrefix(body, "window.econumoConfig={}") {
-		t.Fatalf("body does not start with the dist config: %q", body)
-	}
-	// encoding/json sorts map keys, so the merge line is deterministic.
-	want := `Object.assign(window.econumoConfig, {"ALLOW_REGISTRATION":true,"ANALYTICS":false});`
-	if !strings.Contains(body, want) {
-		t.Fatalf("body missing %q: %q", want, body)
+	// encoding/json sorts map keys, so the document is deterministic.
+	want := "window.econumoConfig = {\"ALLOW_REGISTRATION\":true,\"VERSION\":null};\n"
+	if got := rec.Body.String(); got != want {
+		t.Fatalf("body = %q, want %q", got, want)
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "no-cache" {
 		t.Fatalf("Cache-Control = %q, want %q", got, "no-cache")
@@ -116,6 +116,50 @@ func TestSPA_RuntimeConfigOverride(t *testing.T) {
 	}
 }
 
+// Proves the served document does NOT come from the dist file when a config map
+// is supplied: an FS whose econumo-config.js holds a completely different value
+// must have no effect on the response — the map is the sole source.
+func TestSPA_RuntimeConfigOverride_IgnoresDistFileContent(t *testing.T) {
+	fsys := fstest.MapFS{
+		"index.html":        {Data: []byte("<!doctype html>")},
+		"econumo-config.js": {Data: []byte("window.econumoConfig={DIST_ONLY_MARKER:true};")},
+	}
+	h := Handler(fsys, map[string]any{"ALLOW_REGISTRATION": false})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	body := rec.Body.String()
+	if strings.Contains(body, "DIST_ONLY_MARKER") {
+		t.Fatalf("body leaked dist file content: %q", body)
+	}
+	want := "window.econumoConfig = {\"ALLOW_REGISTRATION\":false};\n"
+	if body != want {
+		t.Fatalf("body = %q, want %q", body, want)
+	}
+}
+
+// With a config map supplied, the handler never reads the dist file at all —
+// a missing econumo-config.js in fsys is not an error (unlike the no-overrides
+// fallback below, where the file IS the response).
+func TestSPA_RuntimeConfigOverride_FileAbsentIsFine(t *testing.T) {
+	fsys := fstest.MapFS{"index.html": {Data: []byte("<!doctype html>")}}
+	h := Handler(fsys, map[string]any{"ALLOW_REGISTRATION": true})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	want := "window.econumoConfig = {\"ALLOW_REGISTRATION\":true};\n"
+	if got := rec.Body.String(); got != want {
+		t.Fatalf("body = %q, want %q", got, want)
+	}
+}
+
+// The nil/empty-overrides fallback is the injection seam several tests (and the
+// mobile bundle / `pnpm dev`-without-backend contexts) rely on: serve the dist
+// file verbatim, untouched.
 func TestSPA_RuntimeConfigNoOverrides(t *testing.T) {
 	h := Handler(newSPAFS(t), nil)
 	rec := httptest.NewRecorder()
@@ -128,8 +172,8 @@ func TestSPA_RuntimeConfigNoOverrides(t *testing.T) {
 	}
 }
 
-func TestSPA_RuntimeConfigMissingFile(t *testing.T) {
-	h := Handler(fstest.MapFS{}, map[string]any{"ANALYTICS": true})
+func TestSPA_RuntimeConfigNoOverrides_MissingFile(t *testing.T) {
+	h := Handler(fstest.MapFS{}, nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/econumo-config.js", nil))
 	if rec.Code != http.StatusNotFound {

@@ -463,13 +463,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `analytics` option for users predating it (`false` seeds opted out; anything else,
   including unset, seeds opted in). Once that migration has run on an instance, the
   variable does nothing — the runner records the version and never reruns it — so it
-  can be removed from the environment. Server-owned SPA config keys reach
-  the frontend via an `Object.assign(window.econumoConfig, …)` line the SPA handler
-  appends to the served `/econumo-config.js`; the embedded dist file's static values are
-  the fallback when a key is not overridden. `ALLOW_REGISTRATION` is always merged
-  (server truth); `ECONUMO_ALLOW_CUSTOM_API` merges `ALLOW_CUSTOM_API` only when set
-  (unset = keep the dist value); `INSTANCE_ID` (the per-deployment digest, see below)
-  merges only when the database has been migrated (empty until then).
+  can be removed from the environment. `ANALYTICS` itself carries no served
+  config key at all (see the "Web UI config" bullet below for how the rest of
+  `econumo-config.js` — `ALLOW_CUSTOM_API`, `INSTANCE_ID`, etc. — is generated).
 - `MAILER_DSN` — mail transport for password-reset email; the scheme selects the provider, exactly
   as `DATABASE_URL`'s scheme selects the DB engine. Empty (default) = the **console** transport (renders
   each email to stdout — a dev aid that never silently drops mail); `resend://<api_key>` sends via Resend.
@@ -505,26 +501,37 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   (message `"Too many attempts. Try again later."`, frozen). State is in-memory (resets on
   restart); a malformed value fails at boot.
 - **Web UI config** — the SPA is ALWAYS embedded in the binary (`web/embed.go`,
-  `//go:embed all:dist`); there is no disk-serving mode. Instance-specific
-  values reach the frontend by being merged into the served `econumo-config.js`
-  at runtime (the `Object.assign(window.econumoConfig, …)` suffix in
-  `internal/web/spa`). One rule: the backend value overwrites the embedded
-  default when present. Most keys map to `ECONUMO_<KEY>`:
-  `ECONUMO_ALLOW_CUSTOM_API`, `ECONUMO_LILTAG_CONFIG_URL` (load liltag config
-  from a URL instead of the bundled `liltag-config.json`),
-  `ECONUMO_LILTAG_CACHE_TTL`, and `ECONUMO_VERSION` (UI version label; defaults
-  to the binary's `internal/version.Version`, overridable for demo/staging).
-  `ANALYTICS` no longer exists as a config key — analytics is a per-user
-  preference now, not instance-wide (see `ECONUMO_ANALYTICS` above). `INSTANCE_ID`
-  is the one merged key with no matching env var: it carries the per-deployment
-  digest (`internal/infra/instance`, resolved against the migrated database) and
-  is merged whenever non-empty; `migrate.Run` always runs before `server.Build`
-  (`cmd/econumo/main.go`), so `schema_migrations` is already populated and the
-  key is present from the very first boot.
-  Flags (`ALLOW_REGISTRATION`) and `BILLING_URL` are always merged (server truth);
-  text/URL keys, including `INSTANCE_ID`, merge only when non-empty. The
-  composition root resolves the FS (`web.DistFS`), version, and instance id once
-  in `server.BuildAPI`.
+  `//go:embed all:dist`); there is no disk-serving mode. For a server-served
+  instance, `internal/web/router` builds the COMPLETE `window.econumoConfig`
+  document in Go — every key, with its default filled in when the environment
+  does not override it — and `internal/web/spa` writes that document verbatim
+  as the served `econumo-config.js`; the embedded dist file
+  (`web/public/econumo-config.js`) is never read in this path. One rule: the
+  backend value overwrites the default when present. Most keys map to
+  `ECONUMO_<KEY>`: `ECONUMO_ALLOW_CUSTOM_API` (default `true`),
+  `ECONUMO_LILTAG_CONFIG_URL` (default `/liltag-config.json`; load liltag
+  config from a URL instead of the bundled `liltag-config.json`),
+  `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
+  (UI version label; default `null`, resolved to the binary's
+  `internal/version.Version` before reaching the router, overridable for
+  demo/staging). `ANALYTICS` no longer exists as a config key — analytics is a
+  per-user preference now, not instance-wide (see `ECONUMO_ANALYTICS` above).
+  `INSTANCE_ID` is the one key with no matching env var: it carries the
+  per-deployment digest (`internal/infra/instance`, resolved against the
+  migrated database), defaulting to `""` when unresolved; `migrate.Run` always
+  runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
+  already populated and a real id is present from the very first boot.
+  `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
+  `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
+  when empty, since the app's version-check treats a present-but-empty value
+  differently from an absent one. The composition root resolves the FS
+  (`web.DistFS`), version, and instance id once in `server.BuildAPI`.
+  `web/public/econumo-config.js` itself is a fallback baseline, not a source
+  of defaults for a served instance — it only matters for the mobile app's
+  bundled WebView and `pnpm dev` without a backend running (see that file's
+  header comment); mounting a replacement file over it in a container has no
+  effect (there is no disk-serving mode to read it from — use the `ECONUMO_*`
+  variables above instead).
 - `ECONUMO_LOG_LEVEL` — base slog level `debug|info|warn|error` (default `info`). Every command
   (`serve` and all resource:action commands) also accepts `-v`/`-vv`/`-vvv` (force DEBUG; `-vvv` adds source)
   and `-q` (quiet); flags override `ECONUMO_LOG_LEVEL`. Resolution lives in `internal/logging`.

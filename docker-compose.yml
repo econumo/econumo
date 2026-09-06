@@ -19,8 +19,11 @@ services:
       - "8181:80"
     volumes:
       - db:/app/var/db
-      # Override the SPA runtime config by mounting your own file:
-      #- ./econumo-config.js:/app/spa/econumo-config.js:ro
+      # There is no disk-serving mode and no /app/spa in the image — the SPA is
+      # embedded in the binary and the server generates its own complete
+      # econumo-config.js. To override its values, set the matching env vars
+      # in .env instead: ECONUMO_ALLOW_CUSTOM_API, ECONUMO_LILTAG_CONFIG_URL,
+      # ECONUMO_LILTAG_CACHE_TTL, ECONUMO_BILLING_URL, ECONUMO_VERSION.
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "/app/econumo", "healthcheck"]

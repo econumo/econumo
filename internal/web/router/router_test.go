@@ -218,9 +218,16 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	want := `Object.assign(window.econumoConfig, {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","MIN_APP_VERSION":"v9.9.9"});`
+	// The document is now generated ENTIRELY by the router (no merge against
+	// the dist file), so every key is present: the ones explicitly set above,
+	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
+	// INSTANCE_ID, VERSION) and MIN_APP_VERSION because it was set.
+	want := `window.econumoConfig = {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","VERSION":null};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
+	}
+	if strings.Contains(body, "window.econumoConfig={};") {
+		t.Fatalf("dist file content leaked into the served document:\n%s", body)
 	}
 }
 
@@ -245,7 +252,12 @@ func TestRuntimeConfigOverrides_EmptyBillingURLIsMerged(t *testing.T) {
 	}
 }
 
-func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
+// With everything left at zero value, every key the router owns is still
+// present in the served document — carrying its default, matching what
+// web/public/econumo-config.js hard-codes — except MIN_APP_VERSION (still
+// conditional) and ANALYTICS (no longer a config key at all, see
+// ECONUMO_ANALYTICS in CLAUDE.md).
+func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
 		t.Fatal(err)
@@ -257,11 +269,20 @@ func TestRuntimeConfigOverrides_UnsetKeysNotMerged(t *testing.T) {
 	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
 	defer resp.Body.Close()
 	body := readBody(t, resp)
-	// Match the quoted JSON key: a bare substring check would confuse VERSION
-	// with the always-merged MIN_APP_VERSION.
-	for _, absent := range []string{"ALLOW_CUSTOM_API", "LILTAG_CONFIG_URL", "LILTAG_CACHE_TTL", "VERSION", "ANALYTICS", "INSTANCE_ID"} {
+	for _, want := range []string{
+		`"ALLOW_CUSTOM_API":true`,
+		`"LILTAG_CONFIG_URL":"/liltag-config.json"`,
+		`"LILTAG_CACHE_TTL":0`,
+		`"VERSION":null`,
+		`"INSTANCE_ID":""`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("default %q missing:\n%s", want, body)
+		}
+	}
+	for _, absent := range []string{"MIN_APP_VERSION", "ANALYTICS"} {
 		if strings.Contains(body, `"`+absent+`":`) {
-			t.Fatalf("unset key %q must not be merged:\n%s", absent, body)
+			t.Fatalf("key %q must stay absent when unset:\n%s", absent, body)
 		}
 	}
 }
