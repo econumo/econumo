@@ -296,13 +296,11 @@ The collector's web family (`$pageview`: sessions, referrers, countries,
 devices, per-path breakdown) is fed by the SPA itself, not by the
 collector's snippet: `trackPage()` (`web/src/lib/metrics.ts`, called next to
 `trackEvent(METRICS.PAGE_VIEW)` in `TrackPageViews`) captures a `$pageview`
-with the synthetic `$host`, a `$path` whose UUID segments are masked to
-`[id]`, `$utm_*` from the query string and, on the entry page of a document
-load only, an external `$referrer` (same-origin referrers are dropped
-client-side, since the synthetic host defeats the collector's own
-self-referral check); inside the native app it captures a `$screen_view`
-instead, so app traffic lands in the app dashboards rather than as a mobile
-browser. Every deployment therefore reports web analytics through the one
+carrying only the synthetic `$host` and a `$path` with UUID segments
+scrubbed to `:id` — no `$referrer` and no `$utm_*`, since this project's
+only source is the signed-in app and acquisition belongs to the marketing
+site's project; inside the native app it captures a `$screen_view` instead,
+so app traffic lands in the app dashboards rather than as a mobile browser. Every deployment therefore reports web analytics through the one
 opt-out-gated transport. That transport posts to the collector's `econumo`
 project (identity `identified`; key in `web/src/lib/analytics.ts`), whose
 only source is the SPA. The cloud's liltag config separately injects the

@@ -344,8 +344,8 @@ User C sees none of it.
       flip it, unlike other writes on that account. With it off no request
       reaches the analytics collector on navigation; with it on, each route
       change posts one `page_view` product event and one `$pageview` (the
-      pageview's path has UUIDs masked to `[id]` and carries no real
-      self-hosted hostname).
+      pageview carries only a host marker and a path with UUIDs scrubbed to
+      `:id` — no referrer, no query string, no real self-hosted hostname).
 
 ## 13. Cross-cutting & platform
 

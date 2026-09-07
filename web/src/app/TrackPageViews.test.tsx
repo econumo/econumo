@@ -35,10 +35,9 @@ it('tracks a page view on initial load and on every route change', async () => {
   expect(trackEvent).toHaveBeenCalledTimes(1)
   expect(trackEvent).toHaveBeenCalledWith(METRICS.PAGE_VIEW)
   expect(trackPage).toHaveBeenCalledTimes(1)
-  expect(trackPage).toHaveBeenCalledWith(true)
   await act(() => router.navigate('/budget'))
   expect(trackEvent).toHaveBeenCalledTimes(2)
-  expect(trackPage).toHaveBeenLastCalledWith(false)
+  expect(trackPage).toHaveBeenCalledTimes(2)
 })
 
 it('does not double-track under StrictMode or same-path navigation', async () => {
@@ -52,7 +51,6 @@ it('does not double-track under StrictMode or same-path navigation', async () =>
   await act(() => router.navigate('/'))
   expect(trackEvent).toHaveBeenCalledTimes(1)
   expect(trackPage).toHaveBeenCalledTimes(1)
-  expect(trackPage).toHaveBeenCalledWith(true)
 })
 
 it('counts a redirected landing once, for the destination only', async () => {
@@ -60,5 +58,4 @@ it('counts a redirected landing once, for the destination only', async () => {
   await act(() => render(<RouterProvider router={router} />))
   expect(trackEvent).toHaveBeenCalledTimes(1)
   expect(trackPage).toHaveBeenCalledTimes(1)
-  expect(trackPage).toHaveBeenCalledWith(true)
 })

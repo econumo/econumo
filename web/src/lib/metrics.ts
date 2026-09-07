@@ -141,40 +141,6 @@ export function scrubbedPage(pathname: string): string {
   return pathname.substring(1).replace(UUID_RE, ':id')
 }
 
-// The web pageview's $path uses the collector SDK's own mask token, so pages
-// recorded under the former snippet and these land in one row.
-export function maskedPath(pathname: string): string {
-  return pathname.replace(UUID_RE, '[id]')
-}
-
-function campaignAttributes(search: string): Record<string, string> {
-  const params = new URLSearchParams(search)
-  const out: Record<string, string> = {}
-  for (const key of ['utm_source', 'utm_medium', 'utm_campaign']) {
-    const value = params.get(key)
-    if (value) {
-      out[`$${key}`] = value
-    }
-  }
-  return out
-}
-
-// The collector suppresses self-referrals by comparing the referrer host with
-// $host, but a self-hosted instance reports a synthetic $host, so the real
-// hostname would slip into the payload through document.referrer. Drop
-// same-origin referrers here instead.
-function externalReferrer(): string | null {
-  const referrer = document.referrer
-  if (!referrer) {
-    return null
-  }
-  try {
-    return new URL(referrer).hostname === window.location.hostname ? null : referrer
-  } catch {
-    return null
-  }
-}
-
 // Same cutoffs as the layout hooks: useIsMobile switches the shell below 768px
 // and useIsCompact goes single-pane below 1024px, so the reported mode matches
 // the layout the user actually saw.
@@ -266,19 +232,18 @@ function syncBatchContext(): void {
   })
 }
 
-// The collector's web family ($pageview: sessions, referrers, countries,
-// devices, per-path breakdown) is fed from the SPA itself, through the same
-// transport and opt-out gate as the product events, so every deployment gets
-// it — not only one that injects the collector's snippet. `entry` marks the
-// first page of a document load: document.referrer never changes across SPA
-// navigations, so reporting it on every route would count each one as a
-// fresh referral.
-export function trackPage(entry = false): void {
+// The collector's web family ($pageview: sessions, countries, devices,
+// per-path breakdown) is fed from the SPA itself, through the same transport
+// and opt-out gate as the product events, so every deployment gets it. No
+// referrer and no campaign parameters: this project's only source is the
+// signed-in app, acquisition belongs to the marketing site's project, and a
+// referrer URL is the one place a third-party string could enter the payload.
+export function trackPage(): void {
   if (!analyticsAllowed()) {
     return
   }
   syncBatchContext()
-  const path = maskedPath(window.location.pathname)
+  const path = `/${scrubbedPage(window.location.pathname)}`
   if (analyticsPlatform() !== 'web') {
     // A native app declares its own context; a $pageview from its WebView
     // would be enriched from the WebView's User-Agent and land as a mobile
@@ -286,13 +251,7 @@ export function trackPage(entry = false): void {
     capture('$screen_view', { $screen: path })
     return
   }
-  const referrer = entry ? externalReferrer() : null
-  capture('$pageview', {
-    $host: analyticsHost(),
-    $path: path,
-    ...campaignAttributes(window.location.search),
-    ...(referrer ? { $referrer: referrer } : {}),
-  })
+  capture('$pageview', { $host: analyticsHost(), $path: path })
 }
 
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
