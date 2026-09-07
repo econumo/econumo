@@ -4,9 +4,14 @@ import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
 
+interface TwillingateSdk {
+  page(): void
+}
+
 declare global {
   interface Window {
     dataLayer: unknown[]
+    twillingate?: TwillingateSdk
   }
 }
 
@@ -212,6 +217,50 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
     return 'web'
   }
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
+}
+
+// Web pageviews ($pageview: sessions, referrers, countries, devices and the
+// per-path breakdown on the collector) come from the Twillingate SDK that the
+// cloud deployment injects through liltag with data-auto="off" — automatic
+// pageviews and the history hook are disabled there so the pageview sits
+// behind the same opt-out gate as trackEvent. The SDK dedupes page() by
+// location, so calling it from the router hook is safe. A deployment that
+// loads no SDK (self-hosted by default) makes this a no-op.
+export function trackPage(): void {
+  if (!analyticsAllowed()) {
+    return
+  }
+  if (window.twillingate) {
+    window.twillingate.page()
+    return
+  }
+  awaitSdk()
+}
+
+// liltag injects the tag asynchronously, normally after the first route has
+// resolved, so the entry page would be missed without catching the SDK's
+// arrival. Its script assigns window.twillingate and then reads its data-*
+// attributes and initialises in the same run, which is why the deferred
+// pageview waits one microtask past the assignment. The gate is re-checked at
+// that point, so an opt-out in between still wins.
+function awaitSdk(): void {
+  if (Object.getOwnPropertyDescriptor(window, 'twillingate')?.set) {
+    return
+  }
+  Object.defineProperty(window, 'twillingate', {
+    configurable: true,
+    enumerable: true,
+    get: () => undefined,
+    set(sdk: TwillingateSdk) {
+      Object.defineProperty(window, 'twillingate', {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value: sdk,
+      })
+      queueMicrotask(trackPage)
+    },
+  })
 }
 
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {

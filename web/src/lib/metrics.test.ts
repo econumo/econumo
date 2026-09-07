@@ -7,6 +7,7 @@ import {
   isCloudHost,
   scrubbedPage,
   trackEvent,
+  trackPage,
   viewMode,
   setAnalyticsAccessState,
 } from './metrics'
@@ -70,6 +71,52 @@ describe('collector capture', () => {
     trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
     expect(capture).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(1)
+  })
+})
+
+describe('trackPage', () => {
+  afterEach(() => {
+    delete window.twillingate
+  })
+
+  it('records a web pageview through the SDK when analytics is on', () => {
+    const page = vi.fn()
+    window.twillingate = { page }
+    trackPage()
+    expect(page).toHaveBeenCalledTimes(1)
+    expect(page).toHaveBeenCalledWith()
+  })
+
+  it('sends nothing when opted out', () => {
+    const page = vi.fn()
+    window.twillingate = { page }
+    rememberAnalyticsPreference(false)
+    trackPage()
+    expect(page).not.toHaveBeenCalled()
+  })
+
+  // liltag injects the tag after the first route has resolved, so the entry
+  // page is only recorded once the SDK shows up; the SDK initialises
+  // synchronously right after assigning its global, so the call must wait a tick.
+  it('defers the entry pageview until the SDK arrives', async () => {
+    trackPage()
+    trackPage()
+    const page = vi.fn()
+    window.twillingate = { page }
+    expect(page).not.toHaveBeenCalled()
+    await Promise.resolve()
+    expect(page).toHaveBeenCalledTimes(1)
+    trackPage()
+    expect(page).toHaveBeenCalledTimes(2)
+  })
+
+  it('drops a deferred pageview if the user opted out before the SDK arrived', async () => {
+    trackPage()
+    rememberAnalyticsPreference(false)
+    const page = vi.fn()
+    window.twillingate = { page }
+    await Promise.resolve()
+    expect(page).not.toHaveBeenCalled()
   })
 })
 
