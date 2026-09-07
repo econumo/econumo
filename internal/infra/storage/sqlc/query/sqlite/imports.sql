@@ -27,17 +27,17 @@ WHERE id = ?;
 UPDATE import_events SET status = ?, parse_error = ?, run_id = ? WHERE id = ?;
 
 -- name: InsertImportRun :exec
-INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetImportRunByID :one
-SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
 FROM import_runs
 WHERE id = ?;
 
 -- name: UpdateImportRun :exec
 UPDATE import_runs
-SET status = ?, imported_count = ?, matched_count = ?, skipped_count = ?, failed_count = ?, finished_at = ?
+SET status = ?, imported_count = ?, matched_count = ?, skipped_count = ?, failed_count = ?, queued_count = ?, amounts_updated_count = ?, errors = ?, finished_at = ?
 WHERE id = ?;
 
 -- name: InsertImportTransactionLink :exec

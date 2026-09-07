@@ -182,7 +182,7 @@ type Querier interface {
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
 	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
-	GetImportRunByID(ctx context.Context, id string) (ImportRun, error)
+	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
 	// Card identity is case-insensitive (Apple Wallet may report the same card

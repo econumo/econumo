@@ -32,20 +32,20 @@ UPDATE import_events SET status = $1, parse_error = $2, run_id = $3 WHERE id = $
 ;
 
 -- name: InsertImportRun :exec
-INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 ;
 
 -- name: GetImportRunByID :one
-SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
 FROM import_runs
 WHERE id = $1
 ;
 
 -- name: UpdateImportRun :exec
 UPDATE import_runs
-SET status = $1, imported_count = $2, matched_count = $3, skipped_count = $4, failed_count = $5, finished_at = $6
-WHERE id = $7
+SET status = $1, imported_count = $2, matched_count = $3, skipped_count = $4, failed_count = $5, queued_count = $6, amounts_updated_count = $7, errors = $8, finished_at = $9
+WHERE id = $10
 ;
 
 -- name: InsertImportTransactionLink :exec

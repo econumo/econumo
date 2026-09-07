@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/econumo/econumo/internal/imports"
@@ -16,7 +17,7 @@ import (
 type (
 	sourceRow               = sqlitegen.ImportSource
 	eventRow                = sqlitegen.ImportEvent
-	runRow                  = sqlitegen.ImportRun
+	runRow                  = sqlitegen.GetImportRunByIDRow
 	linkRow                 = sqlitegen.ImportTransactionLink
 	insertSourceParams      = sqlitegen.InsertImportSourceParams
 	insertEventParams       = sqlitegen.InsertImportEventParams
@@ -199,11 +200,17 @@ func parseOptionalID(s *string) (*vo.Id, error) {
 }
 
 func (r *Repo) InsertRun(ctx context.Context, run *model.ImportRun) error {
+	trigger := run.Trigger
+	if trigger == "" {
+		trigger = model.ImportRunTriggerManual
+	}
 	return r.q.InsertImportRun(ctx, r.db(ctx), insertRunParams{
 		ID: run.ID.String(), UserID: run.UserID.String(), SourceID: run.SourceID.String(), Provider: run.Provider,
 		Params: run.Params, Status: run.Status,
 		ImportedCount: int64(run.ImportedCount), MatchedCount: int64(run.MatchedCount),
 		SkippedCount: int64(run.SkippedCount), FailedCount: int64(run.FailedCount),
+		QueuedCount: int64(run.QueuedCount), AmountsUpdatedCount: int64(run.AmountsUpdatedCount),
+		Trigger: trigger, Errors: encodeRunErrors(run.Errors),
 		StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
 	})
 }
@@ -224,8 +231,29 @@ func (r *Repo) UpdateRun(ctx context.Context, run *model.ImportRun) error {
 		Status:        run.Status,
 		ImportedCount: int64(run.ImportedCount), MatchedCount: int64(run.MatchedCount),
 		SkippedCount: int64(run.SkippedCount), FailedCount: int64(run.FailedCount),
+		QueuedCount: int64(run.QueuedCount), AmountsUpdatedCount: int64(run.AmountsUpdatedCount),
+		Errors:     encodeRunErrors(run.Errors),
 		FinishedAt: run.FinishedAt, ID: run.ID.String(),
 	})
+}
+
+func encodeRunErrors(errs []model.ImportRunError) string {
+	if len(errs) == 0 {
+		return "[]"
+	}
+	b, _ := json.Marshal(errs)
+	return string(b)
+}
+
+func decodeRunErrors(raw string) ([]model.ImportRunError, error) {
+	out := []model.ImportRunError{}
+	if raw == "" {
+		return out, nil
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func runFromRow(row runRow) (*model.ImportRun, error) {
@@ -241,10 +269,16 @@ func runFromRow(row runRow) (*model.ImportRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	errsList, err := decodeRunErrors(row.Errors)
+	if err != nil {
+		return nil, err
+	}
 	return &model.ImportRun{
 		ID: id, UserID: userID, SourceID: sourceID, Provider: row.Provider, Params: row.Params, Status: row.Status,
 		ImportedCount: int(row.ImportedCount), MatchedCount: int(row.MatchedCount),
 		SkippedCount: int(row.SkippedCount), FailedCount: int(row.FailedCount),
+		QueuedCount: int(row.QueuedCount), AmountsUpdatedCount: int(row.AmountsUpdatedCount),
+		Trigger: row.Trigger, Errors: errsList,
 		StartedAt: row.StartedAt, FinishedAt: row.FinishedAt,
 	}, nil
 }

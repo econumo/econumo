@@ -183,9 +183,11 @@ type ImportAccountLink struct {
 }
 
 type ImportCredentialKey struct {
-	UserID        string
-	KeyCiphertext string
-	CreatedAt     time.Time
+	UserID         string
+	WrappedDataKey string
+	Kdf            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 type ImportEvent struct {
@@ -227,18 +229,22 @@ type ImportRuleLabel struct {
 }
 
 type ImportRun struct {
-	ID            string
-	UserID        string
-	SourceID      string
-	Provider      string
-	Params        string
-	Status        string
-	ImportedCount int64
-	MatchedCount  int64
-	SkippedCount  int64
-	FailedCount   int64
-	StartedAt     time.Time
-	FinishedAt    *time.Time
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
 }
 
 type ImportSource struct {

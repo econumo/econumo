@@ -191,6 +191,46 @@ func TestRepo_RunRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRepo_RunRoundTripStage3Columns(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000031")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	run := &model.ImportRun{
+		ID: vo.NewId(), UserID: src.UserID, SourceID: src.ID, Provider: src.Provider, Params: `{"startDate":"2026-08-01","endDate":"2026-08-20"}`,
+		Status: model.ImportRunStatusRunning, StartedAt: fixedTime,
+	}
+	if err := repo.InsertRun(ctx, run); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// an unset Trigger persists as the manual default and errors read back as an empty, non-nil slice
+	if got.Trigger != model.ImportRunTriggerManual || got.Errors == nil || len(got.Errors) != 0 {
+		t.Fatalf("fresh run: trigger=%q errors=%#v", got.Trigger, got.Errors)
+	}
+	run.Status = model.ImportRunStatusPartial
+	run.QueuedCount, run.AmountsUpdatedCount = 2, 1
+	run.Errors = []model.ImportRunError{{ExternalAccountId: "acc-1", Message: "boom"}}
+	finished := fixedTime.Add(time.Minute)
+	run.FinishedAt = &finished
+	if err := repo.UpdateRun(ctx, run); err != nil {
+		t.Fatal(err)
+	}
+	got, err = repo.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != model.ImportRunStatusPartial || got.QueuedCount != 2 || got.AmountsUpdatedCount != 1 ||
+		len(got.Errors) != 1 || got.Errors[0].ExternalAccountId != "acc-1" || got.Errors[0].Message != "boom" {
+		t.Fatalf("round trip lost data: %+v", got)
+	}
+}
+
 func TestRepo_LinkLedger(t *testing.T) {
 	repo, db := setup(t)
 	ctx := context.Background()

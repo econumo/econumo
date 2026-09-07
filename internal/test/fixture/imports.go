@@ -4,6 +4,8 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"time"
+
+	"github.com/econumo/econumo/internal/model"
 )
 
 // ImportSource seeds one import_sources row; Provider defaults to
@@ -134,5 +136,43 @@ func (b *Builder) ImportEvent(e ImportEvent) string {
 	b.insert(`INSERT INTO import_events (id, source_id, run_id, payload, payload_hash, status, parse_error, received_at)
 		VALUES (?, ?, NULL, ?, ?, ?, ?, ?)`,
 		id, e.SourceID, e.Payload, hash, status, nullable(e.ParseError), received)
+	return id
+}
+
+// ImportRun seeds one import_runs row. Params defaults to "{}", Status to
+// "completed", Errors to "[]"; Trigger is always seeded as "manual" (the
+// only value stage 1/2 ever wrote).
+type ImportRun struct {
+	ID, UserID, SourceID, Provider, Params, Status         string
+	ImportedCount, MatchedCount, SkippedCount, FailedCount int
+	QueuedCount, AmountsUpdatedCount                       int
+	Errors                                                 string // JSON, default "[]"
+	StartedAt                                              time.Time
+	FinishedAt                                             *time.Time
+}
+
+func (b *Builder) ImportRun(r ImportRun) string {
+	b.t.Helper()
+	id := b.orNewID(r.ID)
+	if r.Params == "" {
+		r.Params = "{}"
+	}
+	if r.Status == "" {
+		r.Status = model.ImportRunStatusCompleted
+	}
+	if r.Errors == "" {
+		r.Errors = "[]"
+	}
+	if r.StartedAt.IsZero() {
+		r.StartedAt = b.now()
+	}
+	var finishedAt any
+	if r.FinishedAt != nil {
+		finishedAt = *r.FinishedAt
+	}
+	b.insert(`INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at)
+	          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, r.UserID, r.SourceID, r.Provider, r.Params, r.Status, r.ImportedCount, r.MatchedCount, r.SkippedCount, r.FailedCount,
+		r.QueuedCount, r.AmountsUpdatedCount, model.ImportRunTriggerManual, r.Errors, r.StartedAt, finishedAt)
 	return id
 }

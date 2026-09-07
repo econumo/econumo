@@ -97,14 +97,33 @@ func (q *Queries) GetImportEventByID(ctx context.Context, id string) (ImportEven
 }
 
 const getImportRunByID = `-- name: GetImportRunByID :one
-SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
 FROM import_runs
 WHERE id = $1
 `
 
-func (q *Queries) GetImportRunByID(ctx context.Context, id string) (ImportRun, error) {
+type GetImportRunByIDRow struct {
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+}
+
+func (q *Queries) GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getImportRunByID, id)
-	var i ImportRun
+	var i GetImportRunByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -116,6 +135,10 @@ func (q *Queries) GetImportRunByID(ctx context.Context, id string) (ImportRun, e
 		&i.MatchedCount,
 		&i.SkippedCount,
 		&i.FailedCount,
+		&i.QueuedCount,
+		&i.AmountsUpdatedCount,
+		&i.Trigger,
+		&i.Errors,
 		&i.StartedAt,
 		&i.FinishedAt,
 	)
@@ -317,23 +340,27 @@ func (q *Queries) InsertImportEvent(ctx context.Context, arg InsertImportEventPa
 }
 
 const insertImportRun = `-- name: InsertImportRun :exec
-INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 `
 
 type InsertImportRunParams struct {
-	ID            string
-	UserID        string
-	SourceID      string
-	Provider      string
-	Params        string
-	Status        string
-	ImportedCount int64
-	MatchedCount  int64
-	SkippedCount  int64
-	FailedCount   int64
-	StartedAt     time.Time
-	FinishedAt    *time.Time
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
+	StartedAt           time.Time
+	FinishedAt          *time.Time
 }
 
 func (q *Queries) InsertImportRun(ctx context.Context, arg InsertImportRunParams) error {
@@ -348,6 +375,10 @@ func (q *Queries) InsertImportRun(ctx context.Context, arg InsertImportRunParams
 		arg.MatchedCount,
 		arg.SkippedCount,
 		arg.FailedCount,
+		arg.QueuedCount,
+		arg.AmountsUpdatedCount,
+		arg.Trigger,
+		arg.Errors,
 		arg.StartedAt,
 		arg.FinishedAt,
 	)
@@ -708,18 +739,21 @@ func (q *Queries) UpdateImportEventStatus(ctx context.Context, arg UpdateImportE
 
 const updateImportRun = `-- name: UpdateImportRun :exec
 UPDATE import_runs
-SET status = $1, imported_count = $2, matched_count = $3, skipped_count = $4, failed_count = $5, finished_at = $6
-WHERE id = $7
+SET status = $1, imported_count = $2, matched_count = $3, skipped_count = $4, failed_count = $5, queued_count = $6, amounts_updated_count = $7, errors = $8, finished_at = $9
+WHERE id = $10
 `
 
 type UpdateImportRunParams struct {
-	Status        string
-	ImportedCount int64
-	MatchedCount  int64
-	SkippedCount  int64
-	FailedCount   int64
-	FinishedAt    *time.Time
-	ID            string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Errors              string
+	FinishedAt          *time.Time
+	ID                  string
 }
 
 func (q *Queries) UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error {
@@ -729,6 +763,9 @@ func (q *Queries) UpdateImportRun(ctx context.Context, arg UpdateImportRunParams
 		arg.MatchedCount,
 		arg.SkippedCount,
 		arg.FailedCount,
+		arg.QueuedCount,
+		arg.AmountsUpdatedCount,
+		arg.Errors,
 		arg.FinishedAt,
 		arg.ID,
 	)

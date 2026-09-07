@@ -26,9 +26,19 @@ const (
 	ImportRunStatusFailed    = "failed"
 	ImportRunStatusPartial   = "partial"
 
+	ImportRunTriggerManual = "manual"
+
 	ImportAccountLinkModeImport = "import"
 	ImportAccountLinkModeIgnore = "ignore"
 )
+
+// ImportRunError is one entry of a run's error list: a bridge-level message
+// (ExternalAccountId "") or a per-account failure that left the rest of the
+// run intact.
+type ImportRunError struct {
+	ExternalAccountId string `json:"externalAccountId"`
+	Message           string `json:"message"`
+}
 
 // Push providers deliver one event per tap and see the transaction before
 // the bank posts it; pull providers see the posted record. The matcher
@@ -79,18 +89,22 @@ type ImportEvent struct {
 }
 
 type ImportRun struct {
-	ID            vo.Id
-	UserID        vo.Id
-	SourceID      vo.Id
-	Provider      string
-	Params        string
-	Status        string
-	ImportedCount int
-	MatchedCount  int
-	SkippedCount  int
-	FailedCount   int
-	StartedAt     time.Time
-	FinishedAt    *time.Time
+	ID                  vo.Id
+	UserID              vo.Id
+	SourceID            vo.Id
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int
+	MatchedCount        int
+	SkippedCount        int
+	FailedCount         int
+	QueuedCount         int
+	AmountsUpdatedCount int
+	Trigger             string
+	Errors              []ImportRunError
+	StartedAt           time.Time
+	FinishedAt          *time.Time
 }
 
 // ImportTransactionLink is one ledger row: what an external transaction id
