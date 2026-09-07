@@ -504,27 +504,28 @@
           "title": "Configure the Shortcuts",
           "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
           "button": "Configure on this iPhone",
-          "manual": "Configure manually",
-          "done": "Configured. The server address and token are saved in iCloud Drive → Shortcuts."
+          "manual": "Configure manually"
         },
         "test": {
           "title": "Run econumo-wallet-v1 once",
           "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
           "button": "Run econumo-wallet-v1",
           "check": "Check",
-          "ok": "The Shortcut reached Econumo.",
           "none": "Nothing received yet. Run the Shortcut, allow the prompts and check again."
         },
         "automate": {
           "title": "Create the automation",
-          "text": "In the Shortcuts app: Automation → + → Transaction → any card → Run Immediately → econumo-wallet-v1."
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v1."
         },
         "payment": {
           "title": "Make the first payment with the iPhone unlocked",
-          "text": "Pay with Apple Pay once while the iPhone is unlocked and tap Always Allow when Shortcuts asks for Wallet access. Later payments work from the lock screen.",
+          "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
           "check": "Check",
-          "ok": "{card} received — map it to an account below.",
           "none": "No payment received yet. Pay once with the iPhone unlocked and check again."
+        },
+        "immediate": {
+          "title": "Switch the automation to Run Immediately",
+          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
         },
         "complete": "Setup complete",
         "show": "Show steps",

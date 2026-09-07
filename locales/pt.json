@@ -504,27 +504,28 @@
           "title": "Configurar os atalhos",
           "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
           "button": "Configurar neste iPhone",
-          "manual": "Configurar manualmente",
-          "done": "Configurado. O endereço do servidor e o token estão guardados em iCloud Drive → Atalhos."
+          "manual": "Configurar manualmente"
         },
         "test": {
           "title": "Executar econumo-wallet-v1 uma vez",
           "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
           "button": "Executar econumo-wallet-v1",
           "check": "Verificar",
-          "ok": "O atalho chegou ao Econumo.",
           "none": "Ainda nada recebido. Execute o atalho, aceite os pedidos e verifique novamente."
         },
         "automate": {
           "title": "Criar a automatização",
-          "text": "Na app Atalhos: Automatização → + → Transação → qualquer cartão → Executar imediatamente → econumo-wallet-v1."
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v1."
         },
         "payment": {
           "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
-          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado e toque em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet. Os pagamentos seguintes funcionam a partir do ecrã bloqueado.",
+          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
           "check": "Verificar",
-          "ok": "{card} recebido — associe-o a uma conta abaixo.",
           "none": "Ainda nenhum pagamento recebido. Pague uma vez com o iPhone desbloqueado e verifique novamente."
+        },
+        "immediate": {
+          "title": "Mudar a automatização para «Executar imediatamente»",
+          "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
         },
         "complete": "Configuração concluída",
         "show": "Mostrar passos",

@@ -504,27 +504,28 @@
           "title": "Kurzbefehle konfigurieren",
           "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
           "button": "Auf diesem iPhone konfigurieren",
-          "manual": "Manuell konfigurieren",
-          "done": "Konfiguriert. Serveradresse und Token sind in iCloud Drive → Kurzbefehle gespeichert."
+          "manual": "Manuell konfigurieren"
         },
         "test": {
           "title": "econumo-wallet-v1 einmal ausführen",
           "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
           "button": "econumo-wallet-v1 ausführen",
           "check": "Prüfen",
-          "ok": "Der Kurzbefehl hat Econumo erreicht.",
           "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
         },
         "automate": {
           "title": "Automation anlegen",
-          "text": "In der Kurzbefehle-App: Automation → + → Transaktion → beliebige Karte → Sofort ausführen → econumo-wallet-v1."
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v1."
         },
         "payment": {
           "title": "Erste Zahlung mit entsperrtem iPhone",
-          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist, und tippe auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt. Spätere Zahlungen funktionieren vom Sperrbildschirm aus.",
+          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
           "check": "Prüfen",
-          "ok": "{card} empfangen — ordne die Karte unten einem Konto zu.",
           "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+        },
+        "immediate": {
+          "title": "Automation auf „Sofort ausführen“ umstellen",
+          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert, auch vom Sperrbildschirm aus."
         },
         "complete": "Einrichtung abgeschlossen",
         "show": "Schritte anzeigen",

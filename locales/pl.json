@@ -504,27 +504,28 @@
           "title": "Skonfiguruj skróty",
           "text": "Tworzy token dostępu dla skrótu i przekazuje go do econumo-setup-v1 razem z adresem serwera.",
           "button": "Skonfiguruj na tym iPhonie",
-          "manual": "Skonfiguruj ręcznie",
-          "done": "Skonfigurowano. Adres serwera i token są zapisane w iCloud Drive → Skróty."
+          "manual": "Skonfiguruj ręcznie"
         },
         "test": {
           "title": "Uruchom econumo-wallet-v1 raz",
           "text": "Uruchom go ręcznie i przy każdym pytaniu stuknij „Zawsze zezwalaj” — to nadaje uprawnienia, których automatyzacja będzie potrzebować. Nic nie jest tworzone; Econumo tylko odnotowuje, że skrót dotarł.",
           "button": "Uruchom econumo-wallet-v1",
           "check": "Sprawdź",
-          "ok": "Skrót dotarł do Econumo.",
           "none": "Nic jeszcze nie odebrano. Uruchom skrót, zezwól na pytania i sprawdź ponownie."
         },
         "automate": {
           "title": "Utwórz automatyzację",
-          "text": "W aplikacji Skróty: Automatyzacja → + → Transakcja → dowolna karta → Uruchom natychmiast → econumo-wallet-v1."
+          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-wallet-v1."
         },
         "payment": {
           "title": "Pierwsza płatność z odblokowanym iPhonem",
-          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie i stuknij „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet. Kolejne płatności działają z ekranu blokady.",
+          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet.",
           "check": "Sprawdź",
-          "ok": "Odebrano {card} — przypisz kartę do konta poniżej.",
           "none": "Nie odebrano jeszcze płatności. Zapłać raz z odblokowanym iPhonem i sprawdź ponownie."
+        },
+        "immediate": {
+          "title": "Przełącz automatyzację na „Uruchom natychmiast”",
+          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
         },
         "complete": "Konfiguracja zakończona",
         "show": "Pokaż kroki",

@@ -20,6 +20,7 @@ const noInputEvent = { eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-21 08
 const STEP_NAMES = [
   'Install econumo-wallet-v1', 'Install econumo-setup-v1', 'Configure the Shortcuts',
   'Run econumo-wallet-v1 once', 'Create the automation', 'Make the first payment with the iPhone unlocked',
+  'Switch the automation to Run Immediately',
 ]
 
 function renderSetup(src: typeof source | null, overrides: Record<string, unknown> = {}) {
@@ -64,7 +65,7 @@ it('connect posts create-source', async () => {
   await waitFor(() => expect(body).toEqual({ provider: 'apple-wallet', name: 'iPhone' }))
 })
 
-it('shows six unticked steps; the shortcut downloads open outside the app window', () => {
+it('shows seven unticked steps; the shortcut downloads open outside the app window', () => {
   renderSetup(source)
   for (const name of STEP_NAMES) {
     expect(checkbox(name)).not.toBeChecked()
@@ -93,8 +94,12 @@ it('hand-ticked steps persist per source and are dropped on disconnect', async (
   await user.click(checkbox('Install econumo-wallet-v1'))
   expect(checkbox('Install econumo-wallet-v1')).toBeChecked()
   expect(JSON.parse(localStorage.getItem('appleWalletSetup:s1') ?? '[]')).toEqual(['install_wallet'])
+  // a ticked step folds to its title: the instructions and the download go away
+  expect(screen.queryByRole('link', { name: 'econumo-wallet-v1' })).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'econumo-setup-v1' })).toBeInTheDocument()
   await user.click(checkbox('Install econumo-wallet-v1'))
   expect(checkbox('Install econumo-wallet-v1')).not.toBeChecked()
+  expect(screen.getByRole('link', { name: 'econumo-wallet-v1' })).toBeInTheDocument()
   await user.click(checkbox('Create the automation'))
   await user.click(screen.getByRole('button', { name: 'Disconnect' }))
   // the confirm dialog's own button carries the same label
@@ -102,9 +107,10 @@ it('hand-ticked steps persist per source and are dropped on disconnect', async (
   await waitFor(() => expect(localStorage.getItem('appleWalletSetup:s1')).toBeNull())
 })
 
-it('an existing ingest token ticks the configure step by itself', async () => {
+it('an existing ingest token ticks the configure step by itself and folds it to its title', async () => {
   renderSetup(source, { personalTokens: [ingestToken] })
   await waitFor(() => expect(checkbox('Configure the Shortcuts')).toBeChecked())
+  expect(screen.queryByRole('link', { name: 'Configure manually' })).not.toBeInTheDocument()
 })
 
 it('iOS configure mints an ingest token, opens the shortcuts deep link and ticks the step', async () => {
@@ -125,7 +131,7 @@ it('iOS configure mints an ingest token, opens the shortcuts deep link and ticks
   expect(assigned[0].startsWith('shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=')).toBe(true)
   expect(decodeURIComponent(assigned[0].split('text=')[1])).toContain('"token":"eco_pat_new"')
   expect(checkbox('Configure the Shortcuts')).toBeChecked()
-  expect(screen.getByText(/^Configured\./)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Configure on this iPhone' })).not.toBeInTheDocument()
   spy.mockRestore()
 })
 
@@ -160,9 +166,10 @@ it('Check after a manual run treats the "account is required" event as proof, di
   const user = userEvent.setup()
   renderSetup(source, { importQueue: { queued: [], skipped: [], failed: [noInputEvent] } })
   await user.click(checkButton('test'))
-  expect(await screen.findByText('The Shortcut reached Econumo.')).toBeInTheDocument()
+  await waitFor(() => expect(checkbox('Run econumo-wallet-v1 once')).toBeChecked())
   expect(discarded).toEqual({ eventId: 'e1' })
-  expect(checkbox('Run econumo-wallet-v1 once')).toBeChecked()
+  // the ticked step keeps only its title, so one Check (the payment step's) is left
+  expect(screen.getAllByRole('button', { name: 'Check' })).toHaveLength(1)
   expect(JSON.parse(localStorage.getItem('appleWalletSetup:s1') ?? '[]')).toEqual(['test'])
 })
 
@@ -174,23 +181,40 @@ it('Check with an empty queue reports nothing received and leaves the step untic
   expect(checkbox('Run econumo-wallet-v1 once')).not.toBeChecked()
 })
 
-it('a tapped card ticks the payment step; its Check names the card', async () => {
-  const tapped = { ...source, cards: [card] }
+it('the first card from Apple Pay ticks every step up to the payment, whatever was ticked by hand; the Run Immediately switch stays a hand tick', async () => {
   const user = userEvent.setup()
-  renderSetup(tapped)
-  expect(checkbox('Make the first payment with the iPhone unlocked')).toBeChecked()
+  renderSetup({ ...source, cards: [card] })
+  expect(screen.queryByText('Setup complete')).not.toBeInTheDocument()
+  for (const name of STEP_NAMES.slice(0, -1)) {
+    expect(checkbox(name)).toBeChecked()
+  }
+  expect(checkbox('Switch the automation to Run Immediately')).not.toBeChecked()
+  expect(screen.getByText(/change Run After Confirmation to Run Immediately/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
+  await user.click(checkbox('Switch the automation to Run Immediately'))
+  expect(await screen.findByText('Setup complete')).toBeInTheDocument()
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
+})
+
+it('payment Check with no taps reports nothing received and leaves the step unticked', async () => {
+  const user = userEvent.setup()
+  renderSetup(source)
   await user.click(checkButton('payment'))
-  expect(await screen.findByText('Apple Card received — map it to an account below.')).toBeInTheDocument()
+  expect(await screen.findByText(/No payment received yet/)).toBeInTheDocument()
+  expect(checkbox('Make the first payment with the iPhone unlocked')).not.toBeChecked()
 })
 
 it('collapses to "Setup complete" once every step is done, with a toggle to show the steps again', async () => {
-  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install_wallet', 'install_setup', 'test', 'automate']))
+  localStorage.setItem('appleWalletSetup:s1', JSON.stringify(['install_wallet', 'install_setup', 'test', 'automate', 'immediate']))
   const user = userEvent.setup()
   renderSetup({ ...source, cards: [card] }, { personalTokens: [ingestToken] })
   expect(await screen.findByText('Setup complete')).toBeInTheDocument()
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Show steps' }))
-  expect(screen.getAllByRole('checkbox')).toHaveLength(6)
+  expect(screen.getAllByRole('checkbox')).toHaveLength(7)
+  // every step is done, so the list is titles only
+  expect(screen.queryByRole('button', { name: 'Check' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Configure manually' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Hide steps' }))
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
 })

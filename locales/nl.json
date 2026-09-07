@@ -504,27 +504,28 @@
           "title": "Opdrachten configureren",
           "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
           "button": "Configureren op deze iPhone",
-          "manual": "Handmatig configureren",
-          "done": "Geconfigureerd. Serveradres en token staan in iCloud Drive → Opdrachten."
+          "manual": "Handmatig configureren"
         },
         "test": {
           "title": "econumo-wallet-v1 één keer uitvoeren",
           "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
           "button": "econumo-wallet-v1 uitvoeren",
           "check": "Controleren",
-          "ok": "De opdracht heeft Econumo bereikt.",
           "none": "Nog niets ontvangen. Voer de opdracht uit, sta de meldingen toe en controleer opnieuw."
         },
         "automate": {
           "title": "Automatisering aanmaken",
-          "text": "In de Opdrachten-app: Automatisering → + → Transactie → elke kaart → Voer direct uit → econumo-wallet-v1."
+          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v1."
         },
         "payment": {
           "title": "Eerste betaling met ontgrendelde iPhone",
-          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is en tik op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt. Latere betalingen werken vanaf het toegangsscherm.",
+          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt.",
           "check": "Controleren",
-          "ok": "{card} ontvangen — koppel de kaart hieronder aan een rekening.",
           "none": "Nog geen betaling ontvangen. Betaal één keer met ontgrendelde iPhone en controleer opnieuw."
+        },
+        "immediate": {
+          "title": "Zet de automatisering op ‘Voer direct uit’",
+          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd, ook vanaf het toegangsscherm."
         },
         "complete": "Installatie voltooid",
         "show": "Stappen tonen",

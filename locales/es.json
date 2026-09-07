@@ -504,27 +504,28 @@
           "title": "Configurar los atajos",
           "text": "Crea un token de acceso para el atajo y se lo entrega a econumo-setup-v1 junto con la dirección del servidor.",
           "button": "Configurar en este iPhone",
-          "manual": "Configurar manualmente",
-          "done": "Configurado. La dirección del servidor y el token están guardados en iCloud Drive → Atajos."
+          "manual": "Configurar manualmente"
         },
         "test": {
           "title": "Ejecutar econumo-wallet-v1 una vez",
           "text": "Ejecútalo a mano y toca «Permitir siempre» en cada aviso: así se conceden los permisos que la automatización necesitará. No se crea nada; Econumo solo registra que el atajo ha llegado.",
           "button": "Ejecutar econumo-wallet-v1",
           "check": "Comprobar",
-          "ok": "El atajo ha llegado a Econumo.",
           "none": "Aún no se ha recibido nada. Ejecuta el atajo, acepta los avisos y vuelve a comprobar."
         },
         "automate": {
           "title": "Crear la automatización",
-          "text": "En la app Atajos: Automatización → + → Transacción → cualquier tarjeta → Ejecutar inmediatamente → econumo-wallet-v1."
+          "text": "En la app Atajos: Automatización → + → Wallet → elige las tarjetas y categorías que quieres importar (lo más seguro es elegir todas) → Ejecutar tras confirmar → econumo-wallet-v1."
         },
         "payment": {
           "title": "Hacer el primer pago con el iPhone desbloqueado",
-          "text": "Paga una vez con Apple Pay con el iPhone desbloqueado y toca «Permitir siempre» cuando Atajos pida acceso a Wallet. Los pagos siguientes funcionan desde la pantalla bloqueada.",
+          "text": "Paga una vez con Apple Pay con el iPhone desbloqueado. Toca «Ejecutar» cuando la automatización lo pida y luego «Permitir siempre» cuando Atajos pida acceso a Wallet.",
           "check": "Comprobar",
-          "ok": "{card} recibida: asígnala a una cuenta más abajo.",
           "none": "Aún no se ha recibido ningún pago. Paga una vez con el iPhone desbloqueado y vuelve a comprobar."
+        },
+        "immediate": {
+          "title": "Cambiar la automatización a «Ejecutar inmediatamente»",
+          "text": "En la app Atajos, abre la automatización y cambia «Ejecutar tras confirmar» por «Ejecutar inmediatamente». A partir de entonces los pagos se importan sin preguntar, también desde la pantalla bloqueada."
         },
         "complete": "Configuración completada",
         "show": "Mostrar pasos",

@@ -504,27 +504,28 @@
           "title": "Configurer les raccourcis",
           "text": "Crée un jeton d’accès pour le raccourci et le transmet à econumo-setup-v1 avec l’adresse du serveur.",
           "button": "Configurer sur cet iPhone",
-          "manual": "Configurer manuellement",
-          "done": "Configuré. L’adresse du serveur et le jeton sont enregistrés dans iCloud Drive → Raccourcis."
+          "manual": "Configurer manuellement"
         },
         "test": {
           "title": "Exécuter econumo-wallet-v1 une fois",
           "text": "Lancez-le à la main et touchez « Toujours autoriser » à chaque demande : cela accorde les autorisations dont l’automatisation aura besoin. Rien n’est créé ; Econumo note seulement que le raccourci l’a atteint.",
           "button": "Exécuter econumo-wallet-v1",
           "check": "Vérifier",
-          "ok": "Le raccourci a atteint Econumo.",
           "none": "Rien reçu pour l’instant. Lancez le raccourci, acceptez les demandes et vérifiez à nouveau."
         },
         "automate": {
           "title": "Créer l’automatisation",
-          "text": "Dans l’app Raccourcis : Automatisation → + → Transaction → n’importe quelle carte → Exécuter immédiatement → econumo-wallet-v1."
+          "text": "Dans l’app Raccourcis : Automatisation → + → Wallet → choisissez les cartes et catégories à importer (le plus sûr est de tout sélectionner) → Exécuter après confirmation → econumo-wallet-v1."
         },
         "payment": {
           "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",
-          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé, et touchez « Toujours autoriser » quand Raccourcis demande l’accès à Wallet. Les paiements suivants fonctionnent depuis l’écran verrouillé.",
+          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé. Touchez « Exécuter » quand l’automatisation le demande, puis « Toujours autoriser » quand Raccourcis demande l’accès à Wallet.",
           "check": "Vérifier",
-          "ok": "{card} reçue — associez-la à un compte ci-dessous.",
           "none": "Aucun paiement reçu pour l’instant. Payez une fois avec l’iPhone déverrouillé et vérifiez à nouveau."
+        },
+        "immediate": {
+          "title": "Passer l’automatisation en « Exécuter immédiatement »",
+          "text": "Dans l’app Raccourcis, ouvrez l’automatisation et remplacez « Exécuter après confirmation » par « Exécuter immédiatement ». Les paiements sont ensuite importés sans demande, même depuis l’écran verrouillé."
         },
         "complete": "Configuration terminée",
         "show": "Afficher les étapes",

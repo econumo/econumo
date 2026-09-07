@@ -44,7 +44,7 @@ export const nav = {
   },
 }
 
-const STEPS = ['install_wallet', 'install_setup', 'configure', 'test', 'automate', 'payment'] as const
+const STEPS = ['install_wallet', 'install_setup', 'configure', 'test', 'automate', 'payment', 'immediate'] as const
 type StepId = (typeof STEPS)[number]
 
 // Hand-ticked steps live per source in localStorage: the server knows nothing
@@ -68,8 +68,8 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [configured, setConfigured] = useState(false)
   const [showSteps, setShowSteps] = useState(false)
-  const [testResult, setTestResult] = useState<'ok' | 'none' | null>(null)
-  const [paymentResult, setPaymentResult] = useState<'ok' | 'none' | null>(null)
+  const [testMissing, setTestMissing] = useState(false)
+  const [paymentMissing, setPaymentMissing] = useState(false)
   const [checking, setChecking] = useState(false)
   const [ticks, setTicks] = useState<StepId[]>(() => (source ? readTicks(source.id) : []))
   const serverUrl = backendHost()
@@ -117,7 +117,7 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
         await discardEvent.mutateAsync(e.eventId)
       }
       trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'test', ok })
-      setTestResult(ok ? 'ok' : 'none')
+      setTestMissing(!ok)
       if (ok) {
         tick('test', true)
       }
@@ -137,7 +137,7 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
       const s = await sources.refetch()
       const tapped = (s.data ?? []).find((src) => src.id === source.id)?.cards.some((c) => c.tapCount > 0) ?? false
       trackEvent(METRICS.IMPORT_SHORTCUT_CHECK, { step: 'payment', ok: tapped })
-      setPaymentResult(tapped ? 'ok' : 'none')
+      setPaymentMissing(!tapped)
     } catch (err) {
       toast.error(apiErrorMessage(err))
     } finally {
@@ -156,19 +156,26 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
     )
   }
 
-  const tappedCard = source.cards.find((c) => c.tapCount > 0)
   const hasIngestToken = configured || (tokens.data ?? []).some((tok) => tok.scope === 'ingest')
-  const auto: Partial<Record<StepId, boolean>> = { configure: hasIngestToken, payment: tappedCard !== undefined }
-  const done = (id: StepId) => auto[id] === true || ticks.includes(id)
+  // A card only ever appears through a real Apple Pay transaction reaching
+  // the server, which proves every step up to the first payment worked, so
+  // those are done whatever was ticked by hand. Switching the automation to
+  // Run Immediately happens after that payment and leaves no trace on the
+  // server, so it stays a hand tick.
+  const cardArrived = source.cards.length > 0
+  const auto: Partial<Record<StepId, boolean>> = { configure: hasIngestToken }
+  const done = (id: StepId) => (cardArrived && id !== 'immediate') || auto[id] === true || ticks.includes(id)
   const allDone = STEPS.every(done)
   const ios = isIOS()
 
+  // A done step folds to its title: the tick is the feedback, and the
+  // instructions plus buttons only matter while the step is still open.
   const step = (id: StepId, children: ReactNode) => (
     <li key={id} className="flex gap-3">
       <Checkbox id={`wallet-step-${id}`} className="mt-0.5" checked={done(id)} onCheckedChange={(checked) => tick(id, checked === true)} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <label htmlFor={`wallet-step-${id}`} className="font-medium">{t(`imports.apple_wallet.steps.${id}.title`)}</label>
-        {children}
+        {done(id) ? null : children}
       </div>
     </li>
   )
@@ -229,7 +236,6 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
                     {t('imports.apple_wallet.steps.configure.manual')}
                   </a>
                 </div>
-                {configured ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.configure.done')}</span> : null}
               </>
             ))}
             {step('test', (
@@ -245,7 +251,7 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
                     {t('imports.apple_wallet.steps.test.check')}
                   </Button>
                 </div>
-                {testResult ? <span className="text-muted-foreground">{t(`imports.apple_wallet.steps.test.${testResult}`)}</span> : null}
+                {testMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.test.none')}</span> : null}
               </>
             ))}
             {step('automate', (
@@ -259,11 +265,11 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
                     {t('imports.apple_wallet.steps.payment.check')}
                   </Button>
                 </div>
-                {paymentResult === 'ok' && tappedCard ? (
-                  <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.ok', { card: tappedCard.externalName })}</span>
-                ) : null}
-                {paymentResult === 'none' ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.none')}</span> : null}
+                {paymentMissing ? <span className="text-muted-foreground">{t('imports.apple_wallet.steps.payment.none')}</span> : null}
               </>
+            ))}
+            {step('immediate', (
+              <span className="text-muted-foreground">{t('imports.apple_wallet.steps.immediate.text')}</span>
             ))}
           </ol>
           <InfoBox>{t('imports.apple_wallet.same_named_cards')}</InfoBox>

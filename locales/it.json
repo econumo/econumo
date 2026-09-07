@@ -504,27 +504,28 @@
           "title": "Configura i comandi rapidi",
           "text": "Crea un token di accesso per il comando rapido e lo passa a econumo-setup-v1 insieme all’indirizzo del server.",
           "button": "Configura su questo iPhone",
-          "manual": "Configura manualmente",
-          "done": "Configurato. Indirizzo del server e token sono salvati in iCloud Drive → Comandi rapidi."
+          "manual": "Configura manualmente"
         },
         "test": {
           "title": "Esegui econumo-wallet-v1 una volta",
           "text": "Eseguilo a mano e tocca «Consenti sempre» a ogni richiesta: così concedi i permessi che serviranno all’automazione. Non viene creato nulla; Econumo registra solo che il comando rapido è arrivato.",
           "button": "Esegui econumo-wallet-v1",
           "check": "Verifica",
-          "ok": "Il comando rapido ha raggiunto Econumo.",
           "none": "Ancora nulla ricevuto. Esegui il comando rapido, accetta le richieste e verifica di nuovo."
         },
         "automate": {
           "title": "Crea l’automazione",
-          "text": "Nell’app Comandi rapidi: Automazione → + → Transazione → qualsiasi carta → Esegui subito → econumo-wallet-v1."
+          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-wallet-v1."
         },
         "payment": {
           "title": "Fai il primo pagamento con l’iPhone sbloccato",
-          "text": "Paga una volta con Apple Pay con l’iPhone sbloccato e tocca «Consenti sempre» quando Comandi rapidi chiede l’accesso a Wallet. I pagamenti successivi funzionano dalla schermata di blocco.",
+          "text": "Paga una volta con Apple Pay con l’iPhone sbloccato. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» quando Comandi rapidi chiede l’accesso a Wallet.",
           "check": "Verifica",
-          "ok": "{card} ricevuta: associala a un conto qui sotto.",
           "none": "Nessun pagamento ricevuto. Paga una volta con l’iPhone sbloccato e verifica di nuovo."
+        },
+        "immediate": {
+          "title": "Imposta l’automazione su «Esegui subito»",
+          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste, anche dalla schermata di blocco."
         },
         "complete": "Configurazione completata",
         "show": "Mostra passaggi",
