@@ -303,8 +303,12 @@ client-side, since the synthetic host defeats the collector's own
 self-referral check); inside the native app it captures a `$screen_view`
 instead, so app traffic lands in the app dashboards rather than as a mobile
 browser. Every deployment therefore reports web analytics through the one
-opt-out-gated transport; the cloud liltag config must NOT also inject the
-collector's `twillingate.js` tag, or its pageviews double-count.
+opt-out-gated transport. That transport posts to the collector's `econumo`
+project (identity `identified`; key in `web/src/lib/analytics.ts`), whose
+only source is the SPA. The cloud's liltag config separately injects the
+collector's `twillingate.js` snippet for the anonymous `app.econumo.com`
+project — a different project, so the two never double-count, and that
+snippet stays outside the per-user opt-out by design.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
