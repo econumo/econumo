@@ -5,6 +5,7 @@ import {
   analyticsHost,
   deploymentKind,
   isCloudHost,
+  maskedPath,
   scrubbedPage,
   trackEvent,
   trackPage,
@@ -75,48 +76,71 @@ describe('collector capture', () => {
 })
 
 describe('trackPage', () => {
+  const UUID = '01980e2c-1111-7000-8000-123456789abc'
+
+  function setReferrer(value: string) {
+    Object.defineProperty(document, 'referrer', { value, configurable: true })
+  }
+
   afterEach(() => {
-    delete window.twillingate
+    setReferrer('')
+    delete (window as { Capacitor?: unknown }).Capacitor
   })
 
-  it('records a web pageview through the SDK when analytics is on', () => {
-    const page = vi.fn()
-    window.twillingate = { page }
+  it('captures a web pageview with the masked path and synthetic host', () => {
+    window.history.replaceState({}, '', `/budgets/${UUID}/details`)
     trackPage()
-    expect(page).toHaveBeenCalledTimes(1)
-    expect(page).toHaveBeenCalledWith()
+    expect(capture).toHaveBeenCalledTimes(1)
+    expect(capture).toHaveBeenCalledWith('$pageview', {
+      $host: 'selfhosted_unknown',
+      $path: '/budgets/[id]/details',
+    })
   })
 
   it('sends nothing when opted out', () => {
-    const page = vi.fn()
-    window.twillingate = { page }
     rememberAnalyticsPreference(false)
-    trackPage()
-    expect(page).not.toHaveBeenCalled()
+    trackPage(true)
+    expect(capture).not.toHaveBeenCalled()
   })
 
-  // liltag injects the tag after the first route has resolved, so the entry
-  // page is only recorded once the SDK shows up; the SDK initialises
-  // synchronously right after assigning its global, so the call must wait a tick.
-  it('defers the entry pageview until the SDK arrives', async () => {
+  it('carries campaign parameters as reserved keys', () => {
+    window.history.replaceState({}, '', '/register?utm_source=news&utm_medium=email&ref=x')
     trackPage()
-    trackPage()
-    const page = vi.fn()
-    window.twillingate = { page }
-    expect(page).not.toHaveBeenCalled()
-    await Promise.resolve()
-    expect(page).toHaveBeenCalledTimes(1)
-    trackPage()
-    expect(page).toHaveBeenCalledTimes(2)
+    const [, attrs] = vi.mocked(capture).mock.calls[0]
+    expect(attrs).toMatchObject({ $path: '/register', $utm_source: 'news', $utm_medium: 'email' })
+    expect(attrs).not.toHaveProperty('$utm_campaign')
+    expect(attrs).not.toHaveProperty('ref')
   })
 
-  it('drops a deferred pageview if the user opted out before the SDK arrived', async () => {
-    trackPage()
-    rememberAnalyticsPreference(false)
-    const page = vi.fn()
-    window.twillingate = { page }
-    await Promise.resolve()
-    expect(page).not.toHaveBeenCalled()
+  it('reports an external referrer on the entry page only', () => {
+    setReferrer('https://news.ycombinator.com/item?id=1')
+    trackPage(true)
+    trackPage(false)
+    const [[, first], [, second]] = vi.mocked(capture).mock.calls
+    expect(first).toHaveProperty('$referrer', 'https://news.ycombinator.com/item?id=1')
+    expect(second).not.toHaveProperty('$referrer')
+  })
+
+  // jsdom runs on localhost, so this referrer is same-origin.
+  it('never reports a same-origin referrer', () => {
+    setReferrer('http://localhost/login')
+    trackPage(true)
+    expect(vi.mocked(capture).mock.calls[0][1]).not.toHaveProperty('$referrer')
+  })
+
+  it('records a screen view instead of a pageview inside the native app', () => {
+    window.Capacitor = { isNativePlatform: () => true }
+    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
+    window.history.replaceState({}, '', `/account/${UUID}`)
+    trackPage(true)
+    expect(capture).toHaveBeenCalledWith('$screen_view', { $screen: '/account/[id]' })
+  })
+})
+
+describe('maskedPath', () => {
+  it('replaces every UUID segment with the collector mask token', () => {
+    expect(maskedPath('/budgets/01980e2c-1111-7000-8000-123456789abc/x')).toBe('/budgets/[id]/x')
+    expect(maskedPath('/')).toBe('/')
   })
 })
 

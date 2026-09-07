@@ -17,9 +17,10 @@ export function TrackPageViews() {
     if (lastTracked.current === pathname) {
       return
     }
+    const entry = lastTracked.current === null
     lastTracked.current = pathname
     trackEvent(METRICS.PAGE_VIEW)
-    trackPage()
+    trackPage(entry)
   }, [pathname])
   return <Outlet />
 }

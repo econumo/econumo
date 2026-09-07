@@ -4,14 +4,9 @@ import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
 
-interface TwillingateSdk {
-  page(): void
-}
-
 declare global {
   interface Window {
     dataLayer: unknown[]
-    twillingate?: TwillingateSdk
   }
 }
 
@@ -146,6 +141,40 @@ export function scrubbedPage(pathname: string): string {
   return pathname.substring(1).replace(UUID_RE, ':id')
 }
 
+// The web pageview's $path uses the collector SDK's own mask token, so pages
+// recorded under the former snippet and these land in one row.
+export function maskedPath(pathname: string): string {
+  return pathname.replace(UUID_RE, '[id]')
+}
+
+function campaignAttributes(search: string): Record<string, string> {
+  const params = new URLSearchParams(search)
+  const out: Record<string, string> = {}
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign']) {
+    const value = params.get(key)
+    if (value) {
+      out[`$${key}`] = value
+    }
+  }
+  return out
+}
+
+// The collector suppresses self-referrals by comparing the referrer host with
+// $host, but a self-hosted instance reports a synthetic $host, so the real
+// hostname would slip into the payload through document.referrer. Drop
+// same-origin referrers here instead.
+function externalReferrer(): string | null {
+  const referrer = document.referrer
+  if (!referrer) {
+    return null
+  }
+  try {
+    return new URL(referrer).hostname === window.location.hostname ? null : referrer
+  } catch {
+    return null
+  }
+}
+
 // Same cutoffs as the layout hooks: useIsMobile switches the shell below 768px
 // and useIsCompact goes single-pane below 1024px, so the reported mode matches
 // the layout the user actually saw.
@@ -219,47 +248,50 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
 }
 
-// Web pageviews ($pageview: sessions, referrers, countries, devices and the
-// per-path breakdown on the collector) come from the Twillingate SDK that the
-// cloud deployment injects through liltag with data-auto="off" — automatic
-// pageviews and the history hook are disabled there so the pageview sits
-// behind the same opt-out gate as trackEvent. The SDK dedupes page() by
-// location, so calling it from the router hook is safe. A deployment that
-// loads no SDK (self-hosted by default) makes this a no-op.
-export function trackPage(): void {
+// Resolved on every call rather than once at module load: in the mobile app
+// this module evaluates before the async fetchServerConfig() merges the
+// real INSTANCE_ID, so a fixed-at-import read would leave the group unset
+// for the whole session. The cost is two cheap string reads per event.
+// Batch-level (session-wide) attributes are likewise recomputed, since the
+// profile counts change as the query cache fills in behind the boot loader.
+function syncBatchContext(): void {
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    setAnalyticsGroup(instanceId, analyticsHost())
+  }
+  setAnalyticsContext({
+    $app_version: getVersion(),
+    $platform: analyticsPlatform(),
+    ...profileAttributes(),
+  })
+}
+
+// The collector's web family ($pageview: sessions, referrers, countries,
+// devices, per-path breakdown) is fed from the SPA itself, through the same
+// transport and opt-out gate as the product events, so every deployment gets
+// it — not only one that injects the collector's snippet. `entry` marks the
+// first page of a document load: document.referrer never changes across SPA
+// navigations, so reporting it on every route would count each one as a
+// fresh referral.
+export function trackPage(entry = false): void {
   if (!analyticsAllowed()) {
     return
   }
-  if (window.twillingate) {
-    window.twillingate.page()
+  syncBatchContext()
+  const path = maskedPath(window.location.pathname)
+  if (analyticsPlatform() !== 'web') {
+    // A native app declares its own context; a $pageview from its WebView
+    // would be enriched from the WebView's User-Agent and land as a mobile
+    // browser instead of an app screen.
+    capture('$screen_view', { $screen: path })
     return
   }
-  awaitSdk()
-}
-
-// liltag injects the tag asynchronously, normally after the first route has
-// resolved, so the entry page would be missed without catching the SDK's
-// arrival. Its script assigns window.twillingate and then reads its data-*
-// attributes and initialises in the same run, which is why the deferred
-// pageview waits one microtask past the assignment. The gate is re-checked at
-// that point, so an opt-out in between still wins.
-function awaitSdk(): void {
-  if (Object.getOwnPropertyDescriptor(window, 'twillingate')?.set) {
-    return
-  }
-  Object.defineProperty(window, 'twillingate', {
-    configurable: true,
-    enumerable: true,
-    get: () => undefined,
-    set(sdk: TwillingateSdk) {
-      Object.defineProperty(window, 'twillingate', {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: sdk,
-      })
-      queueMicrotask(trackPage)
-    },
+  const referrer = entry ? externalReferrer() : null
+  capture('$pageview', {
+    $host: analyticsHost(),
+    $path: path,
+    ...campaignAttributes(window.location.search),
+    ...(referrer ? { $referrer: referrer } : {}),
   })
 }
 
@@ -272,22 +304,7 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   if (!analyticsAllowed()) {
     return
   }
-  // Resolved on every call rather than once at module load: in the mobile app
-  // this module evaluates before the async fetchServerConfig() merges the
-  // real INSTANCE_ID, so a fixed-at-import read would leave the group unset
-  // for the whole session. The cost is two cheap string reads per event.
-  const instanceId = getInstanceId()
-  if (instanceId) {
-    setAnalyticsGroup(instanceId, analyticsHost())
-  }
-  // Batch-level (session-wide) attributes: recomputed on every call rather
-  // than fixed at module load, since the profile counts change as the query
-  // cache fills in behind the boot loader.
-  setAnalyticsContext({
-    $app_version: getVersion(),
-    $platform: analyticsPlatform(),
-    ...profileAttributes(),
-  })
+  syncBatchContext()
   window.dataLayer = window.dataLayer || []
   window.dataLayer.push({
     event: metric,

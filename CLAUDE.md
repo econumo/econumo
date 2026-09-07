@@ -288,21 +288,23 @@ is built from that same synthetic host),
 plus batch-level account-profile counts (connections, accounts,
 categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
 `analytics` option (`users_options`, on by default) gates capture: it silences
-the Twillingate collector, the `window.dataLayer`/liltag push AND the web
-pageview, is mirrored to `localStorage` for a synchronous boot-time check
-(`get-user-data` resolves after the first pageview), and is toggled via
-`POST /api/v1/user/update-analytics`. Web pageviews (`$pageview` — the
-collector's web family: sessions, referrers, countries, devices, per-path
-breakdown) are NOT sent by the in-app transport: they come from the
-Twillingate SDK tag the cloud deployment injects through its liltag config
-(`https://econumo.com/apps/liltag-app.json`, outside this repo), which must
-carry `data-auto="off"` so the SDK neither fires automatic pageviews nor hooks
-`history`; the SPA drives them itself via `trackPage()` (`web/src/lib/metrics.ts`,
-called next to `trackEvent(METRICS.PAGE_VIEW)` in `TrackPageViews`) so they
-honour the same opt-out. The SDK lands after the first route has resolved, so
-`trackPage` catches the `window.twillingate` assignment and records the entry
-page one microtask later. Without the tag (self-hosted default) `trackPage` is
-a no-op and only the `page_view` product event is sent.
+the Twillingate collector (product events AND web pageviews) and the
+`window.dataLayer`/liltag push, is mirrored to `localStorage` for a
+synchronous boot-time check (`get-user-data` resolves after the first
+pageview), and is toggled via `POST /api/v1/user/update-analytics`.
+The collector's web family (`$pageview`: sessions, referrers, countries,
+devices, per-path breakdown) is fed by the SPA itself, not by the
+collector's snippet: `trackPage()` (`web/src/lib/metrics.ts`, called next to
+`trackEvent(METRICS.PAGE_VIEW)` in `TrackPageViews`) captures a `$pageview`
+with the synthetic `$host`, a `$path` whose UUID segments are masked to
+`[id]`, `$utm_*` from the query string and, on the entry page of a document
+load only, an external `$referrer` (same-origin referrers are dropped
+client-side, since the synthetic host defeats the collector's own
+self-referral check); inside the native app it captures a `$screen_view`
+instead, so app traffic lands in the app dashboards rather than as a mobile
+browser. Every deployment therefore reports web analytics through the one
+opt-out-gated transport; the cloud liltag config must NOT also inject the
+collector's `twillingate.js` tag, or its pageviews double-count.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 

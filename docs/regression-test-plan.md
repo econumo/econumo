@@ -341,10 +341,11 @@ User C sees none of it.
 - [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
-      flip it, unlike other writes on that account. On the cloud instance,
-      with it off no request reaches the analytics collector on navigation
-      (neither the product event nor the web pageview); with it on, the
-      first page after a hard reload is recorded once, not twice.
+      flip it, unlike other writes on that account. With it off no request
+      reaches the analytics collector on navigation; with it on, each route
+      change posts one `page_view` product event and one `$pageview` (the
+      pageview's path has UUIDs masked to `[id]` and carries no real
+      self-hosted hostname).
 
 ## 13. Cross-cutting & platform
 
