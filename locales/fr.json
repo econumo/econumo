@@ -1618,7 +1618,11 @@
       "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",
       "link_not_queued": "Cet événement n'est pas en attente de vérification.",
       "link_not_skipped": "Cet événement n'est pas ignoré.",
-      "event_not_failed": "Cet événement n'a pas échoué."
+      "event_not_failed": "Cet événement n'a pas échoué.",
+      "setup_token_rejected": "SimpleFIN a rejeté ce jeton de configuration. Il a peut-être déjà été utilisé — générez-en un nouveau dans votre passerelle SimpleFIN.",
+      "provider_unavailable": "Impossible de joindre la passerelle bancaire. Réessayez dans quelques minutes.",
+      "sync_range_invalid": "La plage de dates n'est pas valide : le début ne doit pas être postérieur à la fin, et la plage ne doit pas dépasser 400 jours.",
+      "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration."
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",

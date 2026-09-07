@@ -1618,7 +1618,11 @@
       "currency_mismatch": "A moeda do cartão não corresponde à moeda da conta.",
       "link_not_queued": "Este evento não está a aguardar revisão.",
       "link_not_skipped": "Este evento não está ignorado.",
-      "event_not_failed": "Este evento não falhou."
+      "event_not_failed": "Este evento não falhou.",
+      "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido utilizado — gere um novo no seu bridge SimpleFIN.",
+      "provider_unavailable": "Não foi possível contactar o bridge bancário. Tente novamente dentro de alguns minutos.",
+      "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",
+      "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração."
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",

@@ -1618,7 +1618,11 @@
       "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
-      "event_not_failed": "To zdarzenie nie zakończyło się błędem."
+      "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
+      "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
+      "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
+      "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
+      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego."
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",

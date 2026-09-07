@@ -1618,7 +1618,11 @@
       "currency_mismatch": "卡片货币与账户货币不一致。",
       "link_not_queued": "此事件不在待审核状态。",
       "link_not_skipped": "此事件未被跳过。",
-      "event_not_failed": "此事件没有失败。"
+      "event_not_failed": "此事件没有失败。",
+      "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用 — 请在你的 SimpleFIN 网桥中生成一个新令牌。",
+      "provider_unavailable": "无法连接到银行网桥。请几分钟后重试。",
+      "sync_range_invalid": "日期范围无效：开始日期不能晚于结束日期，且范围不能超过 400 天。",
+      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。"
     },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",

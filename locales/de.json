@@ -1618,7 +1618,11 @@
       "currency_mismatch": "Die Währung der Karte stimmt nicht mit der Währung des Kontos überein.",
       "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
       "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
-      "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen."
+      "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen.",
+      "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Es wurde möglicherweise bereits eingelöst – erstelle ein neues in deiner SimpleFIN-Bridge.",
+      "provider_unavailable": "Die Bank-Bridge konnte nicht erreicht werden. Versuche es in ein paar Minuten erneut.",
+      "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",
+      "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut."
     },
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",

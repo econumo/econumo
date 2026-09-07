@@ -13,7 +13,7 @@ func init() {
 			{Label: "create-source-idempotent", Method: "POST", Path: "/api/v1/import/create-source", Auth: "owner",
 				Body: map[string]any{"provider": "apple-wallet", "name": "Second phone"}},
 			{Label: "err:create-source-unknown-provider", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
-				Body: map[string]any{"provider": "simplefin", "name": "Bank"}},
+				Body: map[string]any{"provider": "csv", "name": "Bank"}},
 			{Label: "create-source", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
 				Body: map[string]any{"provider": "apple-wallet", "name": "Guest phone"}},
 			{Label: "get-source-list-guest", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "guest"},
