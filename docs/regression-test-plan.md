@@ -325,10 +325,6 @@ User C sees none of it.
 - [ ] Name inline edit with validation (length limits).
 - [ ] Default currency picker and language dialog persist (language also
       server-side — a relogin/other device keeps it).
-- [ ] Analytics toggle (Settings → Profile → privacy): switching it off
-      persists across a reload; log out and back in — the toggle still reads
-      off; a read-only user (lapsed trial) can still flip it, unlike other
-      writes on that account.
 - [ ] **Change password**: wrong old password rejected; success revokes all
       *other* sessions (verify: second browser session is logged out, current
       one stays).
@@ -342,6 +338,10 @@ User C sees none of it.
       token revealed exactly once with copy button; API call with the PAT
       works (e.g. `GET /api/v1/user/get-user-data`); revoked PAT stops working;
       list shows last-used/expiry.
+- [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
+      page): switching it off persists across a reload; log out and back in —
+      the toggle still reads off; a read-only user (lapsed trial) can still
+      flip it, unlike other writes on that account.
 
 ## 13. Cross-cutting & platform
 

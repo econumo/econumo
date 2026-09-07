@@ -166,23 +166,6 @@ export function ProfilePage() {
       </button>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
-        {t('user.page.settings.profile.groups.privacy')}
-      </p>
-      <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
-        <label htmlFor="profile-analytics" className="text-sm">
-          {t('user.page.settings.profile.analytics.label')}
-          <span className="mt-0.5 block text-xs text-muted-foreground">
-            {t('user.page.settings.profile.analytics.description')}
-          </span>
-        </label>
-        <Switch
-          id="profile-analytics"
-          checked={analyticsOn}
-          onCheckedChange={(checked) => updateAnalytics.mutate(checked)}
-        />
-      </div>
-
-      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
         {t('user.page.settings.profile.groups.security')}
       </p>
       <div className="flex max-w-md flex-col gap-2">
@@ -214,6 +197,23 @@ export function ProfilePage() {
           {t('user.page.settings.profile.tokens.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+      </div>
+
+      <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">
+        {t('user.page.settings.profile.groups.privacy')}
+      </p>
+      <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
+        <label htmlFor="profile-analytics" className="text-sm">
+          {t('user.page.settings.profile.analytics.label')}
+          <span className="mt-0.5 block text-xs text-muted-foreground">
+            {t('user.page.settings.profile.analytics.description')}
+          </span>
+        </label>
+        <Switch
+          id="profile-analytics"
+          checked={analyticsOn}
+          onCheckedChange={(checked) => updateAnalytics.mutate(checked)}
+        />
       </div>
 
       <CurrencyPickerDialog
