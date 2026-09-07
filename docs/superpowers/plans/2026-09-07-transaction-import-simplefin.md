@@ -60,7 +60,7 @@
 | `internal/test/apiparity/{harness.go,fixture.go,catalogue_import.go}` + goldens, `internal/test/apiparity/stubprovider.go` (create) | scenario coverage with a deterministic stub provider |
 | `web/src/lib/importCrypto.ts`, `importCrypto.test.ts` (create), `web/src/test/setup.ts`, `web/package.json` (modify) | credential crypto + test env |
 | `web/src/api/dto/imports.ts`, `web/src/api/imports.ts`, `web/src/features/imports/queries.ts`, `web/src/app/queryKeys.ts`, `web/src/lib/metrics.ts` (modify) | API client, hooks, keys, `IMPORT_SYNC` |
-| `web/src/features/imports/{SimpleFINPage,SimpleFINConnect,SimpleFINUnlock,ImportRunSummary,ImportRunListPage,ImportRunDetailPage}.tsx` (create), `ImportCards.tsx`, `ImportsDataPage.tsx`, `web/src/app/{routes.tsx,router-pages.ts}`, `web/src/features/settings/SettingsPage.tsx` (modify) | SPA surface |
+| `web/src/features/imports/{SimpleFINPage,SimpleFINConnect,SimpleFINUnlock,ImportRunSummary,ImportRunListPage,ImportRunPage}.tsx` (create), `ImportCards.tsx`, `ImportsDataPage.tsx`, `web/src/app/{routes.tsx,router-pages.ts}`, `web/src/features/settings/SettingsPage.tsx` (modify) | SPA surface |
 | `web/src/test/fixtures.ts` (modify) | msw handlers for the new routes |
 | `CLAUDE.md`, `docs/regression-test-plan.md` (modify) | docs |
 
