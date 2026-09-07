@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -13,10 +12,6 @@ import { RouterPage } from '@/app/router-pages'
 import { dayKey, formatDayHeading } from '@/lib/datetime'
 import { useUserData, useAccessState } from '@/features/user/queries'
 import { useOpenBillingPortal } from '@/features/access/useOpenBillingPortal'
-import { ExportCsvDialog } from '@/features/transactions/ExportCsvDialog'
-import { ImportCsvDialog } from '@/features/transactions/ImportCsvDialog'
-import { ImportResultDialog } from '@/features/transactions/ImportResultDialog'
-import type { AggregatedImportResult } from '@/features/transactions/importCsv'
 import { SEMVER } from '@/lib/version'
 
 function MenuGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -72,9 +67,6 @@ export function SettingsPage() {
   const navigate = useNavigate()
   const isCompact = useIsCompact()
   const { data: user } = useUserData()
-  const [exportOpen, setExportOpen] = useState(false)
-  const [importOpen, setImportOpen] = useState(false)
-  const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
   const version = getVersion()
   const update = useAvailableUpdate()
   const access = useAccessState()
@@ -156,8 +148,8 @@ export function SettingsPage() {
           </MenuGroup>
 
           <MenuGroup label={t('settings.page.groups.data')}>
-            <MenuRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
-            <MenuRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
+            <MenuRow label={t('imports.data_page.menu_item')} to={RouterPage.SETTINGS_DATA} />
+            <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
           </MenuGroup>
 
         </div>
@@ -186,11 +178,6 @@ export function SettingsPage() {
           {t('settings.page.footer.api')}
         </a>
       </footer>
-
-
-      <ExportCsvDialog open={exportOpen} onClose={() => setExportOpen(false)} />
-      <ImportCsvDialog open={importOpen} onClose={() => setImportOpen(false)} onComplete={setImportResult} />
-      <ImportResultDialog open={importResult !== null} result={importResult} onClose={() => setImportResult(null)} />
     </div>
   )
 }

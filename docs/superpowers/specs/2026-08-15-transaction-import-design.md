@@ -1160,25 +1160,55 @@ can work:
   phone (Automation → Transaction → Run Immediately → pick the shortcut).
   Four taps, unavoidable.
 
-So the design is a static signed shortcut plus a **configuration deep link**:
+So the design is a static signed shortcut plus a **configuration deep link**,
+presented on the Settings → Apple Wallet page as a **six-item checklist**
+(each row has a checkbox; the user may tick any row by hand, and the page
+ticks the rows it can verify itself):
 
-1. **Install.** "Get the Shortcut" serves two signed files from
-   `web/public/shortcuts/`: **Econumo Wallet** (the automation body) and
-   **Econumo Setup** (writes the configuration). Safari hands each to
-   Shortcuts, which shows the standard "Add Shortcut" sheet.
-2. **Configure — one tap, nothing typed.** The setup page's "Configure on
-   this iPhone" button (rendered only on iOS) creates the `'ingest'`-scoped
-   PAT server-side and opens
-   `shortcuts://run-shortcut?name=Econumo%20Setup&input=text&text=<url-encoded JSON {url, token}>`.
-   Econumo Setup receives that text as its input and saves it as
+1. **Install econumo-wallet-v1** and 2. **Install econumo-setup-v1** — two
+   signed files served from `web/public/shortcuts/` (the automation body and
+   the configuration writer). Safari hands each to Shortcuts, which shows the
+   standard "Add Shortcut" sheet.
+3. **Configure — one tap, nothing typed.** "Configure on this iPhone"
+   (rendered only on iOS) creates the `'ingest'`-scoped PAT server-side and
+   opens
+   `shortcuts://run-shortcut?name=econumo-setup-v1&input=text&text=<url-encoded JSON {url, token}>`.
+   econumo-setup-v1 receives that text as its input and saves it as
    `Shortcuts/econumo-wallet.json` in iCloud Drive (the `Save File` action,
    overwrite on), then shows "Configured". The deep link is handled by the
    OS on the same device — the token never crosses the network in a URL —
-   and the file holds an ingest-only, revocable token, exactly what the
-   hand-built recipe would hold inside the shortcut itself.
-3. **Automate.** Instructions with screenshots for the four taps.
+   and the file holds an ingest-only, revocable token. Auto-ticked when the
+   user holds an `ingest`-scoped PAT. "Configure manually" is a link to the
+   illustrated guide on econumo.com (`/docs/user-guide/apple-wallet`) for
+   anyone whose device cannot import the file — the in-app recipe panel was
+   dropped in favour of it.
+4. **Run econumo-wallet-v1 once.** A "Run econumo-wallet-v1" button (iOS
+   only, `shortcuts://run-shortcut?name=econumo-wallet-v1`) plus a "Check"
+   button. iOS grants a shortcut's privacy permissions per shortcut and only
+   while the phone is unlocked, and Apple Pay taps arrive on the lock screen
+   — so an un-granted permission makes the automation fail with "requires
+   privacy permissions that cannot be granted while your device is locked".
+   Running the shortcut by hand collects the host-access and iCloud-Drive
+   grants ("Always Allow"). The run has no Transaction input, so the server
+   stores it as a failed event with `account is required`; "Check" refetches
+   the queue and sources, treats any event from this source as proof of
+   contact, discards those `account is required` events, and ticks the row.
+5. **Create the automation.** Automation → Transaction → any card → Run
+   Immediately → econumo-wallet-v1. Hand-ticked only (the phone side is
+   invisible to the server).
+6. **Make the first payment with the iPhone unlocked.** The Wallet grant
+   (transaction-derived data leaving the device) can only be collected during
+   a real transaction, so the first tap must happen unlocked with "Always
+   Allow"; later taps work from the lock screen. Auto-ticked when any card of
+   the source has a tap; its "Check" refetches and names the received card.
 
-Econumo Wallet, on every tap: `Get File` (`Shortcuts/econumo-wallet.json`)
+Hand ticks persist in `localStorage` per source id and are cleared on
+disconnect. When all six rows are done the list collapses to "Setup complete"
+with a "Show steps" toggle. Desktop browsers show an "open this page on your
+iPhone" hint above the list instead of the iOS-only buttons — downloads and
+hand ticks still work there.
+
+econumo-wallet-v1, on every tap: `Get File` (`Shortcuts/econumo-wallet.json`)
 → `Get Dictionary from Input` → `Get Contents of URL` (POST `{url}/api/v1/import/ingest-apple-wallet-event`,
 `Authorization: Bearer {token}`, JSON body from the trigger's Card or Pass /
 Merchant / Amount / Currency / Date properties, Part 6 shape). Missing
@@ -1186,9 +1216,6 @@ configuration file → the shortcut stops with a notification pointing at
 Settings → Data, rather than posting garbage. Reconfiguring (new server,
 rotated token) is pressing "Configure" again — the file is overwritten, the
 shortcut is untouched.
-
-Desktop browsers show the "open Settings → Data on your iPhone" note instead
-of the Configure button — the SPA's mobile view is the same page.
 
 **Building the artifacts** (maintainer, on a Mac): the action-by-action
 recipe for both shortcuts, the configuration-file and request contract, the
@@ -1199,14 +1226,11 @@ reviewable in diffs and re-signable by anyone with a Mac. The served file
 name carries a version (`econumo-wallet-v1.shortcut`) so an installed
 shortcut can be told apart from the current one.
 
-**Fallback that stays:** the manual recipe — PAT shown once with a copy
-button, the server URL, the pre-rendered JSON body with the user's values
-substituted, five actions with screenshots — remains on the page below the
-one-tap path, for anyone whose device cannot import the file. Its "same-named
-cards" note (Part 2, card → account) applies to both paths: the user
-duplicates Econumo Wallet, replaces the `account` value with a literal, and
-points a per-card automation at the copy (a Transaction automation cannot
-pass extra input, so a copy is the only way to vary the label).
+**Same-named cards** (Part 2, card → account): the user duplicates
+econumo-wallet-v1, replaces the `account` value with a literal, and points a
+per-card automation at the copy (a Transaction automation cannot pass extra
+input, so a copy is the only way to vary the label). The step-by-step recipe
+for that lives in the illustrated guide the "Configure manually" link opens.
 
 **Rejected:** per-user signing by the server (impossible without Apple ID key
 material; a Mac-hosted signing service would be a third party receiving every
