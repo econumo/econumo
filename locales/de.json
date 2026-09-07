@@ -469,6 +469,125 @@
     "make_recurring": "Als wiederkehrend festlegen",
     "not_posted": "Nicht gebucht"
   },
+  "imports": {
+    "badge": "Importiert",
+    "banner": {
+      "text": "{count} importierte Transaktion wartet auf Prüfung | {count} importierte Transaktionen warten auf Prüfung",
+      "cta": "Prüfen"
+    },
+    "data_page": {
+      "menu_item": "Import & Export",
+      "header": "Import & Export"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Erfasse Apple-Pay-Zahlungen automatisch mit einem iPhone-Kurzbefehl. Jede Zahlung wird an Econumo gesendet; jede Karte ordnest du einmal einem Konto zu.",
+      "connect": "Apple Wallet einrichten",
+      "connected": "Verbunden",
+      "disconnect": "Trennen",
+      "disconnect_modal": {
+        "title": "Apple Wallet trennen?",
+        "question": "Kartenzuordnungen und die Prüfwarteschlange dieser Verbindung werden entfernt. Bereits importierte Transaktionen bleiben erhalten."
+      },
+      "steps": {
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort auszuführen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte von Hand abhaken.",
+        "install_wallet": {
+          "title": "econumo-wallet-v1 installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+        },
+        "install_setup": {
+          "title": "econumo-setup-v1 installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+        },
+        "configure": {
+          "title": "Kurzbefehle konfigurieren",
+          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
+          "button": "Auf diesem iPhone konfigurieren",
+          "manual": "Manuell konfigurieren"
+        },
+        "test": {
+          "title": "econumo-wallet-v1 einmal ausführen",
+          "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
+          "button": "econumo-wallet-v1 ausführen",
+          "check": "Prüfen",
+          "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
+        },
+        "automate": {
+          "title": "Automation anlegen",
+          "text": "In der Kurzbefehle-App: Automation → + → Wallet → Karten und Kategorien zum Importieren auswählen (am sichersten: alle) → Nach Bestätigung ausführen → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Erste Zahlung mit entsperrtem iPhone",
+          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist. Tippe auf „Ausführen“, wenn die Automation nachfragt, und dann auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt.",
+          "check": "Prüfen",
+          "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+        },
+        "immediate": {
+          "title": "Automation auf „Sofort ausführen“ umstellen",
+          "text": "Öffne in der Kurzbefehle-App die Automation und ändere „Nach Bestätigung ausführen“ auf „Sofort ausführen“. Ab dann werden Zahlungen ohne Rückfrage importiert, auch vom Sperrbildschirm aus."
+        },
+        "complete": "Einrichtung abgeschlossen",
+        "show": "Schritte anzeigen",
+        "hide": "Schritte ausblenden"
+      },
+      "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
+      "cards": {
+        "header": "Karten",
+        "empty": "Noch keine Karten — die erste Apple-Pay-Zahlung fügt eine hinzu.",
+        "state": {
+          "mapped": "Zugeordnet",
+          "ignored": "Ignoriert",
+          "unmapped": "Nicht zugeordnet · {count} wartend"
+        },
+        "taps": "{count} Zahlung | {count} Zahlungen",
+        "last_seen": "Zuletzt gesehen {date}",
+        "map": "Konto zuordnen",
+        "map_instead": "Stattdessen zuordnen",
+        "ignore": "Ignorieren",
+        "unlink": "Zuordnung aufheben",
+        "unlink_modal": {
+          "title": "Zuordnung von {card} aufheben?",
+          "question": "Neue Zahlungen dieser Karte warten auf Prüfung, bis du sie erneut zuordnest."
+        },
+        "map_modal": {
+          "header": "{card} zuordnen",
+          "account": "Konto",
+          "submit": "Zuordnen"
+        },
+        "mapped_toast": "{imported} importiert, {matched} abgeglichen, {skipped} übersprungen"
+      }
+    },
+    "queue": {
+      "header": "Importwarteschlange",
+      "empty": "Nichts zu prüfen.",
+      "card_amount": "Kartenbetrag: {amount} {currency}",
+      "queued": "Wartet auf Prüfung",
+      "skipped": "Übersprungen",
+      "failed": "Braucht Aufmerksamkeit",
+      "reason": {
+        "unmapped": "Karte nicht zugeordnet",
+        "account_deleted": "Konto gelöscht",
+        "no_rate": "Kein Wechselkurs für {currency}"
+      },
+      "import": "Importieren",
+      "skip": "Überspringen",
+      "unskip": "Wiederherstellen",
+      "retry": "Erneut versuchen",
+      "discard": "Verwerfen",
+      "received": "Empfangen {date}",
+      "retry_result": {
+        "created": "Importiert",
+        "queued": "Zur Prüfung eingereiht",
+        "skipped": "Übersprungen",
+        "duplicate": "Bereits importiert",
+        "failed": "Schlägt weiterhin fehl"
+      }
+    },
+    "provenance": {
+      "header": "Importiert aus"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Wählen Sie Ihren Avatar",
@@ -1491,6 +1610,15 @@
       "in_use": "Die Währung wird verwendet und kann nicht gelöscht werden",
       "base_immutable": "Die Basiswährung kann nicht geändert werden",
       "cannot_be_hidden": "Diese Währung kann nicht ausgeblendet werden"
+    },
+    "import": {
+      "source_not_found": "Apple Wallet ist nicht verbunden. Verbinde es zuerst unter Einstellungen → Apple Wallet.",
+      "provider_unsupported": "Dieser Import-Anbieter wird nicht unterstützt.",
+      "account_link_exists": "Diese Karte ist bereits verknüpft.",
+      "currency_mismatch": "Die Währung der Karte stimmt nicht mit der Währung des Kontos überein.",
+      "link_not_queued": "Dieses Ereignis wartet nicht auf Prüfung.",
+      "link_not_skipped": "Dieses Ereignis ist nicht übersprungen.",
+      "event_not_failed": "Dieses Ereignis ist nicht fehlgeschlagen."
     },
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",

@@ -17,4 +17,5 @@ window.econumoConfig = {
   ALLOW_CUSTOM_API: true,
   VERSION: null,
   VERSION_LABEL: null,
+  IMPORT_MATCHER: { matchDays: 3, tipDays: 5, tipTolerancePct: 20, tokenMinLength: 3 },
 };

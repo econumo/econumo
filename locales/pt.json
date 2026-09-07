@@ -469,6 +469,125 @@
     "make_recurring": "Tornar recorrente",
     "not_posted": "Não lançada"
   },
+  "imports": {
+    "badge": "Importada",
+    "banner": {
+      "text": "{count} transação importada aguarda revisão | {count} transações importadas aguardam revisão",
+      "cta": "Rever"
+    },
+    "data_page": {
+      "menu_item": "Importar e exportar",
+      "header": "Importar e exportar"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Registe pagamentos Apple Pay automaticamente com um atalho do iPhone. Cada pagamento é enviado ao Econumo; associa cada cartão a uma conta uma única vez.",
+      "connect": "Configurar Apple Wallet",
+      "connected": "Ligado",
+      "disconnect": "Desligar",
+      "disconnect_modal": {
+        "title": "Desligar o Apple Wallet?",
+        "question": "As associações de cartões e a fila de revisão desta ligação serão removidas. As transações já importadas mantêm-se."
+      },
+      "steps": {
+        "hint_desktop": "Abra esta página no seu iPhone para executar os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos manualmente.",
+        "install_wallet": {
+          "title": "Instalar econumo-wallet-v1",
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+        },
+        "install_setup": {
+          "title": "Instalar econumo-setup-v1",
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+        },
+        "configure": {
+          "title": "Configurar os atalhos",
+          "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
+          "button": "Configurar neste iPhone",
+          "manual": "Configurar manualmente"
+        },
+        "test": {
+          "title": "Executar econumo-wallet-v1 uma vez",
+          "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
+          "button": "Executar econumo-wallet-v1",
+          "check": "Verificar",
+          "none": "Ainda nada recebido. Execute o atalho, aceite os pedidos e verifique novamente."
+        },
+        "automate": {
+          "title": "Criar a automatização",
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
+          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
+          "check": "Verificar",
+          "none": "Ainda nenhum pagamento recebido. Pague uma vez com o iPhone desbloqueado e verifique novamente."
+        },
+        "immediate": {
+          "title": "Mudar a automatização para «Executar imediatamente»",
+          "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
+        },
+        "complete": "Configuração concluída",
+        "show": "Mostrar passos",
+        "hide": "Ocultar passos"
+      },
+      "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
+      "cards": {
+        "header": "Cartões",
+        "empty": "Ainda sem cartões — o primeiro pagamento Apple Pay adiciona um.",
+        "state": {
+          "mapped": "Associado",
+          "ignored": "Ignorado",
+          "unmapped": "Sem associação · {count} em fila"
+        },
+        "taps": "{count} pagamento | {count} pagamentos",
+        "last_seen": "Visto pela última vez {date}",
+        "map": "Associar a uma conta",
+        "map_instead": "Associar em vez disso",
+        "ignore": "Ignorar",
+        "unlink": "Desassociar",
+        "unlink_modal": {
+          "title": "Desassociar {card}?",
+          "question": "Novos pagamentos deste cartão aguardarão revisão até o associar novamente."
+        },
+        "map_modal": {
+          "header": "Associar {card}",
+          "account": "Conta",
+          "submit": "Associar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
+      }
+    },
+    "queue": {
+      "header": "Fila de importação",
+      "empty": "Nada para rever.",
+      "card_amount": "Valor do cartão: {amount} {currency}",
+      "queued": "A aguardar revisão",
+      "skipped": "Ignoradas",
+      "failed": "Precisam de atenção",
+      "reason": {
+        "unmapped": "Cartão sem associação",
+        "account_deleted": "Conta eliminada",
+        "no_rate": "Sem taxa de câmbio para {currency}"
+      },
+      "import": "Importar",
+      "skip": "Ignorar",
+      "unskip": "Repor",
+      "retry": "Tentar novamente",
+      "discard": "Descartar",
+      "received": "Recebido {date}",
+      "retry_result": {
+        "created": "Importada",
+        "queued": "Em fila para revisão",
+        "skipped": "Ignorada",
+        "duplicate": "Já importada",
+        "failed": "Continua a falhar"
+      }
+    },
+    "provenance": {
+      "header": "Importada de"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Escolha o seu avatar",
@@ -1491,6 +1610,15 @@
       "in_use": "A moeda está a ser utilizada e não pode ser eliminada.",
       "base_immutable": "A moeda base não pode ser alterada.",
       "cannot_be_hidden": "Esta moeda não pode ser ocultada."
+    },
+    "import": {
+      "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Apple Wallet.",
+      "provider_unsupported": "Este fornecedor de importação não é suportado.",
+      "account_link_exists": "Este cartão já está associado.",
+      "currency_mismatch": "A moeda do cartão não corresponde à moeda da conta.",
+      "link_not_queued": "Este evento não está a aguardar revisão.",
+      "link_not_skipped": "Este evento não está ignorado.",
+      "event_not_failed": "Este evento não falhou."
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",

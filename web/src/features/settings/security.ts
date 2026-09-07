@@ -37,8 +37,8 @@ export function usePersonalTokens() {
 export function useCreatePersonalToken() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ name, expiresAt }: { name: string; expiresAt: string | null }) =>
-      userApi.createPersonalToken(name, expiresAt),
+    mutationFn: ({ name, expiresAt, scope }: { name: string; expiresAt: string | null; scope?: 'full' | 'ingest' }) =>
+      userApi.createPersonalToken(name, expiresAt, scope),
     onSuccess: () => {
       trackEvent(METRICS.PERSONAL_TOKEN_CREATE)
       return queryClient.invalidateQueries({ queryKey: queryKeys.personalTokens })

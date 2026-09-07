@@ -469,6 +469,125 @@
     "make_recurring": "Rendi ricorrente",
     "not_posted": "Non registrata"
   },
+  "imports": {
+    "badge": "Importata",
+    "banner": {
+      "text": "{count} transazione importata in attesa di revisione | {count} transazioni importate in attesa di revisione",
+      "cta": "Rivedi"
+    },
+    "data_page": {
+      "menu_item": "Importa ed esporta",
+      "header": "Importa ed esporta"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Registra automaticamente i pagamenti Apple Pay con un comando rapido per iPhone. Ogni pagamento viene inviato a Econumo; associ ogni carta a un conto una sola volta.",
+      "connect": "Configura Apple Wallet",
+      "connected": "Connesso",
+      "disconnect": "Disconnetti",
+      "disconnect_modal": {
+        "title": "Disconnettere Apple Wallet?",
+        "question": "Le associazioni delle carte e la coda di revisione di questa connessione verranno rimosse. Le transazioni già importate restano."
+      },
+      "steps": {
+        "hint_desktop": "Apri questa pagina sul tuo iPhone per eseguire i passaggi lì. Su questo dispositivo puoi scaricare i comandi rapidi e spuntare i passaggi a mano.",
+        "install_wallet": {
+          "title": "Installa econumo-wallet-v1",
+          "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido»."
+        },
+        "install_setup": {
+          "title": "Installa econumo-setup-v1",
+          "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido»."
+        },
+        "configure": {
+          "title": "Configura i comandi rapidi",
+          "text": "Crea un token di accesso per il comando rapido e lo passa a econumo-setup-v1 insieme all’indirizzo del server.",
+          "button": "Configura su questo iPhone",
+          "manual": "Configura manualmente"
+        },
+        "test": {
+          "title": "Esegui econumo-wallet-v1 una volta",
+          "text": "Eseguilo a mano e tocca «Consenti sempre» a ogni richiesta: così concedi i permessi che serviranno all’automazione. Non viene creato nulla; Econumo registra solo che il comando rapido è arrivato.",
+          "button": "Esegui econumo-wallet-v1",
+          "check": "Verifica",
+          "none": "Ancora nulla ricevuto. Esegui il comando rapido, accetta le richieste e verifica di nuovo."
+        },
+        "automate": {
+          "title": "Crea l’automazione",
+          "text": "Nell’app Comandi rapidi: Automazione → + → Wallet → scegli le carte e le categorie da importare (la scelta più sicura è tutte) → Esegui dopo conferma → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Fai il primo pagamento con l’iPhone sbloccato",
+          "text": "Paga una volta con Apple Pay con l’iPhone sbloccato. Tocca «Esegui» quando l’automazione lo chiede, poi «Consenti sempre» quando Comandi rapidi chiede l’accesso a Wallet.",
+          "check": "Verifica",
+          "none": "Nessun pagamento ricevuto. Paga una volta con l’iPhone sbloccato e verifica di nuovo."
+        },
+        "immediate": {
+          "title": "Imposta l’automazione su «Esegui subito»",
+          "text": "Nell’app Comandi rapidi apri l’automazione e cambia «Esegui dopo conferma» in «Esegui subito». Da quel momento i pagamenti vengono importati senza richieste, anche dalla schermata di blocco."
+        },
+        "complete": "Configurazione completata",
+        "show": "Mostra passaggi",
+        "hide": "Nascondi passaggi"
+      },
+      "same_named_cards": "Le carte con lo stesso nome in Wallet arrivano qui come un'unica carta.",
+      "cards": {
+        "header": "Carte",
+        "empty": "Ancora nessuna carta — il primo pagamento Apple Pay ne aggiungerà una.",
+        "state": {
+          "mapped": "Associata",
+          "ignored": "Ignorata",
+          "unmapped": "Non associata · {count} in coda"
+        },
+        "taps": "{count} pagamento | {count} pagamenti",
+        "last_seen": "Ultimo utilizzo {date}",
+        "map": "Associa a un conto",
+        "map_instead": "Associa invece",
+        "ignore": "Ignora",
+        "unlink": "Dissocia",
+        "unlink_modal": {
+          "title": "Dissociare {card}?",
+          "question": "I nuovi pagamenti di questa carta attenderanno la revisione finché non la associ di nuovo."
+        },
+        "map_modal": {
+          "header": "Associa {card}",
+          "account": "Conto",
+          "submit": "Associa"
+        },
+        "mapped_toast": "{imported} importate, {matched} abbinate, {skipped} saltate"
+      }
+    },
+    "queue": {
+      "header": "Coda di importazione",
+      "empty": "Niente da rivedere.",
+      "card_amount": "Importo della carta: {amount} {currency}",
+      "queued": "In attesa di revisione",
+      "skipped": "Saltate",
+      "failed": "Richiedono attenzione",
+      "reason": {
+        "unmapped": "Carta non associata",
+        "account_deleted": "Conto eliminato",
+        "no_rate": "Nessun tasso di cambio per {currency}"
+      },
+      "import": "Importa",
+      "skip": "Salta",
+      "unskip": "Ripristina",
+      "retry": "Riprova",
+      "discard": "Scarta",
+      "received": "Ricevuto {date}",
+      "retry_result": {
+        "created": "Importata",
+        "queued": "In coda per la revisione",
+        "skipped": "Saltata",
+        "duplicate": "Già importata",
+        "failed": "Continua a fallire"
+      }
+    },
+    "provenance": {
+      "header": "Importata da"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Scegli il tuo avatar",
@@ -1491,6 +1610,15 @@
       "in_use": "La valuta è in uso e non può essere eliminata",
       "base_immutable": "La valuta di base non può essere modificata",
       "cannot_be_hidden": "Questa valuta non può essere nascosta"
+    },
+    "import": {
+      "source_not_found": "Apple Wallet non è collegato. Collegalo prima in Impostazioni → Apple Wallet.",
+      "provider_unsupported": "Questo provider di importazione non è supportato.",
+      "account_link_exists": "Questa carta è già collegata.",
+      "currency_mismatch": "La valuta della carta non corrisponde alla valuta del conto.",
+      "link_not_queued": "Questo evento non è in attesa di revisione.",
+      "link_not_skipped": "Questo evento non è stato saltato.",
+      "event_not_failed": "Questo evento non è fallito."
     },
     "label": {
       "name_length": "Il nome del tag deve contenere da {min} a {max} caratteri",
