@@ -491,34 +491,44 @@
         "question": "Se eliminarán las asignaciones de tarjetas y la cola de revisión de esta conexión. Las transacciones ya importadas se conservan."
       },
       "steps": {
-        "install": {
-          "title": "1. Obtén los atajos",
-          "text": "Instala ambos atajos en tu iPhone.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Abre esta página en tu iPhone para realizar los pasos allí. En este dispositivo puedes descargar los atajos y marcar los pasos a mano.",
+        "install_wallet": {
+          "title": "Instalar econumo-wallet-v1",
+          "text": "Abre el archivo en tu iPhone y toca «Añadir atajo»."
+        },
+        "install_setup": {
+          "title": "Instalar econumo-setup-v1",
+          "text": "Abre el archivo en tu iPhone y toca «Añadir atajo»."
         },
         "configure": {
-          "title": "2. Configura",
+          "title": "Configurar los atajos",
+          "text": "Crea un token de acceso para el atajo y se lo entrega a econumo-setup-v1 junto con la dirección del servidor.",
           "button": "Configurar en este iPhone",
-          "text": "Crea un token de acceso para el atajo y se lo entrega junto con la dirección del servidor.",
-          "desktop": "Abre Ajustes → Apple Wallet en tu iPhone para configurar el atajo allí.",
-          "done": "El atajo está configurado. Tu próximo pago con Apple Pay aparecerá aquí."
+          "manual": "Configurar manualmente",
+          "done": "Configurado. La dirección del servidor y el token están guardados en iCloud Drive → Atajos."
+        },
+        "test": {
+          "title": "Ejecutar econumo-wallet-v1 una vez",
+          "text": "Ejecútalo a mano y toca «Permitir siempre» en cada aviso: así se conceden los permisos que la automatización necesitará. No se crea nada; Econumo solo registra que el atajo ha llegado.",
+          "button": "Ejecutar econumo-wallet-v1",
+          "check": "Comprobar",
+          "ok": "El atajo ha llegado a Econumo.",
+          "none": "Aún no se ha recibido nada. Ejecuta el atajo, acepta los avisos y vuelve a comprobar."
         },
         "automate": {
-          "title": "3. Automatiza",
-          "text": "En la app Atajos añade una automatización: Transacción → Ejecutar \"econumo-wallet-v1\" con la transacción como entrada."
-        }
-      },
-      "manual": {
-        "toggle": "Configurar manualmente",
-        "token": "Token de acceso (se muestra una vez)",
-        "url": "Servidor",
-        "body": "Cuerpo de la petición",
-        "action_1": "Obtener detalles de la transacción → rellenar el cuerpo de arriba",
-        "action_2": "Obtener contenido de URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "Cabecera Authorization: Bearer <token>",
-        "action_4": "Cabecera Content-Type: application/json",
-        "action_5": "Cuerpo de la petición: JSON, los campos de arriba"
+          "title": "Crear la automatización",
+          "text": "En la app Atajos: Automatización → + → Transacción → cualquier tarjeta → Ejecutar inmediatamente → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Hacer el primer pago con el iPhone desbloqueado",
+          "text": "Paga una vez con Apple Pay con el iPhone desbloqueado y toca «Permitir siempre» cuando Atajos pida acceso a Wallet. Los pagos siguientes funcionan desde la pantalla bloqueada.",
+          "check": "Comprobar",
+          "ok": "{card} recibida: asígnala a una cuenta más abajo.",
+          "none": "Aún no se ha recibido ningún pago. Paga una vez con el iPhone desbloqueado y vuelve a comprobar."
+        },
+        "complete": "Configuración completada",
+        "show": "Mostrar pasos",
+        "hide": "Ocultar pasos"
       },
       "same_named_cards": "Las tarjetas con el mismo nombre en Wallet llegan aquí como una sola tarjeta.",
       "cards": {

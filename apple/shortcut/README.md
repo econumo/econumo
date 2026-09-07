@@ -44,10 +44,11 @@ the signature bytes differ. When the recipe changes, bump `VERSION` in
 catalogues; the old file may stay so an already-installed shortcut keeps
 its download link working.
 
-The same recipe, reduced to the five actions a user can type in, is shown in
-the SPA under *Configure manually*
-(`web/src/features/imports/AppleWalletSetup.tsx`); keep the URL, headers and
-field names in the two in sync.
+The same recipe, reduced to the actions a user can type in, is the
+illustrated guide that the SPA's *Configure manually* link opens
+(`MANUAL_GUIDE_URL` in `web/src/features/imports/AppleWalletSetup.tsx`,
+`https://econumo.com/docs/user-guide/apple-wallet`); keep the URL, headers
+and field names in the two in sync.
 
 Keep `build.py`, the two plists and the two signed files in the same commit.
 
@@ -178,6 +179,32 @@ Visa joint`), replace the `account` value with a typed literal, and point a
 Transaction automation filtered to that one card at the copy. Nothing
 changes server-side; the literal is just another external account name.
 
+## Privacy grants — why the setup checklist has a "run it once" step
+
+iOS grants a shortcut's privacy permissions **per shortcut** and tracks them
+by data provenance, and it can only collect a grant while the phone is
+unlocked. Apple Pay taps arrive on the lock screen, so an automation that
+still lacks a grant fails with *"This shortcut requires privacy permissions
+that cannot be granted while your device is locked"* — nothing is posted and
+nothing is logged server-side. `econumo-wallet-v1` needs three grants:
+
+1. **Access to the server host** — asked the first time `Get Contents of
+   URL` contacts `{url}`.
+2. **iCloud Drive** — the request body is derived from the config file, so
+   *Get Contents of URL* asks to use iCloud Drive data too.
+3. **Wallet** — the body also carries transaction-derived data (Card or
+   Pass, Merchant, Amount); this one only appears during a real transaction,
+   because a manual run has no Transaction input.
+
+The SPA checklist therefore has the user run `econumo-wallet-v1` by hand
+(`shortcuts://run-shortcut?name=econumo-wallet-v1`, "Always Allow" on 1 and
+2) and then make the first Apple Pay payment **with the phone unlocked**
+("Always Allow" on 3). The manual run reaches the server with no `account`
+and is stored as a failed event with the literal error `account is
+required` (`internal/imports/applewallet.go`); the checklist's "Check"
+button treats that event as proof of contact and discards it. Keep that
+error text stable — the SPA matches on it.
+
 ## Test on a device before shipping
 
 The plists are generated from documented action formats, but the
@@ -189,19 +216,24 @@ never exercised on a device by the build — this pass is what proves them.
    because it is not signed" error. After adding, the names in the
    library are `econumo-setup-v1` and `econumo-wallet-v1` (iOS takes them
    from the file name, which is why the recipe names match the files).
-2. In Safari on the phone, open Econumo → Settings → Apple Wallet → Configure.
-   Shortcuts should open, run `econumo-setup-v1`, and show the notification.
-   Check `Files` → iCloud Drive → Shortcuts → `econumo-wallet.json`.
-3. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
+2. In Safari on the phone, open Econumo → Settings → Apple Wallet →
+   "Configure on this iPhone". Shortcuts should open, run
+   `econumo-setup-v1`, and show the notification. Check `Files` → iCloud
+   Drive → Shortcuts → `econumo-wallet.json`.
+3. Tap "Run econumo-wallet-v1", answer **Always Allow** to the host and
+   iCloud Drive prompts, then "Check": the step ticks itself and the
+   server log shows `ingest-apple-wallet-event … ingest_status=failed`.
+4. Create the automation: Shortcuts → Automation → `+` → **Transaction** →
    any card, any type → **Run Immediately** → `econumo-wallet-v1`.
-4. Make an Apple Pay purchase and watch the event appear on the Econumo
+5. Make an Apple Pay purchase **with the phone unlocked**, answer Always
+   Allow to the Wallet prompt, and watch the event appear on the Econumo
    queue page or as an imported transaction. Check the stored event: card
    name and merchant filled, `amount` a bare number, `currency` a 3-letter
-   code, `occurredAt` carrying the device's offset (e.g. `+02:00`).
-5. Delete the JSON file and tap a card again: the "not configured"
+   code, `occurredAt` carrying the device's offset (e.g. `+02:00`). Then
+   pay once more from the lock screen: it must arrive without a prompt.
+6. Delete the JSON file and tap a card again: the "not configured"
    notification must appear and nothing must be posted.
 
-Known things to confirm during this test (the spec lists them as device
-tests): `Get File` works inside a background Transaction run, and
-`Save File` on a phone with iCloud Drive turned off (fallback: the
-on-device Shortcuts folder).
+Confirmed on device: `Get File` works inside a background Transaction run
+once the grants above are in place. Still open: `Save File` on a phone with
+iCloud Drive turned off (fallback: the on-device Shortcuts folder).

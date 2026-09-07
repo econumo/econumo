@@ -491,34 +491,44 @@
         "question": "Le associazioni delle carte e la coda di revisione di questa connessione verranno rimosse. Le transazioni già importate restano."
       },
       "steps": {
-        "install": {
-          "title": "1. Scarica i comandi rapidi",
-          "text": "Installa entrambi i comandi rapidi sul tuo iPhone.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Apri questa pagina sul tuo iPhone per eseguire i passaggi lì. Su questo dispositivo puoi scaricare i comandi rapidi e spuntare i passaggi a mano.",
+        "install_wallet": {
+          "title": "Installa econumo-wallet-v1",
+          "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido»."
+        },
+        "install_setup": {
+          "title": "Installa econumo-setup-v1",
+          "text": "Apri il file sul tuo iPhone e tocca «Aggiungi comando rapido»."
         },
         "configure": {
-          "title": "2. Configura",
+          "title": "Configura i comandi rapidi",
+          "text": "Crea un token di accesso per il comando rapido e lo passa a econumo-setup-v1 insieme all’indirizzo del server.",
           "button": "Configura su questo iPhone",
-          "text": "Crea un token di accesso per il comando rapido e glielo consegna insieme all'indirizzo del server.",
-          "desktop": "Apri Impostazioni → Apple Wallet sul tuo iPhone per configurare lì il comando rapido.",
-          "done": "Il comando rapido è configurato. Il tuo prossimo pagamento Apple Pay comparirà qui."
+          "manual": "Configura manualmente",
+          "done": "Configurato. Indirizzo del server e token sono salvati in iCloud Drive → Comandi rapidi."
+        },
+        "test": {
+          "title": "Esegui econumo-wallet-v1 una volta",
+          "text": "Eseguilo a mano e tocca «Consenti sempre» a ogni richiesta: così concedi i permessi che serviranno all’automazione. Non viene creato nulla; Econumo registra solo che il comando rapido è arrivato.",
+          "button": "Esegui econumo-wallet-v1",
+          "check": "Verifica",
+          "ok": "Il comando rapido ha raggiunto Econumo.",
+          "none": "Ancora nulla ricevuto. Esegui il comando rapido, accetta le richieste e verifica di nuovo."
         },
         "automate": {
-          "title": "3. Automatizza",
-          "text": "Nell'app Comandi rapidi aggiungi un'automazione: Transazione → Esegui \"econumo-wallet-v1\" con la transazione come input."
-        }
-      },
-      "manual": {
-        "toggle": "Configura manualmente",
-        "token": "Token di accesso (mostrato una sola volta)",
-        "url": "Server",
-        "body": "Corpo della richiesta",
-        "action_1": "Ottieni dettagli della transazione → compila il corpo qui sopra",
-        "action_2": "Ottieni contenuto dell'URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "Intestazione Authorization: Bearer <token>",
-        "action_4": "Intestazione Content-Type: application/json",
-        "action_5": "Corpo della richiesta: JSON, i campi qui sopra"
+          "title": "Crea l’automazione",
+          "text": "Nell’app Comandi rapidi: Automazione → + → Transazione → qualsiasi carta → Esegui subito → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Fai il primo pagamento con l’iPhone sbloccato",
+          "text": "Paga una volta con Apple Pay con l’iPhone sbloccato e tocca «Consenti sempre» quando Comandi rapidi chiede l’accesso a Wallet. I pagamenti successivi funzionano dalla schermata di blocco.",
+          "check": "Verifica",
+          "ok": "{card} ricevuta: associala a un conto qui sotto.",
+          "none": "Nessun pagamento ricevuto. Paga una volta con l’iPhone sbloccato e verifica di nuovo."
+        },
+        "complete": "Configurazione completata",
+        "show": "Mostra passaggi",
+        "hide": "Nascondi passaggi"
       },
       "same_named_cards": "Le carte con lo stesso nome in Wallet arrivano qui come un'unica carta.",
       "cards": {

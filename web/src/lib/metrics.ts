@@ -137,6 +137,8 @@ export const METRICS = {
   IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
   IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
   IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
+  IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
+  IMPORT_SHORTCUT_CHECK: 'appImportShortcutCheck',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

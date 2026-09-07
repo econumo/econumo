@@ -491,34 +491,44 @@
         "question": "Kartenzuordnungen und die Prüfwarteschlange dieser Verbindung werden entfernt. Bereits importierte Transaktionen bleiben erhalten."
       },
       "steps": {
-        "install": {
-          "title": "1. Kurzbefehle laden",
-          "text": "Installiere beide Kurzbefehle auf deinem iPhone.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Öffne diese Seite auf deinem iPhone, um die Schritte dort auszuführen. Auf diesem Gerät kannst du die Kurzbefehle laden und Schritte von Hand abhaken.",
+        "install_wallet": {
+          "title": "econumo-wallet-v1 installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
+        },
+        "install_setup": {
+          "title": "econumo-setup-v1 installieren",
+          "text": "Öffne die Datei auf deinem iPhone und tippe auf „Kurzbefehl hinzufügen“."
         },
         "configure": {
-          "title": "2. Konfigurieren",
+          "title": "Kurzbefehle konfigurieren",
+          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse an econumo-setup-v1.",
           "button": "Auf diesem iPhone konfigurieren",
-          "text": "Erstellt ein Zugriffstoken für den Kurzbefehl und übergibt es zusammen mit der Serveradresse.",
-          "desktop": "Öffne Einstellungen → Apple Wallet auf deinem iPhone, um den Kurzbefehl dort zu konfigurieren.",
-          "done": "Der Kurzbefehl ist konfiguriert. Deine nächste Apple-Pay-Zahlung erscheint hier."
+          "manual": "Manuell konfigurieren",
+          "done": "Konfiguriert. Serveradresse und Token sind in iCloud Drive → Kurzbefehle gespeichert."
+        },
+        "test": {
+          "title": "econumo-wallet-v1 einmal ausführen",
+          "text": "Führe ihn von Hand aus und tippe bei jeder Abfrage auf „Immer erlauben“ — das erteilt die Berechtigungen, die die Automation später braucht. Es wird nichts angelegt; Econumo merkt sich nur, dass der Kurzbefehl angekommen ist.",
+          "button": "econumo-wallet-v1 ausführen",
+          "check": "Prüfen",
+          "ok": "Der Kurzbefehl hat Econumo erreicht.",
+          "none": "Noch nichts empfangen. Führe den Kurzbefehl aus, erlaube die Abfragen und prüfe erneut."
         },
         "automate": {
-          "title": "3. Automatisieren",
-          "text": "Füge in der Kurzbefehle-App eine Automation hinzu: Transaktion → „econumo-wallet-v1“ mit der Transaktion als Eingabe ausführen."
-        }
-      },
-      "manual": {
-        "toggle": "Manuell konfigurieren",
-        "token": "Zugriffstoken (wird einmal angezeigt)",
-        "url": "Server",
-        "body": "Anfragetext",
-        "action_1": "Details der Transaktion abrufen → den obigen Anfragetext befüllen",
-        "action_2": "Inhalt der URL abrufen → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "Header Authorization: Bearer <token>",
-        "action_4": "Header Content-Type: application/json",
-        "action_5": "Anfragetext: JSON, die Felder oben"
+          "title": "Automation anlegen",
+          "text": "In der Kurzbefehle-App: Automation → + → Transaktion → beliebige Karte → Sofort ausführen → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Erste Zahlung mit entsperrtem iPhone",
+          "text": "Zahle einmal mit Apple Pay, während das iPhone entsperrt ist, und tippe auf „Immer erlauben“, wenn Kurzbefehle Zugriff auf Wallet verlangt. Spätere Zahlungen funktionieren vom Sperrbildschirm aus.",
+          "check": "Prüfen",
+          "ok": "{card} empfangen — ordne die Karte unten einem Konto zu.",
+          "none": "Noch keine Zahlung empfangen. Zahle einmal mit entsperrtem iPhone und prüfe erneut."
+        },
+        "complete": "Einrichtung abgeschlossen",
+        "show": "Schritte anzeigen",
+        "hide": "Schritte ausblenden"
       },
       "same_named_cards": "Karten mit gleichem Namen in Wallet erscheinen hier als eine Karte.",
       "cards": {

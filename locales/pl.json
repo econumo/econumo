@@ -491,34 +491,44 @@
         "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
       },
       "steps": {
-        "install": {
-          "title": "1. Pobierz skróty",
-          "text": "Zainstaluj oba skróty na swoim iPhonie.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i odhaczać kroki ręcznie.",
+        "install_wallet": {
+          "title": "Zainstaluj econumo-wallet-v1",
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+        },
+        "install_setup": {
+          "title": "Zainstaluj econumo-setup-v1",
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
         },
         "configure": {
-          "title": "2. Skonfiguruj",
+          "title": "Skonfiguruj skróty",
+          "text": "Tworzy token dostępu dla skrótu i przekazuje go do econumo-setup-v1 razem z adresem serwera.",
           "button": "Skonfiguruj na tym iPhonie",
-          "text": "Tworzy token dostępu dla skrótu i przekazuje go razem z adresem serwera.",
-          "desktop": "Otwórz Ustawienia → Apple Wallet na swoim iPhonie, aby tam skonfigurować skrót.",
-          "done": "Skrót jest skonfigurowany. Twoja następna płatność Apple Pay pojawi się tutaj."
+          "manual": "Skonfiguruj ręcznie",
+          "done": "Skonfigurowano. Adres serwera i token są zapisane w iCloud Drive → Skróty."
+        },
+        "test": {
+          "title": "Uruchom econumo-wallet-v1 raz",
+          "text": "Uruchom go ręcznie i przy każdym pytaniu stuknij „Zawsze zezwalaj” — to nadaje uprawnienia, których automatyzacja będzie potrzebować. Nic nie jest tworzone; Econumo tylko odnotowuje, że skrót dotarł.",
+          "button": "Uruchom econumo-wallet-v1",
+          "check": "Sprawdź",
+          "ok": "Skrót dotarł do Econumo.",
+          "none": "Nic jeszcze nie odebrano. Uruchom skrót, zezwól na pytania i sprawdź ponownie."
         },
         "automate": {
-          "title": "3. Zautomatyzuj",
-          "text": "W aplikacji Skróty dodaj automatyzację: Transakcja → Uruchom „econumo-wallet-v1” z transakcją jako wejściem."
-        }
-      },
-      "manual": {
-        "toggle": "Skonfiguruj ręcznie",
-        "token": "Token dostępu (pokazywany raz)",
-        "url": "Serwer",
-        "body": "Treść żądania",
-        "action_1": "Pobierz szczegóły transakcji → wypełnij treść żądania powyżej",
-        "action_2": "Pobierz zawartość URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "Nagłówek Authorization: Bearer <token>",
-        "action_4": "Nagłówek Content-Type: application/json",
-        "action_5": "Treść żądania: JSON, pola powyżej"
+          "title": "Utwórz automatyzację",
+          "text": "W aplikacji Skróty: Automatyzacja → + → Transakcja → dowolna karta → Uruchom natychmiast → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Pierwsza płatność z odblokowanym iPhonem",
+          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie i stuknij „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet. Kolejne płatności działają z ekranu blokady.",
+          "check": "Sprawdź",
+          "ok": "Odebrano {card} — przypisz kartę do konta poniżej.",
+          "none": "Nie odebrano jeszcze płatności. Zapłać raz z odblokowanym iPhonem i sprawdź ponownie."
+        },
+        "complete": "Konfiguracja zakończona",
+        "show": "Pokaż kroki",
+        "hide": "Ukryj kroki"
       },
       "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
       "cards": {

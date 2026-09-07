@@ -491,34 +491,44 @@
         "question": "Kaartkoppelingen en de controlewachtrij van deze verbinding worden verwijderd. Al geïmporteerde transacties blijven staan."
       },
       "steps": {
-        "install": {
-          "title": "1. Haal de opdrachten op",
-          "text": "Installeer beide opdrachten op je iPhone.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar uit te voeren. Op dit apparaat kun je de opdrachten downloaden en stappen handmatig afvinken.",
+        "install_wallet": {
+          "title": "econumo-wallet-v1 installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+        },
+        "install_setup": {
+          "title": "econumo-setup-v1 installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
         },
         "configure": {
-          "title": "2. Configureren",
+          "title": "Opdrachten configureren",
+          "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
           "button": "Configureren op deze iPhone",
-          "text": "Maakt een toegangstoken voor de opdracht en geeft het samen met het serveradres door.",
-          "desktop": "Open Instellingen → Apple Wallet op je iPhone om de opdracht daar te configureren.",
-          "done": "De opdracht is geconfigureerd. Je volgende Apple Pay-betaling verschijnt hier."
+          "manual": "Handmatig configureren",
+          "done": "Geconfigureerd. Serveradres en token staan in iCloud Drive → Opdrachten."
+        },
+        "test": {
+          "title": "econumo-wallet-v1 één keer uitvoeren",
+          "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
+          "button": "econumo-wallet-v1 uitvoeren",
+          "check": "Controleren",
+          "ok": "De opdracht heeft Econumo bereikt.",
+          "none": "Nog niets ontvangen. Voer de opdracht uit, sta de meldingen toe en controleer opnieuw."
         },
         "automate": {
-          "title": "3. Automatiseren",
-          "text": "Voeg in de Opdrachten-app een automatisering toe: Transactie → Voer \"econumo-wallet-v1\" uit met de transactie als invoer."
-        }
-      },
-      "manual": {
-        "toggle": "Handmatig configureren",
-        "token": "Toegangstoken (eenmalig getoond)",
-        "url": "Server",
-        "body": "Verzoektekst",
-        "action_1": "Details van transactie ophalen → vul de verzoektekst hierboven in",
-        "action_2": "Inhoud van URL ophalen → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "Header Authorization: Bearer <token>",
-        "action_4": "Header Content-Type: application/json",
-        "action_5": "Verzoektekst: JSON, de velden hierboven"
+          "title": "Automatisering aanmaken",
+          "text": "In de Opdrachten-app: Automatisering → + → Transactie → elke kaart → Voer direct uit → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Eerste betaling met ontgrendelde iPhone",
+          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is en tik op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt. Latere betalingen werken vanaf het toegangsscherm.",
+          "check": "Controleren",
+          "ok": "{card} ontvangen — koppel de kaart hieronder aan een rekening.",
+          "none": "Nog geen betaling ontvangen. Betaal één keer met ontgrendelde iPhone en controleer opnieuw."
+        },
+        "complete": "Installatie voltooid",
+        "show": "Stappen tonen",
+        "hide": "Stappen verbergen"
       },
       "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
       "cards": {

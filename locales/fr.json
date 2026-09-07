@@ -491,34 +491,44 @@
         "question": "Les associations de cartes et la file de vérification de cette connexion seront supprimées. Les transactions déjà importées sont conservées."
       },
       "steps": {
-        "install": {
-          "title": "1. Récupérer les raccourcis",
-          "text": "Installez les deux raccourcis sur votre iPhone.",
-          "wallet": "econumo-wallet-v1",
-          "setup": "econumo-setup-v1"
+        "hint_desktop": "Ouvrez cette page sur votre iPhone pour y effectuer les étapes. Sur cet appareil, vous pouvez télécharger les raccourcis et cocher les étapes à la main.",
+        "install_wallet": {
+          "title": "Installer econumo-wallet-v1",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
+        },
+        "install_setup": {
+          "title": "Installer econumo-setup-v1",
+          "text": "Ouvrez le fichier sur votre iPhone et touchez « Ajouter le raccourci »."
         },
         "configure": {
-          "title": "2. Configurer",
+          "title": "Configurer les raccourcis",
+          "text": "Crée un jeton d’accès pour le raccourci et le transmet à econumo-setup-v1 avec l’adresse du serveur.",
           "button": "Configurer sur cet iPhone",
-          "text": "Crée un jeton d'accès pour le raccourci et le lui transmet avec l'adresse du serveur.",
-          "desktop": "Ouvrez Réglages → Apple Wallet sur votre iPhone pour y configurer le raccourci.",
-          "done": "Le raccourci est configuré. Votre prochain paiement Apple Pay apparaîtra ici."
+          "manual": "Configurer manuellement",
+          "done": "Configuré. L’adresse du serveur et le jeton sont enregistrés dans iCloud Drive → Raccourcis."
+        },
+        "test": {
+          "title": "Exécuter econumo-wallet-v1 une fois",
+          "text": "Lancez-le à la main et touchez « Toujours autoriser » à chaque demande : cela accorde les autorisations dont l’automatisation aura besoin. Rien n’est créé ; Econumo note seulement que le raccourci l’a atteint.",
+          "button": "Exécuter econumo-wallet-v1",
+          "check": "Vérifier",
+          "ok": "Le raccourci a atteint Econumo.",
+          "none": "Rien reçu pour l’instant. Lancez le raccourci, acceptez les demandes et vérifiez à nouveau."
         },
         "automate": {
-          "title": "3. Automatiser",
-          "text": "Dans l'app Raccourcis, ajoutez une automatisation : Transaction → Exécuter « econumo-wallet-v1 » avec la transaction en entrée."
-        }
-      },
-      "manual": {
-        "toggle": "Configurer manuellement",
-        "token": "Jeton d'accès (affiché une seule fois)",
-        "url": "Serveur",
-        "body": "Corps de la requête",
-        "action_1": "Obtenir les détails de la transaction → remplir le corps ci-dessus",
-        "action_2": "Obtenir le contenu de l'URL → POST {url}/api/v1/import/ingest-apple-wallet-event",
-        "action_3": "En-tête Authorization: Bearer <token>",
-        "action_4": "En-tête Content-Type: application/json",
-        "action_5": "Corps de la requête : JSON, les champs ci-dessus"
+          "title": "Créer l’automatisation",
+          "text": "Dans l’app Raccourcis : Automatisation → + → Transaction → n’importe quelle carte → Exécuter immédiatement → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Effectuer le premier paiement avec l’iPhone déverrouillé",
+          "text": "Payez une fois avec Apple Pay, iPhone déverrouillé, et touchez « Toujours autoriser » quand Raccourcis demande l’accès à Wallet. Les paiements suivants fonctionnent depuis l’écran verrouillé.",
+          "check": "Vérifier",
+          "ok": "{card} reçue — associez-la à un compte ci-dessous.",
+          "none": "Aucun paiement reçu pour l’instant. Payez une fois avec l’iPhone déverrouillé et vérifiez à nouveau."
+        },
+        "complete": "Configuration terminée",
+        "show": "Afficher les étapes",
+        "hide": "Masquer les étapes"
       },
       "same_named_cards": "Les cartes portant le même nom dans Wallet arrivent ici comme une seule carte.",
       "cards": {
