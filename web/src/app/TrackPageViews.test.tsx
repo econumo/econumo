@@ -3,11 +3,11 @@ import { act, StrictMode } from 'react'
 import { createBrowserRouter, Navigate, RouterProvider } from 'react-router'
 import { render } from '@testing-library/react'
 import { TrackPageViews } from './TrackPageViews'
-import { METRICS, trackEvent, trackPage } from '@/lib/metrics'
+import { METRICS, trackEvent } from '@/lib/metrics'
 
 vi.mock('@/lib/metrics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/metrics')>()
-  return { ...actual, trackEvent: vi.fn(), trackPage: vi.fn() }
+  return { ...actual, trackEvent: vi.fn() }
 })
 
 beforeEach(() => {
@@ -34,10 +34,8 @@ it('tracks a page view on initial load and on every route change', async () => {
   render(<RouterProvider router={router} />)
   expect(trackEvent).toHaveBeenCalledTimes(1)
   expect(trackEvent).toHaveBeenCalledWith(METRICS.PAGE_VIEW)
-  expect(trackPage).toHaveBeenCalledTimes(1)
   await act(() => router.navigate('/budget'))
   expect(trackEvent).toHaveBeenCalledTimes(2)
-  expect(trackPage).toHaveBeenCalledTimes(2)
 })
 
 it('does not double-track under StrictMode or same-path navigation', async () => {
@@ -50,12 +48,10 @@ it('does not double-track under StrictMode or same-path navigation', async () =>
   expect(trackEvent).toHaveBeenCalledTimes(1)
   await act(() => router.navigate('/'))
   expect(trackEvent).toHaveBeenCalledTimes(1)
-  expect(trackPage).toHaveBeenCalledTimes(1)
 })
 
 it('counts a redirected landing once, for the destination only', async () => {
   const router = makeRouter('/', <Navigate to="/budget" replace />)
   await act(() => render(<RouterProvider router={router} />))
   expect(trackEvent).toHaveBeenCalledTimes(1)
-  expect(trackPage).toHaveBeenCalledTimes(1)
 })

@@ -214,46 +214,6 @@ export function analyticsPlatform(): 'web' | 'ios' | 'android' {
   return /android/i.test(navigator.userAgent) ? 'android' : 'ios'
 }
 
-// Resolved on every call rather than once at module load: in the mobile app
-// this module evaluates before the async fetchServerConfig() merges the
-// real INSTANCE_ID, so a fixed-at-import read would leave the group unset
-// for the whole session. The cost is two cheap string reads per event.
-// Batch-level (session-wide) attributes are likewise recomputed, since the
-// profile counts change as the query cache fills in behind the boot loader.
-function syncBatchContext(): void {
-  const instanceId = getInstanceId()
-  if (instanceId) {
-    setAnalyticsGroup(instanceId, analyticsHost())
-  }
-  setAnalyticsContext({
-    $app_version: getVersion(),
-    $platform: analyticsPlatform(),
-    ...profileAttributes(),
-  })
-}
-
-// The collector's web family ($pageview: sessions, countries, devices,
-// per-path breakdown) is fed from the SPA itself, through the same transport
-// and opt-out gate as the product events, so every deployment gets it. No
-// referrer and no campaign parameters: this project's only source is the
-// signed-in app, acquisition belongs to the marketing site's project, and a
-// referrer URL is the one place a third-party string could enter the payload.
-export function trackPage(): void {
-  if (!analyticsAllowed()) {
-    return
-  }
-  syncBatchContext()
-  const path = `/${scrubbedPage(window.location.pathname)}`
-  if (analyticsPlatform() !== 'web') {
-    // A native app declares its own context; a $pageview from its WebView
-    // would be enriched from the WebView's User-Agent and land as a mobile
-    // browser instead of an app screen.
-    capture('$screen_view', { $screen: path })
-    return
-  }
-  capture('$pageview', { $host: analyticsHost(), $path: path })
-}
-
 export function trackEvent(metric: Metric, eventData: Record<string, unknown> = {}) {
   if (!metric) {
     return
@@ -263,7 +223,22 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   if (!analyticsAllowed()) {
     return
   }
-  syncBatchContext()
+  // Resolved on every call rather than once at module load: in the mobile app
+  // this module evaluates before the async fetchServerConfig() merges the
+  // real INSTANCE_ID, so a fixed-at-import read would leave the group unset
+  // for the whole session. The cost is two cheap string reads per event.
+  const instanceId = getInstanceId()
+  if (instanceId) {
+    setAnalyticsGroup(instanceId, analyticsHost())
+  }
+  // Batch-level (session-wide) attributes: recomputed on every call rather
+  // than fixed at module load, since the profile counts change as the query
+  // cache fills in behind the boot loader.
+  setAnalyticsContext({
+    $app_version: getVersion(),
+    $platform: analyticsPlatform(),
+    ...profileAttributes(),
+  })
   window.dataLayer = window.dataLayer || []
   window.dataLayer.push({
     event: metric,

@@ -7,7 +7,6 @@ import {
   isCloudHost,
   scrubbedPage,
   trackEvent,
-  trackPage,
   viewMode,
   setAnalyticsAccessState,
 } from './metrics'
@@ -71,42 +70,6 @@ describe('collector capture', () => {
     trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
     expect(capture).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(1)
-  })
-})
-
-describe('trackPage', () => {
-  const UUID = '01980e2c-1111-7000-8000-123456789abc'
-
-  afterEach(() => {
-    delete (window as { Capacitor?: unknown }).Capacitor
-  })
-
-  it('captures a web pageview with the scrubbed path and synthetic host only', () => {
-    Object.defineProperty(document, 'referrer', {
-      value: 'https://news.ycombinator.com/item?id=1',
-      configurable: true,
-    })
-    window.history.replaceState({}, '', `/budgets/${UUID}/details?utm_source=news&tab=x`)
-    trackPage()
-    expect(capture).toHaveBeenCalledTimes(1)
-    expect(capture).toHaveBeenCalledWith('$pageview', {
-      $host: 'selfhosted_unknown',
-      $path: '/budgets/:id/details',
-    })
-  })
-
-  it('sends nothing when opted out', () => {
-    rememberAnalyticsPreference(false)
-    trackPage()
-    expect(capture).not.toHaveBeenCalled()
-  })
-
-  it('records a screen view instead of a pageview inside the native app', () => {
-    window.Capacitor = { isNativePlatform: () => true }
-    window.econumoConfig = { ...window.econumoConfig, INSTANCE_ID: 'a3f19c02b7d4' }
-    window.history.replaceState({}, '', `/account/${UUID}`)
-    trackPage()
-    expect(capture).toHaveBeenCalledWith('$screen_view', { $screen: '/account/:id' })
   })
 })
 

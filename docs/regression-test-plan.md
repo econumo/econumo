@@ -341,11 +341,7 @@ User C sees none of it.
 - [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
-      flip it, unlike other writes on that account. With it off no request
-      reaches the analytics collector on navigation; with it on, each route
-      change posts one `page_view` product event and one `$pageview` (the
-      pageview carries only a host marker and a path with UUIDs scrubbed to
-      `:id` — no referrer, no query string, no real self-hosted hostname).
+      flip it, unlike other writes on that account.
 
 ## 13. Cross-cutting & platform
 

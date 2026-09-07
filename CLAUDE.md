@@ -288,25 +288,18 @@ is built from that same synthetic host),
 plus batch-level account-profile counts (connections, accounts,
 categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
 `analytics` option (`users_options`, on by default) gates capture: it silences
-the Twillingate collector (product events AND web pageviews) and the
-`window.dataLayer`/liltag push, is mirrored to `localStorage` for a
-synchronous boot-time check (`get-user-data` resolves after the first
-pageview), and is toggled via `POST /api/v1/user/update-analytics`.
-The collector's web family (`$pageview`: sessions, referrers, countries,
-devices, per-path breakdown) is fed by the SPA itself, not by the
-collector's snippet: `trackPage()` (`web/src/lib/metrics.ts`, called next to
-`trackEvent(METRICS.PAGE_VIEW)` in `TrackPageViews`) captures a `$pageview`
-carrying only the synthetic `$host` and a `$path` with UUID segments
-scrubbed to `:id` — no `$referrer` and no `$utm_*`, since this project's
-only source is the signed-in app and acquisition belongs to the marketing
-site's project; inside the native app it captures a `$screen_view` instead,
-so app traffic lands in the app dashboards rather than as a mobile browser. Every deployment therefore reports web analytics through the one
-opt-out-gated transport. That transport posts to the collector's `econumo`
-project (identity `identified`; key in `web/src/lib/analytics.ts`), whose
-only source is the SPA. The cloud's liltag config separately injects the
-collector's `twillingate.js` snippet for the anonymous `app.econumo.com`
-project — a different project, so the two never double-count, and that
-snippet stays outside the per-user opt-out by design.
+both the Twillingate collector and the `window.dataLayer`/liltag push, is
+mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
+resolves after the first pageview), and is toggled via
+`POST /api/v1/user/update-analytics`. The in-app transport sends product
+events ONLY — `page_view` included; never the collector's reserved
+`$pageview`/`$screen_view` — to the collector's `econumo` project (identity
+`identified`; key in `web/src/lib/analytics.ts`), whose only source is the
+SPA. Web analytics (sessions, countries, devices) for the cloud instance come
+separately from the collector's `twillingate.js` snippet that the cloud's
+liltag config injects for the anonymous `app.econumo.com` project; that
+snippet is outside this repo and outside the per-user opt-out by design, and
+self-hosted instances have no web analytics at all.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
