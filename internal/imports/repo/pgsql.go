@@ -157,3 +157,59 @@ func (pgsqlQuerier) ListImportTransactionLinksBySource(ctx context.Context, db b
 func (pgsqlQuerier) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error {
 	return pgsqlgen.New(db).DeleteQueuedImportTransactionLinksByExternalAccount(ctx, pgsqlgen.DeleteQueuedImportTransactionLinksByExternalAccountParams(p))
 }
+
+func (pgsqlQuerier) UpdateImportSource(ctx context.Context, db backend.DBTX, p updateSourceParams) error {
+	return pgsqlgen.New(db).UpdateImportSource(ctx, pgsqlgen.UpdateImportSourceParams(p))
+}
+
+func (pgsqlQuerier) UpsertImportCredentialKey(ctx context.Context, db backend.DBTX, p upsertCredentialKeyParams) error {
+	return pgsqlgen.New(db).UpsertImportCredentialKey(ctx, pgsqlgen.UpsertImportCredentialKeyParams(p))
+}
+
+func (pgsqlQuerier) GetImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) (credentialKeyRow, error) {
+	k, err := pgsqlgen.New(db).GetImportCredentialKey(ctx, userID)
+	return credentialKeyRow(k), err
+}
+
+func (pgsqlQuerier) DeleteImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) error {
+	return pgsqlgen.New(db).DeleteImportCredentialKey(ctx, userID)
+}
+
+func (pgsqlQuerier) ListImportRunsByUser(ctx context.Context, db backend.DBTX, p runsByUserParams) ([]runRow, error) {
+	// Limit is int64 on sqlite (SQLite has no fixed-width integer bind types)
+	// but pgsql's LIMIT parameter binds int32, so this is a field-by-field
+	// conversion rather than the usual whole-struct cast.
+	rows, err := pgsqlgen.New(db).ListImportRunsByUser(ctx, pgsqlgen.ListImportRunsByUserParams{UserID: p.UserID, Limit: int32(p.Limit)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]runRow, len(rows))
+	for i, row := range rows {
+		out[i] = runRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportRunsBySource(ctx context.Context, db backend.DBTX, p runsBySourceParams) ([]runRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportRunsBySource(ctx, pgsqlgen.ListImportRunsBySourceParams{UserID: p.UserID, SourceID: p.SourceID, Limit: int32(p.Limit)})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]runRow, len(rows))
+	for i, row := range rows {
+		out[i] = runRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportTransactionLinksByRun(ctx context.Context, db backend.DBTX, runID *string) ([]linkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksByRun(ctx, runID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}

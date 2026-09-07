@@ -19,6 +19,15 @@ func (q *Queries) DeleteImportAccountLink(ctx context.Context, id string) error 
 	return err
 }
 
+const deleteImportCredentialKey = `-- name: DeleteImportCredentialKey :exec
+DELETE FROM import_credential_keys WHERE user_id = ?
+`
+
+func (q *Queries) DeleteImportCredentialKey(ctx context.Context, userID string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportCredentialKey, userID)
+	return err
+}
+
 const deleteImportEvent = `-- name: DeleteImportEvent :exec
 DELETE FROM import_events WHERE id = ?
 `
@@ -68,6 +77,25 @@ func (q *Queries) GetImportAccountLinkByID(ctx context.Context, id string) (Impo
 		&i.ExternalCurrency,
 		&i.AccountID,
 		&i.Mode,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getImportCredentialKey = `-- name: GetImportCredentialKey :one
+SELECT user_id, wrapped_data_key, kdf, created_at, updated_at
+FROM import_credential_keys
+WHERE user_id = ?
+`
+
+func (q *Queries) GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error) {
+	row := q.db.QueryRowContext(ctx, getImportCredentialKey, userID)
+	var i ImportCredentialKey
+	err := row.Scan(
+		&i.UserID,
+		&i.WrappedDataKey,
+		&i.Kdf,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -554,6 +582,151 @@ func (q *Queries) ListImportEventsBySourceStatus(ctx context.Context, arg ListIm
 	return items, nil
 }
 
+const listImportRunsBySource = `-- name: ListImportRunsBySource :many
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
+FROM import_runs
+WHERE user_id = ? AND source_id = ?
+ORDER BY started_at DESC, id DESC
+LIMIT ?
+`
+
+type ListImportRunsBySourceParams struct {
+	UserID   string
+	SourceID string
+	Limit    int64
+}
+
+type ListImportRunsBySourceRow struct {
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+}
+
+func (q *Queries) ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error) {
+	rows, err := q.db.QueryContext(ctx, listImportRunsBySource, arg.UserID, arg.SourceID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListImportRunsBySourceRow{}
+	for rows.Next() {
+		var i ListImportRunsBySourceRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SourceID,
+			&i.Provider,
+			&i.Params,
+			&i.Status,
+			&i.ImportedCount,
+			&i.MatchedCount,
+			&i.SkippedCount,
+			&i.FailedCount,
+			&i.QueuedCount,
+			&i.AmountsUpdatedCount,
+			&i.Trigger,
+			&i.Errors,
+			&i.StartedAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportRunsByUser = `-- name: ListImportRunsByUser :many
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
+FROM import_runs
+WHERE user_id = ?
+ORDER BY started_at DESC, id DESC
+LIMIT ?
+`
+
+type ListImportRunsByUserParams struct {
+	UserID string
+	Limit  int64
+}
+
+type ListImportRunsByUserRow struct {
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+}
+
+func (q *Queries) ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, listImportRunsByUser, arg.UserID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListImportRunsByUserRow{}
+	for rows.Next() {
+		var i ListImportRunsByUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SourceID,
+			&i.Provider,
+			&i.Params,
+			&i.Status,
+			&i.ImportedCount,
+			&i.MatchedCount,
+			&i.SkippedCount,
+			&i.FailedCount,
+			&i.QueuedCount,
+			&i.AmountsUpdatedCount,
+			&i.Trigger,
+			&i.Errors,
+			&i.StartedAt,
+			&i.FinishedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listImportSourcesByUser = `-- name: ListImportSourcesByUser :many
 SELECT id, user_id, provider, name, credential_ciphertext, status, last_synced_at, created_at, updated_at
 FROM import_sources
@@ -580,6 +753,55 @@ func (q *Queries) ListImportSourcesByUser(ctx context.Context, userID string) ([
 			&i.LastSyncedAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportTransactionLinksByRun = `-- name: ListImportTransactionLinksByRun :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE run_id = ?
+ORDER BY imported_at, id
+`
+
+func (q *Queries) ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportTransactionLinksByRun, runID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportTransactionLink{}
+	for rows.Next() {
+		var i ImportTransactionLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.EventID,
+			&i.ExternalAccountID,
+			&i.ExternalTransactionID,
+			&i.TransactionID,
+			&i.Status,
+			&i.ExternalPayee,
+			&i.ExternalDescription,
+			&i.ExternalAmount,
+			&i.ExternalCurrency,
+			&i.ExternalPostedAt,
+			&i.AppliedCategoryID,
+			&i.AppliedPayeeID,
+			&i.AppliedTagID,
+			&i.AppliedRuleID,
+			&i.ImportedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -772,6 +994,31 @@ func (q *Queries) UpdateImportRun(ctx context.Context, arg UpdateImportRunParams
 	return err
 }
 
+const updateImportSource = `-- name: UpdateImportSource :exec
+UPDATE import_sources SET name = ?, credential_ciphertext = ?, status = ?, last_synced_at = ?, updated_at = ? WHERE id = ?
+`
+
+type UpdateImportSourceParams struct {
+	Name                 string
+	CredentialCiphertext *string
+	Status               string
+	LastSyncedAt         *time.Time
+	UpdatedAt            time.Time
+	ID                   string
+}
+
+func (q *Queries) UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error {
+	_, err := q.db.ExecContext(ctx, updateImportSource,
+		arg.Name,
+		arg.CredentialCiphertext,
+		arg.Status,
+		arg.LastSyncedAt,
+		arg.UpdatedAt,
+		arg.ID,
+	)
+	return err
+}
+
 const updateImportTransactionLink = `-- name: UpdateImportTransactionLink :exec
 UPDATE import_transaction_links
 SET run_id = ?, transaction_id = ?, status = ?, external_amount = ?, external_currency = ?, applied_category_id = ?, applied_payee_id = ?, applied_tag_id = ?, applied_rule_id = ?
@@ -803,6 +1050,31 @@ func (q *Queries) UpdateImportTransactionLink(ctx context.Context, arg UpdateImp
 		arg.AppliedTagID,
 		arg.AppliedRuleID,
 		arg.ID,
+	)
+	return err
+}
+
+const upsertImportCredentialKey = `-- name: UpsertImportCredentialKey :exec
+INSERT INTO import_credential_keys (user_id, wrapped_data_key, kdf, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET wrapped_data_key = excluded.wrapped_data_key, kdf = excluded.kdf, updated_at = excluded.updated_at
+`
+
+type UpsertImportCredentialKeyParams struct {
+	UserID         string
+	WrappedDataKey string
+	Kdf            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+func (q *Queries) UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error {
+	_, err := q.db.ExecContext(ctx, upsertImportCredentialKey,
+		arg.UserID,
+		arg.WrappedDataKey,
+		arg.Kdf,
+		arg.CreatedAt,
+		arg.UpdatedAt,
 	)
 	return err
 }

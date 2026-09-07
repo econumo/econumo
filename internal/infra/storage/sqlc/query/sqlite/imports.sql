@@ -122,3 +122,39 @@ ORDER BY external_posted_at DESC, id;
 
 -- name: DeleteQueuedImportTransactionLinksByExternalAccount :exec
 DELETE FROM import_transaction_links WHERE source_id = sqlc.arg(source_id) AND lower(external_account_id) = lower(sqlc.arg(external_account_id)) AND status = 'queued';
+
+-- name: UpdateImportSource :exec
+UPDATE import_sources SET name = ?, credential_ciphertext = ?, status = ?, last_synced_at = ?, updated_at = ? WHERE id = ?;
+
+-- name: UpsertImportCredentialKey :exec
+INSERT INTO import_credential_keys (user_id, wrapped_data_key, kdf, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (user_id) DO UPDATE SET wrapped_data_key = excluded.wrapped_data_key, kdf = excluded.kdf, updated_at = excluded.updated_at;
+
+-- name: GetImportCredentialKey :one
+SELECT user_id, wrapped_data_key, kdf, created_at, updated_at
+FROM import_credential_keys
+WHERE user_id = ?;
+
+-- name: DeleteImportCredentialKey :exec
+DELETE FROM import_credential_keys WHERE user_id = ?;
+
+-- name: ListImportRunsByUser :many
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
+FROM import_runs
+WHERE user_id = ?
+ORDER BY started_at DESC, id DESC
+LIMIT ?;
+
+-- name: ListImportRunsBySource :many
+SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at
+FROM import_runs
+WHERE user_id = ? AND source_id = ?
+ORDER BY started_at DESC, id DESC
+LIMIT ?;
+
+-- name: ListImportTransactionLinksByRun :many
+SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at
+FROM import_transaction_links
+WHERE run_id = ?
+ORDER BY imported_at, id;

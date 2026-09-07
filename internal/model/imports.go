@@ -107,6 +107,17 @@ type ImportRun struct {
 	FinishedAt          *time.Time
 }
 
+// ImportCredentialKey is the wrapped data-encryption key backing a user's
+// stored provider credentials (SimpleFIN, etc). KDF is opaque JSON the
+// client controls (algorithm, salt, iterations); the server never inspects it.
+type ImportCredentialKey struct {
+	UserID         vo.Id
+	WrappedDataKey string
+	KDF            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
 // ImportTransactionLink is one ledger row: what an external transaction id
 // became. A linked row whose TransactionID is nil is a tombstone — the user
 // deleted the transaction, and the external id must never be re-imported.

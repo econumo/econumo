@@ -12,7 +12,15 @@ type Repository interface {
 	GetSource(ctx context.Context, id vo.Id) (*model.ImportSource, error)
 	GetSourceByUserProvider(ctx context.Context, userID vo.Id, provider string) (*model.ImportSource, error)
 	ListSourcesByUser(ctx context.Context, userID vo.Id) ([]model.ImportSource, error)
+	UpdateSource(ctx context.Context, s *model.ImportSource) error
 	DeleteSource(ctx context.Context, id vo.Id) error
+
+	// UpsertCredentialKey/GetCredentialKey/DeleteCredentialKey manage the
+	// single wrapped data-encryption key per user; GetCredentialKey returns
+	// (nil, nil) when the user has none yet.
+	UpsertCredentialKey(ctx context.Context, k *model.ImportCredentialKey) error
+	GetCredentialKey(ctx context.Context, userID vo.Id) (*model.ImportCredentialKey, error)
+	DeleteCredentialKey(ctx context.Context, userID vo.Id) error
 
 	InsertAccountLink(ctx context.Context, l *model.ImportAccountLink) error
 	UpdateAccountLink(ctx context.Context, l *model.ImportAccountLink) error
@@ -31,6 +39,9 @@ type Repository interface {
 	InsertRun(ctx context.Context, r *model.ImportRun) error
 	GetRun(ctx context.Context, id vo.Id) (*model.ImportRun, error)
 	UpdateRun(ctx context.Context, r *model.ImportRun) error
+	// ListRunsByUser returns newest first; sourceID nil lists every run for
+	// the user, else only runs for that source.
+	ListRunsByUser(ctx context.Context, userID vo.Id, sourceID *vo.Id, limit int) ([]model.ImportRun, error)
 
 	InsertLink(ctx context.Context, l *model.ImportTransactionLink) error
 	GetLink(ctx context.Context, id vo.Id) (*model.ImportTransactionLink, error)
@@ -38,6 +49,7 @@ type Repository interface {
 	GetLinkByExternalKey(ctx context.Context, sourceID vo.Id, externalAccountID, externalTransactionID string) (*model.ImportTransactionLink, error)
 	ListLinksByTransaction(ctx context.Context, transactionID vo.Id) ([]model.ImportTransactionLink, error)
 	ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.ImportTransactionLink, error)
+	ListLinksByRun(ctx context.Context, runID vo.Id) ([]model.ImportTransactionLink, error)
 	// DeleteQueuedLinksByExternalAccount purges only queued rows: seen rows
 	// (linked/skipped/tombstone) are the dedupe memory and must survive.
 	DeleteQueuedLinksByExternalAccount(ctx context.Context, sourceID vo.Id, externalAccountID string) error
