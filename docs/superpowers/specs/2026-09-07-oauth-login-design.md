@@ -33,9 +33,10 @@ OAuth 2.0 / OIDC **relying party** (client) of an external issuer.
 - OAuth state is stored server-side (a table), not in cookies: Apple's
   cross-site `form_post` carries no SameSite cookie and the app's browser sheet
   shares no storage with the SPA.
-- Identities live in `users_identities (provider, subject)`. Auto-link to an
-  existing account only on a verified email; otherwise the user signs in with
-  their password and links from Settings.
+- Identities live in `users_identities (provider, subject)`. Email claims are
+  used only when verified (or trusted by the operator); an unverified email
+  rejects the sign-in outright, so a misconfigured IdP can neither take over
+  nor create an account.
 - Provisioning through a provider follows `ECONUMO_ALLOW_REGISTRATION`; such a
   user has no password (`users.algorithm = 'none'`) until they set one via the
   password-reset flow.
@@ -62,7 +63,8 @@ ECONUMO_OIDC_CLIENT_ID
 ECONUMO_OIDC_CLIENT_SECRET
 ECONUMO_OIDC_NAME                    # button label; default "SSO"
 ECONUMO_OIDC_SCOPES                  # default "openid profile email"; must contain "openid"
-ECONUMO_OIDC_TRUST_EMAIL             # strict bool, default false; treat the issuer's email claim as verified
+ECONUMO_OIDC_TRUST_EMAIL             # strict bool, default false; treat the issuer's email claim as verified.
+                                     # When false, a token without email_verified=true is rejected
 ```
 
 Rules, all checked in `config.Load` so a mistake fails at boot:
@@ -262,28 +264,25 @@ Common prefix:
 3. Exchange the code with the stored verifier; verify the ID token against
    the stored nonce. Any failure → `provider_error` (details in the operation
    log only, never in the redirect).
-4. `verified := claims.EmailVerified || issuer.TrustEmail`. Google and Apple
-   are configured with `TrustEmail = true`; the custom slot follows
-   `ECONUMO_OIDC_TRUST_EMAIL`.
+4. No email claim → `email_required` (issue #217 Case C is out of scope,
+   §14). Then `verified := claims.EmailVerified || issuer.TrustEmail`; not
+   verified → `email_unverified`. Google and Apple are configured with
+   `TrustEmail = true`; the custom slot follows `ECONUMO_OIDC_TRUST_EMAIL`.
+   This check runs for every intent, including an already-linked identity and
+   a link from Settings: an issuer whose tokens carry no `email_verified`
+   claim cannot be used at all until the operator sets the trust flag, which
+   is the explicit decision the flag exists for.
 
 `intent = login`:
 
 5. Identity `(provider, subject)` exists → its user. Inactive user →
    `account_inactive`. Otherwise mint a handoff.
-6. No identity, email present, `verified`, a user with that email exists
-   (`lower(email)`): inactive → `account_inactive`; else insert the identity,
-   update nothing else, mint a handoff. This is the auto-link.
-7. No identity, email present, **not** `verified`, user exists: inactive →
-   `account_inactive`; else `link_required`. The user signs in with their password and links from
-   Settings (§9).
-8. No user: registration disabled → `registration_disabled`. Else provision
-   (§7), insert the identity, and: if the new user's email is unverified and
-   `ECONUMO_EMAIL_VERIFICATION` is on, redirect with
-   `email_verification_required` plus the `username`, so the SPA opens the
-   existing verify-email dialog; after confirmation the user presses the
-   provider button again and step 5 applies. Otherwise mint a handoff.
-9. No email claim at all → `email_required` (issue #217 Case C is out of
-   scope, §13).
+6. No identity, a user with that email exists (`lower(email)`): inactive →
+   `account_inactive`; else insert the identity, update nothing else, mint a
+   handoff. This is the auto-link; it is safe because step 4 guarantees the
+   email is verified or trusted.
+7. No user: registration disabled → `registration_disabled`. Else provision
+   (§7) with the email marked verified, insert the identity, mint a handoff.
 
 `intent = link`:
 
@@ -301,14 +300,13 @@ refreshed from the claim.
 |---|---|---|
 | login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `econumo://oauth?handoff=<code>` |
 | link success | `<ECONUMO_URL>/settings/linked-accounts?linked=<provider>` | `econumo://oauth?linked=<provider>` |
-| error | `<ECONUMO_URL>/login?oauthError=<code>[&username=<email>]` | `econumo://oauth?error=<code>[&username=<email>]` |
+| error | `<ECONUMO_URL>/login?oauthError=<code>` | `econumo://oauth?error=<code>` |
 
 The web handoff travels in the fragment so it never reaches server logs or
 `Referer` headers. Error codes are catalogue keys under `auth.oauth.errors.*`
 rendered by the SPA in the user's language: `denied`, `invalid_state`,
-`provider_error`, `link_required`, `registration_disabled`,
-`email_verification_required`, `email_required`, `identity_taken`,
-`account_inactive`.
+`provider_error`, `email_required`, `email_unverified`,
+`registration_disabled`, `identity_taken`, `account_inactive`.
 
 ### 6.4 Handoff exchange
 
@@ -340,7 +338,7 @@ Features never import features. `internal/oauth/ports.go` declares:
 ```go
 type UserGateway interface {
     FindByEmail(ctx, email) (*model.User, error)             // NotFound when absent; caller checks IsActive
-    ProvisionExternal(ctx, name, email string, emailVerified bool) (*model.User, error)
+    ProvisionExternal(ctx, name, email string) (*model.User, error)  // email is always verified (§6.2 step 4)
     MintSession(ctx, userID vo.Id, userAgent, provider, idToken string) (*model.LoginResult, error)
     HasPassword(ctx, userID vo.Id) (bool, error)
 }
@@ -370,8 +368,9 @@ and avatar as a registered one, plus:
 - `name` from the `name` claim (Apple: `firstName` + `lastName` from the
   one-time `user` field), falling back to the email local part; clamped to
   the existing name length rule.
-- `email_verified = true` when the claim is verified/trusted; otherwise the
-  ordinary verification gate applies (§6.2 step 8).
+- `email_verified = true` always: step 4 of §6.2 rejected any unverified
+  claim before provisioning, so the email-verification gate never applies to
+  a provider-provisioned user.
 
 The current-user DTO gains `hasPassword` (bool). `update-password` is
 **unchanged** and still requires the current password; a passwordless user
@@ -407,9 +406,7 @@ issue allows.
   branding rules (Apple checks these at App Store review), the custom slot a
   neutral key icon with its name. No providers → no divider, no row. Buttons
   show even when registration is disabled (existing linked users can sign in).
-  `?oauthError=<code>` renders next to the session-expired notice;
-  `email_verification_required` opens the verify-email dialog with
-  `?username=` prefilled.
+  `?oauthError=<code>` renders next to the session-expired notice.
 - **Registration page**: same row when registration is allowed.
 - **Starting a flow**: `POST start-login {provider, client: isNativeApp() ? 'app' : 'web'}`,
   then `location.assign(url)` on the web or the Capacitor Browser plugin
@@ -475,8 +472,8 @@ issue allows.
   PKCE challenge/verifier round trip; randomness length and alphabet.
 - **`internal/oauth`**: table tests over §6.2 against the sqlite test DB
   driving the real callback through the fake issuer: existing identity,
-  verified auto-link, trusted auto-link, unverified match refused,
-  provisioning on/off, missing email, inactive user, link intent taken /
+  verified auto-link, trusted auto-link, unverified email rejected (login,
+  existing identity, and link intents), provisioning on/off, missing email, inactive user, link intent taken /
   idempotent, unlink last identity, expired and consumed state, expired
   handoff, handoff single use. Repo tests run under the PostgreSQL rerun.
 - **User feature**: passwordless login yields "Invalid credentials.";
@@ -504,9 +501,12 @@ issue allows.
 - `docs/oidc-setup.md`: Google, Apple, a generic IdP with Authentik as the
   worked example, and Cloudflare Access for SaaS; each ends with the exact
   callback URL and, for RP-initiated logout, the post-logout redirect URI.
+  The guide states plainly that an issuer whose ID tokens carry no
+  `email_verified` claim needs `ECONUMO_OIDC_TRUST_EMAIL=true` or every
+  sign-in is rejected with `email_unverified`.
 - `docs/regression-test-plan.md`: sign-in per provider (📱 and desktop),
-  auto-link, link-required path, link/unlink, last-identity refusal, set a
-  password, RP-initiated logout, app return via the scheme.
+  auto-link, unverified-email rejection, link/unlink, last-identity refusal,
+  set a password, RP-initiated logout, app return via the scheme.
 
 ## 14. Out of scope (recorded follow-ups)
 
