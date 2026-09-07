@@ -10,8 +10,11 @@
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
 
 const COLLECTOR_URL = 'https://t.econumo.com/api/events'
-// An ingest key is public by design (it can only ingest events).
-const INGEST_KEY = 'ak_be90b906b92397705359981ebced78ef'
+// An ingest key is public by design (it can only ingest events). It belongs
+// to the collector's `econumo` project (identity=identified) — the in-app
+// transport is that project's only source. The cloud's liltag snippet posts
+// to a separate, anonymous project and is unrelated to this key.
+const INGEST_KEY = 'ak_f81498e32742bc1ec94d35f60bcf7e0b'
 const FLUSH_AT = 10
 const FLUSH_INTERVAL_MS = 10_000
 
