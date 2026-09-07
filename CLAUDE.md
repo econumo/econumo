@@ -291,15 +291,7 @@ categories, payees, tags — `web/src/lib/analyticsProfile.ts`). A per-user
 both the Twillingate collector and the `window.dataLayer`/liltag push, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
 resolves after the first pageview), and is toggled via
-`POST /api/v1/user/update-analytics`. The in-app transport sends product
-events ONLY — `page_view` included; never the collector's reserved
-`$pageview`/`$screen_view` — to the collector's `econumo` project (identity
-`identified`; key in `web/src/lib/analytics.ts`), whose only source is the
-SPA. Web analytics (sessions, countries, devices) for the cloud instance come
-separately from the collector's `twillingate.js` snippet that the cloud's
-liltag config injects for the anonymous `app.econumo.com` project; that
-snippet is outside this repo and outside the per-user opt-out by design, and
-self-hosted instances have no web analytics at all.
+`POST /api/v1/user/update-analytics`.
 
 ### i18n (`locales/`, `internal/infra/i18n`, `web/src/app/i18n`)
 
