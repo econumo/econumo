@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Se solicitó un cambio de correo electrónico",
       "body": "Hola, {name}:\n\nAlguien solicitó cambiar el correo electrónico de tu cuenta a {email}. Si no fuiste tú, cambia tu contraseña de inmediato."
+    },
+    "identity_linked": {
+      "subject": "Se vinculó un nuevo método de inicio de sesión a tu cuenta",
+      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. Por seguridad, se cerraron tus demás sesiones.\n\nSi no fuiste tú, restablece tu contraseña de inmediato: eso elimina todas las demás sesiones y te permite desvincular la cuenta desde Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

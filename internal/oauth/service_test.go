@@ -105,6 +105,17 @@ func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provi
 	return &model.LoginResult{Token: "eco_ses_test", User: model.CurrentUserResult{Id: userID.String()}}, nil
 }
 
+// fakeNotifier records every IdentityLinked call the auto-link path makes.
+type fakeNotifier struct {
+	calls []struct{ userID, providerName string }
+	fail  error
+}
+
+func (f *fakeNotifier) IdentityLinked(_ context.Context, userID vo.Id, providerName string) error {
+	f.calls = append(f.calls, struct{ userID, providerName string }{userID.String(), providerName})
+	return f.fail
+}
+
 type harness struct {
 	t         *testing.T
 	db        *dbtest.DB
@@ -116,6 +127,7 @@ type harness struct {
 	hands     appoauth.Handoffs
 	clock     *fixedClock
 	providers []appoauth.Provider
+	notifier  *fakeNotifier
 	flow      string // the flow secret the last start-* call returned
 }
 
@@ -132,7 +144,9 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, trust), nil), Name: "Authentik"},
 	}
 	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration)
-	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers}
+	notifier := &fakeNotifier{}
+	svc.SetNotifier(notifier)
+	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers, notifier: notifier}
 }
 
 // login drives start-login + the provider's consent + the callback and returns
@@ -489,6 +503,70 @@ func TestCallback_AutoLinkRollsBackWhenTheEvictionFails(t *testing.T) {
 	// No half-linked identity: the next attempt would otherwise skip the eviction.
 	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc"); err == nil {
 		t.Fatal("the identity insert must roll back with the eviction")
+	}
+}
+
+func TestCallback_AutoLinkNotifiesTheAccountOwner(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
+	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.notifier.calls) != 1 {
+		t.Fatalf("want exactly one notification, got %+v", h.notifier.calls)
+	}
+	if got := h.notifier.calls[0]; got.userID != u.ID.String() || got.providerName != "Authentik" {
+		t.Fatalf("notification = %+v, want user %s provider Authentik", got, u.ID.String())
+	}
+}
+
+func TestCallback_AutoLinkNotifiesWithTheProviderDisplayName(t *testing.T) {
+	h := newHarness(t, true, true)
+	h.users.seed(t, "squatted-google@example.test", model.AlgorithmArgon2id)
+	h.fake.Email, h.fake.EmailVerified = "squatted-google@example.test", true
+	if r := h.login("google", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.notifier.calls) != 1 || h.notifier.calls[0].providerName != "Google" {
+		t.Fatalf("notification = %+v, want provider Google", h.notifier.calls)
+	}
+}
+
+func TestCallback_AutoLinkNotifierFailureDoesNotBreakTheRedirect(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
+	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	h.notifier.fail = errBoom
+	r := h.login("oidc", "web")
+	if handoffOf(t, r) == "" {
+		t.Fatalf("a failing notifier must not affect the redirect: %s", r)
+	}
+	if len(h.notifier.calls) != 1 {
+		t.Fatalf("notifier should still have been called once: %+v", h.notifier.calls)
+	}
+}
+
+func TestCallback_PasswordlessAutoLinkDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.users.seed(t, "external@example.test", model.AlgorithmNone)
+	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("a passwordless account was already provider-verified: %+v", h.notifier.calls)
+	}
+}
+
+func TestCallback_ProvisioningDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.fake.Email, h.fake.EmailVerified = "brandnew@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("provisioning a new user is not an auto-link: %+v", h.notifier.calls)
 	}
 }
 

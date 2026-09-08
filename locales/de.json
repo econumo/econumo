@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Änderung der E-Mail-Adresse angefordert",
       "body": "Hallo {name},\n\nJemand hat angefordert, die E-Mail-Adresse Ihres Kontos in {email} zu ändern. Falls Sie das nicht waren, ändern Sie bitte umgehend Ihr Passwort."
+    },
+    "identity_linked": {
+      "subject": "Eine neue Anmeldemethode wurde mit Ihrem Konto verknüpft",
+      "body": "Hallo {name},\n\nEin {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden. Zu Ihrer Sicherheit wurden Ihre anderen Sitzungen abgemeldet.\n\nFalls Sie das nicht waren, setzen Sie umgehend Ihr Passwort zurück — das beendet alle anderen Sitzungen und ermöglicht es Ihnen, das Konto in den Einstellungen zu trennen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
     }
   }
 }

@@ -40,3 +40,10 @@ type AttemptLimiter interface {
 // because the caller is anonymous — so only the global per-minute cap
 // (ECONUMO_RATE_LIMIT_GLOBAL) applies.
 const RateScopeOAuthStart = "oauth-start"
+
+// Notifier tells the account owner a provider was auto-linked to their
+// existing password account (step 6 of Callback). A nil Notifier on Service
+// disables the notification (tests, and any composition root that opts out).
+type Notifier interface {
+	IdentityLinked(ctx context.Context, userID vo.Id, providerName string) error
+}

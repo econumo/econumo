@@ -842,7 +842,11 @@ data unreadable. Most are also asserted by the test suite.
   `lower(email)` (no matching identity yet) — no confirmation screen, since the email is
   already trustworthy at that point. An unverified email is rejected (`email_unverified`) for
   every intent, including an already-linked identity signing in again and a link started from
-  Settings — there is no path around the trust flag.
+  Settings — there is no path around the trust flag. When the auto-linked account has a
+  password, its owner is emailed a best-effort notice (`emails.identity_linked.*`) once the
+  eviction transaction commits, naming the provider's display name in the account's stored
+  language; a failure to send never affects the redirect, and a passwordless auto-link (which
+  keeps its sessions) sends nothing.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case

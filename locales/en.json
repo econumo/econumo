@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Email change requested",
       "body": "Hi {name},\n\nSomeone requested to change the email on your account to {email}. If this was not you, please change your password immediately."
+    },
+    "identity_linked": {
+      "subject": "A new sign-in method was linked to your account",
+      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. For safety, your other sessions have been signed out.\n\nIf this wasn't you, reset your password right away — that removes every other session and lets you unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

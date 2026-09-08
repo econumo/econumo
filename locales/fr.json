@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Demande de changement d’e-mail",
       "body": "Bonjour {name},\n\nQuelqu’un a demandé à changer l’e-mail de votre compte en {email}. Si ce n’était pas vous, changez immédiatement votre mot de passe."
+    },
+    "identity_linked": {
+      "subject": "Une nouvelle méthode de connexion a été associée à votre compte",
+      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. Par mesure de sécurité, vos autres sessions ont été déconnectées.\n\nSi ce n’était pas vous, réinitialisez votre mot de passe immédiatement — cela met fin à toutes les autres sessions et vous permet de dissocier le compte depuis les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
   }
 }

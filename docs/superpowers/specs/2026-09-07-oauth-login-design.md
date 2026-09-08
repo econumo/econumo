@@ -311,6 +311,12 @@ Common prefix:
    provider, so its owner already proved the address and keeps their sessions.
    The insert and the eviction share one transaction — a half-applied link
    would leave the eviction undone while step 5 signs the attacker straight in.
+   Once that commits, the account owner is emailed a notice (best-effort, in
+   their stored language) that a sign-in method was linked and their other
+   sessions were signed out — a session eviction they did not initiate must be
+   noticeable, and the email is where they learn to reset their password if it
+   was not them. A passwordless account gets no notice: it already keeps its
+   sessions.
 7. No user: registration disabled → `registration_disabled`. Else provision
    (§7) with the email marked verified, insert the identity, mint a handoff.
 

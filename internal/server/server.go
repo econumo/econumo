@@ -167,6 +167,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	identityLinkedMailer := mailer.NewIdentityLinkedSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,
@@ -203,6 +204,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
 		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration)
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
+	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityLinkedMailer))
 	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),

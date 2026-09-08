@@ -23,6 +23,7 @@ type Service struct {
 	limiter           AttemptLimiter
 	appURL            string
 	allowRegistration bool
+	notifier          Notifier
 }
 
 func NewService(providers []Provider, users Users, identities Identities, states States, handoffs Handoffs,
@@ -35,6 +36,12 @@ func NewService(providers []Provider, users Users, identities Identities, states
 		handoffs: handoffs, tx: tx, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
 		allowRegistration: allowRegistration}
 }
+
+// SetNotifier installs the account-owner notification adapter after
+// construction (the composition root wires it over the user + mailer
+// features, which would otherwise widen NewService's signature). A nil
+// notifier (the zero value) leaves auto-link notification disabled.
+func (s *Service) SetNotifier(n Notifier) { s.notifier = n }
 
 // allowStart guards the optional limiter, mirroring the user feature's pattern.
 func (s *Service) allowStart() error {

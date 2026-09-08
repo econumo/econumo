@@ -186,7 +186,9 @@ user database.
   accounts. If that account had a password, every one of its open sessions is
   signed out (as a password reset does): the provider proved that whoever just
   signed in owns the address, which is not something the password holder
-  necessarily ever proved.
+  necessarily ever proved. That account's owner is also emailed a notice that
+  a sign-in method was linked and their other sessions were signed out, so an
+  unexpected auto-link is noticeable.
 - **A sign-in can only be completed by the browser that started it.** The
   "Continue with ..." button receives a one-flow secret from the server and
   keeps it locally; the browser must present it together with the one-time

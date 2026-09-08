@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Pedido de alteração de email",
       "body": "Olá, {name},\n\nAlguém pediu a alteração do email da sua conta para {email}. Se não fez este pedido, altere a sua palavra-passe imediatamente."
+    },
+    "identity_linked": {
+      "subject": "Foi associado um novo método de início de sessão à sua conta",
+      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. Por segurança, as suas outras sessões foram terminadas.\n\nSe não foi você, redefina a sua palavra-passe de imediato — isso termina todas as outras sessões e permite-lhe desassociar a conta a partir das Definições.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
     }
   }
 }

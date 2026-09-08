@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Prośba o zmianę adresu e-mail",
       "body": "Witaj, {name}!\n\nKtoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}. Jeśli to nie Ty, natychmiast zmień hasło."
+    },
+    "identity_linked": {
+      "subject": "Do Twojego konta powiązano nową metodę logowania",
+      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. Dla bezpieczeństwa Twoje pozostałe sesje zostały wylogowane.\n\nJeśli to nie Ty, natychmiast zresetuj hasło — spowoduje to zakończenie wszystkich pozostałych sesji i umożliwi odłączenie konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

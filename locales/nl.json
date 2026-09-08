@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Wijziging van e-mailadres aangevraagd",
       "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
+    },
+    "identity_linked": {
+      "subject": "Er is een nieuwe aanmeldmethode aan uw account gekoppeld",
+      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. Voor uw veiligheid zijn uw andere sessies afgemeld.\n\nAls u dit niet was, stel dan direct uw wachtwoord opnieuw in — dat beëindigt alle andere sessies en stelt u in staat het account in Instellingen te ontkoppelen.\n\n--\nEconumo — Beheer geld. Samen.\n"
     }
   }
 }

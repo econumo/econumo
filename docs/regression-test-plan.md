@@ -101,8 +101,10 @@ navigation (single-pane vs sidebar).
       password account auto-links (no confirmation dialog) and signs into
       that account; the provider then appears under Settings → Profile →
       Linked accounts. Any OTHER session of that account (a second browser
-      signed in with the password) is signed out by the link, and its personal
-      access tokens keep working.
+      signed in with the password) is signed out by the link, its personal
+      access tokens keep working, AND the account owner's notice email
+      arrives (console transport prints it to server stdout in dev) naming
+      the provider that was linked.
 - [ ] Starting a provider sign-in in one browser and opening the returned
       Econumo callback URL in a DIFFERENT browser (or a private window) fails
       with "The sign-in attempt expired or was already used." — only the

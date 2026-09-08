@@ -213,19 +213,30 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 // created through a provider, so its owner already proved the address and
 // keeps their sessions. The three writes share one transaction: a half-applied
 // link would leave the eviction undone while step 5 signs the attacker in.
+// Once that commits, the owner of a has-a-password account is notified
+// best-effort — a session eviction they didn't initiate must be noticeable.
 func (s *Service) autoLink(ctx context.Context, u *model.User, provider, subject, email string, now time.Time) error {
-	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+	hasPassword := u.HasPassword()
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		if err := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, subject, email, now)); err != nil {
 			return err
 		}
-		if !u.HasPassword() {
+		if !hasPassword {
 			return nil
 		}
 		if err := s.users.RevokeAllSessions(ctx, u.ID); err != nil {
 			return err
 		}
 		return s.users.MarkEmailVerified(ctx, u.ID)
-	})
+	}); err != nil {
+		return err
+	}
+	if hasPassword && s.notifier != nil {
+		if nerr := s.notifier.IdentityLinked(ctx, u.ID, s.byID[provider].Name); nerr != nil {
+			logWarn(ctx, "oauth callback: identity-linked notice", nerr, "user_id", u.ID.String(), "provider", provider)
+		}
+	}
+	return nil
 }
 
 // mirrorEmailDrift applies the spec's email-drift rule for an existing identity.

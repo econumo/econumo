@@ -1603,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Richiesta di modifica dell'email",
       "body": "Ciao {name},\n\nQualcuno ha richiesto di modificare l'email del tuo account in {email}. Se non sei stato tu, cambia immediatamente la tua password."
+    },
+    "identity_linked": {
+      "subject": "Un nuovo metodo di accesso è stato collegato al tuo account",
+      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. Per sicurezza, le tue altre sessioni sono state disconnesse.\n\nSe non sei stato tu, reimposta subito la password: questo chiude tutte le altre sessioni e ti permette di scollegare l'account dalle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
   }
 }
