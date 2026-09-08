@@ -56,12 +56,10 @@ type Client struct {
 	issuer Issuer
 	http   *http.Client
 
-	mu          sync.Mutex
-	disc        *Discovery
-	keys        map[string]crypto.PublicKey
-	keysFetched time.Time
-	lastMissKid string
-	lastMissAt  time.Time
+	mu         sync.Mutex
+	disc       *Discovery
+	keys       map[string]crypto.PublicKey
+	lastMissAt time.Time
 }
 
 func NewClient(issuer Issuer, hc *http.Client) *Client {

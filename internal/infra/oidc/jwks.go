@@ -55,10 +55,12 @@ func (k jwk) publicKey() (crypto.PublicKey, error) {
 	return nil, fmt.Errorf("oidc: unsupported kty %q", k.Kty)
 }
 
-// minJWKSRefresh bounds how often the SAME unknown kid may trigger a
-// re-fetch, so an attacker replaying one forged kid cannot turn the verifier
-// into a JWKS hammer; a genuinely new kid (a real rotation) always gets one
-// immediate refetch attempt.
+// minJWKSRefresh bounds how often an unknown kid may trigger a re-fetch, so a
+// flood of forged tokens (even with distinct kids) cannot turn the verifier
+// into a JWKS hammer: at most one refetch per minute, per issuer, is spent
+// looking for a kid that turns out not to exist. A refetch that actually
+// finds the requested kid (a real rotation) never arms the throttle, so a
+// genuine rotation always goes through immediately.
 const minJWKSRefresh = time.Minute
 
 // keyFor resolves the signing key for kid, re-fetching the JWKS once on a miss.
@@ -68,7 +70,7 @@ func (c *Client) keyFor(ctx context.Context, kid string) (crypto.PublicKey, erro
 		c.mu.Unlock()
 		return k, nil
 	}
-	throttled := c.lastMissKid == kid && time.Since(c.lastMissAt) < minJWKSRefresh
+	throttled := time.Since(c.lastMissAt) < minJWKSRefresh
 	c.mu.Unlock()
 	if throttled {
 		return nil, fmt.Errorf("%w: unknown kid %q", ErrInvalidToken, kid)
@@ -81,7 +83,6 @@ func (c *Client) keyFor(ctx context.Context, kid string) (crypto.PublicKey, erro
 	if k, ok := c.keys[kid]; ok {
 		return k, nil
 	}
-	c.lastMissKid = kid
 	c.lastMissAt = time.Now()
 	return nil, fmt.Errorf("%w: unknown kid %q", ErrInvalidToken, kid)
 }
@@ -122,7 +123,6 @@ func (c *Client) fetchJWKS(ctx context.Context) error {
 	}
 	c.mu.Lock()
 	c.keys = keys
-	c.keysFetched = time.Now()
 	c.mu.Unlock()
 	return nil
 }

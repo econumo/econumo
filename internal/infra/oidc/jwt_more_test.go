@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -86,5 +87,18 @@ func TestVerifyIDToken_UnknownKidThrottled(t *testing.T) {
 	afterSecond := countJWKSRequests(f.Requests())
 	if afterSecond != afterFirst {
 		t.Fatalf("the same unknown kid within the throttle window must not refetch: %d -> %d", afterFirst, afterSecond)
+	}
+
+	// A flood of DISTINCT forged kids must not each trigger their own refetch:
+	// the throttle is global to the client (per issuer), not keyed by kid.
+	for i := 0; i < 20; i++ {
+		flood := signToken(t, forged, fmt.Sprintf("forged-kid-%d", i), claims)
+		if _, err := c.VerifyIDToken(context.Background(), flood, "n", now); err == nil {
+			t.Fatalf("forged kid %d must fail", i)
+		}
+	}
+	afterFlood := countJWKSRequests(f.Requests())
+	if afterFlood != afterFirst {
+		t.Fatalf("a flood of distinct unknown kids within the throttle window must not refetch: %d -> %d", afterFirst, afterFlood)
 	}
 }
