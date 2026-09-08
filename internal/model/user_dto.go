@@ -35,6 +35,7 @@ type CurrentUserResult struct {
 	ReportPeriod string         `json:"reportPeriod"`
 	AccessLevel  string         `json:"accessLevel"`
 	AccessUntil  string         `json:"accessUntil"`
+	HasPassword  bool           `json:"hasPassword"`
 }
 
 // ---------------------------------------------------------------------------
@@ -474,11 +475,14 @@ type ResendEmailChangeCodeResult struct{}
 // logout-user
 // ---------------------------------------------------------------------------
 
-// LogoutResult is the logout response. The wire shape is the frozen
-// {"result":"test"} — NOT {}; the literal "test" constant is a preserved quirk
-// clients depend on, do not change it.
+// LogoutResult is the logout response. The wire shape keeps the frozen
+// {"result":"test"} quirk; logoutUrl/provider are additive: logoutUrl is the
+// IdP's end-session URL to navigate to ("" when none), provider the session's
+// OAuth provider id ("" for password sessions) so the client can name it.
 type LogoutResult struct {
-	Result string `json:"result"`
+	Result    string `json:"result"`
+	LogoutUrl string `json:"logoutUrl"`
+	Provider  string `json:"provider"`
 }
 
 // ---------------------------------------------------------------------------
