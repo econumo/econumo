@@ -732,9 +732,10 @@ In the distroless image these run via the binary directly, e.g.
   new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
   handoff code the client exchanges for a normal session — never a token in a redirect URL
   or server log. Identities live in `users_identities`, keyed by `(provider, subject)`.
-  Sessions minted through the custom OIDC slot carry `provider` and `id_token` on the row
-  (Google/Apple do not, since neither publishes an end-session endpoint); `logout-user`
-  returns a non-empty `logoutUrl` only for those, built from the row's stored `id_token`.
+  Every oauth-originated session stamps `provider` on the row (Google, Apple, and the custom
+  OIDC slot alike); only the custom OIDC slot also stores `id_token`, since Google and Apple
+  publish no end-session endpoint. `logout-user` returns a non-empty `logoutUrl` only for a
+  session that carries an `id_token` — i.e. an OIDC session — built from that stored value.
 
 ## Wire & data contract (frozen)
 
@@ -840,9 +841,9 @@ data unreadable. Most are also asserted by the test suite.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case
-  (the IdP is the account's sole authority) the primary email is replaced in the same
-  transaction. The rule stops applying the moment the user sets a password or links a second
-  identity.
+  (the IdP is the account's sole authority) the primary email is replaced immediately after,
+  in its own transaction. The rule stops applying the moment the user sets a password or
+  links a second identity.
 - **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
   session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
   and Apple publish none); the web client navigates there, landing back at

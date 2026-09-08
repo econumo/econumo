@@ -111,7 +111,7 @@ shape is the same everywhere.
    Providers → Create**).
 2. Set **Redirect URIs** to the exact callback URL below.
 3. Under **Advanced protocol settings**, set the **Signing Key** to an RSA
-   key (Econumo verifies RS256-signed ID tokens).
+   key (Econumo verifies RS256- or ES256-signed ID tokens).
 4. Note the provider's **Client ID** and **Client Secret**, and the
    **OpenID Configuration URL** it displays — the issuer URL is that same
    value with the trailing `/.well-known/openid-configuration` removed, e.g.
