@@ -92,6 +92,31 @@ navigation (single-pane vs sidebar).
       dialog accepts the code, resend has a cooldown, then login proceeds.
 - [ ] Language badge/selector on the login page switches the auth UI language
       and persists.
+- [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on
+      both `/login` and `/register`, on desktop and mobile; sign-in through
+      each provider completes and lands the user in the app.
+- [ ] First sign-in through a provider (no matching Econumo account, email
+      verified) creates a new account and lands on onboarding.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      password account auto-links (no confirmation dialog) and signs into
+      that account; the provider then appears under Settings → Profile →
+      Linked accounts.
+- [ ] Sign-in with a provider that reports an unverified email is rejected
+      with "The sign-in provider has not verified this email address."; no
+      account created or linked.
+- [ ] With `ECONUMO_ALLOW_REGISTRATION=false` (separate boot) and no matching
+      account: sign-in via a provider shows "Registration is disabled on this
+      server. Sign in with an existing account first."
+- [ ] Cancelling at the provider (deny consent / close the flow) returns to
+      Econumo showing "Sign-in was cancelled."
+- [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
+      logging out redirects through the provider and back to `/login`.
+- [ ] Logging out of a Google/Apple session (or any provider in the app)
+      shows the local-logout notice ("Your {provider} session may still be
+      active; sign out there to end it.") instead of an IdP redirect.
+- [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
+      embedded web view; completing sign-in returns via the `econumo://`
+      deep link and the sheet closes automatically.
 
 ## 3. Onboarding (fresh user)
 
@@ -342,6 +367,27 @@ User C sees none of it.
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
       flip it, unlike other writes on that account.
+- [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
+      linked provider with its email and linked date; linking an unlinked
+      provider goes through the provider flow and returns with a "linked"
+      toast; unlinking a provider (with confirm dialog) removes it from the
+      list.
+- [ ] Unlink is refused for a passwordless user's last remaining identity
+      (button disabled, hint text shown: "Set a password before unlinking
+      your only sign-in method.").
+- [ ] For a passwordless user, Settings → Profile shows a "Set a password"
+      row in place of "Change password"; it sends a reset code to the
+      account's email (the email field pre-filled/locked) and, after
+      entering the code and a new password, the account can sign in with
+      that password (and "Set a password" reverts to "Change password").
+- [ ] Sessions list (Settings → Profile → Sessions) shows "via Google" (or
+      Apple/SSO) under a session opened through a provider; a password
+      session shows nothing extra.
+- [ ] On an SSO-only (passwordless, single-identity) account, signing in
+      again after the provider reports a changed email updates the account's
+      stored email to match; the same drift on an account that has a
+      password, a second linked provider, or where the new email already
+      belongs to another user leaves the stored email unchanged.
 
 ## 13. Cross-cutting & platform
 

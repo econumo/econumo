@@ -131,8 +131,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the thirteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -355,7 +355,9 @@ Tests live alongside the Go code:
   Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
   then INSPECT the diff — a golden change means observable behavior changed;
   never hand-edit a golden. If route-registration files move, update
-  `handlerGlobs` in `guard_test.go`.
+  `handlerGlobs` in `guard_test.go`. For a 3xx response (the oauth callback error
+  redirects) the harness records the response as `Location: <value>` instead of a
+  body, so the golden captures the redirect target rather than an empty page.
 - `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
   under `-tags enginecompare` → Postgres, each test in its own schema). `make
   test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
@@ -376,6 +378,9 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+- `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
+  token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
+  `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
 
 ### Manual regression test plan
 
@@ -450,6 +455,26 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
+- `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
+  "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
+  of a slot set without the rest fails at boot naming the missing variable. Google needs
+  `ECONUMO_OAUTH_GOOGLE_CLIENT_ID` + `_CLIENT_SECRET`; Apple needs `ECONUMO_OAUTH_APPLE_CLIENT_ID`
+  (the Services ID) + `_TEAM_ID` + `_KEY_ID` + `_PRIVATE_KEY` (the `.p8` PEM; a literal `\n` in the
+  env value is unescaped to a real newline before parsing); the custom OIDC slot needs
+  `ECONUMO_OIDC_ISSUER_URL` (absolute `https://`, plain `http` only for loopback hosts) +
+  `_CLIENT_ID` + `_CLIENT_SECRET`, plus optional `_NAME` (button label, default `SSO`) and
+  `_SCOPES` (comma-separated, default `openid,profile,email`; must contain `openid` or boot
+  fails). Any enabled slot requires `ECONUMO_URL` — every callback URI derives from it as
+  `<ECONUMO_URL>/api/v1/oauth/callback-<google|apple|oidc>`, the one URL to register with the
+  provider; there is no separate redirect-URI variable. Discovery documents and JWKS are
+  fetched lazily and cached for the process lifetime; `serve` probes every configured issuer
+  once at boot and logs a WARN (never fails boot) when discovery is unreachable, so sign-in
+  through it fails until the issuer answers. `ECONUMO_OIDC_TRUST_EMAIL` (strict bool, default
+  `false`) treats the custom issuer's email claim as verified; `false` rejects any token
+  without `email_verified=true` with `email_unverified`, for every intent (login, auto-link,
+  and linking from Settings) — an issuer that never sends that claim needs the flag set or no
+  sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes and are
+  always treated as trusted. See `docs/oidc-setup.md`.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -669,13 +694,15 @@ In the distroless image these run via the binary directly, e.g.
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
   reset-password, confirm-email, resend-verification-code, `/api/doc`,
-  `/api/doc.json`) need no header; everything else does.
+  `/api/doc.json`, and the six public `oauth` routes — `get-provider-list`,
+  `start-login`, `callback-google`, `callback-oidc`, `callback-apple`,
+  `exchange-handoff`) need no header; everything else does.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update, email change — plus `update-analytics`: withdrawing
-  from product analytics is a privacy right, not a paid feature, so it must work
-  regardless of access level); `GET` reads are never restricted.
+  revocation, password update, email change, `oauth/start-link`, `oauth/unlink-identity` —
+  plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
+  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
 
 ## Authentication
 
@@ -699,6 +726,15 @@ In the distroless image these run via the binary directly, e.g.
 - Login lives under `internal/user/api` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (sessions slide instead; clients re-authenticate
   after 30 days of inactivity).
+- **Provider sign-in** (`internal/oauth`): a state-carrying redirect to the provider, a
+  callback that verifies the ID token and resolves to an existing `(provider, subject)`
+  identity, an auto-link by verified email, or (when `ECONUMO_ALLOW_REGISTRATION` is on) a
+  new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
+  handoff code the client exchanges for a normal session — never a token in a redirect URL
+  or server log. Identities live in `users_identities`, keyed by `(provider, subject)`.
+  Sessions minted through the custom OIDC slot carry `provider` and `id_token` on the row
+  (Google/Apple do not, since neither publishes an end-session endpoint); `logout-user`
+  returns a non-empty `logoutUrl` only for those, built from the row's stored `id_token`.
 
 ## Wire & data contract (frozen)
 
@@ -743,7 +779,7 @@ data unreadable. Most are also asserted by the test suite.
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
 - Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`, and the six public `oauth` routes (`get-provider-list`, `start-login`, `callback-google`, `callback-oidc`, `callback-apple`, `exchange-handoff`); everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in
@@ -795,6 +831,23 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
+  `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing account by
+  `lower(email)` (no matching identity yet) — no confirmation screen, since the email is
+  already trustworthy at that point. An unverified email is rejected (`email_unverified`) for
+  every intent, including an already-linked identity signing in again and a link started from
+  Settings — there is no path around the trust flag.
+- **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
+  stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
+  one linked identity, and no other user already holds the new address — in that narrow case
+  (the IdP is the account's sole authority) the primary email is replaced in the same
+  transaction. The rule stops applying the moment the user sets a password or links a second
+  identity.
+- **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
+  session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
+  and Apple publish none); the web client navigates there, landing back at
+  `<ECONUMO_URL>/login`, while the app always logs out locally and shows the "your {provider}
+  session may still be active" notice instead.
 
 ## Deployment
 
