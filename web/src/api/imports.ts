@@ -91,13 +91,21 @@ export async function deleteImportSource(id: Id): Promise<ImportSourceDto[]> {
   return response.data.data.items
 }
 
-export async function linkImportAccount(sourceId: Id, externalAccountId: string, accountId: Id): Promise<UpdateImportAccountDto> {
-  const response = await api.post<Envelope<UpdateImportAccountDto>>(apiUrl('/api/v1/import/link-account'), { sourceId, externalAccountId, accountId })
+export async function linkImportAccount(sourceId: Id, externalAccountId: string, accountId: Id, externalName?: string): Promise<UpdateImportAccountDto> {
+  const body: Record<string, string> = { sourceId, externalAccountId, accountId }
+  if (externalName) {
+    body.externalName = externalName
+  }
+  const response = await api.post<Envelope<UpdateImportAccountDto>>(apiUrl('/api/v1/import/link-account'), body)
   return response.data.data
 }
 
-export async function ignoreImportAccount(sourceId: Id, externalAccountId: string): Promise<UpdateImportAccountDto> {
-  const response = await api.post<Envelope<UpdateImportAccountDto>>(apiUrl('/api/v1/import/ignore-account'), { sourceId, externalAccountId })
+export async function ignoreImportAccount(sourceId: Id, externalAccountId: string, externalName?: string): Promise<UpdateImportAccountDto> {
+  const body: Record<string, string> = { sourceId, externalAccountId }
+  if (externalName) {
+    body.externalName = externalName
+  }
+  const response = await api.post<Envelope<UpdateImportAccountDto>>(apiUrl('/api/v1/import/ignore-account'), body)
   return response.data.data
 }
 

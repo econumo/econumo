@@ -46,7 +46,7 @@ it('map opens the account picker and posts link-account, then toasts the run cou
   await user.click(await screen.findByRole('button', { name: 'Map to account' }))
   await user.selectOptions(await screen.findByLabelText('Account'), fixtureAccounts[0].id)
   await user.click(screen.getByRole('button', { name: 'Map' }))
-  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id }))
+  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id, externalName: 'Apple Card' }))
 })
 
 it('ignore posts ignore-account; an ignored card offers "Map instead"', async () => {

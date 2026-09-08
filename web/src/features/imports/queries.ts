@@ -60,8 +60,8 @@ function useApplyImportAccount() {
 export function useLinkImportAccount() {
   const apply = useApplyImportAccount()
   return useMutation({
-    mutationFn: ({ sourceId, externalAccountId, accountId }: { sourceId: Id; externalAccountId: string; accountId: Id }) =>
-      importsApi.linkImportAccount(sourceId, externalAccountId, accountId),
+    mutationFn: ({ sourceId, externalAccountId, accountId, externalName }: { sourceId: Id; externalAccountId: string; accountId: Id; externalName?: string }) =>
+      importsApi.linkImportAccount(sourceId, externalAccountId, accountId, externalName),
     onSuccess: (result) => {
       apply(result)
       trackEvent(METRICS.IMPORT_ACCOUNT_LINK, { imported: result.run?.importedCount ?? 0, matched: result.run?.matchedCount ?? 0 })
@@ -72,8 +72,8 @@ export function useLinkImportAccount() {
 export function useIgnoreImportAccount() {
   const apply = useApplyImportAccount()
   return useMutation({
-    mutationFn: ({ sourceId, externalAccountId }: { sourceId: Id; externalAccountId: string }) =>
-      importsApi.ignoreImportAccount(sourceId, externalAccountId),
+    mutationFn: ({ sourceId, externalAccountId, externalName }: { sourceId: Id; externalAccountId: string; externalName?: string }) =>
+      importsApi.ignoreImportAccount(sourceId, externalAccountId, externalName),
     onSuccess: (result) => {
       apply(result)
       trackEvent(METRICS.IMPORT_ACCOUNT_IGNORE)

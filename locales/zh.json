@@ -558,6 +558,81 @@
         "mapped_toast": "已导入 {imported}，已匹配 {matched}，已跳过 {skipped}"
       }
     },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "通过 SimpleFIN Bridge 连接银行。您的桥接凭据会在此设备上使用只有您知道的密码加密；服务器只存储加密后的凭据，并且仅在同步期间才能看到它们。",
+      "forget_device": "忘记此设备",
+      "connect": {
+        "intro": "粘贴您 SimpleFIN Bridge 账户中的设置令牌，并选择一个密码。密码永远不会发送到服务器 — 如果您忘记了密码，需要使用新的设置令牌重新连接。",
+        "reconnect_intro": "粘贴 SimpleFIN Bridge 提供的新设置令牌。之前的连接将被替换；您的账户映射会保留。",
+        "token_label": "设置令牌",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → 新建连接 → 复制设置令牌。令牌只能使用一次。",
+        "forgot_passphrase": "我忘记了密码 — 设置新密码",
+        "passphrase_new": "密码",
+        "passphrase_existing": "您的密码",
+        "passphrase_confirm": "重复密码",
+        "passphrase_help": "至少 8 个字符。无法找回：包括我们在内，没有人能够找回它。",
+        "submit": "连接",
+        "submit_reconnect": "重新连接",
+        "errors": {
+          "token_required": "请先粘贴设置令牌。",
+          "passphrase_short": "密码必须至少 8 个字符。",
+          "passphrase_mismatch": "两次输入的密码不一致。"
+        }
+      },
+      "unlock": {
+        "intro": "输入您的密码以在此设备上使用 SimpleFIN。",
+        "passphrase": "密码",
+        "submit": "解锁",
+        "reconnect": "重新连接",
+        "wrong_passphrase": "密码错误。",
+        "forgot_help": "忘记了？使用新的设置令牌和新密码重新连接。"
+      },
+      "accounts": {
+        "header": "账户",
+        "empty": "桥接尚未报告任何账户。",
+        "state": {
+          "mapped": "已映射",
+          "ignored": "已忽略",
+          "unmapped": "未映射 · {count} 笔排队中"
+        },
+        "taps": "{count} 笔交易 | {count} 笔交易",
+        "last_seen": "最近使用 {date}",
+        "map": "映射到账户",
+        "map_instead": "改为映射",
+        "ignore": "忽略",
+        "unlink": "取消映射",
+        "unlink_modal": {
+          "title": "取消映射 {card}？",
+          "question": "在您重新映射之前，这个账户的新交易将等待审核。"
+        },
+        "map_modal": {
+          "header": "映射 {card}",
+          "account": "账户",
+          "submit": "映射"
+        },
+        "mapped_toast": "已导入 {imported}，已匹配 {matched}，已跳过 {skipped}"
+      },
+      "sync": {
+        "button": "立即同步",
+        "running": "正在同步…",
+        "from": "起始",
+        "last_synced": "上次同步 {date}",
+        "never": "从未同步",
+        "done_toast": "已导入 {imported}，已匹配 {matched}"
+      }
+    },
+    "runs": {
+      "status": {
+        "running": "进行中",
+        "completed": "已完成",
+        "partial": "已完成但有错误",
+        "failed": "失败"
+      },
+      "counts": "已导入 {imported} · 已匹配 {matched} · 已更新金额 {updated} · 排队中 {queued} · 已跳过 {skipped} · 失败 {failed}"
+    },
     "queue": {
       "header": "导入队列",
       "empty": "没有需要审核的内容。",

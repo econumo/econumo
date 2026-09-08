@@ -558,6 +558,81 @@
         "mapped_toast": "{imported} importate, {matched} abbinate, {skipped} saltate"
       }
     },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Collega una banca tramite SimpleFIN Bridge. Le tue credenziali del bridge sono cifrate su questo dispositivo con una passphrase che solo tu conosci; il server le memorizza cifrate e le vede solo per la durata di una sincronizzazione.",
+      "forget_device": "Dimentica questo dispositivo",
+      "connect": {
+        "intro": "Incolla il token di configurazione del tuo account SimpleFIN Bridge e scegli una passphrase. La passphrase non viene mai inviata al server — se la dimentichi, dovrai riconnetterti con un nuovo token di configurazione.",
+        "reconnect_intro": "Incolla un nuovo token di configurazione da SimpleFIN Bridge. La connessione precedente sarà sostituita; le associazioni dei tuoi conti vengono mantenute.",
+        "token_label": "Token di configurazione",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nuova connessione → copia il token di configurazione. Un token può essere usato una sola volta.",
+        "forgot_passphrase": "Ho dimenticato la passphrase — impostane una nuova",
+        "passphrase_new": "Passphrase",
+        "passphrase_existing": "La tua passphrase",
+        "passphrase_confirm": "Ripeti la passphrase",
+        "passphrase_help": "Almeno 8 caratteri. Non recuperabile: nessuno, nemmeno noi, può ripristinarla.",
+        "submit": "Connetti",
+        "submit_reconnect": "Riconnetti",
+        "errors": {
+          "token_required": "Incolla prima il token di configurazione.",
+          "passphrase_short": "La passphrase deve contenere almeno 8 caratteri.",
+          "passphrase_mismatch": "Le passphrase non coincidono."
+        }
+      },
+      "unlock": {
+        "intro": "Inserisci la tua passphrase per usare SimpleFIN su questo dispositivo.",
+        "passphrase": "Passphrase",
+        "submit": "Sblocca",
+        "reconnect": "Riconnetti",
+        "wrong_passphrase": "Passphrase errata.",
+        "forgot_help": "L'hai dimenticata? Riconnettiti con un nuovo token di configurazione e una nuova passphrase."
+      },
+      "accounts": {
+        "header": "Conti",
+        "empty": "Il bridge non ha ancora segnalato conti.",
+        "state": {
+          "mapped": "Associato",
+          "ignored": "Ignorato",
+          "unmapped": "Non associato · {count} in coda"
+        },
+        "taps": "{count} transazione | {count} transazioni",
+        "last_seen": "Ultimo utilizzo {date}",
+        "map": "Associa a un conto",
+        "map_instead": "Associa invece",
+        "ignore": "Ignora",
+        "unlink": "Dissocia",
+        "unlink_modal": {
+          "title": "Dissociare {card}?",
+          "question": "Le nuove transazioni di questo conto attenderanno la revisione finché non lo associ di nuovo."
+        },
+        "map_modal": {
+          "header": "Associa {card}",
+          "account": "Conto",
+          "submit": "Associa"
+        },
+        "mapped_toast": "{imported} importate, {matched} abbinate, {skipped} saltate"
+      },
+      "sync": {
+        "button": "Sincronizza ora",
+        "running": "Sincronizzazione…",
+        "from": "Da",
+        "last_synced": "Ultima sincronizzazione {date}",
+        "never": "Mai sincronizzato",
+        "done_toast": "{imported} importate, {matched} abbinate"
+      }
+    },
+    "runs": {
+      "status": {
+        "running": "In corso",
+        "completed": "Completato",
+        "partial": "Completato con errori",
+        "failed": "Non riuscito"
+      },
+      "counts": "{imported} importate · {matched} abbinate · {updated} importi aggiornati · {queued} in coda · {skipped} saltate · {failed} non riuscite"
+    },
     "queue": {
       "header": "Coda di importazione",
       "empty": "Niente da rivedere.",

@@ -558,6 +558,81 @@
         "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
       }
     },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Ligue um banco através do SimpleFIN Bridge. As suas credenciais da ponte são cifradas neste dispositivo com uma frase-passe que só você conhece; o servidor guarda-as cifradas e só as vê durante uma sincronização.",
+      "forget_device": "Esquecer este dispositivo",
+      "connect": {
+        "intro": "Cole o token de configuração da sua conta SimpleFIN Bridge e escolha uma frase-passe. A frase-passe nunca é enviada ao servidor — se a esquecer, terá de voltar a ligar-se com um novo token de configuração.",
+        "reconnect_intro": "Cole um novo token de configuração do SimpleFIN Bridge. A ligação anterior será substituída; as suas associações de contas são mantidas.",
+        "token_label": "Token de configuração",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nova ligação → copie o token de configuração. Um token só pode ser usado uma vez.",
+        "forgot_passphrase": "Esqueci a minha frase-passe — definir uma nova",
+        "passphrase_new": "Frase-passe",
+        "passphrase_existing": "A sua frase-passe",
+        "passphrase_confirm": "Repita a frase-passe",
+        "passphrase_help": "Pelo menos 8 caracteres. Não recuperável: ninguém, nem nós, a pode restaurar.",
+        "submit": "Ligar",
+        "submit_reconnect": "Ligar novamente",
+        "errors": {
+          "token_required": "Cole primeiro o token de configuração.",
+          "passphrase_short": "A frase-passe deve ter pelo menos 8 caracteres.",
+          "passphrase_mismatch": "As frases-passe não coincidem."
+        }
+      },
+      "unlock": {
+        "intro": "Introduza a sua frase-passe para usar o SimpleFIN neste dispositivo.",
+        "passphrase": "Frase-passe",
+        "submit": "Desbloquear",
+        "reconnect": "Ligar novamente",
+        "wrong_passphrase": "Frase-passe incorreta.",
+        "forgot_help": "Esqueceu-se? Volte a ligar-se com um novo token de configuração e uma nova frase-passe."
+      },
+      "accounts": {
+        "header": "Contas",
+        "empty": "A ponte ainda não reportou contas.",
+        "state": {
+          "mapped": "Associada",
+          "ignored": "Ignorada",
+          "unmapped": "Sem associação · {count} em fila"
+        },
+        "taps": "{count} transação | {count} transações",
+        "last_seen": "Visto pela última vez {date}",
+        "map": "Associar a uma conta",
+        "map_instead": "Associar em vez disso",
+        "ignore": "Ignorar",
+        "unlink": "Desassociar",
+        "unlink_modal": {
+          "title": "Desassociar {card}?",
+          "question": "As novas transações desta conta aguardarão revisão até a associar novamente."
+        },
+        "map_modal": {
+          "header": "Associar {card}",
+          "account": "Conta",
+          "submit": "Associar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
+      },
+      "sync": {
+        "button": "Sincronizar agora",
+        "running": "A sincronizar…",
+        "from": "Desde",
+        "last_synced": "Última sincronização {date}",
+        "never": "Nunca sincronizado",
+        "done_toast": "{imported} importadas, {matched} correspondidas"
+      }
+    },
+    "runs": {
+      "status": {
+        "running": "Em curso",
+        "completed": "Concluído",
+        "partial": "Concluído com erros",
+        "failed": "Falhou"
+      },
+      "counts": "{imported} importadas · {matched} correspondidas · {updated} montantes atualizados · {queued} em fila · {skipped} ignoradas · {failed} falhadas"
+    },
     "queue": {
       "header": "Fila de importação",
       "empty": "Nada para rever.",
