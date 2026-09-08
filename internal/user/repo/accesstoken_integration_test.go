@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -177,5 +178,37 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 		if gone != tc.gone {
 			t.Errorf("%s: gone=%v, want %v", tc.name, gone, tc.gone)
 		}
+	}
+}
+
+func TestAccessTokenRepo_ProviderAndIDTokenRoundTrip(t *testing.T) {
+	db := dbtest.New(t)
+	userID := fixture.New(t, db).User(fixture.User{})
+	repo := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+	provider, idTok := "oidc", "eyJ.header.sig"
+	exp := now.Add(time.Hour)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
+		TokenHash: "h-provider", CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		Provider: &provider, IDToken: &idTok,
+	}
+	if err := repo.Insert(context.Background(), tok); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetByID(context.Background(), tok.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Provider == nil || *got.Provider != "oidc" || got.IDToken == nil || *got.IDToken != idTok {
+		t.Fatalf("provider/id_token not persisted: %+v", got)
+	}
+	byHash, _, _, err := repo.GetByHash(context.Background(), "h-provider")
+	if err != nil || byHash.Provider == nil || *byHash.Provider != "oidc" {
+		t.Fatalf("GetByHash must carry provider: %+v %v", byHash, err)
+	}
+	list, err := repo.ListByUser(context.Background(), tok.UserID, model.TokenKindSession)
+	if err != nil || len(list) != 1 || list[0].Provider == nil {
+		t.Fatalf("ListByUser must carry provider: %+v %v", list, err)
 	}
 }
