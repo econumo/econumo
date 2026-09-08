@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import * as oauthApi from '@/api/oauth'
-import type { OAuthProviderId } from '@/api/dto/oauth'
+import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
 import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
@@ -59,6 +59,19 @@ export function useProviders() {
     queryFn: oauthApi.getProviderList,
     staleTime: Infinity,
   })
+}
+
+// The catalogue's "SSO" is a placeholder for the unnamed custom slot — once the
+// deployment's provider list carries a configured name (e.g. "Authentik"), that
+// takes precedence everywhere the provider is shown to the user.
+export function providerDisplayName(id: string, providers: ProviderDto[] | undefined, t: (key: string) => string): string {
+  const configured = providers?.find((p) => p.id === id)?.name
+  if (configured) {
+    return configured
+  }
+  const key = `auth.oauth.provider_name.${id}`
+  const translated = t(key)
+  return translated === key ? id : translated
 }
 
 export function useStartOAuth() {

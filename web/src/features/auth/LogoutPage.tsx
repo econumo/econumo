@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { getProviderList } from '@/api/oauth'
+import type { ProviderDto } from '@/api/dto/oauth'
 import { logout } from '@/api/user'
 import { Button } from '@/components/ui/button'
 import { resetAnalyticsIdentity } from '@/lib/analytics'
@@ -8,6 +10,7 @@ import { isNativeApp } from '@/lib/platform'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { hasToken, removeToken } from '@/lib/storage'
 import { RouterPage } from '@/app/router-pages'
+import { providerDisplayName } from './oauthQueries'
 
 export function LogoutPage() {
   const { t } = useTranslation()
@@ -39,7 +42,14 @@ export function LogoutPage() {
         return
       }
       if (provider) {
-        setNotice(t('auth.oauth.logout_notice', { provider: t(`auth.oauth.provider_name.${provider}`) }))
+        // The token is already gone at this point, so this is a public, unauthenticated request.
+        let providers: ProviderDto[] | undefined
+        try {
+          providers = await getProviderList()
+        } catch {
+          // best effort; providerDisplayName falls back to the catalogue name below
+        }
+        setNotice(t('auth.oauth.logout_notice', { provider: providerDisplayName(provider, providers, t) }))
         return
       }
       window.location.assign(RouterPage.LOGIN)

@@ -57,6 +57,9 @@ beforeEach(() => {
     http.get('*/api/v1/user/get-session-list', () =>
       HttpResponse.json({ success: true, message: '', data: [current, other] }),
     ),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }, { id: 'apple', name: 'Apple' }, { id: 'oidc', name: 'Authentik' }] }),
+    ),
   )
 })
 
@@ -133,6 +136,16 @@ it('shows a "via {provider}" badge for a session opened through OAuth', async ()
   )
   renderPage()
   expect(await screen.findByText('via Google')).toBeInTheDocument()
+})
+
+it('shows the configured custom-provider name instead of the catalogue "SSO"', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-session-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ ...current, provider: 'oidc' }, other] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('via Authentik')).toBeInTheDocument()
 })
 
 it('securityFormat helpers parse UA and relative time', () => {

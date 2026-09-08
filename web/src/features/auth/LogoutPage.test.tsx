@@ -91,8 +91,12 @@ it('navigates to the IdP end-session url when logout returns one', async () => {
 
 it('shows the local-logout notice for a provider session without an end-session url', async () => {
   localStorage.setItem('token', 'eco_ses_x')
-  server.use(http.post('*/api/v1/user/logout-user', () =>
-    HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'google' } })))
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'google' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })),
+  )
   renderPage()
   expect(await screen.findByText("You're signed out of Econumo. Your Google session may still be active; sign out there to end it.")).toBeInTheDocument()
   expect(assign).not.toHaveBeenCalledWith('/login')
@@ -100,11 +104,37 @@ it('shows the local-logout notice for a provider session without an end-session 
   expect(assign).toHaveBeenCalledWith('/login')
 })
 
+it('shows the configured custom-provider name fetched from the provider list', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] })),
+  )
+  renderPage()
+  expect(await screen.findByText("You're signed out of Econumo. Your Authentik session may still be active; sign out there to end it.")).toBeInTheDocument()
+})
+
+it('falls back to the catalogue provider name when the provider list request fails', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({}, { status: 500 })),
+  )
+  renderPage()
+  expect(await screen.findByText(/Your SSO session may still be active/)).toBeInTheDocument()
+})
+
 it('in the app ignores the end-session url and logs out locally', async () => {
   window.Capacitor = { isNativePlatform: () => true }
   localStorage.setItem('token', 'eco_ses_x')
-  server.use(http.post('*/api/v1/user/logout-user', () =>
-    HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: 'https://idp/end', provider: 'oidc' } })))
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: 'https://idp/end', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({}, { status: 500 })),
+  )
   renderPage()
   expect(await screen.findByText(/Your SSO session may still be active/)).toBeInTheDocument()
   delete (window as { Capacitor?: unknown }).Capacitor

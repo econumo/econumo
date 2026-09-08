@@ -10,7 +10,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { providerDisplayName, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { SettingsShell } from './SettingsShell'
@@ -39,7 +39,7 @@ export function LinkedAccountsPage() {
       return
     }
     toasted.current = true
-    const name = providers.data?.find((p) => p.id === linked)?.name ?? t(`auth.oauth.provider_name.${linked}`)
+    const name = providerDisplayName(linked, providers.data, t)
     toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: name }))
     trackEvent(METRICS.IDENTITY_LINKED, { provider: linked })
     // The link happened on the backend while the browser was away, so the
