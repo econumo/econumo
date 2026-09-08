@@ -57,3 +57,19 @@ it('rejects a malformed ciphertext without touching the key', async () => {
   await expect(decryptCredential('garbage')).rejects.toThrow(/ciphertext/)
   await expect(decryptCredential('v2:a:b')).rejects.toThrow(/ciphertext/)
 })
+
+it('rejects a tampered iv and tampered key parameters', async () => {
+  const wrapped = await createKey('pw')
+  const ct = await encryptCredential('secret')
+  // the 12-byte iv is part of the frozen format; anything else is tampering
+  await expect(decryptCredential(`v1:${btoa('shortiv')}:${ct.split(':')[2]}`)).rejects.toThrow(/ciphertext/)
+
+  const tampered = (over: Record<string, unknown>) =>
+    ({ ...wrapped, kdf: JSON.stringify({ ...JSON.parse(wrapped.kdf), ...over }) })
+  for (const over of [{ alg: 'PBKDF2-SHA1' }, { iterations: 1000 }, { salt: btoa('short') }]) {
+    const err: unknown = await unlockKey('pw', tampered(over)).then(() => null, (e: unknown) => e)
+    expect(err).toBeInstanceOf(Error)
+    expect(err).not.toBeInstanceOf(WrongPassphraseError)
+  }
+  await expect(unlockKey('pw', { ...wrapped, kdf: 'not json' })).rejects.toThrow(/key parameters/)
+})

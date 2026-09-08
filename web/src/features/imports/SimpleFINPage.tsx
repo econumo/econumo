@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { toast } from 'sonner'
 import type { ImportCardDto } from '@/api/dto/imports'
+import { queryKeys } from '@/app/queryKeys'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { InfoBox } from '@/components/InfoBox'
@@ -20,6 +22,7 @@ import { useExternalAccounts, useImportRuns, useImportSources, useSyncImportSour
 
 export function SimpleFINPage() {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
   const { data: sources = [], isPending: sourcesPending } = useImportSources()
   const { state: keyState, refresh: refreshKey } = useImportKey()
   const source = sources.find((s) => s.provider === 'simplefin') ?? null
@@ -82,6 +85,18 @@ export function SimpleFINPage() {
     })
   }
 
+  // A reconnect can point at a different bridge account set, and the access
+  // url is deliberately not part of the query key, so the cached list has to
+  // be dropped explicitly.
+  const onConnected = (url: string) => {
+    setAccessUrl(url)
+    setReconnecting(false)
+    if (source) {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importExternalAccounts(source.id) })
+    }
+    refreshKey()
+  }
+
   const forget = async () => {
     await forgetThisDevice()
     setAccessUrl(null)
@@ -94,10 +109,7 @@ export function SimpleFINPage() {
     }
     if (!source || reconnecting) {
       return (
-        <SimpleFINConnect
-          keyState={keyState} reconnect={reconnecting}
-          onConnected={(url) => { setAccessUrl(url); setReconnecting(false); refreshKey() }}
-        />
+        <SimpleFINConnect keyState={keyState} reconnect={reconnecting} onConnected={onConnected} />
       )
     }
     if (keyState.status === 'locked') {
@@ -105,7 +117,7 @@ export function SimpleFINPage() {
     }
     if (keyState.status === 'none') {
       // a source exists but its key was deleted server-side (never happens through the UI); reconnect
-      return <SimpleFINConnect keyState={keyState} reconnect onConnected={(url) => { setAccessUrl(url); refreshKey() }} />
+      return <SimpleFINConnect keyState={keyState} reconnect onConnected={onConnected} />
     }
     return (
       <>

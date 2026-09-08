@@ -19,6 +19,11 @@ export interface WrappedKey {
 }
 
 export const KDF_ITERATIONS = 600_000
+// Floors for the kdf the SERVER hands back: it is untrusted input here, and a
+// tampered row must fail loudly instead of deriving a weak key.
+const MIN_KDF_ITERATIONS = 100_000
+const SALT_BYTES = 16
+const IV_BYTES = 12
 const KDF_ALG = 'PBKDF2-SHA256'
 const DB_NAME = 'econumo-import'
 const STORE = 'keys'
@@ -57,11 +62,43 @@ function decode(value: string, what: string): { iv: Uint8Array; ct: Uint8Array }
   if (parts.length !== 3 || parts[0] !== VERSION_TAG) {
     throw new Error(`Malformed ${what}`)
   }
+  let iv: Uint8Array
+  let ct: Uint8Array
   try {
-    return { iv: unb64(parts[1]), ct: unb64(parts[2]) }
+    iv = unb64(parts[1])
+    ct = unb64(parts[2])
   } catch {
     throw new Error(`Malformed ${what}`)
   }
+  if (iv.length !== IV_BYTES) {
+    throw new Error(`Malformed ${what}`)
+  }
+  return { iv, ct }
+}
+
+function kdfParams(raw: string): KdfParams {
+  let params: KdfParams
+  try {
+    params = JSON.parse(raw) as KdfParams
+  } catch {
+    throw new Error('Malformed key parameters')
+  }
+  if (params?.alg !== KDF_ALG) {
+    throw new Error(`Unsupported kdf ${params?.alg}`)
+  }
+  let salt: Uint8Array
+  try {
+    salt = unb64(params.salt)
+  } catch {
+    throw new Error('Malformed key salt')
+  }
+  if (salt.length !== SALT_BYTES) {
+    throw new Error('Malformed key salt')
+  }
+  if (!Number.isInteger(params.iterations) || params.iterations < MIN_KDF_ITERATIONS) {
+    throw new Error('Key iterations below the minimum')
+  }
+  return params
 }
 
 async function wrappingKey(passphrase: string, params: KdfParams): Promise<CryptoKey> {
@@ -118,7 +155,7 @@ async function wrap(rawDataKey: ArrayBuffer, passphrase: string, params: KdfPara
 }
 
 async function unwrapRaw(passphrase: string, wrapped: WrappedKey): Promise<ArrayBuffer> {
-  const params = JSON.parse(wrapped.kdf) as KdfParams
+  const params = kdfParams(wrapped.kdf)
   const wk = await wrappingKey(passphrase, params)
   const { iv, ct } = decode(wrapped.wrappedDataKey, 'wrapped key')
   try {

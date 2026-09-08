@@ -15,9 +15,9 @@ import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useImportSources, useSyncImportSource } from './queries'
 
-function ActionRow({ label, onClick }: { label: string; onClick: () => void }) {
+function ActionRow({ label, onClick, disabled }: { label: string; onClick: () => void; disabled?: boolean }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover">
+    <button type="button" onClick={onClick} disabled={disabled} className="flex w-full items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover disabled:opacity-60">
       <span>{label}</span>
       <ChevronRight className="size-4 text-muted-foreground" />
     </button>
@@ -90,7 +90,7 @@ export function ImportsDataPage() {
         <ActionRow label={t('settings.import_csv.menu_item')} onClick={() => setImportOpen(true)} />
         <ActionRow label={t('settings.export_csv.menu_item')} onClick={() => setExportOpen(true)} />
         {pullSources.length > 0 ? (
-          <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} />
+          <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
         ) : null}
         <LinkRow label={t('imports.data_page.history')} to={RouterPage.IMPORT_RUNS} />
       </div>
