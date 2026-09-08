@@ -27,18 +27,22 @@ func TestGetRunListAndGetRun(t *testing.T) {
 	if err != nil || len(filtered.Items) != 0 {
 		t.Fatalf("filtered = %+v err %v", filtered, err)
 	}
-	if _, err := h.svc.GetRunList(ctx, vo.MustParseId(userA), "not-a-uuid"); err == nil {
-		t.Fatal("unknown source id must be not found")
+	if _, err := h.svc.GetRunList(ctx, vo.MustParseId(userA), "not-a-uuid"); !isNotFound(err) {
+		t.Fatalf("unknown source id must be not found, got %v", err)
 	}
 	one, err := h.svc.GetRun(ctx, vo.MustParseId(userA), res.Run.Id)
 	if err != nil || one.Item.Id != res.Run.Id || len(one.Links) != 1 || one.Links[0].ExternalPayee != "Coffee" || one.Links[0].Status != model.ImportLinkStatusLinked || one.Links[0].TransactionId == "" {
 		t.Fatalf("run = %+v err %v", one, err)
 	}
-	if _, err := h.svc.GetRun(ctx, vo.MustParseId(userB), res.Run.Id); err == nil {
-		t.Fatal("foreign run must be not found")
+	if _, err := h.svc.GetRun(ctx, vo.MustParseId(userB), res.Run.Id); !isNotFound(err) {
+		t.Fatalf("foreign run must be not found, got %v", err)
 	}
-	if _, err := h.svc.GetRun(ctx, vo.MustParseId(userA), "nope"); err == nil {
-		t.Fatal("bad id must be not found")
+	if _, err := h.svc.GetRun(ctx, vo.MustParseId(userA), "nope"); !isNotFound(err) {
+		t.Fatalf("bad id must be not found, got %v", err)
 	}
-	_ = errs.AsNotFound
+}
+
+func isNotFound(err error) bool {
+	_, ok := errs.AsNotFound(err)
+	return ok
 }

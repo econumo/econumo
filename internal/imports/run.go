@@ -2,6 +2,7 @@ package imports
 
 import (
 	"context"
+	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -32,7 +33,7 @@ func (s *Service) GetRunList(ctx context.Context, userID vo.Id, sourceID string)
 }
 
 func (s *Service) GetRun(ctx context.Context, userID vo.Id, rawID string) (*model.GetImportRunResult, error) {
-	id, err := vo.ParseId(rawID)
+	id, err := vo.ParseId(strings.TrimSpace(rawID))
 	if err != nil {
 		return nil, errs.NewNotFound("Import run not found")
 	}

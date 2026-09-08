@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,15 +104,49 @@ func TestSync_MappedAccountImportsAndCounts(t *testing.T) {
 	if src.LastSyncedAt == nil {
 		t.Fatal("last_synced_at must be set after a completed run")
 	}
+	assertNoAccessURLLeak(t, ctx, h, res)
+}
+
+// assertNoAccessURLLeak checks every surface the access URL (or its
+// userinfo component) must never reach: every log attr accumulated on ctx
+// (stringified, not just string-typed values — a leak via a wrapped/struct
+// value would otherwise slip past a type assertion), every run error
+// message, and every stored import_runs.params row for the bank source.
+func assertNoAccessURLLeak(t *testing.T, ctx context.Context, h *harness, res *model.SyncImportSourceResult) {
+	t.Helper()
+	secrets := []string{syncReq().AccessUrl, "u:p"}
+	leaks := func(s string) bool {
+		for _, secret := range secrets {
+			if strings.Contains(s, secret) {
+				return true
+			}
+		}
+		return false
+	}
 	for _, a := range reqctx.LogAttrs(ctx) {
-		if s, ok := a.Value.Any().(string); ok && (s == syncReq().AccessUrl || containsSecret(s)) {
+		if s := fmt.Sprint(a.Value.Any()); leaks(s) {
 			t.Fatalf("access url leaked into log attrs: %v", a)
 		}
 	}
-}
-
-func containsSecret(s string) bool {
-	return len(s) > 0 && (s == "https://u:p@bridge.example/simplefin" || s == "u:p")
+	for i, e := range res.Run.Errors {
+		if leaks(e.Message) {
+			t.Fatalf("access url leaked into run error[%d]: %+v", i, e)
+		}
+	}
+	rows, err := h.db.Raw.QueryContext(ctx, h.db.Rebind(`SELECT params FROM import_runs WHERE source_id = ?`), bankSource)
+	if err != nil {
+		t.Fatalf("read params: %v", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var params string
+		if err := rows.Scan(&params); err != nil {
+			t.Fatalf("scan params: %v", err)
+		}
+		if leaks(params) {
+			t.Fatalf("access url leaked into stored params: %s", params)
+		}
+	}
 }
 
 func TestSync_UnmappedAccountQueues(t *testing.T) {
@@ -204,8 +240,9 @@ func TestSync_RateLimited(t *testing.T) {
 	h, _ := bankHarness(t)
 	h.withLimiter()
 	h.lim.deny = errors.New("limited")
-	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err == nil {
-		t.Fatal("expected the limiter's error")
+	_, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq())
+	if !errors.Is(err, h.lim.deny) {
+		t.Fatalf("expected the limiter's own error, got %v", err)
 	}
 }
 

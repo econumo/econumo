@@ -3,6 +3,7 @@ package imports
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -48,7 +49,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 	if ferr != nil {
 		run.Status = model.ImportRunStatusFailed
 		if err := s.finishRun(ctx, run); err != nil {
-			return nil, err
+			reqctx.AddLogAttr(ctx, "finish_run_error", true)
 		}
 		return nil, mapProviderErr(ferr)
 	}
@@ -63,6 +64,9 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		if err := s.syncAccount(ctx, src, run, a, byAccount[a.ID]); err != nil {
 			run.Errors = append(run.Errors, model.ImportRunError{ExternalAccountId: a.ID, Message: accountFailedMessage})
 			reqctx.AddLogAttr(ctx, "account_error", a.ID)
+			// Type only, never the error text: it may originate from the
+			// transaction feature and could carry a payee/account name.
+			reqctx.AddLogAttr(ctx, "account_error_type", fmt.Sprintf("%T", err))
 		}
 	}
 	switch {
@@ -77,11 +81,19 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		return nil, err
 	}
 	if run.Status != model.ImportRunStatusFailed {
-		synced := s.clk.Now().UTC()
-		src.LastSyncedAt, src.UpdatedAt = &synced, synced
-		if err := s.repo.UpdateSource(ctx, src); err != nil {
+		// Re-read the source: the fetch may have run for seconds, and writing
+		// back the row loaded before it would revert a concurrent reconnect
+		// (create-source overwriting the ciphertext/name in the meantime).
+		fresh, err := s.repo.GetSource(ctx, src.ID)
+		if err != nil {
 			return nil, err
 		}
+		synced := s.clk.Now().UTC()
+		fresh.LastSyncedAt, fresh.UpdatedAt = &synced, synced
+		if err := s.repo.UpdateSource(ctx, fresh); err != nil {
+			return nil, err
+		}
+		src = fresh
 	}
 	accounts, err := s.externalAccountResults(ctx, src, fetched.Accounts)
 	if err != nil {
