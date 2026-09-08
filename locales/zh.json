@@ -632,7 +632,8 @@
             "revoke_others": "退出其他设备的登录",
             "confirm_sign_out": "确定要在此设备上退出登录吗？",
             "confirm_revoke": "确定要删除此会话吗？该设备将退出登录。",
-            "confirm_revoke_others": "确定要退出其他所有设备的登录吗？仅当前会话将保持登录状态。"
+            "confirm_revoke_others": "确定要退出其他所有设备的登录吗？仅当前会话将保持登录状态。",
+            "via": "通过 {provider}"
           },
           "tokens": {
             "menu_item": "API 令牌",
@@ -680,6 +681,22 @@
             },
             "revoke": "撤销",
             "confirm_revoke": "确定要撤销此令牌吗？使用该令牌的集成将立即停止工作。"
+          },
+          "linked_accounts": {
+            "menu_item": "已关联账户",
+            "header": "已关联账户",
+            "description": "可用于登录的外部账户。关联一个账户即可免密码登录。",
+            "empty": "暂无已关联账户。",
+            "linked_on": "关联时间",
+            "link": "关联",
+            "unlink": "取消关联",
+            "confirm_unlink": "确定要取消关联此账户吗？取消后将无法再用它登录。",
+            "last_identity_hint": "在解除唯一登录方式的关联前，请先设置密码。",
+            "linked_toast": "{provider} 账户已关联。",
+            "set_password": {
+              "menu_item": "设置密码",
+              "description": "您使用外部账户注册。我们将向您发送邮箱验证码以设置密码。"
+            }
           },
           "analytics": {
             "label": "分享使用统计",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "注册即表示您同意我们的<a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>隐私政策</a>和<a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>服务条款</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "或使用以下方式继续",
+      "button": {
+        "google": "使用 Google 继续",
+        "apple": "使用 Apple 继续",
+        "oidc": "使用 {name} 继续"
+      },
+      "callback": {
+        "signing_in": "正在登录…"
+      },
+      "logout_notice": "您已退出 Econumo 登录。您的 {provider} 会话可能仍处于活动状态；请前往该服务退出登录以结束会话。",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "登录已取消。",
+        "invalid_state": "登录尝试已过期或已被使用，请重试。",
+        "provider_error": "登录提供方返回了错误，请重试。",
+        "email_required": "登录提供方未提供邮箱地址，而 Econumo 需要该信息。",
+        "email_unverified": "登录提供方尚未验证此邮箱地址。",
+        "registration_disabled": "此服务器已禁用注册。请先使用现有账户登录。",
+        "identity_taken": "该外部账户已关联到另一个 Econumo 账户。",
+        "provider_already_linked": "您的账户已关联了该提供方的另一个账户。",
+        "account_inactive": "该账户已被停用。"
       }
     }
   },
@@ -1500,7 +1545,7 @@
     "oauth": {
       "provider_not_configured": "登录提供方未配置",
       "handoff_invalid": "登录链接无效或已过期",
-      "last_identity": "在解除唯一登录方式的关联前,请先设置密码",
+      "last_identity": "在解除唯一登录方式的关联前，请先设置密码",
       "identity_not_found": "未找到关联账户"
     },
     "payee": {

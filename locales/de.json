@@ -632,7 +632,8 @@
             "revoke_others": "Andere Geräte abmelden",
             "confirm_sign_out": "Von diesem Gerät abmelden?",
             "confirm_revoke": "Diese Sitzung beenden? Das Gerät wird abgemeldet.",
-            "confirm_revoke_others": "Von allen anderen Geräten abmelden? Nur diese Sitzung bleibt aktiv."
+            "confirm_revoke_others": "Von allen anderen Geräten abmelden? Nur diese Sitzung bleibt aktiv.",
+            "via": "über {provider}"
           },
           "tokens": {
             "menu_item": "API-Tokens",
@@ -680,6 +681,22 @@
             },
             "revoke": "Widerrufen",
             "confirm_revoke": "Diesen Token widerrufen? Integrationen, die ihn verwenden, funktionieren sofort nicht mehr."
+          },
+          "linked_accounts": {
+            "menu_item": "Verknüpfte Konten",
+            "header": "Verknüpfte Konten",
+            "description": "Externe Konten, mit denen Sie sich anmelden können. Verknüpfen Sie eines, um sich ohne Passwort anzumelden.",
+            "empty": "Noch keine verknüpften Konten.",
+            "linked_on": "Verknüpft",
+            "link": "Verknüpfen",
+            "unlink": "Trennen",
+            "confirm_unlink": "Dieses Konto trennen? Sie können sich danach nicht mehr damit anmelden.",
+            "last_identity_hint": "Legen Sie ein Passwort fest, bevor Sie Ihre einzige Anmeldemethode entfernen.",
+            "linked_toast": "{provider}-Konto verknüpft.",
+            "set_password": {
+              "menu_item": "Passwort festlegen",
+              "description": "Sie haben sich mit einem externen Konto registriert. Wir senden Ihnen einen Code per E-Mail, um ein Passwort festzulegen."
+            }
           },
           "analytics": {
             "label": "Nutzungsstatistiken teilen",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "Mit der Registrierung stimmen Sie unserer <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Datenschutzerklärung</a> und unseren <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Nutzungsbedingungen</a> zu"
         }
+      }
+    },
+    "oauth": {
+      "divider": "oder weiter mit",
+      "button": {
+        "google": "Mit Google fortfahren",
+        "apple": "Mit Apple fortfahren",
+        "oidc": "Mit {name} fortfahren"
+      },
+      "callback": {
+        "signing_in": "Sie werden angemeldet…"
+      },
+      "logout_notice": "Sie sind bei Econumo abgemeldet. Ihre {provider}-Sitzung ist möglicherweise noch aktiv; melden Sie sich dort ab, um sie zu beenden.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Die Anmeldung wurde abgebrochen.",
+        "invalid_state": "Der Anmeldeversuch ist abgelaufen oder wurde bereits verwendet. Bitte versuchen Sie es erneut.",
+        "provider_error": "Der Anmeldeanbieter hat einen Fehler zurückgegeben. Bitte versuchen Sie es erneut.",
+        "email_required": "Der Anmeldeanbieter hat keine E-Mail-Adresse übermittelt, die Econumo benötigt.",
+        "email_unverified": "Der Anmeldeanbieter hat diese E-Mail-Adresse nicht bestätigt.",
+        "registration_disabled": "Die Registrierung ist auf diesem Server deaktiviert. Melden Sie sich zunächst mit einem bestehenden Konto an.",
+        "identity_taken": "Dieses externe Konto ist bereits mit einem anderen Econumo-Konto verknüpft.",
+        "provider_already_linked": "Ihr Konto hat für diesen Anbieter bereits ein anderes Konto verknüpft.",
+        "account_inactive": "Dieses Konto wurde deaktiviert."
       }
     }
   },

@@ -632,7 +632,8 @@
             "revoke_others": "Wyloguj inne urządzenia",
             "confirm_sign_out": "Wylogować to urządzenie?",
             "confirm_revoke": "Odwołać tę sesję? Urządzenie zostanie wylogowane.",
-            "confirm_revoke_others": "Wylogować wszystkie pozostałe urządzenia? Aktywna pozostanie tylko ta sesja."
+            "confirm_revoke_others": "Wylogować wszystkie pozostałe urządzenia? Aktywna pozostanie tylko ta sesja.",
+            "via": "przez {provider}"
           },
           "tokens": {
             "menu_item": "Tokeny API",
@@ -680,6 +681,22 @@
             },
             "revoke": "Odwołaj",
             "confirm_revoke": "Odwołać ten token? Integracje, które go używają, natychmiast przestaną działać."
+          },
+          "linked_accounts": {
+            "menu_item": "Powiązane konta",
+            "header": "Powiązane konta",
+            "description": "Zewnętrzne konta, za pomocą których możesz się zalogować. Powiąż jedno, aby logować się bez hasła.",
+            "empty": "Nie masz jeszcze powiązanych kont.",
+            "linked_on": "Powiązano",
+            "link": "Powiąż",
+            "unlink": "Odłącz",
+            "confirm_unlink": "Odłączyć to konto? Nie będzie już można się nim zalogować.",
+            "last_identity_hint": "Ustaw hasło przed odłączeniem jedynej metody logowania.",
+            "linked_toast": "Konto {provider} powiązane.",
+            "set_password": {
+              "menu_item": "Ustaw hasło",
+              "description": "Zarejestrowałeś się przy użyciu konta zewnętrznego. Wyślemy Ci kod e-mailem, aby ustawić hasło."
+            }
           },
           "analytics": {
             "label": "Udostępniaj statystyki użytkowania",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "Rejestrując się, akceptujesz naszą <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Politykę prywatności</a> oraz <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Regulamin</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "lub kontynuuj z",
+      "button": {
+        "google": "Kontynuuj z Google",
+        "apple": "Kontynuuj z Apple",
+        "oidc": "Kontynuuj z {name}"
+      },
+      "callback": {
+        "signing_in": "Logowanie…"
+      },
+      "logout_notice": "Zostałeś wylogowany z Econumo. Twoja sesja {provider} może być nadal aktywna; wyloguj się tam, aby ją zakończyć.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Logowanie zostało anulowane.",
+        "invalid_state": "Próba logowania wygasła lub została już wykorzystana. Spróbuj ponownie.",
+        "provider_error": "Dostawca logowania zwrócił błąd. Spróbuj ponownie.",
+        "email_required": "Dostawca logowania nie udostępnił adresu e-mail, który jest wymagany przez Econumo.",
+        "email_unverified": "Dostawca logowania nie zweryfikował tego adresu e-mail.",
+        "registration_disabled": "Rejestracja jest wyłączona na tym serwerze. Najpierw zaloguj się na istniejące konto.",
+        "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo.",
+        "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy.",
+        "account_inactive": "To konto zostało dezaktywowane."
       }
     }
   },
