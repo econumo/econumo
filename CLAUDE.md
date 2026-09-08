@@ -187,14 +187,18 @@ keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
 no `repository.go` either. `imports` (the bank/phone transaction-import
 subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
-ships in stages: stage 1 (persistence + matcher core) and stage 2 (the Apple
-Wallet push provider) are in; it has `repository.go`, `ports.go` (account /
+ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
+Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in; the
+package now also has `internal/imports/simplefin` (the bridge client) and a
+`Provider` registry on the service. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with the 14 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 21 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
-`discard-event`, `get-transaction-import-list`). The package name is `imports`
+`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`get-credential-key`, `set-credential-key`, `list-external-accounts`,
+`sync-source`, `get-run-list`, `get-run`). The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
@@ -832,6 +836,16 @@ data unreadable. Most are also asserted by the test suite.
   request on a bad transaction — parse errors land in `import_events.status = failed`
   for the queue page's "needs attention" list. Imported transactions read
   `isImported: 1`; `get-transaction-import-list` is their provenance.
+- **Transaction import (SimpleFIN pull)**: the client claims the one-shot setup token
+  through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
+  it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
+  wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
+  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
+  "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
+  formatted into an error. A sync is one `import_runs` row; per-account failures leave the
+  run `partial`, a bridge failure leaves it `failed`; `last_synced_at` moves only on
+  `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
 
 ## Deployment
 

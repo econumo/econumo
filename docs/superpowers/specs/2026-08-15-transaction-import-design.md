@@ -1447,6 +1447,13 @@ means the core is already proven when they land.
 Each plan is written only when its predecessor merges — the core's shape will
 teach us things about stages 2-4 that are not worth guessing at now.
 
+**Status**: stage 3 (SimpleFIN) is implemented, per
+`docs/superpowers/plans/2026-09-07-transaction-import-simplefin.md`. Deferred
+out of that plan: run-row actions (delete transaction / allow re-import /
+delete both — see Part 9), sync-on-open, and a passphrase-change UI
+(`changePassphrase` exists in `importCrypto.ts` and `set-credential-key`
+accepts a re-wrapped key, but no page exposes it yet).
+
 ## Resolved questions
 
 Resolved 2026-09-01, after the spec was approved.
