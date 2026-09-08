@@ -19,20 +19,27 @@ export async function getProviderList(): Promise<ProviderDto[]> {
   return response.data.data
 }
 
-export async function startLogin(provider: OAuthProviderId, client: OAuthClient): Promise<string> {
-  const response = await api.post<Envelope<{ url: string }>>(apiUrl('/api/v1/oauth/start-login'), { provider, client })
-  return response.data.data.url
+// The flow secret binds the sign-in to this client: the callback carries no
+// credential, so only whoever started the flow can redeem its handoff.
+export interface StartOAuthResult {
+  url: string
+  flow: string
 }
 
-export async function startLink(provider: OAuthProviderId, client: OAuthClient): Promise<string> {
-  const response = await api.post<Envelope<{ url: string }>>(apiUrl('/api/v1/oauth/start-link'), { provider, client })
-  return response.data.data.url
+export async function startLogin(provider: OAuthProviderId, client: OAuthClient): Promise<StartOAuthResult> {
+  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-login'), { provider, client })
+  return response.data.data
+}
+
+export async function startLink(provider: OAuthProviderId, client: OAuthClient): Promise<StartOAuthResult> {
+  const response = await api.post<Envelope<StartOAuthResult>>(apiUrl('/api/v1/oauth/start-link'), { provider, client })
+  return response.data.data
 }
 
 // exchange-handoff answers with the bare {token, user} body like login-user,
 // and primes the same analytics identity.
-export async function exchangeHandoff(code: string): Promise<UserLoginItemDto> {
-  const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/oauth/exchange-handoff'), { code })
+export async function exchangeHandoff(code: string, flow: string): Promise<UserLoginItemDto> {
+  const response = await api.post<UserLoginItemDto>(apiUrl('/api/v1/oauth/exchange-handoff'), { code, flow })
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))

@@ -21,7 +21,9 @@ function renderAt(entry: string) {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   window.econumoConfig = {}
+  sessionStorage.setItem('oauthFlow', 'f1')
 })
 
 it('exchanges the handoff from the fragment, stores the token and goes home', async () => {
@@ -33,8 +35,9 @@ it('exchanges the handoff from the fragment, stores the token and goes home', as
   renderAt('/oauth/callback#handoff=abc')
   expect(screen.getByText('Signing you in…')).toBeInTheDocument()
   await waitFor(() => expect(screen.getByTestId('home')).toBeInTheDocument())
-  expect(posted).toEqual({ code: 'abc' })
+  expect(posted).toEqual({ code: 'abc', flow: 'f1' })
   expect(localStorage.getItem('token')).toBe('eco_ses_ok')
+  expect(sessionStorage.getItem('oauthFlow')).toBeNull()
 })
 
 it('lands on /login with an error when the exchange fails or the fragment is missing', async () => {
@@ -43,6 +46,26 @@ it('lands on /login with an error when the exchange fails or the fragment is mis
   const router = renderAt('/oauth/callback#handoff=bad')
   await waitFor(() => expect(router.state.location.pathname).toBe('/login'))
   expect(router.state.location.search).toBe('?oauthError=invalid_state')
+  sessionStorage.setItem('oauthFlow', 'f1')
   const router2 = renderAt('/oauth/callback')
   await waitFor(() => expect(router2.state.location.search).toBe('?oauthError=invalid_state'))
+})
+
+it('reports a provider error when the exchange fails with anything but a 401', async () => {
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
+    HttpResponse.json({ success: false, message: 'boom', code: 0, exceptionType: 'x' }, { status: 500 })))
+  const router = renderAt('/oauth/callback#handoff=abc')
+  await waitFor(() => expect(router.state.location.search).toBe('?oauthError=provider_error'))
+})
+
+it('lands on /login when this browser holds no flow secret', async () => {
+  sessionStorage.clear()
+  let called = false
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', () => {
+    called = true
+    return HttpResponse.json({ token: 'eco_ses_ok', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '' } })
+  }))
+  const router = renderAt('/oauth/callback#handoff=abc')
+  await waitFor(() => expect(router.state.location.search).toBe('?oauthError=invalid_state'))
+  expect(called).toBe(false)
 })

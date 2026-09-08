@@ -82,3 +82,23 @@ it('shows the linked toast from ?linked=', async () => {
   renderPage('/settings/profile/linked-accounts?linked=google')
   expect(await screen.findByText('Google account linked.')).toBeInTheDocument()
 })
+
+it('shows the link error from ?oauthError= and clears the parameter', async () => {
+  mockUser(true)
+  renderPage('/settings/profile/linked-accounts?oauthError=identity_taken')
+  expect(await screen.findByText('This external account is already linked to another Econumo account.')).toBeInTheDocument()
+})
+
+it('falls back to the generic provider error for an unknown code', async () => {
+  mockUser(true)
+  renderPage('/settings/profile/linked-accounts?oauthError=made_up')
+  expect(await screen.findByText('The sign-in provider returned an error. Please try again.')).toBeInTheDocument()
+})
+
+it('points the disabled Unlink button at the hint that explains it', async () => {
+  mockUser(false)
+  renderPage()
+  const btn = await screen.findByRole('button', { name: 'Unlink' })
+  expect(btn).toHaveAttribute('aria-describedby', 'linked-accounts-last-identity-hint')
+  expect(screen.getByText('Set a password before unlinking your only sign-in method.')).toHaveAttribute('id', 'linked-accounts-last-identity-hint')
+})

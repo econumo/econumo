@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { isFreshAccount, oauthClient, openAuthorizationUrl, useExchangeHandoff, useStartOAuth } from './oauthQueries'
+import { isFreshAccount, oauthClient, openAuthorizationUrl, takeOAuthFlow, useExchangeHandoff, useStartOAuth } from './oauthQueries'
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -12,6 +12,7 @@ function wrapper({ children }: { children: ReactNode }) {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   window.econumoConfig = {}
   delete (window as { Capacitor?: unknown }).Capacitor
 })
@@ -38,23 +39,40 @@ it('useStartOAuth posts to start-login for login and start-link for link, then n
   Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
   const hits: string[] = []
   server.use(
-    http.post('*/api/v1/oauth/start-login', () => { hits.push('login'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1' } }) }),
-    http.post('*/api/v1/oauth/start-link', () => { hits.push('link'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/2' } }) }),
+    http.post('*/api/v1/oauth/start-login', () => { hits.push('login'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1', flow: 'f1' } }) }),
+    http.post('*/api/v1/oauth/start-link', () => { hits.push('link'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/2', flow: 'f2' } }) }),
   )
   const { result } = renderHook(() => useStartOAuth(), { wrapper })
   await result.current.mutateAsync({ provider: 'google', intent: 'login' })
+  expect(sessionStorage.getItem('oauthFlow')).toBe('f1')
   await result.current.mutateAsync({ provider: 'google', intent: 'link' })
   await waitFor(() => expect(hits).toEqual(['login', 'link']))
   expect(assign).toHaveBeenNthCalledWith(1, 'https://idp/1')
   expect(assign).toHaveBeenNthCalledWith(2, 'https://idp/2')
+  expect(takeOAuthFlow()).toBe('f2')
+  expect(takeOAuthFlow()).toBe('') // single use
+})
+
+it('stores the flow secret in localStorage inside the app, where the browser sheet ends the session', async () => {
+  window.Capacitor = { isNativePlatform: () => true }
+  server.use(http.post('*/api/v1/oauth/start-login', () =>
+    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1', flow: 'appflow' } })))
+  const { result } = renderHook(() => useStartOAuth(), { wrapper })
+  await result.current.mutateAsync({ provider: 'google', intent: 'login' })
+  expect(localStorage.getItem('oauthFlow')).toBe('appflow')
+  expect(sessionStorage.getItem('oauthFlow')).toBeNull()
 })
 
 it('useExchangeHandoff stores the token and clears the persisted cache', async () => {
   localStorage.setItem('econumo.query-cache', '{"stale":true}')
-  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
-    HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '' } })))
+  let body: unknown
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '' } })
+  }))
   const { result } = renderHook(() => useExchangeHandoff(), { wrapper })
-  await result.current.mutateAsync('code')
+  await result.current.mutateAsync({ code: 'code', flow: 'f1' })
+  expect(body).toEqual({ code: 'code', flow: 'f1' })
   expect(localStorage.getItem('token')).toBe('eco_ses_new')
   expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })

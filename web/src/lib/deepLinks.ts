@@ -24,11 +24,14 @@ export function handleAppUrl(raw: string): void {
   const q = url.searchParams
   const handoff = q.get('handoff')
   const linked = q.get('linked')
+  const linkError = q.get('linkError')
   const error = q.get('error')
   if (handoff) {
     navigateTo(`${RouterPage.OAUTH_CALLBACK}#handoff=${encodeURIComponent(handoff)}`)
   } else if (linked) {
     navigateTo(`${RouterPage.SETTINGS_LINKED_ACCOUNTS}?linked=${encodeURIComponent(linked)}`)
+  } else if (linkError) {
+    navigateTo(`${RouterPage.SETTINGS_LINKED_ACCOUNTS}?oauthError=${encodeURIComponent(linkError)}`)
   } else if (error) {
     navigateTo(`${RouterPage.LOGIN}?oauthError=${encodeURIComponent(error)}`)
   }

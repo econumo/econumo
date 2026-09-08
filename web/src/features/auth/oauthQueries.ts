@@ -9,6 +9,35 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 
 export const providersQueryKey = ['oauth', 'providers'] as const
 
+const FLOW_KEY = 'oauthFlow'
+
+// The flow secret must outlive a full-page navigation to the provider and back.
+// On the web sessionStorage scopes it to the tab that started the flow; the app
+// leaves the WebView for the system browser sheet, which ends the session, so
+// there it goes to localStorage.
+function flowStore(): Storage {
+  return isNativeApp() ? localStorage : sessionStorage
+}
+
+export function rememberOAuthFlow(flow: string): void {
+  try {
+    flowStore().setItem(FLOW_KEY, flow)
+  } catch {
+    // a storage-less browser fails the exchange instead, with the same error
+  }
+}
+
+export function takeOAuthFlow(): string {
+  try {
+    const store = flowStore()
+    const flow = store.getItem(FLOW_KEY) ?? ''
+    store.removeItem(FLOW_KEY)
+    return flow
+  } catch {
+    return ''
+  }
+}
+
 export function oauthClient(): oauthApi.OAuthClient {
   return isNativeApp() ? 'app' : 'web'
 }
@@ -35,9 +64,10 @@ export function useProviders() {
 export function useStartOAuth() {
   return useMutation({
     mutationFn: async ({ provider, intent }: { provider: OAuthProviderId; intent: 'login' | 'link' }) => {
-      const url = intent === 'link'
+      const { url, flow } = intent === 'link'
         ? await oauthApi.startLink(provider, oauthClient())
         : await oauthApi.startLogin(provider, oauthClient())
+      rememberOAuthFlow(flow)
       openAuthorizationUrl(url)
     },
   })
@@ -45,7 +75,7 @@ export function useStartOAuth() {
 
 export function useExchangeHandoff() {
   return useMutation({
-    mutationFn: (code: string) => oauthApi.exchangeHandoff(code),
+    mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.exchangeHandoff(code, flow),
     onSuccess: (data) => {
       // the new session may belong to a different user — never restore the
       // previous user's persisted finances

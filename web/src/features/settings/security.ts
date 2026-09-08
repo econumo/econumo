@@ -67,8 +67,8 @@ export function useUnlinkIdentity() {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: (provider: OAuthProviderId) => oauthApi.unlinkIdentity(provider),
-    onSuccess: () => {
-      trackEvent(METRICS.IDENTITY_UNLINKED)
+    onSuccess: (_data, provider) => {
+      trackEvent(METRICS.IDENTITY_UNLINKED, { provider })
       void queryClient.invalidateQueries({ queryKey: ['oauth', 'identities'] })
     },
   })

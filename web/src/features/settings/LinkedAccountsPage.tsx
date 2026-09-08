@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router'
 import { toast } from 'sonner'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
@@ -25,8 +27,13 @@ export function LinkedAccountsPage() {
   const unlink = useUnlinkIdentity()
   const [confirm, setConfirm] = useState<OAuthProviderId | null>(null)
   const toasted = useRef(false)
+  const queryClient = useQueryClient()
+  // Held in state because the parameter is cleared from the URL immediately —
+  // a reload must not resurrect the message.
+  const [linkError, setLinkError] = useState('')
 
   const linked = searchParams.get('linked')
+  const oauthError = searchParams.get('oauthError')
   useEffect(() => {
     if (!linked || toasted.current) {
       return
@@ -35,8 +42,19 @@ export function LinkedAccountsPage() {
     const name = providers.data?.find((p) => p.id === linked)?.name ?? t(`auth.oauth.provider_name.${linked}`)
     toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: name }))
     trackEvent(METRICS.IDENTITY_LINKED, { provider: linked })
+    // The link happened on the backend while the browser was away, so the
+    // cached identity list is stale on return.
+    void queryClient.invalidateQueries({ queryKey: ['oauth', 'identities'] })
     setSearchParams({}, { replace: true })
-  }, [linked, providers.data, setSearchParams, t])
+  }, [linked, providers.data, queryClient, setSearchParams, t])
+
+  useEffect(() => {
+    if (!oauthError) {
+      return
+    }
+    setLinkError(oauthError)
+    setSearchParams({}, { replace: true })
+  }, [oauthError, setSearchParams])
 
   const hasPassword = user.data?.hasPassword ?? true
   const lastIdentityLocked = !hasPassword && (identities.data?.length ?? 0) <= 1
@@ -53,6 +71,13 @@ export function LinkedAccountsPage() {
       ]}
     >
       <InfoBox>{t('user.page.settings.profile.linked_accounts.description')}</InfoBox>
+      {linkError ? (
+        <Alert variant="destructive" className="mb-2">
+          <AlertDescription>
+            {t(`auth.oauth.errors.${linkError}`, { defaultValue: t('auth.oauth.errors.provider_error') })}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {identities.data?.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t('user.page.settings.profile.linked_accounts.empty')}</p>
       ) : null}
@@ -66,14 +91,23 @@ export function LinkedAccountsPage() {
                 {t('user.page.settings.profile.linked_accounts.linked_on')} {parseUtcDateTime(i.createdAt).toLocaleDateString(i18n.language)}
               </div>
             </div>
-            <Button type="button" variant="secondary" size="sm" disabled={lastIdentityLocked} onClick={() => setConfirm(i.provider)}>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={lastIdentityLocked}
+              aria-describedby={lastIdentityLocked ? 'linked-accounts-last-identity-hint' : undefined}
+              onClick={() => setConfirm(i.provider)}
+            >
               {t('user.page.settings.profile.linked_accounts.unlink')}
             </Button>
           </li>
         ))}
       </ul>
       {lastIdentityLocked && (identities.data?.length ?? 0) > 0 ? (
-        <p className="mt-2 text-xs text-muted-foreground">{t('user.page.settings.profile.linked_accounts.last_identity_hint')}</p>
+        <p id="linked-accounts-last-identity-hint" className="mt-2 text-xs text-muted-foreground">
+          {t('user.page.settings.profile.linked_accounts.last_identity_hint')}
+        </p>
       ) : null}
       {unlinked.length > 0 ? (
         <ul className="mt-4 flex flex-col gap-2">
