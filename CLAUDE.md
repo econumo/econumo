@@ -511,7 +511,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   every bridge host and refuses any address that is not global unicast (loopback, RFC1918,
   link-local, unique-local, multicast, unspecified) — the setup token and the access URL are
   user-supplied, so without it the server fetches whatever its own network can reach. A
-  self-hosted bridge on a LAN needs it on.
+  self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
+  so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
+  the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -852,7 +854,7 @@ data unreadable. Most are also asserted by the test suite.
   `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
   "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the
-  run `partial`, a bridge failure leaves it `failed`; `last_synced_at` moves only on
+  run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
   `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
 
 ## Deployment
