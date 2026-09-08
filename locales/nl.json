@@ -797,7 +797,7 @@
         "denied": "Aanmelden is geannuleerd.",
         "invalid_state": "De aanmeldpoging is verlopen of al gebruikt. Probeer het opnieuw.",
         "provider_error": "De aanmeldprovider heeft een fout teruggegeven. Probeer het opnieuw.",
-        "email_required": "De aanmeldprovider heeft geen e-mailadres gedeeld, wat Econumo vereist.",
+        "email_required": "De aanmeldprovider heeft geen e-mailadres gedeeld, terwijl Econumo dat vereist.",
         "email_unverified": "De aanmeldprovider heeft dit e-mailadres niet geverifieerd.",
         "registration_disabled": "Registratie is uitgeschakeld op deze server. Log eerst in met een bestaand account.",
         "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account.",

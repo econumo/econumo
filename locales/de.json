@@ -797,7 +797,7 @@
         "denied": "Die Anmeldung wurde abgebrochen.",
         "invalid_state": "Der Anmeldeversuch ist abgelaufen oder wurde bereits verwendet. Bitte versuchen Sie es erneut.",
         "provider_error": "Der Anmeldeanbieter hat einen Fehler zurückgegeben. Bitte versuchen Sie es erneut.",
-        "email_required": "Der Anmeldeanbieter hat keine E-Mail-Adresse übermittelt, die Econumo benötigt.",
+        "email_required": "Der Anmeldeanbieter hat keine E-Mail-Adresse übermittelt; Econumo benötigt jedoch eine.",
         "email_unverified": "Der Anmeldeanbieter hat diese E-Mail-Adresse nicht bestätigt.",
         "registration_disabled": "Die Registrierung ist auf diesem Server deaktiviert. Melden Sie sich zunächst mit einem bestehenden Konto an.",
         "identity_taken": "Dieses externe Konto ist bereits mit einem anderen Econumo-Konto verknüpft.",
