@@ -43,11 +43,9 @@ func init() {
 			{Label: "err:link-account-again", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
 			{Label: "get-queued-event-list-after-link", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
-			// Txn1 itself was never touched by THIS conversion (it created a new
-			// row instead); it shows the unrelated provenance seeded on it by the
-			// SimpleFIN fixture (fixture.go's ImportRunSeeded) instead of an
-			// empty list.
-			{Label: "get-transaction-import-list-other-source", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
+			// Txn1 itself was never touched by the conversion (it created a new
+			// row instead), so its provenance list is empty.
+			{Label: "get-transaction-import-list-no-provenance", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
 			{Label: "ignore-account", Method: "POST", Path: "/api/v1/import/ignore-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard"}},
 			// "map instead" over an ignored card is allowed; currency still has to agree, so it stays refused for eurocard.

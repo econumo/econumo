@@ -76,8 +76,9 @@ const (
 	IngestTokenID = "99999999-9999-9999-9999-999999999999"
 
 	// One import link on Txn2 so get-transaction-list pins isImported=1 on a
-	// real row. Txn1 is also linked below (SimpleFIN's seeded run), so every
-	// owner-visible transaction in the base seed reads isImported=1.
+	// real row (Txn1 stays 0). SimpleFIN's seeded run below adds a SECOND
+	// link on Txn2 (a bank sync "adopting" a push-created row is exactly the
+	// stage-3 adopt flow), so Txn1 stays the base seed's only unimported row.
 	ImportSourcePhone = "0c000000-0000-0000-0000-000000000001"
 	ImportSourceBank  = "0c000000-0000-0000-0000-000000000002" // owner's SimpleFIN source
 	ImportRunSeeded   = "0c000000-0000-0000-0000-000000000003" // completed run on ImportSourceBank
@@ -207,12 +208,14 @@ func Seed(t testing.TB, db *dbtest.DB) {
 
 	// A completed run on the bank source, seeded so get-run has a fixed id to
 	// read (sync-source's own run id is server-minted and unavailable to a
-	// later Call.Path): one imported link (Txn1) and one tombstone (the
-	// transaction it pointed at was deleted elsewhere).
+	// later Call.Path): one imported link (adopting Txn2 — a bank sync
+	// "adopting" a push-created row, the stage-3 adopt flow, so Txn2 legitimately
+	// carries two provenance rows) and one tombstone (the transaction it
+	// pointed at was deleted elsewhere).
 	f.ImportRun(fixture.ImportRun{ID: ImportRunSeeded, UserID: OwnerID, SourceID: ImportSourceBank, Provider: model.ImportProviderSimpleFIN,
 		Status: model.ImportRunStatusCompleted, ImportedCount: 2, StartedAt: ClockTime, FinishedAt: &ClockTime})
 	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-1",
-		TransactionID: Txn1, Status: model.ImportLinkStatusLinked, ExternalPayee: "Seeded Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
+		TransactionID: Txn2, Status: model.ImportLinkStatusLinked, ExternalPayee: "Seeded Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
 	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-0",
 		Status: model.ImportLinkStatusLinked, ExternalPayee: "Deleted Later", ExternalAmount: "3.00000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
 
