@@ -82,13 +82,25 @@ func (b *Builder) now() time.Time {
 // time.Time arg to the bare "Y-m-d H:i:s" string the production code stores.
 // Boolean columns must use TRUE/FALSE literals IN THE QUERY TEXT (not bound
 // ints) — see the package doc. Fails the test on error.
+// RawTime seeds a datetime the way the Go repositories write it: the driver
+// binds the time.Time itself, which modernc.org/sqlite stores as Go's default
+// t.String() ("2026-08-20 12:00:00 +0000 UTC"). Plain time.Time args are seeded
+// in the legacy 'Y-m-d H:i:s' text a migrated database still holds. Tables
+// created after the port can only ever contain the driver's form, so seeding
+// one of those the legacy way makes SQLite's TEXT ordering disagree with
+// PostgreSQL's timestamp ordering.
+type RawTime struct{ T time.Time }
+
 func (b *Builder) insert(query string, args ...any) {
 	b.t.Helper()
 	out := make([]any, len(args))
 	for i, a := range args {
-		if tm, ok := a.(time.Time); ok {
-			out[i] = tm.Format("2006-01-02 15:04:05")
-		} else {
+		switch v := a.(type) {
+		case RawTime:
+			out[i] = v.T
+		case time.Time:
+			out[i] = v.Format("2006-01-02 15:04:05")
+		default:
 			out[i] = a
 		}
 	}

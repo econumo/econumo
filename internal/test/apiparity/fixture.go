@@ -212,8 +212,12 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// "adopting" a push-created row, the stage-3 adopt flow, so Txn2 legitimately
 	// carries two provenance rows) and one tombstone (the transaction it
 	// pointed at was deleted elsewhere).
+	// A day before ClockTime so the history list is ordered by a real key: a
+	// run seeded at the same instant the scenario's own syncs use would leave
+	// the order resting on the id tie-break.
+	seededRunAt := ClockTime.AddDate(0, 0, -1)
 	f.ImportRun(fixture.ImportRun{ID: ImportRunSeeded, UserID: OwnerID, SourceID: ImportSourceBank, Provider: model.ImportProviderSimpleFIN,
-		Status: model.ImportRunStatusCompleted, ImportedCount: 2, StartedAt: ClockTime, FinishedAt: &ClockTime})
+		Status: model.ImportRunStatusCompleted, ImportedCount: 2, StartedAt: seededRunAt, FinishedAt: &seededRunAt})
 	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-1",
 		TransactionID: Txn2, Status: model.ImportLinkStatusLinked, ExternalPayee: "Seeded Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
 	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-0",
