@@ -116,7 +116,7 @@ func (f faultHandoffs) Delete(ctx context.Context, codeHash string) error {
 // newFaultService builds a second Service over the harness's real fake OIDC
 // provider and database, letting a test swap in a wrapped dependency.
 func newFaultService(h *harness, users appoauth.Users, ids appoauth.Identities, states appoauth.States, hands appoauth.Handoffs, allowRegistration bool) *appoauth.Service {
-	return appoauth.NewService(h.providers, users, ids, states, hands, h.db.TX, h.clock, "https://app.example.test", allowRegistration)
+	return appoauth.NewService(h.providers, users, ids, states, hands, h.db.TX, h.clock, nil, "https://app.example.test", allowRegistration)
 }
 
 func TestCallback_Login_IdentityOwnerLookupFails(t *testing.T) {
@@ -240,7 +240,7 @@ func TestCallback_Link_ExistingIdentityUpdateSaveFails(t *testing.T) {
 	}
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
-	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/login?oauthError=provider_error" {
+	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_error" {
 		t.Fatalf("redirect %s", r)
 	}
 }
@@ -255,7 +255,7 @@ func TestCallback_Link_IdentityLookupFails(t *testing.T) {
 	}
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
-	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/login?oauthError=provider_error" {
+	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_error" {
 		t.Fatalf("redirect %s", r)
 	}
 }
@@ -270,7 +270,7 @@ func TestCallback_Link_InsertSaveFails(t *testing.T) {
 	}
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
-	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/login?oauthError=provider_error" {
+	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_error" {
 		t.Fatalf("redirect %s", r)
 	}
 }
@@ -291,7 +291,7 @@ func TestCallback_ConsumeState_DeleteFails(t *testing.T) {
 func TestExchangeHandoff_GetFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, get: errBoom}, true)
-	if _, err := svc2.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: "x"}, "ua"); !errors.Is(err, errBoom) {
+	if _, err := svc2.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: "x", Flow: "x"}, "ua"); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
 	}
 }
@@ -300,7 +300,7 @@ func TestExchangeHandoff_DeleteFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	redirect := h.login("google", "web")
 	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, delete: errBoom}, true)
-	if _, err := svc2.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: handoffOf(t, redirect)}, "ua"); !errors.Is(err, errBoom) {
+	if _, err := svc2.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
 	}
 }
@@ -309,7 +309,7 @@ func TestExchangeHandoff_MintSessionFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	redirect := h.login("google", "web")
 	h.users.failMintSession = errBoom
-	if _, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: handoffOf(t, redirect)}, "ua"); !errors.Is(err, errBoom) {
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
 	}
 }
@@ -367,7 +367,7 @@ func TestStartLogin_DiscoveryFails(t *testing.T) {
 		ID: "google", IssuerURL: "http://127.0.0.1:1", ClientID: "x", ClientSecret: oidc.StaticSecret("s"),
 		Scopes: []string{"openid"}, UsePKCE: true, TrustEmail: true,
 	}, nil)}}
-	svc2 := appoauth.NewService(unreachable, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, "https://app.example.test", true)
+	svc2 := appoauth.NewService(unreachable, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
 	if _, err := svc2.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"}); err == nil {
 		t.Fatal("unreachable issuer must fail discovery")
 	}

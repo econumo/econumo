@@ -64,20 +64,28 @@ type OAuthState struct {
 	Provider     string
 	Nonce        string
 	CodeVerifier string
-	Client       string
-	Intent       string
-	LinkUserID   vo.Id // zero unless Intent == OAuthIntentLink
-	CreatedAt    time.Time
-	ExpiresAt    time.Time
+	// FlowHash binds the flow to the client that started it: sha256 of the
+	// secret start-login/start-link returned. The callback carries no client
+	// credential, so without it a forged callback could hand a victim's browser
+	// a handoff minted for the attacker's account.
+	FlowHash   string
+	Client     string
+	Intent     string
+	LinkUserID vo.Id // zero unless Intent == OAuthIntentLink
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
 }
 
 func (s *OAuthState) IsExpired(now time.Time) bool { return !now.Before(s.ExpiresAt) }
 
 // OAuthHandoff is the one-shot code the client exchanges for a session.
 type OAuthHandoff struct {
-	CodeHash  string
-	UserID    vo.Id
-	Provider  string
+	CodeHash string
+	UserID   vo.Id
+	Provider string
+	// FlowHash is copied from the state row; only the client that started the
+	// flow can present the matching secret at exchange time.
+	FlowHash  string
 	IDToken   *string
 	CreatedAt time.Time
 	ExpiresAt time.Time

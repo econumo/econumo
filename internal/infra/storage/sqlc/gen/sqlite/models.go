@@ -196,6 +196,7 @@ type OauthHandoff struct {
 	CodeHash  string
 	UserID    string
 	Provider  string
+	FlowHash  string
 	IDToken   *string
 	CreatedAt time.Time
 	ExpiresAt time.Time
@@ -206,6 +207,7 @@ type OauthState struct {
 	Provider     string
 	Nonce        string
 	CodeVerifier string
+	FlowHash     string
 	Client       string
 	Intent       string
 	LinkUserID   *string

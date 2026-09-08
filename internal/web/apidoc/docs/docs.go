@@ -11331,6 +11331,9 @@ const docTemplate = `{
             "properties": {
                 "code": {
                     "type": "string"
+                },
+                "flow": {
+                    "type": "string"
                 }
             }
         },
@@ -12782,6 +12785,10 @@ const docTemplate = `{
         "model.StartOAuthResult": {
             "type": "object",
             "properties": {
+                "flow": {
+                    "description": "Flow is the one-flow secret the client stores and presents at\nexchange-handoff; it never leaves the client that started the flow.",
+                    "type": "string"
+                },
                 "url": {
                     "type": "string"
                 }

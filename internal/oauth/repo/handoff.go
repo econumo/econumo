@@ -48,8 +48,8 @@ func (r *HandoffRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier
 
 func (r *HandoffRepo) Insert(ctx context.Context, h *model.OAuthHandoff) error {
 	return r.q.InsertOAuthHandoff(ctx, r.db(ctx), insertHandoffParams{
-		CodeHash: h.CodeHash, UserID: h.UserID.String(), Provider: h.Provider, IDToken: h.IDToken,
-		CreatedAt: h.CreatedAt, ExpiresAt: h.ExpiresAt,
+		CodeHash: h.CodeHash, UserID: h.UserID.String(), Provider: h.Provider, FlowHash: h.FlowHash,
+		IDToken: h.IDToken, CreatedAt: h.CreatedAt, ExpiresAt: h.ExpiresAt,
 	})
 }
 
@@ -65,8 +65,8 @@ func (r *HandoffRepo) Get(ctx context.Context, codeHash string) (*model.OAuthHan
 	if err != nil {
 		return nil, err
 	}
-	return &model.OAuthHandoff{CodeHash: row.CodeHash, UserID: uid, Provider: row.Provider, IDToken: row.IDToken,
-		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
+	return &model.OAuthHandoff{CodeHash: row.CodeHash, UserID: uid, Provider: row.Provider, FlowHash: row.FlowHash,
+		IDToken: row.IDToken, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
 }
 
 func (r *HandoffRepo) Delete(ctx context.Context, codeHash string) error {

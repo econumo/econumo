@@ -20,18 +20,28 @@ type Service struct {
 	handoffs          Handoffs
 	tx                port.TxRunner
 	clock             port.Clock
+	limiter           AttemptLimiter
 	appURL            string
 	allowRegistration bool
 }
 
 func NewService(providers []Provider, users Users, identities Identities, states States, handoffs Handoffs,
-	tx port.TxRunner, clock port.Clock, appURL string, allowRegistration bool) *Service {
+	tx port.TxRunner, clock port.Clock, limiter AttemptLimiter, appURL string, allowRegistration bool) *Service {
 	byID := map[string]Provider{}
 	for _, p := range providers {
 		byID[p.Client.Issuer().ID] = p
 	}
 	return &Service{providers: providers, byID: byID, users: users, identities: identities, states: states,
-		handoffs: handoffs, tx: tx, clock: clock, appURL: strings.TrimSuffix(appURL, "/"), allowRegistration: allowRegistration}
+		handoffs: handoffs, tx: tx, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
+		allowRegistration: allowRegistration}
+}
+
+// allowStart guards the optional limiter, mirroring the user feature's pattern.
+func (s *Service) allowStart() error {
+	if s.limiter == nil {
+		return nil
+	}
+	return s.limiter.Allow(RateScopeOAuthStart, "")
 }
 
 func (s *Service) ListProviders() []model.ProviderItem {
@@ -78,6 +88,19 @@ func (s *Service) linkedURL(client, provider string) string {
 		return "econumo://oauth?linked=" + url.QueryEscape(provider)
 	}
 	return s.appURL + "/settings/profile/linked-accounts?linked=" + url.QueryEscape(provider)
+}
+
+// errorURLFor reports the failure on the surface the flow started from: a link
+// started in Settings lands back there, not on the login page (where a
+// signed-in user would see nothing).
+func (s *Service) errorURLFor(st *model.OAuthState, code string) string {
+	if st.Intent != model.OAuthIntentLink {
+		return s.errorURL(st.Client, code)
+	}
+	if st.Client == model.OAuthClientApp {
+		return "econumo://oauth?linkError=" + url.QueryEscape(code)
+	}
+	return s.appURL + "/settings/profile/linked-accounts?oauthError=" + url.QueryEscape(code)
 }
 
 func (s *Service) errorURL(client, code string) string {

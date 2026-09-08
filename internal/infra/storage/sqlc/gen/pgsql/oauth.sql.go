@@ -135,7 +135,7 @@ func (q *Queries) GetIdentityByUserProvider(ctx context.Context, arg GetIdentity
 }
 
 const getOAuthHandoff = `-- name: GetOAuthHandoff :one
-SELECT code_hash, user_id, provider, id_token, created_at, expires_at
+SELECT code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at
 FROM oauth_handoffs
 WHERE code_hash = $1
 `
@@ -147,6 +147,7 @@ func (q *Queries) GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHa
 		&i.CodeHash,
 		&i.UserID,
 		&i.Provider,
+		&i.FlowHash,
 		&i.IDToken,
 		&i.CreatedAt,
 		&i.ExpiresAt,
@@ -155,7 +156,7 @@ func (q *Queries) GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHa
 }
 
 const getOAuthState = `-- name: GetOAuthState :one
-SELECT state_hash, provider, nonce, code_verifier, client, intent, link_user_id, created_at, expires_at
+SELECT state_hash, provider, nonce, code_verifier, flow_hash, client, intent, link_user_id, created_at, expires_at
 FROM oauth_states
 WHERE state_hash = $1
 `
@@ -168,6 +169,7 @@ func (q *Queries) GetOAuthState(ctx context.Context, stateHash string) (OauthSta
 		&i.Provider,
 		&i.Nonce,
 		&i.CodeVerifier,
+		&i.FlowHash,
 		&i.Client,
 		&i.Intent,
 		&i.LinkUserID,
@@ -178,14 +180,15 @@ func (q *Queries) GetOAuthState(ctx context.Context, stateHash string) (OauthSta
 }
 
 const insertOAuthHandoff = `-- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, user_id, provider, id_token, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO oauth_handoffs (code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 type InsertOAuthHandoffParams struct {
 	CodeHash  string
 	UserID    string
 	Provider  string
+	FlowHash  string
 	IDToken   *string
 	CreatedAt time.Time
 	ExpiresAt time.Time
@@ -196,6 +199,7 @@ func (q *Queries) InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoff
 		arg.CodeHash,
 		arg.UserID,
 		arg.Provider,
+		arg.FlowHash,
 		arg.IDToken,
 		arg.CreatedAt,
 		arg.ExpiresAt,
@@ -204,8 +208,8 @@ func (q *Queries) InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoff
 }
 
 const insertOAuthState = `-- name: InsertOAuthState :exec
-INSERT INTO oauth_states (state_hash, provider, nonce, code_verifier, client, intent, link_user_id, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO oauth_states (state_hash, provider, nonce, code_verifier, flow_hash, client, intent, link_user_id, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 `
 
 type InsertOAuthStateParams struct {
@@ -213,6 +217,7 @@ type InsertOAuthStateParams struct {
 	Provider     string
 	Nonce        string
 	CodeVerifier string
+	FlowHash     string
 	Client       string
 	Intent       string
 	LinkUserID   *string
@@ -226,6 +231,7 @@ func (q *Queries) InsertOAuthState(ctx context.Context, arg InsertOAuthStatePara
 		arg.Provider,
 		arg.Nonce,
 		arg.CodeVerifier,
+		arg.FlowHash,
 		arg.Client,
 		arg.Intent,
 		arg.LinkUserID,

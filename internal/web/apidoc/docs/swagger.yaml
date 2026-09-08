@@ -939,6 +939,8 @@ definitions:
     properties:
       code:
         type: string
+      flow:
+        type: string
     type: object
   model.FiltersResult:
     properties:
@@ -1879,6 +1881,11 @@ definitions:
     type: object
   model.StartOAuthResult:
     properties:
+      flow:
+        description: |-
+          Flow is the one-flow secret the client stores and presents at
+          exchange-handoff; it never leaves the client that started the flow.
+        type: string
       url:
         type: string
     type: object

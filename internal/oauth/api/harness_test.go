@@ -79,6 +79,8 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string) error {
 	return nil
 }
+func (f *fakeUsers) RevokeAllSessions(_ context.Context, _ vo.Id) error { return nil }
+func (f *fakeUsers) MarkEmailVerified(_ context.Context, _ vo.Id) error { return nil }
 
 // MintSession returns a session-shaped token: eco_ses_ + 43 chars, matching
 // the real access-token format so tests can assert on the wire shape.
@@ -97,7 +99,9 @@ type harness struct {
 	users *fakeUsers
 }
 
-func newHarness(t *testing.T) *harness {
+func newHarness(t *testing.T) *harness { return newHarnessWith(t, nil) }
+
+func newHarnessWith(t *testing.T, limiter appoauth.AttemptLimiter) *harness {
 	t.Helper()
 	db := dbtest.New(t)
 	f := oidctest.New(t)
@@ -117,7 +121,7 @@ func newHarness(t *testing.T) *harness {
 		{Client: oidc.NewClient(appleIssuer, nil), Name: "Apple"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, "https://app.example.test", true)
+	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, limiter, "https://app.example.test", true)
 	handlers := handleroauth.NewHandlers(svc)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

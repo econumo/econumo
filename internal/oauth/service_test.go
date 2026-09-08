@@ -33,6 +33,8 @@ type fakeUsers struct {
 	byEmail   map[string]*model.User
 	minted    []string // providers of minted sessions
 	replaced  []string // emails mirrored via ReplaceVerifiedEmail
+	revoked   []string // user ids whose sessions were revoked on auto-link
+	verified  []string // user ids marked email-verified on auto-link
 	provision int
 
 	// Fault injection for coverage of the service's error-handling branches:
@@ -41,6 +43,7 @@ type fakeUsers struct {
 	failFindByEmail       error
 	failProvisionExternal error
 	failMintSession       error
+	failRevokeAllSessions error
 }
 
 func newFakeUsers(t *testing.T, db *dbtest.DB) *fakeUsers {
@@ -86,6 +89,14 @@ func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email 
 	f.replaced = append(f.replaced, email)
 	return nil
 }
+func (f *fakeUsers) RevokeAllSessions(_ context.Context, userID vo.Id) error {
+	f.revoked = append(f.revoked, userID.String())
+	return f.failRevokeAllSessions
+}
+func (f *fakeUsers) MarkEmailVerified(_ context.Context, userID vo.Id) error {
+	f.verified = append(f.verified, userID.String())
+	return nil
+}
 func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provider string, idToken *string) (*model.LoginResult, error) {
 	if f.failMintSession != nil {
 		return nil, f.failMintSession
@@ -105,6 +116,7 @@ type harness struct {
 	hands     appoauth.Handoffs
 	clock     *fixedClock
 	providers []appoauth.Provider
+	flow      string // the flow secret the last start-* call returned
 }
 
 func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
@@ -119,7 +131,7 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderGoogle, true), nil), Name: "Google"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, trust), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, "https://app.example.test", allowRegistration)
+	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration)
 	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers}
 }
 
@@ -131,10 +143,18 @@ func (h *harness) login(provider, client string) string {
 	if err != nil {
 		h.t.Fatal(err)
 	}
+	h.flow = res.Flow
 	u, _ := url.Parse(res.Url)
 	q := u.Query()
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
 	return h.svc.Callback(context.Background(), provider, appoauth.CallbackInput{Code: code, State: q.Get("state")})
+}
+
+// exchangeReq pairs the redirect's handoff code with the flow secret the
+// matching start-login returned, as a real client does.
+func (h *harness) exchangeReq(t *testing.T, redirect string) model.ExchangeHandoffRequest {
+	t.Helper()
+	return model.ExchangeHandoffRequest{Code: handoffOf(t, redirect), Flow: h.flow}
 }
 
 func handoffOf(t *testing.T, redirect string) string {
@@ -174,12 +194,12 @@ func TestCallback_ProvisionsNewUserAndHandoffExchanges(t *testing.T) {
 	if h.users.provision != 1 {
 		t.Fatalf("provision calls %d", h.users.provision)
 	}
-	res, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: handoffOf(t, redirect)}, "UA/1")
+	res, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "UA/1")
 	if err != nil || res.Token == "" || h.users.minted[0] != "oidc" {
 		t.Fatalf("%+v %v minted=%v", res, err, h.users.minted)
 	}
 	// single use
-	if _, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: handoffOf(t, redirect)}, "UA/1"); err == nil {
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "UA/1"); err == nil {
 		t.Fatal("handoff must be single use")
 	}
 	// identity recorded
@@ -357,14 +377,14 @@ func TestStartLinkAndCallback_Link(t *testing.T) {
 	other := h.users.seed(t, "other@example.test", model.AlgorithmArgon2id)
 	res3, _ := h.svc.StartLink(context.Background(), other.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
 	q3 := mustQuery(t, res3.Url)
-	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q3.Get("nonce"), q3.Get("code_challenge")), State: q3.Get("state")}); r != "https://app.example.test/login?oauthError=identity_taken" {
+	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q3.Get("nonce"), q3.Get("code_challenge")), State: q3.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=identity_taken" {
 		t.Fatalf("redirect %s", r)
 	}
 	// The same user linking google with a DIFFERENT subject: provider_already_linked.
 	h.fake.Subject = "another-google-account"
 	res4, _ := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
 	q4 := mustQuery(t, res4.Url)
-	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q4.Get("nonce"), q4.Get("code_challenge")), State: q4.Get("state")}); r != "https://app.example.test/login?oauthError=provider_already_linked" {
+	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q4.Get("nonce"), q4.Get("code_challenge")), State: q4.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_already_linked" {
 		t.Fatalf("redirect %s", r)
 	}
 }
@@ -407,14 +427,14 @@ func TestInactiveUserRejected(t *testing.T) {
 
 func TestExchangeHandoff_ExpiredAndUnknown(t *testing.T) {
 	h := newHarness(t, false, true)
-	if _, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: "nope"}, "ua"); err == nil {
+	if _, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: "nope", Flow: "x"}, "ua"); err == nil {
 		t.Fatal("unknown code must fail")
 	} else if u, ok := errs.AsUnauthorized(err); !ok || u.Code != errs.CodeOAuthHandoffInvalid {
 		t.Fatalf("want 401 handoff_invalid, got %v", err)
 	}
 	redirect := h.login("google", "web")
 	h.clock.t = h.clock.t.Add(model.OAuthHandoffTTL + time.Second)
-	if _, err := h.svc.ExchangeHandoff(context.Background(), model.ExchangeHandoffRequest{Code: handoffOf(t, redirect)}, "ua"); err == nil {
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
 		t.Fatal("expired handoff must fail")
 	}
 }
@@ -428,5 +448,95 @@ func TestEndSessionURL(t *testing.T) {
 	}
 	if u, _ := h.svc.EndSessionURL(context.Background(), "apple", "tok"); u != "" {
 		t.Fatal("unconfigured provider yields no url")
+	}
+}
+
+func TestCallback_AutoLinkEvictsAPreRegisteredPasswordAccount(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
+	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.users.revoked) != 1 || h.users.revoked[0] != u.ID.String() {
+		t.Fatalf("a password account must lose every session on auto-link: %v", h.users.revoked)
+	}
+	if len(h.users.verified) != 1 || h.users.verified[0] != u.ID.String() {
+		t.Fatalf("the provider's assertion must mark the address verified: %v", h.users.verified)
+	}
+}
+
+func TestCallback_AutoLinkLeavesAPasswordlessAccountAlone(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.users.seed(t, "external@example.test", model.AlgorithmNone)
+	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if len(h.users.revoked) != 0 || len(h.users.verified) != 0 {
+		t.Fatalf("a provider-created account already proved the address: revoked=%v verified=%v", h.users.revoked, h.users.verified)
+	}
+}
+
+func TestCallback_AutoLinkRollsBackWhenTheEvictionFails(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
+	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	h.users.failRevokeAllSessions = errBoom
+	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=provider_error" {
+		t.Fatalf("redirect %s", r)
+	}
+	// No half-linked identity: the next attempt would otherwise skip the eviction.
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc"); err == nil {
+		t.Fatal("the identity insert must roll back with the eviction")
+	}
+}
+
+func TestExchangeHandoff_RejectsAForeignFlowSecret(t *testing.T) {
+	h := newHarness(t, false, true)
+	redirect := h.login("google", "web")
+	other, _ := oidc.RandomToken()
+	_, err := h.svc.ExchangeHandoff(context.Background(),
+		model.ExchangeHandoffRequest{Code: handoffOf(t, redirect), Flow: other}, "ua")
+	if u, ok := errs.AsUnauthorized(err); !ok || u.Code != errs.CodeOAuthHandoffInvalid {
+		t.Fatalf("want 401 handoff_invalid, got %v", err)
+	}
+	// Still single use: the row is gone even though the secret did not match.
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
+		t.Fatal("the rejected attempt must still consume the handoff")
+	}
+}
+
+func TestStartLink_MintsAFlowSecretToo(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	res, err := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
+	if err != nil || len(res.Flow) != 43 {
+		t.Fatalf("%+v %v", res, err)
+	}
+}
+
+// stubLimiter reports the endpoint's global per-minute cap as spent.
+type stubLimiter struct{ scope, key string }
+
+func (l *stubLimiter) Allow(scope, key string) error {
+	l.scope, l.key = scope, key
+	return errs.NewTooManyRequests("Too many attempts. Try again later.")
+}
+
+func TestStartLogin_SurfacesTheRateLimit(t *testing.T) {
+	h := newHarness(t, false, true)
+	lim := &stubLimiter{}
+	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, lim,
+		"https://app.example.test", true)
+	_, err := svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
+	if _, ok := errs.AsTooManyRequests(err); !ok {
+		t.Fatalf("want 429, got %v", err)
+	}
+	if lim.scope != appoauth.RateScopeOAuthStart || lim.key != "" {
+		t.Fatalf("scope %q key %q", lim.scope, lim.key)
+	}
+	if _, err := svc.StartLink(context.Background(), vo.NewId(), model.StartOAuthRequest{Provider: "google", Client: "web"}); err == nil {
+		t.Fatal("start-link is capped too")
 	}
 }

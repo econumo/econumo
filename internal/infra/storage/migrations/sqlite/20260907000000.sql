@@ -3,7 +3,9 @@
 -- oauth_states holds the in-flight authorization requests (server-side because
 -- Apple's cross-site form POST carries no SameSite cookie and the app's browser
 -- sheet shares no storage with the SPA); oauth_handoffs the one-shot codes the
--- client exchanges for a session so the token never travels in a URL.
+-- client exchanges for a session so the token never travels in a URL. Both
+-- carry flow_hash: the sha256 of a secret handed to the client that started the
+-- flow, so a forged callback cannot log a victim into an attacker's account.
 CREATE TABLE users_identities
 (
     id           TEXT     NOT NULL
@@ -25,6 +27,7 @@ CREATE TABLE oauth_states
     , provider      TEXT     NOT NULL
     , nonce         TEXT     NOT NULL
     , code_verifier TEXT     NOT NULL DEFAULT ''
+    , flow_hash     TEXT     NOT NULL DEFAULT ''
     , client        TEXT     NOT NULL
     , intent        TEXT     NOT NULL
     , link_user_id  TEXT
@@ -39,6 +42,7 @@ CREATE TABLE oauth_handoffs
     code_hash    TEXT     NOT NULL
     , user_id    TEXT     NOT NULL
     , provider   TEXT     NOT NULL
+    , flow_hash  TEXT     NOT NULL DEFAULT ''
     , id_token   TEXT
     , created_at DATETIME NOT NULL
     , expires_at DATETIME NOT NULL

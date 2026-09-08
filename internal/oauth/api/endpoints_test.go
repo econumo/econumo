@@ -6,6 +6,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/econumo/econumo/internal/shared/errs"
 )
 
 // mustQuery parses a URL's query (same helper as internal/oauth's tests).
@@ -43,11 +45,14 @@ func TestStartLogin_ReturnsAuthorizationURL(t *testing.T) {
 	}
 }
 
-func TestCallbackGoogle_RedirectsWithHandoff_ThenExchange(t *testing.T) {
+func TestExchangeHandoff_RequiresTheInitiatingClientsFlowSecret(t *testing.T) {
 	h := newHarness(t)
 	_, env := h.do(t, http.MethodPost, "/api/v1/oauth/start-login", "", map[string]any{"provider": "google", "client": "web"})
-	var res struct{ Url string }
+	var res struct{ Url, Flow string }
 	_ = json.Unmarshal(env.Data, &res)
+	if len(res.Flow) != 43 {
+		t.Fatalf("start-login must return the flow secret, got %q", res.Flow)
+	}
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
 
@@ -60,11 +65,30 @@ func TestCallbackGoogle_RedirectsWithHandoff_ThenExchange(t *testing.T) {
 		t.Fatalf("location %s", loc)
 	}
 	frag, _ := url.ParseQuery(strings.SplitN(loc, "#", 2)[1])
-	status, raw := h.doRaw(t, http.MethodPost, "/api/v1/oauth/exchange-handoff", "", map[string]any{"code": frag.Get("handoff")})
+	// A handoff presented without the initiating client's flow secret is refused.
+	status, _ := h.doRaw(t, http.MethodPost, "/api/v1/oauth/exchange-handoff", "", map[string]any{"code": frag.Get("handoff"), "flow": "wrong"})
+	if status != 401 {
+		t.Fatalf("a foreign flow secret must be 401, got %d", status)
+	}
+}
+
+func TestCallbackGoogle_RedirectsWithHandoff_ThenExchange(t *testing.T) {
+	h := newHarness(t)
+	_, env := h.do(t, http.MethodPost, "/api/v1/oauth/start-login", "", map[string]any{"provider": "google", "client": "web"})
+	var res struct{ Url, Flow string }
+	_ = json.Unmarshal(env.Data, &res)
+	q := mustQuery(t, res.Url)
+	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
+
+	resp := h.rawGet(t, "/api/v1/oauth/callback-google?code="+url.QueryEscape(code)+"&state="+url.QueryEscape(q.Get("state")))
+	loc := resp.Header.Get("Location")
+	frag, _ := url.ParseQuery(strings.SplitN(loc, "#", 2)[1])
+	body := map[string]any{"code": frag.Get("handoff"), "flow": res.Flow}
+	status, raw := h.doRaw(t, http.MethodPost, "/api/v1/oauth/exchange-handoff", "", body)
 	if status != 200 || !strings.Contains(string(raw), `"token":"eco_ses_`) || strings.Contains(string(raw), `"success"`) {
 		t.Fatalf("exchange must be the raw login shape: %d %s", status, raw)
 	}
-	status, _ = h.doRaw(t, http.MethodPost, "/api/v1/oauth/exchange-handoff", "", map[string]any{"code": frag.Get("handoff")})
+	status, _ = h.doRaw(t, http.MethodPost, "/api/v1/oauth/exchange-handoff", "", body)
 	if status != 401 {
 		t.Fatalf("second exchange must be 401, got %d", status)
 	}
@@ -108,6 +132,21 @@ func TestIdentityEndpoints_RequireAuth(t *testing.T) {
 	}
 	status, env = h.do(t, http.MethodPost, "/api/v1/oauth/start-link", token, map[string]any{"provider": "google", "client": "web"})
 	if status != 200 || !strings.Contains(string(env.Data), `"url"`) {
+		t.Fatalf("%d %s", status, env.raw)
+	}
+}
+
+// blockedLimiter stands in for a limiter whose global per-minute cap is spent.
+type blockedLimiter struct{}
+
+func (blockedLimiter) Allow(string, string) error {
+	return errs.NewTooManyRequestsRetryAfter("Too many attempts. Try again later.", 30)
+}
+
+func TestStartLogin_RateLimited(t *testing.T) {
+	h := newHarnessWith(t, blockedLimiter{})
+	status, env := h.do(t, http.MethodPost, "/api/v1/oauth/start-login", "", map[string]any{"provider": "google", "client": "web"})
+	if status != 429 || !strings.Contains(string(env.raw), "Too many attempts") {
 		t.Fatalf("%d %s", status, env.raw)
 	}
 }

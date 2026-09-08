@@ -20,6 +20,7 @@ CREATE TABLE oauth_states
     , provider      TEXT     NOT NULL
     , nonce         TEXT     NOT NULL
     , code_verifier TEXT     NOT NULL DEFAULT ''
+    , flow_hash     TEXT     NOT NULL DEFAULT ''
     , client        TEXT     NOT NULL
     , intent        TEXT     NOT NULL
     , link_user_id  UUID
@@ -34,6 +35,7 @@ CREATE TABLE oauth_handoffs
     code_hash    TEXT     NOT NULL
     , user_id    UUID     NOT NULL
     , provider   TEXT     NOT NULL
+    , flow_hash  TEXT     NOT NULL DEFAULT ''
     , id_token   TEXT
     , created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
     , expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL

@@ -54,7 +54,8 @@ func (r *StateRepo) Insert(ctx context.Context, s *model.OAuthState) error {
 	}
 	return r.q.InsertOAuthState(ctx, r.db(ctx), insertStateParams{
 		StateHash: s.StateHash, Provider: s.Provider, Nonce: s.Nonce, CodeVerifier: s.CodeVerifier,
-		Client: s.Client, Intent: s.Intent, LinkUserID: link, CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt,
+		FlowHash: s.FlowHash, Client: s.Client, Intent: s.Intent, LinkUserID: link,
+		CreatedAt: s.CreatedAt, ExpiresAt: s.ExpiresAt,
 	})
 }
 
@@ -67,7 +68,7 @@ func (r *StateRepo) Get(ctx context.Context, hash string) (*model.OAuthState, er
 		return nil, err
 	}
 	s := &model.OAuthState{StateHash: row.StateHash, Provider: row.Provider, Nonce: row.Nonce, CodeVerifier: row.CodeVerifier,
-		Client: row.Client, Intent: row.Intent, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}
+		FlowHash: row.FlowHash, Client: row.Client, Intent: row.Intent, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}
 	if row.LinkUserID != nil {
 		id, perr := vo.ParseId(*row.LinkUserID)
 		if perr != nil {

@@ -19,6 +19,9 @@ func (s *Service) StartLink(ctx context.Context, userID vo.Id, req model.StartOA
 // start creates the state row and returns the provider's authorization URL.
 // Expired states are purged opportunistically here, the cheapest moment.
 func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent string, linkUser vo.Id) (*model.StartOAuthResult, error) {
+	if err := s.allowStart(); err != nil {
+		return nil, err
+	}
 	p, err := s.provider(req.Provider)
 	if err != nil {
 		return nil, err
@@ -28,6 +31,12 @@ func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent
 		return nil, err
 	}
 	nonce, err := oidc.RandomToken()
+	if err != nil {
+		return nil, err
+	}
+	// Minted for every intent, so state and handoff rows have one shape; the
+	// link flow ends on a redirect and never presents it.
+	flow, err := oidc.RandomToken()
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +56,8 @@ func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent
 	}
 	if err := s.states.Insert(ctx, &model.OAuthState{
 		StateHash: oidc.Sha256Hex(state), Provider: req.Provider, Nonce: nonce, CodeVerifier: verifier,
-		Client: req.Client, Intent: intent, LinkUserID: linkUser, CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL),
+		FlowHash: oidc.Sha256Hex(flow), Client: req.Client, Intent: intent, LinkUserID: linkUser,
+		CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL),
 	}); err != nil {
 		return nil, err
 	}
@@ -55,5 +65,5 @@ func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent
 	if err != nil {
 		return nil, err
 	}
-	return &model.StartOAuthResult{Url: u}, nil
+	return &model.StartOAuthResult{Url: u, Flow: flow}, nil
 }

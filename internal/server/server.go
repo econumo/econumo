@@ -178,6 +178,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
 			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+			// No per-key cap: the caller of start-login/start-link is anonymous
+			// until the provider answers. The global per-minute cap applies.
+			appoauth.RateScopeOAuthStart: 0,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -198,7 +201,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
-		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, cfg.AppURL, cfg.AllowRegistration)
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration)
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
 	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 

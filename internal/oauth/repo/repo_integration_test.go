@@ -62,13 +62,13 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
 
 	states := NewStateRepo(db.Engine, db.TX)
-	st := &model.OAuthState{StateHash: "h1", Provider: "oidc", Nonce: "n", CodeVerifier: "v", Client: "web", Intent: "link",
+	st := &model.OAuthState{StateHash: "h1", Provider: "oidc", Nonce: "n", CodeVerifier: "v", FlowHash: "fh1", Client: "web", Intent: "link",
 		LinkUserID: uid, CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL)}
 	if err := states.Insert(ctx, st); err != nil {
 		t.Fatal(err)
 	}
 	got, err := states.Get(ctx, "h1")
-	if err != nil || !got.LinkUserID.Equal(uid) || got.Intent != "link" || got.CodeVerifier != "v" {
+	if err != nil || !got.LinkUserID.Equal(uid) || got.Intent != "link" || got.CodeVerifier != "v" || got.FlowHash != "fh1" {
 		t.Fatalf("%+v %v", got, err)
 	}
 	st2 := &model.OAuthState{StateHash: "h2", Provider: "google", Nonce: "n", Client: "app", Intent: "login",
@@ -92,12 +92,12 @@ func TestStateAndHandoffRepos(t *testing.T) {
 
 	handoffs := NewHandoffRepo(db.Engine, db.TX)
 	tok := "id.tok"
-	h := &model.OAuthHandoff{CodeHash: "c1", UserID: uid, Provider: "oidc", IDToken: &tok, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
+	h := &model.OAuthHandoff{CodeHash: "c1", UserID: uid, Provider: "oidc", FlowHash: "fh1", IDToken: &tok, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
 	if err := handoffs.Insert(ctx, h); err != nil {
 		t.Fatal(err)
 	}
 	hg, err := handoffs.Get(ctx, "c1")
-	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) {
+	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) || hg.FlowHash != "fh1" {
 		t.Fatalf("%+v %v", hg, err)
 	}
 	if err := handoffs.Delete(ctx, "c1"); err != nil {

@@ -30,11 +30,11 @@ ON CONFLICT (id) DO UPDATE SET
 DELETE FROM users_identities WHERE user_id = $1 AND provider = $2;
 
 -- name: InsertOAuthState :exec
-INSERT INTO oauth_states (state_hash, provider, nonce, code_verifier, client, intent, link_user_id, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);
+INSERT INTO oauth_states (state_hash, provider, nonce, code_verifier, flow_hash, client, intent, link_user_id, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
 
 -- name: GetOAuthState :one
-SELECT state_hash, provider, nonce, code_verifier, client, intent, link_user_id, created_at, expires_at
+SELECT state_hash, provider, nonce, code_verifier, flow_hash, client, intent, link_user_id, created_at, expires_at
 FROM oauth_states
 WHERE state_hash = $1;
 
@@ -45,11 +45,11 @@ DELETE FROM oauth_states WHERE state_hash = $1;
 DELETE FROM oauth_states WHERE expires_at < $1;
 
 -- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, user_id, provider, id_token, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6);
+INSERT INTO oauth_handoffs (code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: GetOAuthHandoff :one
-SELECT code_hash, user_id, provider, id_token, created_at, expires_at
+SELECT code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at
 FROM oauth_handoffs
 WHERE code_hash = $1;
 

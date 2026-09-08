@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/infra/oidc"
 	"github.com/econumo/econumo/internal/model"
@@ -27,31 +28,31 @@ type CallbackInput struct {
 // an error: every failure becomes an error redirect (spec §6.2/§6.3), and the
 // internal cause goes to the operation log only.
 func (s *Service) Callback(ctx context.Context, provider string, in CallbackInput) string {
-	client := model.OAuthClientWeb
 	st, err := s.consumeState(ctx, provider, in.State)
 	if err != nil {
 		logWarn(ctx, "oauth callback: state", err, "provider", provider)
-		return s.errorURL(client, "invalid_state")
+		// The intent (and the client) live in the state row, so an unknown or
+		// expired state can only be reported on the web login page.
+		return s.errorURL(model.OAuthClientWeb, "invalid_state")
 	}
-	client = st.Client
 	reqctx.AddLogAttr(ctx, "oauth_intent", st.Intent)
 	if in.Error != "" {
-		return s.errorURL(client, "denied")
+		return s.errorURLFor(st, "denied")
 	}
 	p, perr := s.provider(provider)
 	if perr != nil {
-		return s.errorURL(client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	now := s.clock.Now()
 	toks, err := p.Client.Exchange(ctx, in.Code, st.CodeVerifier, s.RedirectURI(provider), now)
 	if err != nil {
 		logWarn(ctx, "oauth callback: exchange", err, "provider", provider)
-		return s.errorURL(client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	claims, err := p.Client.VerifyIDToken(ctx, toks.IDToken, st.Nonce, now)
 	if err != nil {
 		logWarn(ctx, "oauth callback: id token", err, "provider", provider)
-		return s.errorURL(client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	if claims.Email == "" && toks.AccessToken != "" {
 		claims = s.userinfoFallback(ctx, p, toks.AccessToken, claims)
@@ -61,10 +62,10 @@ func (s *Service) Callback(ctx context.Context, provider string, in CallbackInpu
 	}
 	// Step 4: email present and verified/trusted, for every intent.
 	if claims.Email == "" {
-		return s.errorURL(client, "email_required")
+		return s.errorURLFor(st, "email_required")
 	}
 	if !claims.EmailVerified && !p.Client.Issuer().TrustEmail {
-		return s.errorURL(client, "email_unverified")
+		return s.errorURLFor(st, "email_unverified")
 	}
 	email := strings.ToLower(strings.TrimSpace(claims.Email))
 
@@ -144,57 +145,80 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 		u, uerr := s.users.FindByID(ctx, id.UserID)
 		if uerr != nil {
 			logWarn(ctx, "oauth callback: identity owner", uerr, "provider", provider)
-			return s.errorURL(st.Client, "provider_error")
+			return s.errorURLFor(st, "provider_error")
 		}
 		if !u.IsActive {
-			return s.errorURL(st.Client, "account_inactive")
+			return s.errorURLFor(st, "account_inactive")
 		}
 		id.UpdateEmail(email, now)
 		if serr := s.identities.Save(ctx, id); serr != nil {
 			logWarn(ctx, "oauth callback: identity save", serr, "provider", provider)
-			return s.errorURL(st.Client, "provider_error")
+			return s.errorURLFor(st, "provider_error")
 		}
 		s.mirrorEmailDrift(ctx, u, email, provider)
 		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: identity lookup", err, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 
 	// Step 6: auto-link by (verified) email.
 	u, err := s.users.FindByEmail(ctx, email)
 	if err == nil {
 		if !u.IsActive {
-			return s.errorURL(st.Client, "account_inactive")
+			return s.errorURLFor(st, "account_inactive")
 		}
-		if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, claims.Subject, email, now)); serr != nil {
+		if serr := s.autoLink(ctx, u, provider, claims.Subject, email, now); serr != nil {
 			logWarn(ctx, "oauth callback: auto-link", serr, "provider", provider)
-			return s.errorURL(st.Client, "provider_error")
+			return s.errorURLFor(st, "provider_error")
 		}
 		reqctx.AddLogAttr(ctx, "oauth_linked", true)
 		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: user lookup", err, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 
 	// Step 7: provision.
 	if !s.allowRegistration {
-		return s.errorURL(st.Client, "registration_disabled")
+		return s.errorURLFor(st, "registration_disabled")
 	}
 	u, err = s.users.ProvisionExternal(ctx, deriveName(claims.Name, email), email)
 	if err != nil {
 		logWarn(ctx, "oauth callback: provision", err, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, claims.Subject, email, now)); serr != nil {
 		logWarn(ctx, "oauth callback: identity insert", serr, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "oauth_provisioned", true)
 	return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
+}
+
+// autoLink attaches the provider identity to an account found by email. When
+// that account has a password, whoever set it never had to prove they own the
+// address (registration does not always verify), so the sign-in is treated
+// like a password reset: every session of the account is revoked, and the
+// provider's assertion marks the address verified. A passwordless account was
+// created through a provider, so its owner already proved the address and
+// keeps their sessions. The three writes share one transaction: a half-applied
+// link would leave the eviction undone while step 5 signs the attacker in.
+func (s *Service) autoLink(ctx context.Context, u *model.User, provider, subject, email string, now time.Time) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, subject, email, now)); err != nil {
+			return err
+		}
+		if !u.HasPassword() {
+			return nil
+		}
+		if err := s.users.RevokeAllSessions(ctx, u.ID); err != nil {
+			return err
+		}
+		return s.users.MarkEmailVerified(ctx, u.ID)
+	})
 }
 
 // mirrorEmailDrift applies the spec's email-drift rule for an existing identity.
@@ -209,9 +233,16 @@ func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, pr
 	if err != nil || n != 1 {
 		return
 	}
-	if other, ferr := s.users.FindByEmail(ctx, email); ferr == nil {
+	other, ferr := s.users.FindByEmail(ctx, email)
+	if ferr == nil {
 		slog.WarnContext(ctx, "oauth email drift: address belongs to another user",
 			"user_id", u.ID.String(), "other_user_id", other.ID.String(), "provider", provider)
+		return
+	}
+	// Only a NotFound proves the address is free; any other failure is
+	// inconclusive, so the mirror is skipped rather than risking a collision.
+	if _, ok := errs.AsNotFound(ferr); !ok {
+		logWarn(ctx, "oauth email drift: address lookup failed", ferr, "user_id", u.ID.String(), "provider", provider)
 		return
 	}
 	if err := s.users.ReplaceVerifiedEmail(ctx, u.ID, email); err != nil {
@@ -222,13 +253,13 @@ func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, pr
 func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID vo.Id, provider string, idToken *string) string {
 	code, err := oidc.RandomToken()
 	if err != nil {
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	now := s.clock.Now()
 	if err := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), UserID: userID, Provider: provider,
-		IDToken: idToken, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
+		FlowHash: st.FlowHash, IDToken: idToken, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
 		logWarn(ctx, "oauth callback: handoff insert", err, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "user_id", userID.String())
 	return s.successURL(st.Client, code)
@@ -239,24 +270,24 @@ func (s *Service) link(ctx context.Context, st *model.OAuthState, provider, subj
 	existing, err := s.identities.GetByProviderSubject(ctx, provider, subject)
 	switch {
 	case err == nil && !existing.UserID.Equal(st.LinkUserID):
-		return s.errorURL(st.Client, "identity_taken")
+		return s.errorURLFor(st, "identity_taken")
 	case err == nil:
 		existing.UpdateEmail(email, now)
 		if serr := s.identities.Save(ctx, existing); serr != nil {
-			return s.errorURL(st.Client, "provider_error")
+			return s.errorURLFor(st, "provider_error")
 		}
 		return s.linkedURL(st.Client, provider)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth link: identity lookup", err, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	if _, gerr := s.identities.GetByUserProvider(ctx, st.LinkUserID, provider); gerr == nil {
-		return s.errorURL(st.Client, "provider_already_linked")
+		return s.errorURLFor(st, "provider_already_linked")
 	}
 	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), st.LinkUserID, provider, subject, email, now)); serr != nil {
 		logWarn(ctx, "oauth link: identity insert", serr, "provider", provider)
-		return s.errorURL(st.Client, "provider_error")
+		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "user_id", st.LinkUserID.String())
 	return s.linkedURL(st.Client, provider)

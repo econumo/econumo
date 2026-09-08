@@ -32,15 +32,26 @@ func (r StartOAuthRequest) Validate() error {
 
 type StartOAuthResult struct {
 	Url string `json:"url"`
+	// Flow is the one-flow secret the client stores and presents at
+	// exchange-handoff; it never leaves the client that started the flow.
+	Flow string `json:"flow"`
 }
 
 type ExchangeHandoffRequest struct {
 	Code string `json:"code"`
+	Flow string `json:"flow"`
 }
 
 func (r ExchangeHandoffRequest) Validate() error {
+	var fields []errs.FieldError
 	if strings.TrimSpace(r.Code) == "" {
-		return errs.NewValidation("Validation failed", errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.Flow) == "" {
+		fields = append(fields, errs.FieldError{Key: "flow", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
 	}
 	return nil
 }
