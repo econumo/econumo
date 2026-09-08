@@ -178,7 +178,7 @@ type Issuer struct {
 
 `Discover(ctx)` loads and caches the OpenID configuration
 (`authorization_endpoint`, `token_endpoint`, `jwks_uri`, optional
-`end_session_endpoint`). Google and Apple use the same discovery code against
+`userinfo_endpoint` and `end_session_endpoint`). Google and Apple use the same discovery code against
 their well-known documents.
 
 ### 5.2 Authorization request
@@ -192,7 +192,8 @@ their well-known documents.
 
 `Exchange(ctx, disc, code, codeVerifier, redirectURI)` posts to the token
 endpoint with `client_secret_post` authentication and returns the raw ID token
-(the access token is discarded; Econumo never calls user-info).
+and the access token. The access token is used at most once, for the
+userinfo fallback below, and is never stored.
 
 `VerifyIDToken(ctx, disc, raw, nonce, now) (Claims, error)` checks, in order:
 compact JWS structure; `alg` ∈ {RS256, ES256}; signature against the cached
@@ -201,6 +202,18 @@ issuer; `aud` contains the client id; `exp` and `iat` within a 60 s skew;
 `nonce` equals the expected value. Returns `Subject`, `Email`,
 `EmailVerified`, `Name`. `email_verified` is accepted as a JSON bool or the
 strings `"true"/"false"` (Apple sends a string).
+
+**Userinfo fallback.** When the verified ID token carries no `email` claim and
+the discovery document publishes `userinfo_endpoint`, `UserInfo(ctx, disc,
+accessToken)` GETs it with the bearer access token and returns the same
+`Claims` shape. The caller accepts the response only when its `sub` equals
+the ID token's `sub` (an OIDC Core requirement) and fills in `Email`,
+`EmailVerified`, and `Name` **only where the ID token left them empty**; the
+ID token's values always win. A userinfo failure is not fatal: resolution
+continues with the ID token's claims alone and lands on `email_required`.
+This covers issuers such as Microsoft Entra that omit `email` from the ID
+token by default. Apple publishes no userinfo endpoint; Google's ID token
+always carries the email, so neither reaches the fallback.
 
 ### 5.4 Apple
 
@@ -263,7 +276,8 @@ Common prefix:
    provider mismatch → `invalid_state`.
 3. Exchange the code with the stored verifier; verify the ID token against
    the stored nonce. Any failure → `provider_error` (details in the operation
-   log only, never in the redirect).
+   log only, never in the redirect). If the ID token lacks `email`, apply the
+   userinfo fallback of §5.3.
 4. No email claim → `email_required` (issue #217 Case C is out of scope,
    §14). Then `verified := claims.EmailVerified || issuer.TrustEmail`; not
    verified → `email_unverified`. Google and Apple are configured with
@@ -383,8 +397,10 @@ works unchanged (it overwrites the hash and algorithm).
 
 ## 8. Logout
 
-`LogoutResult` gains `logoutUrl` (string, `""` by default; additive to the
-frozen `{result}`). After the local revocation, if the session row carries an
+`LogoutResult` gains `logoutUrl` and `provider` (both strings, `""` by
+default; additive to the frozen `{result}`). `provider` echoes the session
+row's provider so the client can name the IdP in the local-logout notice
+below. After the local revocation, if the session row carries an
 `id_token` and the issuer's discovery publishes `end_session_endpoint`, the
 URL is that endpoint with `id_token_hint`, `client_id`, and
 `post_logout_redirect_uri=<ECONUMO_URL>/login`. Operators register that
@@ -395,6 +411,12 @@ The web client navigates to `logoutUrl` when present; the app ignores it and
 logs out locally (opening an IdP logout page in a browser sheet leaves the
 user with no clean way back). Both behaviours are the local-only fallback the
 issue allows.
+
+**Local-logout notice.** Whenever a session with a `provider` ends without an
+IdP redirect (Google, Apple, a custom issuer without an end-session endpoint,
+or any provider in the app), the logout page shows a note: "You're signed
+out of Econumo. Your {provider} session may still be active; sign out there
+to end it." Password sessions show nothing new.
 
 ## 9. Web client (`web/src`)
 
@@ -428,7 +450,8 @@ issue allows.
   reset code) instead of the change-password form.
 - **Sessions page**: shows the provider badge on sessions with a provider.
 - **Logout page**: after clearing local state, `location.assign(logoutUrl)`
-  when present.
+  when present; otherwise, when `provider` is set, the local-logout notice of
+  §8 with the provider's display name.
 - **Route guard**: unchanged (token presence).
 
 ## 10. Mobile app (`mobile/`)
@@ -457,7 +480,7 @@ issue allows.
   the link-success marker, and the unlink mutation's `onSuccess`; the provider
   id is an event property. `metrics-coverage.test.ts` enforces each is wired.
 - Catalogue keys: `auth.oauth.*` (buttons, divider, callback spinner, the
-  error codes of §6.3), `settings.linkedAccounts.*`, and `errors.*` entries
+  local-logout notice, the error codes of §6.3), `settings.linkedAccounts.*`, and `errors.*` entries
   for every new server code (`oauth.provider_not_configured`,
   `oauth.handoff_invalid`, `oauth.last_identity`, ...) registered in
   `errs.AllCodes`. All eleven catalogues carry every key in the same PR.
@@ -465,11 +488,13 @@ issue allows.
 ## 12. Testing
 
 - **`internal/infra/oidc`**: an `httptest` fake issuer serving discovery,
-  token, JWKS, and end-session endpoints, signing with RSA and ECDSA keys
+  token, JWKS, userinfo, and end-session endpoints, signing with RSA and ECDSA keys
   generated in the test. Verifier tests for every rejection (issuer,
   audience, expiry, nonce, unknown kid with successful refresh, unsupported
   alg, bad signature); Apple client-secret JWT verified with the test key;
-  PKCE challenge/verifier round trip; randomness length and alphabet.
+  PKCE challenge/verifier round trip; randomness length and alphabet;
+  userinfo fallback (email only in userinfo, `sub` mismatch rejected, ID
+  token values win, userinfo failure non-fatal).
 - **`internal/oauth`**: table tests over §6.2 against the sqlite test DB
   driving the real callback through the fake issuer: existing identity,
   verified auto-link, trusted auto-link, unverified email rejected (login,
@@ -478,7 +503,7 @@ issue allows.
   handoff, handoff single use. Repo tests run under the PostgreSQL rerun.
 - **User feature**: passwordless login yields "Invalid credentials.";
   reset-password on a passwordless user sets argon2id; `hasPassword` in the
-  DTO; `logoutUrl` present/absent.
+  DTO; `logoutUrl` and `provider` present/absent.
 - **apiparity**: scenarios and goldens for every new route; callback goldens
   cover the deterministic error redirects (Location normalised). The success
   callback needs a live issuer and is covered by the `internal/oauth` suite;
@@ -506,7 +531,8 @@ issue allows.
   sign-in is rejected with `email_unverified`.
 - `docs/regression-test-plan.md`: sign-in per provider (📱 and desktop),
   auto-link, unverified-email rejection, link/unlink, last-identity refusal,
-  set a password, RP-initiated logout, app return via the scheme.
+  set a password, RP-initiated logout, the local-logout notice, app return
+  via the scheme.
 
 ## 14. Out of scope (recorded follow-ups)
 
@@ -526,3 +552,24 @@ issue allows.
 6. **Back-channel and front-channel logout**; **RP-initiated logout in the
    app**; storing provider refresh tokens.
 7. **Several custom OIDC slots**; one is enough until asked.
+
+## 15. Decisions relative to issue #217
+
+Points the issue raises that this design answers differently, on purpose:
+
+- **IdP session expiry is not mirrored.** An Econumo session slides for
+  30 days regardless of the ID token's `exp`; without stored refresh tokens
+  there is nothing to re-check against. Central revocation therefore reaches
+  Econumo only through the user revoking sessions here (or, later, back-channel
+  logout, §14).
+- **No explicit "link this account?" confirmation.** A verified or trusted
+  email auto-links; an unverified one is rejected. The confirmation step the
+  issue offers as an alternative adds a screen without adding safety once the
+  email is verified, and the trust flag is where the operator makes the call
+  for an issuer that does not verify.
+- **Env-only configuration.** The product has no admin settings UI, so
+  "or UI settings" is not applicable.
+- **One setup page**, `docs/oidc-setup.md`, rather than user-guide and
+  admin-guide pages; the repo has no such guide structure.
+- **Redirect URI is derived**, not configured: one `ECONUMO_URL` drives every
+  callback and the post-logout redirect.
