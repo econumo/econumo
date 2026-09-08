@@ -43,9 +43,11 @@ func init() {
 			{Label: "err:link-account-again", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet", "accountId": OwnerAccount}},
 			{Label: "get-queued-event-list-after-link", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
-			// Txn1 itself was never touched by the conversion (it created a new
-			// row instead), so its provenance list is empty.
-			{Label: "get-transaction-import-list-no-provenance", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
+			// Txn1 itself was never touched by THIS conversion (it created a new
+			// row instead); it shows the unrelated provenance seeded on it by the
+			// SimpleFIN fixture (fixture.go's ImportRunSeeded) instead of an
+			// empty list.
+			{Label: "get-transaction-import-list-other-source", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
 			{Label: "ignore-account", Method: "POST", Path: "/api/v1/import/ignore-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard"}},
 			// "map instead" over an ignored card is allowed; currency still has to agree, so it stays refused for eurocard.
@@ -129,6 +131,71 @@ func init() {
 			{Label: "err:discard-event-gone", Method: "POST", Path: "/api/v1/import/discard-event", Auth: "owner",
 				Body: map[string]any{"eventId": ImportEventFailed}},
 			{Label: "get-queued-event-list-final", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
+		}
+	}})
+
+	register(Scenario{Name: "import_simplefin_credentials", Calls: func() []Call {
+		return []Call{
+			{Label: "err:get-credential-key-none", Method: "GET", Path: "/api/v1/import/get-credential-key", Auth: "owner"},
+			{Label: "set-credential-key", Method: "POST", Path: "/api/v1/import/set-credential-key", Auth: "owner",
+				Body: map[string]any{"wrappedDataKey": "v1:aXY=:Y3Q=", "kdf": `{"alg":"PBKDF2-SHA256","salt":"c2FsdA==","iterations":600000}`}},
+			{Label: "get-credential-key", Method: "GET", Path: "/api/v1/import/get-credential-key", Auth: "owner"},
+			{Label: "err:set-credential-key-blank", Method: "POST", Path: "/api/v1/import/set-credential-key", Auth: "owner",
+				Body: map[string]any{"wrappedDataKey": "", "kdf": ""}},
+			{Label: "claim-setup-token", Method: "POST", Path: "/api/v1/import/claim-setup-token", Auth: "guest",
+				Body: map[string]any{"setupToken": "aHR0cHM6Ly9icmlkZ2UuZXhhbXBsZS9zaW1wbGVmaW4vY2xhaW0vYWJj"}},
+			{Label: "err:claim-setup-token-used", Method: "POST", Path: "/api/v1/import/claim-setup-token", Auth: "guest",
+				Body: map[string]any{"setupToken": "used"}},
+			{Label: "err:claim-setup-token-blank", Method: "POST", Path: "/api/v1/import/claim-setup-token", Auth: "guest",
+				Body: map[string]any{"setupToken": ""}},
+			// Guest connects a bank: the ciphertext is opaque to the server.
+			{Label: "create-source-simplefin", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
+				Body: map[string]any{"provider": "simplefin", "name": "My Bank", "credentialCiphertext": "v1:aXY=:Y3Q="}},
+			{Label: "err:create-source-simplefin-no-ciphertext", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
+				Body: map[string]any{"provider": "simplefin", "name": "My Bank"}},
+			// Reconnect: same (user, provider) -> same source, new ciphertext + name.
+			{Label: "create-source-simplefin-reconnect", Method: "POST", Path: "/api/v1/import/create-source", Auth: "guest",
+				Body: map[string]any{"provider": "simplefin", "name": "My Bank (new)", "credentialCiphertext": "v1:aXYy:Y3Qy"}},
+			{Label: "get-source-list-guest-bank", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "guest"},
+		}
+	}})
+
+	register(Scenario{Name: "import_simplefin_sync", Calls: func() []Call {
+		// ClockTime is "now"; the window is the last 30 days, which is where the
+		// stub provider dates its rows. Request bodies are not part of the golden.
+		day := func(offset int) string { return ClockTime.AddDate(0, 0, offset).Format("2006-01-02") }
+		start, end := day(-30), day(0)
+		return []Call{
+			{Label: "list-external-accounts", Method: "POST", Path: "/api/v1/import/list-external-accounts", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL}},
+			{Label: "err:list-external-accounts-bad-url", Method: "POST", Path: "/api/v1/import/list-external-accounts", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": "https://nope.example/"}},
+			{Label: "err:list-external-accounts-push-source", Method: "POST", Path: "/api/v1/import/list-external-accounts", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourcePhone, "accessUrl": stubAccessURL}},
+			// ACT-CHK is mapped -> 2 created; ACT-SAV unmapped -> 1 queued; one bridge warning -> partial.
+			{Label: "sync-source", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start, "endDate": end}},
+			// Same range again: every row is a duplicate, nothing is counted.
+			{Label: "sync-source-again", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start, "endDate": end}},
+			{Label: "err:sync-source-range", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": day(1), "endDate": start}},
+			{Label: "err:sync-source-down", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "owner",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubDownURL, "startDate": start, "endDate": end}},
+			{Label: "err:sync-source-foreign", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "guest",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start, "endDate": end}},
+			{Label: "err:readonly-sync-source", Method: "POST", Path: "/api/v1/import/sync-source", Auth: "readonly",
+				Body: map[string]any{"sourceId": ImportSourceBank, "accessUrl": stubAccessURL, "startDate": start}},
+			{Label: "get-run-list", Method: "GET", Path: "/api/v1/import/get-run-list", Auth: "owner"},
+			{Label: "get-run-list-by-source", Method: "GET", Path: "/api/v1/import/get-run-list?sourceId=" + ImportSourceBank, Auth: "owner"},
+			{Label: "get-run-list-guest-empty", Method: "GET", Path: "/api/v1/import/get-run-list", Auth: "guest"},
+			// The sync's run id is server-minted and Call.CaptureIDInto only reads
+			// data.item.id, so get-run reads the SEEDED run (fixture.go) instead.
+			{Label: "get-run", Method: "GET", Path: "/api/v1/import/get-run?id=" + ImportRunSeeded, Auth: "owner"},
+			{Label: "err:get-run-foreign", Method: "GET", Path: "/api/v1/import/get-run?id=" + ImportRunSeeded, Auth: "guest"},
+			{Label: "err:get-run-unknown", Method: "GET", Path: "/api/v1/import/get-run?id=00000000-0000-0000-0000-000000000000", Auth: "owner"},
+			{Label: "get-source-list-after-sync", Method: "GET", Path: "/api/v1/import/get-source-list", Auth: "owner"},
+			{Label: "get-queued-event-list-after-sync", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
 		}
 	}})
 }

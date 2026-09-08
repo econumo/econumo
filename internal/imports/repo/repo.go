@@ -213,9 +213,8 @@ func parseOptionalID(s *string) (*vo.Id, error) {
 }
 
 func (r *Repo) InsertRun(ctx context.Context, run *model.ImportRun) error {
-	trigger := run.Trigger
-	if trigger == "" {
-		trigger = model.ImportRunTriggerManual
+	if run.Trigger == "" {
+		run.Trigger = model.ImportRunTriggerManual
 	}
 	return r.q.InsertImportRun(ctx, r.db(ctx), insertRunParams{
 		ID: run.ID.String(), UserID: run.UserID.String(), SourceID: run.SourceID.String(), Provider: run.Provider,
@@ -223,7 +222,7 @@ func (r *Repo) InsertRun(ctx context.Context, run *model.ImportRun) error {
 		ImportedCount: int64(run.ImportedCount), MatchedCount: int64(run.MatchedCount),
 		SkippedCount: int64(run.SkippedCount), FailedCount: int64(run.FailedCount),
 		QueuedCount: int64(run.QueuedCount), AmountsUpdatedCount: int64(run.AmountsUpdatedCount),
-		Trigger: trigger, Errors: encodeRunErrors(run.Errors),
+		Trigger: run.Trigger, Errors: encodeRunErrors(run.Errors),
 		StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
 	})
 }

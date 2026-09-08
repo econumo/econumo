@@ -76,8 +76,11 @@ const (
 	IngestTokenID = "99999999-9999-9999-9999-999999999999"
 
 	// One import link on Txn2 so get-transaction-list pins isImported=1 on a
-	// real row (Txn1 stays 0). Nothing else reads import_* tables in stage 1.
+	// real row. Txn1 is also linked below (SimpleFIN's seeded run), so every
+	// owner-visible transaction in the base seed reads isImported=1.
 	ImportSourcePhone = "0c000000-0000-0000-0000-000000000001"
+	ImportSourceBank  = "0c000000-0000-0000-0000-000000000002" // owner's SimpleFIN source
+	ImportRunSeeded   = "0c000000-0000-0000-0000-000000000003" // completed run on ImportSourceBank
 	ImportLinkTxn2    = "0d000000-0000-0000-0000-000000000001"
 
 	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
@@ -196,6 +199,23 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.BudgetAccess(Budget, GuestID, 1, false)
 
 	f.ImportSource(fixture.ImportSource{ID: ImportSourcePhone, UserID: OwnerID, Provider: model.ImportProviderAppleWallet, Name: "iPhone"})
+
+	// Owner's SimpleFIN source, with ACT-CHK already mapped to OwnerAccount so
+	// sync-source has a mapped account to create transactions against.
+	f.ImportSource(fixture.ImportSource{ID: ImportSourceBank, UserID: OwnerID, Provider: model.ImportProviderSimpleFIN, Name: "Example Bank", CredentialCiphertext: "v1:c2VlZA==:c2VlZA=="})
+	f.ImportAccountLink(fixture.ImportAccountLink{SourceID: ImportSourceBank, ExternalAccountID: "ACT-CHK", ExternalName: "Checking", ExternalCurrency: "USD", AccountID: OwnerAccount})
+
+	// A completed run on the bank source, seeded so get-run has a fixed id to
+	// read (sync-source's own run id is server-minted and unavailable to a
+	// later Call.Path): one imported link (Txn1) and one tombstone (the
+	// transaction it pointed at was deleted elsewhere).
+	f.ImportRun(fixture.ImportRun{ID: ImportRunSeeded, UserID: OwnerID, SourceID: ImportSourceBank, Provider: model.ImportProviderSimpleFIN,
+		Status: model.ImportRunStatusCompleted, ImportedCount: 2, StartedAt: ClockTime, FinishedAt: &ClockTime})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-1",
+		TransactionID: Txn1, Status: model.ImportLinkStatusLinked, ExternalPayee: "Seeded Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: ImportSourceBank, RunID: ImportRunSeeded, ExternalAccountID: "ACT-CHK", ExternalTransactionID: "seed-0",
+		Status: model.ImportLinkStatusLinked, ExternalPayee: "Deleted Later", ExternalAmount: "3.00000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
+
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkTxn2, SourceID: ImportSourcePhone,
 		ExternalAccountID: "wallet", ExternalTransactionID: "tap-1", TransactionID: Txn2,
 		ExternalPayee: "Employer", ExternalAmount: "1000.00000000", ExternalPostedAt: ClockTime})

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	appimports "github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
@@ -119,9 +120,10 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	rec := &recordingMailer{}
 	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
-		Clock:   clk,
-		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
-		Mailer:  rec,
+		Clock:           clk,
+		Avatars:         appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		Mailer:          rec,
+		ImportProviders: map[string]appimports.Provider{model.ImportProviderSimpleFIN: stubProvider{}},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
