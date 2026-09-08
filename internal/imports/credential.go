@@ -34,7 +34,7 @@ func (s *Service) ClaimSetupToken(ctx context.Context, userID vo.Id, req model.C
 
 // mapProviderErr turns the provider sentinels into coded edge errors. Any
 // other error is passed through unchanged (500 at the edge) — it never
-// carries the credential because the client never formats it (Task 4).
+// carries the credential because the client never formats it into an error.
 func mapProviderErr(err error) error {
 	switch {
 	case errors.Is(err, ErrSetupTokenRejected):

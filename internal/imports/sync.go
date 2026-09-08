@@ -45,10 +45,15 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		return nil, err
 	}
 	reqctx.AddLogAttr(ctx, "run_id", run.ID.String())
+	// Once the run row exists every write that finalizes it must outlive the
+	// request: a browser navigating away mid-fetch cancels ctx, and a run left
+	// at "running" is shown forever with nothing able to clear it. The fetch
+	// itself keeps the request ctx, so a disconnect still stops the bridge call.
+	fin := context.WithoutCancel(ctx)
 	fetched, ferr := p.FetchTransactions(ctx, Credential{AccessURL: req.AccessUrl}, FetchRequest{StartDate: start, EndDate: end.AddDate(0, 0, 1)})
 	if ferr != nil {
 		run.Status = model.ImportRunStatusFailed
-		if err := s.finishRun(ctx, run); err != nil {
+		if err := s.finishRun(fin, run); err != nil {
 			reqctx.AddLogAttr(ctx, "finish_run_error", true)
 		}
 		return nil, mapProviderErr(ferr)
@@ -61,7 +66,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		byAccount[t.ExternalAccountID] = append(byAccount[t.ExternalAccountID], t)
 	}
 	for _, a := range fetched.Accounts {
-		if err := s.syncAccount(ctx, src, run, a, byAccount[a.ID]); err != nil {
+		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID]); err != nil {
 			run.Errors = append(run.Errors, model.ImportRunError{ExternalAccountId: a.ID, Message: accountFailedMessage})
 			reqctx.AddLogAttr(ctx, "account_error", a.ID)
 			// Type only, never the error text: it may originate from the
@@ -72,25 +77,27 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 	switch {
 	case len(fetched.Accounts) == 0 && len(run.Errors) > 0:
 		run.Status = model.ImportRunStatusFailed
-	case len(run.Errors) > 0:
+	case len(run.Errors) > 0 || run.FailedCount > 0:
+		// Rows that failed to parse are a real problem the UI must not report
+		// as a clean run, even when no account failed outright.
 		run.Status = model.ImportRunStatusPartial
 	default:
 		run.Status = model.ImportRunStatusCompleted
 	}
-	if err := s.finishRun(ctx, run); err != nil {
+	if err := s.finishRun(fin, run); err != nil {
 		return nil, err
 	}
 	if run.Status != model.ImportRunStatusFailed {
 		// Re-read the source: the fetch may have run for seconds, and writing
 		// back the row loaded before it would revert a concurrent reconnect
 		// (create-source overwriting the ciphertext/name in the meantime).
-		fresh, err := s.repo.GetSource(ctx, src.ID)
+		fresh, err := s.repo.GetSource(fin, src.ID)
 		if err != nil {
 			return nil, err
 		}
 		synced := s.clk.Now().UTC()
 		fresh.LastSyncedAt, fresh.UpdatedAt = &synced, synced
-		if err := s.repo.UpdateSource(ctx, fresh); err != nil {
+		if err := s.repo.UpdateSource(fin, fresh); err != nil {
 			return nil, err
 		}
 		src = fresh

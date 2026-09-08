@@ -2,6 +2,7 @@ package model_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/model"
@@ -35,6 +36,35 @@ func TestCreateImportSourceRequest_Validate(t *testing.T) {
 	codes = fieldCodes(t, model.CreateImportSourceRequest{Provider: "csv", Name: "x"}.Validate())
 	if codes["provider"] != errs.CodeImportProviderUnsupported {
 		t.Fatalf("csv: %v", codes)
+	}
+}
+
+func TestCreateImportSourceRequest_CiphertextShape(t *testing.T) {
+	long := "v1:" + strings.Repeat("a", 4094)
+	codes := fieldCodes(t, model.CreateImportSourceRequest{Provider: "simplefin", Name: "Bank", CredentialCiphertext: long}.Validate())
+	if codes["credentialCiphertext"] != errs.CodeTooLong {
+		t.Fatalf("over the cap: %v", codes)
+	}
+	// A plaintext access URL sent here is a client bug, and persisting it would
+	// hand the server the secret the design keeps off it.
+	codes = fieldCodes(t, model.CreateImportSourceRequest{Provider: "simplefin", Name: "Bank", CredentialCiphertext: "https://u:p@bridge.example/simplefin"}.Validate())
+	if codes["credentialCiphertext"] != errs.CodeInvalidFormat {
+		t.Fatalf("unversioned ciphertext: %v", codes)
+	}
+}
+
+func TestImportAccountRequests_ExternalNameLength(t *testing.T) {
+	long := strings.Repeat("n", 256)
+	codes := fieldCodes(t, model.LinkImportAccountRequest{SourceId: "s", ExternalAccountId: "a", AccountId: "b", ExternalName: long}.Validate())
+	if codes["externalName"] != errs.CodeTooLong {
+		t.Fatalf("link: %v", codes)
+	}
+	codes = fieldCodes(t, model.ImportAccountActionRequest{SourceId: "s", ExternalAccountId: "a", ExternalName: long}.Validate())
+	if codes["externalName"] != errs.CodeTooLong {
+		t.Fatalf("action: %v", codes)
+	}
+	if err := (model.ImportAccountActionRequest{SourceId: "s", ExternalAccountId: "a", ExternalName: long[:255]}).Validate(); err != nil {
+		t.Fatalf("255 chars is allowed: %v", err)
 	}
 }
 

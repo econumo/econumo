@@ -355,7 +355,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		},
 	)
 	if seams.ImportProviders == nil {
-		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{}))
+		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{AllowPrivateHosts: cfg.ImportAllowPrivateHosts}))
 	}
 	for name, p := range seams.ImportProviders {
 		importsSvc.RegisterProvider(name, p)

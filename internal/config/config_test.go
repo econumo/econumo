@@ -584,6 +584,31 @@ func TestLoad_ImportMatcherDefaults(t *testing.T) {
 	}
 }
 
+func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportAllowPrivateHosts {
+		t.Error("the SSRF guard must be on by default")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportAllowPrivateHosts {
+		t.Error("ImportAllowPrivateHosts should be true")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS must fail at boot")
+	}
+}
+
 func TestLoad_ImportMatcherBounds(t *testing.T) {
 	cases := []struct {
 		key, val string

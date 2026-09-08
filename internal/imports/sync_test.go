@@ -26,6 +26,7 @@ type fakeProvider struct {
 	err      error
 	seen     []imports.Credential
 	claimed  string
+	onFetch  func()
 }
 
 func (p *fakeProvider) ListAccounts(_ context.Context, cred imports.Credential) ([]model.ExternalAccount, error) {
@@ -35,6 +36,9 @@ func (p *fakeProvider) ListAccounts(_ context.Context, cred imports.Credential) 
 
 func (p *fakeProvider) FetchTransactions(_ context.Context, cred imports.Credential, _ imports.FetchRequest) (*imports.FetchResult, error) {
 	p.seen = append(p.seen, cred)
+	if p.onFetch != nil {
+		p.onFetch()
+	}
 	if p.err != nil {
 		return nil, p.err
 	}
@@ -84,7 +88,8 @@ func TestSync_MappedAccountImportsAndCounts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.Run.Status != model.ImportRunStatusCompleted || res.Run.ImportedCount != 2 || res.Run.FailedCount != 1 || res.Run.Trigger != model.ImportRunTriggerManual {
+	// One row failed to parse, so the run is partial even though no account failed.
+	if res.Run.Status != model.ImportRunStatusPartial || res.Run.ImportedCount != 2 || res.Run.FailedCount != 1 || res.Run.Trigger != model.ImportRunTriggerManual {
 		t.Fatalf("run = %+v", res.Run)
 	}
 	if len(res.Accounts) != 1 || res.Accounts[0].State != model.ImportCardStateMapped || res.Accounts[0].AccountId != acct1 || res.Accounts[0].OrgName != "Big Bank" {
@@ -226,7 +231,7 @@ func TestSync_PerAccountFailureIsIsolated(t *testing.T) {
 	p.accounts = append(p.accounts, model.ExternalAccount{ID: "ACT-2", Name: "Savings", Currency: "USD"})
 	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-2", AccountID: acct1})
 	p.txs = []model.ExternalTransaction{extTx("ACT-1", "T1", "-1", 1755900000, "ok"), extTx("ACT-2", "T2", "-2", 1755900000, "boom")}
-	h.txns.failOn = "boom" // the fake creator errors on this payee (add the field: see Step 2)
+	h.txns.failOn = "boom" // the fake creator errors on this payee
 	res, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq())
 	if err != nil || res.Run.Status != model.ImportRunStatusPartial || res.Run.ImportedCount != 1 || len(res.Run.Errors) != 1 || res.Run.Errors[0].ExternalAccountId != "ACT-2" {
 		t.Fatalf("res = %+v err %v", res.Run, err)
@@ -258,5 +263,30 @@ func TestSync_TipAdoptCorrectsAmount(t *testing.T) {
 	}
 	if len(h.txns.updated) != 1 || h.txns.updated[0].Amount.String() != "11.5" {
 		t.Fatalf("updated = %+v", h.txns.updated)
+	}
+}
+
+// A browser that navigates away mid-sync cancels the request context. The run
+// row already exists by then, so it has to be finalized anyway — a row left at
+// "running" is shown forever with no action able to clear it.
+func TestSync_FinalizesRunAfterClientDisconnect(t *testing.T) {
+	h, p := bankHarness(t)
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	p.txs = []model.ExternalTransaction{extTx("ACT-1", "T1", "-12.50", 1755900000, "Coffee")}
+	ctx, cancel := context.WithCancel(reqctx.WithLogAttrs(context.Background()))
+	defer cancel()
+	p.onFetch = cancel
+	_, _ = h.svc.Sync(ctx, vo.MustParseId(userA), syncReq())
+
+	runs, err := h.repo.ListRunsByUser(context.Background(), vo.MustParseId(userA), nil, 10)
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("runs = %+v err %v", runs, err)
+	}
+	if runs[0].Status != model.ImportRunStatusCompleted || runs[0].FinishedAt == nil || runs[0].ImportedCount != 1 {
+		t.Fatalf("run = %+v", runs[0])
+	}
+	src, err := h.repo.GetSource(context.Background(), vo.MustParseId(bankSource))
+	if err != nil || src.LastSyncedAt == nil {
+		t.Fatalf("last_synced_at must be written too: %+v err %v", src, err)
 	}
 }

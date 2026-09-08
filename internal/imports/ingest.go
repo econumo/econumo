@@ -163,7 +163,7 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // resolution, and matching/creation. It always leaves exactly one ledger row
 // for a new external key. runID is nil for a push event and the enclosing
 // sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
-// stale tap-time amount (Task 6's sync only — a push never rewrites a
+// stale tap-time amount (a bank sync only — a push never rewrites a
 // hand-entered amount).
 func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool) (status string, amountUpdated bool, err error) {
 	// The ledger stores the card name in its original case (later tasks
@@ -181,9 +181,9 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	}
 	if ev.Currency == "" {
 		// SimpleFIN rows carry no currency of their own — the account does.
-		// Sync pre-fills this from the fetched account (Task 6); this is the
-		// retry path's fallback, reading the currency the account link
-		// recorded the first time the account was seen.
+		// A sync pre-fills this from the fetched account; this is the retry
+		// path's fallback, reading the currency the account link recorded the
+		// first time the account was seen.
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
 			return "", false, err

@@ -43,6 +43,26 @@ func requireNonBlank(pairs ...string) error {
 
 const importCredentialFieldMax = 4096
 
+// The card name is echoed back to the UI and stored on the mapping row, so it
+// is bounded like every other user-visible name.
+const importExternalNameMax = 255
+
+// The client-side format of an encrypted credential (see importCrypto.ts).
+// Rejecting anything else here is what stops a client bug from persisting the
+// plaintext access URL the whole design exists to keep off the server.
+const importCredentialPrefix = "v1:"
+
+func tooLongField(key string) errs.FieldError {
+	return errs.FieldError{Key: key, Message: "This value is too long.", Code: errs.CodeTooLong}
+}
+
+func checkExternalName(name string) error {
+	if len(name) > importExternalNameMax {
+		return errs.NewValidation("Validation failed", tooLongField("externalName"))
+	}
+	return nil
+}
+
 type CreateImportSourceRequest struct {
 	Provider             string `json:"provider"`
 	Name                 string `json:"name"`
@@ -58,7 +78,16 @@ func (r CreateImportSourceRequest) Validate() error {
 		return nil
 	case ImportProviderSimpleFIN:
 		// a pull source is unusable without the encrypted access URL
-		return requireNonBlank("credentialCiphertext", r.CredentialCiphertext)
+		if err := requireNonBlank("credentialCiphertext", r.CredentialCiphertext); err != nil {
+			return err
+		}
+		switch {
+		case len(r.CredentialCiphertext) > importCredentialFieldMax:
+			return errs.NewValidation("Validation failed", tooLongField("credentialCiphertext"))
+		case !strings.HasPrefix(r.CredentialCiphertext, importCredentialPrefix):
+			return errs.NewValidation("Validation failed", errs.FieldError{Key: "credentialCiphertext", Message: "This value is not valid.", Code: errs.CodeInvalidFormat})
+		}
+		return nil
 	default:
 		return errs.NewValidation("Validation failed", errs.FieldError{Key: "provider", Message: "This import provider is not supported.", Code: errs.CodeImportProviderUnsupported})
 	}
@@ -92,7 +121,7 @@ func (r SetImportCredentialKeyRequest) Validate() error {
 		case strings.TrimSpace(f.val) == "":
 			fields = append(fields, blankField(f.key))
 		case len(f.val) > importCredentialFieldMax:
-			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value is too long.", Code: errs.CodeTooLong})
+			fields = append(fields, tooLongField(f.key))
 		}
 	}
 	if len(fields) > 0 {
@@ -203,7 +232,10 @@ type LinkImportAccountRequest struct {
 }
 
 func (r LinkImportAccountRequest) Validate() error {
-	return requireNonBlank("sourceId", r.SourceId, "externalAccountId", r.ExternalAccountId, "accountId", r.AccountId)
+	if err := requireNonBlank("sourceId", r.SourceId, "externalAccountId", r.ExternalAccountId, "accountId", r.AccountId); err != nil {
+		return err
+	}
+	return checkExternalName(r.ExternalName)
 }
 
 type ImportAccountActionRequest struct {
@@ -213,7 +245,10 @@ type ImportAccountActionRequest struct {
 }
 
 func (r ImportAccountActionRequest) Validate() error {
-	return requireNonBlank("sourceId", r.SourceId, "externalAccountId", r.ExternalAccountId)
+	if err := requireNonBlank("sourceId", r.SourceId, "externalAccountId", r.ExternalAccountId); err != nil {
+		return err
+	}
+	return checkExternalName(r.ExternalName)
 }
 
 type ImportRunResult struct {

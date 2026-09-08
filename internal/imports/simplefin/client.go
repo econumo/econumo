@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -24,7 +25,10 @@ const maxBody = 16 << 20
 
 type Options struct {
 	AllowHTTP bool
-	Client    *http.Client
+	// AllowPrivateHosts lifts the SSRF guard below. Off in production: a
+	// self-hosted bridge on a LAN needs it on.
+	AllowPrivateHosts bool
+	Client            *http.Client
 }
 
 type Client struct {
@@ -46,7 +50,81 @@ func New(opts Options) *Client {
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		}
 	}
+	if !opts.AllowPrivateHosts {
+		guarded := *c
+		guarded.Transport = guardTransport(c.Transport)
+		c = &guarded
+	}
 	return &Client{http: c, allowHTTP: opts.AllowHTTP}
+}
+
+// errBlockedAddress is deliberately static: it travels back out of
+// http.Client.Do, and anything derived from the request would carry the
+// access URL and its embedded credentials.
+var errBlockedAddress = errors.New("bridge address is not publicly routable")
+
+// guardTransport refuses every address that is not globally routable. Both
+// the setup token and the access URL are supplied by the user, so without it
+// the server fetches whatever its own network position can reach on request:
+// loopback admin ports, LAN services, cloud metadata endpoints.
+func guardTransport(base http.RoundTripper) http.RoundTripper {
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	t, ok := base.(*http.Transport)
+	if !ok {
+		// No dialer to install on a caller's own round tripper, so the host
+		// is resolved and checked before the request is handed over.
+		return checkedRoundTripper{next: base}
+	}
+	clone := t.Clone()
+	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	clone.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, port, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, errBlockedAddress
+		}
+		ips, err := resolveAllowed(ctx, host)
+		if err != nil {
+			return nil, err
+		}
+		var lastErr error = errBlockedAddress
+		for _, a := range ips {
+			// Dial the address that was just checked rather than the name:
+			// a second resolution reopens the window a rebinding answer needs.
+			conn, derr := dialer.DialContext(ctx, network, net.JoinHostPort(a.IP.String(), port))
+			if derr == nil {
+				return conn, nil
+			}
+			lastErr = derr
+		}
+		return nil, lastErr
+	}
+	return clone
+}
+
+type checkedRoundTripper struct{ next http.RoundTripper }
+
+func (c checkedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if _, err := resolveAllowed(req.Context(), req.URL.Hostname()); err != nil {
+		return nil, err
+	}
+	return c.next.RoundTrip(req)
+}
+
+func resolveAllowed(ctx context.Context, host string) ([]net.IPAddr, error) {
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil || len(ips) == 0 {
+		return nil, errBlockedAddress
+	}
+	for _, a := range ips {
+		// One blocked answer condemns the whole host: otherwise a rebinding
+		// record only has to win a retry.
+		if !a.IP.IsGlobalUnicast() || a.IP.IsPrivate() {
+			return nil, errBlockedAddress
+		}
+	}
+	return ips, nil
 }
 
 func (c *Client) ClaimSetupToken(ctx context.Context, setupToken string) (string, error) {
@@ -180,7 +258,15 @@ func (c *Client) fetch(ctx context.Context, cred imports.Credential, q url.Value
 		return nil, imports.ErrProviderUnavailable
 	}
 	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	switch {
+	case resp.StatusCode == http.StatusUnauthorized, resp.StatusCode == http.StatusForbidden:
+		// The bridge answers these once the access URL is revoked or its
+		// credentials stop matching: retrying never recovers, the user has to
+		// reconnect, so this must not read as a transient outage.
+		drain(resp.Body)
+		return nil, imports.ErrCredentialInvalid
+	case resp.StatusCode < 200 || resp.StatusCode >= 300:
+		drain(resp.Body)
 		return nil, fmt.Errorf("%w: status %d", imports.ErrProviderUnavailable, resp.StatusCode)
 	}
 	var doc document
@@ -193,9 +279,13 @@ func (c *Client) fetch(ctx context.Context, cred imports.Credential, q url.Value
 		for _, raw := range a.Transactions {
 			var t transaction
 			if err := json.Unmarshal(raw, &t); err != nil {
-				continue // a malformed row is a bridge bug; the rest of the account still imports
+				// A row the client cannot read is still forwarded so the
+				// parser records it as a failed event: dropping it here would
+				// lose it from the run with nothing to show the user.
+				out.Transactions = append(out.Transactions, model.ExternalTransaction{ExternalAccountID: a.ID, Raw: raw})
+				continue
 			}
-			if t.Pending || t.Posted == 0 || t.ID == "" {
+			if t.Pending {
 				continue // pending rows change id and amount when they settle
 			}
 			out.Transactions = append(out.Transactions, model.ExternalTransaction{
@@ -204,6 +294,11 @@ func (c *Client) fetch(ctx context.Context, cred imports.Credential, q url.Value
 		}
 	}
 	return out, nil
+}
+
+// drain keeps the connection reusable: an unread body forces a new one.
+func drain(body io.Reader) {
+	_, _ = io.Copy(io.Discard, io.LimitReader(body, 4<<10))
 }
 
 // warnings accepts the v1 list of strings and, defensively, objects with a

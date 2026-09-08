@@ -40,7 +40,12 @@ func TestParseSimpleFINEvent_Rejects(t *testing.T) {
 		"bad amount":  `{"id":"T","posted":1755910000,"amount":"12,50 EUR"}`,
 		"no id":       `{"posted":1755910000,"amount":"1"}`,
 		"no posted":   `{"id":"T","amount":"1"}`,
-		"not json":    `nope`,
+		"zero posted": `{"id":"T","posted":0,"amount":"1"}`,
+		// the bridge client forwards rows it could not decode itself, so the
+		// parser is what records them as failed
+		"posted not a number": `{"id":"T","posted":"yesterday","amount":"1"}`,
+		"blank id":            `{"id":"","posted":1755910000,"amount":"1"}`,
+		"not json":            `nope`,
 	} {
 		payload := []byte(`{"externalAccountId":"ACT-1","transaction":` + func() string {
 			if raw == "nope" {
