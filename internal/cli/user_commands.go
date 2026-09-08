@@ -177,6 +177,11 @@ func userCommands() []command {
 				fmt.Printf("Email:           %s\n", u.Email)
 				fmt.Printf("Active:          %s\n", active)
 				fmt.Printf("Email verified:  %s\n", verified)
+				password := "set"
+				if !u.HasPassword() {
+					password = "none"
+				}
+				fmt.Printf("Password:        %s\n", password)
 				fmt.Printf("Access level:    %s\n", u.AccessLevel)
 				fmt.Printf("Access until:    %s\n", until)
 				fmt.Printf("Effective:       %s\n", effective)

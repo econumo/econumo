@@ -10,6 +10,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -45,6 +46,7 @@ type Service struct {
 	allowRegistration   bool
 	trialDays           int
 	emailVerification   bool
+	logoutURLs          LogoutURLBuilder
 }
 
 func NewService(
@@ -91,14 +93,19 @@ func NewService(
 	}
 }
 
+// SetLogoutURLBuilder installs the oauth feature's end-session adapter after
+// construction (the composition root wires the two features in either order).
+func (s *Service) SetLogoutURLBuilder(b LogoutURLBuilder) { s.logoutURLs = b }
+
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).
 func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResult, error) {
+	out := &model.LogoutResult{Result: "test"}
 	t, err := s.tokens.GetByID(ctx, tokenID)
 	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			// Already gone: logout is idempotent.
-			return &model.LogoutResult{Result: "test"}, nil
+			return out, nil
 		}
 		return nil, err
 	}
@@ -106,7 +113,20 @@ func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResul
 	if err := s.tokens.Update(ctx, t); err != nil {
 		return nil, err
 	}
-	return &model.LogoutResult{Result: "test"}, nil
+	if t.Provider != nil {
+		out.Provider = *t.Provider
+	}
+	// The local revocation above always happens first: a client that ignores
+	// the URL still ends its Econumo session.
+	if s.logoutURLs != nil && t.Provider != nil && t.IDToken != nil {
+		url, uerr := s.logoutURLs.EndSessionURL(ctx, *t.Provider, *t.IDToken)
+		if uerr != nil {
+			slog.WarnContext(ctx, "end-session url unavailable", "err", uerr.Error())
+		} else {
+			out.LogoutUrl = url
+		}
+	}
+	return out, nil
 }
 
 // mutate loads the user, applies fn inside a transaction, and saves. It returns
@@ -182,6 +202,7 @@ func (s *Service) toCurrentUserWithEmail(ctx context.Context, u *model.User, ema
 		ReportPeriod: u.ReportPeriod(),
 		AccessLevel:  string(u.EffectiveAccessLevel(s.clock.Now())),
 		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
+		HasPassword:  u.HasPassword(),
 	}, nil
 }
 

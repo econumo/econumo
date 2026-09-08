@@ -13,8 +13,10 @@ import (
 )
 
 // createSession mints a session row for a fresh login and returns the raw
-// bearer token (the only moment it exists server-side).
-func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent string, now time.Time) (string, error) {
+// bearer token (the only moment it exists server-side). provider/idToken stamp
+// the session's OAuth origin ("" and nil for password logins); idToken is kept
+// only for the custom OIDC slot so Logout can send id_token_hint.
+func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time) (string, error) {
 	raw, hash, err := generateAccessToken(model.TokenKindSession)
 	if err != nil {
 		return "", err
@@ -22,10 +24,13 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 	exp := now.Add(SessionTTL)
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindSession, TokenHash: hash,
-		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp, IDToken: idToken,
 	}
 	if userAgent != "" {
 		t.UserAgent = &userAgent
+	}
+	if provider != "" {
+		t.Provider = &provider
 	}
 	if err := s.tokens.Insert(ctx, t); err != nil {
 		return "", err
@@ -50,11 +55,16 @@ func (s *Service) ListSessions(ctx context.Context, userID, currentTokenID vo.Id
 		if rows[i].UserAgent != nil {
 			ua = *rows[i].UserAgent
 		}
+		provider := ""
+		if rows[i].Provider != nil {
+			provider = *rows[i].Provider
+		}
 		out = append(out, model.SessionItem{
 			Id:         rows[i].ID.String(),
 			UserAgent:  ua,
 			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
 			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
+			Provider:   provider,
 			IsCurrent:  rows[i].ID.Equal(currentTokenID),
 		})
 	}
