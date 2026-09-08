@@ -74,8 +74,9 @@ Rules, all checked in `config.Load` so a mistake fails at boot:
   set without the rest is an error naming the missing variable.
 - Any enabled slot requires `ECONUMO_URL` (absolute http(s) URL, already
   validated). Redirect URIs derive from it and are never configured:
-  `<ECONUMO_URL>/api/v1/oauth/callback/<provider>`. This is the one URL an
-  operator registers per provider.
+  `<ECONUMO_URL>/api/v1/oauth/callback-<provider>` (`callback-google`,
+  `callback-apple`, `callback-oidc`). This is the one URL an operator
+  registers per provider.
 - `ECONUMO_OIDC_ISSUER_URL` must be an absolute `https://` URL (plain `http`
   allowed only for loopback hosts, like `ECONUMO_BILLING_URL`).
 - The Apple private key must parse as a PKCS#8 ECDSA P-256 key.
@@ -248,16 +249,17 @@ Routes under `/api/v1/oauth/`, registered in `internal/oauth/api/routes.go`
 | `GET get-provider-list` | public | `[{id, name}]`, fixed order google, apple, oidc; only enabled slots; `name` is `Google`, `Apple`, or `ECONUMO_OIDC_NAME`. |
 | `POST start-login` | public | Body `{provider, client}`. Creates a state row, returns `{url}`. |
 | `POST start-link` | authed, 402 allowlist | Same with `intent = link` and the caller as `link_user_id`. |
-| `GET callback/{provider}` | public | Google and custom: `code` + `state` (or `error`). Responds 302. |
-| `POST callback/{provider}` | public | Apple's `form_post`. Same handler, form decoding. Responds 302. |
+| `GET callback-google`, `GET callback-oidc` | public | `code` + `state` (or `error`) in the query. Respond 302. |
+| `POST callback-apple` | public | Apple's `form_post`: `code`, `state`, `id_token`, `user` as form fields. Responds 302. |
 | `POST exchange-handoff` | public | Body `{code}`. Returns the raw `{token, user}` of login (no envelope; the second such exception after login). |
 | `GET get-identity-list` | authed | `[{provider, email, createdAt}]`. |
 | `POST unlink-identity` | authed, 402 allowlist | Body `{provider}`. |
 
 `start-*` return a URL instead of redirecting because `start-link` needs the
 bearer header, which a browser navigation cannot carry; the client navigates.
-`callback/{provider}` is the one path that departs from `{action}-{subject}`
-naming: it is the URL operators paste into provider consoles.
+The callbacks are one route per provider (not a `{provider}` path parameter)
+so the apiparity route scanner, which only recognises two-segment literal
+`/api/v1/<module>/<action>` strings, keeps them under guard.
 
 The public routes join the public list in CLAUDE.md. The two allowlisted
 routes join `middleware.ReadonlyAllowedPaths` (linking and unlinking are
@@ -329,7 +331,7 @@ reassignment.
 | outcome | `client = web` | `client = app` |
 |---|---|---|
 | login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `econumo://oauth?handoff=<code>` |
-| link success | `<ECONUMO_URL>/settings/linked-accounts?linked=<provider>` | `econumo://oauth?linked=<provider>` |
+| link success | `<ECONUMO_URL>/settings/profile/linked-accounts?linked=<provider>` | `econumo://oauth?linked=<provider>` |
 | error | `<ECONUMO_URL>/login?oauthError=<code>` | `econumo://oauth?error=<code>` |
 
 The web handoff travels in the fragment so it never reaches server logs or
@@ -456,8 +458,8 @@ to end it." Password sessions show nothing new.
   `useLogin` (clears the persisted query cache, `setToken`), fires the
   analytics event, navigates to `/`. Spinner while pending; failure → `/login`
   with the error. The fragment is cleared from history on arrival.
-- **Settings → Linked accounts** (`/settings/linked-accounts`, a row beside
-  Sessions and Personal tokens on the profile page): list of identities
+- **Settings → Linked accounts** (`/settings/profile/linked-accounts`, a row
+  beside Sessions and API tokens in the profile page's Security group): list of identities
   (provider, email, linked date); "Link" for every enabled provider not yet
   linked (posts `start-link`, navigates); "Unlink" with confirmation, disabled
   with an explanation when the account has no password and one identity.
@@ -497,7 +499,9 @@ to end it." Password sessions show nothing new.
   the link-success marker, and the unlink mutation's `onSuccess`; the provider
   id is an event property. `metrics-coverage.test.ts` enforces each is wired.
 - Catalogue keys: `auth.oauth.*` (buttons, divider, callback spinner, the
-  local-logout notice, the error codes of §6.3), `settings.linkedAccounts.*`, and `errors.*` entries
+  local-logout notice, the error codes of §6.3),
+  `user.page.settings.profile.linked_accounts.*` (beside `sessions`/`tokens`),
+  and `errors.*` entries
   for every new server code (`oauth.provider_not_configured`,
   `oauth.handoff_invalid`, `oauth.last_identity`, ...) registered in
   `errs.AllCodes`. All eleven catalogues carry every key in the same PR.
