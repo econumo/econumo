@@ -1,16 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { logout } from '@/api/user'
+import { Button } from '@/components/ui/button'
 import { resetAnalyticsIdentity } from '@/lib/analytics'
 import { METRICS, trackEvent } from '@/lib/metrics'
+import { isNativeApp } from '@/lib/platform'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { hasToken, removeToken } from '@/lib/storage'
+import { RouterPage } from '@/app/router-pages'
 
 export function LogoutPage() {
+  const { t } = useTranslation()
+  const [notice, setNotice] = useState<string | null>(null)
+
   useEffect(() => {
     const run = async () => {
+      let logoutUrl = ''
+      let provider = ''
       if (hasToken()) {
         try {
-          await logout()
+          const res = await logout()
+          logoutUrl = res.logoutUrl
+          provider = res.provider
         } catch {
           // best effort; the token is purged regardless
         }
@@ -21,9 +32,30 @@ export function LogoutPage() {
       }
       removeToken()
       clearPersistedQueryCache()
-      window.location.assign('/login')
+      // The IdP redirect is web-only: an IdP logout page in the app's browser
+      // sheet leaves the user with no clean way back.
+      if (logoutUrl && !isNativeApp()) {
+        window.location.assign(logoutUrl)
+        return
+      }
+      if (provider) {
+        setNotice(t('auth.oauth.logout_notice', { provider: t(`auth.oauth.provider_name.${provider}`) }))
+        return
+      }
+      window.location.assign(RouterPage.LOGIN)
     }
     void run()
-  }, [])
-  return null
+  }, [t])
+
+  if (!notice) {
+    return null
+  }
+  return (
+    <div className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">
+      <p className="max-w-md text-sm text-muted-foreground">{notice}</p>
+      <Button type="button" className="h-11" onClick={() => window.location.assign(RouterPage.LOGIN)}>
+        {t('common.button.ok.label')}
+      </Button>
+    </div>
+  )
 }
