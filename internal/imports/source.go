@@ -27,6 +27,13 @@ func (s *Service) CreateSource(ctx context.Context, userID vo.Id, req model.Crea
 				return err
 			}
 		}
+		if req.CredentialCiphertext != "" && !model.ImportProviderIsPush(req.Provider) {
+			ct := req.CredentialCiphertext
+			src.CredentialCiphertext, src.Name, src.UpdatedAt = &ct, req.Name, s.clk.Now().UTC()
+			if err := s.repo.UpdateSource(ctx, src); err != nil {
+				return err
+			}
+		}
 		item, err := s.sourceResult(ctx, src)
 		if err != nil {
 			return err

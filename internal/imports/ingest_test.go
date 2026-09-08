@@ -72,10 +72,15 @@ func (f *fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount str
 // the outer WithTx.
 type fakeTxns struct {
 	db         *dbtest.DB
+	builder    *fixture.Builder
 	created    []model.CreateTransactionRequest
 	updated    []model.UpdateTransactionRequest
 	candidates []*model.Transaction
 	fail       error
+	// failOn, when non-empty, makes CreateTransaction fail for a request
+	// whose Description matches it — used to test that one bad account in a
+	// sync does not roll back the others.
+	failOn string
 }
 
 func aliasToType(alias string) int {
@@ -92,6 +97,9 @@ func aliasToType(alias string) int {
 func (f *fakeTxns) CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
 	if f.fail != nil {
 		return nil, f.fail
+	}
+	if f.failOn != "" && req.Description != nil && *req.Description == f.failOn {
+		return nil, errors.New("create failed")
 	}
 	f.created = append(f.created, req)
 	var description string
@@ -114,10 +122,42 @@ func (f *fakeTxns) ListByAccount(_ context.Context, _ vo.Id, _, _ time.Time) ([]
 	return f.candidates, nil
 }
 
-type limiter struct{ allow, fail int }
+// seed inserts a hand-entered transaction through the fixture builder (a
+// real row, since import_transaction_links.transaction_id is a real FK),
+// with a matching Apple Wallet tap link on the harness's default push
+// source (the "source" constant, seeded by every setup(t)) — the matcher's
+// tip-adopt path reads a candidate's push links straight from the DB via
+// ListLinksByTransaction, so a tip-adopt test needs a real ledger row here,
+// not just a fakeTxns.candidates entry — and registers it as a matcher
+// candidate for ListByAccount.
+func (f *fakeTxns) seed(t *testing.T, accountID, typeAlias, amount string, at time.Time, description string) vo.Id {
+	t.Helper()
+	id := vo.NewId()
+	typ := aliasToType(typeAlias)
+	f.builder.Transaction(fixture.Transaction{
+		ID: id.String(), UserID: userA, AccountID: accountID, Type: typ, Amount: amount, Description: description, SpentAt: at,
+	})
+	f.builder.ImportTransactionLink(fixture.ImportTransactionLink{
+		SourceID: source, ExternalAccountID: accountID, ExternalTransactionID: "tap-" + id.String(),
+		TransactionID: id.String(), Status: model.ImportLinkStatusLinked, ExternalPayee: description,
+		ExternalAmount: amount, ExternalPostedAt: at,
+	})
+	f.candidates = append(f.candidates, &model.Transaction{
+		ID: id, AccountID: vo.MustParseId(accountID), Type: model.TransactionType(typ), Amount: amount, SpentAt: at, Description: description,
+	})
+	return id
+}
+
+type limiter struct {
+	allow, fail int
+	deny        error
+}
 
 func (l *limiter) Allow(scope, key string) error {
 	l.allow++
+	if l.deny != nil {
+		return l.deny
+	}
 	if l.allow > 2 {
 		return errs.NewTooManyRequests("Too many attempts. Try again later.")
 	}
@@ -150,7 +190,7 @@ func setup(t *testing.T) *harness {
 	f.Account(fixture.Account{ID: acctB, UserID: userB, CurrencyID: usdID, Name: "Other"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	repo := importsrepo.NewRepo(db.Engine, db.TX)
-	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db}, lim: &limiter{}, f: f, db: db}
+	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, lim: &limiter{}, f: f, db: db}
 	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
 	return h
 }
@@ -238,7 +278,7 @@ func TestIngest_AdoptsHandEnteredTransaction(t *testing.T) {
 	h.f.Transaction(fixture.Transaction{ID: existing.String(), UserID: userA, AccountID: acct1, Type: 0, Amount: "4.75000000", SpentAt: time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)})
 	h.txns.candidates = []*model.Transaction{{ID: existing, AccountID: vo.MustParseId(acct1), Type: model.TransactionTypeExpense, Amount: "4.75000000", SpentAt: time.Date(2026, 8, 20, 9, 0, 0, 0, time.UTC)}}
 	res := ingest(t, h, tap)
-	if res.Status != model.ImportIngestStatusCreated || len(h.txns.created) != 0 {
+	if res.Status != model.ImportIngestStatusMatched || len(h.txns.created) != 0 {
 		t.Fatalf("res = %+v, created = %d", res, len(h.txns.created))
 	}
 	links, _ := h.repo.ListLinksByTransaction(context.Background(), existing)
@@ -286,7 +326,7 @@ func TestIngest_TipAdoptWithoutCorrection(t *testing.T) {
 	src2, cand, ev := seedTipCandidate(t, h)
 	eventID := vo.MustParseId(h.f.ImportEvent(fixture.ImportEvent{SourceID: source2, Payload: "{}"}))
 	status, amountUpdated, err := h.svc.ApplyEventForTest(context.Background(), src2, eventID, ev, nil, false)
-	if err != nil || status != model.ImportIngestStatusCreated || amountUpdated {
+	if err != nil || status != model.ImportIngestStatusMatched || amountUpdated {
 		t.Fatalf("status=%s amountUpdated=%v err=%v", status, amountUpdated, err)
 	}
 	if len(h.txns.updated) != 0 {
@@ -303,7 +343,7 @@ func TestIngest_TipAdoptCorrectsAmount(t *testing.T) {
 	src2, cand, ev := seedTipCandidate(t, h)
 	eventID := vo.MustParseId(h.f.ImportEvent(fixture.ImportEvent{SourceID: source2, Payload: "{}"}))
 	status, amountUpdated, err := h.svc.ApplyEventForTest(context.Background(), src2, eventID, ev, nil, true)
-	if err != nil || status != model.ImportIngestStatusCreated || !amountUpdated {
+	if err != nil || status != model.ImportIngestStatusMatched || !amountUpdated {
 		t.Fatalf("status=%s amountUpdated=%v err=%v", status, amountUpdated, err)
 	}
 	if len(h.txns.updated) != 1 {

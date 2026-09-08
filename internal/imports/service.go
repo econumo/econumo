@@ -173,6 +173,14 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 	}
 	return &model.ImportSourceResult{
 		Id: src.ID.String(), Provider: src.Provider, Name: src.Name, Status: src.Status,
-		CreatedAt: src.CreatedAt.Format(datetime.Layout), Cards: cards,
+		CreatedAt: src.CreatedAt.Format(datetime.Layout), LastSyncedAt: optionalTime(src.LastSyncedAt),
+		CredentialCiphertext: derefString(src.CredentialCiphertext), Cards: cards,
 	}, nil
+}
+
+func optionalTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format(datetime.Layout)
 }

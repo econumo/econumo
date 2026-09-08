@@ -210,13 +210,17 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		link.Status = model.ImportLinkStatusSkipped
 		return r.status, false, s.repo.InsertLink(ctx, link)
 	}
-	txID, _, amountUpdated, err := s.place(ctx, src, ev, r, correctAmount)
+	txID, adopted, amountUpdated, err := s.place(ctx, src, ev, r, correctAmount)
 	if err != nil {
 		return "", false, err
 	}
 	link.Status = model.ImportLinkStatusLinked
 	link.TransactionID = &txID
-	return model.ImportIngestStatusCreated, amountUpdated, s.repo.InsertLink(ctx, link)
+	status = model.ImportIngestStatusCreated
+	if adopted {
+		status = model.ImportIngestStatusMatched
+	}
+	return status, amountUpdated, s.repo.InsertLink(ctx, link)
 }
 
 // place is stage 3: adopt an existing transaction the matcher recognizes

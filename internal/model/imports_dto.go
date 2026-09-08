@@ -9,6 +9,7 @@ import (
 
 const (
 	ImportIngestStatusCreated   = "created"
+	ImportIngestStatusMatched   = "matched"
 	ImportIngestStatusQueued    = "queued"
 	ImportIngestStatusSkipped   = "skipped"
 	ImportIngestStatusDuplicate = "duplicate"
