@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
     },
+    "oauth": {
+      "provider_not_configured": "O provedor de início de sessão não está configurado",
+      "handoff_invalid": "O link de início de sessão é inválido ou expirou",
+      "last_identity": "Defina uma palavra-passe antes de desvincular o seu único método de início de sessão",
+      "identity_not_found": "Conta vinculada não encontrada"
+    },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
       "already_exists": "O beneficiário já existe.",

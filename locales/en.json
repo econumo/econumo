@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
+    "oauth": {
+      "provider_not_configured": "Sign-in provider is not configured",
+      "handoff_invalid": "Sign-in link is invalid or has expired",
+      "last_identity": "Set a password before unlinking your only sign-in method",
+      "identity_not_found": "Linked account not found"
+    },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",

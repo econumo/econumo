@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
+    "oauth": {
+      "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",
+      "handoff_invalid": "Link logowania jest nieprawidłowy lub wygasł",
+      "last_identity": "Ustaw hasło przed odłączeniem jedynej metody logowania",
+      "identity_not_found": "Nie znaleziono powiązanego konta"
+    },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",

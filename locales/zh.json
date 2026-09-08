@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "无法合并所选标签。",
       "list_empty": "标签列表为空。"
     },
+    "oauth": {
+      "provider_not_configured": "登录提供方未配置",
+      "handoff_invalid": "登录链接无效或已过期",
+      "last_identity": "在解除唯一登录方式的关联前,请先设置密码",
+      "identity_not_found": "未找到关联账户"
+    },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
       "already_exists": "该收款人已存在。",

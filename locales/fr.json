@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
+    "oauth": {
+      "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",
+      "handoff_invalid": "Le lien de connexion n'est pas valide ou a expiré",
+      "last_identity": "Définissez un mot de passe avant de dissocier votre seule méthode de connexion",
+      "identity_not_found": "Compte lié introuvable"
+    },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",

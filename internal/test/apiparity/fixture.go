@@ -177,4 +177,10 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// role=1 is budget.RoleUser (internal/budget/valueobject.go: admin=0,
 	// user=1, guest=2).
 	f.BudgetAccess(Budget, GuestID, 1, false)
+
+	// One linked identity for the guest, so get-identity-list/unlink-identity
+	// have a real row to read/remove. The guest has a password (SeedPassword
+	// above), so unlinking their only identity succeeds.
+	f.Identity(fixture.Identity{ID: "1d000000-0000-0000-0000-000000000001", UserID: GuestID,
+		Provider: "google", Subject: "guest-google-sub", Email: GuestEmail})
 }

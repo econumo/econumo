@@ -1497,6 +1497,12 @@
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
     },
+    "oauth": {
+      "provider_not_configured": "Il provider di accesso non è configurato",
+      "handoff_invalid": "Il link di accesso non è valido o è scaduto",
+      "last_identity": "Imposta una password prima di scollegare il tuo unico metodo di accesso",
+      "identity_not_found": "Account collegato non trovato"
+    },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
       "already_exists": "Il beneficiario esiste già.",

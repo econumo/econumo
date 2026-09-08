@@ -20,12 +20,15 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/mailer"
+	"github.com/econumo/econumo/internal/infra/oidc/oidctest"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -67,6 +70,7 @@ var ClockTime = time.Now().UTC().Truncate(time.Second)
 // collaborators a scenario needs to craft authenticated requests.
 type Harness struct {
 	srv    *httptest.Server
+	client *http.Client
 	engine string
 	clock  fixedClock
 	db     *dbtest.DB
@@ -82,6 +86,13 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	// The SAME instant is used on both engines so created-row timestamps match.
 	clk := fixedClock{t: ClockTime}
 
+	// A fake OIDC issuer per harness — a fresh httptest server per run/engine,
+	// so its port (and therefore IssuerURL) differs each time; normalize.go's
+	// fakeIssuerRe redacts it for both the golden comparison and the
+	// sqlite-vs-pgsql enginecompare byte-parity check. Google and Apple stay
+	// unconfigured (no client id) so the suite never touches the network.
+	fakeIDP := oidctest.New(t)
+
 	cfg := config.Config{
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
 		CurrencyBase:       "USD",
@@ -89,6 +100,15 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		Analytics:          true,
 		DataSalt:           ignoredDataSalt, // set on purpose; the API must ignore it
 		CORSAllowedOrigins: []string{"*"},
+		// AppURL drives both the oauth redirect/handoff URLs and the mailer's
+		// WithAppLink wrapper (an extra trailing line on reset emails —
+		// resetCodeRe still matches, anchored on the code marker text).
+		AppURL:           "https://app.example.test",
+		OIDCIssuerURL:    fakeIDP.IssuerURL(),
+		OIDCClientID:     fakeIDP.ClientID,
+		OIDCClientSecret: fakeIDP.Secret,
+		OIDCName:         "Fake IdP",
+		OIDCScopes:       []string{"openid", "profile", "email"},
 		// Production-default auth rate limits: existing auth scenarios stay far
 		// under them (1 bad login / 1 remind / 1 bad reset per fresh-DB scenario),
 		// and the auth_rate_limit scenario deliberately exceeds them to freeze the
@@ -117,7 +137,13 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
 
-	return &Harness{srv: srv, engine: db.Engine, clock: clk, db: db, mail: rec, minted: map[string]string{}}
+	// Redirects must be captured, not followed: the oauth callbacks answer with
+	// a 302 to the SPA/app, and the test needs the Location header itself, not
+	// whatever that target would return.
+	client := srv.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+
+	return &Harness{srv: srv, client: client, engine: db.Engine, clock: clk, db: db, mail: rec, minted: map[string]string{}}
 }
 
 // Engine reports which engine ("sqlite" | "postgresql") this harness runs over.
@@ -170,14 +196,21 @@ func (h *Harness) Token(t *testing.T, userID, email string) string {
 
 // do issues an HTTP request to the harness server and returns the status code
 // and the RAW response body bytes (not decoded), which is what the parity
-// comparison diffs. token may be "" for public endpoints. rawBody wins over body
-// when both are non-nil (multipart-style requests supply rawBody directly).
-func (h *Harness) do(t *testing.T, method, path, token string, body any, rawBody []byte, contentType string) (int, []byte) {
+// comparison diffs. token may be "" for public endpoints. rawBody wins over
+// form, which wins over body, when more than one is non-nil (multipart-style
+// requests supply rawBody directly; the oauth Apple callback supplies form).
+// Redirects (3xx) are NOT followed (see the CheckRedirect override in
+// NewHarness) — the body bytes are replaced with the Location header's value
+// so the golden records the redirect target instead of an empty 3xx body.
+func (h *Harness) do(t *testing.T, method, path, token string, body any, form url.Values, rawBody []byte, contentType string) (int, []byte) {
 	t.Helper()
 	var rdr io.Reader
-	if rawBody != nil {
+	switch {
+	case rawBody != nil:
 		rdr = bytes.NewReader(rawBody)
-	} else if body != nil {
+	case form != nil:
+		rdr = strings.NewReader(form.Encode())
+	case body != nil:
 		b, err := json.Marshal(body)
 		if err != nil {
 			t.Fatalf("marshal body: %v", err)
@@ -188,19 +221,25 @@ func (h *Harness) do(t *testing.T, method, path, token string, body any, rawBody
 	if err != nil {
 		t.Fatalf("new request: %v", err)
 	}
-	if contentType != "" {
+	switch {
+	case contentType != "":
 		req.Header.Set("Content-Type", contentType)
-	} else if body != nil {
+	case form != nil:
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	case body != nil:
 		req.Header.Set("Content-Type", "application/json")
 	}
 	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
-	resp, err := h.srv.Client().Do(req)
+	resp, err := h.client.Do(req)
 	if err != nil {
 		t.Fatalf("do request: %v", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
+		return resp.StatusCode, []byte("Location: " + resp.Header.Get("Location"))
+	}
 	raw, _ := io.ReadAll(resp.Body)
 	return resp.StatusCode, raw
 }
@@ -210,7 +249,7 @@ func (h *Harness) do(t *testing.T, method, path, token string, body any, rawBody
 // an intermediate status before issuing the next call).
 func (h *Harness) Call(t *testing.T, method, path, token string, body any) (int, []byte) {
 	t.Helper()
-	return h.do(t, method, path, token, body, nil, "")
+	return h.do(t, method, path, token, body, nil, nil, "")
 }
 
 // Replay issues each call against the harness, returning per-call statuses and
@@ -238,7 +277,7 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 		default:
 			t.Fatalf("[%s] unknown auth %q", c.Label, c.Auth)
 		}
-		statuses[i], bodies[i] = h.do(t, c.Method, c.Path, tok, c.Body, c.RawBody, c.ContentType)
+		statuses[i], bodies[i] = h.do(t, c.Method, c.Path, tok, c.Body, c.Form, c.RawBody, c.ContentType)
 		if c.CaptureIDInto != nil {
 			*c.CaptureIDInto = extractItemID(bodies[i])
 		}

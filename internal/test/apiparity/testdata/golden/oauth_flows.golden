@@ -1,0 +1,45 @@
+== get-provider-list GET /api/v1/oauth/get-provider-list [] -> 200
+{"success":true,"message":"","data":[{"id":"oidc","name":"Fake IdP"}]}
+
+== start-login POST /api/v1/oauth/start-login [] -> 200
+{"success":true,"message":"","data":{"url":"<issuer>/authorize?client_id=test-client&code_challenge=<random>&code_challenge_method=S256&nonce=<random>&redirect_uri=https%3A%2F%2Fapp.example.test%2Fapi%2Fv1%2Foauth%2Fcallback-oidc&response_type=code&scope=openid+profile+email&state=<random>"}}
+
+== err:start-login-unconfigured POST /api/v1/oauth/start-login [] -> 400
+{"success":false,"message":"Sign-in provider is not configured","code":400,"errors":{}}
+
+== err:start-login-bad-client POST /api/v1/oauth/start-login [] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"client":["The value you selected is not a valid choice."]}}
+
+== start-link POST /api/v1/oauth/start-link [owner] -> 200
+{"success":true,"message":"","data":{"url":"<issuer>/authorize?client_id=test-client&code_challenge=<random>&code_challenge_method=S256&nonce=<random>&redirect_uri=https%3A%2F%2Fapp.example.test%2Fapi%2Fv1%2Foauth%2Fcallback-oidc&response_type=code&scope=openid+profile+email&state=<random>"}}
+
+== start-link-readonly-allowed POST /api/v1/oauth/start-link [readonly] -> 200
+{"success":true,"message":"","data":{"url":"<issuer>/authorize?client_id=test-client&code_challenge=<random>&code_challenge_method=S256&nonce=<random>&redirect_uri=https%3A%2F%2Fapp.example.test%2Fapi%2Fv1%2Foauth%2Fcallback-oidc&response_type=code&scope=openid+profile+email&state=<random>"}}
+
+== err:callback-oidc-bad-state GET /api/v1/oauth/callback-oidc?code=x&state=bogus [] -> 302
+Location: https://app.example.test/login?oauthError=invalid_state
+== err:callback-google-bad-state GET /api/v1/oauth/callback-google?code=x&state=bogus [] -> 302
+Location: https://app.example.test/login?oauthError=invalid_state
+== err:callback-apple-bad-state POST /api/v1/oauth/callback-apple [] -> 302
+Location: https://app.example.test/login?oauthError=invalid_state
+== err:exchange-handoff-unknown POST /api/v1/oauth/exchange-handoff [] -> 401
+{"success":false,"message":"Sign-in link is invalid or has expired","code":0,"errors":{}}
+
+== err:exchange-handoff-blank POST /api/v1/oauth/exchange-handoff [] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"code":["This value should not be blank."]}}
+
+== get-identity-list-empty GET /api/v1/oauth/get-identity-list [owner] -> 200
+{"success":true,"message":"","data":[]}
+
+== err:unlink-identity-missing POST /api/v1/oauth/unlink-identity [owner] -> 400
+{"success":false,"message":"Linked account not found","code":400,"errors":{}}
+
+== get-identity-list-seeded GET /api/v1/oauth/get-identity-list [guest] -> 200
+{"success":true,"message":"","data":[{"provider":"google","email":"guest@example.test","createdAt":"<datetime>"}]}
+
+== unlink-identity POST /api/v1/oauth/unlink-identity [guest] -> 200
+{"success":true,"message":"","data":{}}
+
+== get-identity-list-after-unlink GET /api/v1/oauth/get-identity-list [guest] -> 200
+{"success":true,"message":"","data":[]}
+
