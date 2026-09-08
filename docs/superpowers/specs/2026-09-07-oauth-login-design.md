@@ -290,7 +290,8 @@ Common prefix:
 `intent = login`:
 
 5. Identity `(provider, subject)` exists → its user. Inactive user →
-   `account_inactive`. Otherwise mint a handoff.
+   `account_inactive`. Otherwise apply the email-drift rule below and mint a
+   handoff.
 6. No identity, a user with that email exists (`lower(email)`): inactive →
    `account_inactive`; else insert the identity, update nothing else, mint a
    handoff. This is the auto-link; it is safe because step 4 guarantees the
@@ -307,6 +308,21 @@ Common prefix:
 
 On every successful identity load or insert, `users_identities.email` is
 refreshed from the claim.
+
+**Email drift** (step 5, the claim's email differs from the user's primary
+email): the primary email is left alone, except when the user is
+passwordless **and** has exactly one identity **and** no other user holds the
+new address. In that case the IdP is the sole authority over the account, so
+the primary email is updated in the same transaction (marked verified; step 4
+already guaranteed that), keeping the reset channel reachable for the day the
+user sets a password. The rule stops applying the moment the user sets a
+password or links a second identity; from then on the primary email moves
+only through the change-email flow in Settings. When the new address already
+belongs to another Econumo user, the sign-in proceeds unchanged for the
+identity's owner (the subject is the key, so an email collision cannot alter
+who gets in) and the operation line carries a WARN with both user ids and the
+provider, never the address, so an operator can spot an IdP-side subject
+reassignment.
 
 ### 6.3 Redirect targets
 
@@ -355,6 +371,7 @@ type UserGateway interface {
     ProvisionExternal(ctx, name, email string) (*model.User, error)  // email is always verified (§6.2 step 4)
     MintSession(ctx, userID vo.Id, userAgent, provider, idToken string) (*model.LoginResult, error)
     HasPassword(ctx, userID vo.Id) (bool, error)
+    ReplaceVerifiedEmail(ctx, userID vo.Id, email string) error   // email-drift mirror (§6.2)
 }
 ```
 
@@ -497,6 +514,9 @@ to end it." Password sessions show nothing new.
   token values win, userinfo failure non-fatal).
 - **`internal/oauth`**: table tests over §6.2 against the sqlite test DB
   driving the real callback through the fake issuer: existing identity,
+  email drift (mirrored for a passwordless single-identity user; untouched
+  when a password is set, a second identity exists, or the address belongs to
+  another user, the last with the WARN asserted),
   verified auto-link, trusted auto-link, unverified email rejected (login,
   existing identity, and link intents), provisioning on/off, missing email, inactive user, link intent taken /
   idempotent, unlink last identity, expired and consumed state, expired
@@ -530,7 +550,8 @@ to end it." Password sessions show nothing new.
   `email_verified` claim needs `ECONUMO_OIDC_TRUST_EMAIL=true` or every
   sign-in is rejected with `email_unverified`.
 - `docs/regression-test-plan.md`: sign-in per provider (📱 and desktop),
-  auto-link, unverified-email rejection, link/unlink, last-identity refusal,
+  auto-link, unverified-email rejection, email drift on an SSO-only account,
+  link/unlink, last-identity refusal,
   set a password, RP-initiated logout, the local-logout notice, app return
   via the scheme.
 
