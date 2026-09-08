@@ -168,6 +168,7 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 	return &model.ImportRunResult{
 		Id: run.ID.String(), Status: run.Status, ImportedCount: run.ImportedCount,
 		MatchedCount: run.MatchedCount, SkippedCount: run.SkippedCount, FailedCount: run.FailedCount,
+		Errors: []model.ImportRunError{},
 	}, nil
 }
 
