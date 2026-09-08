@@ -58,6 +58,8 @@ type Config struct {
 	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
 	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
 	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
@@ -271,6 +273,8 @@ func Load() (Config, error) {
 		{&c.RateLimitRequestEmailChange, "ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE", 3},
 		{&c.RateLimitConfirmEmailChange, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE", 5},
 		{&c.RateLimitIngest, "ECONUMO_RATE_LIMIT_INGEST", 60},
+		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
+		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)

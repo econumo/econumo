@@ -93,13 +93,15 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		// under them (1 bad login / 1 remind / 1 bad reset per fresh-DB scenario),
 		// and the auth_rate_limit scenario deliberately exceeds them to freeze the
 		// 429 envelope.
-		RateLimitLogin:    5,
-		RateLimitReset:    5,
-		RateLimitRemind:   3,
-		RateLimitRegister: 5,
-		RateLimitWindow:   15 * time.Minute,
-		RateLimitGlobal:   60,
-		RateLimitIngest:   60,
+		RateLimitLogin:           5,
+		RateLimitReset:           5,
+		RateLimitRemind:          3,
+		RateLimitRegister:        5,
+		RateLimitWindow:          15 * time.Minute,
+		RateLimitGlobal:          60,
+		RateLimitIngest:          60,
+		RateLimitClaimSetupToken: 5,
+		RateLimitSync:            10,
 		// Production matcher defaults so the seeded queued tap adopts Txn1 by
 		// the same rules a real instance applies.
 		ImportMatchDays:       3,
