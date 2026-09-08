@@ -140,7 +140,9 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 			run.SkippedCount++
 			continue
 		}
-		txID, adopted, err := s.place(ctx, src, ev, r)
+		// A re-mapped card only ever adopts, never corrects — the same rule
+		// as a push retry (see applyEvent).
+		txID, adopted, _, err := s.place(ctx, src, ev, r, false)
 		if err != nil {
 			return nil, err
 		}
@@ -185,7 +187,7 @@ func (s *Service) reparse(ctx context.Context, src *model.ImportSource, l *model
 		}
 		return model.IngestEvent{}, false, err
 	}
-	ev, perr := s.parse(src, stored)
+	ev, perr := s.parse(ctx, src, stored)
 	if perr != nil {
 		return model.IngestEvent{}, false, nil
 	}

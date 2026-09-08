@@ -73,6 +73,7 @@ func (f *fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount str
 type fakeTxns struct {
 	db         *dbtest.DB
 	created    []model.CreateTransactionRequest
+	updated    []model.UpdateTransactionRequest
 	candidates []*model.Transaction
 	fail       error
 }
@@ -104,6 +105,10 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, userID vo.Id, req mode
 		return nil, err
 	}
 	return &model.CreateTransactionResult{Item: model.TransactionResult{Id: req.Id, AccountId: req.AccountId, Amount: req.Amount.String()}}, nil
+}
+func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.updated = append(f.updated, req)
+	return &model.UpdateTransactionResult{}, nil
 }
 func (f *fakeTxns) ListByAccount(_ context.Context, _ vo.Id, _, _ time.Time) ([]*model.Transaction, error) {
 	return f.candidates, nil
@@ -239,6 +244,74 @@ func TestIngest_AdoptsHandEnteredTransaction(t *testing.T) {
 	links, _ := h.repo.ListLinksByTransaction(context.Background(), existing)
 	if len(links) != 1 || links[0].Status != model.ImportLinkStatusLinked {
 		t.Fatalf("adopt must link the existing transaction: %+v", links)
+	}
+}
+
+const source2 = "0c000000-0000-0000-0000-000000000002"
+
+// seedTipCandidate seeds a hand-entered transaction with a push (Apple
+// Wallet) tap link, plus a second, pull-provider source ("bank") mapped to
+// the same account. The bank event below reports the same purchase 2 days
+// later at a corrected amount, within the tip tolerance — a tip-adopt.
+func seedTipCandidate(t *testing.T, h *harness) (*model.ImportSource, vo.Id, model.IngestEvent) {
+	t.Helper()
+	h.f.ImportSource(fixture.ImportSource{ID: source2, UserID: userA, Name: "Bank", Provider: model.ImportProviderSimpleFIN})
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: source2, ExternalAccountID: "Apple Card", AccountID: acct1})
+	cand := vo.NewId()
+	spentAt := time.Date(2026, 8, 18, 9, 0, 0, 0, time.UTC)
+	h.f.Transaction(fixture.Transaction{ID: cand.String(), UserID: userA, AccountID: acct1, Type: 0, Amount: "5.00000000", SpentAt: spentAt})
+	h.f.ImportTransactionLink(fixture.ImportTransactionLink{
+		SourceID: source, ExternalAccountID: "Apple Card", ExternalTransactionID: "tap-1",
+		TransactionID: cand.String(), Status: "linked", ExternalPayee: "Blue Bottle Coffee",
+		ExternalAmount: "5.00000000", ExternalPostedAt: spentAt,
+	})
+	h.txns.candidates = []*model.Transaction{{
+		ID: cand, AccountID: vo.MustParseId(acct1), Type: model.TransactionTypeExpense,
+		Amount: "5.00000000", SpentAt: spentAt, Description: "Blue Bottle tap",
+	}}
+	src2, err := h.repo.GetSource(context.Background(), vo.MustParseId(source2))
+	if err != nil {
+		t.Fatal(err)
+	}
+	ev := model.IngestEvent{
+		ExternalAccountID: "Apple Card", ExternalTransactionID: "bank-1", Type: model.TransactionTypeExpense,
+		Amount: "5.75", Currency: "USD", PostedAt: time.Date(2026, 8, 20, 10, 0, 0, 0, time.UTC),
+		Payee: "Blue Bottle Coffee Shop",
+	}
+	return src2, cand, ev
+}
+
+func TestIngest_TipAdoptWithoutCorrection(t *testing.T) {
+	h := setup(t)
+	src2, cand, ev := seedTipCandidate(t, h)
+	eventID := vo.MustParseId(h.f.ImportEvent(fixture.ImportEvent{SourceID: source2, Payload: "{}"}))
+	status, amountUpdated, err := h.svc.ApplyEventForTest(context.Background(), src2, eventID, ev, nil, false)
+	if err != nil || status != model.ImportIngestStatusCreated || amountUpdated {
+		t.Fatalf("status=%s amountUpdated=%v err=%v", status, amountUpdated, err)
+	}
+	if len(h.txns.updated) != 0 {
+		t.Fatalf("correctAmount=false must not update the candidate: %+v", h.txns.updated)
+	}
+	links, _ := h.repo.ListLinksByTransaction(context.Background(), cand)
+	if len(links) != 2 {
+		t.Fatalf("adopt must link the existing transaction a second time: %+v", links)
+	}
+}
+
+func TestIngest_TipAdoptCorrectsAmount(t *testing.T) {
+	h := setup(t)
+	src2, cand, ev := seedTipCandidate(t, h)
+	eventID := vo.MustParseId(h.f.ImportEvent(fixture.ImportEvent{SourceID: source2, Payload: "{}"}))
+	status, amountUpdated, err := h.svc.ApplyEventForTest(context.Background(), src2, eventID, ev, nil, true)
+	if err != nil || status != model.ImportIngestStatusCreated || !amountUpdated {
+		t.Fatalf("status=%s amountUpdated=%v err=%v", status, amountUpdated, err)
+	}
+	if len(h.txns.updated) != 1 {
+		t.Fatalf("correctAmount=true must update the candidate once: %+v", h.txns.updated)
+	}
+	got := h.txns.updated[0]
+	if got.Id != cand.String() || !vo.NewDecimal(got.Amount.String()).Equals(vo.NewDecimal(ev.Amount)) {
+		t.Fatalf("update request = %+v", got)
 	}
 }
 

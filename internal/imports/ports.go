@@ -28,11 +28,13 @@ type CurrencyConverter interface {
 	Convert(ctx context.Context, userID vo.Id, from, to, amount string, at time.Time) (converted string, ok bool, err error)
 }
 
-// TransactionCreator is the transaction feature's create use case, so an
-// import goes through exactly the checks a hand-entered transaction does
-// (deleted account, write access, idempotency on the request id).
-type TransactionCreator interface {
+// TransactionWriter is the transaction feature's create/update use cases, so
+// an import goes through exactly the checks a hand-entered transaction does
+// (deleted account, write access, idempotency on the request id). Update is
+// used only to adopt a corrected amount on a tip-matched transaction.
+type TransactionWriter interface {
 	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
+	UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
 }
 
 // TransactionLister pre-selects the matcher's candidates: the account's
@@ -48,4 +50,8 @@ type AttemptLimiter interface {
 	Fail(scope, key string)
 }
 
-const RateScopeIngest = "ingest"
+const (
+	RateScopeIngest          = "ingest"
+	RateScopeClaimSetupToken = "import-claim"
+	RateScopeSync            = "import-sync"
+)

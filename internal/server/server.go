@@ -337,7 +337,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		importsRepo,
 		NewImportsAccountReader(accountSvc, currencyLookup),
 		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
-		transactionSvc,
+		NewImportsTransactionWriter(transactionSvc),
 		NewImportsTransactionLister(transactionRepo),
 		authLimiter, txm, clk,
 		appimports.MatcherConfig{

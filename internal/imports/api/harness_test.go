@@ -62,6 +62,7 @@ func (fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount string
 type fakeTxns struct {
 	db      *dbtest.DB
 	created int
+	updated []model.UpdateTransactionRequest
 }
 
 func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
@@ -79,6 +80,10 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.Cre
 		return nil, err
 	}
 	return &model.CreateTransactionResult{Item: model.TransactionResult{Id: req.Id, AccountId: req.AccountId, Amount: req.Amount.String()}}, nil
+}
+func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.updated = append(f.updated, req)
+	return &model.UpdateTransactionResult{}, nil
 }
 func (f *fakeTxns) ListByAccount(context.Context, vo.Id, time.Time, time.Time) ([]*model.Transaction, error) {
 	return nil, nil

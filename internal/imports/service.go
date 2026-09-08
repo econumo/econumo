@@ -16,7 +16,7 @@ type Service struct {
 	repo      Repository
 	accounts  AccountReader
 	converter CurrencyConverter
-	txns      TransactionCreator
+	txns      TransactionWriter
 	lister    TransactionLister
 	limiter   AttemptLimiter
 	tx        port.TxRunner
@@ -25,7 +25,7 @@ type Service struct {
 	providers map[string]Provider
 }
 
-func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionCreator, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
+func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
 	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, limiter: limiter, tx: tx, clk: clk, cfg: cfg}
 }
 
@@ -117,6 +117,17 @@ func idString(p *vo.Id) string {
 		return ""
 	}
 	return p.String()
+}
+
+// idString2 is idString for an UpdateTransactionRequest field the transaction
+// feature parses only when non-nil: idString's "" for nil would parse as a
+// bogus id instead of leaving the field unset.
+func idString2(p *vo.Id) *string {
+	if p == nil {
+		return nil
+	}
+	s := p.String()
+	return &s
 }
 
 // sourceResult assembles the wire view of a source: cards are the union of
