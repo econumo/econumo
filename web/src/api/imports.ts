@@ -1,11 +1,18 @@
+import axios from 'axios'
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  ExternalAccountDto,
+  ImportCredentialKeyDto,
+  ImportProvider,
   ImportQueueDto,
   ImportQueuedEventPayload,
   ImportQueuedEventResultDto,
+  ImportRunDetailDto,
+  ImportRunDto,
   ImportSourceDto,
   IngestEventDto,
+  SyncImportSourceResultDto,
   TransactionImportLinkDto,
   UpdateImportAccountDto,
 } from './dto/imports'
@@ -19,9 +26,64 @@ export async function getImportSourceList(): Promise<ImportSourceDto[]> {
   return response.data.data.items
 }
 
-export async function createImportSource(provider: 'apple-wallet', name: string): Promise<ImportSourceDto> {
-  const response = await api.post<Envelope<{ item: ImportSourceDto }>>(apiUrl('/api/v1/import/create-source'), { provider, name })
+export async function createImportSource(provider: ImportProvider, name: string, credentialCiphertext?: string): Promise<ImportSourceDto> {
+  const body: Record<string, string> = { provider, name }
+  if (credentialCiphertext) {
+    body.credentialCiphertext = credentialCiphertext
+  }
+  const response = await api.post<Envelope<{ item: ImportSourceDto }>>(apiUrl('/api/v1/import/create-source'), body)
   return response.data.data.item
+}
+
+export async function claimSetupToken(setupToken: string): Promise<string> {
+  const response = await api.post<Envelope<{ accessUrl: string }>>(apiUrl('/api/v1/import/claim-setup-token'), { setupToken })
+  return response.data.data.accessUrl
+}
+
+// A user without a key gets the coded not-found envelope (400); that is the
+// ordinary "connect for the first time" state, not an error.
+export async function getImportCredentialKey(): Promise<ImportCredentialKeyDto | null> {
+  try {
+    const response = await api.get<Envelope<ImportCredentialKeyDto>>(apiUrl('/api/v1/import/get-credential-key'))
+    return response.data.data
+  } catch (err) {
+    if (axios.isAxiosError(err) && err.response?.status === 400) {
+      return null
+    }
+    throw err
+  }
+}
+
+export async function setImportCredentialKey(key: { wrappedDataKey: string; kdf: string }): Promise<ImportCredentialKeyDto> {
+  const response = await api.post<Envelope<ImportCredentialKeyDto>>(apiUrl('/api/v1/import/set-credential-key'), key)
+  return response.data.data
+}
+
+export async function listExternalAccounts(sourceId: Id, accessUrl: string): Promise<ExternalAccountDto[]> {
+  const response = await api.post<Envelope<{ items: ExternalAccountDto[] }>>(apiUrl('/api/v1/import/list-external-accounts'), { sourceId, accessUrl })
+  return response.data.data.items
+}
+
+export async function syncImportSource(sourceId: Id, accessUrl: string, startDate: string, endDate?: string): Promise<SyncImportSourceResultDto> {
+  const body: Record<string, string> = { sourceId, accessUrl, startDate }
+  if (endDate) {
+    body.endDate = endDate
+  }
+  const response = await api.post<Envelope<SyncImportSourceResultDto>>(apiUrl('/api/v1/import/sync-source'), body)
+  return response.data.data
+}
+
+export async function getImportRunList(sourceId?: Id): Promise<ImportRunDto[]> {
+  const response = await api.get<Envelope<{ items: ImportRunDto[] }>>(
+    apiUrl('/api/v1/import/get-run-list'),
+    { params: sourceId ? { sourceId } : {} },
+  )
+  return response.data.data.items
+}
+
+export async function getImportRun(id: Id): Promise<ImportRunDetailDto> {
+  const response = await api.get<Envelope<ImportRunDetailDto>>(apiUrl('/api/v1/import/get-run'), { params: { id } })
+  return response.data.data
 }
 
 export async function deleteImportSource(id: Id): Promise<ImportSourceDto[]> {

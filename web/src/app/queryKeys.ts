@@ -21,6 +21,10 @@ export const queryKeys = {
   importSources: ['importSources'] as const,
   importQueue: ['importQueue'] as const,
   transactionImports: (transactionId: string) => ['transactionImports', transactionId] as const,
+  importRuns: (sourceId: string) => ['importRuns', sourceId] as const,
+  importRun: (id: string) => ['importRun', id] as const,
+  importCredentialKey: ['importCredentialKey'] as const,
+  importExternalAccounts: (sourceId: string) => ['importExternalAccounts', sourceId] as const,
 }
 
 export const TEN_MINUTES = 10 * 60_000
