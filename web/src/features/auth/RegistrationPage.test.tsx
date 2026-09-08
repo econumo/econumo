@@ -27,6 +27,7 @@ function renderPage() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
 })
 
 it('registers, remembers the new email, and navigates to the login page', async () => {

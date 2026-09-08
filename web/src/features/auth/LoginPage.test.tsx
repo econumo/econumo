@@ -21,6 +21,7 @@ function renderLogin(path = '/login') {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
 })
 
 it('logs in and stores the token', async () => {
@@ -226,4 +227,9 @@ it('submits with the custom-server section collapsed and custom API allowed', as
   await user.type(screen.getByLabelText('Password'), 'secret12')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
+})
+
+it('shows the oauth error from the query string', async () => {
+  renderLogin('/login?oauthError=email_unverified')
+  expect(await screen.findByText('The sign-in provider has not verified this email address.')).toBeInTheDocument()
 })
