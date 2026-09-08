@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -178,4 +179,26 @@ type ImportCandidateLink struct {
 	Provider       string
 	ExternalAmount string
 	ExternalPayee  string
+}
+
+// ExternalAccount is a pull provider's account row before it is linked to an
+// owned account.
+type ExternalAccount struct {
+	ID       string
+	Name     string
+	Currency string // ISO code as reported; may be a non-ISO string for crypto/custom, passed through
+	Balance  string // decimal text as reported
+	OrgName  string
+}
+
+// ExternalTransaction is one provider row before parsing; Raw is stored
+// verbatim as the event payload so a retry re-parses exactly what arrived.
+type ExternalTransaction struct {
+	ExternalAccountID string
+	ID                string
+	Amount            string // signed decimal text as reported ("-12.50")
+	Posted            int64  // unix seconds
+	Payee             string
+	Description       string
+	Raw               json.RawMessage
 }

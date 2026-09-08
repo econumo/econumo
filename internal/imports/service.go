@@ -22,6 +22,7 @@ type Service struct {
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
+	providers map[string]Provider
 }
 
 func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionCreator, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
