@@ -90,9 +90,10 @@ func (f *fakeTxns) ListByAccount(context.Context, vo.Id, time.Time, time.Time) (
 }
 
 type harness struct {
-	srv  *httptest.Server
-	txns *fakeTxns
-	f    *fixture.Builder
+	srv      *httptest.Server
+	txns     *fakeTxns
+	f        *fixture.Builder
+	provider *stubProvider
 }
 
 func newHarness(t *testing.T) *harness {
@@ -104,10 +105,12 @@ func newHarness(t *testing.T) *harness {
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	txns := &fakeTxns{db: db}
 	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
+	provider := &stubProvider{}
+	svc.RegisterProvider(model.ImportProviderSimpleFIN, provider)
 
 	mux := http.NewServeMux()
 	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{})(mux)
 	srv := httptest.NewServer(middleware.Chain(middleware.RequestID, middleware.AccessLog)(mux))
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, txns: txns, f: f}
+	return &harness{srv: srv, txns: txns, f: f, provider: provider}
 }

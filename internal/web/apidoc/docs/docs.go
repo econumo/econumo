@@ -4754,6 +4754,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/claim-setup-token": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Exchanges a one-time SimpleFIN setup token for the bridge access URL. The URL is returned to the client and never stored server-side; the client encrypts it with its credential key and sends the ciphertext to create-source. 403 when the bridge rejects the token (already claimed or expired).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Claim a SimpleFIN setup token",
+                "parameters": [
+                    {
+                        "description": "Setup token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ClaimSetupTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ClaimSetupTokenResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/create-source": {
             "post": {
                 "security": [
@@ -4979,6 +5066,61 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/get-credential-key": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the caller's passphrase-wrapped data key and KDF parameters. The server cannot unwrap it. 400 (coded not-found) when no key has been set.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Get the wrapped import credential key",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportCredentialKeyResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/get-queued-event-list": {
             "get": {
                 "security": [
@@ -5011,6 +5153,133 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/get-run": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "The run summary plus every ledger row it wrote. A row whose transaction was deleted since keeps its external fields with an empty transactionId.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Get one import run",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Run id",
+                        "name": "id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportRunResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/get-run-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "The caller's most recent 50 import runs, newest first, optionally filtered to one source.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List import runs",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Source id",
+                        "name": "sourceId",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportRunListResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
                     },
                     "401": {
@@ -5447,6 +5716,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/list-external-accounts": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Asks the provider (with the client-decrypted access URL in the body) for its accounts and joins each with the caller's mapping state. POST because the access URL must not travel in a query string.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List the accounts a pull source exposes",
+                "parameters": [
+                    {
+                        "description": "Source + access URL",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ListExternalAccountsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ListExternalAccountsResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/retry-event": {
             "post": {
                 "security": [
@@ -5489,6 +5833,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.IngestEventResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/set-credential-key": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Stores (or replaces) the caller's passphrase-wrapped data key and KDF parameters. Replacing the key does not touch stored credential ciphertexts; the client re-encrypts and re-submits them via create-source.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Set the wrapped import credential key",
+                "parameters": [
+                    {
+                        "description": "Wrapped key",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SetImportCredentialKeyRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportCredentialKeyResult"
                                         }
                                     }
                                 }
@@ -5584,6 +6003,87 @@ const docTemplate = `{
                     },
                     "402": {
                         "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/sync-source": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Fetches the date range from the provider using the client-decrypted access URL and runs every returned row through the import pipeline (create / match / queue / skip). Returns the run summary and the provider's accounts with their mapping state. endDate defaults to today; the span is capped at 400 days.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Pull transactions from a bank source",
+                "parameters": [
+                    {
+                        "description": "Sync request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SyncImportSourceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SyncImportSourceResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
                             "$ref": "#/definitions/apidoc.JsonResponseError"
                         }
@@ -10989,6 +11489,22 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ClaimSetupTokenRequest": {
+            "type": "object",
+            "properties": {
+                "setupToken": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ClaimSetupTokenResult": {
+            "type": "object",
+            "properties": {
+                "accessUrl": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CloneBudgetRequest": {
             "type": "object",
             "properties": {
@@ -11342,6 +11858,9 @@ const docTemplate = `{
         "model.CreateImportSourceRequest": {
             "type": "object",
             "properties": {
+                "credentialCiphertext": {
+                    "type": "string"
+                },
                 "name": {
                     "type": "string"
                 },
@@ -11903,6 +12422,32 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ExternalAccountResult": {
+            "type": "object",
+            "properties": {
+                "accountId": {
+                    "type": "string"
+                },
+                "balance": {
+                    "type": "string"
+                },
+                "externalAccountId": {
+                    "type": "string"
+                },
+                "externalCurrency": {
+                    "type": "string"
+                },
+                "externalName": {
+                    "type": "string"
+                },
+                "orgName": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string"
+                }
+            }
+        },
         "model.FiltersResult": {
             "type": "object",
             "properties": {
@@ -12035,6 +12580,20 @@ const docTemplate = `{
                 }
             }
         },
+        "model.GetImportCredentialKeyResult": {
+            "type": "object",
+            "properties": {
+                "kdf": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                },
+                "wrappedDataKey": {
+                    "type": "string"
+                }
+            }
+        },
         "model.GetImportQueueResult": {
             "type": "object",
             "properties": {
@@ -12054,6 +12613,31 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportQueuedEventResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportRunListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRunResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportRunResult": {
+            "type": "object",
+            "properties": {
+                "item": {
+                    "$ref": "#/definitions/model.ImportRunResult"
+                },
+                "links": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRunLinkResult"
                     }
                 }
             }
@@ -12238,6 +12822,9 @@ const docTemplate = `{
                 "externalAccountId": {
                     "type": "string"
                 },
+                "externalName": {
+                    "type": "string"
+                },
                 "sourceId": {
                     "type": "string"
                 }
@@ -12366,11 +12953,66 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ImportRunError": {
+            "type": "object",
+            "properties": {
+                "externalAccountId": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportRunLinkResult": {
+            "type": "object",
+            "properties": {
+                "externalAccountId": {
+                    "type": "string"
+                },
+                "externalAmount": {
+                    "type": "string"
+                },
+                "externalCurrency": {
+                    "type": "string"
+                },
+                "externalPayee": {
+                    "type": "string"
+                },
+                "externalPostedAt": {
+                    "type": "string"
+                },
+                "externalTransactionId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "transactionId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.ImportRunResult": {
             "type": "object",
             "properties": {
+                "amountsUpdatedCount": {
+                    "type": "integer"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRunError"
+                    }
+                },
                 "failedCount": {
                     "type": "integer"
+                },
+                "finishedAt": {
+                    "type": "string"
                 },
                 "id": {
                     "type": "string"
@@ -12381,10 +13023,25 @@ const docTemplate = `{
                 "matchedCount": {
                     "type": "integer"
                 },
+                "provider": {
+                    "type": "string"
+                },
+                "queuedCount": {
+                    "type": "integer"
+                },
                 "skippedCount": {
                     "type": "integer"
                 },
+                "sourceId": {
+                    "type": "string"
+                },
+                "startedAt": {
+                    "type": "string"
+                },
                 "status": {
+                    "type": "string"
+                },
+                "trigger": {
                     "type": "string"
                 }
             }
@@ -12401,7 +13058,13 @@ const docTemplate = `{
                 "createdAt": {
                     "type": "string"
                 },
+                "credentialCiphertext": {
+                    "type": "string"
+                },
                 "id": {
+                    "type": "string"
+                },
+                "lastSyncedAt": {
                     "type": "string"
                 },
                 "name": {
@@ -12493,8 +13156,33 @@ const docTemplate = `{
                 "externalAccountId": {
                     "type": "string"
                 },
+                "externalName": {
+                    "type": "string"
+                },
                 "sourceId": {
                     "type": "string"
+                }
+            }
+        },
+        "model.ListExternalAccountsRequest": {
+            "type": "object",
+            "properties": {
+                "accessUrl": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ListExternalAccountsResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ExternalAccountResult"
+                    }
                 }
             }
         },
@@ -13384,6 +14072,17 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SetImportCredentialKeyRequest": {
+            "type": "object",
+            "properties": {
+                "kdf": {
+                    "type": "string"
+                },
+                "wrappedDataKey": {
+                    "type": "string"
+                }
+            }
+        },
         "model.SetLimitRequest": {
             "type": "object",
             "properties": {
@@ -13567,6 +14266,37 @@ const docTemplate = `{
                     "items": {
                         "$ref": "#/definitions/model.LabelSpendResult"
                     }
+                }
+            }
+        },
+        "model.SyncImportSourceRequest": {
+            "type": "object",
+            "properties": {
+                "accessUrl": {
+                    "type": "string"
+                },
+                "endDate": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "startDate": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SyncImportSourceResult": {
+            "type": "object",
+            "properties": {
+                "accounts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ExternalAccountResult"
+                    }
+                },
+                "run": {
+                    "$ref": "#/definitions/model.ImportRunResult"
                 }
             }
         },

@@ -40,6 +40,7 @@ import (
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
@@ -98,6 +99,10 @@ type Seams struct {
 	// transport (console default / Resend); tests inject a recording transport to
 	// capture the emitted reset code, which is no longer readable from the DB.
 	Mailer mailer.Mailer
+	// ImportProviders overrides the pull-import providers keyed by
+	// model.ImportProvider* name. nil registers the real SimpleFIN client;
+	// tests inject a stub so no scenario reaches the network.
+	ImportProviders map[string]appimports.Provider
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -349,6 +354,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			TokenMinLength:  cfg.ImportTokenMinLength,
 		},
 	)
+	if seams.ImportProviders == nil {
+		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{}))
+	}
+	for name, p := range seams.ImportProviders {
+		importsSvc.RegisterProvider(name, p)
+	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
