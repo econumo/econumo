@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Импорт и экспорт",
-      "header": "Импорт и экспорт"
+      "header": "Импорт и экспорт",
+      "sync_all": "Синхронизировать банковские подключения",
+      "history": "История импорта",
+      "sync_all_done": "импортировано: {imported}, сопоставлено: {matched}, ошибок: {failed}"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -625,13 +628,25 @@
       }
     },
     "runs": {
+      "header": "История импорта",
+      "detail_header": "Импорт",
+      "history_link": "История импорта",
+      "empty": "Импортов пока нет.",
+      "rows_header": "Транзакции",
+      "rows_empty": "Этот импорт не затронул ни одной транзакции.",
       "status": {
         "running": "Выполняется",
         "completed": "Завершено",
         "partial": "Завершено с ошибками",
         "failed": "Ошибка"
       },
-      "counts": "импортировано: {imported} · сопоставлено: {matched} · обновлено сумм: {updated} · в очереди: {queued} · пропущено: {skipped} · ошибок: {failed}"
+      "counts": "импортировано: {imported} · сопоставлено: {matched} · обновлено сумм: {updated} · в очереди: {queued} · пропущено: {skipped} · ошибок: {failed}",
+      "row_status": {
+        "imported": "Импортирована",
+        "deleted": "Удалена позже",
+        "queued": "Ждёт проверки",
+        "skipped": "Пропущена"
+      }
     },
     "queue": {
       "header": "Очередь импорта",

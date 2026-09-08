@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import type { ImportRunDto } from '@/api/dto/imports'
 import { formatDateTime, parseDateTime } from '@/lib/datetime'
 import { cn } from '@/lib/utils'
@@ -13,9 +14,9 @@ const STATUS_CLASS: Record<ImportRunDto['status'], string> = {
   failed: 'text-destructive',
 }
 
-export function ImportRunSummary({ run, accountName }: { run: ImportRunDto; accountName?: (externalAccountId: string) => string }) {
+export function ImportRunSummary({ run, accountName, to }: { run: ImportRunDto; accountName?: (externalAccountId: string) => string; to?: string }) {
   const { t } = useTranslation()
-  return (
+  const content = (
     <div className="flex flex-col gap-1 rounded-lg bg-econumo-card px-4 py-3.5 text-sm">
       <div className="flex items-center justify-between gap-2">
         <span className={cn('font-medium', STATUS_CLASS[run.status])}>{t(`imports.runs.status.${run.status}`)}</span>
@@ -34,4 +35,5 @@ export function ImportRunSummary({ run, accountName }: { run: ImportRunDto; acco
       ))}
     </div>
   )
+  return to ? <Link to={to} className="block rounded-lg hover:bg-econumo-hover">{content}</Link> : content
 }

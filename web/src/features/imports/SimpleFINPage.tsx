@@ -1,31 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { toast } from 'sonner'
-import type { ImportCardDto, ImportSourceDto } from '@/api/dto/imports'
+import type { ImportCardDto } from '@/api/dto/imports'
 import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { InfoBox } from '@/components/InfoBox'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
-import { formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
+import { formatDateTime, parseDateTime } from '@/lib/datetime'
 import { decryptCredential } from '@/lib/importCrypto'
 import { ImportCards } from './ImportCards'
 import { ImportRunSummary } from './ImportRunSummary'
 import { SimpleFINConnect } from './SimpleFINConnect'
 import { SimpleFINUnlock, forgetThisDevice } from './SimpleFINUnlock'
+import { syncStartDate } from './syncWindow'
 import { useImportKey } from './useImportKey'
 import { useExternalAccounts, useImportRuns, useImportSources, useSyncImportSource } from './queries'
-
-// Default sync window: overlap the previous sync by a few days so pending
-// rows that posted late are still picked up; a first sync looks back a month.
-const OVERLAP_DAYS = 3
-const FIRST_SYNC_DAYS = 30
-
-function defaultStartDate(source: ImportSourceDto): string {
-  const from = source.lastSyncedAt ? parseDateTime(source.lastSyncedAt) : new Date()
-  from.setDate(from.getDate() - (source.lastSyncedAt ? OVERLAP_DAYS : FIRST_SYNC_DAYS))
-  return formatDate(from)
-}
 
 export function SimpleFINPage() {
   const { t } = useTranslation()
@@ -54,7 +45,7 @@ export function SimpleFINPage() {
 
   useEffect(() => {
     if (source && !startDate) {
-      setStartDate(defaultStartDate(source))
+      setStartDate(syncStartDate(source))
     }
   }, [source, startDate])
 
@@ -82,7 +73,7 @@ export function SimpleFINPage() {
     }
     sync.mutate({ sourceId: source.id, accessUrl, startDate }, {
       onSuccess: (result) => {
-        setStartDate(defaultStartDate({ ...source, lastSyncedAt: result.run.finishedAt || source.lastSyncedAt }))
+        setStartDate(syncStartDate({ ...source, lastSyncedAt: result.run.finishedAt || source.lastSyncedAt }))
         if (result.run.status === 'completed') {
           toast.success(t('imports.simplefin.sync.done_toast', { imported: result.run.importedCount, matched: result.run.matchedCount }))
         }
@@ -133,7 +124,10 @@ export function SimpleFINPage() {
             {sync.isPending ? t('imports.simplefin.sync.running') : t('imports.simplefin.sync.button')}
           </Button>
         </div>
-        {lastRun ? <ImportRunSummary run={lastRun} accountName={accountName} /> : null}
+        {lastRun ? <ImportRunSummary run={lastRun} accountName={accountName} to={RouterPage.IMPORT_RUN.replace(':id', lastRun.id)} /> : null}
+        {source ? (
+          <Link to={`${RouterPage.IMPORT_RUNS}?sourceId=${source.id}`} className="px-1 text-sm text-primary hover:underline">{t('imports.runs.history_link')}</Link>
+        ) : null}
         {external.isError ? <p role="alert" className="text-sm text-destructive">{apiErrorMessage(external.error)}</p> : null}
         <ImportCards source={source} cards={cards} variant="account" />
         <div className="flex flex-wrap gap-2 pt-2">

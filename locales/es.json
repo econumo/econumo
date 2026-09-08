@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Importar y exportar",
-      "header": "Importar y exportar"
+      "header": "Importar y exportar",
+      "sync_all": "Sincronizar conexiones bancarias",
+      "history": "Historial de importaciones",
+      "sync_all_done": "{imported} importadas, {matched} emparejadas, {failed} fallidas"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -625,13 +628,25 @@
       }
     },
     "runs": {
+      "header": "Historial de importaciones",
+      "detail_header": "Importación",
+      "history_link": "Historial de importaciones",
+      "empty": "Aún no hay importaciones.",
+      "rows_header": "Transacciones",
+      "rows_empty": "Esta importación no afectó a ninguna transacción.",
       "status": {
         "running": "En curso",
         "completed": "Completado",
         "partial": "Completado con errores",
         "failed": "Fallido"
       },
-      "counts": "{imported} importadas · {matched} emparejadas · {updated} importes actualizados · {queued} en cola · {skipped} omitidas · {failed} fallidas"
+      "counts": "{imported} importadas · {matched} emparejadas · {updated} importes actualizados · {queued} en cola · {skipped} omitidas · {failed} fallidas",
+      "row_status": {
+        "imported": "Importada",
+        "deleted": "Eliminada desde entonces",
+        "queued": "Esperando revisión",
+        "skipped": "Omitida"
+      }
     },
     "queue": {
       "header": "Cola de importación",

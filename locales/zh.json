@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "导入与导出",
-      "header": "导入与导出"
+      "header": "导入与导出",
+      "sync_all": "同步银行连接",
+      "history": "导入历史",
+      "sync_all_done": "已导入 {imported}，已匹配 {matched}，失败 {failed}"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -625,13 +628,25 @@
       }
     },
     "runs": {
+      "header": "导入历史",
+      "detail_header": "导入记录",
+      "history_link": "导入历史",
+      "empty": "暂无导入记录。",
+      "rows_header": "交易",
+      "rows_empty": "此次导入未涉及任何交易。",
       "status": {
         "running": "进行中",
         "completed": "已完成",
         "partial": "已完成但有错误",
         "failed": "失败"
       },
-      "counts": "已导入 {imported} · 已匹配 {matched} · 已更新金额 {updated} · 排队中 {queued} · 已跳过 {skipped} · 失败 {failed}"
+      "counts": "已导入 {imported} · 已匹配 {matched} · 已更新金额 {updated} · 排队中 {queued} · 已跳过 {skipped} · 失败 {failed}",
+      "row_status": {
+        "imported": "已导入",
+        "deleted": "之后已删除",
+        "queued": "等待审核",
+        "skipped": "已跳过"
+      }
     },
     "queue": {
       "header": "导入队列",

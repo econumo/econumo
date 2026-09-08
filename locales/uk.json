@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Імпорт та експорт",
-      "header": "Імпорт та експорт"
+      "header": "Імпорт та експорт",
+      "sync_all": "Синхронізувати банківські підключення",
+      "history": "Історія імпорту",
+      "sync_all_done": "імпортовано: {imported}, зіставлено: {matched}, помилок: {failed}"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -625,13 +628,25 @@
       }
     },
     "runs": {
+      "header": "Історія імпорту",
+      "detail_header": "Імпорт",
+      "history_link": "Історія імпорту",
+      "empty": "Імпортів поки немає.",
+      "rows_header": "Транзакції",
+      "rows_empty": "Цей імпорт не торкнувся жодної транзакції.",
       "status": {
         "running": "Виконується",
         "completed": "Завершено",
         "partial": "Завершено з помилками",
         "failed": "Помилка"
       },
-      "counts": "імпортовано: {imported} · зіставлено: {matched} · оновлено сум: {updated} · у черзі: {queued} · пропущено: {skipped} · помилок: {failed}"
+      "counts": "імпортовано: {imported} · зіставлено: {matched} · оновлено сум: {updated} · у черзі: {queued} · пропущено: {skipped} · помилок: {failed}",
+      "row_status": {
+        "imported": "Імпортована",
+        "deleted": "Видалена пізніше",
+        "queued": "Чекає на перевірку",
+        "skipped": "Пропущена"
+      }
     },
     "queue": {
       "header": "Черга імпорту",

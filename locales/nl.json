@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Import & export",
-      "header": "Import & export"
+      "header": "Import & export",
+      "sync_all": "Bankverbindingen synchroniseren",
+      "history": "Importgeschiedenis",
+      "sync_all_done": "{imported} geïmporteerd, {matched} gematcht, {failed} mislukt"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -625,13 +628,25 @@
       }
     },
     "runs": {
+      "header": "Importgeschiedenis",
+      "detail_header": "Import",
+      "history_link": "Importgeschiedenis",
+      "empty": "Nog geen imports.",
+      "rows_header": "Transacties",
+      "rows_empty": "Deze import raakte geen transacties.",
       "status": {
         "running": "Bezig",
         "completed": "Voltooid",
         "partial": "Voltooid met fouten",
         "failed": "Mislukt"
       },
-      "counts": "{imported} geïmporteerd · {matched} gematcht · {updated} bedragen bijgewerkt · {queued} in wachtrij · {skipped} overgeslagen · {failed} mislukt"
+      "counts": "{imported} geïmporteerd · {matched} gematcht · {updated} bedragen bijgewerkt · {queued} in wachtrij · {skipped} overgeslagen · {failed} mislukt",
+      "row_status": {
+        "imported": "Geïmporteerd",
+        "deleted": "Sindsdien verwijderd",
+        "queued": "Wacht op controle",
+        "skipped": "Overgeslagen"
+      }
     },
     "queue": {
       "header": "Importwachtrij",
