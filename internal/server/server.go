@@ -51,6 +51,9 @@ import (
 	labelmcp "github.com/econumo/econumo/internal/label/mcp"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
+	appoauth "github.com/econumo/econumo/internal/oauth"
+	handleroauth "github.com/econumo/econumo/internal/oauth/api"
+	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
@@ -188,6 +191,16 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
+
+	oauthProviders, err := appoauth.ProvidersFromConfig(cfg, nil)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
+		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, cfg.AppURL, cfg.AllowRegistration)
+	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
+	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -338,6 +351,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
+		handleroauth.RegisterAPI(oauthHandlers, authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
 		handlerlabel.RegisterAPI(labelHandlers, authn),
