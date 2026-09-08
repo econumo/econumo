@@ -14,12 +14,12 @@ interface RecoveryForm {
   password: string
 }
 
-export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RecoveryDialog({ open, onClose, email }: { open: boolean; onClose: () => void; email?: string }) {
   const { t } = useTranslation()
   const [isCodeSent, setIsCodeSent] = useState(false)
   const remind = useRemindPassword()
   const reset = useResetPassword()
-  const form = useForm<RecoveryForm>({ mode: 'onTouched', defaultValues: { email: '', code: '', password: '' } })
+  const form = useForm<RecoveryForm>({ mode: 'onTouched', defaultValues: { email: email ?? '', code: '', password: '' } })
   const { register, handleSubmit, formState: { errors } } = form
 
   const sendCode = handleSubmit(async ({ email }) => {
@@ -54,8 +54,8 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
             className="h-11"
             id="recovery-email"
             type="email"
-            disabled={isCodeSent}
-            autoFocus={!isCodeSent}
+            disabled={isCodeSent || email !== undefined}
+            autoFocus={!isCodeSent && email === undefined}
             {...register('email', {
               validate: {
                 required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),

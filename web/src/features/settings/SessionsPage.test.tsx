@@ -13,6 +13,7 @@ const current = {
   createdAt: '2026-07-01 10:00:00',
   lastUsedAt: '2026-07-10 09:00:00',
   isCurrent: true,
+  provider: '',
 }
 const other = {
   id: '01890000-0000-7000-8000-00000000c002',
@@ -20,6 +21,7 @@ const other = {
   createdAt: '2026-07-02 10:00:00',
   lastUsedAt: '2026-07-09 09:00:00',
   isCurrent: false,
+  provider: '',
 }
 
 function mockViewport() {
@@ -121,6 +123,16 @@ it('signs out other devices', async () => {
   const confirm = await screen.findAllByRole('button', { name: 'Sign out' })
   await user.click(confirm[confirm.length - 1])
   await waitFor(() => expect(called).toBe(true))
+})
+
+it('shows a "via {provider}" badge for a session opened through OAuth', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-session-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ ...current, provider: 'google' }, other] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('via Google')).toBeInTheDocument()
 })
 
 it('securityFormat helpers parse UA and relative time', () => {

@@ -62,6 +62,11 @@ export function SessionsPage() {
               <span className="text-xs text-muted-foreground">
                 {t('user.page.settings.profile.sessions.last_active')}{' '}
                 {relativeTime(session.lastUsedAt, { lang: i18n.language, justNow: t('common.date.just_now') })}
+                {session.provider ? (
+                  <span className="ml-2">
+                    {t('user.page.settings.profile.sessions.via', { provider: t(`auth.oauth.provider_name.${session.provider}`) })}
+                  </span>
+                ) : null}
               </span>
             </div>
             <Button
