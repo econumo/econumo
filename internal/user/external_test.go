@@ -134,3 +134,41 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 		t.Fatalf("google logout %+v", out2)
 	}
 }
+
+func TestRevokeAllSessionsAndMarkEmailVerified(t *testing.T) {
+	db := dbtest.New(t)
+	s, repo, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	u, err := s.Register(ctx, model.RegisterRequest{Name: "Eve", Email: "eve@example.test", Password: "secret123"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	uid := vo.MustParseId(u.User.Id)
+	first, err := s.Login(ctx, model.LoginRequest{Username: "eve@example.test", Password: "secret123"}, "ua", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	pat, err := s.CreatePersonalToken(ctx, uid, model.CreatePersonalTokenRequest{Name: "ci"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := s.RevokeAllSessions(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, _, err := s.Authenticate(ctx, first.Token); err == nil {
+		t.Fatal("every session must be revoked")
+	}
+	if _, _, _, err := s.Authenticate(ctx, pat.Token); err != nil {
+		t.Fatalf("personal tokens survive: %v", err)
+	}
+
+	if err := s.MarkEmailVerified(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+	stored, err := repo.GetByID(ctx, uid)
+	if err != nil || !stored.EmailVerified {
+		t.Fatalf("email must be verified: %+v %v", stored, err)
+	}
+}

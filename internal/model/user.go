@@ -148,7 +148,11 @@ func NewPasswordlessUser(id vo.Id, encryptedEmail, name, avatar string, now time
 	return u
 }
 
-func (u *User) HasPassword() bool { return u.Algorithm != AlgorithmNone }
+func (u *User) HasPassword() bool { return HasPasswordAlgorithm(u.Algorithm) }
+
+// HasPasswordAlgorithm answers the same question for callers that hold only the
+// algorithm column (read-model rows), so the rule lives in exactly one place.
+func HasPasswordAlgorithm(alg string) bool { return alg != AlgorithmNone }
 
 // Option returns the option with the given name, or nil if absent.
 func (u *User) Option(name string) *UserOption {

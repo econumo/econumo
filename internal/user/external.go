@@ -67,6 +67,23 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 	return err
 }
 
+// RevokeAllSessions ends every session of the user, PATs untouched — the
+// reset-password cascade, reused by the oauth feature when a provider takes
+// over an account that was pre-registered with a password.
+func (s *Service) RevokeAllSessions(ctx context.Context, userID vo.Id) error {
+	return s.revokeSessions(ctx, userID, vo.Id{}, s.clock.Now())
+}
+
+// MarkEmailVerified records proof of mailbox ownership established elsewhere
+// (a provider's verified email claim).
+func (s *Service) MarkEmailVerified(ctx context.Context, userID vo.Id) error {
+	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.MarkEmailVerified(now)
+		return nil
+	})
+	return err
+}
+
 func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
 	return s.repo.GetByID(ctx, id)
 }
