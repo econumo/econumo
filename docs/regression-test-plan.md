@@ -301,12 +301,23 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       rate or a deleted account, both of which queue their events instead):
       the run shows "Completed with errors", the failing account's error is
       listed under the run summary, other accounts' rows still import.
-- [ ] Bridge unreachable / credentials revoked: "Sync now" toasts the server's
-      error message, the run list shows a Failed run, and the failed state
+- [ ] Bridge unreachable: "Sync now" toasts the server's "try again in a few
+      minutes" message, the run list shows a Failed run, and the failed state
       stays on the page until the next successful sync.
+- [ ] Access URL revoked in the bridge (or the connection deleted there): "Sync
+      now" toasts the "access URL is no longer valid, reconnect" message rather
+      than the unreachable one, so the user reconnects instead of retrying.
+- [ ] A run where some bridge rows cannot be parsed reports "Completed with
+      errors" with a non-zero failed count and no success toast (never a clean
+      "Completed"); the rows are listed on the queue page's needs-attention
+      list.
+- [ ] Run detail names each row's bank account the way the run summary does
+      (the bank's own account name, falling back to the bridge id) — never a
+      bare `ACT-…` id when the source's accounts are known. 📱
 - [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
       source; with one and a locked device it navigates to Settings →
-      SimpleFIN; unlocked it syncs every pull source and toasts the totals. 📱
+      SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
+      row is disabled (not clickable, dimmed) while the syncs run. 📱
 - [ ] Settings → Data → Import history lists runs newest first with status,
       counts and errors; a run opens its detail; a transaction deleted after
       import shows struck-through with "Deleted since"; queued rows read

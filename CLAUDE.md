@@ -506,6 +506,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
   fails at boot. Read into `imports.MatcherConfig`; the matcher itself is a pure function of
   `(event, candidates, config)`.
+- `ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS` — lift the SimpleFIN client's SSRF guard (strict
+  boolean, default `false`, malformed fails at boot). With the guard on, the client resolves
+  every bridge host and refuses any address that is not global unicast (loopback, RFC1918,
+  link-local, unique-local, multicast, unspecified) — the setup token and the access URL are
+  user-supplied, so without it the server fetches whatever its own network can reach. A
+  self-hosted bridge on a LAN needs it on.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -679,7 +685,9 @@ In the distroless image these run via the binary directly, e.g.
 ## API conventions
 
 - **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
-  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
+  `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
+  travels in the body — it must never reach a query string (logs, history, referrers).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
