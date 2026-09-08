@@ -114,3 +114,22 @@ servers" — standard for self-hosting clients.
   sign in without registering.
 - Release builds: `ECONUMO_VERSION=vX.Y.Z make mobile-sync`, then archive
   from Xcode (iOS) / build an AAB from Android Studio.
+
+## Sign-in with Google / Apple / SSO
+
+OAuth sign-in opens the backend's authorization URL in the system browser
+(via `@capacitor/browser`). The browser performs the OAuth handshake with the
+provider (Google, Apple, etc.) and the provider redirects back to the app via
+the `econumo://` URL scheme, registered in both native projects:
+
+- **iOS** (`Info.plist`): `CFBundleURLTypes` with scheme `econumo`.
+- **Android** (`AndroidManifest.xml`): VIEW/BROWSABLE intent filter on
+  `MainActivity` with scheme `econumo` and host `oauth`.
+
+The SPA dispatch handler (`web/src/lib/deepLinks.ts`) parses the
+`econumo://oauth?handoff=…|linked=…|error=…` callback and resolves the
+handoff token into a session or handles errors.
+
+The backend's OAuth callback URL is always its own `/api/v1/oauth/callback-<provider>`
+(Google, Apple, etc.) — no per-backend configuration needed. App Store rule 4.8
+requires the cloud backend to enable Apple sign-in whenever Google is enabled.
