@@ -807,6 +807,8 @@ definitions:
         type: string
       email:
         type: string
+      hasPassword:
+        type: boolean
       id:
         type: string
       name:
@@ -932,6 +934,11 @@ definitions:
         type: array
       item:
         $ref: '#/definitions/model.TransactionResult'
+    type: object
+  model.ExchangeHandoffRequest:
+    properties:
+      code:
+        type: string
     type: object
   model.FiltersResult:
     properties:
@@ -1114,6 +1121,15 @@ definitions:
     type: object
   model.HideFolderResult:
     type: object
+  model.IdentityItem:
+    properties:
+      createdAt:
+        type: string
+      email:
+        type: string
+      provider:
+        type: string
+    type: object
   model.ImportResult:
     properties:
       errors:
@@ -1181,6 +1197,10 @@ definitions:
     type: object
   model.LogoutResult:
     properties:
+      logoutUrl:
+        type: string
+      provider:
+        type: string
       result:
         type: string
     type: object
@@ -1576,6 +1596,13 @@ definitions:
       nextPaymentAt:
         type: string
     type: object
+  model.ProviderItem:
+    properties:
+      id:
+        type: string
+      name:
+        type: string
+    type: object
   model.RecurringTransactionResult:
     properties:
       accountId:
@@ -1733,6 +1760,8 @@ definitions:
         type: boolean
       lastUsedAt:
         type: string
+      provider:
+        type: string
       userAgent:
         description: '"" when the login sent no User-Agent'
         type: string
@@ -1840,6 +1869,18 @@ definitions:
         items:
           $ref: '#/definitions/model.TagResult'
         type: array
+    type: object
+  model.StartOAuthRequest:
+    properties:
+      client:
+        type: string
+      provider:
+        type: string
+    type: object
+  model.StartOAuthResult:
+    properties:
+      url:
+        type: string
     type: object
   model.StructureResult:
     properties:
@@ -1974,6 +2015,13 @@ definitions:
         type: string
     type: object
   model.UnarchiveTagResult:
+    type: object
+  model.UnlinkIdentityRequest:
+    properties:
+      provider:
+        type: string
+    type: object
+  model.UnlinkIdentityResult:
     type: object
   model.UpdateAccountRequest:
     properties:
@@ -5560,6 +5608,285 @@ paths:
       summary: Update a label
       tags:
       - Label
+  /api/v1/oauth/callback-apple:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      parameters:
+      - description: Authorization code
+        in: formData
+        name: code
+        type: string
+      - description: State
+        in: formData
+        name: state
+        required: true
+        type: string
+      - description: Apple's one-time user JSON
+        in: formData
+        name: user
+        type: string
+      - description: Provider error
+        in: formData
+        name: error
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: Apple callback
+      tags:
+      - OAuth
+  /api/v1/oauth/callback-google:
+    get:
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: State
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Provider error
+        in: query
+        name: error
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: Google callback
+      tags:
+      - OAuth
+  /api/v1/oauth/callback-oidc:
+    get:
+      parameters:
+      - description: Authorization code
+        in: query
+        name: code
+        type: string
+      - description: State
+        in: query
+        name: state
+        required: true
+        type: string
+      - description: Provider error
+        in: query
+        name: error
+        type: string
+      responses:
+        "302":
+          description: Found
+      summary: Custom OIDC callback
+      tags:
+      - OAuth
+  /api/v1/oauth/exchange-handoff:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Handoff code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ExchangeHandoffRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Raw {token,user} body — NOT wrapped in the standard envelope
+            (same shape as login-user).
+          schema:
+            $ref: '#/definitions/model.LoginResult'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Exchange a sign-in handoff for a session
+      tags:
+      - OAuth
+  /api/v1/oauth/get-identity-list:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.IdentityItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List linked accounts
+      tags:
+      - OAuth
+  /api/v1/oauth/get-provider-list:
+    get:
+      description: Enabled OAuth/OIDC providers in display order (google, apple, oidc).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ProviderItem'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: List sign-in providers
+      tags:
+      - OAuth
+  /api/v1/oauth/start-link:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Provider and client
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StartOAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.StartOAuthResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Start linking a provider to the current account
+      tags:
+      - OAuth
+  /api/v1/oauth/start-login:
+    post:
+      consumes:
+      - application/json
+      description: Creates the authorization request and returns the provider URL
+        to navigate to.
+      parameters:
+      - description: Provider and client
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.StartOAuthRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.StartOAuthResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      summary: Start a provider sign-in
+      tags:
+      - OAuth
+  /api/v1/oauth/unlink-identity:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Provider
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UnlinkIdentityRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UnlinkIdentityResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unlink a provider from the current account
+      tags:
+      - OAuth
   /api/v1/payee/archive-payee:
     post:
       consumes:
