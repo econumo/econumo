@@ -68,7 +68,7 @@ func TestAuthURL_DiscoverErrorAndQuerySeparator(t *testing.T) {
 	withQuery := discoveryServer(t, "", http.StatusOK)
 	// Replace with a body carrying an authorization_endpoint that already has a query string.
 	withQuery.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"authorization_endpoint":"` + withQuery.URL + `/authorize?foo=bar","token_endpoint":"` + withQuery.URL + `/token","jwks_uri":"` + withQuery.URL + `/jwks"}`))
+		_, _ = w.Write([]byte(`{"issuer":"` + withQuery.URL + `","authorization_endpoint":"` + withQuery.URL + `/authorize?foo=bar","token_endpoint":"` + withQuery.URL + `/token","jwks_uri":"` + withQuery.URL + `/jwks"}`))
 	})
 	raw, err := oidc.NewClient(issuerFor(withQuery.URL), nil).AuthURL(ctx, "s", "n", "c", "https://a/cb")
 	if err != nil {
@@ -91,7 +91,7 @@ func TestExchange_Errors(t *testing.T) {
 	good.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
-			_, _ = w.Write([]byte(`{"authorization_endpoint":"` + good.URL + `/authorize","token_endpoint":"` + good.URL + `/token","jwks_uri":"` + good.URL + `/jwks"}`))
+			_, _ = w.Write([]byte(`{"issuer":"` + good.URL + `","authorization_endpoint":"` + good.URL + `/authorize","token_endpoint":"` + good.URL + `/token","jwks_uri":"` + good.URL + `/jwks"}`))
 		case "/token":
 			_, _ = w.Write([]byte(`not json`))
 		}
@@ -111,7 +111,7 @@ func TestExchange_Errors(t *testing.T) {
 	noIDToken.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
-			_, _ = w.Write([]byte(`{"authorization_endpoint":"` + noIDToken.URL + `/authorize","token_endpoint":"` + noIDToken.URL + `/token","jwks_uri":"` + noIDToken.URL + `/jwks"}`))
+			_, _ = w.Write([]byte(`{"issuer":"` + noIDToken.URL + `","authorization_endpoint":"` + noIDToken.URL + `/authorize","token_endpoint":"` + noIDToken.URL + `/token","jwks_uri":"` + noIDToken.URL + `/jwks"}`))
 		case "/token":
 			_, _ = w.Write([]byte(`{"access_token":"at"}`))
 		}
@@ -122,7 +122,7 @@ func TestExchange_Errors(t *testing.T) {
 
 	badTokenURL := discoveryServer(t, "", http.StatusOK)
 	badTokenURL.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"authorization_endpoint":"` + badTokenURL.URL + `/authorize","token_endpoint":"http://example.test/\ninvalid","jwks_uri":"` + badTokenURL.URL + `/jwks"}`))
+		_, _ = w.Write([]byte(`{"issuer":"` + badTokenURL.URL + `","authorization_endpoint":"` + badTokenURL.URL + `/authorize","token_endpoint":"http://example.test/\ninvalid","jwks_uri":"` + badTokenURL.URL + `/jwks"}`))
 	})
 	if _, err := oidc.NewClient(issuerFor(badTokenURL.URL), nil).Exchange(ctx, "code", "v", "https://a/cb", time.Now()); err == nil {
 		t.Error("invalid token endpoint URL must fail")
@@ -145,7 +145,7 @@ func TestUserInfo_Errors(t *testing.T) {
 
 	noUserInfo := discoveryServer(t, "", http.StatusOK)
 	noUserInfo.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"authorization_endpoint":"` + noUserInfo.URL + `/authorize","token_endpoint":"` + noUserInfo.URL + `/token","jwks_uri":"` + noUserInfo.URL + `/jwks"}`))
+		_, _ = w.Write([]byte(`{"issuer":"` + noUserInfo.URL + `","authorization_endpoint":"` + noUserInfo.URL + `/authorize","token_endpoint":"` + noUserInfo.URL + `/token","jwks_uri":"` + noUserInfo.URL + `/jwks"}`))
 	})
 	if _, err := oidc.NewClient(issuerFor(noUserInfo.URL), nil).UserInfo(ctx, "at"); err == nil {
 		t.Error("missing userinfo endpoint must fail")
@@ -155,7 +155,7 @@ func TestUserInfo_Errors(t *testing.T) {
 	unauthorized.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
-			_, _ = w.Write([]byte(`{"authorization_endpoint":"` + unauthorized.URL + `/authorize","token_endpoint":"` + unauthorized.URL + `/token","jwks_uri":"` + unauthorized.URL + `/jwks","userinfo_endpoint":"` + unauthorized.URL + `/userinfo"}`))
+			_, _ = w.Write([]byte(`{"issuer":"` + unauthorized.URL + `","authorization_endpoint":"` + unauthorized.URL + `/authorize","token_endpoint":"` + unauthorized.URL + `/token","jwks_uri":"` + unauthorized.URL + `/jwks","userinfo_endpoint":"` + unauthorized.URL + `/userinfo"}`))
 		case "/userinfo":
 			w.WriteHeader(http.StatusUnauthorized)
 		}
@@ -168,7 +168,7 @@ func TestUserInfo_Errors(t *testing.T) {
 	badJSON.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
-			_, _ = w.Write([]byte(`{"authorization_endpoint":"` + badJSON.URL + `/authorize","token_endpoint":"` + badJSON.URL + `/token","jwks_uri":"` + badJSON.URL + `/jwks","userinfo_endpoint":"` + badJSON.URL + `/userinfo"}`))
+			_, _ = w.Write([]byte(`{"issuer":"` + badJSON.URL + `","authorization_endpoint":"` + badJSON.URL + `/authorize","token_endpoint":"` + badJSON.URL + `/token","jwks_uri":"` + badJSON.URL + `/jwks","userinfo_endpoint":"` + badJSON.URL + `/userinfo"}`))
 		case "/userinfo":
 			_, _ = w.Write([]byte(`not json`))
 		}
@@ -187,7 +187,7 @@ func TestEndSessionURL_Errors(t *testing.T) {
 
 	withQuery := discoveryServer(t, "", http.StatusOK)
 	withQuery.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"authorization_endpoint":"` + withQuery.URL + `/authorize","token_endpoint":"` + withQuery.URL + `/token","jwks_uri":"` + withQuery.URL + `/jwks","end_session_endpoint":"` + withQuery.URL + `/end-session?foo=bar"}`))
+		_, _ = w.Write([]byte(`{"issuer":"` + withQuery.URL + `","authorization_endpoint":"` + withQuery.URL + `/authorize","token_endpoint":"` + withQuery.URL + `/token","jwks_uri":"` + withQuery.URL + `/jwks","end_session_endpoint":"` + withQuery.URL + `/end-session?foo=bar"}`))
 	})
 	raw, err := oidc.NewClient(issuerFor(withQuery.URL), nil).EndSessionURL(ctx, "idt", "https://a/")
 	if err != nil {

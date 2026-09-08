@@ -76,3 +76,13 @@ func TestAppleClientSecret(t *testing.T) {
 		t.Fatal("a non-ECDSA key must fail")
 	}
 }
+
+func TestParseApplePrivateKey_RejectsNonP256Curve(t *testing.T) {
+	key, _ := ecdsa.GenerateKey(elliptic.P384(), rand.Reader)
+	der, _ := x509.MarshalPKCS8PrivateKey(key)
+	pemText := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: der}))
+	_, err := ParseApplePrivateKey(pemText)
+	if err == nil || !strings.Contains(err.Error(), "P-256") {
+		t.Fatalf("a P-384 key must be rejected, got %v", err)
+	}
+}

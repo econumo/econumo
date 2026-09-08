@@ -2,6 +2,7 @@ package oidc
 
 import (
 	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
@@ -26,6 +27,11 @@ func ParseApplePrivateKey(pemText string) (*ecdsa.PrivateKey, error) {
 	ec, ok := key.(*ecdsa.PrivateKey)
 	if !ok {
 		return nil, errors.New("oidc: apple private key is not an ECDSA key")
+	}
+	// AppleClientSecret signs ES256, which is defined over P-256 only; a key on
+	// any other curve would produce a signature Apple rejects at exchange time.
+	if ec.Curve != elliptic.P256() {
+		return nil, errors.New("oidc: apple private key must use the P-256 curve")
 	}
 	return ec, nil
 }

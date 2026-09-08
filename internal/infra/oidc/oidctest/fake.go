@@ -42,6 +42,9 @@ type Fake struct {
 	NoUserInfo         bool
 	EndSession         bool
 	RequirePKCE        bool
+	// DiscoveryIssuer overrides the `issuer` field of the discovery document,
+	// for testing the client's issuer-consistency check.
+	DiscoveryIssuer string
 
 	mu       sync.Mutex
 	key      *rsa.PrivateKey
@@ -147,8 +150,12 @@ func (f *Fake) record(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) discovery(w http.ResponseWriter, r *http.Request) {
 	f.note(r)
+	issuer := f.Server.URL
+	if f.DiscoveryIssuer != "" {
+		issuer = f.DiscoveryIssuer
+	}
 	d := map[string]string{
-		"issuer": f.Server.URL, "authorization_endpoint": f.Server.URL + "/authorize",
+		"issuer": issuer, "authorization_endpoint": f.Server.URL + "/authorize",
 		"token_endpoint": f.Server.URL + "/token", "jwks_uri": f.Server.URL + "/jwks",
 	}
 	if !f.NoUserInfo {

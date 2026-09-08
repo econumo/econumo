@@ -101,6 +101,12 @@ func (c *Client) Discover(ctx context.Context) (Discovery, error) {
 	if d.AuthorizationEndpoint == "" || d.TokenEndpoint == "" || d.JWKSURI == "" {
 		return Discovery{}, errors.New("oidc: discovery document lacks required endpoints")
 	}
+	// A document served from the configured URL but claiming another issuer is
+	// either a misconfiguration or a redirect to a foreign IdP; its endpoints
+	// must not be trusted, and its ID tokens would pass the issuer check below.
+	if iss := strings.TrimSuffix(d.Issuer, "/"); iss != c.issuer.IssuerURL {
+		return Discovery{}, fmt.Errorf("oidc: discovery issuer %q does not match the configured issuer %q", d.Issuer, c.issuer.IssuerURL)
+	}
 	c.mu.Lock()
 	c.disc = &d
 	c.mu.Unlock()

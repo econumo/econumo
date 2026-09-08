@@ -80,3 +80,12 @@ func TestClient_FormPostAndNoPKCE(t *testing.T) {
 		t.Fatalf("apple auth url %s", raw)
 	}
 }
+
+func TestDiscover_RejectsIssuerMismatch(t *testing.T) {
+	f := oidctest.New(t)
+	f.DiscoveryIssuer = "https://evil.example.test"
+	_, err := oidc.NewClient(f.Issuer("oidc", false), nil).Discover(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "does not match the configured issuer") {
+		t.Fatalf("a discovery document claiming another issuer must be rejected, got %v", err)
+	}
+}
