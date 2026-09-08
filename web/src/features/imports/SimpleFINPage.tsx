@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { InfoBox } from '@/components/InfoBox'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { apiErrorMessage } from '@/lib/apiError'
-import { formatDateTime, parseDateTime } from '@/lib/datetime'
+import { formatDate, formatDateTime, parseDateTime } from '@/lib/datetime'
 import { decryptCredential } from '@/lib/importCrypto'
 import { ImportCards } from './ImportCards'
 import { ImportRunSummary } from './ImportRunSummary'
@@ -21,14 +21,10 @@ import { useExternalAccounts, useImportRuns, useImportSources, useSyncImportSour
 const OVERLAP_DAYS = 3
 const FIRST_SYNC_DAYS = 30
 
-function isoDay(d: Date): string {
-  return d.toISOString().slice(0, 10)
-}
-
 function defaultStartDate(source: ImportSourceDto): string {
   const from = source.lastSyncedAt ? parseDateTime(source.lastSyncedAt) : new Date()
   from.setDate(from.getDate() - (source.lastSyncedAt ? OVERLAP_DAYS : FIRST_SYNC_DAYS))
-  return isoDay(from)
+  return formatDate(from)
 }
 
 export function SimpleFINPage() {
