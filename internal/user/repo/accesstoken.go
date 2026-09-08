@@ -91,6 +91,7 @@ func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 		Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Provider: row.Provider, IDToken: row.IDToken,
 	}
 }
 

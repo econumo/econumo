@@ -40,7 +40,7 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
-       t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
+       t.created_at, t.last_used_at, t.expires_at, t.revoked_at, t.provider, t.id_token,
        u.access_level, u.access_until
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id
@@ -58,6 +58,8 @@ type GetAccessTokenByHashRow struct {
 	LastUsedAt  time.Time
 	ExpiresAt   *time.Time
 	RevokedAt   *time.Time
+	Provider    *string
+	IDToken     *string
 	AccessLevel string
 	AccessUntil *time.Time
 }
@@ -80,6 +82,8 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Provider,
+		&i.IDToken,
 		&i.AccessLevel,
 		&i.AccessUntil,
 	)
@@ -87,7 +91,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE id = ?
 `
@@ -106,14 +110,16 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Provider,
+		&i.IDToken,
 	)
 	return i, err
 }
 
 const insertAccessToken = `-- name: InsertAccessToken :exec
 
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertAccessTokenParams struct {
@@ -127,6 +133,8 @@ type InsertAccessTokenParams struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time
 	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
 }
 
 // Access-token queries (access_tokens): login sessions + personal access
@@ -145,12 +153,14 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
 	)
 	return err
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id
@@ -181,6 +191,8 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Provider,
+			&i.IDToken,
 		); err != nil {
 			return nil, err
 		}
