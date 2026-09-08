@@ -28,8 +28,10 @@ OAuth 2.0 / OIDC **relying party** (client) of an external issuer.
   callback on the backend, the backend resolves the identity and redirects the
   browser back to the SPA (web) or to the `econumo://` scheme (app) with a
   short-lived single-use **handoff code**. The client exchanges the handoff for
-  the ordinary `{token, user}` login response. The session token never appears
-  in a URL.
+  the ordinary `{token, user}` login response, presenting the **flow secret**
+  the `start-*` call handed it: the flow is bound to the client that began it,
+  so a forged callback cannot log a victim into an attacker's account. The
+  session token never appears in a URL.
 - OAuth state is stored server-side (a table), not in cookies: Apple's
   cross-site `form_post` carries no SameSite cookie and the app's browser sheet
   shares no storage with the SPA.
@@ -124,6 +126,7 @@ slot orphans nothing but also does not migrate subjects (documented).
 | `provider` TEXT | |
 | `nonce` TEXT | 32 random bytes base64url; compared to the ID token `nonce` |
 | `code_verifier` TEXT | PKCE verifier (empty for Apple, §5.4) |
+| `flow_hash` TEXT | `hex(sha256(flow))`; the flow secret returned to the initiating client |
 | `client` TEXT | `web` / `app`; selects the redirect target |
 | `intent` TEXT | `login` / `link` |
 | `link_user_id` TEXT NULL | the caller for `intent = link` |
@@ -140,6 +143,7 @@ tokens at login.
 | `code_hash` TEXT PK | `hex(sha256(code))`; `code` is 32 random bytes base64url |
 | `user_id` TEXT FK → users(id) ON DELETE CASCADE | resolved user |
 | `provider` TEXT | recorded on the session for analytics/logout |
+| `flow_hash` TEXT | copied from the state row; the exchange must present the matching secret |
 | `id_token` TEXT NULL | the raw ID token, custom slot only (§8) |
 | `created_at`, `expires_at` DATETIME | TTL 60 seconds |
 
@@ -247,11 +251,11 @@ Routes under `/api/v1/oauth/`, registered in `internal/oauth/api/routes.go`
 | Route | Auth | Purpose |
 |---|---|---|
 | `GET get-provider-list` | public | `[{id, name}]`, fixed order google, apple, oidc; only enabled slots; `name` is `Google`, `Apple`, or `ECONUMO_OIDC_NAME`. |
-| `POST start-login` | public | Body `{provider, client}`. Creates a state row, returns `{url}`. |
-| `POST start-link` | authed, 402 allowlist | Same with `intent = link` and the caller as `link_user_id`. |
+| `POST start-login` | public | Body `{provider, client}`. Creates a state row, returns `{url, flow}` — `flow` is the per-flow secret the client stores and presents at `exchange-handoff`. |
+| `POST start-link` | authed, 402 allowlist | Same with `intent = link` and the caller as `link_user_id`. A flow secret is minted too (uniform row shape); the link flow ends on a redirect and never presents it. |
 | `GET callback-google`, `GET callback-oidc` | public | `code` + `state` (or `error`) in the query. Respond 302. |
 | `POST callback-apple` | public | Apple's `form_post`: `code`, `state`, `id_token`, `user` as form fields. Responds 302. |
-| `POST exchange-handoff` | public | Body `{code}`. Returns the raw `{token, user}` of login (no envelope; the second such exception after login). |
+| `POST exchange-handoff` | public | Body `{code, flow}`, both required. Returns the raw `{token, user}` of login (no envelope; the second such exception after login). |
 | `GET get-identity-list` | authed | `[{provider, email, createdAt}]`. |
 | `POST unlink-identity` | authed, 402 allowlist | Body `{provider}`. |
 
@@ -295,9 +299,16 @@ Common prefix:
    `account_inactive`. Otherwise apply the email-drift rule below and mint a
    handoff.
 6. No identity, a user with that email exists (`lower(email)`): inactive →
-   `account_inactive`; else insert the identity, update nothing else, mint a
-   handoff. This is the auto-link; it is safe because step 4 guarantees the
-   email is verified or trusted.
+   `account_inactive`; else insert the identity and mint a handoff. This is the
+   auto-link. Step 4 proves that whoever is signing in owns the address — but
+   it says nothing about whoever set that account's password, who may never
+   have proved it (registration does not always verify). So when the account
+   **has** a password the auto-link also revokes every session of that account
+   and marks its email verified, exactly as `reset-password` does: the mailbox
+   owner is the account owner. A passwordless account was created through a
+   provider, so its owner already proved the address and keeps their sessions.
+   The insert and the eviction share one transaction — a half-applied link
+   would leave the eviction undone while step 5 signs the attacker straight in.
 7. No user: registration disabled → `registration_disabled`. Else provision
    (§7) with the email marked verified, insert the identity, mint a handoff.
 
@@ -332,18 +343,27 @@ reassignment.
 |---|---|---|
 | login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `econumo://oauth?handoff=<code>` |
 | link success | `<ECONUMO_URL>/settings/profile/linked-accounts?linked=<provider>` | `econumo://oauth?linked=<provider>` |
+| link error | `<ECONUMO_URL>/settings/profile/linked-accounts?oauthError=<code>` | `econumo://oauth?linkError=<code>` |
 | error | `<ECONUMO_URL>/login?oauthError=<code>` | `econumo://oauth?error=<code>` |
 
 The web handoff travels in the fragment so it never reaches server logs or
 `Referer` headers. Error codes are catalogue keys under `auth.oauth.errors.*`
 rendered by the SPA in the user's language: `denied`, `invalid_state`,
 `provider_error`, `email_required`, `email_unverified`,
-`registration_disabled`, `identity_taken`, `account_inactive`.
+`registration_disabled`, `identity_taken`, `account_inactive`. A failure whose
+state row named `intent = link` takes the link-error row: a signed-in user
+would never see a message rendered on the login page. The intent lives in the
+state row, so a failure BEFORE that row loads (unknown or expired state) has no
+choice but the web login page — see §15.
 
 ### 6.4 Handoff exchange
 
-Hash the code, load and delete the row, reject expired or missing with a coded
-401 `oauth.handoff_invalid`. Then, through the user-feature port: purge dead
+Hash the code, load and delete the row **in one transaction** (two concurrent
+exchanges must not both read it before either deletes it), reject expired or
+missing with a coded 401 `oauth.handoff_invalid`. Then compare
+`sha256(request.flow)` against the row's `flow_hash` in constant time and
+reject a mismatch with the same 401 — the row is already gone, so a wrong
+secret costs the caller the code too. Then, through the user-feature port: purge dead
 tokens, mint a session with the **exchanging request's** user agent (the real
 client, not the provider's browser sheet), stamp `provider` and `id_token` on
 the session row, best-effort persist the request language exactly as login
@@ -358,10 +378,13 @@ Otherwise delete the row. Sessions opened through that identity stay valid
 
 ### 6.6 Rate limiting
 
-No new per-key scope: nothing identifies the user before the provider answers,
-and the handoff is 256 random bits with a 60 s life. The existing global
-per-endpoint per-minute cap (`ECONUMO_RATE_LIMIT_GLOBAL`) covers every new
-public route.
+No new per-key scope: nothing identifies the caller before the provider
+answers, and the handoff is 256 random bits with a 60 s life. `start-login` and
+`start-link` do consult the limiter under a `oauth-start` scope registered with
+a per-key limit of `0` and called with an empty key, so only the global
+per-endpoint per-minute cap (`ECONUMO_RATE_LIMIT_GLOBAL`) applies — that call
+is what puts a bound on state-row creation. The same global cap covers every
+other new public route. A nil limiter (tests, CLI) disables the check.
 
 ### 6.7 Ports and wiring
 
@@ -450,20 +473,30 @@ to end it." Password sessions show nothing new.
   `?oauthError=<code>` renders next to the session-expired notice.
 - **Registration page**: same row when registration is allowed.
 - **Starting a flow**: `POST start-login {provider, client: isNativeApp() ? 'app' : 'web'}`,
-  then `location.assign(url)` on the web or the Capacitor Browser plugin
-  (already typed in `web/src/lib/externalLinks.ts`) in the app, which shows the
-  system browser sheet (embedded web views are blocked by Google).
-- **Return route** `/oauth/callback`: reads `handoff` from `location.hash`,
-  posts `exchange-handoff`, stores the token through the same path as
-  `useLogin` (clears the persisted query cache, `setToken`), fires the
-  analytics event, navigates to `/`. Spinner while pending; failure → `/login`
-  with the error. The fragment is cleared from history on arrival.
+  store the returned `flow` under `oauthFlow` — `sessionStorage` on the web
+  (scoped to the tab that started the flow), `localStorage` in the app (whose
+  browser sheet ends the WebView session) — then `location.assign(url)` on the
+  web or the Capacitor Browser plugin (already typed in
+  `web/src/lib/externalLinks.ts`) in the app, which shows the system browser
+  sheet (embedded web views are blocked by Google).
+- **Return route** `/oauth/callback`: reads `handoff` from `location.hash` and
+  takes (single use) the stored `oauthFlow`, posts `exchange-handoff {code,
+  flow}`, stores the token through the same path as `useLogin` (clears the
+  persisted query cache, `setToken`), fires the analytics event, navigates to
+  `/`. Spinner while pending. A missing handoff OR a missing flow secret →
+  `/login?oauthError=invalid_state` (this browser did not start the sign-in);
+  a failed exchange → `invalid_state` on 401 (the handoff itself), else
+  `provider_error`. The fragment is cleared from history on arrival.
 - **Settings → Linked accounts** (`/settings/profile/linked-accounts`, a row
   beside Sessions and API tokens in the profile page's Security group): list of identities
   (provider, email, linked date); "Link" for every enabled provider not yet
   linked (posts `start-link`, navigates); "Unlink" with confirmation, disabled
   with an explanation when the account has no password and one identity.
-  `?linked=<provider>` shows a success toast and refreshes the list.
+  `?linked=<provider>` shows a success toast and invalidates the identity list
+  (the link happened on the backend while the browser was away);
+  `?oauthError=<code>` renders the `auth.oauth.errors.*` message (falling back
+  to `provider_error`) and clears the parameter. The disabled Unlink button is
+  `aria-describedby` the hint that explains it.
 - **Profile**: the "Change password" row reads "Set a password" when
   `hasPassword` is false and opens the existing recovery dialog (sends the
   reset code) instead of the change-password form.
@@ -531,8 +564,8 @@ to end it." Password sessions show nothing new.
 - **apiparity**: scenarios and goldens for every new route; callback goldens
   cover the deterministic error redirects (Location normalised). The success
   callback needs a live issuer and is covered by the `internal/oauth` suite;
-  the guard's route count grows by eight. `enginecompare` picks them up.
-- **Middleware**: the two allowlisted routes pass the 402 rule; the five new
+  the guard's route count grows by nine. `enginecompare` picks them up.
+- **Middleware**: the two allowlisted routes pass the 402 rule; the six new
   public routes need no header.
 - **Config**: partial slots, missing `ECONUMO_URL`, bad issuer scheme, bad
   Apple key each fail at boot with the variable named.
@@ -598,3 +631,13 @@ Points the issue raises that this design answers differently, on purpose:
   admin-guide pages; the repo has no such guide structure.
 - **Redirect URI is derived**, not configured: one `ECONUMO_URL` drives every
   callback and the post-logout redirect.
+- **Login CSRF: every flow is bound to the initiating client** by a
+  server-issued flow secret (§4.2, §6.4). The callback carries no client
+  credential, so without it an attacker could complete a sign-in with their own
+  provider account and feed the resulting handoff to a victim's browser,
+  silently landing the victim in the attacker's account. A forged callback now
+  yields a handoff the victim's browser cannot redeem.
+- **An unknown or expired state always redirects to the web login page.** The
+  client (`web`/`app`) and the intent both live in the state row, so before it
+  loads there is nothing to route on — a link attempt whose state expired
+  reports on the login page rather than in Settings.

@@ -731,7 +731,12 @@ In the distroless image these run via the binary directly, e.g.
   identity, an auto-link by verified email, or (when `ECONUMO_ALLOW_REGISTRATION` is on) a
   new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
   handoff code the client exchanges for a normal session — never a token in a redirect URL
-  or server log. Identities live in `users_identities`, keyed by `(provider, subject)`.
+  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
+  on the web, `localStorage` in the app) that the client must present alongside the handoff:
+  the flow is bound to the client that began it, so a forged callback cannot log a victim
+  into an attacker's account. Auto-linking a provider to an account that already has a
+  password revokes that account's sessions and marks its email verified — the provider
+  proved the address, the password holder may never have. Identities live in `users_identities`, keyed by `(provider, subject)`.
   Every oauth-originated session stamps `provider` on the row (Google, Apple, and the custom
   OIDC slot alike); only the custom OIDC slot also stores `id_token`, since Google and Apple
   publish no end-session endpoint. `logout-user` returns a non-empty `logoutUrl` only for a

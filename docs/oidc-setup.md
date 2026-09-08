@@ -183,7 +183,16 @@ user database.
   confirmation step, because the provider already vouches that the email is
   verified. You'll be signed in to your existing account, and the provider
   now appears as a linked account under Settings → Profile → Linked
-  accounts.
+  accounts. If that account had a password, every one of its open sessions is
+  signed out (as a password reset does): the provider proved that whoever just
+  signed in owns the address, which is not something the password holder
+  necessarily ever proved.
+- **A sign-in can only be completed by the browser that started it.** The
+  "Continue with ..." button receives a one-flow secret from the server and
+  keeps it locally; the browser must present it together with the one-time
+  handoff code to receive a session. Starting a sign-in in one browser and
+  finishing it in another therefore fails with "The sign-in attempt expired or
+  was already used" — as does a sign-in link someone else hands you.
 - **An email the provider has not verified is always rejected**, even if it
   would otherwise match an existing account. This is what
   `ECONUMO_OIDC_TRUST_EMAIL` is for: some providers (see Cloudflare Access

@@ -100,7 +100,13 @@ navigation (single-pane vs sidebar).
 - [ ] Sign-in through a provider whose verified email matches an existing
       password account auto-links (no confirmation dialog) and signs into
       that account; the provider then appears under Settings → Profile →
-      Linked accounts.
+      Linked accounts. Any OTHER session of that account (a second browser
+      signed in with the password) is signed out by the link, and its personal
+      access tokens keep working.
+- [ ] Starting a provider sign-in in one browser and opening the returned
+      Econumo callback URL in a DIFFERENT browser (or a private window) fails
+      with "The sign-in attempt expired or was already used." — only the
+      browser that started the flow can complete it.
 - [ ] Sign-in with a provider that reports an unverified email is rejected
       with "The sign-in provider has not verified this email address."; no
       account created or linked.
@@ -109,6 +115,11 @@ navigation (single-pane vs sidebar).
       server. Sign in with an existing account first."
 - [ ] Cancelling at the provider (deny consent / close the flow) returns to
       Econumo showing "Sign-in was cancelled."
+- [ ] A FAILED link from Settings (e.g. linking a provider account already
+      linked to another Econumo user) returns to Settings → Profile → Linked
+      accounts with the error banner there ("This external account is already
+      linked to another Econumo account."), not to the login page; the banner
+      does not survive a reload. 📱 The app does the same via the deep link.
 - [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
       logging out redirects through the provider and back to `/login`.
 - [ ] Logging out of a Google/Apple session (or any provider in the app)
@@ -370,7 +381,8 @@ User C sees none of it.
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"
-      toast; unlinking a provider (with confirm dialog) removes it from the
+      toast AND the newly linked provider already in the list (no manual
+      reload); unlinking a provider (with confirm dialog) removes it from the
       list.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
