@@ -278,8 +278,10 @@ Common prefix:
 
 1. Provider `error` parameter present (user cancelled, consent denied) →
    redirect with `denied`. The state row is consumed.
-2. Load the state row by hash and **delete it**. Missing, expired, or a
-   provider mismatch → `invalid_state`.
+2. Load the state row by hash and **delete it**. The delete's affected-row
+   count decides the race: a presenter whose delete removed no row is
+   rejected, so a concurrent replay cannot both pass on either engine.
+   Missing, already consumed, expired, or a provider mismatch → `invalid_state`.
 3. Exchange the code with the stored verifier; verify the ID token against
    the stored nonce. Any failure → `provider_error` (details in the operation
    log only, never in the redirect). If the ID token lacks `email`, apply the
@@ -358,9 +360,12 @@ choice but the web login page — see §15.
 
 ### 6.4 Handoff exchange
 
-Hash the code, load and delete the row **in one transaction** (two concurrent
-exchanges must not both read it before either deletes it), reject expired or
-missing with a coded 401 `oauth.handoff_invalid`. Then compare
+Hash the code, load the row, then delete it. The DELETE's affected-row count
+decides the race: a presenter whose delete removed no row is rejected, so a
+concurrent replay cannot both pass on either engine — no explicit transaction
+is needed, since a `:execrows` delete is already atomic on both SQLite and
+PostgreSQL. Reject missing, raced (zero rows deleted), or expired with a
+coded 401 `oauth.handoff_invalid`. Then compare
 `sha256(request.flow)` against the row's `flow_hash` in constant time and
 reject a mismatch with the same 401 — the row is already gone, so a wrong
 secret costs the caller the code too. Then, through the user-feature port: purge dead

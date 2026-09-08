@@ -83,11 +83,14 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	if n, _ := states.DeleteExpired(ctx, now); n != 1 {
 		t.Fatalf("expired purge %d", n)
 	}
-	if err := states.Delete(ctx, "h1"); err != nil {
-		t.Fatal(err)
+	if n, err := states.Delete(ctx, "h1"); err != nil || n != 1 {
+		t.Fatalf("first delete %d %v", n, err)
 	}
 	if _, err := states.Get(ctx, "h1"); err == nil {
 		t.Fatal("deleted state must be gone")
+	}
+	if n, err := states.Delete(ctx, "h1"); err != nil || n != 0 {
+		t.Fatalf("second delete must affect no rows: %d %v", n, err)
 	}
 
 	handoffs := NewHandoffRepo(db.Engine, db.TX)
@@ -100,11 +103,14 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) || hg.FlowHash != "fh1" {
 		t.Fatalf("%+v %v", hg, err)
 	}
-	if err := handoffs.Delete(ctx, "c1"); err != nil {
-		t.Fatal(err)
+	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 1 {
+		t.Fatalf("first delete %d %v", n, err)
 	}
 	if _, err := handoffs.Get(ctx, "c1"); err == nil {
 		t.Fatal("deleted handoff must be gone")
+	}
+	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 0 {
+		t.Fatalf("second delete must affect no rows: %d %v", n, err)
 	}
 	old := &model.OAuthHandoff{CodeHash: "c2", UserID: uid, Provider: "google", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}
 	_ = handoffs.Insert(ctx, old)

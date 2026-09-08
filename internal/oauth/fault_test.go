@@ -16,6 +16,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/oidc"
 	"github.com/econumo/econumo/internal/model"
 	appoauth "github.com/econumo/econumo/internal/oauth"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -76,11 +77,17 @@ func (f faultIdentities) DeleteByUserProvider(ctx context.Context, userID vo.Id,
 type faultStates struct {
 	appoauth.States
 	delete error
+	// raced simulates a concurrent presenter who deleted the row first: the
+	// delete succeeds but reports zero rows affected.
+	raced bool
 }
 
-func (f faultStates) Delete(ctx context.Context, stateHash string) error {
+func (f faultStates) Delete(ctx context.Context, stateHash string) (int64, error) {
 	if f.delete != nil {
-		return f.delete
+		return 0, f.delete
+	}
+	if f.raced {
+		return 0, nil
 	}
 	return f.States.Delete(ctx, stateHash)
 }
@@ -90,6 +97,9 @@ type faultHandoffs struct {
 	insert error
 	get    error
 	delete error
+	// raced simulates a concurrent presenter who deleted the row first: the
+	// delete succeeds but reports zero rows affected.
+	raced bool
 }
 
 func (f faultHandoffs) Insert(ctx context.Context, h *model.OAuthHandoff) error {
@@ -106,9 +116,12 @@ func (f faultHandoffs) Get(ctx context.Context, codeHash string) (*model.OAuthHa
 	return f.Handoffs.Get(ctx, codeHash)
 }
 
-func (f faultHandoffs) Delete(ctx context.Context, codeHash string) error {
+func (f faultHandoffs) Delete(ctx context.Context, codeHash string) (int64, error) {
 	if f.delete != nil {
-		return f.delete
+		return 0, f.delete
+	}
+	if f.raced {
+		return 0, nil
 	}
 	return f.Handoffs.Delete(ctx, codeHash)
 }
@@ -288,6 +301,23 @@ func TestCallback_ConsumeState_DeleteFails(t *testing.T) {
 	}
 }
 
+// TestCallback_ConsumeState_DeleteRaced simulates a concurrent replay of the
+// same callback: the delete succeeds but reports zero rows because another
+// presenter's delete already removed the row. That must be rejected exactly
+// like an unknown state, not treated as success.
+func TestCallback_ConsumeState_DeleteRaced(t *testing.T) {
+	h := newHarness(t, false, true)
+	svc2 := newFaultService(h, h.users, h.ids, faultStates{States: h.states, raced: true}, h.hands, true)
+	res, err := svc2.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := mustQuery(t, res.Url)
+	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: "x", State: q.Get("state")}); r != "https://app.example.test/login?oauthError=invalid_state" {
+		t.Fatalf("redirect %s", r)
+	}
+}
+
 func TestExchangeHandoff_GetFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, get: errBoom}, true)
@@ -302,6 +332,23 @@ func TestExchangeHandoff_DeleteFails(t *testing.T) {
 	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, delete: errBoom}, true)
 	if _, err := svc2.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
+	}
+}
+
+// TestExchangeHandoff_DeleteRaced simulates a concurrent exchange of the same
+// code: the delete succeeds but reports zero rows because another presenter's
+// delete already removed the row. That presenter must be rejected and must
+// never mint a session.
+func TestExchangeHandoff_DeleteRaced(t *testing.T) {
+	h := newHarness(t, false, true)
+	redirect := h.login("google", "web")
+	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, raced: true}, true)
+	_, err := svc2.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua")
+	if u, ok := errs.AsUnauthorized(err); !ok || u.Code != errs.CodeOAuthHandoffInvalid {
+		t.Fatalf("want 401 handoff_invalid, got %v", err)
+	}
+	if len(h.users.minted) != 0 {
+		t.Fatalf("a raced delete must not mint a session: %v", h.users.minted)
 	}
 }
 

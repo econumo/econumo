@@ -62,22 +62,28 @@ func (q *Queries) DeleteIdentityByUserProvider(ctx context.Context, arg DeleteId
 	return result.RowsAffected()
 }
 
-const deleteOAuthHandoff = `-- name: DeleteOAuthHandoff :exec
+const deleteOAuthHandoff = `-- name: DeleteOAuthHandoff :execrows
 DELETE FROM oauth_handoffs WHERE code_hash = $1
 `
 
-func (q *Queries) DeleteOAuthHandoff(ctx context.Context, codeHash string) error {
-	_, err := q.db.ExecContext(ctx, deleteOAuthHandoff, codeHash)
-	return err
+func (q *Queries) DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthHandoff, codeHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
-const deleteOAuthState = `-- name: DeleteOAuthState :exec
+const deleteOAuthState = `-- name: DeleteOAuthState :execrows
 DELETE FROM oauth_states WHERE state_hash = $1
 `
 
-func (q *Queries) DeleteOAuthState(ctx context.Context, stateHash string) error {
-	_, err := q.db.ExecContext(ctx, deleteOAuthState, stateHash)
-	return err
+func (q *Queries) DeleteOAuthState(ctx context.Context, stateHash string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthState, stateHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getIdentityByProviderSubject = `-- name: GetIdentityByProviderSubject :one

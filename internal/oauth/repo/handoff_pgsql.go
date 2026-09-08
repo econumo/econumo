@@ -21,7 +21,7 @@ func (handoffPgsqlQuerier) GetOAuthHandoff(ctx context.Context, db backend.DBTX,
 	return handoffRow(row), err
 }
 
-func (handoffPgsqlQuerier) DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) error {
+func (handoffPgsqlQuerier) DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (int64, error) {
 	return pgsqlgen.New(db).DeleteOAuthHandoff(ctx, codeHash)
 }
 

@@ -20,7 +20,7 @@ func (stateSqliteQuerier) GetOAuthState(ctx context.Context, db backend.DBTX, ha
 	return sqlitegen.New(db).GetOAuthState(ctx, hash)
 }
 
-func (stateSqliteQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX, hash string) error {
+func (stateSqliteQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX, hash string) (int64, error) {
 	return sqlitegen.New(db).DeleteOAuthState(ctx, hash)
 }
 

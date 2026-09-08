@@ -21,7 +21,7 @@ func (statePgsqlQuerier) GetOAuthState(ctx context.Context, db backend.DBTX, has
 	return stateRow(row), err
 }
 
-func (statePgsqlQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX, hash string) error {
+func (statePgsqlQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX, hash string) (int64, error) {
 	return pgsqlgen.New(db).DeleteOAuthState(ctx, hash)
 }
 

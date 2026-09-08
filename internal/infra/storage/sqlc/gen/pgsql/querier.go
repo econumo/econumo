@@ -44,8 +44,8 @@ type Querier interface {
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteLabel(ctx context.Context, id string) error
-	DeleteOAuthHandoff(ctx context.Context, codeHash string) error
-	DeleteOAuthState(ctx context.Context, stateHash string) error
+	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.

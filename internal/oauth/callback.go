@@ -76,6 +76,9 @@ func (s *Service) Callback(ctx context.Context, provider string, in CallbackInpu
 }
 
 // consumeState loads and DELETES the state row; a consumed state is invalid.
+// The delete's affected-row count decides the race: a presenter whose delete
+// removed no row is rejected, so a concurrent replay cannot both pass on
+// either engine.
 func (s *Service) consumeState(ctx context.Context, provider, state string) (*model.OAuthState, error) {
 	if state == "" {
 		return nil, errs.NewNotFound("state missing")
@@ -85,8 +88,12 @@ func (s *Service) consumeState(ctx context.Context, provider, state string) (*mo
 	if err != nil {
 		return nil, err
 	}
-	if derr := s.states.Delete(ctx, hash); derr != nil {
+	n, derr := s.states.Delete(ctx, hash)
+	if derr != nil {
 		return nil, derr
+	}
+	if n != 1 {
+		return nil, errs.NewNotFound("state already consumed")
 	}
 	if st.Provider != provider {
 		return nil, errs.NewNotFound("state provider mismatch")

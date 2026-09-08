@@ -22,7 +22,7 @@ type (
 type handoffQuerier interface {
 	InsertOAuthHandoff(ctx context.Context, db backend.DBTX, p insertHandoffParams) error
 	GetOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (handoffRow, error)
-	DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) error
+	DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (int64, error)
 	DeleteExpiredOAuthHandoffs(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error)
 }
 
@@ -69,7 +69,7 @@ func (r *HandoffRepo) Get(ctx context.Context, codeHash string) (*model.OAuthHan
 		IDToken: row.IDToken, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
 }
 
-func (r *HandoffRepo) Delete(ctx context.Context, codeHash string) error {
+func (r *HandoffRepo) Delete(ctx context.Context, codeHash string) (int64, error) {
 	return r.q.DeleteOAuthHandoff(ctx, r.db(ctx), codeHash)
 }
 

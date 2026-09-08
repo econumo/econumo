@@ -20,7 +20,7 @@ func (handoffSqliteQuerier) GetOAuthHandoff(ctx context.Context, db backend.DBTX
 	return sqlitegen.New(db).GetOAuthHandoff(ctx, codeHash)
 }
 
-func (handoffSqliteQuerier) DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) error {
+func (handoffSqliteQuerier) DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (int64, error) {
 	return sqlitegen.New(db).DeleteOAuthHandoff(ctx, codeHash)
 }
 

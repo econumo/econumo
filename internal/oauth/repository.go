@@ -26,7 +26,9 @@ type Identities interface {
 type States interface {
 	Insert(ctx context.Context, s *model.OAuthState) error
 	Get(ctx context.Context, stateHash string) (*model.OAuthState, error)
-	Delete(ctx context.Context, stateHash string) error
+	// Delete returns the number of rows removed, so a caller can tell a real
+	// delete from a concurrent replay that found the row already gone.
+	Delete(ctx context.Context, stateHash string) (int64, error)
 	DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
@@ -34,6 +36,8 @@ type States interface {
 type Handoffs interface {
 	Insert(ctx context.Context, h *model.OAuthHandoff) error
 	Get(ctx context.Context, codeHash string) (*model.OAuthHandoff, error)
-	Delete(ctx context.Context, codeHash string) error
+	// Delete returns the number of rows removed, so a caller can tell a real
+	// delete from a concurrent replay that found the row already gone.
+	Delete(ctx context.Context, codeHash string) (int64, error)
 	DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error)
 }

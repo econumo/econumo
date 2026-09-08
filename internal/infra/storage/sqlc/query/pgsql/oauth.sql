@@ -38,7 +38,7 @@ SELECT state_hash, provider, nonce, code_verifier, flow_hash, client, intent, li
 FROM oauth_states
 WHERE state_hash = $1;
 
--- name: DeleteOAuthState :exec
+-- name: DeleteOAuthState :execrows
 DELETE FROM oauth_states WHERE state_hash = $1;
 
 -- name: DeleteExpiredOAuthStates :execrows
@@ -53,7 +53,7 @@ SELECT code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at
 FROM oauth_handoffs
 WHERE code_hash = $1;
 
--- name: DeleteOAuthHandoff :exec
+-- name: DeleteOAuthHandoff :execrows
 DELETE FROM oauth_handoffs WHERE code_hash = $1;
 
 -- name: DeleteExpiredOAuthHandoffs :execrows

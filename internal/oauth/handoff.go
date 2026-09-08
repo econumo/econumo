@@ -10,29 +10,26 @@ import (
 	"github.com/econumo/econumo/internal/shared/reqctx"
 )
 
-// ExchangeHandoff redeems a one-shot code for a session. The row is deleted
-// before anything else so a replay races nothing.
+// ExchangeHandoff redeems a one-shot code for a session. The delete's
+// affected-row count decides single use: two concurrent exchanges of the
+// same code can both SELECT the row, but only one DELETE removes it — the
+// other sees zero rows affected and is rejected, on either engine.
 func (s *Service) ExchangeHandoff(ctx context.Context, req model.ExchangeHandoffRequest, userAgent string) (*model.LoginResult, error) {
 	invalid := &errs.UnauthorizedError{Msg: "Sign-in link is invalid or has expired", Code: errs.CodeOAuthHandoffInvalid}
 	hash := oidc.Sha256Hex(req.Code)
-	// Load and delete in ONE transaction: two concurrent exchanges of the same
-	// code must not both read the row before either deletes it.
-	var h *model.OAuthHandoff
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		row, err := s.handoffs.Get(ctx, hash)
-		if err != nil {
-			return err
-		}
-		if derr := s.handoffs.Delete(ctx, hash); derr != nil {
-			return derr
-		}
-		h = row
-		return nil
-	}); err != nil {
+	h, err := s.handoffs.Get(ctx, hash)
+	if err != nil {
 		if _, ok := errs.AsNotFound(err); ok {
 			return nil, invalid
 		}
 		return nil, err
+	}
+	n, err := s.handoffs.Delete(ctx, hash)
+	if err != nil {
+		return nil, err
+	}
+	if n != 1 {
+		return nil, invalid
 	}
 	if h.IsExpired(s.clock.Now()) {
 		return nil, invalid
