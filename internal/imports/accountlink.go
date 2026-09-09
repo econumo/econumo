@@ -36,7 +36,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		if deleted {
 			return &errs.ValidationError{Msg: "Account is deleted", MsgCode: errs.CodeTransactionAccountDeleted}
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		ledger, err := s.repo.ListLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -207,7 +207,7 @@ func (s *Service) IgnoreAccount(ctx context.Context, userID vo.Id, req model.Imp
 		if err != nil {
 			return err
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -257,7 +257,7 @@ func (s *Service) UnlinkAccount(ctx context.Context, userID vo.Id, req model.Imp
 		if err != nil {
 			return err
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -295,4 +295,10 @@ func (s *Service) UnlinkAccount(ctx context.Context, userID vo.Id, req model.Imp
 		return nil
 	})
 	return out, err
+}
+
+// NormalizeExternalAccountID collapses whitespace so a card or account name
+// keys the same ledger row however the provider spaced it.
+func NormalizeExternalAccountID(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }

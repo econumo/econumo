@@ -23,6 +23,7 @@ type Service struct {
 	clk       port.Clock
 	cfg       MatcherConfig
 	providers map[string]Provider
+	parsers   map[string]EventParser
 }
 
 func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {

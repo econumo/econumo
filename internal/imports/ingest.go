@@ -7,7 +7,6 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
-	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -101,14 +100,11 @@ func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev 
 }
 
 func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (model.IngestEvent, error) {
-	switch src.Provider {
-	case model.ImportProviderAppleWallet:
-		return ParseAppleWalletEvent([]byte(ev.Payload), ev.ReceivedAt)
-	case model.ImportProviderSimpleFIN:
-		return ParseSimpleFINEvent([]byte(ev.Payload), reqctx.Location(ctx))
-	default:
+	p, ok := s.parsers[src.Provider]
+	if !ok {
 		return model.IngestEvent{}, errors.New("unsupported provider " + src.Provider)
 	}
+	return p.ParseEvent(ctx, ev)
 }
 
 // resolution is stage 1+2's verdict for an event: where it goes and in what
@@ -166,8 +162,8 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // stale tap-time amount (a bank sync only — a push never rewrites a
 // hand-entered amount).
 func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool) (status string, amountUpdated bool, err error) {
-	// The ledger stores the card name in its original case (later tasks
-	// display it), so the dedup lookup itself is case-insensitive on the
+	// The ledger stores the card name in its original case (the queue page
+	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
 	// canonicalized here.
 	existing, err := s.repo.GetLinkByExternalKey(ctx, src.ID, ev.ExternalAccountID, ev.ExternalTransactionID)

@@ -188,9 +188,12 @@ similar — it's in-memory poller state only (no persistence at all), so it has
 no `repository.go` either. `imports` (the bank/phone transaction-import
 subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
 ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
-Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in; the
-package now also has `internal/imports/simplefin` (the bridge client) and a
-`Provider` registry on the service. It has `repository.go`, `ports.go` (account /
+Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in. The
+root package holds no provider-specific code: each provider is a subpackage —
+`internal/imports/applewallet` (the push-event parser), `internal/imports/simplefin`
+(the bridge client + stored-row parser) — that plugs into the service's
+`EventParser` and `Provider` registries in `internal/server/server.go` (a new
+provider = one subpackage + one registration line). It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
 `repo/`, and `api/` with 21 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,

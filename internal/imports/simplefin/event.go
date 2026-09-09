@@ -1,48 +1,39 @@
-package imports
+package simplefin
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"regexp"
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// simpleFINEnvelope is the stored payload of a pull event: the provider's
-// row verbatim plus the account it belongs to, which the row itself lacks.
-type simpleFINEnvelope struct {
-	ExternalAccountID string          `json:"externalAccountId"`
-	Transaction       json.RawMessage `json:"transaction"`
-}
+// Parser reads the rows the Client stored (imports.EncodePullEvent) back into
+// events; the posted day is taken in the caller's timezone.
+type Parser struct{}
 
-type simpleFINTransaction struct {
-	ID          string `json:"id"`
-	Posted      int64  `json:"posted"`
-	Amount      string `json:"amount"`
-	Description string `json:"description"`
-	Payee       string `json:"payee"`
+func (Parser) ParseEvent(ctx context.Context, ev *model.ImportEvent) (model.IngestEvent, error) {
+	return Parse([]byte(ev.Payload), reqctx.Location(ctx))
 }
 
 var signedDecimalRe = regexp.MustCompile(`^-?[0-9]+(\.[0-9]+)?$`)
 
-func EncodeSimpleFINEvent(tx model.ExternalTransaction) []byte {
-	b, _ := json.Marshal(simpleFINEnvelope{ExternalAccountID: tx.ExternalAccountID, Transaction: tx.Raw})
-	return b
-}
-
-func ParseSimpleFINEvent(payload []byte, loc *time.Location) (model.IngestEvent, error) {
-	var env simpleFINEnvelope
+func Parse(payload []byte, loc *time.Location) (model.IngestEvent, error) {
+	var env imports.PullEvent
 	if err := json.Unmarshal(payload, &env); err != nil {
 		return model.IngestEvent{}, errors.New("invalid JSON")
 	}
-	account := normalizeExternalAccountID(env.ExternalAccountID)
+	account := imports.NormalizeExternalAccountID(env.ExternalAccountID)
 	if account == "" {
 		return model.IngestEvent{}, errors.New("externalAccountId is required")
 	}
-	var tx simpleFINTransaction
+	var tx transaction
 	if err := json.Unmarshal(env.Transaction, &tx); err != nil {
 		return model.IngestEvent{}, errors.New("invalid transaction")
 	}

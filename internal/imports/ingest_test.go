@@ -7,7 +7,9 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/imports"
+	"github.com/econumo/econumo/internal/imports/applewallet"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -192,12 +194,19 @@ func setup(t *testing.T) *harness {
 	repo := importsrepo.NewRepo(db.Engine, db.TX)
 	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, lim: &limiter{}, f: f, db: db}
 	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
 	return h
 }
 
 // withLimiter rebuilds the service with h.lim wired in as the rate limiter.
 func (h *harness) withLimiter() {
 	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.lim, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
+}
+
+func registerParsers(svc *imports.Service) {
+	svc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	svc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
 }
 
 func (h *harness) mapCard(t *testing.T, card string) {

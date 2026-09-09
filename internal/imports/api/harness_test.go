@@ -9,7 +9,9 @@ import (
 
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	"github.com/econumo/econumo/internal/imports/applewallet"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -105,6 +107,8 @@ func newHarness(t *testing.T) *harness {
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	txns := &fakeTxns{db: db}
 	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
+	svc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	svc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
 	provider := &stubProvider{}
 	svc.RegisterProvider(model.ImportProviderSimpleFIN, provider)
 

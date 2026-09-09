@@ -2,6 +2,7 @@ package imports
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -45,6 +46,32 @@ var (
 	ErrProviderUnavailable = errors.New("provider unavailable")
 	ErrCredentialInvalid   = errors.New("credential invalid")
 )
+
+// EventParser turns a stored import_events.payload back into the normalized
+// event the pipeline applies. Each provider owns one (internal/imports/<provider>);
+// the root package knows no payload shape.
+type EventParser interface {
+	ParseEvent(ctx context.Context, ev *model.ImportEvent) (model.IngestEvent, error)
+}
+
+// PullEvent is the stored payload of a pull-provider row: the provider's row
+// verbatim plus the account it belongs to, which the row itself may lack.
+type PullEvent struct {
+	ExternalAccountID string          `json:"externalAccountId"`
+	Transaction       json.RawMessage `json:"transaction"`
+}
+
+func EncodePullEvent(tx model.ExternalTransaction) []byte {
+	b, _ := json.Marshal(PullEvent{ExternalAccountID: tx.ExternalAccountID, Transaction: tx.Raw})
+	return b
+}
+
+func (s *Service) RegisterParser(name string, p EventParser) {
+	if s.parsers == nil {
+		s.parsers = map[string]EventParser{}
+	}
+	s.parsers[name] = p
+}
 
 func (s *Service) RegisterProvider(name string, p Provider) {
 	if s.providers == nil {

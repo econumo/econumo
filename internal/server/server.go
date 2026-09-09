@@ -39,6 +39,7 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	"github.com/econumo/econumo/internal/imports/applewallet"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/infra/auth"
@@ -354,6 +355,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			TokenMinLength:  cfg.ImportTokenMinLength,
 		},
 	)
+	importsSvc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	importsSvc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
 	if seams.ImportProviders == nil {
 		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{AllowPrivateHosts: cfg.ImportAllowPrivateHosts}))
 	}

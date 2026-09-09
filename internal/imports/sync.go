@@ -117,7 +117,7 @@ func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run 
 	snapshot := *run
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, row := range rows {
-			payload := EncodeSimpleFINEvent(row)
+			payload := EncodePullEvent(row)
 			ev := &model.ImportEvent{
 				ID: vo.NewId(), SourceID: src.ID, RunID: &run.ID, Payload: string(payload), PayloadHash: HashPayload(payload),
 				Status: model.ImportEventStatusProcessed, ReceivedAt: s.clk.Now().UTC(),

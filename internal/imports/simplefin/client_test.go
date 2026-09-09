@@ -203,7 +203,7 @@ func TestFetch_ForwardsUndecodableRows(t *testing.T) {
 		if tx.ExternalAccountID != "ACT-1" || len(tx.Raw) == 0 {
 			t.Fatalf("tx = %+v", tx)
 		}
-		if _, perr := imports.ParseSimpleFINEvent(imports.EncodeSimpleFINEvent(tx), time.UTC); perr == nil {
+		if _, perr := simplefin.Parse(imports.EncodePullEvent(tx), time.UTC); perr == nil {
 			t.Fatalf("%s must fail to parse", tx.Raw)
 		}
 	}

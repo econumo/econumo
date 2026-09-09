@@ -1,6 +1,9 @@
-package imports
+// Package applewallet parses the push events the "econumo-wallet-v1"
+// shortcut delivers to ingest-apple-wallet-event.
+package applewallet
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -10,9 +13,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
+
+type Parser struct{}
+
+func (Parser) ParseEvent(_ context.Context, ev *model.ImportEvent) (model.IngestEvent, error) {
+	return Parse([]byte(ev.Payload), ev.ReceivedAt)
+}
 
 // appleWalletPayload is what the "econumo-wallet-v1" shortcut POSTs. amount is
 // untyped because Shortcuts serializes numbers as numbers and text as text
@@ -32,12 +42,12 @@ var (
 	plainDecimalRe = regexp.MustCompile(`^[0-9]+(\.[0-9]+)?$`)
 )
 
-func ParseAppleWalletEvent(payload []byte, receivedAt time.Time) (model.IngestEvent, error) {
+func Parse(payload []byte, receivedAt time.Time) (model.IngestEvent, error) {
 	var p appleWalletPayload
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return model.IngestEvent{}, errors.New("invalid JSON")
 	}
-	account := normalizeExternalAccountID(p.Account)
+	account := imports.NormalizeExternalAccountID(p.Account)
 	if account == "" {
 		return model.IngestEvent{}, errors.New("account is required")
 	}
@@ -127,8 +137,4 @@ func normalizeAmount(raw string) (string, error) {
 		return "", errors.New("amount must be a positive number")
 	}
 	return d.String(), nil
-}
-
-func normalizeExternalAccountID(s string) string {
-	return strings.Join(strings.Fields(s), " ")
 }

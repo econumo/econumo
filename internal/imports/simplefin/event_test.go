@@ -1,4 +1,4 @@
-package imports_test
+package simplefin_test
 
 import (
 	"encoding/json"
@@ -6,14 +6,15 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/imports"
+	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
 )
 
-func TestParseSimpleFINEvent(t *testing.T) {
+func TestParse(t *testing.T) {
 	berlin, _ := time.LoadLocation("Europe/Berlin")
 	raw := json.RawMessage(`{"id":"TRN-1","posted":1755900000,"amount":"-12.50","description":"COFFEE SHOP","payee":"Blue Bottle"}`)
-	payload := imports.EncodeSimpleFINEvent(model.ExternalTransaction{ExternalAccountID: "ACT-1", ID: "TRN-1", Amount: "-12.50", Posted: 1755900000, Payee: "Blue Bottle", Description: "COFFEE SHOP", Raw: raw})
-	ev, err := imports.ParseSimpleFINEvent(payload, berlin)
+	payload := imports.EncodePullEvent(model.ExternalTransaction{ExternalAccountID: "ACT-1", ID: "TRN-1", Amount: "-12.50", Posted: 1755900000, Payee: "Blue Bottle", Description: "COFFEE SHOP", Raw: raw})
+	ev, err := simplefin.Parse(payload, berlin)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,16 +26,16 @@ func TestParseSimpleFINEvent(t *testing.T) {
 	}
 }
 
-func TestParseSimpleFINEvent_IncomeAndPayeeFallback(t *testing.T) {
-	payload := imports.EncodeSimpleFINEvent(model.ExternalTransaction{ExternalAccountID: "ACT-1", ID: "TRN-2", Amount: "2500.00", Posted: 1755910000, Description: "PAYROLL",
+func TestParse_IncomeAndPayeeFallback(t *testing.T) {
+	payload := imports.EncodePullEvent(model.ExternalTransaction{ExternalAccountID: "ACT-1", ID: "TRN-2", Amount: "2500.00", Posted: 1755910000, Description: "PAYROLL",
 		Raw: json.RawMessage(`{"id":"TRN-2","posted":1755910000,"amount":"2500.00","description":"PAYROLL","payee":""}`)})
-	ev, err := imports.ParseSimpleFINEvent(payload, time.UTC)
+	ev, err := simplefin.Parse(payload, time.UTC)
 	if err != nil || ev.Type != model.TransactionTypeIncome || ev.Amount != "2500" || ev.Payee != "PAYROLL" {
 		t.Fatalf("ev = %+v err %v", ev, err)
 	}
 }
 
-func TestParseSimpleFINEvent_Rejects(t *testing.T) {
+func TestParse_Rejects(t *testing.T) {
 	for name, raw := range map[string]string{
 		"zero amount": `{"id":"T","posted":1755910000,"amount":"0"}`,
 		"bad amount":  `{"id":"T","posted":1755910000,"amount":"12,50 EUR"}`,
@@ -53,11 +54,11 @@ func TestParseSimpleFINEvent_Rejects(t *testing.T) {
 			}
 			return raw
 		}() + `}`)
-		if _, err := imports.ParseSimpleFINEvent(payload, time.UTC); err == nil {
+		if _, err := simplefin.Parse(payload, time.UTC); err == nil {
 			t.Errorf("%s: expected an error", name)
 		}
 	}
-	if _, err := imports.ParseSimpleFINEvent([]byte(`{"transaction":{"id":"T","posted":1,"amount":"1"}}`), time.UTC); err == nil {
+	if _, err := simplefin.Parse([]byte(`{"transaction":{"id":"T","posted":1,"amount":"1"}}`), time.UTC); err == nil {
 		t.Error("missing externalAccountId must fail")
 	}
 }
