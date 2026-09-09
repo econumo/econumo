@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { v7 as uuidv7 } from 'uuid'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
 import type {
@@ -238,7 +239,9 @@ export function useImportRules() {
 export function useCreateImportRule() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ spec, id }: { spec: ImportRuleSpecDto; id?: Id }) => importsApi.createImportRule(spec, id),
+    // The id is the create's idempotency key and the server requires it, so it
+    // is minted HERE — the one choke point every call site goes through.
+    mutationFn: ({ spec, id }: { spec: ImportRuleSpecDto; id?: Id }) => importsApi.createImportRule(spec, id ?? uuidv7()),
     onSuccess: (rule) => {
       queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => [...prev.filter((r) => r.id !== rule.id), rule])
       trackEvent(METRICS.IMPORT_RULE_CREATE, { action: rule.action })
@@ -284,6 +287,10 @@ export function useApplyImportRule() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
       void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      // an apply rewrote the rows' applied_* snapshots; the per-transaction
+      // link caches hold them for ten minutes, and a stale snapshot is what
+      // the post-edit rule prompt compares against
+      void queryClient.invalidateQueries({ queryKey: ['transactionImports'] })
     },
   })
 }

@@ -214,7 +214,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
       } else {
         await updateTransaction.mutateAsync(payload)
         const link = latestImportLink(importLinks)
-        const diff = link ? ruleDiff(payload, link) : null
+        // params.transaction is the row as it was BEFORE this edit: only a
+        // classification THIS save changed may prompt for a rule
+        const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
         if (link && diff) {
           setRulePrompt({ link, diff })
         }

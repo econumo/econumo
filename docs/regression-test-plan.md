@@ -346,6 +346,10 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
 - [ ] Edit the same transaction again changing only notes/amount/date: no prompt.
       Re-open it and pick the category the import already applied (or that a
       previous rule set): no prompt.
+- [ ] After creating a rule from a transaction and applying it (that source row
+      is counted as "skipped — you edited it"), re-open THAT transaction and
+      save a notes-only change: still no prompt, and no second copy of the rule
+      is ever offered. Changing its category again does prompt.
 - [ ] Prompt → "Create rule" → "Apply": the matching unedited transactions in
       that import take the category; "N skipped (you've edited these)" names
       the edited ones and the "Also update the N transactions you edited"
@@ -356,6 +360,10 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
 - [ ] A transaction that a rule classified (Import rules page shows the rule):
       changing its category offers "Update rule" (match shown read-only, no
       editor) rather than a second rule; the rule's targets change.
+- [ ] Same flow on a rule that sets two or more labels: add a THIRD label to an
+      imported transaction and choose "Update rule" — the rule keeps its
+      original labels and gains the new one (the label set is unioned, never
+      replaced by the single added label).
 - [ ] Settings → Import & export → Import rules (also under Settings → Data):
       rules list in priority order, skip rules carry a red "Skip" badge and no
       targets; "Add rule" opens the editor with a live "Matches N imported
@@ -371,6 +379,10 @@ Preconditions: at least one import source with a completed run (§5a or §5b) wh
       creates the rule at the bottom of the list, Edit opens the editor
       prefilled, Discard removes the row; a 4th click inside the window gets
       429 with the standard envelope.
+- [ ] Typing in either rule editor fires `preview-rule` on a 300 ms debounce and
+      it is capped per user (`ECONUMO_RATE_LIMIT_PREVIEW_RULE`, default 120 per
+      window): set it to 1 and the second preview returns 429 with the standard
+      envelope while the rest of the editor still works.
 - [ ] Ingest-scoped PATs get 401 on every rule endpoint; a read-only
       (trial-ended) user gets 402 on `create-rule`/`update-rule`/`delete-rule`/
       `apply-rule`/`suggest-rules` and 402 on `preview-rule` as well, and 200

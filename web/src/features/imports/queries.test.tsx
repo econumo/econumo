@@ -145,7 +145,11 @@ it('useImportRules fetches the rule list', async () => {
   expect(result.current.data![0].matchValue).toBe('BLUE BOTTLE')
 })
 
-it('useCreateImportRule posts the spec, appends to the cache, and reports the action', async () => {
+// The server REQUIRES a client-minted id (it is the create's idempotency
+// key) and rejects a blank one with a 400 on field `id` — no call site passes
+// one, so the hook mints it. Asserting on the posted body is the only thing
+// that would have caught the mismatch: msw does not validate it.
+it('useCreateImportRule mints the rule id, posts the spec, appends to the cache, and reports the action', async () => {
   let body: Record<string, unknown> | null = null
   server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
     body = await request.json() as Record<string, unknown>
@@ -157,9 +161,22 @@ it('useCreateImportRule posts the spec, appends to the cache, and reports the ac
   const { id: _id, createdAt: _c, updatedAt: _u, ...spec } = wireRule
   await act(async () => { await result.current.mutateAsync({ spec: { ...spec, action: 'skip' } }) })
   expect(body).toMatchObject({ action: 'skip', matchValue: 'BLUE BOTTLE' })
-  expect(body).not.toHaveProperty('id')
+  expect(body!.id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/)
   expect(queryClient.getQueryData<ImportRuleDto[]>(queryKeys.importRules)).toHaveLength(1)
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_CREATE, { action: 'skip' })
+})
+
+it('useCreateImportRule posts a caller-supplied id verbatim', async () => {
+  let body: Record<string, unknown> | null = null
+  server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
+    body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({ success: true, message: '', data: wireRule })
+  }))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useCreateImportRule(), { wrapper })
+  const { id: _id, createdAt: _c, updatedAt: _u, ...spec } = wireRule
+  await act(async () => { await result.current.mutateAsync({ spec, id: '0192b1e4-0000-7000-8000-000000000001' }) })
+  expect(body!.id).toBe('0192b1e4-0000-7000-8000-000000000001')
 })
 
 it('useApplyImportRule posts the scope and invalidates the ledger caches', async () => {
@@ -179,6 +196,9 @@ it('useApplyImportRule posts the scope and invalidates the ledger caches', async
   expect(out).toEqual({ updated: 3, skipped: 2 })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
   expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
+  // an apply rewrites applied_* on the rows it touched; that cache holds them
+  // for ten minutes and the post-edit rule prompt compares against it
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['transactionImports'] })
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_APPLY, { updated: 3, skipped: 2 })
 })
 

@@ -37,23 +37,41 @@ describe('suggestMatchValue', () => {
 })
 
 describe('ruleDiff', () => {
+  const before = (over: Partial<CreateTransactionDto> = {}) => payload(over)
+
   it('reports classification fields whose saved value differs from the applied snapshot', () => {
-    expect(ruleDiff(payload({ categoryId: 'c1' }), link())).toEqual({ categoryId: 'c1' })
-    expect(ruleDiff(payload({ categoryId: 'c1', tagId: 't1', labelIds: ['l2', 'l1'] }), link({ appliedCategoryId: 'c1', appliedLabelIds: ['l1', 'l2'] })))
+    expect(ruleDiff(payload({ categoryId: 'c1' }), link(), before())).toEqual({ categoryId: 'c1' })
+    expect(ruleDiff(payload({ categoryId: 'c1', tagId: 't1', labelIds: ['l2', 'l1'] }), link({ appliedCategoryId: 'c1', appliedLabelIds: ['l1', 'l2'] }), before({ categoryId: 'c1', labelIds: ['l1', 'l2'] })))
       .toEqual({ tagId: 't1' })
   })
   it('is null when nothing classification-related changed — amount, date, notes edits never prompt', () => {
-    expect(ruleDiff(payload({ amount: '5.00', description: 'edited', date: '2026-09-02 10:00:00', categoryId: 'c1' }), link({ appliedCategoryId: 'c1' }))).toBeNull()
-    expect(ruleDiff(payload(), link())).toBeNull()
+    expect(ruleDiff(payload({ amount: '5.00', description: 'edited', date: '2026-09-02 10:00:00', categoryId: 'c1' }), link({ appliedCategoryId: 'c1' }), before({ categoryId: 'c1' }))).toBeNull()
+    expect(ruleDiff(payload(), link(), before())).toBeNull()
   })
   it('clearing a field is not a rule-worthy change', () => {
-    expect(ruleDiff(payload({ categoryId: null }), link({ appliedCategoryId: 'c1' }))).toBeNull()
+    expect(ruleDiff(payload({ categoryId: null }), link({ appliedCategoryId: 'c1' }), before({ categoryId: 'c1' }))).toBeNull()
   })
   it('reports only newly added labels, never the full replacement set', () => {
-    expect(ruleDiff(payload({ labelIds: ['l1', 'l2'] }), link({ appliedLabelIds: ['l1'] }))).toEqual({ labelIds: ['l2'] })
+    expect(ruleDiff(payload({ labelIds: ['l1', 'l2'] }), link({ appliedLabelIds: ['l1'] }), before({ labelIds: ['l1'] }))).toEqual({ labelIds: ['l2'] })
   })
   it('a label REMOVAL is not rule-worthy on its own — a rule can only add labels', () => {
-    expect(ruleDiff(payload({ labelIds: ['l1'] }), link({ appliedLabelIds: ['l1', 'l2'] }))).toBeNull()
+    expect(ruleDiff(payload({ labelIds: ['l1'] }), link({ appliedLabelIds: ['l1', 'l2'] }), before({ labelIds: ['l1', 'l2'] }))).toBeNull()
+  })
+
+  // The row a rule was created from is "edited" by construction, so a default
+  // apply SKIPS it and never refreshes its applied_* snapshot. Comparing the
+  // save against the snapshot alone would therefore re-prompt — offering a
+  // duplicate rule — every time that transaction is saved again.
+  it('does not re-prompt when this save left the classification untouched, even though it still diverges from the snapshot', () => {
+    const corrected = link({ appliedCategoryId: '', appliedRuleId: '' })
+    expect(ruleDiff(payload({ categoryId: 'c1', description: 'typo fixed' }), corrected, before({ categoryId: 'c1' }))).toBeNull()
+    expect(ruleDiff(payload({ labelIds: ['l1'] }), corrected, before({ labelIds: ['l1'] }))).toBeNull()
+    // ... but a further correction in the SAME field still prompts
+    expect(ruleDiff(payload({ categoryId: 'c2' }), corrected, before({ categoryId: 'c1' }))).toEqual({ categoryId: 'c2' })
+  })
+
+  it('falls back to the snapshot alone when the pre-edit values are unknown', () => {
+    expect(ruleDiff(payload({ categoryId: 'c1' }), link(), null)).toEqual({ categoryId: 'c1' })
   })
 })
 

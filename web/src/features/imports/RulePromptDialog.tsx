@@ -17,6 +17,8 @@ import { useApplyImportRule, useCreateImportRule, useImportRules, usePreviewImpo
 import { describeMatch } from './ruleSummary'
 
 const PREVIEW_DEBOUNCE_MS = 300
+// mirrors model.MaxImportRuleLabels — the server rejects a longer set
+const MAX_RULE_LABELS = 10
 
 type Step = 'define' | 'apply' | 'source'
 
@@ -75,7 +77,11 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       categoryId: diff.categoryId ?? base.categoryId,
       payeeId: diff.payeeId ?? base.payeeId,
       tagId: diff.tagId ?? base.tagId,
-      labelIds: diff.labelIds ?? base.labelIds,
+      // labels are the one asymmetric field: the diff carries only the ADDED
+      // ids while update-rule REPLACES the rule's whole label set, so they
+      // must be unioned — assigning the diff would silently drop every label
+      // the rule already sets. Capped like the server's own limit.
+      labelIds: diff.labelIds ? [...new Set([...base.labelIds, ...diff.labelIds])].slice(0, MAX_RULE_LABELS) : base.labelIds,
     }
   }, [existing, matchField, matchType, matchValue, diff])
 
@@ -110,8 +116,9 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       // the create/update and the count refresh are independent outcomes: if
       // the rule is saved but the refresh then fails, we must still record
       // ruleId and advance — otherwise a second click on "Create rule" would
-      // create a SECOND rule (createImportRule takes no client id here), which
-      // is exactly the near-duplicate stacking appliedRuleId exists to avoid.
+      // create a SECOND rule (this call site passes no id, so the hook mints a
+      // fresh one), which is exactly the near-duplicate stacking appliedRuleId
+      // exists to avoid.
       const saved = existing ? await update.mutateAsync({ id: existing.id, spec }) : await create.mutateAsync({ spec })
       setRuleId(saved.id)
       // the debounced live-count preview may not have settled yet (e.g. the

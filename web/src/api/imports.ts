@@ -155,11 +155,11 @@ export async function getImportRuleList(): Promise<ImportRuleDto[]> {
   return response.data.data.items
 }
 
-export async function createImportRule(spec: ImportRuleSpecDto, id?: Id): Promise<ImportRuleDto> {
-  const body: Record<string, unknown> = { ...spec }
-  if (id) {
-    body.id = id
-  }
+// The id is REQUIRED and client-minted (it is the create's idempotency key):
+// the server rejects a blank one. Typed as part of the body — an untyped
+// Record let a missing required field type-check.
+export async function createImportRule(spec: ImportRuleSpecDto, id: Id): Promise<ImportRuleDto> {
+  const body: ImportRuleSpecDto & { id: Id } = { ...spec, id }
   const response = await api.post<Envelope<ImportRuleDto>>(apiUrl('/api/v1/import/create-rule'), body)
   return response.data.data
 }

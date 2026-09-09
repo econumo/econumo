@@ -167,3 +167,32 @@ it('the include-edited choice does not carry over from the run-scoped apply to t
   await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
   await waitFor(() => expect(posted.apply![1]).toMatchObject({ scope: 'source', includeEdited: false }))
 })
+
+// update-rule REPLACES the rule's whole label set while the prompt's diff
+// carries only the labels the user ADDED, so assigning the diff would
+// silently strip every label the rule already sets from every future import.
+it('updating a rule unions the added labels with the ones it already sets', async () => {
+  const labelled = { ...rule, labelIds: ['label-work', 'label-reimbursable'] }
+  renderPrompt({ importRules: [labelled] })
+  useUiStore.getState().setRulePrompt({
+    link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary', appliedLabelIds: ['label-work', 'label-reimbursable'] }),
+    diff: { labelIds: ['label1'] },
+  })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Update rule' }))
+  await waitFor(() => expect(posted.update![0]).toMatchObject({ id: 'rule1' }))
+  expect((posted.update![0] as { labelIds: string[] }).labelIds).toEqual(['label-work', 'label-reimbursable', 'label1'])
+})
+
+it('the unioned label set is capped at the server maximum', async () => {
+  const existingIds = Array.from({ length: 10 }, (_, i) => `label-${i}`)
+  renderPrompt({ importRules: [{ ...rule, labelIds: existingIds }] })
+  useUiStore.getState().setRulePrompt({
+    link: link({ appliedRuleId: 'rule1', appliedCategoryId: 'cat-salary', appliedLabelIds: existingIds }),
+    diff: { labelIds: ['label1'] },
+  })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Update rule' }))
+  await waitFor(() => expect(posted.update![0]).toMatchObject({ id: 'rule1' }))
+  expect((posted.update![0] as { labelIds: string[] }).labelIds).toEqual(existingIds)
+})
