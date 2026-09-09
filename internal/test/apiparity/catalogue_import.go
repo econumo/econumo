@@ -246,6 +246,16 @@ func init() {
 		}
 	}})
 
+	register(Scenario{Name: "import_rule_preview_bad_scope_err", Calls: func() []Call {
+		return []Call{
+			// An unrecognized scope literal must be rejected at the DTO level
+			// (common.invalid_choice on "scope"), not silently defaulted to
+			// "all" by scopedLinks's default branch.
+			{Label: "err:preview-rule-bad-scope", Method: "POST", Path: "/api/v1/import/preview-rule", Auth: "owner",
+				Body: map[string]any{"action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Blue Bottle", "categoryId": CatFood, "scope": "nonsense"}},
+		}
+	}})
+
 	register(Scenario{Name: "import_rule_apply", Calls: func() []Call {
 		return []Call{
 			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner", Body: withID(ruleID, ruleSpec)},
