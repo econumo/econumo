@@ -155,16 +155,21 @@ func (s *Service) snapshotOf(ctx context.Context, txID vo.Id) (model.ImportClass
 	return model.ImportClassification{CategoryID: t.CategoryID, PayeeID: t.PayeeID, TagID: t.TagID, LabelIDs: t.LabelIDs}, nil
 }
 
+// setApplied overwrites the row's applied snapshot wholesale, rule id
+// included: a nil RuleID means "no rule classified this row", and anything
+// already on the column (e.g. the skip rule of a row the user later unskipped)
+// must not survive as a false attribution.
+func setApplied(link *model.ImportTransactionLink, c model.ImportClassification) {
+	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID, link.AppliedRuleID = c.CategoryID, c.PayeeID, c.TagID, c.RuleID
+}
+
 // writeApplied stores the classification the row's transaction carries as
 // of this import. It is the baseline the rule prompt and apply-rule's
 // "already edited" check diff against, so it must reflect what was written,
 // not what a rule asked for. The caller persists the link itself; the label
 // rows are written here (the link row must already exist — FK on link_id).
 func (s *Service) writeApplied(ctx context.Context, link *model.ImportTransactionLink, c model.ImportClassification) error {
-	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID = c.CategoryID, c.PayeeID, c.TagID
-	if c.RuleID != nil {
-		link.AppliedRuleID = c.RuleID
-	}
+	setApplied(link, c)
 	return s.repo.ReplaceLinkAppliedLabels(ctx, link.ID, c.LabelIDs)
 }
 

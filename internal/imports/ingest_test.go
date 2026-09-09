@@ -705,6 +705,11 @@ func TestIngest_AdoptedTransactionSnapshotsItsOwnClassification(t *testing.T) {
 	h := setup(t)
 	h.mapCard(t, "Apple Card")
 	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	// a classify rule that matches this event and would have written another
+	// category had the event created a transaction
+	other := h.f.Category(fixture.Category{UserID: userA, Name: "Other"})
+	h.entities.add(h.entities.categories, vo.MustParseId(userA), other, "Other")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: other})
 	// A hand-entered transaction the matcher will adopt (same amount, same
 	// day), seeded without a ledger row of its own: Match never adopts a
 	// candidate this source already links, so h.txns.seed's tap link would
@@ -719,9 +724,49 @@ func TestIngest_AdoptedTransactionSnapshotsItsOwnClassification(t *testing.T) {
 	if res.Status != model.ImportIngestStatusMatched {
 		t.Fatalf("status = %s", res.Status)
 	}
-	l := linkByExternalID(t, h, "evt-1") // seed() adds its own linked row on the same source; pick the ingested one
+	if len(h.txns.created) != 0 {
+		t.Fatalf("an adopted event creates nothing: %+v", h.txns.created)
+	}
+	l := linkByExternalID(t, h, "evt-1")
 	if l.AppliedCategoryID == nil || l.AppliedCategoryID.String() != cat || l.AppliedRuleID != nil {
-		t.Fatalf("adopted row snapshots the transaction's current classification, no rule: %+v", l)
+		t.Fatalf("adopted row snapshots the transaction's current classification, not the rule's: %+v", l)
+	}
+}
+
+// A skip rule's id lives on the same column as a classify rule's. Unskipping
+// a row and importing it by hand must clear it: appliedRuleId is read as "the
+// rule that classified this row", and a skip rule classified nothing.
+func TestImportQueuedEvent_AfterUnskipDropsTheSkipRule(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	uA := vo.MustParseId(userA)
+	h.mapCard(t, "Apple Card")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusSkipped {
+		t.Fatalf("status = %s", res.Status)
+	}
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	linkID := links[0].ID
+	if links[0].AppliedRuleID == nil {
+		t.Fatalf("the skip rule must be recorded first: %+v", links[0])
+	}
+	if _, err := h.svc.UnskipQueuedEvent(ctx, uA, model.ImportLinkActionRequest{LinkId: linkID.String()}); err != nil {
+		t.Fatalf("UnskipQueuedEvent: %v", err)
+	}
+	txID := vo.NewId().String()
+	if _, err := h.svc.ImportQueuedEvent(ctx, uA, model.ImportQueuedEventRequest{
+		LinkId:      linkID.String(),
+		Transaction: model.CreateTransactionRequest{Id: txID, Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: now.Format(datetime.Layout)},
+	}); err != nil {
+		t.Fatalf("ImportQueuedEvent: %v", err)
+	}
+	link, _ := h.repo.GetLink(ctx, linkID)
+	if link.AppliedRuleID != nil {
+		t.Fatalf("a skip rule must not survive as the row's applied rule: %+v", link)
+	}
+	list, _ := h.svc.GetTransactionImportList(ctx, uA, model.TransactionImportListRequest{TransactionId: txID})
+	if len(list.Items) != 1 || list.Items[0].AppliedRuleId != "" {
+		t.Fatalf("provenance must report no applied rule: %+v", list.Items)
 	}
 }
 

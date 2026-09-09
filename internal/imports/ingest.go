@@ -224,7 +224,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	}
 	link.Status = model.ImportLinkStatusLinked
 	link.TransactionID = &txID
-	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID, link.AppliedRuleID = applied.CategoryID, applied.PayeeID, applied.TagID, applied.RuleID
+	setApplied(link, applied)
 	// the applied-label rows carry an FK on link_id, so the link goes in first
 	if err := s.repo.InsertLink(ctx, link); err != nil {
 		return "", false, err
