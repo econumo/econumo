@@ -1,6 +1,7 @@
 package imports
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -116,4 +117,80 @@ func (rs ruleSet) classify(ev model.IngestEvent) model.ImportClassification {
 		}
 	}
 	return out
+}
+
+// loadRules reads the owner's rules once per request. Targets and labels
+// are filtered against the owner's current vocabulary so an id deleted
+// after the rule was saved never reaches CreateTransaction (which would
+// reject the whole import for one stale category).
+func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (ruleSet, error) {
+	rules, err := s.repo.ListRulesByUser(ctx, src.UserID)
+	if err != nil {
+		return ruleSet{}, err
+	}
+	if len(rules) == 0 {
+		return ruleSet{}, nil
+	}
+	own, err := s.ownedEntities(ctx, src.UserID)
+	if err != nil {
+		return ruleSet{}, err
+	}
+	for i := range rules {
+		r := &rules[i]
+		if r.TargetCategoryID != nil && !own.categories[*r.TargetCategoryID] {
+			r.TargetCategoryID = nil
+		}
+		if r.TargetPayeeID != nil && !own.payees[*r.TargetPayeeID] {
+			r.TargetPayeeID = nil
+		}
+		if r.TargetTagID != nil && !own.tags[*r.TargetTagID] {
+			r.TargetTagID = nil
+		}
+		kept := r.LabelIDs[:0]
+		for _, l := range r.LabelIDs {
+			if own.labels[l] {
+				kept = append(kept, l)
+			}
+		}
+		r.LabelIDs = kept
+	}
+	return newRuleSet(rules, src.ID), nil
+}
+
+// ownedIDs is the owner's vocabulary as id sets.
+type ownedIDs struct {
+	categories, payees, tags, labels map[vo.Id]bool
+}
+
+func (s *Service) ownedEntities(ctx context.Context, userID vo.Id) (ownedIDs, error) {
+	var out ownedIDs
+	var err error
+	if out.categories, err = idSet(s.entities.CategoriesByOwner(ctx, userID)); err != nil {
+		return out, err
+	}
+	if out.payees, err = idSet(s.entities.PayeesByOwner(ctx, userID)); err != nil {
+		return out, err
+	}
+	if out.tags, err = idSet(s.entities.TagsByOwner(ctx, userID)); err != nil {
+		return out, err
+	}
+	if out.labels, err = idSet(s.entities.LabelsByOwner(ctx, userID)); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+
+func idSet(items []model.ImportNamed, err error) (map[vo.Id]bool, error) {
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[vo.Id]bool, len(items))
+	for _, it := range items {
+		id, err := vo.ParseId(it.ID)
+		if err != nil {
+			return nil, err
+		}
+		out[id] = true
+	}
+	return out, nil
 }

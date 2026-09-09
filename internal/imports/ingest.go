@@ -90,9 +90,13 @@ func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev 
 		msg := perr.Error()
 		return model.ImportIngestStatusFailed, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusFailed, &msg)
 	}
+	rules, err := s.loadRules(ctx, src)
+	if err != nil {
+		return "", err
+	}
 	// A retried event is reprocessed exactly like the original push: it never
 	// carries a run id and never corrects an already-adopted amount.
-	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false)
+	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false, rules)
 	if err != nil {
 		return "", err
 	}
@@ -110,12 +114,13 @@ func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.
 // resolution is stage 1+2's verdict for an event: where it goes and in what
 // amount, or why it cannot go anywhere yet.
 type resolution struct {
-	accountID vo.Id
-	amount    string
-	status    string // "" = import; ImportIngestStatusQueued / ImportIngestStatusSkipped otherwise
+	accountID  vo.Id
+	amount     string
+	status     string // "" = import; ImportIngestStatusQueued / ImportIngestStatusSkipped otherwise
+	skipRuleID *vo.Id // set with status=Skipped when a skip rule fired (nil = ignored card)
 }
 
-func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model.IngestEvent) (resolution, error) {
+func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, rules ruleSet) (resolution, error) {
 	links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 	if err != nil {
 		return resolution{}, err
@@ -152,6 +157,12 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 		}
 		amount = converted
 	}
+	// A skip rule acts only on an event that could otherwise import: the
+	// card is mapped and the amount converted. Unmapped/no-rate events queue
+	// as before so the user still sees them.
+	if id := rules.skip(ev); id != nil {
+		return resolution{status: model.ImportIngestStatusSkipped, skipRuleID: id}, nil
+	}
 	return resolution{accountID: *al.AccountID, amount: amount}, nil
 }
 
@@ -161,7 +172,7 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 // sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
 // stale tap-time amount (a bank sync only — a push never rewrites a
 // hand-entered amount).
-func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool) (status string, amountUpdated bool, err error) {
+func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool, rules ruleSet) (status string, amountUpdated bool, err error) {
 	// The ledger stores the card name in its original case (the queue page
 	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
@@ -195,7 +206,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		ExternalAmount: ev.Amount, ExternalCurrency: optionalString(ev.Currency),
 		ExternalPostedAt: wallClock(ev.PostedAt), ImportedAt: s.clk.Now().UTC(),
 	}
-	r, err := s.resolve(ctx, src, ev)
+	r, err := s.resolve(ctx, src, ev, rules)
 	if err != nil {
 		return "", false, err
 	}
@@ -204,6 +215,7 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		return r.status, false, s.repo.InsertLink(ctx, link)
 	case model.ImportIngestStatusSkipped:
 		link.Status = model.ImportLinkStatusSkipped
+		link.AppliedRuleID = r.skipRuleID
 		return r.status, false, s.repo.InsertLink(ctx, link)
 	}
 	txID, adopted, amountUpdated, err := s.place(ctx, src, ev, r, correctAmount)

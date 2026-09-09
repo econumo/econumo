@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -601,5 +602,61 @@ func TestRetryEvent(t *testing.T) {
 	}
 	if _, err := h.svc.RetryEvent(context.Background(), vo.MustParseId(userB), model.RetryImportEventRequest{EventId: failed.EventId}); err == nil {
 		t.Fatal("foreign user must not retry")
+	}
+}
+
+func TestIngest_SkipRuleSkipsAfterMapping(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "prefix", MatchValue: "payment - thank you"})
+	body := strings.Replace(tap, `"payee":"Blue Bottle"`, `"payee":"PAYMENT - THANK YOU"`, 1)
+	res := ingest(t, h, body)
+	if res.Status != model.ImportIngestStatusSkipped {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(h.txns.created) != 0 {
+		t.Fatalf("a skipped event must create nothing: %+v", h.txns.created)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if len(links) != 1 || links[0].Status != model.ImportLinkStatusSkipped || links[0].AppliedRuleID == nil {
+		t.Fatalf("ledger row must be skipped with the rule recorded: %+v", links)
+	}
+}
+
+func TestIngest_SkipRuleDoesNotFireOnUnmappedCard(t *testing.T) {
+	h := setup(t)
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	res := ingest(t, h, tap) // card never mapped
+	if res.Status != model.ImportIngestStatusQueued {
+		t.Fatalf("unmapped card queues even when a skip rule would match: %s", res.Status)
+	}
+}
+
+func TestIngest_SkipRuleScopedToAnotherSourceIsIgnored(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	other := h.f.ImportSource(fixture.ImportSource{UserID: userA, Provider: model.ImportProviderSimpleFIN, Name: "Bank"})
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, SourceID: other, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("rule scoped to another source must not fire: %s", res.Status)
+	}
+}
+
+func TestLinkAccount_ReplayAppliesSkipRules(t *testing.T) {
+	h := setup(t)
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusQueued {
+		t.Fatalf("queued first: %s", res.Status)
+	}
+	res, err := h.svc.LinkAccount(context.Background(), vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acct1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Run == nil || res.Run.SkippedCount != 1 || res.Run.ImportedCount != 0 {
+		t.Fatalf("replay must skip via the rule: %+v", res.Run)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if links[0].Status != model.ImportLinkStatusSkipped || links[0].AppliedRuleID == nil {
+		t.Fatalf("replayed row: %+v", links[0])
 	}
 }
