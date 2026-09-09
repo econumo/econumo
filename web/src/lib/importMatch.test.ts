@@ -74,6 +74,12 @@ describe('ruleDiff', () => {
   it('clearing a field is not a rule-worthy change', () => {
     expect(ruleDiff(payload({ categoryId: null }), link({ appliedCategoryId: 'c1' }))).toBeNull()
   })
+  it('reports only newly added labels, never the full replacement set', () => {
+    expect(ruleDiff(payload({ labelIds: ['l1', 'l2'] }), link({ appliedLabelIds: ['l1'] }))).toEqual({ labelIds: ['l2'] })
+  })
+  it('a label REMOVAL is not rule-worthy on its own — a rule can only add labels', () => {
+    expect(ruleDiff(payload({ labelIds: ['l1'] }), link({ appliedLabelIds: ['l1', 'l2'] }))).toBeNull()
+  })
 })
 
 describe('latestImportLink', () => {

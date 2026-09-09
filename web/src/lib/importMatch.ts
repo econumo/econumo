@@ -75,11 +75,13 @@ export interface RuleDiff {
   labelIds?: Id[]
 }
 
-const sameSet = (a: Id[], b: Id[]) => a.length === b.length && [...a].sort().every((v, i) => v === [...b].sort()[i])
-
 // Only a NEW non-empty value that differs from what the import applied is a
 // rule-worthy change: clearing a field produces no classification to encode,
 // and re-saving an already corrected transaction must not prompt again.
+// Labels are set-valued and asymmetric: a rule can only ADD labels (there is
+// no "unset this label" rule action), so only newly added ids are rule-worthy
+// — a label REMOVAL is not something the prompt's "you added…" copy can
+// truthfully offer, and re-applying an already-applied label must not prompt.
 export function ruleDiff(payload: CreateTransactionDto, link: TransactionImportLinkDto): RuleDiff | null {
   const diff: RuleDiff = {}
   if (payload.categoryId && payload.categoryId !== link.appliedCategoryId) {
@@ -91,8 +93,9 @@ export function ruleDiff(payload: CreateTransactionDto, link: TransactionImportL
   if (payload.tagId && payload.tagId !== link.appliedTagId) {
     diff.tagId = payload.tagId
   }
-  if (payload.labelIds.length > 0 && !sameSet(payload.labelIds, link.appliedLabelIds)) {
-    diff.labelIds = payload.labelIds
+  const addedLabelIds = payload.labelIds.filter((id) => !link.appliedLabelIds.includes(id))
+  if (addedLabelIds.length > 0) {
+    diff.labelIds = addedLabelIds
   }
   return Object.keys(diff).length > 0 ? diff : null
 }

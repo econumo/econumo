@@ -126,3 +126,44 @@ it('a transaction classified by a rule offers to update that rule instead, keepi
   expect(posted.create).toBeUndefined()
   expect(await screen.findByText('Apply this rule to 5 matching transactions in this import?')).toBeInTheDocument()
 })
+
+it('a preview refresh failure after a successful create still advances to apply, without risking a duplicate create on retry', async () => {
+  renderPrompt()
+  server.use(http.post('*/api/v1/import/preview-rule', () =>
+    HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
+  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  // the rule was created despite the refresh failing; the apply step shows a
+  // stale (zero) count rather than getting stuck on "define" and inviting a
+  // second, duplicate create-rule click
+  expect(await screen.findByText('Apply this rule to 0 matching transactions in this import?')).toBeInTheDocument()
+  expect(posted.create).toHaveLength(1)
+})
+
+it('a link scoped to the source from the start applies once and skips the second, source-wide step', async () => {
+  renderPrompt()
+  useUiStore.getState().setRulePrompt({ link: link({ runId: '' }), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  expect(await screen.findByText('Apply this rule to 9 matching transactions in this import?')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  await waitFor(() => expect(posted.apply![0]).toEqual({ ruleId: 'rule-new', scope: 'source', runId: '', scopeSourceId: 's1', includeEdited: false }))
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  expect(useUiStore.getState().rulePrompt).toBeNull()
+})
+
+it('the include-edited choice does not carry over from the run-scoped apply to the source-wide apply', async () => {
+  renderPrompt()
+  useUiStore.getState().setRulePrompt({ link: link(), diff: { categoryId: 'cat-food' } })
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: 'Create rule' }))
+  await user.click(await screen.findByRole('checkbox', { name: 'Also update the 2 transactions you edited' }))
+  await user.click(screen.getByRole('button', { name: 'Apply' }))
+  await waitFor(() => expect(posted.apply![0]).toMatchObject({ scope: 'run', includeEdited: true }))
+
+  await screen.findByText('Also apply to all imports from iPhone? 9 transactions match.')
+  expect(screen.getByRole('checkbox', { name: 'Also update the 2 transactions you edited' })).not.toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'Apply to all imports' }))
+  await waitFor(() => expect(posted.apply![1]).toMatchObject({ scope: 'source', includeEdited: false }))
+})

@@ -106,14 +106,18 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
 
   const save = async () => {
     try {
-      // the debounced live-count preview may not have settled yet (e.g. the
-      // user clicked Create right away) — refresh it alongside the save so
-      // the apply step's count is never stale
-      const [saved] = await Promise.all([
-        existing ? update.mutateAsync({ id: existing.id, spec }) : create.mutateAsync({ spec }),
-        preview.mutateAsync({ spec, scope: runScope }),
-      ])
+      // the create/update and the count refresh are independent outcomes: if
+      // the rule is saved but the refresh then fails, we must still record
+      // ruleId and advance — otherwise a second click on "Create rule" would
+      // create a SECOND rule (createImportRule takes no client id here), which
+      // is exactly the near-duplicate stacking appliedRuleId exists to avoid.
+      const saved = existing ? await update.mutateAsync({ id: existing.id, spec }) : await create.mutateAsync({ spec })
       setRuleId(saved.id)
+      // the debounced live-count preview may not have settled yet (e.g. the
+      // user clicked Create right away) — refresh it so the apply step's
+      // count is never stale; a refresh failure just leaves the count at 0,
+      // it must not undo the save that already succeeded
+      await preview.mutateAsync({ spec, scope: runScope }).catch(() => {})
       setStep('apply')
     } catch (err) {
       toast.error(apiErrorMessage(err))
@@ -128,6 +132,9 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       const result = await apply.mutateAsync({ ruleId, scope, includeEdited })
       toast.success(t('imports.rules.prompt.applied_toast', { count: result.updated }))
       if (next && link.runId) {
+        // the source-wide apply is a separate, wider-reaching action — the
+        // run-scoped "include edited" choice must not silently carry over to it
+        setIncludeEdited(false)
         sourcePreview.mutate({ spec, scope: sourceScope })
         setStep(next)
       } else {
@@ -138,20 +145,26 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
     }
   }
 
+  // Shown at whichever step is about to apply, scoped to THAT step's own
+  // already-edited count — the run-scoped and source-wide applies are
+  // separate actions (state reset in applyTo), so each gets its own control.
+  const includeEditedControl = (count: number) =>
+    count > 0 ? (
+      <>
+        <p className="text-sm text-muted-foreground">{t('imports.rules.prompt.skipped_edited', { count })}</p>
+        <label className="flex items-center gap-2 text-sm">
+          <Checkbox checked={includeEdited} onCheckedChange={(v) => setIncludeEdited(v === true)} aria-label={t('imports.rules.prompt.include_edited', { count })} />
+          {t('imports.rules.prompt.include_edited', { count })}
+        </label>
+      </>
+    ) : null
+
   const body = () => {
     if (step === 'apply') {
       return (
         <>
           <p className="text-sm">{t('imports.rules.prompt.apply_question', { count: matched })}</p>
-          {alreadyEdited > 0 ? (
-            <>
-              <p className="text-sm text-muted-foreground">{t('imports.rules.prompt.skipped_edited', { count: alreadyEdited })}</p>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={includeEdited} onCheckedChange={(v) => setIncludeEdited(v === true)} aria-label={t('imports.rules.prompt.include_edited', { count: alreadyEdited })} />
-                {t('imports.rules.prompt.include_edited', { count: alreadyEdited })}
-              </label>
-            </>
-          ) : null}
+          {includeEditedControl(alreadyEdited)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.skip_apply')}</Button>
             <Button type="button" disabled={apply.isPending} onClick={() => void applyTo(runScope, 'source')}>{t('imports.rules.prompt.apply')}</Button>
@@ -160,9 +173,15 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
       )
     }
     if (step === 'source') {
+      const sourceLoading = sourcePreview.data === undefined || sourcePreview.isPending
       return (
         <>
-          <p className="text-sm">{t('imports.rules.prompt.source_question', { source: link.sourceName, count: sourcePreview.data?.matched ?? 0 })}</p>
+          <p className="text-sm">
+            {sourceLoading
+              ? t('common.app.modal.loading.data_loading')
+              : t('imports.rules.prompt.source_question', { source: link.sourceName, count: sourcePreview.data?.matched ?? 0 })}
+          </p>
+          {includeEditedControl(sourcePreview.data?.alreadyEdited ?? 0)}
           <div className={dialogActionsClass}>
             <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.done')}</Button>
             <Button type="button" disabled={apply.isPending || sourcePreview.isPending} onClick={() => void applyTo(sourceScope, null)}>{t('imports.rules.prompt.apply_source')}</Button>
@@ -195,7 +214,9 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
           </div>
         )}
         <p className="text-sm text-muted-foreground" aria-live="polite">
-          {preview.isPending ? t('common.app.modal.loading.data_loading') : t('imports.rules.prompt.match_count', { count: matched })}
+          {preview.data === undefined || preview.isPending
+            ? t('common.app.modal.loading.data_loading')
+            : t('imports.rules.prompt.match_count', { count: matched })}
         </p>
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onDone}>{t('imports.rules.prompt.not_now')}</Button>
