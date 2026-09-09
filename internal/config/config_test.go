@@ -134,8 +134,9 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitIngest != 60 {
 		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
 	}
-	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 {
-		t.Fatalf("claim/sync = %d/%d, want 5/10", c.RateLimitClaimSetupToken, c.RateLimitSync)
+	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 || c.RateLimitSuggestRules != 3 || c.RateLimitPreviewRule != 120 {
+		t.Fatalf("claim/sync/suggest/preview = %d/%d/%d/%d, want 5/10/3/120",
+			c.RateLimitClaimSetupToken, c.RateLimitSync, c.RateLimitSuggestRules, c.RateLimitPreviewRule)
 	}
 }
 
@@ -637,5 +638,65 @@ func TestLoad_ImportMatcherBounds(t *testing.T) {
 				t.Fatalf("Load() err = %v, want ok=%v", err, tc.ok)
 			}
 		})
+	}
+}
+
+func TestParseAIDSN(t *testing.T) {
+	cases := []struct {
+		name, dsn, endpoint, apiKey, model string
+		wantErr                            bool
+	}{
+		{name: "empty disables", dsn: ""},
+		{name: "openai with key", dsn: "openai://sk-abc@api.openai.com?model=gpt-5-mini", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "gpt-5-mini"},
+		{name: "scheme is case-insensitive", dsn: "OpenAI://sk-abc@api.openai.com?model=m", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "m"},
+		{name: "keyless loopback is plain http", dsn: "openai://localhost:11434?model=llama3", endpoint: "http://localhost:11434/v1", model: "llama3"},
+		{name: "127.0.0.1 is plain http", dsn: "openai://127.0.0.1:8000?model=m", endpoint: "http://127.0.0.1:8000/v1", model: "m"},
+		{name: "custom prefix kept, trailing slash trimmed", dsn: "openai://k@gateway.example/openai/v1/?model=m", endpoint: "https://gateway.example/openai/v1", apiKey: "k", model: "m"},
+		{name: "insecure flag forces http on a LAN host", dsn: "openai://10.0.0.5:8080?model=m&insecure=true", endpoint: "http://10.0.0.5:8080/v1", model: "m"},
+		{name: "unknown scheme", dsn: "anthropic://k@api.anthropic.com?model=m", wantErr: true},
+		{name: "missing model", dsn: "openai://k@api.openai.com", wantErr: true},
+		{name: "missing host", dsn: "openai://k@?model=m", wantErr: true},
+		{name: "not a url", dsn: "::nope", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			endpoint, apiKey, model, err := parseAIDSN(tc.dsn)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if endpoint != tc.endpoint || apiKey != tc.apiKey || model != tc.model {
+				t.Fatalf("got (%q, %q, %q), want (%q, %q, %q)", endpoint, apiKey, model, tc.endpoint, tc.apiKey, tc.model)
+			}
+		})
+	}
+}
+
+func TestLoad_AIDSN(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_AI_DSN", "openai://sk-abc@api.openai.com?model=gpt-5-mini")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.AIEnabled || c.AIEndpoint != "https://api.openai.com/v1" || c.AIAPIKey != "sk-abc" || c.AIModel != "gpt-5-mini" {
+		t.Fatalf("ai config = %+v", c)
+	}
+	t.Setenv("ECONUMO_AI_DSN", "")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AIEnabled {
+		t.Fatal("empty DSN must disable AI")
+	}
+	t.Setenv("ECONUMO_AI_DSN", "smtp://x")
+	if _, err := Load(); err == nil {
+		t.Fatal("bad scheme must fail boot")
 	}
 }

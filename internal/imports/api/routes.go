@@ -35,5 +35,13 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/import/sync-source", auth(h.SyncSource))
 		mux.Handle("GET /api/v1/import/get-run-list", auth(h.GetRunList))
 		mux.Handle("GET /api/v1/import/get-run", auth(h.GetRun))
+		mux.Handle("GET /api/v1/import/get-rule-list", auth(h.GetRuleList))
+		mux.Handle("POST /api/v1/import/create-rule", auth(h.CreateRule))
+		mux.Handle("POST /api/v1/import/update-rule", auth(h.UpdateRule))
+		mux.Handle("POST /api/v1/import/delete-rule", auth(h.DeleteRule))
+		// POST, not GET: the whole rule spec travels in the body, like list-external-accounts.
+		mux.Handle("POST /api/v1/import/preview-rule", auth(h.PreviewRule))
+		mux.Handle("POST /api/v1/import/apply-rule", auth(h.ApplyRule))
+		mux.Handle("POST /api/v1/import/suggest-rules", auth(h.SuggestRules))
 	}
 }

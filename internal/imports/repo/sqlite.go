@@ -154,3 +154,55 @@ func (sqliteQuerier) ListImportRunsBySource(ctx context.Context, db backend.DBTX
 func (sqliteQuerier) ListImportTransactionLinksByRun(ctx context.Context, db backend.DBTX, runID *string) ([]linkRow, error) {
 	return sqlitegen.New(db).ListImportTransactionLinksByRun(ctx, runID)
 }
+
+func (sqliteQuerier) InsertImportRule(ctx context.Context, db backend.DBTX, p insertRuleParams) error {
+	return sqlitegen.New(db).InsertImportRule(ctx, p)
+}
+
+func (sqliteQuerier) UpdateImportRule(ctx context.Context, db backend.DBTX, p updateRuleParams) error {
+	return sqlitegen.New(db).UpdateImportRule(ctx, p)
+}
+
+func (sqliteQuerier) DeleteImportRule(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteImportRule(ctx, id)
+}
+
+func (sqliteQuerier) GetImportRuleByID(ctx context.Context, db backend.DBTX, id string) (ruleRow, error) {
+	return sqlitegen.New(db).GetImportRuleByID(ctx, id)
+}
+
+func (sqliteQuerier) ListImportRulesByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleRow, error) {
+	return sqlitegen.New(db).ListImportRulesByUser(ctx, userID)
+}
+
+func (sqliteQuerier) DeleteImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) error {
+	return sqlitegen.New(db).DeleteImportRuleLabels(ctx, ruleID)
+}
+
+func (sqliteQuerier) InsertImportRuleLabel(ctx context.Context, db backend.DBTX, p insertRuleLabelParams) error {
+	return sqlitegen.New(db).InsertImportRuleLabel(ctx, p)
+}
+
+func (sqliteQuerier) ListImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) ([]ruleLabelRow, error) {
+	return sqlitegen.New(db).ListImportRuleLabels(ctx, ruleID)
+}
+
+func (sqliteQuerier) ListImportRuleLabelsByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleLabelRow, error) {
+	return sqlitegen.New(db).ListImportRuleLabelsByUser(ctx, userID)
+}
+
+func (sqliteQuerier) DeleteImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) error {
+	return sqlitegen.New(db).DeleteImportLinkAppliedLabels(ctx, linkID)
+}
+
+func (sqliteQuerier) InsertImportLinkAppliedLabel(ctx context.Context, db backend.DBTX, p insertLinkAppliedParams) error {
+	return sqlitegen.New(db).InsertImportLinkAppliedLabel(ctx, p)
+}
+
+func (sqliteQuerier) ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error) {
+	return sqlitegen.New(db).ListImportLinkAppliedLabels(ctx, linkID)
+}
+
+func (sqliteQuerier) ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksByUser(ctx, userID)
+}

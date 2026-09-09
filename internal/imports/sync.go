@@ -36,6 +36,12 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		return nil, err
 	}
 	reqctx.AddLogAttr(ctx, "source_id", src.ID.String())
+	// Loaded before the run row exists: a failure here must simply fail the
+	// request, not leave a "running" run with nothing left to finalize it.
+	rules, err := s.loadRules(ctx, src)
+	if err != nil {
+		return nil, err
+	}
 	params, _ := json.Marshal(map[string]string{"startDate": req.StartDate, "endDate": end.Format(model.ImportDateLayout)})
 	run := &model.ImportRun{
 		ID: vo.NewId(), UserID: userID, SourceID: src.ID, Provider: src.Provider, Params: string(params),
@@ -66,7 +72,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		byAccount[t.ExternalAccountID] = append(byAccount[t.ExternalAccountID], t)
 	}
 	for _, a := range fetched.Accounts {
-		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID]); err != nil {
+		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID], rules); err != nil {
 			run.Errors = append(run.Errors, model.ImportRunError{ExternalAccountId: a.ID, Message: accountFailedMessage})
 			reqctx.AddLogAttr(ctx, "account_error", a.ID)
 			// Type only, never the error text: it may originate from the
@@ -113,7 +119,7 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 // syncAccount stores and applies one account's rows in a single transaction.
 // A duplicate payload (same event already stored) is skipped silently, so a
 // re-run of an overlapping range is a no-op for rows already seen.
-func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction) error {
+func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run *model.ImportRun, account model.ExternalAccount, rows []model.ExternalTransaction, rules ruleSet) error {
 	snapshot := *run
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, row := range rows {
@@ -141,7 +147,7 @@ func (s *Service) syncAccount(ctx context.Context, src *model.ImportSource, run 
 			if parsed.Currency == "" {
 				parsed.Currency = account.Currency
 			}
-			status, amountUpdated, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true)
+			status, amountUpdated, err := s.applyEvent(ctx, src, ev.ID, parsed, &run.ID, true, rules)
 			if err != nil {
 				return err
 			}

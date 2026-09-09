@@ -151,6 +151,7 @@ export function SettingsPage() {
             <MenuRow label={t('imports.data_page.menu_item')} to={RouterPage.SETTINGS_DATA} />
             <MenuRow label={t('imports.apple_wallet.menu_item')} to={RouterPage.SETTINGS_APPLE_WALLET} />
             <MenuRow label={t('imports.simplefin.menu_item')} to={RouterPage.SETTINGS_SIMPLEFIN} />
+            <MenuRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
           </MenuGroup>
 
         </div>

@@ -4754,6 +4754,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/apply-rule": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Re-classifies (or skips) every already-imported transaction in scope that matches the rule, skipping hand-edited ones unless includeEdited is set.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Apply a saved rule to existing imports",
+                "parameters": [
+                    {
+                        "description": "Rule id + scope",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.ApplyImportRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ApplyImportRuleResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/claim-setup-token": {
             "post": {
                 "security": [
@@ -4841,6 +4916,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/create-rule": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Creates a classify or skip rule for matching future/existing imports.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Create an import rule",
+                "parameters": [
+                    {
+                        "description": "Create rule request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CreateImportRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ImportRuleResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/create-source": {
             "post": {
                 "security": [
@@ -4887,6 +5037,69 @@ const docTemplate = `{
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/delete-rule": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Deletes a rule. Requires ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Delete an import rule",
+                "parameters": [
+                    {
+                        "description": "Delete rule request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.DeleteImportRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseOk"
                         }
                     },
                     "400": {
@@ -5149,6 +5362,55 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.GetImportQueueResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/get-rule-list": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns the caller's classify/skip rules, newest first.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "List import rules",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.GetImportRuleListResult"
                                         }
                                     }
                                 }
@@ -5791,6 +6053,81 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/import/preview-rule": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Reports how many imported transactions in scope match the rule spec, and how many of those were already hand-edited.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Count the existing imports a rule would touch",
+                "parameters": [
+                    {
+                        "description": "Rule spec + scope",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.PreviewImportRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.PreviewImportRuleResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/import/retry-event": {
             "post": {
                 "security": [
@@ -5983,6 +6320,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.GetImportQueueResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/suggest-rules": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Returns AI-proposed rule specs for imports in scope. 400 import.ai_disabled when no AI provider is configured on this server.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Ask the configured AI for rule suggestions",
+                "parameters": [
+                    {
+                        "description": "Scope",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.SuggestImportRulesRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.SuggestImportRulesResult"
                                         }
                                     }
                                 }
@@ -6214,6 +6626,81 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/model.GetImportQueueResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "402": {
+                        "description": "Payment Required",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/import/update-rule": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Replaces a rule's match/target spec. Requires ownership.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Import"
+                ],
+                "summary": "Update an import rule",
+                "parameters": [
+                    {
+                        "description": "Update rule request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.UpdateImportRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ImportRuleResult"
                                         }
                                     }
                                 }
@@ -11202,6 +11689,37 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ApplyImportRuleRequest": {
+            "type": "object",
+            "properties": {
+                "includeEdited": {
+                    "type": "boolean"
+                },
+                "ruleId": {
+                    "type": "string"
+                },
+                "runId": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "scopeSourceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ApplyImportRuleResult": {
+            "type": "object",
+            "properties": {
+                "skipped": {
+                    "type": "integer"
+                },
+                "updated": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.ArchiveBudgetRequest": {
             "type": "object",
             "properties": {
@@ -11855,6 +12373,51 @@ const docTemplate = `{
                 }
             }
         },
+        "model.CreateImportRuleRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isCaseSensitive": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchType": {
+                    "type": "string"
+                },
+                "matchValue": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "sourceId": {
+                    "description": "nil/\"\" = every source",
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                }
+            }
+        },
         "model.CreateImportSourceRequest": {
             "type": "object",
             "properties": {
@@ -12334,6 +12897,14 @@ const docTemplate = `{
         "model.DeleteFolderResult": {
             "type": "object"
         },
+        "model.DeleteImportRuleRequest": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.DeleteImportSourceRequest": {
             "type": "object",
             "properties": {
@@ -12613,6 +13184,17 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.ImportQueuedEventResult"
+                    }
+                }
+            }
+        },
+        "model.GetImportRuleListResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRuleResult"
                     }
                 }
             }
@@ -12950,6 +13532,101 @@ const docTemplate = `{
                 },
                 "skipped": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.ImportRuleResult": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isCaseSensitive": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchType": {
+                    "type": "string"
+                },
+                "matchValue": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "sourceId": {
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                },
+                "updatedAt": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ImportRuleSuggestion": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "isCaseSensitive": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchType": {
+                    "type": "string"
+                },
+                "matchValue": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "description": "nil/\"\" = every source",
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
                 }
             }
         },
@@ -13815,6 +14492,68 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PreviewImportRuleRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "isCaseSensitive": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchType": {
+                    "type": "string"
+                },
+                "matchValue": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "runId": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "scopeSourceId": {
+                    "type": "string"
+                },
+                "sourceId": {
+                    "description": "nil/\"\" = every source",
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.PreviewImportRuleResult": {
+            "type": "object",
+            "properties": {
+                "alreadyEdited": {
+                    "type": "integer"
+                },
+                "matched": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.RecurringTransactionResult": {
             "type": "object",
             "properties": {
@@ -14269,6 +15008,31 @@ const docTemplate = `{
                 }
             }
         },
+        "model.SuggestImportRulesRequest": {
+            "type": "object",
+            "properties": {
+                "runId": {
+                    "type": "string"
+                },
+                "scope": {
+                    "type": "string"
+                },
+                "scopeSourceId": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.SuggestImportRulesResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ImportRuleSuggestion"
+                    }
+                }
+            }
+        },
         "model.SyncImportSourceRequest": {
             "type": "object",
             "properties": {
@@ -14332,6 +15096,24 @@ const docTemplate = `{
         "model.TransactionImportLinkResult": {
             "type": "object",
             "properties": {
+                "appliedCategoryId": {
+                    "type": "string"
+                },
+                "appliedLabelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "appliedPayeeId": {
+                    "type": "string"
+                },
+                "appliedRuleId": {
+                    "type": "string"
+                },
+                "appliedTagId": {
+                    "type": "string"
+                },
                 "externalAccountId": {
                     "type": "string"
                 },
@@ -14339,6 +15121,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "externalCurrency": {
+                    "type": "string"
+                },
+                "externalDescription": {
                     "type": "string"
                 },
                 "externalPayee": {
@@ -14357,6 +15142,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "provider": {
+                    "type": "string"
+                },
+                "runId": {
                     "type": "string"
                 },
                 "sourceId": {
@@ -14787,6 +15575,51 @@ const docTemplate = `{
                 },
                 "run": {
                     "$ref": "#/definitions/model.ImportRunResult"
+                }
+            }
+        },
+        "model.UpdateImportRuleRequest": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string"
+                },
+                "categoryId": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isCaseSensitive": {
+                    "type": "boolean"
+                },
+                "labelIds": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "matchField": {
+                    "type": "string"
+                },
+                "matchType": {
+                    "type": "string"
+                },
+                "matchValue": {
+                    "type": "string"
+                },
+                "payeeId": {
+                    "type": "string"
+                },
+                "priority": {
+                    "type": "integer"
+                },
+                "sourceId": {
+                    "description": "nil/\"\" = every source",
+                    "type": "string"
+                },
+                "tagId": {
+                    "type": "string"
                 }
             }
         },

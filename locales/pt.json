@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Importada de"
+    },
+    "rules": {
+      "field": { "external_payee": "Beneficiário", "description": "Descrição" },
+      "type": { "contains": "contém", "prefix": "começa com", "exact": "é exatamente" },
+      "action": { "classify": "Classificar", "skip": "Ignorar" },
+      "prompt": {
+        "title": "Criar uma regra de importação",
+        "changed_category": "Definiu a categoria como {name}. Criar uma regra para importações semelhantes?",
+        "changed_payee": "Definiu o beneficiário como {name}. Criar uma regra para importações semelhantes?",
+        "changed_tag": "Definiu a etiqueta como {name}. Criar uma regra para importações semelhantes?",
+        "changed_labels": "Adicionou as etiquetas {names}. Criar uma regra para importações semelhantes?",
+        "existing_rule": "Esta transação foi classificada pela regra “{rule}”.",
+        "match_count": "Corresponde a {count} transações nesta importação",
+        "not_now": "Agora não",
+        "create_rule": "Criar regra",
+        "update_rule": "Atualizar regra",
+        "apply_question": "Aplicar esta regra a {count} transações correspondentes nesta importação?",
+        "skipped_edited": "{count} ignoradas (foram editadas por si)",
+        "include_edited": "Atualizar também as {count} transações que editou",
+        "skip_apply": "Ignorar",
+        "apply": "Aplicar",
+        "applied_toast": "{count} transações atualizadas",
+        "source_question": "Aplicar também a todas as importações de {source}? {count} transações correspondem.",
+        "apply_source": "Aplicar a todas as importações",
+        "done": "Concluído"
+      },
+      "editor": {
+        "field": "Campo de correspondência",
+        "type": "Tipo de correspondência",
+        "title_create": "Nova regra de importação",
+        "title_edit": "Editar regra de importação",
+        "action": "Ação",
+        "value": "Valor de correspondência",
+        "case_sensitive": "Sensível a maiúsculas e minúsculas",
+        "category": "Categoria",
+        "payee": "Beneficiário",
+        "tag": "Etiqueta de orçamento",
+        "labels": "Etiquetas de relatório",
+        "match_count": "Corresponde a {count} transações importadas"
+      },
+      "page": {
+        "menu_item": "Regras de importação",
+        "title": "Regras de importação",
+        "intro": "As regras classificam ou ignoram automaticamente as transações importadas. Executam-se de cima para baixo; arraste para alterar a ordem.",
+        "add": "Adicionar regra",
+        "empty": "Ainda não há regras. Corrija uma transação importada e o Econumo irá propor criar uma.",
+        "reorder": "Reordenar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "delete_title": "Eliminar esta regra?",
+        "delete_confirm": "Eliminar regra",
+        "skip_hint": "As transações correspondentes não são importadas"
+      },
+      "suggest": {
+        "button": "Sugerir regras",
+        "running": "A pensar…",
+        "heading": "Regras sugeridas",
+        "accept": "Aceitar",
+        "discard": "Descartar"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido utilizado — gere um novo no seu bridge SimpleFIN.",
       "provider_unavailable": "Não foi possível contactar o bridge bancário. Tente novamente dentro de alguns minutos.",
       "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",
-      "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração."
+      "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração.",
+      "rule_skip_not_applicable": "Uma regra de ignorar não pode ser aplicada a transações existentes",
+      "ai_disabled": "As sugestões de IA não estão ativadas neste servidor",
+      "ai_unavailable": "O serviço de IA está indisponível. Tente novamente mais tarde."
     },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",

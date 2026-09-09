@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Geïmporteerd uit"
+    },
+    "rules": {
+      "field": { "external_payee": "Begunstigde", "description": "Omschrijving" },
+      "type": { "contains": "bevat", "prefix": "begint met", "exact": "is precies" },
+      "action": { "classify": "Classificeren", "skip": "Overslaan" },
+      "prompt": {
+        "title": "Importregel maken",
+        "changed_category": "Je hebt de categorie ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_payee": "Je hebt de begunstigde ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_tag": "Je hebt de tag ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_labels": "Je hebt de tags {names} toegevoegd. Een regel maken voor vergelijkbare imports?",
+        "existing_rule": "Deze transactie is geclassificeerd door de regel “{rule}”.",
+        "match_count": "Komt overeen met {count} transacties in deze import",
+        "not_now": "Niet nu",
+        "create_rule": "Regel maken",
+        "update_rule": "Regel bijwerken",
+        "apply_question": "Deze regel toepassen op {count} overeenkomende transacties in deze import?",
+        "skipped_edited": "{count} overgeslagen (door jou bewerkt)",
+        "include_edited": "Ook de {count} transacties bijwerken die je hebt bewerkt",
+        "skip_apply": "Overslaan",
+        "apply": "Toepassen",
+        "applied_toast": "{count} transacties bijgewerkt",
+        "source_question": "Ook toepassen op alle imports van {source}? {count} transacties komen overeen.",
+        "apply_source": "Toepassen op alle imports",
+        "done": "Klaar"
+      },
+      "editor": {
+        "field": "Overeenkomstveld",
+        "type": "Overeenkomsttype",
+        "title_create": "Nieuwe importregel",
+        "title_edit": "Importregel bewerken",
+        "action": "Actie",
+        "value": "Overeenkomstwaarde",
+        "case_sensitive": "Hoofdlettergevoelig",
+        "category": "Categorie",
+        "payee": "Begunstigde",
+        "tag": "Budgettag",
+        "labels": "Rapportagetags",
+        "match_count": "Komt overeen met {count} geïmporteerde transacties"
+      },
+      "page": {
+        "menu_item": "Importregels",
+        "title": "Importregels",
+        "intro": "Regels classificeren of slaan geïmporteerde transacties automatisch over. Ze worden van boven naar beneden uitgevoerd; sleep om de volgorde te wijzigen.",
+        "add": "Regel toevoegen",
+        "empty": "Nog geen regels. Corrigeer een geïmporteerde transactie en Econumo biedt aan er een te maken.",
+        "reorder": "Volgorde wijzigen",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "delete_title": "Deze regel verwijderen?",
+        "delete_confirm": "Regel verwijderen",
+        "skip_hint": "Overeenkomende transacties worden niet geïmporteerd"
+      },
+      "suggest": {
+        "button": "Regels voorstellen",
+        "running": "Aan het nadenken…",
+        "heading": "Voorgestelde regels",
+        "accept": "Accepteren",
+        "discard": "Verwerpen"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN heeft dit setup-token geweigerd. Het is mogelijk al gebruikt — genereer een nieuw token in je SimpleFIN-bridge.",
       "provider_unavailable": "De bankbridge kon niet worden bereikt. Probeer het over een paar minuten opnieuw.",
       "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",
-      "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token."
+      "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token.",
+      "rule_skip_not_applicable": "Een overslaan-regel kan niet worden toegepast op bestaande transacties",
+      "ai_disabled": "AI-suggesties zijn niet ingeschakeld op deze server",
+      "ai_unavailable": "De AI-service is niet beschikbaar. Probeer het later opnieuw."
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",

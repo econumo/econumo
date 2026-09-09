@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Zaimportowano z"
+    },
+    "rules": {
+      "field": { "external_payee": "Odbiorca", "description": "Opis" },
+      "type": { "contains": "zawiera", "prefix": "zaczyna się od", "exact": "jest dokładnie równa" },
+      "action": { "classify": "Klasyfikuj", "skip": "Pomiń" },
+      "prompt": {
+        "title": "Utwórz regułę importu",
+        "changed_category": "Kategoria została zmieniona na {name}. Utworzyć regułę dla podobnych importów?",
+        "changed_payee": "Odbiorca został zmieniony na {name}. Utworzyć regułę dla podobnych importów?",
+        "changed_tag": "Tag został zmieniony na {name}. Utworzyć regułę dla podobnych importów?",
+        "changed_labels": "Dodano tagi {names}. Utworzyć regułę dla podobnych importów?",
+        "existing_rule": "Ta transakcja została sklasyfikowana przez regułę „{rule}”.",
+        "match_count": "Pasuje do {count} transakcji w tym imporcie",
+        "not_now": "Nie teraz",
+        "create_rule": "Utwórz regułę",
+        "update_rule": "Zaktualizuj regułę",
+        "apply_question": "Zastosować tę regułę do {count} pasujących transakcji w tym imporcie?",
+        "skipped_edited": "Pominięto {count} (zostały przez Ciebie edytowane)",
+        "include_edited": "Zaktualizuj też {count} edytowanych przez Ciebie transakcji",
+        "skip_apply": "Pomiń",
+        "apply": "Zastosuj",
+        "applied_toast": "Zaktualizowano {count} transakcji",
+        "source_question": "Zastosować też do wszystkich importów z {source}? Pasuje {count} transakcji.",
+        "apply_source": "Zastosuj do wszystkich importów",
+        "done": "Gotowe"
+      },
+      "editor": {
+        "field": "Pole dopasowania",
+        "type": "Typ dopasowania",
+        "title_create": "Nowa reguła importu",
+        "title_edit": "Edytuj regułę importu",
+        "action": "Akcja",
+        "value": "Wartość dopasowania",
+        "case_sensitive": "Rozróżniaj wielkość liter",
+        "category": "Kategoria",
+        "payee": "Odbiorca",
+        "tag": "Tag budżetowy",
+        "labels": "Tagi raportowe",
+        "match_count": "Pasuje do {count} zaimportowanych transakcji"
+      },
+      "page": {
+        "menu_item": "Reguły importu",
+        "title": "Reguły importu",
+        "intro": "Reguły automatycznie klasyfikują lub pomijają zaimportowane transakcje. Działają od góry do dołu; przeciągnij, aby zmienić kolejność.",
+        "add": "Dodaj regułę",
+        "empty": "Nie ma jeszcze reguł. Popraw zaimportowaną transakcję, a Econumo zaproponuje utworzenie reguły.",
+        "reorder": "Zmień kolejność",
+        "edit": "Edytuj",
+        "delete": "Usuń",
+        "delete_title": "Usunąć tę regułę?",
+        "delete_confirm": "Usuń regułę",
+        "skip_hint": "Pasujące transakcje nie są importowane"
+      },
+      "suggest": {
+        "button": "Zaproponuj reguły",
+        "running": "Myślę…",
+        "heading": "Zaproponowane reguły",
+        "accept": "Akceptuj",
+        "discard": "Odrzuć"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
       "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
       "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
-      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego."
+      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego.",
+      "rule_skip_not_applicable": "Reguła pomijania nie może być zastosowana do istniejących transakcji",
+      "ai_disabled": "Sugestie AI nie są włączone na tym serwerze",
+      "ai_unavailable": "Usługa AI jest niedostępna. Spróbuj ponownie później."
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",

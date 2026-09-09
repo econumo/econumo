@@ -42,6 +42,7 @@ import (
 	"github.com/econumo/econumo/internal/imports/applewallet"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/imports/simplefin"
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
@@ -187,6 +188,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appimports.RateScopeIngest:          cfg.RateLimitIngest,
 			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 			appimports.RateScopeSync:            cfg.RateLimitSync,
+			appimports.RateScopeSuggestRules:    cfg.RateLimitSuggestRules,
+			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -347,6 +350,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
 		NewImportsTransactionWriter(transactionSvc),
 		NewImportsTransactionLister(transactionRepo),
+		NewImportsClassificationLister(txImportCategories.CategoriesByOwner, txImportPayees.PayeesByOwner, txImportTags.TagsByOwner, txImportLabels.LabelsByOwner),
 		authLimiter, txm, clk,
 		appimports.MatcherConfig{
 			MatchDays:       cfg.ImportMatchDays,
@@ -362,6 +366,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	}
 	for name, p := range seams.ImportProviders {
 		importsSvc.RegisterProvider(name, p)
+	}
+	// The completion client is injected here, never imported by the feature:
+	// internal/imports declares the Completer interface and nothing more.
+	if cfg.AIEnabled {
+		importsSvc.SetCompleter(ai.New(ai.Config{Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}))
 	}
 	importsHandlers := handlerimports.NewHandlers(importsSvc)
 

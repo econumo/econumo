@@ -32,15 +32,37 @@ type CurrencyConverter interface {
 // an import goes through exactly the checks a hand-entered transaction does
 // (deleted account, write access, idempotency on the request id). Update is
 // used only to adopt a corrected amount on a tip-matched transaction.
+// UpdateTransactionReplacingLabels is apply-rule's path: a rule's label set
+// is a real edit, not an amount fix.
 type TransactionWriter interface {
 	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
 	UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
+	UpdateTransactionReplacingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
 }
 
 // TransactionLister pre-selects the matcher's candidates: the account's
 // transactions with spent_at inside [from, to].
 type TransactionLister interface {
 	ListByAccount(ctx context.Context, accountID vo.Id, from, to time.Time) ([]*model.Transaction, error)
+	// GetByID returns the transaction with LabelIDs populated; errs.NotFound when missing.
+	GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error)
+}
+
+// ClassificationLister is the owner's current classification vocabulary —
+// what a rule may target and what the pipeline may write. Every id a rule
+// carries is re-checked against these lists before it reaches
+// CreateTransaction, so a category deleted after the rule was saved never
+// fails an import.
+type ClassificationLister interface {
+	CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+	LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+}
+
+// Completer is one chat completion. nil = AI disabled.
+type Completer interface {
+	Complete(ctx context.Context, system, user string) (string, error)
 }
 
 // AttemptLimiter caps ingest per user; every request counts (Allow then
@@ -54,4 +76,6 @@ const (
 	RateScopeIngest          = "ingest"
 	RateScopeClaimSetupToken = "import-claim"
 	RateScopeSync            = "import-sync"
+	RateScopeSuggestRules    = "import-suggest"
+	RateScopePreviewRule     = "import-preview"
 )

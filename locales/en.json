@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Imported from"
+    },
+    "rules": {
+      "field": { "external_payee": "Payee", "description": "Description" },
+      "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
+      "action": { "classify": "Classify", "skip": "Skip" },
+      "prompt": {
+        "title": "Create an import rule",
+        "changed_category": "You set the category to {name}. Create a rule for similar imports?",
+        "changed_payee": "You set the payee to {name}. Create a rule for similar imports?",
+        "changed_tag": "You set the tag to {name}. Create a rule for similar imports?",
+        "changed_labels": "You added the labels {names}. Create a rule for similar imports?",
+        "existing_rule": "This transaction was classified by the rule “{rule}”.",
+        "match_count": "Matches {count} transactions in this import",
+        "not_now": "Not now",
+        "create_rule": "Create rule",
+        "update_rule": "Update rule",
+        "apply_question": "Apply this rule to {count} matching transactions in this import?",
+        "skipped_edited": "{count} skipped (you've edited these)",
+        "include_edited": "Also update the {count} transactions you edited",
+        "skip_apply": "Skip",
+        "apply": "Apply",
+        "applied_toast": "Updated {count} transactions",
+        "source_question": "Also apply to all imports from {source}? {count} transactions match.",
+        "apply_source": "Apply to all imports",
+        "done": "Done"
+      },
+      "editor": {
+        "field": "Match field",
+        "type": "Match type",
+        "title_create": "New import rule",
+        "title_edit": "Edit import rule",
+        "action": "Action",
+        "value": "Match value",
+        "case_sensitive": "Case sensitive",
+        "category": "Category",
+        "payee": "Payee",
+        "tag": "Tag",
+        "labels": "Labels",
+        "match_count": "Matches {count} imported transactions"
+      },
+      "page": {
+        "menu_item": "Import rules",
+        "title": "Import rules",
+        "intro": "Rules classify or skip imported transactions automatically. They run top to bottom; drag to change the order.",
+        "add": "Add rule",
+        "empty": "No rules yet. Correct an imported transaction and Econumo will offer to create one.",
+        "reorder": "Reorder",
+        "edit": "Edit",
+        "delete": "Delete",
+        "delete_title": "Delete this rule?",
+        "delete_confirm": "Delete rule",
+        "skip_hint": "Matching transactions are not imported"
+      },
+      "suggest": {
+        "button": "Suggest rules",
+        "running": "Thinking…",
+        "heading": "Suggested rules",
+        "accept": "Accept",
+        "discard": "Discard"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
       "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
       "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
-      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token."
+      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token.",
+      "rule_skip_not_applicable": "A skip rule cannot be applied to existing transactions",
+      "ai_disabled": "AI suggestions are not enabled on this server",
+      "ai_unavailable": "The AI service is unavailable. Try again later."
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",

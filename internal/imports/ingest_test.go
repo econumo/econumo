@@ -2,7 +2,9 @@ package imports_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -77,6 +80,7 @@ type fakeTxns struct {
 	builder    *fixture.Builder
 	created    []model.CreateTransactionRequest
 	updated    []model.UpdateTransactionRequest
+	replaced   []model.UpdateTransactionRequest
 	candidates []*model.Transaction
 	fail       error
 	// failOn, when non-empty, makes CreateTransaction fail for a request
@@ -109,13 +113,103 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, userID vo.Id, req mode
 		description = *req.Description
 	}
 	q := f.db.TX.Querier(ctx)
-	query := f.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	query := f.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, category_id, payee_id, tag_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if _, err := q.ExecContext(ctx, query,
-		req.Id, userID.String(), req.AccountId, aliasToType(req.Type), req.Amount.String(), description, req.Date, req.Date, req.Date); err != nil {
+		req.Id, userID.String(), req.AccountId, optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId),
+		aliasToType(req.Type), req.Amount.String(), description, req.Date, req.Date, req.Date); err != nil {
+		return nil, err
+	}
+	if err := f.replaceLabels(ctx, req.Id, req.LabelIds); err != nil {
 		return nil, err
 	}
 	return &model.CreateTransactionResult{Item: model.TransactionResult{Id: req.Id, AccountId: req.AccountId, Amount: req.Amount.String()}}, nil
 }
+
+// optID keeps a nil/blank optional id out of an FK column as NULL.
+func optID(p *string) any {
+	if p == nil || *p == "" {
+		return nil
+	}
+	return *p
+}
+
+// replaceLabels mirrors the transaction feature's label rewrite so a later
+// GetByID observes exactly the set the request carried.
+func (f *fakeTxns) replaceLabels(ctx context.Context, transactionID string, labelIDs []string) error {
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(`DELETE FROM transactions_labels WHERE transaction_id = ?`), transactionID); err != nil {
+		return err
+	}
+	for _, id := range labelIDs {
+		if _, err := q.ExecContext(ctx, f.db.Rebind(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`), transactionID, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	q := f.db.TX.Querier(ctx)
+	var (
+		userID, accountID, amount, description string
+		typ                                    int
+		cat, payee, tag                        *string
+		spentAt                                time.Time
+	)
+	row := q.QueryRowContext(ctx, f.db.Rebind(
+		`SELECT user_id, type, account_id, amount, category_id, payee_id, tag_id, description, spent_at FROM transactions WHERE id = ?`), id.String())
+	if err := row.Scan(&userID, &typ, &accountID, &amount, &cat, &payee, &tag, &description, &spentAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Transaction not found")
+		}
+		return nil, err
+	}
+	t := &model.Transaction{
+		ID: id, UserID: vo.MustParseId(userID), Type: model.TransactionType(typ),
+		AccountID: vo.MustParseId(accountID), Amount: amount, Description: description, SpentAt: spentAt,
+		CategoryID: parseOptID(cat), PayeeID: parseOptID(payee), TagID: parseOptID(tag),
+	}
+	rows, err := q.QueryContext(ctx, f.db.Rebind(`SELECT label_id FROM transactions_labels WHERE transaction_id = ? ORDER BY label_id`), id.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		t.LabelIDs = append(t.LabelIDs, vo.MustParseId(raw))
+	}
+	return t, rows.Err()
+}
+
+func parseOptID(p *string) *vo.Id {
+	if p == nil || *p == "" {
+		return nil
+	}
+	id := vo.MustParseId(*p)
+	return &id
+}
+
+func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.replaced = append(f.replaced, req)
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(
+		`UPDATE transactions SET category_id = ?, payee_id = ?, tag_id = ?, description = ? WHERE id = ?`),
+		optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId), description, req.Id); err != nil {
+		return nil, err
+	}
+	if err := f.replaceLabels(ctx, req.Id, req.LabelIds); err != nil {
+		return nil, err
+	}
+	return &model.UpdateTransactionResult{}, nil
+}
+
 func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
 	return &model.UpdateTransactionResult{}, nil
@@ -150,6 +244,44 @@ func (f *fakeTxns) seed(t *testing.T, accountID, typeAlias, amount string, at ti
 	return id
 }
 
+// fakeEntities is the owner's vocabulary as the rules engine sees it. Tests
+// register ids they want a rule to be allowed to target.
+type fakeEntities struct {
+	categories, payees, tags, labels map[vo.Id][]model.ImportNamed // by owner
+	// err, when set, is returned by CategoriesByOwner — used to simulate a
+	// genuine lookup failure inside loadRules (as opposed to context
+	// cancellation), which every caller must handle without leaving
+	// half-finished state behind (e.g. a sync run stuck at "running").
+	err error
+}
+
+func newFakeEntities() *fakeEntities {
+	return &fakeEntities{
+		categories: map[vo.Id][]model.ImportNamed{}, payees: map[vo.Id][]model.ImportNamed{},
+		tags: map[vo.Id][]model.ImportNamed{}, labels: map[vo.Id][]model.ImportNamed{},
+	}
+}
+
+func (f *fakeEntities) add(m map[vo.Id][]model.ImportNamed, owner vo.Id, id, name string) {
+	m[owner] = append(m[owner], model.ImportNamed{ID: id, Name: name, OwnerID: owner.String()})
+}
+
+func (f *fakeEntities) CategoriesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	return f.categories[o], nil
+}
+func (f *fakeEntities) PayeesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.payees[o], nil
+}
+func (f *fakeEntities) TagsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.tags[o], nil
+}
+func (f *fakeEntities) LabelsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.labels[o], nil
+}
+
 type limiter struct {
 	allow, fail int
 	deny        error
@@ -173,6 +305,7 @@ type harness struct {
 	accounts *fakeAccounts
 	conv     *fakeConverter
 	txns     *fakeTxns
+	entities *fakeEntities
 	lim      *limiter
 	f        *fixture.Builder
 	db       *dbtest.DB
@@ -192,15 +325,22 @@ func setup(t *testing.T) *harness {
 	f.Account(fixture.Account{ID: acctB, UserID: userB, CurrencyID: usdID, Name: "Other"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	repo := importsrepo.NewRepo(db.Engine, db.TX)
-	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, lim: &limiter{}, f: f, db: db}
-	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, entities: newFakeEntities(), lim: &limiter{}, f: f, db: db}
+	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
 	registerParsers(h.svc)
 	return h
 }
 
 // withLimiter rebuilds the service with h.lim wired in as the rate limiter.
 func (h *harness) withLimiter() {
-	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.lim, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.entities, h.lim, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
+}
+
+// withRepo rebuilds the service over a decorated repository, so a single
+// failing read can be exercised against otherwise real persistence.
+func (h *harness) withRepo(repo imports.Repository) {
+	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
 	registerParsers(h.svc)
 }
 
@@ -479,4 +619,199 @@ func TestRetryEvent(t *testing.T) {
 	if _, err := h.svc.RetryEvent(context.Background(), vo.MustParseId(userB), model.RetryImportEventRequest{EventId: failed.EventId}); err == nil {
 		t.Fatal("foreign user must not retry")
 	}
+}
+
+func TestIngest_SkipRuleSkipsAfterMapping(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "prefix", MatchValue: "payment - thank you"})
+	body := strings.Replace(tap, `"payee":"Blue Bottle"`, `"payee":"PAYMENT - THANK YOU"`, 1)
+	res := ingest(t, h, body)
+	if res.Status != model.ImportIngestStatusSkipped {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(h.txns.created) != 0 {
+		t.Fatalf("a skipped event must create nothing: %+v", h.txns.created)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if len(links) != 1 || links[0].Status != model.ImportLinkStatusSkipped || links[0].AppliedRuleID == nil {
+		t.Fatalf("ledger row must be skipped with the rule recorded: %+v", links)
+	}
+}
+
+func TestIngest_SkipRuleDoesNotFireOnUnmappedCard(t *testing.T) {
+	h := setup(t)
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	res := ingest(t, h, tap) // card never mapped
+	if res.Status != model.ImportIngestStatusQueued {
+		t.Fatalf("unmapped card queues even when a skip rule would match: %s", res.Status)
+	}
+}
+
+func TestIngest_SkipRuleScopedToAnotherSourceIsIgnored(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	other := h.f.ImportSource(fixture.ImportSource{UserID: userA, Provider: model.ImportProviderSimpleFIN, Name: "Bank"})
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, SourceID: other, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("rule scoped to another source must not fire: %s", res.Status)
+	}
+}
+
+func TestLinkAccount_ReplayAppliesSkipRules(t *testing.T) {
+	h := setup(t)
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusQueued {
+		t.Fatalf("queued first: %s", res.Status)
+	}
+	res, err := h.svc.LinkAccount(context.Background(), vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acct1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Run == nil || res.Run.SkippedCount != 1 || res.Run.ImportedCount != 0 {
+		t.Fatalf("replay must skip via the rule: %+v", res.Run)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if links[0].Status != model.ImportLinkStatusSkipped || links[0].AppliedRuleID == nil {
+		t.Fatalf("replayed row: %+v", links[0])
+	}
+}
+
+func TestIngest_ClassifyRuleFillsCreatedTransaction(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	label := h.f.Label(fixture.Label{UserID: userA, Name: "Work"})
+	// a payee the owner does not have (deleted after the rule was saved); it is
+	// a real row because import_rules.target_payee_id is an FK, but it belongs
+	// to another user, so it is outside userA's vocabulary
+	stale := h.f.Payee(fixture.Payee{UserID: userB, Name: "Gone"})
+	h.entities.add(h.entities.categories, vo.MustParseId(userA), cat, "Coffee")
+	h.entities.add(h.entities.labels, vo.MustParseId(userA), label, "Work")
+	ruleID := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat, PayeeID: stale, LabelIDs: []string{label}})
+	res := ingest(t, h, tap)
+	if res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	req := h.txns.created[0]
+	if req.CategoryId == nil || *req.CategoryId != cat || req.PayeeId != nil || len(req.LabelIds) != 1 || req.LabelIds[0] != label {
+		t.Fatalf("created request must carry the rule's live targets only: %+v", req)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	l := links[0]
+	if l.AppliedCategoryID == nil || l.AppliedCategoryID.String() != cat || l.AppliedRuleID == nil || l.AppliedRuleID.String() != ruleID {
+		t.Fatalf("applied snapshot: %+v", l)
+	}
+	applied, _ := h.repo.ListLinkAppliedLabels(context.Background(), l.ID)
+	if len(applied) != 1 || applied[0].String() != label {
+		t.Fatalf("applied labels: %v", applied)
+	}
+}
+
+func TestIngest_AdoptedTransactionSnapshotsItsOwnClassification(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	// a classify rule that matches this event and would have written another
+	// category had the event created a transaction
+	other := h.f.Category(fixture.Category{UserID: userA, Name: "Other"})
+	h.entities.add(h.entities.categories, vo.MustParseId(userA), other, "Other")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: other})
+	// A hand-entered transaction the matcher will adopt (same amount, same
+	// day), seeded without a ledger row of its own: Match never adopts a
+	// candidate this source already links, so h.txns.seed's tap link would
+	// turn the adopt into a create.
+	txID := vo.NewId()
+	h.f.Transaction(fixture.Transaction{ID: txID.String(), UserID: userA, AccountID: acct1, CategoryID: cat, Amount: "4.75", Description: "Blue Bottle", SpentAt: now})
+	h.txns.candidates = []*model.Transaction{{
+		ID: txID, AccountID: vo.MustParseId(acct1), Type: model.TransactionTypeExpense,
+		Amount: "4.75", SpentAt: now, Description: "Blue Bottle",
+	}}
+	res := ingest(t, h, tap)
+	if res.Status != model.ImportIngestStatusMatched {
+		t.Fatalf("status = %s", res.Status)
+	}
+	if len(h.txns.created) != 0 {
+		t.Fatalf("an adopted event creates nothing: %+v", h.txns.created)
+	}
+	l := linkByExternalID(t, h, "evt-1")
+	if l.AppliedCategoryID == nil || l.AppliedCategoryID.String() != cat || l.AppliedRuleID != nil {
+		t.Fatalf("adopted row snapshots the transaction's current classification, not the rule's: %+v", l)
+	}
+}
+
+// A skip rule's id lives on the same column as a classify rule's. Unskipping
+// a row and importing it by hand must clear it: appliedRuleId is read as "the
+// rule that classified this row", and a skip rule classified nothing.
+func TestImportQueuedEvent_AfterUnskipDropsTheSkipRule(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	uA := vo.MustParseId(userA)
+	h.mapCard(t, "Apple Card")
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "blue bottle"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusSkipped {
+		t.Fatalf("status = %s", res.Status)
+	}
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	linkID := links[0].ID
+	if links[0].AppliedRuleID == nil {
+		t.Fatalf("the skip rule must be recorded first: %+v", links[0])
+	}
+	if _, err := h.svc.UnskipQueuedEvent(ctx, uA, model.ImportLinkActionRequest{LinkId: linkID.String()}); err != nil {
+		t.Fatalf("UnskipQueuedEvent: %v", err)
+	}
+	txID := vo.NewId().String()
+	if _, err := h.svc.ImportQueuedEvent(ctx, uA, model.ImportQueuedEventRequest{
+		LinkId:      linkID.String(),
+		Transaction: model.CreateTransactionRequest{Id: txID, Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: now.Format(datetime.Layout)},
+	}); err != nil {
+		t.Fatalf("ImportQueuedEvent: %v", err)
+	}
+	link, _ := h.repo.GetLink(ctx, linkID)
+	if link.AppliedRuleID != nil {
+		t.Fatalf("a skip rule must not survive as the row's applied rule: %+v", link)
+	}
+	list, _ := h.svc.GetTransactionImportList(ctx, uA, model.TransactionImportListRequest{TransactionId: txID})
+	if len(list.Items) != 1 || list.Items[0].AppliedRuleId != "" {
+		t.Fatalf("provenance must report no applied rule: %+v", list.Items)
+	}
+}
+
+func TestImportQueuedEvent_RecordsLabels(t *testing.T) {
+	h := setup(t)
+	label := h.f.Label(fixture.Label{UserID: userA, Name: "Trip"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusQueued {
+		t.Fatal("expected queued")
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	_, err := h.svc.ImportQueuedEvent(context.Background(), vo.MustParseId(userA), model.ImportQueuedEventRequest{
+		LinkId:      links[0].ID.String(),
+		Transaction: model.CreateTransactionRequest{Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: now.Format(datetime.Layout), LabelIds: []string{label}},
+	})
+	if err != nil {
+		t.Fatalf("ImportQueuedEvent: %v", err)
+	}
+	applied, _ := h.repo.ListLinkAppliedLabels(context.Background(), links[0].ID)
+	if len(applied) != 1 || applied[0].String() != label {
+		t.Fatalf("applied labels: %v", applied)
+	}
+	list, _ := h.svc.GetTransactionImportList(context.Background(), vo.MustParseId(userA), model.TransactionImportListRequest{TransactionId: h.txns.created[0].Id})
+	if len(list.Items) != 1 || len(list.Items[0].AppliedLabelIds) != 1 || list.Items[0].AppliedLabelIds[0] != label {
+		t.Fatalf("provenance must expose applied labels: %+v", list.Items)
+	}
+}
+
+func linkByExternalID(t *testing.T, h *harness, externalTxID string) model.ImportTransactionLink {
+	t.Helper()
+	links, err := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range links {
+		if l.ExternalTransactionID == externalTxID {
+			return l
+		}
+	}
+	t.Fatalf("no link for %s in %+v", externalTxID, links)
+	return model.ImportTransactionLink{}
 }

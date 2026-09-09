@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Importée depuis"
+    },
+    "rules": {
+      "field": { "external_payee": "Bénéficiaire", "description": "Description" },
+      "type": { "contains": "contient", "prefix": "commence par", "exact": "est exactement" },
+      "action": { "classify": "Classer", "skip": "Ignorer" },
+      "prompt": {
+        "title": "Créer une règle d'import",
+        "changed_category": "Vous avez défini la catégorie sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_payee": "Vous avez défini le bénéficiaire sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_tag": "Vous avez défini le tag sur {name}. Créer une règle pour les imports similaires ?",
+        "changed_labels": "Vous avez ajouté les tags {names}. Créer une règle pour les imports similaires ?",
+        "existing_rule": "Cette transaction a été classée par la règle « {rule} ».",
+        "match_count": "Correspond à {count} transactions de cet import",
+        "not_now": "Pas maintenant",
+        "create_rule": "Créer la règle",
+        "update_rule": "Mettre à jour la règle",
+        "apply_question": "Appliquer cette règle aux {count} transactions correspondantes de cet import ?",
+        "skipped_edited": "{count} ignorées (vous les avez modifiées)",
+        "include_edited": "Mettre aussi à jour les {count} transactions que vous avez modifiées",
+        "skip_apply": "Ignorer",
+        "apply": "Appliquer",
+        "applied_toast": "{count} transactions mises à jour",
+        "source_question": "Appliquer aussi à tous les imports de {source} ? {count} transactions correspondent.",
+        "apply_source": "Appliquer à tous les imports",
+        "done": "Terminé"
+      },
+      "editor": {
+        "field": "Champ de correspondance",
+        "type": "Type de correspondance",
+        "title_create": "Nouvelle règle d'import",
+        "title_edit": "Modifier la règle d'import",
+        "action": "Action",
+        "value": "Valeur à faire correspondre",
+        "case_sensitive": "Sensible à la casse",
+        "category": "Catégorie",
+        "payee": "Bénéficiaire",
+        "tag": "Tag budgétaire",
+        "labels": "Tags de rapport",
+        "match_count": "Correspond à {count} transactions importées"
+      },
+      "page": {
+        "menu_item": "Règles d'import",
+        "title": "Règles d'import",
+        "intro": "Les règles classent ou ignorent automatiquement les transactions importées. Elles s'exécutent de haut en bas ; faites-les glisser pour changer l'ordre.",
+        "add": "Ajouter une règle",
+        "empty": "Pas encore de règle. Corrigez une transaction importée et Econumo proposera d'en créer une.",
+        "reorder": "Réorganiser",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "delete_title": "Supprimer cette règle ?",
+        "delete_confirm": "Supprimer la règle",
+        "skip_hint": "Les transactions correspondantes ne sont pas importées"
+      },
+      "suggest": {
+        "button": "Suggérer des règles",
+        "running": "Réflexion…",
+        "heading": "Règles suggérées",
+        "accept": "Accepter",
+        "discard": "Rejeter"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN a rejeté ce jeton de configuration. Il a peut-être déjà été utilisé — générez-en un nouveau dans votre passerelle SimpleFIN.",
       "provider_unavailable": "Impossible de joindre la passerelle bancaire. Réessayez dans quelques minutes.",
       "sync_range_invalid": "La plage de dates n'est pas valide : le début ne doit pas être postérieur à la fin, et la plage ne doit pas dépasser 400 jours.",
-      "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration."
+      "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration.",
+      "rule_skip_not_applicable": "Une règle d'exclusion ne peut pas être appliquée à des transactions existantes",
+      "ai_disabled": "Les suggestions IA ne sont pas activées sur ce serveur",
+      "ai_unavailable": "Le service d'IA n'est pas disponible. Réessayez plus tard."
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",

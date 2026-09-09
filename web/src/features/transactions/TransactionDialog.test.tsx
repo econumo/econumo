@@ -705,3 +705,74 @@ it('a queued import in a foreign currency opens with an empty amount and shows t
   await user.type(screen.getByLabelText('Amount'), '11')
   expect(screen.getByLabelText('Amount')).toHaveValue('11')
 })
+
+it('editing an imported transaction prompts for a rule only when the classification diverges from what the import applied', async () => {
+  const seen = captureUpdate()
+  const importLink = {
+    id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
+    externalTransactionId: 'tap-1', externalPayee: 'BLUE BOTTLE COFFEE #142', externalDescription: '', externalAmount: '9.99',
+    externalCurrency: 'USD', externalPostedAt: '2026-07-03 10:00:00', status: 'created', importedAt: '2026-07-03 10:00:05',
+    appliedCategoryId: 'cat-food', appliedPayeeId: '', appliedTagId: '', appliedLabelIds: [], appliedRuleId: '',
+  }
+  server.use(http.get('*/api/v1/import/get-transaction-import-list', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [importLink] } })))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.setState({ rulePrompt: null })
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-imported', isImported: 1 }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+
+  // notes-only edit: category still equals the applied snapshot → no prompt
+  await user.type(screen.getByLabelText('Notes'), 'x')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(useUiStore.getState().rulePrompt).toBeNull()
+
+  // adding a label diverges from the snapshot → prompt with exactly that diff
+  useUiStore.getState().openTransactionModal({ transaction: wireTxEcho({ id: 't-imported', isImported: 1 }) as unknown as TransactionDto })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('health', 'label')).toBeInTheDocument())
+  await user.click(chip('health', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
+  expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
+})
+
+// The row a rule was created from is "edited" by construction, so a default
+// apply skips it and its applied_* snapshot is never refreshed. Comparing the
+// save against that stale snapshot alone re-opened the prompt on every later
+// save of the same transaction — offering to create a SECOND identical rule.
+it('re-saving an already corrected import does not prompt again, but a further correction does', async () => {
+  const seen = captureUpdate()
+  const importLink = {
+    id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
+    externalTransactionId: 'tap-1', externalPayee: 'BLUE BOTTLE COFFEE #142', externalDescription: '', externalAmount: '9.99',
+    externalCurrency: 'USD', externalPostedAt: '2026-07-03 10:00:00', status: 'created', importedAt: '2026-07-03 10:00:05',
+    // the import applied nothing (and the apply that followed the rule
+    // creation skipped this row), while the user set the category by hand
+    appliedCategoryId: '', appliedPayeeId: '', appliedTagId: '', appliedLabelIds: [], appliedRuleId: '',
+  }
+  server.use(http.get('*/api/v1/import/get-transaction-import-list', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [importLink] } })))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.setState({ rulePrompt: null })
+
+  const corrected = wireTxEcho({ id: 't-imported', isImported: 1, categoryId: 'cat-food' }) as unknown as TransactionDto
+  useUiStore.getState().openTransactionModal({ transaction: corrected })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await user.type(screen.getByLabelText('Notes'), 'typo fixed')
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(seen.body).toBeDefined())
+  expect(seen.body!.categoryId).toBe('cat-food')
+  expect(useUiStore.getState().rulePrompt).toBeNull()
+
+  // changing the classification again is a fresh correction: that one prompts
+  useUiStore.getState().openTransactionModal({ transaction: corrected })
+  await screen.findByRole('heading', { name: 'Edit transaction' })
+  await waitFor(() => expect(chip('health', 'label')).toBeInTheDocument())
+  await user.click(chip('health', 'label'))
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
+  expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
+})

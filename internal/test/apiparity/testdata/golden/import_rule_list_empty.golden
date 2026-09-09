@@ -1,0 +1,3 @@
+== get-rule-list-empty GET /api/v1/import/get-rule-list [owner] -> 200
+{"success":true,"message":"","data":{"items":[]}}
+

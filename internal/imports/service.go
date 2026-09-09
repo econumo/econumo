@@ -18,7 +18,9 @@ type Service struct {
 	converter CurrencyConverter
 	txns      TransactionWriter
 	lister    TransactionLister
+	entities  ClassificationLister
 	limiter   AttemptLimiter
+	completer Completer
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
@@ -26,9 +28,13 @@ type Service struct {
 	parsers   map[string]EventParser
 }
 
-func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
-	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, limiter: limiter, tx: tx, clk: clk, cfg: cfg}
+func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, entities ClassificationLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
+	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, entities: entities, limiter: limiter, tx: tx, clk: clk, cfg: cfg, providers: map[string]Provider{}, parsers: map[string]EventParser{}}
 }
+
+// SetCompleter enables suggest-rules; leaving it unset keeps the endpoint
+// answering import.ai_disabled.
+func (s *Service) SetCompleter(c Completer) { s.completer = c }
 
 // ownedSource resolves a source the caller owns; a foreign id reads as
 // not-found so ids cannot be probed.
@@ -129,6 +135,42 @@ func idString2(p *vo.Id) *string {
 	}
 	s := p.String()
 	return &s
+}
+
+func idStrings(ids []vo.Id) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	return out
+}
+
+// snapshotOf reads a live transaction's current classification (adopted
+// rows, apply-rule's "already edited" check).
+func (s *Service) snapshotOf(ctx context.Context, txID vo.Id) (model.ImportClassification, error) {
+	t, err := s.lister.GetByID(ctx, txID)
+	if err != nil {
+		return model.ImportClassification{}, err
+	}
+	return model.ImportClassification{CategoryID: t.CategoryID, PayeeID: t.PayeeID, TagID: t.TagID, LabelIDs: t.LabelIDs}, nil
+}
+
+// setApplied overwrites the row's applied snapshot wholesale, rule id
+// included: a nil RuleID means "no rule classified this row", and anything
+// already on the column (e.g. the skip rule of a row the user later unskipped)
+// must not survive as a false attribution.
+func setApplied(link *model.ImportTransactionLink, c model.ImportClassification) {
+	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID, link.AppliedRuleID = c.CategoryID, c.PayeeID, c.TagID, c.RuleID
+}
+
+// writeApplied stores the classification the row's transaction carries as
+// of this import. It is the baseline the rule prompt and apply-rule's
+// "already edited" check diff against, so it must reflect what was written,
+// not what a rule asked for. The caller persists the link itself; the label
+// rows are written here (the link row must already exist — FK on link_id).
+func (s *Service) writeApplied(ctx context.Context, link *model.ImportTransactionLink, c model.ImportClassification) error {
+	setApplied(link, c)
+	return s.repo.ReplaceLinkAppliedLabels(ctx, link.ID, c.LabelIDs)
 }
 
 // sourceResult assembles the wire view of a source: cards are the union of

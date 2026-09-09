@@ -159,6 +159,26 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.ApplyImportRuleRequest:
+    properties:
+      includeEdited:
+        type: boolean
+      ruleId:
+        type: string
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+    type: object
+  model.ApplyImportRuleResult:
+    properties:
+      skipped:
+        type: integer
+      updated:
+        type: integer
+    type: object
   model.ArchiveBudgetRequest:
     properties:
       id:
@@ -595,6 +615,36 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreateImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
+    type: object
   model.CreateImportSourceRequest:
     properties:
       credentialCiphertext:
@@ -915,6 +965,11 @@ definitions:
     type: object
   model.DeleteFolderResult:
     type: object
+  model.DeleteImportRuleRequest:
+    properties:
+      id:
+        type: string
+    type: object
   model.DeleteImportSourceRequest:
     properties:
       id:
@@ -1094,6 +1149,13 @@ definitions:
       skipped:
         items:
           $ref: '#/definitions/model.ImportQueuedEventResult'
+        type: array
+    type: object
+  model.GetImportRuleListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRuleResult'
         type: array
     type: object
   model.GetImportRunListResult:
@@ -1311,6 +1373,69 @@ definitions:
         type: integer
       skipped:
         type: integer
+    type: object
+  model.ImportRuleResult:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        type: string
+      tagId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ImportRuleSuggestion:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      reason:
+        type: string
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
     type: object
   model.ImportRunError:
     properties:
@@ -1877,6 +2002,47 @@ definitions:
       nextPaymentAt:
         type: string
     type: object
+  model.PreviewImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
+    type: object
+  model.PreviewImportRuleResult:
+    properties:
+      alreadyEdited:
+        type: integer
+      matched:
+        type: integer
+    type: object
   model.RecurringTransactionResult:
     properties:
       accountId:
@@ -2169,6 +2335,22 @@ definitions:
           $ref: '#/definitions/model.LabelSpendResult'
         type: array
     type: object
+  model.SuggestImportRulesRequest:
+    properties:
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+    type: object
+  model.SuggestImportRulesResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRuleSuggestion'
+        type: array
+    type: object
   model.SyncImportSourceRequest:
     properties:
       accessUrl:
@@ -2210,11 +2392,25 @@ definitions:
     type: object
   model.TransactionImportLinkResult:
     properties:
+      appliedCategoryId:
+        type: string
+      appliedLabelIds:
+        items:
+          type: string
+        type: array
+      appliedPayeeId:
+        type: string
+      appliedRuleId:
+        type: string
+      appliedTagId:
+        type: string
       externalAccountId:
         type: string
       externalAmount:
         type: string
       externalCurrency:
+        type: string
+      externalDescription:
         type: string
       externalPayee:
         type: string
@@ -2227,6 +2423,8 @@ definitions:
       importedAt:
         type: string
       provider:
+        type: string
+      runId:
         type: string
       sourceId:
         type: string
@@ -2516,6 +2714,36 @@ definitions:
         $ref: '#/definitions/model.ImportSourceResult'
       run:
         $ref: '#/definitions/model.ImportRunResult'
+    type: object
+  model.UpdateImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
     type: object
   model.UpdateLabelRequest:
     properties:
@@ -5537,6 +5765,53 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/import/apply-rule:
+    post:
+      consumes:
+      - application/json
+      description: Re-classifies (or skips) every already-imported transaction in
+        scope that matches the rule, skipping hand-edited ones unless includeEdited
+        is set.
+      parameters:
+      - description: Rule id + scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ApplyImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ApplyImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Apply a saved rule to existing imports
+      tags:
+      - Import
   /api/v1/import/claim-setup-token:
     post:
       consumes:
@@ -5593,6 +5868,51 @@ paths:
       summary: Claim a SimpleFIN setup token
       tags:
       - Import
+  /api/v1/import/create-rule:
+    post:
+      consumes:
+      - application/json
+      description: Creates a classify or skip rule for matching future/existing imports.
+      parameters:
+      - description: Create rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create an import rule
+      tags:
+      - Import
   /api/v1/import/create-source:
     post:
       consumes:
@@ -5637,6 +5957,46 @@ paths:
       security:
       - Bearer: []
       summary: Connect an import source
+      tags:
+      - Import
+  /api/v1/import/delete-rule:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a rule. Requires ownership.
+      parameters:
+      - description: Delete rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseOk'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete an import rule
       tags:
       - Import
   /api/v1/import/delete-source:
@@ -5791,6 +6151,34 @@ paths:
       security:
       - Bearer: []
       summary: Get the import queue
+      tags:
+      - Import
+  /api/v1/import/get-rule-list:
+    get:
+      description: Returns the caller's classify/skip rules, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportRuleListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import rules
       tags:
       - Import
   /api/v1/import/get-run:
@@ -6180,6 +6568,52 @@ paths:
       summary: List the accounts a pull source exposes
       tags:
       - Import
+  /api/v1/import/preview-rule:
+    post:
+      consumes:
+      - application/json
+      description: Reports how many imported transactions in scope match the rule
+        spec, and how many of those were already hand-edited.
+      parameters:
+      - description: Rule spec + scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.PreviewImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.PreviewImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Count the existing imports a rule would touch
+      tags:
+      - Import
   /api/v1/import/retry-event:
     post:
       consumes:
@@ -6317,6 +6751,52 @@ paths:
       security:
       - Bearer: []
       summary: Skip a queued event
+      tags:
+      - Import
+  /api/v1/import/suggest-rules:
+    post:
+      consumes:
+      - application/json
+      description: Returns AI-proposed rule specs for imports in scope. 400 import.ai_disabled
+        when no AI provider is configured on this server.
+      parameters:
+      - description: Scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SuggestImportRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SuggestImportRulesResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Ask the configured AI for rule suggestions
       tags:
       - Import
   /api/v1/import/sync-source:
@@ -6461,6 +6941,51 @@ paths:
       security:
       - Bearer: []
       summary: Un-skip an event
+      tags:
+      - Import
+  /api/v1/import/update-rule:
+    post:
+      consumes:
+      - application/json
+      description: Replaces a rule's match/target spec. Requires ownership.
+      parameters:
+      - description: Update rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update an import rule
       tags:
       - Import
   /api/v1/label/archive-label:

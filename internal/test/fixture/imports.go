@@ -179,6 +179,52 @@ func (b *Builder) ImportRun(r ImportRun) string {
 	return id
 }
 
+// ImportRule seeds one import_rules row plus its label join rows. Action
+// defaults to "classify", MatchField to "external_payee", MatchType to
+// "contains", MatchValue to "Rule"; SourceID/CategoryID/PayeeID/TagID
+// "" -> NULL.
+type ImportRule struct {
+	ID              string
+	UserID          string
+	SourceID        string // "" -> NULL (every source)
+	Action          string // default classify
+	MatchField      string // default external_payee
+	MatchType       string // default contains
+	MatchValue      string // default "Rule"
+	IsCaseSensitive bool
+	CategoryID      string // "" -> NULL
+	PayeeID         string
+	TagID           string
+	LabelIDs        []string
+	Priority        int
+}
+
+func (b *Builder) ImportRule(r ImportRule) string {
+	b.t.Helper()
+	id := b.orNewID(r.ID)
+	if r.Action == "" {
+		r.Action = "classify"
+	}
+	if r.MatchField == "" {
+		r.MatchField = "external_payee"
+	}
+	if r.MatchType == "" {
+		r.MatchType = "contains"
+	}
+	if r.MatchValue == "" {
+		r.MatchValue = "Rule"
+	}
+	now := b.now()
+	b.insert(`INSERT INTO import_rules (id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, r.UserID, nullable(r.SourceID), r.Action, r.MatchField, r.MatchType, r.MatchValue, r.IsCaseSensitive,
+		nullable(r.CategoryID), nullable(r.PayeeID), nullable(r.TagID), r.Priority, RawTime{now}, RawTime{now})
+	for _, l := range r.LabelIDs {
+		b.insert(`INSERT INTO import_rule_labels (rule_id, label_id) VALUES (?, ?)`, id, l)
+	}
+	return id
+}
+
 // ImportCredentialKey seeds one import_credential_keys row (unique per user).
 // KDF defaults to a representative PBKDF2 config JSON.
 type ImportCredentialKey struct {
