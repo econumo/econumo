@@ -30,7 +30,8 @@ import {
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
 import { usePostRecurring } from '@/features/recurring/queries'
-import { useImportQueuedEvent } from '@/features/imports/queries'
+import { useImportQueuedEvent, useTransactionImportLinks } from '@/features/imports/queries'
+import { latestImportLink, ruleDiff } from '@/lib/importMatch'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
 import {
@@ -65,6 +66,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const { data: user } = useUserData()
   const exchangeFn = useExchange()
   const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
+  const setRulePrompt = useUiStore((s) => s.setRulePrompt)
+  const isImported = params.transaction?.isImported === 1
+  const { data: importLinks = [] } = useTransactionImportLinks(params.transaction?.id ?? '', isImported)
 
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
@@ -209,6 +213,11 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         }
       } else {
         await updateTransaction.mutateAsync(payload)
+        const link = latestImportLink(importLinks)
+        const diff = link ? ruleDiff(payload, link) : null
+        if (link && diff) {
+          setRulePrompt({ link, diff })
+        }
       }
       onDone()
     } catch {
