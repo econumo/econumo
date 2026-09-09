@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 const (
@@ -370,20 +371,256 @@ func (r TransactionImportListRequest) Validate() error {
 }
 
 type TransactionImportLinkResult struct {
-	Id                    string `json:"id"`
-	SourceId              string `json:"sourceId"`
-	Provider              string `json:"provider"`
-	SourceName            string `json:"sourceName"`
-	ExternalAccountId     string `json:"externalAccountId"`
-	ExternalTransactionId string `json:"externalTransactionId"`
-	ExternalPayee         string `json:"externalPayee"`
-	ExternalAmount        string `json:"externalAmount"`
-	ExternalCurrency      string `json:"externalCurrency"`
-	ExternalPostedAt      string `json:"externalPostedAt"`
-	Status                string `json:"status"`
-	ImportedAt            string `json:"importedAt"`
+	Id                    string   `json:"id"`
+	SourceId              string   `json:"sourceId"`
+	Provider              string   `json:"provider"`
+	SourceName            string   `json:"sourceName"`
+	RunId                 string   `json:"runId"`
+	ExternalAccountId     string   `json:"externalAccountId"`
+	ExternalTransactionId string   `json:"externalTransactionId"`
+	ExternalPayee         string   `json:"externalPayee"`
+	ExternalDescription   string   `json:"externalDescription"`
+	ExternalAmount        string   `json:"externalAmount"`
+	ExternalCurrency      string   `json:"externalCurrency"`
+	ExternalPostedAt      string   `json:"externalPostedAt"`
+	Status                string   `json:"status"`
+	AppliedCategoryId     string   `json:"appliedCategoryId"`
+	AppliedPayeeId        string   `json:"appliedPayeeId"`
+	AppliedTagId          string   `json:"appliedTagId"`
+	AppliedLabelIds       []string `json:"appliedLabelIds"`
+	AppliedRuleId         string   `json:"appliedRuleId"`
+	ImportedAt            string   `json:"importedAt"`
 }
 
 type GetTransactionImportListResult struct {
 	Items []TransactionImportLinkResult `json:"items"`
+}
+
+const importRuleMatchValueMax = 255
+
+func invalidChoiceField(key string) errs.FieldError {
+	return errs.FieldError{Key: key, Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice}
+}
+
+func invalidFormatField(key string) errs.FieldError {
+	return errs.FieldError{Key: key, Message: "This value is not valid.", Code: errs.CodeInvalidFormat}
+}
+
+func optionalIDField(key string, raw *string, fields *[]errs.FieldError) {
+	if raw == nil || *raw == "" {
+		return
+	}
+	if _, err := vo.ParseId(*raw); err != nil {
+		*fields = append(*fields, invalidFormatField(key))
+	}
+}
+
+type ImportRuleSpec struct {
+	SourceId        *string  `json:"sourceId"` // nil/"" = every source
+	Action          string   `json:"action"`
+	MatchField      string   `json:"matchField"`
+	MatchType       string   `json:"matchType"`
+	MatchValue      string   `json:"matchValue"`
+	IsCaseSensitive bool     `json:"isCaseSensitive"`
+	CategoryId      *string  `json:"categoryId"`
+	PayeeId         *string  `json:"payeeId"`
+	TagId           *string  `json:"tagId"`
+	LabelIds        []string `json:"labelIds"`
+	Priority        int      `json:"priority"`
+}
+
+func (r ImportRuleSpec) Validate() error {
+	var fields []errs.FieldError
+	switch r.Action {
+	case ImportRuleActionClassify, ImportRuleActionSkip:
+	default:
+		fields = append(fields, invalidChoiceField("action"))
+	}
+	switch r.MatchField {
+	case ImportRuleMatchFieldDescription, ImportRuleMatchFieldExternalPayee:
+	default:
+		// external_category is reserved by the design; no provider supplies one yet
+		fields = append(fields, invalidChoiceField("matchField"))
+	}
+	switch r.MatchType {
+	case ImportRuleMatchTypeExact, ImportRuleMatchTypeContains, ImportRuleMatchTypePrefix:
+	default:
+		fields = append(fields, invalidChoiceField("matchType"))
+	}
+	if strings.TrimSpace(r.MatchValue) == "" {
+		fields = append(fields, blankField("matchValue"))
+	} else if len(r.MatchValue) > importRuleMatchValueMax {
+		fields = append(fields, tooLongField("matchValue"))
+	}
+	optionalIDField("sourceId", r.SourceId, &fields)
+	optionalIDField("categoryId", r.CategoryId, &fields)
+	optionalIDField("payeeId", r.PayeeId, &fields)
+	optionalIDField("tagId", r.TagId, &fields)
+	for _, id := range r.LabelIds {
+		if _, err := vo.ParseId(id); err != nil {
+			fields = append(fields, invalidFormatField("labelIds"))
+			break
+		}
+	}
+	if len(r.LabelIds) > MaxImportRuleLabels {
+		fields = append(fields, tooLongField("labelIds"))
+	}
+	hasTarget := hasID(r.CategoryId) || hasID(r.PayeeId) || hasID(r.TagId) || len(r.LabelIds) > 0
+	switch r.Action {
+	case ImportRuleActionClassify:
+		if !hasTarget {
+			fields = append(fields, invalidChoiceField("action"))
+		}
+	case ImportRuleActionSkip:
+		// the CHECK constraint covers the target columns; labels are rows in
+		// another table, so the service is the only guard for them
+		for _, f := range []struct {
+			key string
+			set bool
+		}{
+			{"categoryId", hasID(r.CategoryId)}, {"payeeId", hasID(r.PayeeId)}, {"tagId", hasID(r.TagId)}, {"labelIds", len(r.LabelIds) > 0},
+		} {
+			if f.set {
+				fields = append(fields, invalidChoiceField(f.key))
+			}
+		}
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+func hasID(raw *string) bool { return raw != nil && *raw != "" }
+
+type CreateImportRuleRequest struct {
+	Id string `json:"id"`
+	ImportRuleSpec
+}
+
+func (r CreateImportRuleRequest) Validate() error {
+	if r.Id != "" {
+		if _, err := vo.ParseId(r.Id); err != nil {
+			return errs.NewValidation("Validation failed", invalidFormatField("id"))
+		}
+	}
+	return r.ImportRuleSpec.Validate()
+}
+
+type UpdateImportRuleRequest struct {
+	Id string `json:"id"`
+	ImportRuleSpec
+}
+
+func (r UpdateImportRuleRequest) Validate() error {
+	if err := requireNonBlank("id", r.Id); err != nil {
+		return err
+	}
+	return r.ImportRuleSpec.Validate()
+}
+
+type DeleteImportRuleRequest struct {
+	Id string `json:"id"`
+}
+
+func (r DeleteImportRuleRequest) Validate() error { return requireNonBlank("id", r.Id) }
+
+func validateRuleScope(scope, runID, sourceID string) error {
+	var fields []errs.FieldError
+	switch scope {
+	case ImportRuleScopeRun:
+		if strings.TrimSpace(runID) == "" {
+			fields = append(fields, blankField("runId"))
+		}
+	case ImportRuleScopeSource:
+		if strings.TrimSpace(sourceID) == "" {
+			fields = append(fields, blankField("scopeSourceId"))
+		}
+	case ImportRuleScopeAll:
+	default:
+		fields = append(fields, invalidChoiceField("scope"))
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type PreviewImportRuleRequest struct {
+	ImportRuleSpec
+	Scope         string `json:"scope"`
+	RunId         string `json:"runId"`
+	ScopeSourceId string `json:"scopeSourceId"`
+}
+
+func (r PreviewImportRuleRequest) Validate() error {
+	if err := r.ImportRuleSpec.Validate(); err != nil {
+		return err
+	}
+	return validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId)
+}
+
+type PreviewImportRuleResult struct {
+	Matched       int `json:"matched"`
+	AlreadyEdited int `json:"alreadyEdited"`
+}
+
+type ApplyImportRuleRequest struct {
+	RuleId        string `json:"ruleId"`
+	Scope         string `json:"scope"`
+	RunId         string `json:"runId"`
+	ScopeSourceId string `json:"scopeSourceId"`
+	IncludeEdited bool   `json:"includeEdited"`
+}
+
+func (r ApplyImportRuleRequest) Validate() error {
+	if err := requireNonBlank("ruleId", r.RuleId); err != nil {
+		return err
+	}
+	return validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId)
+}
+
+type ApplyImportRuleResult struct {
+	Updated int `json:"updated"`
+	Skipped int `json:"skipped"`
+}
+
+type ImportRuleResult struct {
+	Id              string   `json:"id"`
+	SourceId        string   `json:"sourceId"`
+	Action          string   `json:"action"`
+	MatchField      string   `json:"matchField"`
+	MatchType       string   `json:"matchType"`
+	MatchValue      string   `json:"matchValue"`
+	IsCaseSensitive bool     `json:"isCaseSensitive"`
+	CategoryId      string   `json:"categoryId"`
+	PayeeId         string   `json:"payeeId"`
+	TagId           string   `json:"tagId"`
+	LabelIds        []string `json:"labelIds"`
+	Priority        int      `json:"priority"`
+	CreatedAt       string   `json:"createdAt"`
+	UpdatedAt       string   `json:"updatedAt"`
+}
+
+type GetImportRuleListResult struct {
+	Items []ImportRuleResult `json:"items"`
+}
+
+type ImportRuleSuggestion struct {
+	ImportRuleSpec
+	Reason string `json:"reason"`
+}
+
+type SuggestImportRulesRequest struct {
+	Scope         string `json:"scope"`
+	RunId         string `json:"runId"`
+	ScopeSourceId string `json:"scopeSourceId"`
+}
+
+func (r SuggestImportRulesRequest) Validate() error {
+	return validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId)
+}
+
+type SuggestImportRulesResult struct {
+	Items []ImportRuleSuggestion `json:"items"`
 }

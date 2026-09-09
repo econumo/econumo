@@ -202,3 +202,50 @@ type ExternalTransaction struct {
 	Description       string
 	Raw               json.RawMessage
 }
+
+const (
+	ImportRuleActionClassify = "classify"
+	ImportRuleActionSkip     = "skip"
+
+	ImportRuleMatchFieldDescription   = "description"
+	ImportRuleMatchFieldExternalPayee = "external_payee"
+
+	ImportRuleMatchTypeExact    = "exact"
+	ImportRuleMatchTypeContains = "contains"
+	ImportRuleMatchTypePrefix   = "prefix"
+
+	// MaxImportRuleLabels mirrors the transaction feature's per-row label cap.
+	MaxImportRuleLabels = 10
+
+	ImportRuleScopeRun    = "run"
+	ImportRuleScopeSource = "source"
+	ImportRuleScopeAll    = "all"
+)
+
+type ImportRule struct {
+	ID               vo.Id
+	UserID           vo.Id
+	SourceID         *vo.Id // nil = every source
+	Action           string
+	MatchField       string
+	MatchType        string
+	MatchValue       string
+	IsCaseSensitive  bool
+	TargetCategoryID *vo.Id
+	TargetPayeeID    *vo.Id
+	TargetTagID      *vo.Id
+	LabelIDs         []vo.Id
+	Priority         int
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+// ImportClassification is what the pipeline decided for one row: the ids
+// written to the transaction and snapshotted on the ledger as applied_*.
+type ImportClassification struct {
+	CategoryID *vo.Id
+	PayeeID    *vo.Id
+	TagID      *vo.Id
+	LabelIDs   []vo.Id
+	RuleID     *vo.Id // the first classify rule that contributed, nil when none fired
+}
