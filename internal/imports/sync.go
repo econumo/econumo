@@ -36,6 +36,12 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 		return nil, err
 	}
 	reqctx.AddLogAttr(ctx, "source_id", src.ID.String())
+	// Loaded before the run row exists: a failure here must simply fail the
+	// request, not leave a "running" run with nothing left to finalize it.
+	rules, err := s.loadRules(ctx, src)
+	if err != nil {
+		return nil, err
+	}
 	params, _ := json.Marshal(map[string]string{"startDate": req.StartDate, "endDate": end.Format(model.ImportDateLayout)})
 	run := &model.ImportRun{
 		ID: vo.NewId(), UserID: userID, SourceID: src.ID, Provider: src.Provider, Params: string(params),
@@ -64,10 +70,6 @@ func (s *Service) Sync(ctx context.Context, userID vo.Id, req model.SyncImportSo
 	byAccount := map[string][]model.ExternalTransaction{}
 	for _, t := range fetched.Transactions {
 		byAccount[t.ExternalAccountID] = append(byAccount[t.ExternalAccountID], t)
-	}
-	rules, err := s.loadRules(fin, src)
-	if err != nil {
-		return nil, err
 	}
 	for _, a := range fetched.Accounts {
 		if err := s.syncAccount(fin, src, run, a, byAccount[a.ID], rules); err != nil {

@@ -247,6 +247,11 @@ func (f *fakeTxns) seed(t *testing.T, accountID, typeAlias, amount string, at ti
 // register ids they want a rule to be allowed to target.
 type fakeEntities struct {
 	categories, payees, tags, labels map[vo.Id][]model.ImportNamed // by owner
+	// err, when set, is returned by CategoriesByOwner — used to simulate a
+	// genuine lookup failure inside loadRules (as opposed to context
+	// cancellation), which every caller must handle without leaving
+	// half-finished state behind (e.g. a sync run stuck at "running").
+	err error
 }
 
 func newFakeEntities() *fakeEntities {
@@ -261,6 +266,9 @@ func (f *fakeEntities) add(m map[vo.Id][]model.ImportNamed, owner vo.Id, id, nam
 }
 
 func (f *fakeEntities) CategoriesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
 	return f.categories[o], nil
 }
 func (f *fakeEntities) PayeesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
