@@ -9,7 +9,6 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/reqctx"
-	"github.com/econumo/econumo/internal/shared/vo"
 	appuser "github.com/econumo/econumo/internal/user"
 	"github.com/econumo/econumo/internal/web/middleware"
 )
@@ -37,21 +36,21 @@ func NewTimezoneTrackingAuthenticator(inner middleware.TokenAuthenticator, users
 
 // The access level is passed through untouched: this decorator only observes
 // the timezone, and must never widen or narrow the caller's authorization.
-func (a *timezoneTrackingAuthenticator) Authenticate(ctx context.Context, token string) (vo.Id, vo.Id, model.AccessLevel, error) {
-	userID, tokenID, level, err := a.inner.Authenticate(ctx, token)
+func (a *timezoneTrackingAuthenticator) Authenticate(ctx context.Context, token string) (model.Principal, error) {
+	p, err := a.inner.Authenticate(ctx, token)
 	if err != nil || !reqctx.IsLocationExplicit(ctx) {
-		return userID, tokenID, level, err
+		return p, err
 	}
 	tz := reqctx.Location(ctx).String()
-	if prev, ok := a.seen.Load(userID); ok && prev.(string) == tz {
-		return userID, tokenID, level, nil
+	if prev, ok := a.seen.Load(p.UserID); ok && prev.(string) == tz {
+		return p, nil
 	}
-	if perr := a.users.PersistTimezone(ctx, userID, tz); perr != nil {
+	if perr := a.users.PersistTimezone(ctx, p.UserID, tz); perr != nil {
 		slog.WarnContext(ctx, "timezone persist failed", slog.Any("err", perr))
 	} else {
-		a.seen.Store(userID, tz)
+		a.seen.Store(p.UserID, tz)
 	}
-	return userID, tokenID, level, nil
+	return p, nil
 }
 
 // timezoneFallback installs the stored timezone for requests that carried no

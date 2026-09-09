@@ -45,7 +45,7 @@ it('edit seeds all fields from the transaction, amounts unformatted', () => {
   const tx: TransactionDto = {
     id: 't1', author: owner, type: 'expense', accountId: 'a1', accountRecipientId: null,
     amount: '1234.5', amountRecipient: null, categoryId: 'cat1', description: 'x', payeeId: 'p1', tagId: null,
-    labelIds: ['lb1', 'lb2'], date: '2026-07-01 10:00:00', recurringId: null,
+    labelIds: ['lb1', 'lb2'], date: '2026-07-01 10:00:00', recurringId: null, isImported: 0,
   }
   const state = initialFormState({ transaction: tx }, [account({})], null)
   expect(state.isNew).toBe(false)
@@ -286,4 +286,47 @@ describe('scrubForeignClassifications', () => {
     const selection = { categoryId: 'cat-mine', payeeId: null, tagId: null, labelIds: [] }
     expect(scrubForeignClassifications(selection, lists, undefined)).toEqual(selection)
   })
+})
+
+it('a queued import seeds a new transaction from the bank data, payee as description', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.id).toMatch(UUID_V7)
+  expect(state.isNew).toBe(true)
+  expect(state.type).toBe('expense')
+  expect(state.accountId).toBe('a1')
+  expect(state.amount).toBe('12.50')
+  expect(state.description).toBe('Blue Bottle')
+  expect(state.date).toBe('2026-08-20 10:42:03')
+  expect(state.categoryId).toBeNull()
+})
+
+it('an unmapped queued import (accountId "") defaults to the first account, not a blank select', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: '', amount: '12.5', currency: 'USD', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({ id: 'a1' }), account({ id: 'a2' })],
+    null,
+  )
+  expect(state.accountId).toBe('a1')
+})
+
+it('seeds the amount when the queued row currency matches the account (case-insensitive)', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'usd', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.amount).toBe('12.50')
+})
+
+it('leaves the amount blank when the queued row currency does not match the account, so a foreign amount is never misprefilled', () => {
+  const state = initialFormState(
+    { importQueued: { linkId: 'l1', type: 'expense', accountId: 'a1', amount: '12.5', currency: 'EUR', payee: 'Blue Bottle', date: '2026-08-20 10:42:03' } },
+    [account({})],
+    null,
+  )
+  expect(state.amount).toBe('')
 })

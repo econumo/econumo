@@ -121,16 +121,37 @@ func init() {
 	register(Scenario{Name: "user_personal_tokens", Calls: func() []Call {
 		return []Call{
 			{Label: "create-personal-token", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
-				Body: map[string]any{"name": "CI export", "expiresAt": ""}},
+				Body: map[string]any{"name": "CI export", "scope": "full", "expiresAt": ""}},
 			{Label: "create-personal-token-expiring", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
-				Body: map[string]any{"name": "Short lived", "expiresAt": "2030-01-01 00:00:00"}},
+				Body: map[string]any{"name": "Short lived", "scope": "full", "expiresAt": "2030-01-01 00:00:00"}},
 			{Label: "get-personal-token-list", Method: "GET", Path: "/api/v1/user/get-personal-token-list", Auth: "owner"},
 			{Label: "err:create-personal-token-past", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
-				Body: map[string]any{"name": "Expired", "expiresAt": "2020-01-01 00:00:00"}},
+				Body: map[string]any{"name": "Expired", "scope": "full", "expiresAt": "2020-01-01 00:00:00"}},
 			{Label: "err:create-personal-token-blank-name", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
-				Body: map[string]any{"name": "", "expiresAt": ""}},
+				Body: map[string]any{"name": "", "scope": "full", "expiresAt": ""}},
 			{Label: "err:revoke-personal-token-unknown", Method: "POST", Path: "/api/v1/user/revoke-personal-token", Auth: "owner",
 				Body: map[string]any{"id": "00000000-0000-0000-0000-000000000009"}},
+			{Label: "create-personal-token-ingest", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Phone", "scope": "ingest", "expiresAt": ""}},
+			{Label: "err:create-personal-token-blank-scope", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "No scope", "expiresAt": ""}},
+			{Label: "err:create-personal-token-bad-scope", Method: "POST", Path: "/api/v1/user/create-personal-token", Auth: "owner",
+				Body: map[string]any{"name": "Bad scope", "scope": "admin", "expiresAt": ""}},
+			{Label: "get-personal-token-list-after", Method: "GET", Path: "/api/v1/user/get-personal-token-list", Auth: "owner"},
+		}
+	}})
+}
+
+func init() {
+	register(Scenario{Name: "user_ingest_token_scope", Calls: func() []Call {
+		return []Call{
+			// The seeded ingest PAT is live, yet every non-ingest route rejects
+			// it with the same envelope as an unknown token.
+			{Label: "err:ingest-token-on-read", Method: "GET", Path: "/api/v1/user/get-user-data", Auth: "ingest"},
+			{Label: "err:ingest-token-on-write", Method: "POST", Path: "/api/v1/category/create-category", Auth: "ingest",
+				Body: map[string]any{"id": "00000000-0000-0000-0000-00000000c0de", "name": "Nope", "type": "expense"}},
+			// The seeded ingest PAT shows up in the owner's list with its scope.
+			{Label: "get-personal-token-list", Method: "GET", Path: "/api/v1/user/get-personal-token-list", Auth: "owner"},
 		}
 	}})
 }

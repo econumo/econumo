@@ -1,0 +1,9 @@
+== err:ingest-token-on-read GET /api/v1/user/get-user-data [ingest] -> 401
+{"success":false,"message":"Invalid access token","code":0,"errors":{}}
+
+== err:ingest-token-on-write POST /api/v1/category/create-category [ingest] -> 401
+{"success":false,"message":"Invalid access token","code":0,"errors":{}}
+
+== get-personal-token-list GET /api/v1/user/get-personal-token-list [owner] -> 200
+{"success":true,"message":"","data":[{"id":"99999999-9999-9999-9999-999999999999","name":"Phone shortcut","scope":"ingest","createdAt":"<datetime>","lastUsedAt":"<datetime>","expiresAt":null}]}
+

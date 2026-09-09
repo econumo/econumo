@@ -469,6 +469,216 @@
     "make_recurring": "Make recurring",
     "not_posted": "Not posted"
   },
+  "imports": {
+    "badge": "Imported",
+    "banner": {
+      "text": "{count} imported transaction is waiting for review | {count} imported transactions are waiting for review",
+      "cta": "Review"
+    },
+    "data_page": {
+      "menu_item": "Import & export",
+      "header": "Import & export",
+      "sync_all": "Sync bank connections",
+      "history": "Import history",
+      "sync_all_done": "{imported} imported, {matched} matched, {failed} failed"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Log Apple Pay taps automatically with an iPhone Shortcut. Each tap is sent to Econumo; you map every card to an account once.",
+      "connect": "Set up Apple Wallet",
+      "connected": "Connected",
+      "disconnect": "Disconnect",
+      "disconnect_modal": {
+        "title": "Disconnect Apple Wallet?",
+        "question": "Card mappings and the review queue of this connection will be removed. Transactions you already imported stay."
+      },
+      "steps": {
+        "hint_desktop": "Open this page on your iPhone to run the steps there. On this device you can download the Shortcuts and tick steps off by hand.",
+        "install_wallet": {
+          "title": "Install econumo-wallet-v1",
+          "text": "Open the file on your iPhone and tap Add Shortcut."
+        },
+        "install_setup": {
+          "title": "Install econumo-setup-v1",
+          "text": "Open the file on your iPhone and tap Add Shortcut."
+        },
+        "configure": {
+          "title": "Configure the Shortcuts",
+          "text": "Creates an access token for the Shortcut and hands it to econumo-setup-v1 together with the server address.",
+          "button": "Configure on this iPhone",
+          "manual": "Configure manually"
+        },
+        "test": {
+          "title": "Run econumo-wallet-v1 once",
+          "text": "Run it by hand and tap Always Allow on every prompt — this grants the permissions the automation needs later. Nothing is created; Econumo only records that the Shortcut reached it.",
+          "button": "Run econumo-wallet-v1",
+          "check": "Check",
+          "none": "Nothing received yet. Run the Shortcut, allow the prompts and check again."
+        },
+        "automate": {
+          "title": "Create the automation",
+          "text": "In the Shortcuts app: Automation → + → Wallet → pick the cards and categories to import (all of them is the safe choice) → Run After Confirmation → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Make the first payment with the iPhone unlocked",
+          "text": "Pay with Apple Pay once while the iPhone is unlocked. Tap Run when the automation asks, then tap Always Allow when Shortcuts asks for Wallet access.",
+          "check": "Check",
+          "none": "No payment received yet. Pay once with the iPhone unlocked and check again."
+        },
+        "immediate": {
+          "title": "Switch the automation to Run Immediately",
+          "text": "In the Shortcuts app, open the automation and change Run After Confirmation to Run Immediately. From then on payments are imported without a prompt, from the lock screen too."
+        },
+        "complete": "Setup complete",
+        "show": "Show steps",
+        "hide": "Hide steps"
+      },
+      "same_named_cards": "Cards that share a name in Wallet arrive here as one card.",
+      "cards": {
+        "header": "Cards",
+        "empty": "No cards yet — the first Apple Pay tap adds one.",
+        "state": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped · {count} queued"
+        },
+        "taps": "{count} tap | {count} taps",
+        "last_seen": "Last seen {date}",
+        "map": "Map to account",
+        "map_instead": "Map instead",
+        "ignore": "Ignore",
+        "unlink": "Unmap",
+        "unlink_modal": {
+          "title": "Unmap {card}?",
+          "question": "New taps from this card will wait for review until you map it again."
+        },
+        "map_modal": {
+          "header": "Map {card}",
+          "account": "Account",
+          "submit": "Map"
+        },
+        "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Connect a bank through SimpleFIN Bridge. Your bridge credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted and only sees them for the duration of a sync.",
+      "forget_device": "Forget this device",
+      "connect": {
+        "intro": "Paste the setup token from your SimpleFIN Bridge account and choose a passphrase. The passphrase is never sent to the server — if you forget it, you will need to reconnect with a new setup token.",
+        "reconnect_intro": "Paste a new setup token from SimpleFIN Bridge. The previous connection will be replaced; your account mappings are kept.",
+        "token_label": "Setup token",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → New connection → copy the setup token. A token can be used once.",
+        "forgot_passphrase": "I forgot my passphrase — set a new one",
+        "passphrase_new": "Passphrase",
+        "passphrase_existing": "Your passphrase",
+        "passphrase_confirm": "Repeat passphrase",
+        "passphrase_help": "At least 8 characters. Not recoverable: nobody, including us, can restore it.",
+        "submit": "Connect",
+        "submit_reconnect": "Reconnect",
+        "errors": {
+          "token_required": "Paste the setup token first.",
+          "passphrase_short": "The passphrase must be at least 8 characters.",
+          "passphrase_mismatch": "The passphrases do not match."
+        }
+      },
+      "unlock": {
+        "intro": "Enter your passphrase to use SimpleFIN on this device.",
+        "passphrase": "Passphrase",
+        "submit": "Unlock",
+        "reconnect": "Reconnect",
+        "wrong_passphrase": "Wrong passphrase.",
+        "forgot_help": "Forgot it? Reconnect with a new setup token and a new passphrase.",
+        "stale_intro": "Your passphrase was changed on another device. Enter the new passphrase to keep using SimpleFIN here."
+      },
+      "accounts": {
+        "header": "Accounts",
+        "empty": "No accounts reported by the bridge yet.",
+        "state": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped · {count} queued"
+        },
+        "taps": "{count} transaction | {count} transactions",
+        "last_seen": "Last seen {date}",
+        "map": "Map to account",
+        "map_instead": "Map instead",
+        "ignore": "Ignore",
+        "unlink": "Unmap",
+        "unlink_modal": {
+          "title": "Unmap {card}?",
+          "question": "New transactions from this account will wait for review until you map it again."
+        },
+        "map_modal": {
+          "header": "Map {card}",
+          "account": "Account",
+          "submit": "Map"
+        },
+        "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      },
+      "sync": {
+        "button": "Sync now",
+        "running": "Syncing…",
+        "from": "From",
+        "last_synced": "Last synced {date}",
+        "never": "Never synced",
+        "done_toast": "{imported} imported, {matched} matched"
+      }
+    },
+    "runs": {
+      "header": "Import history",
+      "detail_header": "Import run",
+      "history_link": "Import history",
+      "empty": "No imports yet.",
+      "rows_header": "Transactions",
+      "rows_empty": "This run touched no transactions.",
+      "status": {
+        "running": "Running",
+        "completed": "Completed",
+        "partial": "Completed with errors",
+        "failed": "Failed"
+      },
+      "counts": "{imported} imported · {matched} matched · {updated} amounts updated · {queued} queued · {skipped} skipped · {failed} failed",
+      "row_status": {
+        "imported": "Imported",
+        "deleted": "Deleted since",
+        "queued": "Waiting for review",
+        "skipped": "Skipped"
+      }
+    },
+    "queue": {
+      "header": "Import queue",
+      "empty": "Nothing to review.",
+      "card_amount": "Card amount: {amount} {currency}",
+      "queued": "Waiting for review",
+      "skipped": "Skipped",
+      "failed": "Needs attention",
+      "reason": {
+        "unmapped": "Card not mapped",
+        "account_deleted": "Account deleted",
+        "no_rate": "No exchange rate for {currency}"
+      },
+      "import": "Import",
+      "skip": "Skip",
+      "unskip": "Restore",
+      "retry": "Retry",
+      "discard": "Discard",
+      "received": "Received {date}",
+      "retry_result": {
+        "created": "Imported",
+        "queued": "Queued for review",
+        "skipped": "Skipped",
+        "duplicate": "Already imported",
+        "failed": "Still failing"
+      }
+    },
+    "provenance": {
+      "header": "Imported from"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Choose your avatar",
@@ -1491,6 +1701,19 @@
       "in_use": "Currency is in use and cannot be deleted",
       "base_immutable": "The base currency cannot be modified",
       "cannot_be_hidden": "This currency cannot be hidden"
+    },
+    "import": {
+      "source_not_found": "Apple Wallet is not connected. Connect it in Settings → Apple Wallet first.",
+      "provider_unsupported": "This import provider is not supported.",
+      "account_link_exists": "This card is already linked.",
+      "currency_mismatch": "The card's currency does not match the account's currency.",
+      "link_not_queued": "This event is not waiting for review.",
+      "link_not_skipped": "This event is not skipped.",
+      "event_not_failed": "This event did not fail.",
+      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
+      "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
+      "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
+      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token."
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",

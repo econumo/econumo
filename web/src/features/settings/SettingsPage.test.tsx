@@ -27,6 +27,8 @@ function renderPage() {
     [
       { path: '/settings', element: <SettingsPage /> },
       { path: '/settings/budgets', element: <div>BUDGETS PAGE</div> },
+      { path: '/settings/data', element: <div>DATA PAGE</div> },
+      { path: '/settings/apple-wallet', element: <div>WALLET PAGE</div> },
     ],
     { initialEntries: ['/settings'] },
   )
@@ -87,12 +89,18 @@ it('links to the API docs at the configured backend host', async () => {
   expect(link).toHaveAttribute('href', 'https://api.example.test/api/doc')
 })
 
-it('Import CSV and Export CSV rows open their dialogs', async () => {
-  server.use(...coreHandlers())
+it('the Data group links to the Import & export page', async () => {
   const user = userEvent.setup()
   renderPage()
-  await user.click(await screen.findByText('Import CSV'))
-  expect(await screen.findByText('Maximum file size: 10 MB')).toBeInTheDocument()
+  await user.click(await screen.findByText('Import & export'))
+  expect(await screen.findByText('DATA PAGE')).toBeInTheDocument()
+})
+
+it('the Data group links to the Apple Wallet page', async () => {
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Apple Wallet'))
+  expect(await screen.findByText('WALLET PAGE')).toBeInTheDocument()
 })
 
 it('shows the new-version menu row above the Finances group when an update is available', async () => {

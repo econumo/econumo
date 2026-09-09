@@ -131,6 +131,12 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitGlobal != 60 {
 		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
 	}
+	if c.RateLimitIngest != 60 {
+		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
+	}
+	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 {
+		t.Fatalf("claim/sync = %d/%d, want 5/10", c.RateLimitClaimSetupToken, c.RateLimitSync)
+	}
 }
 
 func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
@@ -141,6 +147,9 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
 	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_SYNC", "2")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -148,8 +157,11 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
 		t.Fatalf("overrides not applied: %+v", c)
 	}
-	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 {
-		t.Fatalf("window/global overrides not applied: %v / %d", c.RateLimitWindow, c.RateLimitGlobal)
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
+		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
+	}
+	if c.RateLimitClaimSetupToken != 0 || c.RateLimitSync != 2 {
+		t.Fatalf("claim/sync overrides not applied: %d / %d", c.RateLimitClaimSetupToken, c.RateLimitSync)
 	}
 }
 
@@ -556,6 +568,73 @@ func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
 			t.Setenv("ECONUMO_CURRENCY_UPDATE_INTERVAL", bad)
 			if _, err := Load(); err == nil {
 				t.Fatalf("Load: want error for %q, got nil", bad)
+			}
+		})
+	}
+}
+
+func TestLoad_ImportMatcherDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportMatchDays != 3 || cfg.ImportTipDays != 5 || cfg.ImportTipTolerancePct != 20 || cfg.ImportTokenMinLength != 3 {
+		t.Errorf("defaults = %d/%d/%d/%d", cfg.ImportMatchDays, cfg.ImportTipDays, cfg.ImportTipTolerancePct, cfg.ImportTokenMinLength)
+	}
+}
+
+func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportAllowPrivateHosts {
+		t.Error("the SSRF guard must be on by default")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportAllowPrivateHosts {
+		t.Error("ImportAllowPrivateHosts should be true")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS must fail at boot")
+	}
+}
+
+func TestLoad_ImportMatcherBounds(t *testing.T) {
+	cases := []struct {
+		key, val string
+		ok       bool
+	}{
+		{"ECONUMO_IMPORT_MATCH_DAYS", "0", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "31", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "32", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "-1", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "three", false},
+		{"ECONUMO_IMPORT_TIP_DAYS", "31", true},
+		{"ECONUMO_IMPORT_TIP_DAYS", "32", false},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "100", true},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "101", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "1", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "0", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "16", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "17", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.key+"="+tc.val, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(tc.key, tc.val)
+			_, err := Load()
+			if (err == nil) != tc.ok {
+				t.Fatalf("Load() err = %v, want ok=%v", err, tc.ok)
 			}
 		})
 	}

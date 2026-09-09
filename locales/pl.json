@@ -469,6 +469,216 @@
     "make_recurring": "Ustaw jako cykliczną",
     "not_posted": "Niezaksięgowana"
   },
+  "imports": {
+    "badge": "Zaimportowana",
+    "banner": {
+      "text": "{count} zaimportowana transakcja czeka na sprawdzenie | {count} zaimportowane transakcje czekają na sprawdzenie | {count} zaimportowanych transakcji czeka na sprawdzenie",
+      "cta": "Sprawdź"
+    },
+    "data_page": {
+      "menu_item": "Import i eksport",
+      "header": "Import i eksport",
+      "sync_all": "Synchronizuj połączenia bankowe",
+      "history": "Historia importów",
+      "sync_all_done": "zaimportowano: {imported}, dopasowano: {matched}, niepowodzeń: {failed}"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Zapisuj płatności Apple Pay automatycznie za pomocą skrótu na iPhonie. Każda płatność trafia do Econumo; każdą kartę przypisujesz do konta tylko raz.",
+      "connect": "Skonfiguruj Apple Wallet",
+      "connected": "Połączono",
+      "disconnect": "Rozłącz",
+      "disconnect_modal": {
+        "title": "Rozłączyć Apple Wallet?",
+        "question": "Przypisania kart i kolejka do sprawdzenia tego połączenia zostaną usunięte. Zaimportowane już transakcje zostaną."
+      },
+      "steps": {
+        "hint_desktop": "Otwórz tę stronę na iPhonie, aby wykonać kroki tam. Na tym urządzeniu możesz pobrać skróty i odhaczać kroki ręcznie.",
+        "install_wallet": {
+          "title": "Zainstaluj econumo-wallet-v1",
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+        },
+        "install_setup": {
+          "title": "Zainstaluj econumo-setup-v1",
+          "text": "Otwórz plik na iPhonie i stuknij „Dodaj skrót”."
+        },
+        "configure": {
+          "title": "Skonfiguruj skróty",
+          "text": "Tworzy token dostępu dla skrótu i przekazuje go do econumo-setup-v1 razem z adresem serwera.",
+          "button": "Skonfiguruj na tym iPhonie",
+          "manual": "Skonfiguruj ręcznie"
+        },
+        "test": {
+          "title": "Uruchom econumo-wallet-v1 raz",
+          "text": "Uruchom go ręcznie i przy każdym pytaniu stuknij „Zawsze zezwalaj” — to nadaje uprawnienia, których automatyzacja będzie potrzebować. Nic nie jest tworzone; Econumo tylko odnotowuje, że skrót dotarł.",
+          "button": "Uruchom econumo-wallet-v1",
+          "check": "Sprawdź",
+          "none": "Nic jeszcze nie odebrano. Uruchom skrót, zezwól na pytania i sprawdź ponownie."
+        },
+        "automate": {
+          "title": "Utwórz automatyzację",
+          "text": "W aplikacji Skróty: Automatyzacja → + → Wallet → wybierz karty i kategorie do importu (najbezpieczniej wybrać wszystkie) → Uruchom po potwierdzeniu → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Pierwsza płatność z odblokowanym iPhonem",
+          "text": "Zapłać raz przez Apple Pay przy odblokowanym iPhonie. Stuknij „Uruchom”, gdy automatyzacja o to poprosi, a potem „Zawsze zezwalaj”, gdy Skróty poproszą o dostęp do Wallet.",
+          "check": "Sprawdź",
+          "none": "Nie odebrano jeszcze płatności. Zapłać raz z odblokowanym iPhonem i sprawdź ponownie."
+        },
+        "immediate": {
+          "title": "Przełącz automatyzację na „Uruchom natychmiast”",
+          "text": "W aplikacji Skróty otwórz automatyzację i zmień „Uruchom po potwierdzeniu” na „Uruchom natychmiast”. Od tej pory płatności są importowane bez pytania, także z ekranu blokady."
+        },
+        "complete": "Konfiguracja zakończona",
+        "show": "Pokaż kroki",
+        "hide": "Ukryj kroki"
+      },
+      "same_named_cards": "Karty o tej samej nazwie w Wallet trafiają tu jako jedna karta.",
+      "cards": {
+        "header": "Karty",
+        "empty": "Brak kart — pierwsza płatność Apple Pay doda kartę.",
+        "state": {
+          "mapped": "Przypisana",
+          "ignored": "Ignorowana",
+          "unmapped": "Nieprzypisana · w kolejce: {count}"
+        },
+        "taps": "{count} płatność | {count} płatności | {count} płatności",
+        "last_seen": "Ostatnio {date}",
+        "map": "Przypisz do konta",
+        "map_instead": "Przypisz mimo to",
+        "ignore": "Ignoruj",
+        "unlink": "Odłącz",
+        "unlink_modal": {
+          "title": "Odłączyć {card}?",
+          "question": "Nowe płatności z tej karty będą czekać na sprawdzenie, dopóki nie przypiszesz jej ponownie."
+        },
+        "map_modal": {
+          "header": "Przypisz {card}",
+          "account": "Konto",
+          "submit": "Przypisz"
+        },
+        "mapped_toast": "zaimportowano: {imported}, dopasowano: {matched}, pominięto: {skipped}"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Połącz bank przez SimpleFIN Bridge. Twoje dane logowania do mostka są szyfrowane na tym urządzeniu hasłem, które znasz tylko ty; serwer przechowuje je zaszyfrowane i widzi je wyłącznie na czas synchronizacji.",
+      "forget_device": "Zapomnij to urządzenie",
+      "connect": {
+        "intro": "Wklej token konfiguracyjny z konta SimpleFIN Bridge i wybierz hasło. Hasło nigdy nie jest wysyłane na serwer — jeśli je zapomnisz, będziesz musiał połączyć się ponownie za pomocą nowego tokenu konfiguracyjnego.",
+        "reconnect_intro": "Wklej nowy token konfiguracyjny z SimpleFIN Bridge. Poprzednie połączenie zostanie zastąpione; przypisania kont zostają zachowane.",
+        "token_label": "Token konfiguracyjny",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
+        "forgot_passphrase": "Zapomniałem hasła — ustaw nowe",
+        "passphrase_new": "Hasło",
+        "passphrase_existing": "Twoje hasło",
+        "passphrase_confirm": "Powtórz hasło",
+        "passphrase_help": "Co najmniej 8 znaków. Nie można go odzyskać: nikt, łącznie z nami, nie może go przywrócić.",
+        "submit": "Połącz",
+        "submit_reconnect": "Połącz ponownie",
+        "errors": {
+          "token_required": "Najpierw wklej token konfiguracyjny.",
+          "passphrase_short": "Hasło musi mieć co najmniej 8 znaków.",
+          "passphrase_mismatch": "Hasła nie są takie same."
+        }
+      },
+      "unlock": {
+        "intro": "Wprowadź hasło, aby korzystać z SimpleFIN na tym urządzeniu.",
+        "passphrase": "Hasło",
+        "submit": "Odblokuj",
+        "reconnect": "Połącz ponownie",
+        "wrong_passphrase": "Nieprawidłowe hasło.",
+        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
+        "stale_intro": "Twoje hasło zostało zmienione na innym urządzeniu. Wpisz nowe hasło, aby dalej korzystać z SimpleFIN tutaj."
+      },
+      "accounts": {
+        "header": "Konta",
+        "empty": "Mostek nie zgłosił jeszcze żadnych kont.",
+        "state": {
+          "mapped": "Przypisane",
+          "ignored": "Ignorowane",
+          "unmapped": "Nieprzypisane · w kolejce: {count}"
+        },
+        "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
+        "last_seen": "Ostatnio {date}",
+        "map": "Przypisz do konta",
+        "map_instead": "Przypisz mimo to",
+        "ignore": "Ignoruj",
+        "unlink": "Odłącz",
+        "unlink_modal": {
+          "title": "Odłączyć {card}?",
+          "question": "Nowe transakcje z tego konta będą czekać na sprawdzenie, dopóki nie przypiszesz go ponownie."
+        },
+        "map_modal": {
+          "header": "Przypisz {card}",
+          "account": "Konto",
+          "submit": "Przypisz"
+        },
+        "mapped_toast": "zaimportowano: {imported}, dopasowano: {matched}, pominięto: {skipped}"
+      },
+      "sync": {
+        "button": "Synchronizuj teraz",
+        "running": "Synchronizowanie…",
+        "from": "Od",
+        "last_synced": "Ostatnia synchronizacja {date}",
+        "never": "Nigdy nie synchronizowano",
+        "done_toast": "zaimportowano: {imported}, dopasowano: {matched}"
+      }
+    },
+    "runs": {
+      "header": "Historia importów",
+      "detail_header": "Import",
+      "history_link": "Historia importów",
+      "empty": "Brak importów.",
+      "rows_header": "Transakcje",
+      "rows_empty": "Ten import nie dotyczył żadnych transakcji.",
+      "status": {
+        "running": "W toku",
+        "completed": "Zakończono",
+        "partial": "Zakończono z błędami",
+        "failed": "Niepowodzenie"
+      },
+      "counts": "zaimportowano: {imported} · dopasowano: {matched} · zaktualizowano kwoty: {updated} · w kolejce: {queued} · pominięto: {skipped} · niepowodzeń: {failed}",
+      "row_status": {
+        "imported": "Zaimportowano",
+        "deleted": "Usunięto później",
+        "queued": "Czeka na sprawdzenie",
+        "skipped": "Pominięto"
+      }
+    },
+    "queue": {
+      "header": "Kolejka importu",
+      "empty": "Nic do sprawdzenia.",
+      "card_amount": "Kwota z karty: {amount} {currency}",
+      "queued": "Czeka na sprawdzenie",
+      "skipped": "Pominięte",
+      "failed": "Wymagają uwagi",
+      "reason": {
+        "unmapped": "Karta nieprzypisana",
+        "account_deleted": "Konto usunięte",
+        "no_rate": "Brak kursu dla {currency}"
+      },
+      "import": "Importuj",
+      "skip": "Pomiń",
+      "unskip": "Przywróć",
+      "retry": "Ponów",
+      "discard": "Odrzuć",
+      "received": "Odebrano {date}",
+      "retry_result": {
+        "created": "Zaimportowano",
+        "queued": "W kolejce do sprawdzenia",
+        "skipped": "Pominięto",
+        "duplicate": "Już zaimportowana",
+        "failed": "Nadal się nie udaje"
+      }
+    },
+    "provenance": {
+      "header": "Zaimportowano z"
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Wybierz awatar",
@@ -1491,6 +1701,19 @@
       "in_use": "Waluta jest używana i nie można jej usunąć.",
       "base_immutable": "Waluty bazowej nie można zmienić.",
       "cannot_be_hidden": "Tej waluty nie można ukryć."
+    },
+    "import": {
+      "source_not_found": "Apple Wallet nie jest połączony. Najpierw połącz go w Ustawienia → Apple Wallet.",
+      "provider_unsupported": "Ten dostawca importu nie jest obsługiwany.",
+      "account_link_exists": "Ta karta jest już powiązana.",
+      "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
+      "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
+      "link_not_skipped": "To zdarzenie nie jest pominięte.",
+      "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
+      "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
+      "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
+      "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
+      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego."
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",

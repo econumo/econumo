@@ -8,6 +8,8 @@ import { EntityIcon } from '@/components/EntityIcon'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import { useLabels } from '@/features/classifications/queries'
+import { useTransactionImportLinks } from '@/features/imports/queries'
+import { formatDateTime, parseDateTime } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import type { CurrencyLike } from '@/lib/money'
 import type { ViewTransaction } from './useAccountTransactions'
@@ -52,6 +54,7 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
   // fetched list every editor resolves against, matched here by the ids the
   // transaction already carries (no separate owner-scoped lookup to invent).
   const { data: labels = [] } = useLabels()
+  const { data: importLinks = [] } = useTransactionImportLinks(tx.id, tx.isImported === 1)
   const attachedLabels = (tx.labelIds ?? [])
     .map((id) => labels.find((l) => l.id === id))
     .filter((label): label is (typeof labels)[number] => Boolean(label))
@@ -126,6 +129,20 @@ export function ViewTransactionDialog({ transaction: tx, onClose, onEdit, onDele
               <EntityIcon name={label.icon} className="text-sm text-muted-foreground" />
               {label.name}
             </Badge>
+          ))}
+        </span>
+      ),
+    })
+  }
+  if (importLinks.length > 0) {
+    cards.push({
+      label: t('imports.provenance.header'),
+      content: (
+        <span className="flex flex-col gap-1 text-sm">
+          {importLinks.map((l) => (
+            <span key={l.id} className="break-words">
+              {l.sourceName} · {l.externalAccountId} · {l.externalPayee} {l.externalAmount} {l.externalCurrency} · {formatDateTime(parseDateTime(l.externalPostedAt))}
+            </span>
           ))}
         </span>
       ),

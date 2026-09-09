@@ -105,6 +105,18 @@ const (
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
+
+	CodeImportSourceNotFound      = "import.source_not_found"
+	CodeImportProviderUnsupported = "import.provider_unsupported"
+	CodeImportAccountLinkExists   = "import.account_link_exists"
+	CodeImportCurrencyMismatch    = "import.currency_mismatch"
+	CodeImportLinkNotQueued       = "import.link_not_queued"
+	CodeImportLinkNotSkipped      = "import.link_not_skipped"
+	CodeImportEventNotFailed      = "import.event_not_failed"
+	CodeImportSetupTokenRejected  = "import.setup_token_rejected"
+	CodeImportProviderUnavailable = "import.provider_unavailable"
+	CodeImportSyncRangeInvalid    = "import.sync_range_invalid"
+	CodeImportAccessUrlInvalid    = "import.access_url_invalid"
 )
 
 var AllCodes = []string{
@@ -204,4 +216,16 @@ var AllCodes = []string{
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
+
+	CodeImportSourceNotFound,
+	CodeImportProviderUnsupported,
+	CodeImportAccountLinkExists,
+	CodeImportCurrencyMismatch,
+	CodeImportLinkNotQueued,
+	CodeImportLinkNotSkipped,
+	CodeImportEventNotFailed,
+	CodeImportSetupTokenRejected,
+	CodeImportProviderUnavailable,
+	CodeImportSyncRangeInvalid,
+	CodeImportAccessUrlInvalid,
 }

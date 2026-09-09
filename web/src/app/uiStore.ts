@@ -6,6 +6,19 @@ import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
 
+// a queued import row being turned into a transaction: the dialog opens
+// prefilled with the bank's data and, on save, posts import-queued-event
+// (which links the row) instead of create-transaction
+export interface ImportQueuedPrefill {
+  linkId: Id
+  type: TransactionType
+  accountId: Id
+  amount: string
+  currency: string
+  payee: string
+  date: string
+}
+
 export interface OpenTransactionParams {
   transaction?: TransactionPrefill
   type?: TransactionType
@@ -14,6 +27,7 @@ export interface OpenTransactionParams {
   // TransactionDialog into posting mode (prefilled from the template, with a
   // recurringId sent alongside the created transaction)
   postRecurring?: RecurringDto
+  importQueued?: ImportQueuedPrefill
 }
 
 export interface OpenAccountParams {

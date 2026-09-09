@@ -131,8 +131,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the thirteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `imports`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -150,7 +150,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -185,7 +185,24 @@ Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
 keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
-no `repository.go` either.
+no `repository.go` either. `imports` (the bank/phone transaction-import
+subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
+ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
+Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in. The
+root package holds no provider-specific code: each provider is a subpackage —
+`internal/imports/applewallet` (the push-event parser), `internal/imports/simplefin`
+(the bridge client + stored-row parser) — that plugs into the service's
+`EventParser` and `Provider` registries in `internal/server/server.go` (a new
+provider = one subpackage + one registration line). It has `repository.go`, `ports.go` (account /
+currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
+`repo/`, and `api/` with 21 routes under `/api/v1/import/` (`create-source`,
+`get-source-list`, `delete-source`, `link-account`, `ignore-account`,
+`unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
+`import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
+`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`get-credential-key`, `set-credential-key`, `list-external-accounts`,
+`sync-source`, `get-run-list`, `get-run`). The package name is `imports`
+(not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
 
@@ -493,6 +510,19 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
+  `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
+  ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
+  fails at boot. Read into `imports.MatcherConfig`; the matcher itself is a pure function of
+  `(event, candidates, config)`.
+- `ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS` — lift the SimpleFIN client's SSRF guard (strict
+  boolean, default `false`, malformed fails at boot). With the guard on, the client resolves
+  every bridge host and refuses any address that is not global unicast (loopback, RFC1918,
+  link-local, unique-local, multicast, unspecified) — the setup token and the access URL are
+  user-supplied, so without it the server fetches whatever its own network can reach. A
+  self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
+  so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
+  the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -505,6 +535,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — failed confirm-email attempts per username per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE` — change-email code sends per user per window (default `3`; every send counts).
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE` — failed confirm-email-change attempts per user per window (default `5`; cleared on success).
+  `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
+  `ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN` — `import/claim-setup-token` calls per user per window (default `5`; every request counts).
+  `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -535,6 +568,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
   `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
+  `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
+  effective `ECONUMO_IMPORT_*` values) is always present (typed on
+  `EconumoConfig`, not consumed by any surface yet).
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS
@@ -663,14 +699,18 @@ In the distroless image these run via the binary directly, e.g.
 ## API conventions
 
 - **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
-  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
+  `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
+  travels in the body — it must never reach a query string (logs, history, referrers).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
-    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`.
+    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`,
+    `/api/v1/import/get-source-list`.
   - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
     `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
-    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
+    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`,
+    `/api/v1/import/ingest-apple-wallet-event`.
 - **Authentication is header-based:** send `Authorization: Bearer <token>` (an opaque
   access token, `eco_ses_*`/`eco_pat_*`; the scheme is case-insensitive). The auth
   middleware resolves the token's sha256 against the `access_tokens` table, rejects
@@ -691,7 +731,10 @@ In the distroless image these run via the binary directly, e.g.
 - **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
   Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes) and `personal` (user-created
-  PATs with an optional fixed expiry, full access, shown exactly once at creation).
+  PATs with an optional fixed expiry, shown exactly once at creation).
+  Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
+  that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
+  `"Invalid access token"`). `create-personal-token` requires `scope`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
@@ -747,6 +790,8 @@ data unreadable. Most are also asserted by the test suite.
   authenticator error — no internals leak).
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
+- `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
@@ -804,6 +849,25 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Transaction import (Apple Wallet)**: one `import_sources` row per user per
+  provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
+  normalized name and starts `unmapped` — its events queue (`import_transaction_links`
+  with no transaction) until the user maps it to an OWNED account (`link-account`
+  replays the queue in one run) or ignores it. Ingest is scope-gated (`ingest` PATs),
+  exact-duplicate-safe (`(source, external_account_id, external_transaction_id)`), and never fails the
+  request on a bad transaction — parse errors land in `import_events.status = failed`
+  for the queue page's "needs attention" list. Imported transactions read
+  `isImported: 1`; `get-transaction-import-list` is their provenance.
+- **Transaction import (SimpleFIN pull)**: the client claims the one-shot setup token
+  through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
+  it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
+  wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
+  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
+  "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
+  formatted into an error. A sync is one `import_runs` row; per-account failures leave the
+  run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
+  `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
 
 ## Deployment
 

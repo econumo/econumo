@@ -151,6 +151,10 @@ navigation (single-pane vs sidebar).
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
       count toward "balance as of end of today".
+- [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
+      imported row shows the import glyph (tooltip "Imported"), hand-entered
+      rows do not; the preview dialog of an imported row lists "Imported from"
+      (source · card · merchant amount currency · posted time).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -160,6 +164,175 @@ navigation (single-pane vs sidebar).
       detailed, good rows imported.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
+
+## 5a. Imports — Apple Wallet
+
+- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
+      setup, cards, "Import queue" link; back returns to Settings).
+- [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
+      second device does not create a second source); the section flips to
+      "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
+      econumo-setup-v1, Configure the Shortcuts, Run econumo-wallet-v1 once,
+      Create the automation, Make the first payment with the iPhone unlocked,
+      Switch the automation to Run Immediately), every box unticked; "Disconnect" (confirmation) removes the source, its
+      cards, its queue and the hand ticks; already-imported transactions stay.
+- [ ] Any step can be ticked/unticked by hand; ticks survive a reload and are
+      per source (a reconnect starts with an empty list) 📱.
+- [ ] A ticked step (by hand or automatically) folds to its title only: its
+      text, download link, buttons and "Configure manually" link disappear;
+      unticking it by hand brings them back 📱.
+- [ ] Steps 1–2 links download `econumo-wallet-v1.shortcut` and
+      `econumo-setup-v1.shortcut` in a new window (from the home-screen app the
+      Safari sheet closes back to the page, no relaunch needed) 📱.
+- [ ] iOS only 📱: "Configure on this iPhone" mints an ingest PAT (visible under
+      Profile → Tokens with scope `ingest`), opens the Shortcuts app with the
+      Setup shortcut prefilled and ticks step 3 (folded to its title); a user
+      who already holds an `ingest` PAT sees step 3 ticked on load. "Configure
+      manually" opens `https://econumo.com/docs/user-guide/apple-wallet` in a
+      new tab (no in-app token/recipe panel).
+- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the list and
+      the iOS-only buttons ("Configure on this iPhone", "Run econumo-wallet-v1")
+      are absent; downloads, "Configure manually", both "Check" buttons and the
+      hand ticks still work.
+- [ ] Step 4 📱 iOS only: "Run econumo-wallet-v1" opens
+      `shortcuts://run-shortcut?name=econumo-wallet-v1`; after allowing the
+      prompts on the phone, "Check" ticks step 4 (folded to its title) and the
+      `account is required` row disappears from the queue's "Needs attention"
+      list; "Check" with nothing received reports "Nothing received yet…" and
+      leaves the box unticked.
+- [ ] Step 5 text walks through Automation → + → Wallet → cards & categories →
+      Run After Confirmation → econumo-wallet-v1; step 6 text says to tap Run
+      when the automation asks and Always Allow for Wallet access.
+- [ ] Step 6: with no cards on the source its "Check" reports "No payment
+      received yet…" and leaves the box unticked.
+- [ ] The first card arriving from Apple Pay ticks steps 1–6 by itself,
+      regardless of which were ticked by hand; step 7 (Switch the automation
+      to Run Immediately) stays a hand tick and is the only open step left 📱.
+- [ ] With all seven steps done the list collapses to "Setup complete" + "Show
+      steps"; "Show steps" expands the ticked list (titles only), "Hide steps"
+      collapses it again 📱.
+- [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
+      → `status: queued` for an unmapped card; the card appears in the list as
+      "Unmapped · 1 queued", tap count and last-seen date update per event; a
+      `full` PAT / session token is accepted too; an `ingest` PAT on any other route
+      is 401.
+- [ ] Same payload twice → `duplicate`, no second row; a body without `account`
+      or with a bad currency → `status: failed`, row in "Needs attention" with the
+      error text and the raw payload; Retry re-parses (toast with the outcome),
+      Discard removes it.
+- [ ] Map card → account (owned accounts only in the picker; shared accounts
+      absent): the queue replays — toast "N imported, N matched, N skipped";
+      imported transactions appear on the account with the glyph; a same-amount
+      hand-entered transaction within ±3 days is adopted (no duplicate) and shows
+      the provenance card.
+- [ ] Currency mismatch (card USD → EUR account) is refused with the "Card
+      currency does not match the account" error; an ignored card offers
+      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
+      new taps queue again.
+- [ ] Review banner 📱: with queued rows, every page except the queue shows
+      "N imported transactions are waiting for review" + "Review"; the banner
+      disappears when the queue empties.
+- [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
+      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
+      dialog prefilled (account, amount, merchant as description, posted date);
+      saving posts `import-queued-event` — the row leaves the queue and the
+      transaction is created with the glyph; Skip moves a row to "Skipped",
+      Restore brings it back.
+- [ ] A second tap with the same amount on the same card within ±3 days of a
+      hand-entered transaction of that amount is adopted (no duplicate); a tap
+      already linked from this source is never adopted twice.
+- [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
+      frozen envelope.
+- [ ] A tap whose merchant name exceeds 255 characters is imported with the
+      name cut to 255 (no failed row).
+- [ ] Manually importing a queued row whose card currency differs from the
+      chosen account's opens the dialog with an EMPTY amount and a "Card
+      amount: … EUR" line; a same-currency row is prefilled.
+
+## 5b. Imports — SimpleFIN
+
+Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
+
+- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
+      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
+      a mismatch is rejected inline before any request. 📱
+- [ ] Connect: after "Connect" the page shows the bridge's accounts as Unmapped
+      rows, the source row reads "Never synced", and the network log shows
+      `create-source` carrying `credentialCiphertext` starting `v1:` — the access
+      URL appears in no request other than `list-external-accounts`/`sync-source`
+      bodies.
+- [ ] A used/invalid setup token shows the server's error inline; nothing is
+      created (Settings → SimpleFIN still shows the connect form after reload).
+- [ ] Second device (or same browser after "Forget this device"): the page shows
+      the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
+      one lists the accounts. 📱
+- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+      from the unlock prompt with "I forgot my passphrase" ticked accepts a new
+      setup token + new passphrase and replaces the connection (account mappings
+      kept).
+- [ ] After that passphrase reset, a device still unlocked under the OLD
+      passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
+      passphrase was changed on another device…" (not the reconnect form); the
+      new passphrase unlocks it and Sync now works. 📱
+- [ ] Map a bridge account to an owned account: the queue replays immediately and
+      toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
+      carry the Imported badge and their provenance sheet names the SimpleFIN
+      source.
+- [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
+      run toasts "{n} imported, {m} matched" (a partial or failed run shows no
+      toast — the run summary card is the only record of it).
+- [ ] Sync with a "From" date after today, or a range longer than 400 days, is
+      accepted by the form (there is no client-side check) but rejected by the
+      server (`import.sync_range_invalid`) and surfaced as a toast; "From"
+      defaults to 3 days before the last sync (30 days back before the first).
+- [ ] Sync twice with the same window: the second run reports 0 imported, 0
+      matched (exact duplicates are skipped) and the last-synced timestamp
+      advances.
+- [ ] An Apple Wallet tap transaction later confirmed by SimpleFIN's posted
+      version of the same purchase (same merchant tokens, within the
+      tip-tolerance window) is adopted and its amount corrected to the posted
+      value ("amounts updated" count > 0) rather than creating a second
+      transaction — needs Apple Wallet connected on the same account too.
+- [ ] A hand-entered transaction with the exact same amount as an incoming
+      bridge row, dated within a few days of it, is adopted (matched count)
+      rather than duplicated.
+- [ ] Unmapped bridge account with transactions: sync queues them (queue page
+      shows them with "Card not mapped" reason); mapping the account replays
+      the queue.
+- [ ] Per-account failure (one linked account's transaction write errors
+      mid-sync while another account succeeds — not triggered by a missing
+      rate or a deleted account, both of which queue their events instead):
+      the run shows "Completed with errors", the failing account's error is
+      listed under the run summary, other accounts' rows still import.
+- [ ] Bridge unreachable: "Sync now" toasts the server's "try again in a few
+      minutes" message, the run list shows a Failed run, and the failed state
+      stays on the page until the next successful sync.
+- [ ] Access URL revoked in the bridge (or the connection deleted there): "Sync
+      now" toasts the "access URL is no longer valid, reconnect" message rather
+      than the unreachable one, so the user reconnects instead of retrying.
+- [ ] A run where some bridge rows cannot be parsed reports "Completed with
+      errors" with a non-zero failed count and no success toast (never a clean
+      "Completed"); the rows are listed on the queue page's needs-attention
+      list.
+- [ ] Run detail names each row's bank account the way the run summary does
+      (the bank's own account name, falling back to the bridge id) — never a
+      bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+      source; with one and a locked device it navigates to Settings →
+      SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
+      row is disabled (not clickable, dimmed) while the syncs run. 📱
+- [ ] Settings → Data → Import history lists runs newest first with status,
+      counts and errors; a run opens its detail; a transaction deleted after
+      import shows struck-through with "Deleted since"; queued rows read
+      "Waiting for review". Rows have no actions in this version. 📱
+- [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
+      `sync-source` return 429 with the standard envelope.
+- [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
+      (trial-ended) user gets 402 on `claim-setup-token`, `set-credential-key`,
+      `sync-source`.
+- [ ] Apple Wallet regression: §5a still passes unchanged (the `cards` list,
+      queue, and provenance UI share code with the SimpleFIN account list).
 
 ## 6. Recurring transactions
 
@@ -342,6 +515,10 @@ User C sees none of it.
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
       flip it, unlike other writes on that account.
+- [ ] Create a personal token with scope "full" — it works everywhere; an
+      "ingest" token (created via "Configure on this iPhone" or the API) is
+      rejected with 401 on every non-import route and accepted on
+      `import/ingest-apple-wallet-event`.
 
 ## 13. Cross-cutting & platform
 

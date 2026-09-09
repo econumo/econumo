@@ -335,6 +335,11 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     user: fixtureUser,
     connections: [],
     recurring: [],
+    importSources: [] as unknown[],
+    importQueue: { queued: [], skipped: [], failed: [] } as unknown,
+    importRuns: [] as unknown[],
+    importCredentialKey: null as unknown,
+    personalTokens: [] as unknown[],
     ...overrides,
   }
   return [
@@ -351,6 +356,12 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/user/get-user-data', () => envelope({ user: data.user })),
     http.get('*/api/v1/budget/get-budget-list', () => envelope({ items: data.budgets })),
     http.get('*/api/v1/recurring/get-recurring-transaction-list', () => envelope({ items: data.recurring })),
+    http.get('*/api/v1/import/get-source-list', () => envelope({ items: data.importSources })),
+    http.get('*/api/v1/import/get-queued-event-list', () => envelope(data.importQueue)),
+    http.get('*/api/v1/import/get-run-list', () => envelope({ items: data.importRuns })),
+    http.get('*/api/v1/import/get-credential-key', () =>
+      envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
+    http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),
     http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]
 }

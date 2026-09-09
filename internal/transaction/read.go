@@ -100,6 +100,10 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	if err != nil {
 		return nil, err
 	}
+	importedByTx, err := s.repo.ImportedTransactionIDs(ctx, txIDs)
+	if err != nil {
+		return nil, err
+	}
 
 	authors := make(map[string]model.UserResult)
 	items := make([]model.TransactionResult, 0, len(txs))
@@ -114,7 +118,7 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 			author = model.UserResult{Id: av.ID, Avatar: av.Avatar, Name: av.Name}
 			authors[uid] = author
 		}
-		items = append(items, s.buildResult(t, author, labelsByTx[t.ID.String()]))
+		items = append(items, s.buildResult(t, author, labelsByTx[t.ID.String()], importedByTx[t.ID.String()]))
 	}
 	return &model.GetTransactionListResult{Items: items}, nil
 }

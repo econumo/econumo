@@ -57,6 +57,37 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       date: rt.nextPaymentAt,
     }
   }
+  const iq = params.importQueued
+  if (iq) {
+    // an unmapped card's row carries accountId: '' — fall back to the first
+    // account exactly like a fresh, unprefilled transaction would, so the
+    // account select is never left blank (a blank select silently blocks submit)
+    const accountId = iq.accountId || accounts[0]?.id || null
+    const account = accounts.find((a) => a.id === accountId)
+    // A queued row's amount is denominated in the card's currency, not the
+    // account's — prefilling it unconverted into a mismatched-currency
+    // account would silently misstate the transaction, so it seeds only when
+    // the two currencies agree; the mismatch is surfaced in the dialog instead.
+    // An account not yet in the cache is not a mismatch — only a CONFIRMED one blanks.
+    const mismatch = account !== undefined && account.currency.code.toUpperCase() !== iq.currency.toUpperCase()
+    return {
+      id: uuidv7(),
+      isNew: true,
+      type: iq.type,
+      accountId,
+      accountRecipientId: null,
+      amount: mismatch ? '' : seedAmount(iq.amount, account),
+      amountRecipient: '',
+      categoryId: null,
+      payeeId: null,
+      tagId: null,
+      labelIds: [],
+      // the bank's merchant string is free text; payees are the user's own
+      // entities, so it lands in the description for the user to reclassify
+      description: iq.payee,
+      date: iq.date,
+    }
+  }
   const tx = params.transaction
   if (tx) {
     const account = accounts.find((a) => a.id === tx.accountId)

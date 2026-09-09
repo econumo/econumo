@@ -36,7 +36,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	ua := "TestAgent/1.0"
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-		TokenHash: "hash-1", UserAgent: &ua,
+		TokenHash: "hash-1", Scope: model.TokenScopeFull, UserAgent: &ua,
 		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if err := repo.Insert(ctx, tok); err != nil {
@@ -81,7 +81,8 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	name := "ci token"
 	pat := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindPersonal,
-		TokenHash: "hash-2", Name: &name, CreatedAt: now.Add(time.Second), LastUsedAt: now.Add(time.Second),
+		TokenHash: "hash-2", Scope: model.TokenScopeIngest, Name: &name,
+		CreatedAt: now.Add(time.Second), LastUsedAt: now.Add(time.Second),
 	}
 	if err := repo.Insert(ctx, pat); err != nil {
 		t.Fatalf("Insert pat: %v", err)
@@ -93,6 +94,12 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	pats, err := repo.ListByUser(ctx, vo.MustParseId(userA), model.TokenKindPersonal)
 	if err != nil || len(pats) != 1 || pats[0].Name == nil || *pats[0].Name != name || pats[0].ExpiresAt != nil {
 		t.Fatalf("ListByUser(personal) mismatch: %+v, %v", pats, err)
+	}
+	if pats[0].Scope != model.TokenScopeIngest {
+		t.Errorf("pat scope = %q, want ingest", pats[0].Scope)
+	}
+	if got.Scope != model.TokenScopeFull {
+		t.Errorf("session scope = %q, want full", got.Scope)
 	}
 
 	// GetByID round-trips; a random id is NotFound.
@@ -109,7 +116,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	// Duplicate hash violates the unique index.
 	dup := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-		TokenHash: "hash-2", CreatedAt: now, LastUsedAt: now,
+		TokenHash: "hash-2", Scope: model.TokenScopeFull, CreatedAt: now, LastUsedAt: now,
 	}
 	if err := repo.Insert(ctx, dup); err == nil {
 		t.Error("duplicate token_hash insert must fail")
@@ -140,7 +147,8 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 	insert := func(hash string, exp, revoked *time.Time) *model.AccessToken {
 		tok := &model.AccessToken{
 			ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
-			TokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
+			TokenHash: hash, Scope: model.TokenScopeFull,
+			CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
 		}
 		if err := repo.Insert(ctx, tok); err != nil {
 			t.Fatalf("Insert %s: %v", hash, err)
@@ -177,5 +185,19 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 		if gone != tc.gone {
 			t.Errorf("%s: gone=%v, want %v", tc.name, gone, tc.gone)
 		}
+	}
+}
+
+func TestAccessTokenRepo_InsertRejectsEmptyScope(t *testing.T) {
+	db := dbtest.New(t)
+	seedTokenUser(t, db, userA)
+	repo := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
+		TokenHash: "hash-noscope", CreatedAt: now, LastUsedAt: now,
+	}
+	if err := repo.Insert(context.Background(), tok); err == nil {
+		t.Fatal("Insert without scope must fail")
 	}
 }
