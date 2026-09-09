@@ -354,7 +354,13 @@ User C sees none of it.
 - [ ] Update notices (environment-dependent — needs `ECONUMO_CHECK_UPDATES`
       and reachability of econumo.com): with a newer release available, the
       dismissible sidebar notice and the settings "update available" row
-      appear (simulate by pointing `ECONUMO_VERSION` at an old value).
+      appear (simulate with a binary built at an older version — Docker
+      `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
+      moves this, it only relabels the UI).
+- [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
+      sidebar footer and the settings version row both read `demo-42`, while
+      the update notice above still compares the real binary version (so a
+      current build shows no update prompt).
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
       gets 402 toasts on writes, subscription banner shows; security actions
       (logout, password, sessions) still work.

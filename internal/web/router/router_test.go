@@ -221,8 +221,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// The document is now generated ENTIRELY by the router (no merge against
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
-	// INSTANCE_ID, VERSION) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","VERSION":null};`
+	// INSTANCE_ID, VERSION, VERSION_LABEL) and MIN_APP_VERSION because it was set.
+	want := `window.econumoConfig = {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","VERSION":null,"VERSION_LABEL":null};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -274,6 +274,7 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 		`"LILTAG_CONFIG_URL":"/liltag-config.json"`,
 		`"LILTAG_CACHE_TTL":0`,
 		`"VERSION":null`,
+		`"VERSION_LABEL":null`,
 		`"INSTANCE_ID":""`,
 	} {
 		if !strings.Contains(body, want) {
@@ -309,7 +310,8 @@ func TestRuntimeConfigOverrides_InstanceID(t *testing.T) {
 
 // The liltag config URL and cache TTL are merged only when set, so a hosted
 // instance can point the SPA at a remote liltag config; VERSION carries the
-// running binary's version (or the ECONUMO_VERSION override).
+// running binary's version, and VERSION_LABEL falls back to it when no
+// display label was configured.
 func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
@@ -333,7 +335,35 @@ func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
 		`"LILTAG_CONFIG_URL":"https://cdn.example/liltag.json"`,
 		`"LILTAG_CACHE_TTL":"3600"`,
 		`"VERSION":"v9.9.9"`,
+		`"VERSION_LABEL":"v9.9.9"`,
 	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("config body missing %q:\n%s", want, body)
+		}
+	}
+}
+
+// VERSION_LABEL is display-only and independent of VERSION: ECONUMO_VERSION
+// relabels the UI for a demo/staging box, while VERSION keeps reporting the
+// real binary so analytics, the update check and the mobile app's
+// compatibility floors never compare against a made-up label.
+func TestRuntimeConfigOverrides_VersionLabelIsIndependentOfVersion(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{
+		SPA:             os.DirFS(dir),
+		SPAVersion:      "v1.2.3",
+		SPAVersionLabel: "demo-42",
+	})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	body := readBody(t, resp)
+	for _, want := range []string{`"VERSION":"v1.2.3"`, `"VERSION_LABEL":"demo-42"`} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("config body missing %q:\n%s", want, body)
 		}

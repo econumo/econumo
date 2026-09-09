@@ -88,11 +88,20 @@ type Deps struct {
 	SPA fs.FS
 
 	// SPAVersion is the version string merged into the served econumo-config.js
-	// as VERSION (the binary version, or the ECONUMO_VERSION override), resolved
-	// by the composition root. Empty is tolerated: VERSION is still emitted, as
-	// JSON null (never happens in production — server.BuildAPI always resolves
-	// a non-empty value).
+	// as VERSION: the running binary's own version, resolved by the composition
+	// root and never overridable, because the SPA compares it as a real version
+	// (analytics $app_version, the update check, the mobile app's compatibility
+	// floors). Empty is tolerated: VERSION is still emitted, as JSON null
+	// (never happens in production — server.BuildAPI always resolves a
+	// non-empty value).
 	SPAVersion string
+
+	// SPAVersionLabel is merged as VERSION_LABEL, the version text the UI
+	// DISPLAYS (the ECONUMO_VERSION override, handy for relabelling a
+	// demo/staging box). Empty falls back to SPAVersion, so the key is always
+	// present with a resolved value and a plain instance shows its real
+	// version.
+	SPAVersionLabel string
 
 	// MinAppVersion is merged into the served econumo-config.js as
 	// MIN_APP_VERSION — the oldest mobile-app build this backend accepts
@@ -178,12 +187,15 @@ func New(deps Deps) http.Handler {
 		liltagCacheTTL = deps.Cfg.LiltagCacheTTL
 	}
 	// The dist default is JS null. deps.SPAVersion is always non-empty in
-	// production (server.BuildAPI falls back to the binary version when
-	// ECONUMO_VERSION is unset), so an empty value here only happens when a
-	// caller builds Deps directly (tests).
+	// production (server.BuildAPI resolves the binary version), so an empty
+	// value here only happens when a caller builds Deps directly (tests).
 	var version any
 	if deps.SPAVersion != "" {
 		version = deps.SPAVersion
+	}
+	versionLabel := version
+	if deps.SPAVersionLabel != "" {
+		versionLabel = deps.SPAVersionLabel
 	}
 	overrides := map[string]any{
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
@@ -196,8 +208,9 @@ func New(deps Deps) http.Handler {
 		"LILTAG_CACHE_TTL":  liltagCacheTTL,
 		// Empty on a database that has not been migrated yet, in which case
 		// the SPA sends no instance identifier — matching the dist default.
-		"INSTANCE_ID": deps.InstanceID,
-		"VERSION":     version,
+		"INSTANCE_ID":   deps.InstanceID,
+		"VERSION":       version,
+		"VERSION_LABEL": versionLabel,
 	}
 	// MIN_APP_VERSION is the one key that stays conditional: the app's
 	// version-check treats a present-but-empty value differently from an

@@ -16,4 +16,5 @@ window.econumoConfig = {
   BILLING_URL: '',
   ALLOW_CUSTOM_API: true,
   VERSION: null,
+  VERSION_LABEL: null,
 };
