@@ -3,6 +3,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -66,6 +67,7 @@ type Config struct {
 	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
 	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
 	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitSuggestRules       int           // ECONUMO_RATE_LIMIT_SUGGEST_RULES: AI rule suggestions per user (every call is a paid completion)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
@@ -76,6 +78,15 @@ type Config struct {
 	MailAPIKey   string // transport credential (the Resend API key)
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
+
+	// AI — DERIVED from ECONUMO_AI_DSN (openai://<key>@host[:port][/prefix]?model=…).
+	// Empty disables import-rule suggestions: suggest-rules answers a coded
+	// 400 and the SPA hides the action (AI_ENABLED in econumo-config.js).
+	AIDSN      string
+	AIEnabled  bool
+	AIEndpoint string // https://host/v1 (plain http for loopback hosts or ?insecure=true)
+	AIAPIKey   string
+	AIModel    string
 
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
@@ -146,6 +157,16 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
+	// The completion endpoint is a scheme-prefixed DSN for the same reason:
+	// one variable turns the feature on and carries every part of it.
+	c.AIDSN = getEnv("ECONUMO_AI_DSN", "")
+	aiEndpoint, aiKey, aiModel, err := parseAIDSN(c.AIDSN)
+	if err != nil {
+		return Config{}, err
+	}
+	c.AIEndpoint, c.AIAPIKey, c.AIModel = aiEndpoint, aiKey, aiModel
+	c.AIEnabled = c.AIEndpoint != ""
 
 	// Strict parse (unlike the lenient getBool): a typo while trying to
 	// DISABLE analytics must fail at boot, not silently leave it enabled.
@@ -289,6 +310,7 @@ func Load() (Config, error) {
 		{&c.RateLimitIngest, "ECONUMO_RATE_LIMIT_INGEST", 60},
 		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
 		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
+		{&c.RateLimitSuggestRules, "ECONUMO_RATE_LIMIT_SUGGEST_RULES", 3},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
@@ -367,6 +389,51 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 	default:
 		return "", "", "", "", fmt.Errorf("unsupported MAILER_DSN scheme %q (want resend, console/log, or empty)", u.Scheme)
 	}
+}
+
+// parseAIDSN maps ECONUMO_AI_DSN to the chat-completions base endpoint the
+// way parseMailerDSN maps MAILER_DSN: the scheme picks the API dialect (only
+// the OpenAI-compatible one exists), the userinfo is the key, the host is
+// the server, and the model is mandatory because no default is right for
+// both a hosted vendor and a local runtime.
+//
+//	(empty)                                            -> disabled (all empty)
+//	openai://<api-key>@api.openai.com?model=gpt-5-mini -> https://api.openai.com/v1, key, model
+//	openai://localhost:11434?model=llama3              -> http://localhost:11434/v1, keyless (loopback = plain http)
+//	openai://host/custom/v1?model=m&insecure=true      -> http://host/custom/v1 (insecure forces plain http elsewhere)
+func parseAIDSN(dsn string) (endpoint, apiKey, model string, err error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return "", "", "", nil
+	}
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: %w", err)
+	}
+	if strings.ToLower(u.Scheme) != "openai" {
+		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai://)", u.Scheme)
+	}
+	if u.Host == "" || u.Hostname() == "" {
+		return "", "", "", errors.New("ECONUMO_AI_DSN: host is required")
+	}
+	q := u.Query()
+	model = strings.TrimSpace(q.Get("model"))
+	if model == "" {
+		return "", "", "", errors.New("ECONUMO_AI_DSN: model query parameter is required")
+	}
+	if u.User != nil {
+		apiKey = u.User.Username()
+	}
+	scheme := "https"
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || q.Get("insecure") == "true" {
+		scheme = "http"
+	}
+	path := strings.TrimRight(u.Path, "/")
+	if path == "" {
+		path = "/v1"
+	}
+	return scheme + "://" + u.Host + path, apiKey, model, nil
 }
 
 func getEnv(key, def string) string {

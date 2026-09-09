@@ -198,6 +198,9 @@ func New(deps Deps) http.Handler {
 		versionLabel = deps.SPAVersionLabel
 	}
 	overrides := map[string]any{
+		// Whether ECONUMO_AI_DSN is configured: the SPA hides the "Suggest
+		// rules" action rather than offering a button that always 400s.
+		"AI_ENABLED":         deps.Cfg.AIEnabled,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
