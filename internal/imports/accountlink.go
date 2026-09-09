@@ -163,13 +163,16 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 		}
 		// A re-mapped card only ever adopts, never corrects — the same rule
 		// as a push retry (see applyEvent).
-		txID, adopted, _, err := s.place(ctx, src, ev, r, false)
+		txID, adopted, _, applied, err := s.place(ctx, src, ev, r, false, rules)
 		if err != nil {
 			return nil, err
 		}
 		l.Status = model.ImportLinkStatusLinked
 		l.TransactionID = &txID
 		l.RunID = &run.ID
+		if err := s.writeApplied(ctx, l, applied); err != nil {
+			return nil, err
+		}
 		if err := s.repo.UpdateLink(ctx, l); err != nil {
 			return nil, err
 		}

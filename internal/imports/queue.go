@@ -110,11 +110,23 @@ func (s *Service) ImportQueuedEvent(ctx context.Context, userID vo.Id, req model
 		if err != nil {
 			return err
 		}
+		labelIDs := make([]vo.Id, 0, len(req.Transaction.LabelIds))
+		for _, raw := range req.Transaction.LabelIds {
+			if id := parseOptionalIDField(&raw); id != nil {
+				labelIDs = append(labelIDs, *id)
+			}
+		}
 		link.Status = model.ImportLinkStatusLinked
 		link.TransactionID = &txID
-		link.AppliedCategoryID = parseOptionalIDField(req.Transaction.CategoryId)
-		link.AppliedPayeeID = parseOptionalIDField(req.Transaction.PayeeId)
-		link.AppliedTagID = parseOptionalIDField(req.Transaction.TagId)
+		applied := model.ImportClassification{
+			CategoryID: parseOptionalIDField(req.Transaction.CategoryId),
+			PayeeID:    parseOptionalIDField(req.Transaction.PayeeId),
+			TagID:      parseOptionalIDField(req.Transaction.TagId),
+			LabelIDs:   labelIDs,
+		}
+		if err := s.writeApplied(ctx, link, applied); err != nil {
+			return err
+		}
 		if err := s.repo.UpdateLink(ctx, link); err != nil {
 			return err
 		}
@@ -211,13 +223,28 @@ func (s *Service) GetTransactionImportList(ctx context.Context, userID vo.Id, re
 		if src.UserID != userID {
 			continue
 		}
-		out.Items = append(out.Items, model.TransactionImportLinkResult{
-			Id: l.ID.String(), SourceId: src.ID.String(), Provider: src.Provider, SourceName: src.Name,
-			ExternalAccountId: l.ExternalAccountID, ExternalTransactionId: l.ExternalTransactionID,
-			ExternalPayee: l.ExternalPayee, ExternalAmount: vo.NewDecimal(l.ExternalAmount).String(), ExternalCurrency: derefString(l.ExternalCurrency),
-			ExternalPostedAt: l.ExternalPostedAt.Format(datetime.Layout), Status: l.Status, ImportedAt: l.ImportedAt.Format(datetime.Layout),
-			AppliedLabelIds: []string{},
-		})
+		item, err := s.linkResult(ctx, src, &l)
+		if err != nil {
+			return nil, err
+		}
+		out.Items = append(out.Items, item)
 	}
 	return out, nil
+}
+
+// linkResult is the wire view of one ledger row, applied snapshot included.
+func (s *Service) linkResult(ctx context.Context, src *model.ImportSource, l *model.ImportTransactionLink) (model.TransactionImportLinkResult, error) {
+	labels, err := s.repo.ListLinkAppliedLabels(ctx, l.ID)
+	if err != nil {
+		return model.TransactionImportLinkResult{}, err
+	}
+	return model.TransactionImportLinkResult{
+		Id: l.ID.String(), SourceId: src.ID.String(), Provider: src.Provider, SourceName: src.Name, RunId: idString(l.RunID),
+		ExternalAccountId: l.ExternalAccountID, ExternalTransactionId: l.ExternalTransactionID,
+		ExternalPayee: l.ExternalPayee, ExternalDescription: l.ExternalDescription,
+		ExternalAmount: vo.NewDecimal(l.ExternalAmount).String(), ExternalCurrency: derefString(l.ExternalCurrency),
+		ExternalPostedAt: l.ExternalPostedAt.Format(datetime.Layout), Status: l.Status, ImportedAt: l.ImportedAt.Format(datetime.Layout),
+		AppliedCategoryId: idString(l.AppliedCategoryID), AppliedPayeeId: idString(l.AppliedPayeeID), AppliedTagId: idString(l.AppliedTagID),
+		AppliedLabelIds: idStrings(labels), AppliedRuleId: idString(l.AppliedRuleID),
+	}, nil
 }

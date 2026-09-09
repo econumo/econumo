@@ -13,6 +13,7 @@ import (
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
 	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -667,4 +668,98 @@ func TestLinkAccount_ReplayAppliesSkipRules(t *testing.T) {
 	if links[0].Status != model.ImportLinkStatusSkipped || links[0].AppliedRuleID == nil {
 		t.Fatalf("replayed row: %+v", links[0])
 	}
+}
+
+func TestIngest_ClassifyRuleFillsCreatedTransaction(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	label := h.f.Label(fixture.Label{UserID: userA, Name: "Work"})
+	// a payee the owner does not have (deleted after the rule was saved); it is
+	// a real row because import_rules.target_payee_id is an FK, but it belongs
+	// to another user, so it is outside userA's vocabulary
+	stale := h.f.Payee(fixture.Payee{UserID: userB, Name: "Gone"})
+	h.entities.add(h.entities.categories, vo.MustParseId(userA), cat, "Coffee")
+	h.entities.add(h.entities.labels, vo.MustParseId(userA), label, "Work")
+	ruleID := h.f.ImportRule(fixture.ImportRule{UserID: userA, MatchValue: "blue bottle", CategoryID: cat, PayeeID: stale, LabelIDs: []string{label}})
+	res := ingest(t, h, tap)
+	if res.Status != model.ImportIngestStatusCreated {
+		t.Fatalf("status = %s", res.Status)
+	}
+	req := h.txns.created[0]
+	if req.CategoryId == nil || *req.CategoryId != cat || req.PayeeId != nil || len(req.LabelIds) != 1 || req.LabelIds[0] != label {
+		t.Fatalf("created request must carry the rule's live targets only: %+v", req)
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	l := links[0]
+	if l.AppliedCategoryID == nil || l.AppliedCategoryID.String() != cat || l.AppliedRuleID == nil || l.AppliedRuleID.String() != ruleID {
+		t.Fatalf("applied snapshot: %+v", l)
+	}
+	applied, _ := h.repo.ListLinkAppliedLabels(context.Background(), l.ID)
+	if len(applied) != 1 || applied[0].String() != label {
+		t.Fatalf("applied labels: %v", applied)
+	}
+}
+
+func TestIngest_AdoptedTransactionSnapshotsItsOwnClassification(t *testing.T) {
+	h := setup(t)
+	h.mapCard(t, "Apple Card")
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	// A hand-entered transaction the matcher will adopt (same amount, same
+	// day), seeded without a ledger row of its own: Match never adopts a
+	// candidate this source already links, so h.txns.seed's tap link would
+	// turn the adopt into a create.
+	txID := vo.NewId()
+	h.f.Transaction(fixture.Transaction{ID: txID.String(), UserID: userA, AccountID: acct1, CategoryID: cat, Amount: "4.75", Description: "Blue Bottle", SpentAt: now})
+	h.txns.candidates = []*model.Transaction{{
+		ID: txID, AccountID: vo.MustParseId(acct1), Type: model.TransactionTypeExpense,
+		Amount: "4.75", SpentAt: now, Description: "Blue Bottle",
+	}}
+	res := ingest(t, h, tap)
+	if res.Status != model.ImportIngestStatusMatched {
+		t.Fatalf("status = %s", res.Status)
+	}
+	l := linkByExternalID(t, h, "evt-1") // seed() adds its own linked row on the same source; pick the ingested one
+	if l.AppliedCategoryID == nil || l.AppliedCategoryID.String() != cat || l.AppliedRuleID != nil {
+		t.Fatalf("adopted row snapshots the transaction's current classification, no rule: %+v", l)
+	}
+}
+
+func TestImportQueuedEvent_RecordsLabels(t *testing.T) {
+	h := setup(t)
+	label := h.f.Label(fixture.Label{UserID: userA, Name: "Trip"})
+	if res := ingest(t, h, tap); res.Status != model.ImportIngestStatusQueued {
+		t.Fatal("expected queued")
+	}
+	links, _ := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	_, err := h.svc.ImportQueuedEvent(context.Background(), vo.MustParseId(userA), model.ImportQueuedEventRequest{
+		LinkId:      links[0].ID.String(),
+		Transaction: model.CreateTransactionRequest{Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: now.Format(datetime.Layout), LabelIds: []string{label}},
+	})
+	if err != nil {
+		t.Fatalf("ImportQueuedEvent: %v", err)
+	}
+	applied, _ := h.repo.ListLinkAppliedLabels(context.Background(), links[0].ID)
+	if len(applied) != 1 || applied[0].String() != label {
+		t.Fatalf("applied labels: %v", applied)
+	}
+	list, _ := h.svc.GetTransactionImportList(context.Background(), vo.MustParseId(userA), model.TransactionImportListRequest{TransactionId: h.txns.created[0].Id})
+	if len(list.Items) != 1 || len(list.Items[0].AppliedLabelIds) != 1 || list.Items[0].AppliedLabelIds[0] != label {
+		t.Fatalf("provenance must expose applied labels: %+v", list.Items)
+	}
+}
+
+func linkByExternalID(t *testing.T, h *harness, externalTxID string) model.ImportTransactionLink {
+	t.Helper()
+	links, err := h.repo.ListLinksBySource(context.Background(), vo.MustParseId(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, l := range links {
+		if l.ExternalTransactionID == externalTxID {
+			return l
+		}
+	}
+	t.Fatalf("no link for %s in %+v", externalTxID, links)
+	return model.ImportTransactionLink{}
 }

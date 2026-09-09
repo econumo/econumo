@@ -218,25 +218,35 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 		link.AppliedRuleID = r.skipRuleID
 		return r.status, false, s.repo.InsertLink(ctx, link)
 	}
-	txID, adopted, amountUpdated, err := s.place(ctx, src, ev, r, correctAmount)
+	txID, adopted, amountUpdated, applied, err := s.place(ctx, src, ev, r, correctAmount, rules)
 	if err != nil {
 		return "", false, err
 	}
 	link.Status = model.ImportLinkStatusLinked
 	link.TransactionID = &txID
+	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID, link.AppliedRuleID = applied.CategoryID, applied.PayeeID, applied.TagID, applied.RuleID
+	// the applied-label rows carry an FK on link_id, so the link goes in first
+	if err := s.repo.InsertLink(ctx, link); err != nil {
+		return "", false, err
+	}
+	if err := s.repo.ReplaceLinkAppliedLabels(ctx, link.ID, applied.LabelIDs); err != nil {
+		return "", false, err
+	}
 	status = model.ImportIngestStatusCreated
 	if adopted {
 		status = model.ImportIngestStatusMatched
 	}
-	return status, amountUpdated, s.repo.InsertLink(ctx, link)
+	return status, amountUpdated, nil
 }
 
 // place is stage 3: adopt an existing transaction the matcher recognizes
 // (adopted=true), else create one through the transaction feature's own use
 // case. correctAmount lets a tip-adopt overwrite the candidate's tap-time
 // amount with the posted one (amountUpdated=true); push events pass false
-// (see applyEvent).
-func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution, correctAmount bool) (txID vo.Id, adopted bool, amountUpdated bool, err error) {
+// (see applyEvent). applied is the classification the transaction ends up
+// carrying: what the classify rules wrote on a create, what the adopted
+// transaction already had on an adopt.
+func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution, correctAmount bool, rules ruleSet) (txID vo.Id, adopted bool, amountUpdated bool, applied model.ImportClassification, err error) {
 	at := wallClock(ev.PostedAt)
 	window := s.cfg.MatchDays
 	if s.cfg.TipDays > window {
@@ -244,7 +254,7 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 	}
 	txs, err := s.lister.ListByAccount(ctx, r.accountID, at.AddDate(0, 0, -window), at.AddDate(0, 0, window+1))
 	if err != nil {
-		return vo.Id{}, false, false, err
+		return vo.Id{}, false, false, model.ImportClassification{}, err
 	}
 	providers := map[vo.Id]string{}
 	byID := make(map[vo.Id]*model.Transaction, len(txs))
@@ -254,14 +264,14 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 		c := model.ImportCandidate{TransactionID: t.ID, Type: t.Type, Amount: t.Amount, SpentAt: t.SpentAt}
 		links, err := s.repo.ListLinksByTransaction(ctx, t.ID)
 		if err != nil {
-			return vo.Id{}, false, false, err
+			return vo.Id{}, false, false, model.ImportClassification{}, err
 		}
 		for _, l := range links {
 			provider, seen := providers[l.SourceID]
 			if !seen {
 				ls, err := s.repo.GetSource(ctx, l.SourceID)
 				if err != nil {
-					return vo.Id{}, false, false, err
+					return vo.Id{}, false, false, model.ImportClassification{}, err
 				}
 				provider = ls.Provider
 				providers[l.SourceID] = provider
@@ -288,19 +298,31 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 				req.AmountRecipient = &ar
 			}
 			if _, err := s.txns.UpdateTransaction(ctx, src.UserID, req); err != nil {
-				return vo.Id{}, false, false, err
+				return vo.Id{}, false, false, model.ImportClassification{}, err
 			}
-			return m.TransactionID, true, true, nil
+			applied, err := s.snapshotOf(ctx, m.TransactionID)
+			if err != nil {
+				return vo.Id{}, false, false, model.ImportClassification{}, err
+			}
+			return m.TransactionID, true, true, applied, nil
 		}
-		return m.TransactionID, true, false, nil
+		// An adopted transaction keeps whatever it already carries; rules
+		// never rewrite a classification the user made by hand.
+		applied, err := s.snapshotOf(ctx, m.TransactionID)
+		if err != nil {
+			return vo.Id{}, false, false, model.ImportClassification{}, err
+		}
+		return m.TransactionID, true, false, applied, nil
 	}
+	c := rules.classify(ev)
 	res, err := s.txns.CreateTransaction(ctx, src.UserID, model.CreateTransactionRequest{
 		Id: vo.NewId().String(), Type: ev.Type.Alias(), Amount: vo.NewFlexString(r.amount), AccountId: r.accountID.String(),
 		Date: at.Format(datetime.Layout), Description: optionalString(ev.Payee),
+		CategoryId: idString2(c.CategoryID), PayeeId: idString2(c.PayeeID), TagId: idString2(c.TagID), LabelIds: idStrings(c.LabelIDs),
 	})
 	if err != nil {
-		return vo.Id{}, false, false, err
+		return vo.Id{}, false, false, model.ImportClassification{}, err
 	}
 	txID, err = vo.ParseId(res.Item.Id)
-	return txID, false, false, err
+	return txID, false, false, c, err
 }

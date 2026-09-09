@@ -137,6 +137,37 @@ func idString2(p *vo.Id) *string {
 	return &s
 }
 
+func idStrings(ids []vo.Id) []string {
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, id.String())
+	}
+	return out
+}
+
+// snapshotOf reads a live transaction's current classification (adopted
+// rows, apply-rule's "already edited" check).
+func (s *Service) snapshotOf(ctx context.Context, txID vo.Id) (model.ImportClassification, error) {
+	t, err := s.lister.GetByID(ctx, txID)
+	if err != nil {
+		return model.ImportClassification{}, err
+	}
+	return model.ImportClassification{CategoryID: t.CategoryID, PayeeID: t.PayeeID, TagID: t.TagID, LabelIDs: t.LabelIDs}, nil
+}
+
+// writeApplied stores the classification the row's transaction carries as
+// of this import. It is the baseline the rule prompt and apply-rule's
+// "already edited" check diff against, so it must reflect what was written,
+// not what a rule asked for. The caller persists the link itself; the label
+// rows are written here (the link row must already exist — FK on link_id).
+func (s *Service) writeApplied(ctx context.Context, link *model.ImportTransactionLink, c model.ImportClassification) error {
+	link.AppliedCategoryID, link.AppliedPayeeID, link.AppliedTagID = c.CategoryID, c.PayeeID, c.TagID
+	if c.RuleID != nil {
+		link.AppliedRuleID = c.RuleID
+	}
+	return s.repo.ReplaceLinkAppliedLabels(ctx, link.ID, c.LabelIDs)
+}
+
 // sourceResult assembles the wire view of a source: cards are the union of
 // the user's explicit links and every card the ledger has seen, so an
 // unmapped card shows up with its queued count before the user acts on it.
