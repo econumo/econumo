@@ -39,10 +39,15 @@ type message struct {
 	Content string `json:"content"`
 }
 
+// Temperature is omitempty and nothing sets it: the reasoning models
+// (gpt-5 family, o-series) reject any non-default temperature with a 400,
+// and the body of that 400 is deliberately never logged — so sending the
+// field at all would break the exact DSN .env.example documents, invisibly.
+// Omitted, every server applies its own default.
 type request struct {
 	Model       string    `json:"model"`
 	Messages    []message `json:"messages"`
-	Temperature float64   `json:"temperature"`
+	Temperature float64   `json:"temperature,omitempty"`
 }
 
 type response struct {

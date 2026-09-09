@@ -42,6 +42,9 @@ func TestComplete_PostsChatCompletionAndReturnsContent(t *testing.T) {
 	if _, has := gotBody["response_format"]; has {
 		t.Fatal("response_format must not be sent (local servers reject it)")
 	}
+	if _, has := gotBody["temperature"]; has {
+		t.Fatal("temperature must be omitted (gpt-5/o-series reject any non-default value with a 400)")
+	}
 }
 
 func TestComplete_KeylessSendsNoAuthorization(t *testing.T) {

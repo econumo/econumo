@@ -111,15 +111,12 @@ func TestSuggestRules_ValidatesEveryProposedRow(t *testing.T) {
 	if fc.calls != 1 {
 		t.Fatalf("calls = %d, want exactly one completion", fc.calls)
 	}
-	if len(res.Items) != 2 {
-		t.Fatalf("items = %+v, want the deduped Blue Bottle row and the skip row re-typed as classify", res.Items)
+	if len(res.Items) != 1 {
+		t.Fatalf("items = %+v, want only the deduped Blue Bottle row (the skip row is dropped, not re-typed)", res.Items)
 	}
 	first := res.Items[0]
 	if first.Action != model.ImportRuleActionClassify || first.MatchType != model.ImportRuleMatchTypeContains || first.MatchValue != "Blue Bottle" || first.CategoryId == nil || *first.CategoryId != cat || first.Reason != "3 coffee purchases" {
 		t.Fatalf("first = %+v", first)
-	}
-	if second := res.Items[1]; second.MatchValue != "Skip me" || second.Action != model.ImportRuleActionClassify {
-		t.Fatalf("second = %+v (value trimmed, action forced to classify)", second)
 	}
 	if !strings.Contains(fc.lastUser, "Blue Bottle") || !strings.Contains(fc.lastUser, `"Coffee"`) {
 		t.Fatalf("prompt must carry the payee strings and entity names: %s", fc.lastUser)
@@ -150,11 +147,34 @@ func TestSuggestRules_ModelFailuresAreCodedNot500(t *testing.T) {
 	}
 }
 
-func TestSuggestRules_RateLimited(t *testing.T) {
+// A call with no classified history reaches no model, so it must not spend
+// an attempt either — the quota exists to cap paid completions.
+func TestSuggestRules_EmptyHistoryIsNotCharged(t *testing.T) {
 	h := setup(t)
 	h.withLimiter()
-	h.svc.SetCompleter(&fakeCompleter{reply: `{"rules":[]}`})
+	fc := &fakeCompleter{reply: `{"rules":[]}`}
+	h.svc.SetCompleter(fc)
+	if _, err := h.svc.SuggestRules(context.Background(), vo.MustParseId(userA), model.SuggestImportRulesRequest{}); err != nil {
+		t.Fatal(err)
+	}
+	if fc.calls != 0 || h.lim.fail != 0 {
+		t.Fatalf("calls=%d fail=%d — a call that spends no completion must not spend an attempt", fc.calls, h.lim.fail)
+	}
+}
+
+func TestSuggestRules_RateLimited(t *testing.T) {
+	h := setup(t)
 	uid := vo.MustParseId(userA)
+	// Seed a classified history first, with the limiter still off: only a call
+	// that reaches the model is charged, and the fake limiter counts every
+	// scope, so the ingests must not eat the suggest quota.
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	edited, _ := seedTwoImports(t, h)
+	classify(t, h, edited, cat)
+
+	h.withLimiter()
+	h.svc.SetCompleter(&fakeCompleter{reply: `{"rules":[]}`})
 	for i := 0; i < 2; i++ {
 		if _, err := h.svc.SuggestRules(context.Background(), uid, model.SuggestImportRulesRequest{}); err != nil {
 			t.Fatalf("call %d: %v", i+1, err)

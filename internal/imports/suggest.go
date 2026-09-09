@@ -56,6 +56,11 @@ type suggestInput struct {
 }
 
 type suggestRow struct {
+	// Action is read only to DROP a skip row. Re-typing one as classify
+	// would show the user a "classify as X" suggestion whose own reason text
+	// says to ignore those rows — a rule that does the opposite of what it
+	// says. Suggestions are classify-only (spec Part 7 / Part 2).
+	Action          string   `json:"action"`
 	MatchField      string   `json:"matchField"`
 	MatchType       string   `json:"matchType"`
 	MatchValue      string   `json:"matchValue"`
@@ -83,7 +88,6 @@ func (s *Service) SuggestRules(ctx context.Context, userID vo.Id, req model.Sugg
 		if err := s.limiter.Allow(RateScopeSuggestRules, userID.String()); err != nil {
 			return nil, err
 		}
-		s.limiter.Fail(RateScopeSuggestRules, userID.String()) // every call is a paid completion
 	}
 	in, err := s.suggestInput(ctx, userID, req)
 	if err != nil {
@@ -92,6 +96,12 @@ func (s *Service) SuggestRules(ctx context.Context, userID vo.Id, req model.Sugg
 	res := &model.SuggestImportRulesResult{Items: []model.ImportRuleSuggestion{}}
 	if len(in.Samples) == 0 {
 		return res, nil // nothing to learn from — and nothing leaves the instance
+	}
+	if s.limiter != nil {
+		// Charged here, not at the gate: the quota exists because a call costs
+		// a completion, and the early return above spends none. A completion
+		// that then FAILS still counts — it was still bought.
+		s.limiter.Fail(RateScopeSuggestRules, userID.String())
 	}
 	payload, err := json.Marshal(in)
 	if err != nil {
@@ -215,6 +225,9 @@ func parseSuggestions(reply string) ([]suggestRow, bool) {
 // the same checks create-rule would: DTO validation plus target ownership.
 // Anything the model got wrong drops the row; it never fails the request.
 func suggestionSpec(row suggestRow, own ownedIDs) (model.ImportRuleSpec, bool) {
+	if a := strings.TrimSpace(row.Action); a != "" && a != model.ImportRuleActionClassify {
+		return model.ImportRuleSpec{}, false
+	}
 	spec := model.ImportRuleSpec{
 		Action:          model.ImportRuleActionClassify,
 		MatchField:      row.MatchField,
