@@ -136,25 +136,31 @@ func (s *Service) loadRules(ctx context.Context, src *model.ImportSource) (ruleS
 		return ruleSet{}, err
 	}
 	for i := range rules {
-		r := &rules[i]
-		if r.TargetCategoryID != nil && !own.categories[*r.TargetCategoryID] {
-			r.TargetCategoryID = nil
-		}
-		if r.TargetPayeeID != nil && !own.payees[*r.TargetPayeeID] {
-			r.TargetPayeeID = nil
-		}
-		if r.TargetTagID != nil && !own.tags[*r.TargetTagID] {
-			r.TargetTagID = nil
-		}
-		kept := r.LabelIDs[:0]
-		for _, l := range r.LabelIDs {
-			if own.labels[l] {
-				kept = append(kept, l)
-			}
-		}
-		r.LabelIDs = kept
+		filterRuleTargets(&rules[i], own)
 	}
 	return newRuleSet(rules, src.ID), nil
+}
+
+// filterRuleTargets drops every target id the owner no longer has, so a
+// stale category never reaches the transaction feature (which would reject
+// the whole write for one deleted id).
+func filterRuleTargets(r *model.ImportRule, own ownedIDs) {
+	if r.TargetCategoryID != nil && !own.categories[*r.TargetCategoryID] {
+		r.TargetCategoryID = nil
+	}
+	if r.TargetPayeeID != nil && !own.payees[*r.TargetPayeeID] {
+		r.TargetPayeeID = nil
+	}
+	if r.TargetTagID != nil && !own.tags[*r.TargetTagID] {
+		r.TargetTagID = nil
+	}
+	kept := r.LabelIDs[:0]
+	for _, l := range r.LabelIDs {
+		if own.labels[l] {
+			kept = append(kept, l)
+		}
+	}
+	r.LabelIDs = kept
 }
 
 // ownedIDs is the owner's vocabulary as id sets.
