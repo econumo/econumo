@@ -360,9 +360,7 @@ export function coreHandlers(overrides: Partial<Record<string, unknown>> = {}) {
     http.get('*/api/v1/import/get-queued-event-list', () => envelope(data.importQueue)),
     http.get('*/api/v1/import/get-run-list', () => envelope({ items: data.importRuns })),
     http.get('*/api/v1/import/get-credential-key', () =>
-      data.importCredentialKey
-        ? envelope(data.importCredentialKey)
-        : HttpResponse.json({ success: false, message: 'Credential key not found', code: 400, errors: {} }, { status: 400 })),
+      envelope(data.importCredentialKey ?? { wrappedDataKey: '', kdf: '', updatedAt: '' })),
     http.get('*/api/v1/user/get-personal-token-list', () => envelope(data.personalTokens)),
     http.get('*/api/v1/system/get-update-info', () => envelope({ version: 'v0.0.0', url: 'https://econumo.com/releases/v0.0.0/' })),
   ]

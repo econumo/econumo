@@ -119,7 +119,7 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
 })
 
-it('getImportCredentialKey maps the coded not-found 400 to null', async () => {
+it('getImportCredentialKey maps the empty no-key-yet payload to null', async () => {
   const { wrapper } = makeWrapper()
   const { result } = renderHook(() => useImportCredentialKey(), { wrapper })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))

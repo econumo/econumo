@@ -53,7 +53,9 @@ func (s *Service) GetCredentialKey(ctx context.Context, userID vo.Id) (*model.Ge
 		return nil, err
 	}
 	if k == nil {
-		return nil, errs.NewNotFound("Credential key not found")
+		// No key yet is the ordinary first-visit state, not a failure: the
+		// SPA reads an empty wrappedDataKey as "create one".
+		return &model.GetImportCredentialKeyResult{}, nil
 	}
 	return credentialKeyResult(k), nil
 }

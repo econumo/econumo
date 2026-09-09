@@ -1,4 +1,3 @@
-import axios from 'axios'
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
@@ -40,18 +39,11 @@ export async function claimSetupToken(setupToken: string): Promise<string> {
   return response.data.data.accessUrl
 }
 
-// A user without a key gets the coded not-found envelope (400); that is the
-// ordinary "connect for the first time" state, not an error.
+// No key yet comes back as 200 with an empty wrappedDataKey — the ordinary
+// "connect for the first time" state; every failure is a real error.
 export async function getImportCredentialKey(): Promise<ImportCredentialKeyDto | null> {
-  try {
-    const response = await api.get<Envelope<ImportCredentialKeyDto>>(apiUrl('/api/v1/import/get-credential-key'))
-    return response.data.data
-  } catch (err) {
-    if (axios.isAxiosError(err) && err.response?.status === 400) {
-      return null
-    }
-    throw err
-  }
+  const response = await api.get<Envelope<ImportCredentialKeyDto>>(apiUrl('/api/v1/import/get-credential-key'))
+  return response.data.data.wrappedDataKey ? response.data.data : null
 }
 
 export async function setImportCredentialKey(key: { wrappedDataKey: string; kdf: string }): Promise<ImportCredentialKeyDto> {

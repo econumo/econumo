@@ -28,11 +28,11 @@ func TestClaimSetupToken_Handler(t *testing.T) {
 
 func TestCredentialKey_Handlers(t *testing.T) {
 	h := newHarness(t)
-	status, _ := call(t, h, "GET", "/api/v1/import/get-credential-key", nil)
-	if status != 400 {
-		t.Fatalf("missing key: %d", status)
+	status, env := call(t, h, "GET", "/api/v1/import/get-credential-key", nil)
+	if status != 200 || env["data"].(map[string]any)["wrappedDataKey"] != "" {
+		t.Fatalf("missing key: %d %v", status, env)
 	}
-	status, env := call(t, h, "POST", "/api/v1/import/set-credential-key", map[string]any{"wrappedDataKey": "v1:iv:ct", "kdf": `{"alg":"PBKDF2-SHA256","salt":"c2FsdA==","iterations":600000}`})
+	status, env = call(t, h, "POST", "/api/v1/import/set-credential-key", map[string]any{"wrappedDataKey": "v1:iv:ct", "kdf": `{"alg":"PBKDF2-SHA256","salt":"c2FsdA==","iterations":600000}`})
 	if status != 200 || env["data"].(map[string]any)["wrappedDataKey"] != "v1:iv:ct" {
 		t.Fatalf("%d %v", status, env)
 	}
