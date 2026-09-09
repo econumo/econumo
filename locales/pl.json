@@ -1713,7 +1713,10 @@
       "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
       "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
       "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
-      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego."
+      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego.",
+      "rule_skip_not_applicable": "Reguła pomijania nie może być zastosowana do istniejących transakcji",
+      "ai_disabled": "Sugestie AI nie są włączone na tym serwerze",
+      "ai_unavailable": "Usługa AI jest niedostępna. Spróbuj ponownie później."
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",

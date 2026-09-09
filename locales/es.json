@@ -1713,7 +1713,10 @@
       "setup_token_rejected": "SimpleFIN rechazó este token de configuración. Puede que ya se haya reclamado — genera uno nuevo en tu puente SimpleFIN.",
       "provider_unavailable": "No se pudo contactar con el puente bancario. Inténtalo de nuevo en unos minutos.",
       "sync_range_invalid": "El rango de fechas no es válido: el inicio no puede ser posterior al final, y el rango no puede superar los 400 días.",
-      "access_url_invalid": "La credencial bancaria guardada no es una URL de acceso válida. Vuelve a conectar SimpleFIN con un nuevo token de configuración."
+      "access_url_invalid": "La credencial bancaria guardada no es una URL de acceso válida. Vuelve a conectar SimpleFIN con un nuevo token de configuración.",
+      "rule_skip_not_applicable": "Una regla de omisión no se puede aplicar a transacciones existentes",
+      "ai_disabled": "Las sugerencias de IA no están habilitadas en este servidor",
+      "ai_unavailable": "El servicio de IA no está disponible. Inténtalo de nuevo más tarde."
     },
     "label": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",

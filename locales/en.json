@@ -1713,7 +1713,10 @@
       "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
       "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
       "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
-      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token."
+      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token.",
+      "rule_skip_not_applicable": "A skip rule cannot be applied to existing transactions",
+      "ai_disabled": "AI suggestions are not enabled on this server",
+      "ai_unavailable": "The AI service is unavailable. Try again later."
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",

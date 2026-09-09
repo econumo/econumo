@@ -1713,7 +1713,10 @@
       "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用 — 请在你的 SimpleFIN 网桥中生成一个新令牌。",
       "provider_unavailable": "无法连接到银行网桥。请几分钟后重试。",
       "sync_range_invalid": "日期范围无效：开始日期不能晚于结束日期，且范围不能超过 400 天。",
-      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。"
+      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。",
+      "rule_skip_not_applicable": "跳过规则无法应用于现有交易",
+      "ai_disabled": "此服务器未启用 AI 建议",
+      "ai_unavailable": "AI 服务不可用。请稍后重试。"
     },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",
