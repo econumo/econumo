@@ -134,13 +134,26 @@ function tx<T>(mode: IDBTransactionMode, run: (store: IDBObjectStore) => IDBRequ
   }))
 }
 
-export async function loadStoredKey(): Promise<CryptoKey | null> {
-  const value = await tx<CryptoKey | undefined>('readonly', (s) => s.get(RECORD) as IDBRequest<CryptoKey | undefined>)
+// The unwrapped key plus the wrapped form it was unlocked from. The tag is
+// how a device notices its key was superseded elsewhere: a passphrase reset
+// mints a new data key, and this device's stale copy would otherwise report
+// itself as unlocked and fail on the first decrypt.
+export interface StoredKey {
+  key: CryptoKey
+  tag: string
+}
+
+export async function loadStoredKey(): Promise<StoredKey | null> {
+  const value = await tx<StoredKey | CryptoKey | undefined>('readonly', (s) => s.get(RECORD) as IDBRequest<StoredKey | CryptoKey | undefined>)
+  if (value instanceof CryptoKey) {
+    return { key: value, tag: '' }  // untagged record from before tags existed: forces one re-unlock
+  }
   return value ?? null
 }
 
-async function storeKey(key: CryptoKey): Promise<void> {
-  await tx('readwrite', (s) => s.put(key, RECORD))
+async function storeKey(key: CryptoKey, tag: string): Promise<void> {
+  const record: StoredKey = { key, tag }
+  await tx('readwrite', (s) => s.put(record, RECORD))
 }
 
 export async function forgetKey(): Promise<void> {
@@ -177,13 +190,13 @@ function freshParams(): KdfParams {
 export async function createKey(passphrase: string): Promise<WrappedKey> {
   const raw = crypto.getRandomValues(new Uint8Array(32)).buffer
   const wrapped = await wrap(raw, passphrase, freshParams())
-  await storeKey(await importDataKey(raw))
+  await storeKey(await importDataKey(raw), wrapped.wrappedDataKey)
   return wrapped
 }
 
 export async function unlockKey(passphrase: string, wrapped: WrappedKey): Promise<void> {
   const raw = await unwrapRaw(passphrase, wrapped)
-  await storeKey(await importDataKey(raw))
+  await storeKey(await importDataKey(raw), wrapped.wrappedDataKey)
 }
 
 // The data key itself never changes (existing ciphertexts stay valid); only
@@ -192,16 +205,16 @@ export async function unlockKey(passphrase: string, wrapped: WrappedKey): Promis
 export async function changePassphrase(oldPassphrase: string, wrapped: WrappedKey, newPassphrase: string): Promise<WrappedKey> {
   const raw = await unwrapRaw(oldPassphrase, wrapped)
   const rewrapped = await wrap(raw, newPassphrase, freshParams())
-  await storeKey(await importDataKey(raw))
+  await storeKey(await importDataKey(raw), rewrapped.wrappedDataKey)
   return rewrapped
 }
 
 async function requireKey(): Promise<CryptoKey> {
-  const key = await loadStoredKey()
-  if (!key) {
+  const stored = await loadStoredKey()
+  if (!stored) {
     throw new KeyLockedError()
   }
-  return key
+  return stored.key
 }
 
 export async function encryptCredential(plaintext: string): Promise<string> {

@@ -591,7 +591,8 @@
         "submit": "解锁",
         "reconnect": "重新连接",
         "wrong_passphrase": "密码错误。",
-        "forgot_help": "忘记了？使用新的设置令牌和新密码重新连接。"
+        "forgot_help": "忘记了？使用新的设置令牌和新密码重新连接。",
+        "stale_intro": "您的密码已在其他设备上更改。请输入新密码以继续在此设备上使用 SimpleFIN。"
       },
       "accounts": {
         "header": "账户",

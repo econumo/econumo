@@ -591,7 +591,8 @@
         "submit": "Ontgrendelen",
         "reconnect": "Opnieuw verbinden",
         "wrong_passphrase": "Onjuiste wachtwoordzin.",
-        "forgot_help": "Vergeten? Verbind opnieuw met een nieuw installatietoken en een nieuwe wachtwoordzin."
+        "forgot_help": "Vergeten? Verbind opnieuw met een nieuw installatietoken en een nieuwe wachtwoordzin.",
+        "stale_intro": "Je wachtwoordzin is op een ander apparaat gewijzigd. Voer de nieuwe wachtwoordzin in om SimpleFIN hier te blijven gebruiken."
       },
       "accounts": {
         "header": "Rekeningen",

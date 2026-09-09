@@ -591,7 +591,8 @@
         "submit": "Sblocca",
         "reconnect": "Riconnetti",
         "wrong_passphrase": "Passphrase errata.",
-        "forgot_help": "L'hai dimenticata? Riconnettiti con un nuovo token di configurazione e una nuova passphrase."
+        "forgot_help": "L'hai dimenticata? Riconnettiti con un nuovo token di configurazione e una nuova passphrase.",
+        "stale_intro": "La tua passphrase è stata modificata su un altro dispositivo. Inserisci la nuova passphrase per continuare a usare SimpleFIN qui."
       },
       "accounts": {
         "header": "Conti",

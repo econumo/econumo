@@ -591,7 +591,8 @@
         "submit": "Odblokuj",
         "reconnect": "Połącz ponownie",
         "wrong_passphrase": "Nieprawidłowe hasło.",
-        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła."
+        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła.",
+        "stale_intro": "Twoje hasło zostało zmienione na innym urządzeniu. Wpisz nowe hasło, aby dalej korzystać z SimpleFIN tutaj."
       },
       "accounts": {
         "header": "Konta",

@@ -271,6 +271,10 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       from the unlock prompt with "I forgot my passphrase" ticked accepts a new
       setup token + new passphrase and replaces the connection (account mappings
       kept).
+- [ ] After that passphrase reset, a device still unlocked under the OLD
+      passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
+      passphrase was changed on another device…" (not the reconnect form); the
+      new passphrase unlocks it and Sync now works. 📱
 - [ ] Map a bridge account to an owned account: the queue replays immediately and
       toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
       carry the Imported badge and their provenance sheet names the SimpleFIN
