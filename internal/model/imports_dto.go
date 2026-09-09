@@ -554,10 +554,21 @@ type PreviewImportRuleRequest struct {
 }
 
 func (r PreviewImportRuleRequest) Validate() error {
-	if err := r.ImportRuleSpec.Validate(); err != nil {
-		return err
+	// Accumulate rather than short-circuit: a caller that gets both the spec
+	// and the scope wrong (e.g. a classify rule with no target AND
+	// scope=run with no runId) must see every field error, not just the
+	// first one checked.
+	var fields []errs.FieldError
+	if ve, ok := r.ImportRuleSpec.Validate().(*errs.ValidationError); ok {
+		fields = append(fields, ve.Fields...)
 	}
-	return validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId)
+	if ve, ok := validateRuleScope(r.Scope, r.RunId, r.ScopeSourceId).(*errs.ValidationError); ok {
+		fields = append(fields, ve.Fields...)
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
 }
 
 type PreviewImportRuleResult struct {

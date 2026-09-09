@@ -1,0 +1,6 @@
+== create-rule POST /api/v1/import/create-rule [owner] -> 200
+{"success":true,"message":"","data":{"id":"<generated-uuid>","sourceId":"","action":"classify","matchField":"external_payee","matchType":"contains","matchValue":"Blue Bottle","isCaseSensitive":false,"categoryId":"c0000000-0000-0000-0000-000000000001","payeeId":"","tagId":"","labelIds":[],"priority":1,"createdAt":"<datetime>","updatedAt":"<datetime>"}}
+
+== delete-rule POST /api/v1/import/delete-rule [owner] -> 200
+{"success":true,"message":"","data":{}}
+

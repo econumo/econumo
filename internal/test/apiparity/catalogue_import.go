@@ -196,4 +196,82 @@ func init() {
 			{Label: "get-queued-event-list-after-sync", Method: "GET", Path: "/api/v1/import/get-queued-event-list", Auth: "owner"},
 		}
 	}})
+
+	// Rules: each of these scenarios runs on its own fresh seeded DB (see
+	// smoke_test.go), so a scenario that acts on a rule creates it first as
+	// its own Call — a rule created in one scenario is NOT visible to another.
+	// matchValue "Blue Bottle" never appears in any seeded external payee, so
+	// preview/apply are deterministic zero-match golden data.
+	const ruleID = "0192b1e4-0000-7000-8000-00000000c001"
+	ruleSpec := map[string]any{"action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Blue Bottle", "categoryId": CatFood, "priority": 1}
+	withID := func(id string, spec map[string]any) map[string]any {
+		out := map[string]any{"id": id}
+		for k, v := range spec {
+			out[k] = v
+		}
+		return out
+	}
+
+	register(Scenario{Name: "import_rule_list_empty", Calls: func() []Call {
+		return []Call{
+			{Label: "get-rule-list-empty", Method: "GET", Path: "/api/v1/import/get-rule-list", Auth: "owner"},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_create", Calls: func() []Call {
+		return []Call{
+			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner", Body: withID(ruleID, ruleSpec)},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_create_skip_with_target_err", Calls: func() []Call {
+		return []Call{
+			// A skip rule may not carry a target: categoryId is rejected as a per-field error.
+			{Label: "err:create-rule-skip-with-category", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner",
+				Body: map[string]any{"id": "0192b1e4-0000-7000-8000-00000000c002", "action": "skip", "matchField": "external_payee", "matchType": "contains", "matchValue": "x", "categoryId": CatFood}},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_update", Calls: func() []Call {
+		return []Call{
+			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner", Body: withID(ruleID, ruleSpec)},
+			{Label: "update-rule", Method: "POST", Path: "/api/v1/import/update-rule", Auth: "owner", Body: withID(ruleID, map[string]any{"action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Third Wave", "categoryId": CatFood, "priority": 2})},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_preview", Calls: func() []Call {
+		return []Call{
+			{Label: "preview-rule", Method: "POST", Path: "/api/v1/import/preview-rule", Auth: "owner",
+				Body: map[string]any{"action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Blue Bottle", "categoryId": CatFood, "scope": "all"}},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_apply", Calls: func() []Call {
+		return []Call{
+			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner", Body: withID(ruleID, ruleSpec)},
+			// No seeded import link's external payee contains "Blue Bottle", so this matches nothing.
+			{Label: "apply-rule", Method: "POST", Path: "/api/v1/import/apply-rule", Auth: "owner", Body: map[string]any{"ruleId": ruleID, "scope": "all"}},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_delete", Calls: func() []Call {
+		return []Call{
+			{Label: "create-rule", Method: "POST", Path: "/api/v1/import/create-rule", Auth: "owner", Body: withID(ruleID, ruleSpec)},
+			{Label: "delete-rule", Method: "POST", Path: "/api/v1/import/delete-rule", Auth: "owner", Body: map[string]any{"id": ruleID}},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_delete_unknown_err", Calls: func() []Call {
+		return []Call{
+			// Fresh DB, no rule with this id: NotFoundError renders as 400 here.
+			{Label: "err:delete-rule-unknown", Method: "POST", Path: "/api/v1/import/delete-rule", Auth: "owner", Body: map[string]any{"id": ruleID}},
+		}
+	}})
+
+	register(Scenario{Name: "import_rule_suggest_disabled_err", Calls: func() []Call {
+		return []Call{
+			// SuggestRules is a stub until Task 11: always the coded import.ai_disabled 400.
+			{Label: "err:suggest-rules-disabled", Method: "POST", Path: "/api/v1/import/suggest-rules", Auth: "owner", Body: map[string]any{"scope": "all"}},
+		}
+	}})
 }
