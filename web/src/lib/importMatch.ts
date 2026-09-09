@@ -1,39 +1,12 @@
 import type { CreateTransactionDto } from '@/api/dto/transaction'
-import type { ImportRuleSpecDto, TransactionImportLinkDto } from '@/api/dto/imports'
+import type { TransactionImportLinkDto } from '@/api/dto/imports'
 import type { Id } from '@/api/types'
 
-// Mirror of internal/imports/rules.go (NormalizeText + matchRule). The count
-// the prompt shows must equal what the server later matches, so the two
-// implementations must stay identical.
+// Mirror of internal/imports.NormalizeText. Kept identical so any future
+// client-side use of the normalized text (e.g. a prefill suggestion) agrees
+// with the server's own normalization.
 export function normalizeMatchText(s: string): string {
   return s.split(/\s+/).filter(Boolean).join(' ')
-}
-
-export interface MatchText {
-  payee: string
-  description: string
-}
-
-export function matchesRule(spec: Pick<ImportRuleSpecDto, 'matchField' | 'matchType' | 'matchValue' | 'isCaseSensitive'>, text: MatchText): boolean {
-  const raw = spec.matchField === 'description' && text.description !== '' ? text.description : text.payee
-  let subject = normalizeMatchText(raw)
-  let value = normalizeMatchText(spec.matchValue)
-  if (!spec.isCaseSensitive) {
-    subject = subject.toLowerCase()
-    value = value.toLowerCase()
-  }
-  if (value === '') {
-    return false
-  }
-  switch (spec.matchType) {
-    case 'exact':
-      return subject === value
-    case 'prefix':
-      return subject.startsWith(value)
-    case 'contains':
-      return subject.includes(value)
-  }
-  return false
 }
 
 const REGION_CODE = /^[A-Z]{2}$/

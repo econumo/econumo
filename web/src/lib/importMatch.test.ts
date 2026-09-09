@@ -1,11 +1,6 @@
 import type { CreateTransactionDto } from '@/api/dto/transaction'
-import type { ImportRuleSpecDto, TransactionImportLinkDto } from '@/api/dto/imports'
-import { latestImportLink, matchesRule, normalizeMatchText, ruleDiff, suggestMatchValue } from './importMatch'
-
-const spec = (over: Partial<ImportRuleSpecDto> = {}): ImportRuleSpecDto => ({
-  sourceId: '', action: 'classify', matchField: 'external_payee', matchType: 'contains', matchValue: 'blue bottle',
-  isCaseSensitive: false, categoryId: 'c1', payeeId: '', tagId: '', labelIds: [], priority: 0, ...over,
-})
+import type { TransactionImportLinkDto } from '@/api/dto/imports'
+import { latestImportLink, normalizeMatchText, ruleDiff, suggestMatchValue } from './importMatch'
 
 const link = (over: Partial<TransactionImportLinkDto> = {}): TransactionImportLinkDto => ({
   id: 'l1', sourceId: 's1', runId: 'r1', provider: 'apple-wallet', sourceName: 'iPhone', externalAccountId: 'wallet',
@@ -23,26 +18,6 @@ describe('normalizeMatchText', () => {
   it('trims and collapses whitespace runs exactly like the Go NormalizeText', () => {
     expect(normalizeMatchText('  BLUE   BOTTLE\t COFFEE \n')).toBe('BLUE BOTTLE COFFEE')
     expect(normalizeMatchText('')).toBe('')
-  })
-})
-
-describe('matchesRule', () => {
-  it('folds case unless the rule is case-sensitive', () => {
-    expect(matchesRule(spec(), { payee: 'Blue Bottle Coffee', description: '' })).toBe(true)
-    expect(matchesRule(spec({ isCaseSensitive: true }), { payee: 'Blue Bottle Coffee', description: '' })).toBe(false)
-    expect(matchesRule(spec({ isCaseSensitive: true, matchValue: 'Blue Bottle' }), { payee: 'Blue Bottle Coffee', description: '' })).toBe(true)
-  })
-  it('exact and prefix compare normalized text; an empty value never matches', () => {
-    expect(matchesRule(spec({ matchType: 'exact', matchValue: 'blue bottle coffee' }), { payee: ' BLUE  BOTTLE COFFEE', description: '' })).toBe(true)
-    expect(matchesRule(spec({ matchType: 'exact' }), { payee: 'BLUE BOTTLE COFFEE', description: '' })).toBe(false)
-    expect(matchesRule(spec({ matchType: 'prefix' }), { payee: 'BLUE BOTTLE COFFEE', description: '' })).toBe(true)
-    expect(matchesRule(spec({ matchType: 'prefix', matchValue: 'coffee' }), { payee: 'BLUE BOTTLE COFFEE', description: '' })).toBe(false)
-    expect(matchesRule(spec({ matchValue: '   ' }), { payee: 'BLUE BOTTLE COFFEE', description: '' })).toBe(false)
-  })
-  it('description rules read the description and fall back to the payee when the provider sent none', () => {
-    expect(matchesRule(spec({ matchField: 'description', matchValue: 'memo' }), { payee: 'BLUE BOTTLE', description: 'card memo' })).toBe(true)
-    expect(matchesRule(spec({ matchField: 'description' }), { payee: 'BLUE BOTTLE', description: 'card memo' })).toBe(false)
-    expect(matchesRule(spec({ matchField: 'description' }), { payee: 'BLUE BOTTLE', description: '' })).toBe(true)
   })
 })
 

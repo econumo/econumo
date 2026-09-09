@@ -39,6 +39,7 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
   const { data: tags = [] } = useTags()
   const { data: labels = [] } = useLabels()
   const preview = usePreviewImportRule()
+  const { mutate: runPreview } = preview
   const create = useCreateImportRule()
   const update = useUpdateImportRule()
 
@@ -46,10 +47,9 @@ export function ImportRuleDialog({ open, rule, initial, onClose, onSaved }: Impo
     if (!open || spec.matchValue.trim() === '') {
       return
     }
-    const { mutate: runPreview } = preview
     const handle = setTimeout(() => runPreview({ spec, scope: ALL_SCOPE }), PREVIEW_DEBOUNCE_MS)
     return () => clearTimeout(handle)
-  }, [open, spec, preview.mutate])
+  }, [open, spec, runPreview])
 
   const patch = (p: Partial<ImportRuleSpecDto>) => setSpec((s) => ({ ...s, ...p }))
   const setAction = (action: ImportRuleAction) =>
