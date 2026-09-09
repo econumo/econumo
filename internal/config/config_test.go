@@ -134,8 +134,9 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitIngest != 60 {
 		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
 	}
-	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 || c.RateLimitSuggestRules != 3 {
-		t.Fatalf("claim/sync/suggest = %d/%d/%d, want 5/10/3", c.RateLimitClaimSetupToken, c.RateLimitSync, c.RateLimitSuggestRules)
+	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 || c.RateLimitSuggestRules != 3 || c.RateLimitPreviewRule != 120 {
+		t.Fatalf("claim/sync/suggest/preview = %d/%d/%d/%d, want 5/10/3/120",
+			c.RateLimitClaimSetupToken, c.RateLimitSync, c.RateLimitSuggestRules, c.RateLimitPreviewRule)
 	}
 }
 

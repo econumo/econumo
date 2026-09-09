@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -120,5 +121,67 @@ func TestRuleScope_ForeignRunIsNotFound(t *testing.T) {
 	})
 	if !isNotFound(err) {
 		t.Fatalf("preview: %v", err)
+	}
+}
+
+// failingLabelsRepo is the real repo with one read broken, so a transient DB
+// failure is observable end to end.
+type failingLabelsRepo struct {
+	imports.Repository
+	err error
+}
+
+func (r failingLabelsRepo) ListLinkAppliedLabels(context.Context, vo.Id) ([]vo.Id, error) {
+	return nil, r.err
+}
+
+// A failed applied-label read used to read as "no labels applied", which makes
+// every row look edited: apply then answered 200 with updated=0 and told the
+// user it had skipped edits they never made.
+func TestPreviewAndApplyRule_PropagateAppliedLabelReadFailure(t *testing.T) {
+	h := setup(t)
+	seedTwoImports(t, h)
+	uid := vo.MustParseId(userA)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.add(h.entities.categories, uid, cat, "Coffee")
+	req := classifyReq(h, cat)
+	rule, err := h.svc.CreateRule(context.Background(), uid, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	boom := errors.New("database is locked")
+	h.withRepo(failingLabelsRepo{Repository: h.repo, err: boom})
+
+	if _, err := h.svc.PreviewRule(context.Background(), uid, model.PreviewImportRuleRequest{
+		ImportRuleSpec: req.ImportRuleSpec, Scope: model.ImportRuleScopeAll,
+	}); !errors.Is(err, boom) {
+		t.Fatalf("preview must surface the read failure, got %v", err)
+	}
+	res, err := h.svc.ApplyRule(context.Background(), uid, model.ApplyImportRuleRequest{RuleId: rule.Id, Scope: model.ImportRuleScopeAll})
+	if !errors.Is(err, boom) {
+		t.Fatalf("apply must surface the read failure, got %v (res %+v)", err, res)
+	}
+}
+
+func TestPreviewRule_IsRateLimited(t *testing.T) {
+	h := setup(t)
+	h.withLimiter()
+	uid := vo.MustParseId(userA)
+	spec := model.PreviewImportRuleRequest{
+		ImportRuleSpec: model.ImportRuleSpec{Action: model.ImportRuleActionSkip, MatchField: model.ImportRuleMatchFieldExternalPayee, MatchType: model.ImportRuleMatchTypeContains, MatchValue: "x"},
+		Scope:          model.ImportRuleScopeAll,
+	}
+	for i := 0; i < 2; i++ {
+		if _, err := h.svc.PreviewRule(context.Background(), uid, spec); err != nil {
+			t.Fatalf("call %d: %v", i, err)
+		}
+	}
+	_, err := h.svc.PreviewRule(context.Background(), uid, spec)
+	if _, ok := errs.AsTooManyRequests(err); !ok {
+		t.Fatalf("the third preview must be rate limited, got %v", err)
+	}
+	if h.lim.fail != 2 {
+		t.Fatalf("every allowed preview counts toward the cap, got %d", h.lim.fail)
 	}
 }

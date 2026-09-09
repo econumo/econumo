@@ -337,6 +337,13 @@ func (h *harness) withLimiter() {
 	registerParsers(h.svc)
 }
 
+// withRepo rebuilds the service over a decorated repository, so a single
+// failing read can be exercised against otherwise real persistence.
+func (h *harness) withRepo(repo imports.Repository) {
+	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	registerParsers(h.svc)
+}
+
 func registerParsers(svc *imports.Service) {
 	svc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
 	svc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})

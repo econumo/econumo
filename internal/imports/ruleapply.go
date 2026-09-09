@@ -12,6 +12,15 @@ import (
 )
 
 func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.PreviewImportRuleRequest) (*model.PreviewImportRuleResult, error) {
+	// A preview walks every matching link and reads each live transaction, and
+	// the editors fire it from a typing debounce — so it is capped per user
+	// like the other unbounded import endpoints; every request counts.
+	if s.limiter != nil {
+		if err := s.limiter.Allow(RateScopePreviewRule, userID.String()); err != nil {
+			return nil, err
+		}
+		s.limiter.Fail(RateScopePreviewRule, userID.String())
+	}
 	r, err := s.ruleFromSpec(ctx, userID, req.ImportRuleSpec)
 	if err != nil {
 		return nil, err
@@ -34,7 +43,11 @@ func (s *Service) PreviewRule(ctx context.Context, userID vo.Id, req model.Previ
 			return nil, err
 		}
 		out.Matched++
-		if edited(s.appliedOf(ctx, l), live) {
+		applied, err := s.appliedOf(ctx, l)
+		if err != nil {
+			return nil, err
+		}
+		if edited(applied, live) {
 			out.AlreadyEdited++
 		}
 	}
@@ -74,9 +87,15 @@ func (s *Service) ApplyRule(ctx context.Context, userID vo.Id, req model.ApplyIm
 		if err != nil {
 			return nil, err
 		}
-		if !req.IncludeEdited && edited(s.appliedOf(ctx, l), live) {
-			out.Skipped++
-			continue
+		if !req.IncludeEdited {
+			applied, aerr := s.appliedOf(ctx, l)
+			if aerr != nil {
+				return nil, aerr
+			}
+			if edited(applied, live) {
+				out.Skipped++
+				continue
+			}
 		}
 		next := applyTargets(rule, live)
 		next.RuleID = &rule.ID
@@ -144,9 +163,15 @@ func linkEvent(l *model.ImportTransactionLink) model.IngestEvent {
 	return model.IngestEvent{Payee: l.ExternalPayee, Description: l.ExternalDescription}
 }
 
-func (s *Service) appliedOf(ctx context.Context, l *model.ImportTransactionLink) model.ImportClassification {
-	labels, _ := s.repo.ListLinkAppliedLabels(ctx, l.ID) // a read failure reads as "no labels applied": the diff then reports edited, the safe side
-	return model.ImportClassification{CategoryID: l.AppliedCategoryID, PayeeID: l.AppliedPayeeID, TagID: l.AppliedTagID, LabelIDs: labels, RuleID: l.AppliedRuleID}
+// A label read failure must not read as "no labels applied": that would make
+// every row look edited, so apply would silently skip the whole batch and
+// still answer 200.
+func (s *Service) appliedOf(ctx context.Context, l *model.ImportTransactionLink) (model.ImportClassification, error) {
+	labels, err := s.repo.ListLinkAppliedLabels(ctx, l.ID)
+	if err != nil {
+		return model.ImportClassification{}, err
+	}
+	return model.ImportClassification{CategoryID: l.AppliedCategoryID, PayeeID: l.AppliedPayeeID, TagID: l.AppliedTagID, LabelIDs: labels, RuleID: l.AppliedRuleID}, nil
 }
 
 // edited is the "already edited" test: any classification field the user

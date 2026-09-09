@@ -47,3 +47,33 @@ func TestRuleRoutes_ValidationAndScope(t *testing.T) {
 		t.Fatalf("scope=run without runId: %d %v", status, env)
 	}
 }
+
+// The client mints the rule id (it is the create's idempotency key), so a
+// blank one is a client bug, not an "assign one for me" request — the SPA
+// mints a uuidv7 in useCreateImportRule. Frozen so the two halves cannot
+// drift apart again: the DTO's own Validate() accepts an absent id, and only
+// this check stops a blank one from reaching persistence.
+func TestRuleRoutes_CreateRejectsABlankId(t *testing.T) {
+	h := newHarness(t)
+	cat := h.f.Category(fixture.Category{UserID: userA, Name: "Coffee"})
+	h.entities.categories = []string{cat}
+	spec := map[string]any{
+		"action": "classify", "matchField": "external_payee", "matchType": "contains", "matchValue": "Blue Bottle", "categoryId": cat, "priority": 1,
+	}
+	for _, name := range []string{"omitted", "blank", "whitespace"} {
+		body := map[string]any{}
+		for k, v := range spec {
+			body[k] = v
+		}
+		switch name {
+		case "blank":
+			body["id"] = ""
+		case "whitespace":
+			body["id"] = "   "
+		}
+		status, env := call(t, h, "POST", "/api/v1/import/create-rule", body)
+		if status != http.StatusBadRequest || env["errors"].(map[string]any)["id"] == nil {
+			t.Fatalf("%s id: %d %v", name, status, env)
+		}
+	}
+}

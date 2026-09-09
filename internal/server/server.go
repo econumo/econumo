@@ -189,6 +189,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
 			appimports.RateScopeSync:            cfg.RateLimitSync,
 			appimports.RateScopeSuggestRules:    cfg.RateLimitSuggestRules,
+			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
