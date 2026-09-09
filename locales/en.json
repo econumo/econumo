@@ -681,6 +681,7 @@
     "rules": {
       "field": { "external_payee": "Payee", "description": "Description" },
       "type": { "contains": "contains", "prefix": "starts with", "exact": "is exactly" },
+      "action": { "classify": "Classify", "skip": "Skip" },
       "prompt": {
         "title": "Create an import rule",
         "changed_category": "You set the category to {name}. Create a rule for similar imports?",
@@ -702,7 +703,40 @@
         "apply_source": "Apply to all imports",
         "done": "Done"
       },
-      "editor": { "field": "Match field", "type": "Match type" }
+      "editor": {
+        "field": "Match field",
+        "type": "Match type",
+        "title_create": "New import rule",
+        "title_edit": "Edit import rule",
+        "action": "Action",
+        "value": "Match value",
+        "case_sensitive": "Case sensitive",
+        "category": "Category",
+        "payee": "Payee",
+        "tag": "Tag",
+        "labels": "Labels",
+        "match_count": "Matches {count} imported transactions"
+      },
+      "page": {
+        "menu_item": "Import rules",
+        "title": "Import rules",
+        "intro": "Rules classify or skip imported transactions automatically. They run top to bottom; drag to change the order.",
+        "add": "Add rule",
+        "empty": "No rules yet. Correct an imported transaction and Econumo will offer to create one.",
+        "reorder": "Reorder",
+        "edit": "Edit",
+        "delete": "Delete",
+        "delete_title": "Delete this rule?",
+        "delete_confirm": "Delete rule",
+        "skip_hint": "Matching transactions are not imported"
+      },
+      "suggest": {
+        "button": "Suggest rules",
+        "running": "Thinking…",
+        "heading": "Suggested rules",
+        "accept": "Accept",
+        "discard": "Discard"
+      }
     }
   },
   "user": {

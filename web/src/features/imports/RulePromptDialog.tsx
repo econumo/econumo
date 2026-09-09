@@ -14,6 +14,7 @@ import { useCategories, useLabels, usePayees, useTags } from '@/features/classif
 import { apiErrorMessage } from '@/lib/apiError'
 import { suggestMatchValue } from '@/lib/importMatch'
 import { useApplyImportRule, useCreateImportRule, useImportRules, usePreviewImportRule, useUpdateImportRule } from './queries'
+import { describeMatch } from './ruleSummary'
 
 const PREVIEW_DEBOUNCE_MS = 300
 
@@ -194,7 +195,7 @@ function RulePrompt({ params, onDone }: { params: RulePromptParams; onDone: () =
         <p className="text-sm">{summary}</p>
         {existing ? (
           <p className="text-sm text-muted-foreground">
-            {t('imports.rules.prompt.existing_rule', { rule: `${existing.matchField === 'description' ? t('imports.rules.field.description') : t('imports.rules.field.external_payee')} ${t(`imports.rules.type.${existing.matchType}`)} ${existing.matchValue}` })}
+            {t('imports.rules.prompt.existing_rule', { rule: describeMatch(existing, t) })}
           </p>
         ) : (
           <div className="flex flex-col gap-2">
