@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Importada desde"
+    },
+    "rules": {
+      "field": { "external_payee": "Beneficiario", "description": "Descripción" },
+      "type": { "contains": "contiene", "prefix": "empieza por", "exact": "es exactamente" },
+      "action": { "classify": "Clasificar", "skip": "Omitir" },
+      "prompt": {
+        "title": "Crear una regla de importación",
+        "changed_category": "Has puesto la categoría en {name}. ¿Crear una regla para importaciones similares?",
+        "changed_payee": "Has puesto el beneficiario en {name}. ¿Crear una regla para importaciones similares?",
+        "changed_tag": "Has puesto la etiqueta en {name}. ¿Crear una regla para importaciones similares?",
+        "changed_labels": "Has añadido las etiquetas {names}. ¿Crear una regla para importaciones similares?",
+        "existing_rule": "Esta transacción fue clasificada por la regla «{rule}».",
+        "match_count": "Coincide con {count} transacciones en esta importación",
+        "not_now": "Ahora no",
+        "create_rule": "Crear regla",
+        "update_rule": "Actualizar regla",
+        "apply_question": "¿Aplicar esta regla a las {count} transacciones coincidentes en esta importación?",
+        "skipped_edited": "{count} omitidas (las has editado)",
+        "include_edited": "Actualizar también las {count} transacciones que editaste",
+        "skip_apply": "Omitir",
+        "apply": "Aplicar",
+        "applied_toast": "Se actualizaron {count} transacciones",
+        "source_question": "¿Aplicar también a todas las importaciones de {source}? Coinciden {count} transacciones.",
+        "apply_source": "Aplicar a todas las importaciones",
+        "done": "Listo"
+      },
+      "editor": {
+        "field": "Campo de coincidencia",
+        "type": "Tipo de coincidencia",
+        "title_create": "Nueva regla de importación",
+        "title_edit": "Editar regla de importación",
+        "action": "Acción",
+        "value": "Valor de coincidencia",
+        "case_sensitive": "Distinguir mayúsculas y minúsculas",
+        "category": "Categoría",
+        "payee": "Beneficiario",
+        "tag": "Etiqueta de presupuesto",
+        "labels": "Etiquetas de informes",
+        "match_count": "Coincide con {count} transacciones importadas"
+      },
+      "page": {
+        "menu_item": "Reglas de importación",
+        "title": "Reglas de importación",
+        "intro": "Las reglas clasifican u omiten transacciones importadas automáticamente. Se ejecutan de arriba abajo; arrastra para cambiar el orden.",
+        "add": "Añadir regla",
+        "empty": "Aún no hay reglas. Corrige una transacción importada y Econumo te ofrecerá crear una.",
+        "reorder": "Reordenar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "delete_title": "¿Eliminar esta regla?",
+        "delete_confirm": "Eliminar regla",
+        "skip_hint": "Las transacciones coincidentes no se importan"
+      },
+      "suggest": {
+        "button": "Sugerir reglas",
+        "running": "Pensando…",
+        "heading": "Reglas sugeridas",
+        "accept": "Aceptar",
+        "discard": "Descartar"
+      }
     }
   },
   "user": {

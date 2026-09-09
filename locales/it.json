@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Importata da"
+    },
+    "rules": {
+      "field": { "external_payee": "Beneficiario", "description": "Descrizione" },
+      "type": { "contains": "contiene", "prefix": "inizia con", "exact": "è esattamente" },
+      "action": { "classify": "Classifica", "skip": "Salta" },
+      "prompt": {
+        "title": "Crea una regola di importazione",
+        "changed_category": "Hai impostato la categoria su {name}. Vuoi creare una regola per importazioni simili?",
+        "changed_payee": "Hai impostato il beneficiario su {name}. Vuoi creare una regola per importazioni simili?",
+        "changed_tag": "Hai impostato il tag su {name}. Vuoi creare una regola per importazioni simili?",
+        "changed_labels": "Hai aggiunto i tag {names}. Vuoi creare una regola per importazioni simili?",
+        "existing_rule": "Questa transazione è stata classificata dalla regola «{rule}».",
+        "match_count": "Corrisponde a {count} transazioni in questa importazione",
+        "not_now": "Non ora",
+        "create_rule": "Crea regola",
+        "update_rule": "Aggiorna regola",
+        "apply_question": "Applicare questa regola a {count} transazioni corrispondenti in questa importazione?",
+        "skipped_edited": "{count} saltate (le hai modificate)",
+        "include_edited": "Aggiorna anche le {count} transazioni che hai modificato",
+        "skip_apply": "Salta",
+        "apply": "Applica",
+        "applied_toast": "{count} transazioni aggiornate",
+        "source_question": "Applicare anche a tutte le importazioni da {source}? Corrispondono {count} transazioni.",
+        "apply_source": "Applica a tutte le importazioni",
+        "done": "Fatto"
+      },
+      "editor": {
+        "field": "Campo di corrispondenza",
+        "type": "Tipo di corrispondenza",
+        "title_create": "Nuova regola di importazione",
+        "title_edit": "Modifica regola di importazione",
+        "action": "Azione",
+        "value": "Valore di corrispondenza",
+        "case_sensitive": "Distingui maiuscole e minuscole",
+        "category": "Categoria",
+        "payee": "Beneficiario",
+        "tag": "Tag di budget",
+        "labels": "Tag per i report",
+        "match_count": "Corrisponde a {count} transazioni importate"
+      },
+      "page": {
+        "menu_item": "Regole di importazione",
+        "title": "Regole di importazione",
+        "intro": "Le regole classificano o saltano automaticamente le transazioni importate. Vengono eseguite dall'alto verso il basso; trascina per cambiare l'ordine.",
+        "add": "Aggiungi regola",
+        "empty": "Ancora nessuna regola. Correggi una transazione importata ed Econumo ti proporrà di crearne una.",
+        "reorder": "Riordina",
+        "edit": "Modifica",
+        "delete": "Elimina",
+        "delete_title": "Eliminare questa regola?",
+        "delete_confirm": "Elimina regola",
+        "skip_hint": "Le transazioni corrispondenti non vengono importate"
+      },
+      "suggest": {
+        "button": "Suggerisci regole",
+        "running": "Sto pensando…",
+        "heading": "Regole suggerite",
+        "accept": "Accetta",
+        "discard": "Scarta"
+      }
     }
   },
   "user": {
