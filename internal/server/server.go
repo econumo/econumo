@@ -382,13 +382,11 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	)(webmcp.NewHandler(mcpRegister))
 
 	// The SPA is always embedded in the binary. The served econumo-config.js
-	// reports the running binary's version, overridable via ECONUMO_VERSION
-	// (handy for demo/staging environments).
+	// reports the running binary's version as VERSION; ECONUMO_VERSION only
+	// relabels what the UI DISPLAYS (VERSION_LABEL, handy for demo/staging
+	// environments), so a relabelled instance still reports its real version
+	// to analytics and to the mobile app's compatibility check.
 	spaFS, _ := web.DistFS()
-	spaVersion := cfg.Version
-	if spaVersion == "" {
-		spaVersion = version.Version
-	}
 	// Failure here must not stop the server: analytics are not load-bearing.
 	instanceID, err := instance.ID(context.Background(), db)
 	if err != nil {
@@ -402,7 +400,8 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
 		SPA:                spaFS,
-		SPAVersion:         spaVersion,
+		SPAVersion:         version.Version,
+		SPAVersionLabel:    cfg.Version,
 		MinAppVersion:      compat.MinAppVersion,
 		InstanceID:         instanceID,
 	}), adminHandler, rateUpdater, nil

@@ -13,6 +13,7 @@ export interface EconumoConfig {
   ALLOW_REGISTRATION?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
+  VERSION_LABEL?: string
   INSTANCE_ID?: string
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
@@ -115,8 +116,20 @@ export function getWebsiteUrl(): string {
   return import.meta.env.WEBSITE_URL ?? 'https://econumo.com'
 }
 
+// The REAL version of whatever is running: the server's binary version for a
+// server-served SPA, this build's own version in the mobile app. Everything
+// that COMPARES a version (analytics, the update check, the app's
+// compatibility floors, the query-cache buster) must read this, never the
+// display label, which ECONUMO_VERSION can set to arbitrary text.
 export function getVersion(): string {
   return window.econumoConfig?.VERSION || String(import.meta.env.ECONUMO_VERSION ?? 'dev')
+}
+
+// The version text the UI displays. A server sets VERSION_LABEL from
+// ECONUMO_VERSION to relabel a demo/staging instance; it always resolves to
+// something, falling back to the real version.
+export function getVersionLabel(): string {
+  return window.econumoConfig?.VERSION_LABEL || getVersion()
 }
 
 // The server merges BILLING_URL unconditionally into the served

@@ -81,7 +81,7 @@ type Config struct {
 	AllowCustomAPI  *bool  // ECONUMO_ALLOW_CUSTOM_API
 	LiltagConfigURL string // ECONUMO_LILTAG_CONFIG_URL: URL the SPA loads liltag config from (empty = embedded liltag-config.json)
 	LiltagCacheTTL  string // ECONUMO_LILTAG_CACHE_TTL: liltag config cache TTL in seconds (empty = embedded default)
-	Version         string // ECONUMO_VERSION: overrides the UI version label (empty = the binary's build version)
+	Version         string // ECONUMO_VERSION: the version label the UI DISPLAYS (empty = the binary's build version); never the version the SPA compares
 }
 
 // isLoopbackHost reports whether a URL hostname is loopback ("localhost" or a
