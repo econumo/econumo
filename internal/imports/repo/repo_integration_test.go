@@ -191,6 +191,46 @@ func TestRepo_RunRoundTrip(t *testing.T) {
 	}
 }
 
+func TestRepo_RunRoundTripStage3Columns(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000031")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	run := &model.ImportRun{
+		ID: vo.NewId(), UserID: src.UserID, SourceID: src.ID, Provider: src.Provider, Params: `{"startDate":"2026-08-01","endDate":"2026-08-20"}`,
+		Status: model.ImportRunStatusRunning, StartedAt: fixedTime,
+	}
+	if err := repo.InsertRun(ctx, run); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// an unset Trigger persists as the manual default and errors read back as an empty, non-nil slice
+	if got.Trigger != model.ImportRunTriggerManual || got.Errors == nil || len(got.Errors) != 0 {
+		t.Fatalf("fresh run: trigger=%q errors=%#v", got.Trigger, got.Errors)
+	}
+	run.Status = model.ImportRunStatusPartial
+	run.QueuedCount, run.AmountsUpdatedCount = 2, 1
+	run.Errors = []model.ImportRunError{{ExternalAccountId: "acc-1", Message: "boom"}}
+	finished := fixedTime.Add(time.Minute)
+	run.FinishedAt = &finished
+	if err := repo.UpdateRun(ctx, run); err != nil {
+		t.Fatal(err)
+	}
+	got, err = repo.GetRun(ctx, run.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != model.ImportRunStatusPartial || got.QueuedCount != 2 || got.AmountsUpdatedCount != 1 ||
+		len(got.Errors) != 1 || got.Errors[0].ExternalAccountId != "acc-1" || got.Errors[0].Message != "boom" {
+		t.Fatalf("round trip lost data: %+v", got)
+	}
+}
+
 func TestRepo_LinkLedger(t *testing.T) {
 	repo, db := setup(t)
 	ctx := context.Background()
@@ -512,5 +552,82 @@ func TestRepo_LinkGetUpdateListPurge(t *testing.T) {
 		t.Fatal("GetLink(miss) must error")
 	} else if _, ok := errs.AsNotFound(err); !ok {
 		t.Fatalf("= %T, want NotFound", err)
+	}
+}
+
+func TestRepo_CredentialKeyUpsert(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	uid := vo.MustParseId(userA)
+	got, err := repo.GetCredentialKey(ctx, uid)
+	if err != nil || got != nil {
+		t.Fatalf("no key yet: got %+v, err %v", got, err)
+	}
+	k := &model.ImportCredentialKey{UserID: uid, WrappedDataKey: "v1:iv:ct", KDF: `{"alg":"PBKDF2-SHA256"}`, CreatedAt: fixedTime, UpdatedAt: fixedTime}
+	if err := repo.UpsertCredentialKey(ctx, k); err != nil {
+		t.Fatal(err)
+	}
+	k.WrappedDataKey, k.UpdatedAt = "v1:iv2:ct2", fixedTime.Add(time.Hour)
+	if err := repo.UpsertCredentialKey(ctx, k); err != nil {
+		t.Fatalf("second upsert must update in place: %v", err)
+	}
+	got, err = repo.GetCredentialKey(ctx, uid)
+	if err != nil || got == nil || got.WrappedDataKey != "v1:iv2:ct2" || !got.CreatedAt.Equal(fixedTime) || !got.UpdatedAt.Equal(fixedTime.Add(time.Hour)) {
+		t.Fatalf("after upsert: %+v, err %v", got, err)
+	}
+	if err := repo.DeleteCredentialKey(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := repo.GetCredentialKey(ctx, uid); got != nil {
+		t.Fatal("key must be gone after delete")
+	}
+	if err := repo.DeleteCredentialKey(ctx, uid); err != nil {
+		t.Fatalf("deleting a missing key is a no-op: %v", err)
+	}
+}
+
+func TestRepo_UpdateSource(t *testing.T) {
+	repo, _ := setup(t)
+	ctx := context.Background()
+	src := newSource("0c000000-0000-0000-0000-000000000032")
+	if err := repo.InsertSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	ct := "v1:a:b"
+	synced := fixedTime.Add(time.Hour)
+	src.Name, src.CredentialCiphertext, src.LastSyncedAt, src.UpdatedAt = "Renamed", &ct, &synced, synced
+	if err := repo.UpdateSource(ctx, src); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetSource(ctx, src.ID)
+	if err != nil || got.Name != "Renamed" || got.CredentialCiphertext == nil || *got.CredentialCiphertext != ct || got.LastSyncedAt == nil || !got.LastSyncedAt.Equal(synced) {
+		t.Fatalf("update lost data: %+v, err %v", got, err)
+	}
+}
+
+func TestRepo_ListRunsByUserAndLinksByRun(t *testing.T) {
+	repo, db := setup(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	srcA := f.ImportSource(fixture.ImportSource{UserID: userA, Provider: model.ImportProviderSimpleFIN, Name: "Bank"})
+	srcB := f.ImportSource(fixture.ImportSource{UserID: userA, Provider: model.ImportProviderAppleWallet, Name: "iPhone"})
+	old := f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: srcA, Provider: model.ImportProviderSimpleFIN, StartedAt: fixedTime})
+	newer := f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: srcA, Provider: model.ImportProviderSimpleFIN, StartedAt: fixedTime.Add(time.Hour)})
+	other := f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: srcB, Provider: model.ImportProviderAppleWallet, StartedAt: fixedTime.Add(2 * time.Hour)})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcA, RunID: newer, ExternalAccountID: "acc-1", ExternalTransactionID: "t-1", Status: "queued"})
+	f.ImportTransactionLink(fixture.ImportTransactionLink{SourceID: srcA, RunID: old, ExternalAccountID: "acc-1", ExternalTransactionID: "t-0", Status: "queued"})
+
+	all, err := repo.ListRunsByUser(ctx, vo.MustParseId(userA), nil, 50)
+	if err != nil || len(all) != 3 || all[0].ID.String() != other || all[1].ID.String() != newer || all[2].ID.String() != old {
+		t.Fatalf("all runs newest first: %v (%d) err %v", all, len(all), err)
+	}
+	sid := vo.MustParseId(srcA)
+	bySource, err := repo.ListRunsByUser(ctx, vo.MustParseId(userA), &sid, 1)
+	if err != nil || len(bySource) != 1 || bySource[0].ID.String() != newer {
+		t.Fatalf("by source, limit 1: %v err %v", bySource, err)
+	}
+	links, err := repo.ListLinksByRun(ctx, vo.MustParseId(newer))
+	if err != nil || len(links) != 1 || links[0].ExternalTransactionID != "t-1" {
+		t.Fatalf("links by run: %v err %v", links, err)
 	}
 }

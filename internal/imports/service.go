@@ -16,15 +16,17 @@ type Service struct {
 	repo      Repository
 	accounts  AccountReader
 	converter CurrencyConverter
-	txns      TransactionCreator
+	txns      TransactionWriter
 	lister    TransactionLister
 	limiter   AttemptLimiter
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
+	providers map[string]Provider
+	parsers   map[string]EventParser
 }
 
-func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionCreator, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
+func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
 	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, limiter: limiter, tx: tx, clk: clk, cfg: cfg}
 }
 
@@ -118,6 +120,17 @@ func idString(p *vo.Id) string {
 	return p.String()
 }
 
+// idString2 is idString for an UpdateTransactionRequest field the transaction
+// feature parses only when non-nil: idString's "" for nil would parse as a
+// bogus id instead of leaving the field unset.
+func idString2(p *vo.Id) *string {
+	if p == nil {
+		return nil
+	}
+	s := p.String()
+	return &s
+}
+
 // sourceResult assembles the wire view of a source: cards are the union of
 // the user's explicit links and every card the ledger has seen, so an
 // unmapped card shows up with its queued count before the user acts on it.
@@ -161,6 +174,14 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 	}
 	return &model.ImportSourceResult{
 		Id: src.ID.String(), Provider: src.Provider, Name: src.Name, Status: src.Status,
-		CreatedAt: src.CreatedAt.Format(datetime.Layout), Cards: cards,
+		CreatedAt: src.CreatedAt.Format(datetime.Layout), LastSyncedAt: optionalTime(src.LastSyncedAt),
+		CredentialCiphertext: derefString(src.CredentialCiphertext), Cards: cards,
 	}, nil
+}
+
+func optionalTime(t *time.Time) string {
+	if t == nil {
+		return ""
+	}
+	return t.Format(datetime.Layout)
 }

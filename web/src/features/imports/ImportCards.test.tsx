@@ -11,7 +11,7 @@ import { ImportCards } from './ImportCards'
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const unmapped = { externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 2, tapCount: 3, lastSeenAt: '2026-08-20 17:42:03' }
-const source: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', cards: [unmapped] }
+const source: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', credentialCiphertext: '', cards: [unmapped] }
 
 function renderCards(src: ImportSourceDto) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -46,7 +46,7 @@ it('map opens the account picker and posts link-account, then toasts the run cou
   await user.click(await screen.findByRole('button', { name: 'Map to account' }))
   await user.selectOptions(await screen.findByLabelText('Account'), fixtureAccounts[0].id)
   await user.click(screen.getByRole('button', { name: 'Map' }))
-  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id }))
+  await waitFor(() => expect(body).toEqual({ sourceId: 's1', externalAccountId: 'wallet', accountId: fixtureAccounts[0].id, externalName: 'Apple Card' }))
 })
 
 it('ignore posts ignore-account; an ignored card offers "Map instead"', async () => {

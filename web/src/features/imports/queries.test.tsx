@@ -1,15 +1,30 @@
-import { renderHook, waitFor } from '@testing-library/react'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
+import { coreHandlers } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import type { ImportQueueDto, ImportSourceDto } from '@/api/dto/imports'
 import type { TransactionDto } from '@/api/dto/transaction'
-import { useImportQueuedEvent, useImportSources, useLinkImportAccount, useSkipQueuedEvent } from './queries'
+import { METRICS, trackEvent } from '@/lib/metrics'
+import {
+  useImportCredentialKey,
+  useImportQueuedEvent,
+  useImportSources,
+  useLinkImportAccount,
+  useSkipQueuedEvent,
+  useSyncImportSource,
+} from './queries'
+
+vi.mock('@/lib/metrics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/metrics')>()
+  return { ...actual, trackEvent: vi.fn() }
+})
+const trackEventMock = vi.mocked(trackEvent)
 
 const card = { externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 1, tapCount: 1, lastSeenAt: '2026-08-20 17:42:03' }
-const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', cards: [card] }
+const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', credentialCiphertext: '', cards: [card] }
 const queued = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '4.75', currency: 'USD', type: 'expense' as const, postedAt: '2026-08-20 17:42:03', reason: 'unmapped' as const }
 const wireQueue: ImportQueueDto = { queued: [queued], skipped: [], failed: [] }
 
@@ -24,6 +39,8 @@ function makeWrapper() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  server.use(...coreHandlers())
+  trackEventMock.mockClear()
 })
 
 it('useImportSources fetches the source list with its cards', async () => {
@@ -80,4 +97,31 @@ it('useSkipQueuedEvent replaces the whole queue from the response', async () => 
   result.current.mutate('l1')
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(queryClient.getQueryData<ImportQueueDto>(queryKeys.importQueue)!.skipped).toHaveLength(1)
+})
+
+it('useSyncImportSource refreshes ledger caches only when the run wrote something, and fires IMPORT_SYNC', async () => {
+  const run = {
+    id: 'r1', sourceId: 's2', provider: 'simplefin', status: 'completed', trigger: 'manual',
+    importedCount: 2, matchedCount: 1, amountsUpdatedCount: 0, queuedCount: 0, skippedCount: 0, failedCount: 0,
+    errors: [], startedAt: '2026-09-07 10:00:00', finishedAt: '2026-09-07 10:00:02',
+  }
+  let body: unknown
+  server.use(http.post('*/api/v1/import/sync-source', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: { run, accounts: [] } })
+  }))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.transactions, { stale: true })
+  const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+  await act(() => result.current.mutateAsync({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }))
+  expect(body).toEqual({ sourceId: 's2', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' })
+  expect(queryClient.getQueryState(queryKeys.transactions)?.isInvalidated).toBe(true)
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
+})
+
+it('getImportCredentialKey maps the coded not-found 400 to null', async () => {
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useImportCredentialKey(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(result.current.data).toBeNull()
 })

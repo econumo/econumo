@@ -201,7 +201,7 @@ The SPA checklist therefore has the user run `econumo-wallet-v1` by hand
 2) and then make the first Apple Pay payment **with the phone unlocked**
 ("Always Allow" on 3). The manual run reaches the server with no `account`
 and is stored as a failed event with the literal error `account is
-required` (`internal/imports/applewallet.go`); the checklist's "Check"
+required` (`internal/imports/applewallet/parser.go`); the checklist's "Check"
 button treats that event as proof of contact and discards it. Keep that
 error text stable — the SPA matches on it.
 

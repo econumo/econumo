@@ -1,6 +1,7 @@
 package model
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -26,9 +27,19 @@ const (
 	ImportRunStatusFailed    = "failed"
 	ImportRunStatusPartial   = "partial"
 
+	ImportRunTriggerManual = "manual"
+
 	ImportAccountLinkModeImport = "import"
 	ImportAccountLinkModeIgnore = "ignore"
 )
+
+// ImportRunError is one entry of a run's error list: a bridge-level message
+// (ExternalAccountId "") or a per-account failure that left the rest of the
+// run intact.
+type ImportRunError struct {
+	ExternalAccountId string `json:"externalAccountId"`
+	Message           string `json:"message"`
+}
 
 // Push providers deliver one event per tap and see the transaction before
 // the bank posts it; pull providers see the posted record. The matcher
@@ -79,18 +90,33 @@ type ImportEvent struct {
 }
 
 type ImportRun struct {
-	ID            vo.Id
-	UserID        vo.Id
-	SourceID      vo.Id
-	Provider      string
-	Params        string
-	Status        string
-	ImportedCount int
-	MatchedCount  int
-	SkippedCount  int
-	FailedCount   int
-	StartedAt     time.Time
-	FinishedAt    *time.Time
+	ID                  vo.Id
+	UserID              vo.Id
+	SourceID            vo.Id
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int
+	MatchedCount        int
+	SkippedCount        int
+	FailedCount         int
+	QueuedCount         int
+	AmountsUpdatedCount int
+	Trigger             string
+	Errors              []ImportRunError
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+}
+
+// ImportCredentialKey is the wrapped data-encryption key backing a user's
+// stored provider credentials (SimpleFIN, etc). KDF is opaque JSON the
+// client controls (algorithm, salt, iterations); the server never inspects it.
+type ImportCredentialKey struct {
+	UserID         vo.Id
+	WrappedDataKey string
+	KDF            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
 }
 
 // ImportTransactionLink is one ledger row: what an external transaction id
@@ -153,4 +179,26 @@ type ImportCandidateLink struct {
 	Provider       string
 	ExternalAmount string
 	ExternalPayee  string
+}
+
+// ExternalAccount is a pull provider's account row before it is linked to an
+// owned account.
+type ExternalAccount struct {
+	ID       string
+	Name     string
+	Currency string // ISO code as reported; may be a non-ISO string for crypto/custom, passed through
+	Balance  string // decimal text as reported
+	OrgName  string
+}
+
+// ExternalTransaction is one provider row before parsing; Raw is stored
+// verbatim as the event payload so a retry re-parses exactly what arrived.
+type ExternalTransaction struct {
+	ExternalAccountID string
+	ID                string
+	Amount            string // signed decimal text as reported ("-12.50")
+	Posted            int64  // unix seconds
+	Payee             string
+	Description       string
+	Raw               json.RawMessage
 }

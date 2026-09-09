@@ -3,7 +3,9 @@ package migrations_test
 import (
 	"context"
 	"testing"
+	"time"
 
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -16,8 +18,8 @@ func TestMigration20260901_ImportTablesAndTokenScope(t *testing.T) {
 	ctx := context.Background()
 	for _, q := range []string{
 		"SELECT id, user_id, provider, name, credential_ciphertext, status, last_synced_at, created_at, updated_at FROM import_sources WHERE 1 = 0",
-		"SELECT user_id, key_ciphertext, created_at FROM import_credential_keys WHERE 1 = 0",
-		"SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, started_at, finished_at FROM import_runs WHERE 1 = 0",
+		"SELECT user_id, wrapped_data_key, kdf, created_at, updated_at FROM import_credential_keys WHERE 1 = 0",
+		"SELECT id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at FROM import_runs WHERE 1 = 0",
 		"SELECT id, source_id, run_id, payload, payload_hash, status, parse_error, received_at FROM import_events WHERE 1 = 0",
 		"SELECT id, source_id, external_account_id, external_name, external_currency, account_id, mode, created_at, updated_at FROM import_account_links WHERE 1 = 0",
 		"SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at FROM import_transaction_links WHERE 1 = 0",
@@ -47,5 +49,28 @@ func TestMigration20260901_ImportTablesAndTokenScope(t *testing.T) {
 		"0f000000-0000-0000-0000-000000000001", userID, "session", "h", "full", "2026-01-01 00:00:00", "2026-01-01 00:00:00")
 	if err != nil {
 		t.Errorf("inserting an access token with scope = 'full' must succeed: %v", err)
+	}
+}
+
+func TestMigration20260907_ImportRunDefaults(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	user := f.User(fixture.User{})
+	src := f.ImportSource(fixture.ImportSource{UserID: user, Provider: model.ImportProviderSimpleFIN, Name: "Bank"})
+	_, err := db.Raw.ExecContext(ctx, db.Rebind(
+		"INSERT INTO import_runs (id, user_id, source_id, provider, params, status, started_at) VALUES (?, ?, ?, ?, ?, ?, ?)"),
+		"0f000000-0000-0000-0000-000000000001", user, src, model.ImportProviderSimpleFIN, "{}", model.ImportRunStatusRunning, time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatalf("insert run: %v", err)
+	}
+	var queued, updated int64
+	var trigger, errs string
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind("SELECT queued_count, amounts_updated_count, trigger, errors FROM import_runs WHERE id = ?"),
+		"0f000000-0000-0000-0000-000000000001").Scan(&queued, &updated, &trigger, &errs); err != nil {
+		t.Fatalf("select run: %v", err)
+	}
+	if queued != 0 || updated != 0 || trigger != "manual" || errs != "[]" {
+		t.Fatalf("defaults = (%d, %d, %q, %q), want (0, 0, \"manual\", \"[]\")", queued, updated, trigger, errs)
 	}
 }

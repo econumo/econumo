@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Import & export",
-      "header": "Import & export"
+      "header": "Import & export",
+      "sync_all": "Sync bank connections",
+      "history": "Import history",
+      "sync_all_done": "{imported} imported, {matched} matched, {failed} failed"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -556,6 +559,93 @@
           "submit": "Map"
         },
         "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Connect a bank through SimpleFIN Bridge. Your bridge credentials are encrypted on this device with a passphrase only you know; the server stores them encrypted and only sees them for the duration of a sync.",
+      "forget_device": "Forget this device",
+      "connect": {
+        "intro": "Paste the setup token from your SimpleFIN Bridge account and choose a passphrase. The passphrase is never sent to the server — if you forget it, you will need to reconnect with a new setup token.",
+        "reconnect_intro": "Paste a new setup token from SimpleFIN Bridge. The previous connection will be replaced; your account mappings are kept.",
+        "token_label": "Setup token",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → New connection → copy the setup token. A token can be used once.",
+        "forgot_passphrase": "I forgot my passphrase — set a new one",
+        "passphrase_new": "Passphrase",
+        "passphrase_existing": "Your passphrase",
+        "passphrase_confirm": "Repeat passphrase",
+        "passphrase_help": "At least 8 characters. Not recoverable: nobody, including us, can restore it.",
+        "submit": "Connect",
+        "submit_reconnect": "Reconnect",
+        "errors": {
+          "token_required": "Paste the setup token first.",
+          "passphrase_short": "The passphrase must be at least 8 characters.",
+          "passphrase_mismatch": "The passphrases do not match."
+        }
+      },
+      "unlock": {
+        "intro": "Enter your passphrase to use SimpleFIN on this device.",
+        "passphrase": "Passphrase",
+        "submit": "Unlock",
+        "reconnect": "Reconnect",
+        "wrong_passphrase": "Wrong passphrase.",
+        "forgot_help": "Forgot it? Reconnect with a new setup token and a new passphrase."
+      },
+      "accounts": {
+        "header": "Accounts",
+        "empty": "No accounts reported by the bridge yet.",
+        "state": {
+          "mapped": "Mapped",
+          "ignored": "Ignored",
+          "unmapped": "Unmapped · {count} queued"
+        },
+        "taps": "{count} transaction | {count} transactions",
+        "last_seen": "Last seen {date}",
+        "map": "Map to account",
+        "map_instead": "Map instead",
+        "ignore": "Ignore",
+        "unlink": "Unmap",
+        "unlink_modal": {
+          "title": "Unmap {card}?",
+          "question": "New transactions from this account will wait for review until you map it again."
+        },
+        "map_modal": {
+          "header": "Map {card}",
+          "account": "Account",
+          "submit": "Map"
+        },
+        "mapped_toast": "{imported} imported, {matched} matched, {skipped} skipped"
+      },
+      "sync": {
+        "button": "Sync now",
+        "running": "Syncing…",
+        "from": "From",
+        "last_synced": "Last synced {date}",
+        "never": "Never synced",
+        "done_toast": "{imported} imported, {matched} matched"
+      }
+    },
+    "runs": {
+      "header": "Import history",
+      "detail_header": "Import run",
+      "history_link": "Import history",
+      "empty": "No imports yet.",
+      "rows_header": "Transactions",
+      "rows_empty": "This run touched no transactions.",
+      "status": {
+        "running": "Running",
+        "completed": "Completed",
+        "partial": "Completed with errors",
+        "failed": "Failed"
+      },
+      "counts": "{imported} imported · {matched} matched · {updated} amounts updated · {queued} queued · {skipped} skipped · {failed} failed",
+      "row_status": {
+        "imported": "Imported",
+        "deleted": "Deleted since",
+        "queued": "Waiting for review",
+        "skipped": "Skipped"
       }
     },
     "queue": {
@@ -1618,7 +1708,11 @@
       "currency_mismatch": "The card's currency does not match the account's currency.",
       "link_not_queued": "This event is not waiting for review.",
       "link_not_skipped": "This event is not skipped.",
-      "event_not_failed": "This event did not fail."
+      "event_not_failed": "This event did not fail.",
+      "setup_token_rejected": "SimpleFIN rejected this setup token. It may have been claimed already — generate a new one in your SimpleFIN bridge.",
+      "provider_unavailable": "The bank bridge could not be reached. Try again in a few minutes.",
+      "sync_range_invalid": "The date range is invalid: the start must not be after the end, and the range must not exceed 400 days.",
+      "access_url_invalid": "The stored bank credential is not a valid access URL. Reconnect SimpleFIN with a new setup token."
     },
     "label": {
       "name_length": "Tag name must be {min}-{max} characters",

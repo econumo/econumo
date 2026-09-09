@@ -38,6 +38,12 @@ type Config struct {
 	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
 	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
 	ImportTokenMinLength  int // ECONUMO_IMPORT_TOKEN_MIN_LENGTH: shortest merchant token that must be contained (default 3, 1-16)
+	// ImportAllowPrivateHosts is ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS: let the
+	// bridge client reach loopback/private/link-local addresses. Off by
+	// default — the bridge URL is user-supplied, so the guard is what stops
+	// the server being used to probe its own network. A self-hosted bridge on
+	// a LAN needs it on.
+	ImportAllowPrivateHosts bool
 
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
@@ -58,6 +64,8 @@ type Config struct {
 	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
 	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
 	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
@@ -208,6 +216,14 @@ func Load() (Config, error) {
 		*p.dst = n
 	}
 
+	// Strict parse: a typo must fail at boot rather than silently opening the
+	// server's private network to a user-supplied bridge URL.
+	allowPrivateHosts, err := getBoolStrict("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", false)
+	if err != nil {
+		return Config{}, err
+	}
+	c.ImportAllowPrivateHosts = allowPrivateHosts
+
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
 	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
 	// Half-configured is operator error, and a listener that silently fails to
@@ -271,6 +287,8 @@ func Load() (Config, error) {
 		{&c.RateLimitRequestEmailChange, "ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE", 3},
 		{&c.RateLimitConfirmEmailChange, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE", 5},
 		{&c.RateLimitIngest, "ECONUMO_RATE_LIMIT_INGEST", 60},
+		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
+		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)

@@ -134,6 +134,9 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitIngest != 60 {
 		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
 	}
+	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 {
+		t.Fatalf("claim/sync = %d/%d, want 5/10", c.RateLimitClaimSetupToken, c.RateLimitSync)
+	}
 }
 
 func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
@@ -145,6 +148,8 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
 	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
 	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_SYNC", "2")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -154,6 +159,9 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	}
 	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
 		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
+	}
+	if c.RateLimitClaimSetupToken != 0 || c.RateLimitSync != 2 {
+		t.Fatalf("claim/sync overrides not applied: %d / %d", c.RateLimitClaimSetupToken, c.RateLimitSync)
 	}
 }
 
@@ -573,6 +581,31 @@ func TestLoad_ImportMatcherDefaults(t *testing.T) {
 	}
 	if cfg.ImportMatchDays != 3 || cfg.ImportTipDays != 5 || cfg.ImportTipTolerancePct != 20 || cfg.ImportTokenMinLength != 3 {
 		t.Errorf("defaults = %d/%d/%d/%d", cfg.ImportMatchDays, cfg.ImportTipDays, cfg.ImportTipTolerancePct, cfg.ImportTokenMinLength)
+	}
+}
+
+func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportAllowPrivateHosts {
+		t.Error("the SSRF guard must be on by default")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportAllowPrivateHosts {
+		t.Error("ImportAllowPrivateHosts should be true")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS must fail at boot")
 	}
 }
 

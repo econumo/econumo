@@ -110,3 +110,47 @@ func (sqliteQuerier) ListImportTransactionLinksBySource(ctx context.Context, db 
 func (sqliteQuerier) DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error {
 	return sqlitegen.New(db).DeleteQueuedImportTransactionLinksByExternalAccount(ctx, p)
 }
+
+func (sqliteQuerier) UpdateImportSource(ctx context.Context, db backend.DBTX, p updateSourceParams) error {
+	return sqlitegen.New(db).UpdateImportSource(ctx, p)
+}
+
+func (sqliteQuerier) UpsertImportCredentialKey(ctx context.Context, db backend.DBTX, p upsertCredentialKeyParams) error {
+	return sqlitegen.New(db).UpsertImportCredentialKey(ctx, p)
+}
+
+func (sqliteQuerier) GetImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) (credentialKeyRow, error) {
+	return sqlitegen.New(db).GetImportCredentialKey(ctx, userID)
+}
+
+func (sqliteQuerier) DeleteImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) error {
+	return sqlitegen.New(db).DeleteImportCredentialKey(ctx, userID)
+}
+
+func (sqliteQuerier) ListImportRunsByUser(ctx context.Context, db backend.DBTX, p runsByUserParams) ([]runRow, error) {
+	rows, err := sqlitegen.New(db).ListImportRunsByUser(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]runRow, len(rows))
+	for i, row := range rows {
+		out[i] = runRow(row)
+	}
+	return out, nil
+}
+
+func (sqliteQuerier) ListImportRunsBySource(ctx context.Context, db backend.DBTX, p runsBySourceParams) ([]runRow, error) {
+	rows, err := sqlitegen.New(db).ListImportRunsBySource(ctx, p)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]runRow, len(rows))
+	for i, row := range rows {
+		out[i] = runRow(row)
+	}
+	return out, nil
+}
+
+func (sqliteQuerier) ListImportTransactionLinksByRun(ctx context.Context, db backend.DBTX, runID *string) ([]linkRow, error) {
+	return sqlitegen.New(db).ListImportTransactionLinksByRun(ctx, runID)
+}

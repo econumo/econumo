@@ -1,4 +1,4 @@
-package imports
+package applewallet
 
 import (
 	"encoding/json"
@@ -34,9 +34,9 @@ func TestNormalizeAmount(t *testing.T) {
 	}
 }
 
-func TestParseAppleWalletEvent_Full(t *testing.T) {
+func TestParse_Full(t *testing.T) {
 	body := []byte(`{"account":"  Apple   Card ","payee":" Blue Bottle ","amount":"$4.75","currency":"usd","occurredAt":"2026-08-15T10:42:03-07:00","type":"Expense","eventId":"evt-1"}`)
-	ev, err := ParseAppleWalletEvent(body, received)
+	ev, err := Parse(body, received)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,9 +52,9 @@ func TestParseAppleWalletEvent_Full(t *testing.T) {
 	}
 }
 
-func TestParseAppleWalletEvent_DefaultsAndSynthesizedID(t *testing.T) {
+func TestParse_DefaultsAndSynthesizedID(t *testing.T) {
 	body := []byte(`{"account":"Apple Card","payee":"Shop","amount":12.5,"currency":"EUR"}`)
-	ev, err := ParseAppleWalletEvent(body, received)
+	ev, err := Parse(body, received)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,18 +65,18 @@ func TestParseAppleWalletEvent_DefaultsAndSynthesizedID(t *testing.T) {
 		t.Errorf("synthesized id = %q, want sha256 hex", ev.ExternalTransactionID)
 	}
 	// the synthesized id is a function of the PARSED values, so formatting noise does not fork it
-	again, _ := ParseAppleWalletEvent([]byte(`{"account":" Apple  Card","payee":" Shop ","amount":"12,50","currency":"eur"}`), received)
+	again, _ := Parse([]byte(`{"account":" Apple  Card","payee":" Shop ","amount":"12,50","currency":"eur"}`), received)
 	if again.ExternalTransactionID != ev.ExternalTransactionID {
 		t.Errorf("synthesized id must be stable across formatting: %q vs %q", again.ExternalTransactionID, ev.ExternalTransactionID)
 	}
 	// income flips the type; an unparsable occurredAt falls back to receivedAt
-	inc, err := ParseAppleWalletEvent([]byte(`{"account":"Apple Card","amount":"1","currency":"USD","type":"income","occurredAt":"yesterday"}`), received)
+	inc, err := Parse([]byte(`{"account":"Apple Card","amount":"1","currency":"USD","type":"income","occurredAt":"yesterday"}`), received)
 	if err != nil || inc.Type != model.TransactionTypeIncome || !inc.PostedAt.Equal(received) {
 		t.Errorf("income/fallback: %+v, %v", inc, err)
 	}
 }
 
-func TestParseAppleWalletEvent_TruncatesLongPayee(t *testing.T) {
+func TestParse_TruncatesLongPayee(t *testing.T) {
 	longPayee := strings.Repeat("é", 300)
 	payload, err := json.Marshal(map[string]any{
 		"account": "Apple Card", "payee": longPayee, "amount": "1", "currency": "USD", "eventId": "evt-long",
@@ -84,7 +84,7 @@ func TestParseAppleWalletEvent_TruncatesLongPayee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	ev, err := ParseAppleWalletEvent(payload, received)
+	ev, err := Parse(payload, received)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +109,11 @@ func TestParseAppleWalletEvent_TruncatesLongPayee(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	evA, err := ParseAppleWalletEvent(truncated, received)
+	evA, err := Parse(truncated, received)
 	if err != nil {
 		t.Fatal(err)
 	}
-	evB, err := ParseAppleWalletEvent(untrimmed, received)
+	evB, err := Parse(untrimmed, received)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestParseAppleWalletEvent_TruncatesLongPayee(t *testing.T) {
 	}
 }
 
-func TestParseAppleWalletEvent_Errors(t *testing.T) {
+func TestParse_Errors(t *testing.T) {
 	cases := map[string]string{
 		`not json`:                        "invalid JSON",
 		`{"amount":"1","currency":"USD"}`: "account is required",
@@ -132,7 +132,7 @@ func TestParseAppleWalletEvent_Errors(t *testing.T) {
 		`{"account":"Apple Card","amount":"1","currency":"USD","type":"x"}`: "type must be expense or income",
 	}
 	for body, want := range cases {
-		_, err := ParseAppleWalletEvent([]byte(body), received)
+		_, err := Parse([]byte(body), received)
 		if err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%s: err = %v, want %q", body, err, want)
 		}

@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Import i eksport",
-      "header": "Import i eksport"
+      "header": "Import i eksport",
+      "sync_all": "Synchronizuj połączenia bankowe",
+      "history": "Historia importów",
+      "sync_all_done": "zaimportowano: {imported}, dopasowano: {matched}, niepowodzeń: {failed}"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -556,6 +559,93 @@
           "submit": "Przypisz"
         },
         "mapped_toast": "zaimportowano: {imported}, dopasowano: {matched}, pominięto: {skipped}"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Połącz bank przez SimpleFIN Bridge. Twoje dane logowania do mostka są szyfrowane na tym urządzeniu hasłem, które znasz tylko ty; serwer przechowuje je zaszyfrowane i widzi je wyłącznie na czas synchronizacji.",
+      "forget_device": "Zapomnij to urządzenie",
+      "connect": {
+        "intro": "Wklej token konfiguracyjny z konta SimpleFIN Bridge i wybierz hasło. Hasło nigdy nie jest wysyłane na serwer — jeśli je zapomnisz, będziesz musiał połączyć się ponownie za pomocą nowego tokenu konfiguracyjnego.",
+        "reconnect_intro": "Wklej nowy token konfiguracyjny z SimpleFIN Bridge. Poprzednie połączenie zostanie zastąpione; przypisania kont zostają zachowane.",
+        "token_label": "Token konfiguracyjny",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nowe połączenie → skopiuj token konfiguracyjny. Token można wykorzystać tylko raz.",
+        "forgot_passphrase": "Zapomniałem hasła — ustaw nowe",
+        "passphrase_new": "Hasło",
+        "passphrase_existing": "Twoje hasło",
+        "passphrase_confirm": "Powtórz hasło",
+        "passphrase_help": "Co najmniej 8 znaków. Nie można go odzyskać: nikt, łącznie z nami, nie może go przywrócić.",
+        "submit": "Połącz",
+        "submit_reconnect": "Połącz ponownie",
+        "errors": {
+          "token_required": "Najpierw wklej token konfiguracyjny.",
+          "passphrase_short": "Hasło musi mieć co najmniej 8 znaków.",
+          "passphrase_mismatch": "Hasła nie są takie same."
+        }
+      },
+      "unlock": {
+        "intro": "Wprowadź hasło, aby korzystać z SimpleFIN na tym urządzeniu.",
+        "passphrase": "Hasło",
+        "submit": "Odblokuj",
+        "reconnect": "Połącz ponownie",
+        "wrong_passphrase": "Nieprawidłowe hasło.",
+        "forgot_help": "Zapomniałeś? Połącz się ponownie za pomocą nowego tokenu konfiguracyjnego i nowego hasła."
+      },
+      "accounts": {
+        "header": "Konta",
+        "empty": "Mostek nie zgłosił jeszcze żadnych kont.",
+        "state": {
+          "mapped": "Przypisane",
+          "ignored": "Ignorowane",
+          "unmapped": "Nieprzypisane · w kolejce: {count}"
+        },
+        "taps": "{count} transakcja | {count} transakcje | {count} transakcji",
+        "last_seen": "Ostatnio {date}",
+        "map": "Przypisz do konta",
+        "map_instead": "Przypisz mimo to",
+        "ignore": "Ignoruj",
+        "unlink": "Odłącz",
+        "unlink_modal": {
+          "title": "Odłączyć {card}?",
+          "question": "Nowe transakcje z tego konta będą czekać na sprawdzenie, dopóki nie przypiszesz go ponownie."
+        },
+        "map_modal": {
+          "header": "Przypisz {card}",
+          "account": "Konto",
+          "submit": "Przypisz"
+        },
+        "mapped_toast": "zaimportowano: {imported}, dopasowano: {matched}, pominięto: {skipped}"
+      },
+      "sync": {
+        "button": "Synchronizuj teraz",
+        "running": "Synchronizowanie…",
+        "from": "Od",
+        "last_synced": "Ostatnia synchronizacja {date}",
+        "never": "Nigdy nie synchronizowano",
+        "done_toast": "zaimportowano: {imported}, dopasowano: {matched}"
+      }
+    },
+    "runs": {
+      "header": "Historia importów",
+      "detail_header": "Import",
+      "history_link": "Historia importów",
+      "empty": "Brak importów.",
+      "rows_header": "Transakcje",
+      "rows_empty": "Ten import nie dotyczył żadnych transakcji.",
+      "status": {
+        "running": "W toku",
+        "completed": "Zakończono",
+        "partial": "Zakończono z błędami",
+        "failed": "Niepowodzenie"
+      },
+      "counts": "zaimportowano: {imported} · dopasowano: {matched} · zaktualizowano kwoty: {updated} · w kolejce: {queued} · pominięto: {skipped} · niepowodzeń: {failed}",
+      "row_status": {
+        "imported": "Zaimportowano",
+        "deleted": "Usunięto później",
+        "queued": "Czeka na sprawdzenie",
+        "skipped": "Pominięto"
       }
     },
     "queue": {
@@ -1618,7 +1708,11 @@
       "currency_mismatch": "Waluta karty nie zgadza się z walutą konta.",
       "link_not_queued": "To zdarzenie nie czeka na sprawdzenie.",
       "link_not_skipped": "To zdarzenie nie jest pominięte.",
-      "event_not_failed": "To zdarzenie nie zakończyło się błędem."
+      "event_not_failed": "To zdarzenie nie zakończyło się błędem.",
+      "setup_token_rejected": "SimpleFIN odrzucił ten token konfiguracyjny. Mógł już zostać wykorzystany — wygeneruj nowy w swoim moście SimpleFIN.",
+      "provider_unavailable": "Nie udało się połączyć z mostem bankowym. Spróbuj ponownie za kilka minut.",
+      "sync_range_invalid": "Zakres dat jest nieprawidłowy: data początkowa nie może być późniejsza niż końcowa, a zakres nie może przekraczać 400 dni.",
+      "access_url_invalid": "Zapisane dane uwierzytelniające banku nie są prawidłowym adresem URL dostępu. Połącz ponownie SimpleFIN za pomocą nowego tokenu konfiguracyjnego."
     },
     "label": {
       "name_length": "Nazwa tagu musi mieć od {min} do {max} znaków.",

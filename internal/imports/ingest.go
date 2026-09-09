@@ -85,25 +85,26 @@ func (s *Service) RetryEvent(ctx context.Context, userID vo.Id, req model.RetryI
 // on the event row. It returns the ingest status; only infrastructure
 // failures are errors.
 func (s *Service) processEvent(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (string, error) {
-	parsed, perr := s.parse(src, ev)
+	parsed, perr := s.parse(ctx, src, ev)
 	if perr != nil {
 		msg := perr.Error()
 		return model.ImportIngestStatusFailed, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusFailed, &msg)
 	}
-	status, err := s.applyEvent(ctx, src, ev.ID, parsed)
+	// A retried event is reprocessed exactly like the original push: it never
+	// carries a run id and never corrects an already-adopted amount.
+	status, _, err := s.applyEvent(ctx, src, ev.ID, parsed, nil, false)
 	if err != nil {
 		return "", err
 	}
 	return status, s.repo.UpdateEventStatus(ctx, ev.ID, model.ImportEventStatusProcessed, nil)
 }
 
-func (s *Service) parse(src *model.ImportSource, ev *model.ImportEvent) (model.IngestEvent, error) {
-	switch src.Provider {
-	case model.ImportProviderAppleWallet:
-		return ParseAppleWalletEvent([]byte(ev.Payload), ev.ReceivedAt)
-	default:
+func (s *Service) parse(ctx context.Context, src *model.ImportSource, ev *model.ImportEvent) (model.IngestEvent, error) {
+	p, ok := s.parsers[src.Provider]
+	if !ok {
 		return model.IngestEvent{}, errors.New("unsupported provider " + src.Provider)
 	}
+	return p.ParseEvent(ctx, ev)
 }
 
 // resolution is stage 1+2's verdict for an event: where it goes and in what
@@ -156,23 +157,39 @@ func (s *Service) resolve(ctx context.Context, src *model.ImportSource, ev model
 
 // applyEvent is stages 1-3 for a parsed event: the ledger check, the account
 // resolution, and matching/creation. It always leaves exactly one ledger row
-// for a new external key.
-func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent) (string, error) {
-	// The ledger stores the card name in its original case (later tasks
-	// display it), so the dedup lookup itself is case-insensitive on the
+// for a new external key. runID is nil for a push event and the enclosing
+// sync run's id for a pull event; correctAmount lets a tip-adopt overwrite a
+// stale tap-time amount (a bank sync only — a push never rewrites a
+// hand-entered amount).
+func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, eventID vo.Id, ev model.IngestEvent, runID *vo.Id, correctAmount bool) (status string, amountUpdated bool, err error) {
+	// The ledger stores the card name in its original case (the queue page
+	// displays it), so the dedup lookup itself is case-insensitive on the
 	// card name at the query layer (GetLinkByExternalKey) rather than being
 	// canonicalized here.
 	existing, err := s.repo.GetLinkByExternalKey(ctx, src.ID, ev.ExternalAccountID, ev.ExternalTransactionID)
 	if err == nil {
 		if existing.IsSeen() {
-			return model.ImportIngestStatusDuplicate, nil
+			return model.ImportIngestStatusDuplicate, false, nil
 		}
-		return model.ImportIngestStatusQueued, nil // still waiting on the user; nothing new to record
+		return model.ImportIngestStatusQueued, false, nil // still waiting on the user; nothing new to record
 	} else if _, ok := errs.AsNotFound(err); !ok {
-		return "", err
+		return "", false, err
+	}
+	if ev.Currency == "" {
+		// SimpleFIN rows carry no currency of their own — the account does.
+		// A sync pre-fills this from the fetched account; this is the retry
+		// path's fallback, reading the currency the account link recorded the
+		// first time the account was seen.
+		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
+		if err != nil {
+			return "", false, err
+		}
+		if al := findAccountLink(links, ev.ExternalAccountID); al != nil && al.ExternalCurrency != nil {
+			ev.Currency = *al.ExternalCurrency
+		}
 	}
 	link := &model.ImportTransactionLink{
-		ID: vo.NewId(), SourceID: src.ID, EventID: &eventID,
+		ID: vo.NewId(), SourceID: src.ID, RunID: runID, EventID: &eventID,
 		ExternalAccountID: ev.ExternalAccountID, ExternalTransactionID: ev.ExternalTransactionID,
 		Status: model.ImportLinkStatusQueued, ExternalPayee: ev.Payee, ExternalDescription: ev.Description,
 		ExternalAmount: ev.Amount, ExternalCurrency: optionalString(ev.Currency),
@@ -180,28 +197,34 @@ func (s *Service) applyEvent(ctx context.Context, src *model.ImportSource, event
 	}
 	r, err := s.resolve(ctx, src, ev)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	switch r.status {
 	case model.ImportIngestStatusQueued:
-		return r.status, s.repo.InsertLink(ctx, link)
+		return r.status, false, s.repo.InsertLink(ctx, link)
 	case model.ImportIngestStatusSkipped:
 		link.Status = model.ImportLinkStatusSkipped
-		return r.status, s.repo.InsertLink(ctx, link)
+		return r.status, false, s.repo.InsertLink(ctx, link)
 	}
-	txID, _, err := s.place(ctx, src, ev, r)
+	txID, adopted, amountUpdated, err := s.place(ctx, src, ev, r, correctAmount)
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	link.Status = model.ImportLinkStatusLinked
 	link.TransactionID = &txID
-	return model.ImportIngestStatusCreated, s.repo.InsertLink(ctx, link)
+	status = model.ImportIngestStatusCreated
+	if adopted {
+		status = model.ImportIngestStatusMatched
+	}
+	return status, amountUpdated, s.repo.InsertLink(ctx, link)
 }
 
 // place is stage 3: adopt an existing transaction the matcher recognizes
 // (adopted=true), else create one through the transaction feature's own use
-// case.
-func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution) (txID vo.Id, adopted bool, err error) {
+// case. correctAmount lets a tip-adopt overwrite the candidate's tap-time
+// amount with the posted one (amountUpdated=true); push events pass false
+// (see applyEvent).
+func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.IngestEvent, r resolution, correctAmount bool) (txID vo.Id, adopted bool, amountUpdated bool, err error) {
 	at := wallClock(ev.PostedAt)
 	window := s.cfg.MatchDays
 	if s.cfg.TipDays > window {
@@ -209,22 +232,24 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 	}
 	txs, err := s.lister.ListByAccount(ctx, r.accountID, at.AddDate(0, 0, -window), at.AddDate(0, 0, window+1))
 	if err != nil {
-		return vo.Id{}, false, err
+		return vo.Id{}, false, false, err
 	}
 	providers := map[vo.Id]string{}
+	byID := make(map[vo.Id]*model.Transaction, len(txs))
 	candidates := make([]model.ImportCandidate, 0, len(txs))
 	for _, t := range txs {
+		byID[t.ID] = t
 		c := model.ImportCandidate{TransactionID: t.ID, Type: t.Type, Amount: t.Amount, SpentAt: t.SpentAt}
 		links, err := s.repo.ListLinksByTransaction(ctx, t.ID)
 		if err != nil {
-			return vo.Id{}, false, err
+			return vo.Id{}, false, false, err
 		}
 		for _, l := range links {
 			provider, seen := providers[l.SourceID]
 			if !seen {
 				ls, err := s.repo.GetSource(ctx, l.SourceID)
 				if err != nil {
-					return vo.Id{}, false, err
+					return vo.Id{}, false, false, err
 				}
 				provider = ls.Provider
 				providers[l.SourceID] = provider
@@ -236,19 +261,34 @@ func (s *Service) place(ctx context.Context, src *model.ImportSource, ev model.I
 	matchEv := ev
 	matchEv.Amount = r.amount // compare in the account's currency
 	matchEv.PostedAt = at
-	// m.CorrectAmount (tip-adopt amount correction) is intentionally not
-	// applied here — the push pipeline only adopts; overwriting the
-	// transaction's amount belongs to the batch/bank-import stage.
 	if m := Match(matchEv, src.ID, candidates, s.cfg); m.Kind != MatchCreate {
-		return m.TransactionID, true, nil
+		if correctAmount && m.Kind == MatchTipAdopt && m.CorrectAmount {
+			cand := byID[m.TransactionID]
+			req := model.UpdateTransactionRequest{
+				Id: cand.ID.String(), Type: cand.Type.Alias(), AccountId: cand.AccountID.String(),
+				Amount: vo.NewFlexString(r.amount), Date: cand.SpentAt.Format(datetime.Layout),
+				Description: optionalString(cand.Description),
+				CategoryId:  idString2(cand.CategoryID), PayeeId: idString2(cand.PayeeID), TagId: idString2(cand.TagID),
+				AccountRecipientId: idString2(cand.AccountRecipID),
+			}
+			if cand.AmountRecipient != nil {
+				ar := vo.NewFlexString(*cand.AmountRecipient)
+				req.AmountRecipient = &ar
+			}
+			if _, err := s.txns.UpdateTransaction(ctx, src.UserID, req); err != nil {
+				return vo.Id{}, false, false, err
+			}
+			return m.TransactionID, true, true, nil
+		}
+		return m.TransactionID, true, false, nil
 	}
 	res, err := s.txns.CreateTransaction(ctx, src.UserID, model.CreateTransactionRequest{
 		Id: vo.NewId().String(), Type: ev.Type.Alias(), Amount: vo.NewFlexString(r.amount), AccountId: r.accountID.String(),
 		Date: at.Format(datetime.Layout), Description: optionalString(ev.Payee),
 	})
 	if err != nil {
-		return vo.Id{}, false, err
+		return vo.Id{}, false, false, err
 	}
 	txID, err = vo.ParseId(res.Item.Id)
-	return txID, false, err
+	return txID, false, false, err
 }

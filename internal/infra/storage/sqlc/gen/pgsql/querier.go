@@ -40,6 +40,7 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteImportAccountLink(ctx context.Context, id string) error
+	DeleteImportCredentialKey(ctx context.Context, userID string) error
 	DeleteImportEvent(ctx context.Context, id string) error
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
@@ -119,8 +120,9 @@ type Querier interface {
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
 	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
+	GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error)
 	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
-	GetImportRunByID(ctx context.Context, id string) (ImportRun, error)
+	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
 	// Card identity is case-insensitive (Apple Wallet may report the same card
@@ -283,7 +285,10 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
 	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
+	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
@@ -335,6 +340,7 @@ type Querier interface {
 	// Note: sets run_id too so a processed event records the run that consumed it.
 	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
+	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
 	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
@@ -354,6 +360,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

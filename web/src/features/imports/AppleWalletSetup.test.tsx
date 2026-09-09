@@ -12,7 +12,7 @@ vi.mock('@/lib/platform', () => ({ isIOS: () => mockIsIOS.value, isNativeApp: ()
 vi.mock('sonner', () => ({ toast: { error: vi.fn(), success: vi.fn() } }))
 
 const card = { externalAccountId: 'Apple Card', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 0, tapCount: 1, lastSeenAt: '2026-08-20 10:42:03' }
-const source = { id: 's1', provider: 'apple-wallet' as const, name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', cards: [] as (typeof card)[] }
+const source = { id: 's1', provider: 'apple-wallet' as const, name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', credentialCiphertext: '', cards: [] as (typeof card)[] }
 const ingestToken = { id: 'p1', name: 'Apple Wallet', scope: 'ingest', createdAt: '2026-08-01 00:00:00', expiresAt: null, lastUsedAt: null }
 const emptyQueue = { queued: [], skipped: [], failed: [] }
 const noInputEvent = { eventId: 'e1', sourceId: 's1', receivedAt: '2026-08-21 08:00:00', error: 'account is required', payload: '{}' }

@@ -36,7 +36,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		if deleted {
 			return &errs.ValidationError{Msg: "Account is deleted", MsgCode: errs.CodeTransactionAccountDeleted}
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		ledger, err := s.repo.ListLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -69,7 +69,7 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 			}
 		} else {
 			if err := s.repo.InsertAccountLink(ctx, &model.ImportAccountLink{
-				ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: ext, ExternalName: ext,
+				ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: ext, ExternalName: externalName(req.ExternalName, ext),
 				ExternalCurrency: optionalString(cardCode), AccountID: &accountID,
 				Mode: model.ImportAccountLinkModeImport, CreatedAt: now, UpdatedAt: now,
 			}); err != nil {
@@ -88,6 +88,15 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		return nil
 	})
 	return out, err
+}
+
+// externalName prefers the bridge's display name over the opaque external
+// id (SimpleFIN ids are "ACT-…") — that's what the user recognizes.
+func externalName(explicit, fallback string) string {
+	if n := strings.TrimSpace(explicit); n != "" {
+		return n
+	}
+	return fallback
 }
 
 // uniformCurrency is the card's currency when every ledger row agrees; ""
@@ -140,7 +149,9 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 			run.SkippedCount++
 			continue
 		}
-		txID, adopted, err := s.place(ctx, src, ev, r)
+		// A re-mapped card only ever adopts, never corrects — the same rule
+		// as a push retry (see applyEvent).
+		txID, adopted, _, err := s.place(ctx, src, ev, r, false)
 		if err != nil {
 			return nil, err
 		}
@@ -165,10 +176,8 @@ func (s *Service) convertQueued(ctx context.Context, src *model.ImportSource, ex
 	if err := s.repo.UpdateRun(ctx, run); err != nil {
 		return nil, err
 	}
-	return &model.ImportRunResult{
-		Id: run.ID.String(), Status: run.Status, ImportedCount: run.ImportedCount,
-		MatchedCount: run.MatchedCount, SkippedCount: run.SkippedCount, FailedCount: run.FailedCount,
-	}, nil
+	r := runResult(run)
+	return &r, nil
 }
 
 // reparse rebuilds the IngestEvent behind a ledger row from its stored
@@ -184,7 +193,7 @@ func (s *Service) reparse(ctx context.Context, src *model.ImportSource, l *model
 		}
 		return model.IngestEvent{}, false, err
 	}
-	ev, perr := s.parse(src, stored)
+	ev, perr := s.parse(ctx, src, stored)
 	if perr != nil {
 		return model.IngestEvent{}, false, nil
 	}
@@ -198,7 +207,7 @@ func (s *Service) IgnoreAccount(ctx context.Context, userID vo.Id, req model.Imp
 		if err != nil {
 			return err
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -212,7 +221,7 @@ func (s *Service) IgnoreAccount(ctx context.Context, userID vo.Id, req model.Imp
 				return err
 			}
 		} else if err := s.repo.InsertAccountLink(ctx, &model.ImportAccountLink{
-			ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: ext, ExternalName: ext,
+			ID: vo.NewId(), SourceID: src.ID, ExternalAccountID: ext, ExternalName: externalName(req.ExternalName, ext),
 			Mode: model.ImportAccountLinkModeIgnore, CreatedAt: now, UpdatedAt: now,
 		}); err != nil {
 			return err
@@ -248,7 +257,7 @@ func (s *Service) UnlinkAccount(ctx context.Context, userID vo.Id, req model.Imp
 		if err != nil {
 			return err
 		}
-		ext := normalizeExternalAccountID(req.ExternalAccountId)
+		ext := NormalizeExternalAccountID(req.ExternalAccountId)
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
 			return err
@@ -286,4 +295,10 @@ func (s *Service) UnlinkAccount(ctx context.Context, userID vo.Id, req model.Imp
 		return nil
 	})
 	return out, err
+}
+
+// NormalizeExternalAccountID collapses whitespace so a card or account name
+// keys the same ledger row however the provider spaced it.
+func NormalizeExternalAccountID(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }

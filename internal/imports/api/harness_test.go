@@ -9,7 +9,9 @@ import (
 
 	appimports "github.com/econumo/econumo/internal/imports"
 	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	"github.com/econumo/econumo/internal/imports/applewallet"
 	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -62,6 +64,7 @@ func (fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount string
 type fakeTxns struct {
 	db      *dbtest.DB
 	created int
+	updated []model.UpdateTransactionRequest
 }
 
 func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
@@ -80,14 +83,19 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.Cre
 	}
 	return &model.CreateTransactionResult{Item: model.TransactionResult{Id: req.Id, AccountId: req.AccountId, Amount: req.Amount.String()}}, nil
 }
+func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.updated = append(f.updated, req)
+	return &model.UpdateTransactionResult{}, nil
+}
 func (f *fakeTxns) ListByAccount(context.Context, vo.Id, time.Time, time.Time) ([]*model.Transaction, error) {
 	return nil, nil
 }
 
 type harness struct {
-	srv  *httptest.Server
-	txns *fakeTxns
-	f    *fixture.Builder
+	srv      *httptest.Server
+	txns     *fakeTxns
+	f        *fixture.Builder
+	provider *stubProvider
 }
 
 func newHarness(t *testing.T) *harness {
@@ -99,10 +107,14 @@ func newHarness(t *testing.T) *harness {
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	txns := &fakeTxns{db: db}
 	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
+	svc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	svc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
+	provider := &stubProvider{}
+	svc.RegisterProvider(model.ImportProviderSimpleFIN, provider)
 
 	mux := http.NewServeMux()
 	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{})(mux)
 	srv := httptest.NewServer(middleware.Chain(middleware.RequestID, middleware.AccessLog)(mux))
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, txns: txns, f: f}
+	return &harness{srv: srv, txns: txns, f: f, provider: provider}
 }

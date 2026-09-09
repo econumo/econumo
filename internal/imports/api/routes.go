@@ -27,5 +27,13 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/import/retry-event", auth(h.RetryEvent))
 		mux.Handle("POST /api/v1/import/discard-event", auth(h.DiscardEvent))
 		mux.Handle("GET /api/v1/import/get-transaction-import-list", auth(h.GetTransactionImportList))
+		mux.Handle("POST /api/v1/import/claim-setup-token", auth(h.ClaimSetupToken))
+		mux.Handle("GET /api/v1/import/get-credential-key", auth(h.GetCredentialKey))
+		mux.Handle("POST /api/v1/import/set-credential-key", auth(h.SetCredentialKey))
+		// POST, not GET: the access URL rides in the body, never a query string.
+		mux.Handle("POST /api/v1/import/list-external-accounts", auth(h.ListExternalAccounts))
+		mux.Handle("POST /api/v1/import/sync-source", auth(h.SyncSource))
+		mux.Handle("GET /api/v1/import/get-run-list", auth(h.GetRunList))
+		mux.Handle("GET /api/v1/import/get-run", auth(h.GetRun))
 	}
 }

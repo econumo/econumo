@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Import & export",
-      "header": "Import & export"
+      "header": "Import & export",
+      "sync_all": "Bankverbindingen synchroniseren",
+      "history": "Importgeschiedenis",
+      "sync_all_done": "{imported} geïmporteerd, {matched} gematcht, {failed} mislukt"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -556,6 +559,93 @@
           "submit": "Koppelen"
         },
         "mapped_toast": "{imported} geïmporteerd, {matched} gematcht, {skipped} overgeslagen"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Koppel een bank via SimpleFIN Bridge. Je bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen jij kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
+      "forget_device": "Dit apparaat vergeten",
+      "connect": {
+        "intro": "Plak het installatietoken van je SimpleFIN Bridge-account en kies een wachtwoordzin. De wachtwoordzin wordt nooit naar de server verzonden — als je hem vergeet, moet je opnieuw verbinden met een nieuw installatietoken.",
+        "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; je rekeningkoppelingen blijven behouden.",
+        "token_label": "Installatietoken",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
+        "forgot_passphrase": "Ik ben mijn wachtwoordzin vergeten — nieuwe instellen",
+        "passphrase_new": "Wachtwoordzin",
+        "passphrase_existing": "Je wachtwoordzin",
+        "passphrase_confirm": "Herhaal de wachtwoordzin",
+        "passphrase_help": "Minstens 8 tekens. Niet herstelbaar: niemand, ook wij niet, kan hem terughalen.",
+        "submit": "Verbinden",
+        "submit_reconnect": "Opnieuw verbinden",
+        "errors": {
+          "token_required": "Plak eerst het installatietoken.",
+          "passphrase_short": "De wachtwoordzin moet minstens 8 tekens lang zijn.",
+          "passphrase_mismatch": "De wachtwoordzinnen komen niet overeen."
+        }
+      },
+      "unlock": {
+        "intro": "Voer je wachtwoordzin in om SimpleFIN op dit apparaat te gebruiken.",
+        "passphrase": "Wachtwoordzin",
+        "submit": "Ontgrendelen",
+        "reconnect": "Opnieuw verbinden",
+        "wrong_passphrase": "Onjuiste wachtwoordzin.",
+        "forgot_help": "Vergeten? Verbind opnieuw met een nieuw installatietoken en een nieuwe wachtwoordzin."
+      },
+      "accounts": {
+        "header": "Rekeningen",
+        "empty": "Nog geen rekeningen gemeld door de bridge.",
+        "state": {
+          "mapped": "Gekoppeld",
+          "ignored": "Genegeerd",
+          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+        },
+        "taps": "{count} transactie | {count} transacties",
+        "last_seen": "Laatst gezien {date}",
+        "map": "Koppelen aan rekening",
+        "map_instead": "Toch koppelen",
+        "ignore": "Negeren",
+        "unlink": "Ontkoppelen",
+        "unlink_modal": {
+          "title": "{card} ontkoppelen?",
+          "question": "Nieuwe transacties van deze rekening wachten op controle tot je haar opnieuw koppelt."
+        },
+        "map_modal": {
+          "header": "{card} koppelen",
+          "account": "Rekening",
+          "submit": "Koppelen"
+        },
+        "mapped_toast": "{imported} geïmporteerd, {matched} gematcht, {skipped} overgeslagen"
+      },
+      "sync": {
+        "button": "Nu synchroniseren",
+        "running": "Synchroniseren…",
+        "from": "Vanaf",
+        "last_synced": "Laatst gesynchroniseerd {date}",
+        "never": "Nooit gesynchroniseerd",
+        "done_toast": "{imported} geïmporteerd, {matched} gematcht"
+      }
+    },
+    "runs": {
+      "header": "Importgeschiedenis",
+      "detail_header": "Import",
+      "history_link": "Importgeschiedenis",
+      "empty": "Nog geen imports.",
+      "rows_header": "Transacties",
+      "rows_empty": "Deze import raakte geen transacties.",
+      "status": {
+        "running": "Bezig",
+        "completed": "Voltooid",
+        "partial": "Voltooid met fouten",
+        "failed": "Mislukt"
+      },
+      "counts": "{imported} geïmporteerd · {matched} gematcht · {updated} bedragen bijgewerkt · {queued} in wachtrij · {skipped} overgeslagen · {failed} mislukt",
+      "row_status": {
+        "imported": "Geïmporteerd",
+        "deleted": "Sindsdien verwijderd",
+        "queued": "Wacht op controle",
+        "skipped": "Overgeslagen"
       }
     },
     "queue": {
@@ -1618,7 +1708,11 @@
       "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",
       "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
       "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
-      "event_not_failed": "Deze gebeurtenis is niet mislukt."
+      "event_not_failed": "Deze gebeurtenis is niet mislukt.",
+      "setup_token_rejected": "SimpleFIN heeft dit setup-token geweigerd. Het is mogelijk al gebruikt — genereer een nieuw token in je SimpleFIN-bridge.",
+      "provider_unavailable": "De bankbridge kon niet worden bereikt. Probeer het over een paar minuten opnieuw.",
+      "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",
+      "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token."
     },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",

@@ -23,7 +23,7 @@
 {"success":false,"message":"This event is not waiting for review.","code":400,"errors":{}}
 
 == get-transaction-import-list GET /api/v1/import/get-transaction-import-list?transactionId=d0000000-0000-0000-0000-000000000002 [owner] -> 200
-{"success":true,"message":"","data":{"items":[{"id":"0d000000-0000-0000-0000-000000000001","sourceId":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","sourceName":"iPhone","externalAccountId":"wallet","externalTransactionId":"tap-1","externalPayee":"Employer","externalAmount":"1000","externalCurrency":"","externalPostedAt":"<datetime>","status":"linked","importedAt":"<datetime>"}]}}
+{"success":true,"message":"","data":{"items":[{"id":"<generated-uuid>","sourceId":"0c000000-0000-0000-0000-000000000002","provider":"simplefin","sourceName":"Example Bank","externalAccountId":"ACT-CHK","externalTransactionId":"seed-1","externalPayee":"Seeded Shop","externalAmount":"12.5","externalCurrency":"USD","externalPostedAt":"<datetime>","status":"linked","importedAt":"<datetime>"},{"id":"0d000000-0000-0000-0000-000000000001","sourceId":"0c000000-0000-0000-0000-000000000001","provider":"apple-wallet","sourceName":"iPhone","externalAccountId":"wallet","externalTransactionId":"tap-1","externalPayee":"Employer","externalAmount":"1000","externalCurrency":"","externalPostedAt":"<datetime>","status":"linked","importedAt":"<datetime>"}]}}
 
 == err:get-transaction-import-list-blank GET /api/v1/import/get-transaction-import-list [owner] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"transactionId":["This value should not be blank."]}}

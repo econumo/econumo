@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Importar y exportar",
-      "header": "Importar y exportar"
+      "header": "Importar y exportar",
+      "sync_all": "Sincronizar conexiones bancarias",
+      "history": "Historial de importaciones",
+      "sync_all_done": "{imported} importadas, {matched} emparejadas, {failed} fallidas"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -556,6 +559,93 @@
           "submit": "Asignar"
         },
         "mapped_toast": "{imported} importadas, {matched} emparejadas, {skipped} omitidas"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Conecta un banco a través de SimpleFIN Bridge. Tus credenciales de la pasarela se cifran en este dispositivo con una frase de contraseña que solo tú conoces; el servidor las almacena cifradas y solo las ve durante una sincronización.",
+      "forget_device": "Olvidar este dispositivo",
+      "connect": {
+        "intro": "Pega el token de configuración de tu cuenta de SimpleFIN Bridge y elige una frase de contraseña. La frase de contraseña nunca se envía al servidor — si la olvidas, deberás volver a conectarte con un nuevo token de configuración.",
+        "reconnect_intro": "Pega un nuevo token de configuración de SimpleFIN Bridge. Se reemplazará la conexión anterior; tus asignaciones de cuentas se conservan.",
+        "token_label": "Token de configuración",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nueva conexión → copia el token de configuración. Un token solo puede usarse una vez.",
+        "forgot_passphrase": "Olvidé mi frase de contraseña — establecer una nueva",
+        "passphrase_new": "Frase de contraseña",
+        "passphrase_existing": "Tu frase de contraseña",
+        "passphrase_confirm": "Repite la frase de contraseña",
+        "passphrase_help": "Al menos 8 caracteres. No se puede recuperar: nadie, ni siquiera nosotros, puede restaurarla.",
+        "submit": "Conectar",
+        "submit_reconnect": "Reconectar",
+        "errors": {
+          "token_required": "Pega primero el token de configuración.",
+          "passphrase_short": "La frase de contraseña debe tener al menos 8 caracteres.",
+          "passphrase_mismatch": "Las frases de contraseña no coinciden."
+        }
+      },
+      "unlock": {
+        "intro": "Introduce tu frase de contraseña para usar SimpleFIN en este dispositivo.",
+        "passphrase": "Frase de contraseña",
+        "submit": "Desbloquear",
+        "reconnect": "Reconectar",
+        "wrong_passphrase": "Frase de contraseña incorrecta.",
+        "forgot_help": "¿La olvidaste? Vuelve a conectarte con un nuevo token de configuración y una nueva frase de contraseña."
+      },
+      "accounts": {
+        "header": "Cuentas",
+        "empty": "La pasarela aún no ha informado de ninguna cuenta.",
+        "state": {
+          "mapped": "Asignada",
+          "ignored": "Ignorada",
+          "unmapped": "Sin asignar · {count} en cola"
+        },
+        "taps": "{count} transacción | {count} transacciones",
+        "last_seen": "Visto por última vez {date}",
+        "map": "Asignar a una cuenta",
+        "map_instead": "Asignar en su lugar",
+        "ignore": "Ignorar",
+        "unlink": "Desasignar",
+        "unlink_modal": {
+          "title": "¿Desasignar {card}?",
+          "question": "Las nuevas transacciones de esta cuenta esperarán revisión hasta que la asignes de nuevo."
+        },
+        "map_modal": {
+          "header": "Asignar {card}",
+          "account": "Cuenta",
+          "submit": "Asignar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} emparejadas, {skipped} omitidas"
+      },
+      "sync": {
+        "button": "Sincronizar ahora",
+        "running": "Sincronizando…",
+        "from": "Desde",
+        "last_synced": "Última sincronización {date}",
+        "never": "Nunca sincronizado",
+        "done_toast": "{imported} importadas, {matched} emparejadas"
+      }
+    },
+    "runs": {
+      "header": "Historial de importaciones",
+      "detail_header": "Importación",
+      "history_link": "Historial de importaciones",
+      "empty": "Aún no hay importaciones.",
+      "rows_header": "Transacciones",
+      "rows_empty": "Esta importación no afectó a ninguna transacción.",
+      "status": {
+        "running": "En curso",
+        "completed": "Completado",
+        "partial": "Completado con errores",
+        "failed": "Fallido"
+      },
+      "counts": "{imported} importadas · {matched} emparejadas · {updated} importes actualizados · {queued} en cola · {skipped} omitidas · {failed} fallidas",
+      "row_status": {
+        "imported": "Importada",
+        "deleted": "Eliminada desde entonces",
+        "queued": "Esperando revisión",
+        "skipped": "Omitida"
       }
     },
     "queue": {
@@ -1618,7 +1708,11 @@
       "currency_mismatch": "La moneda de la tarjeta no coincide con la moneda de la cuenta.",
       "link_not_queued": "Este evento no está pendiente de revisión.",
       "link_not_skipped": "Este evento no está omitido.",
-      "event_not_failed": "Este evento no ha fallado."
+      "event_not_failed": "Este evento no ha fallado.",
+      "setup_token_rejected": "SimpleFIN rechazó este token de configuración. Puede que ya se haya reclamado — genera uno nuevo en tu puente SimpleFIN.",
+      "provider_unavailable": "No se pudo contactar con el puente bancario. Inténtalo de nuevo en unos minutos.",
+      "sync_range_invalid": "El rango de fechas no es válido: el inicio no puede ser posterior al final, y el rango no puede superar los 400 días.",
+      "access_url_invalid": "La credencial bancaria guardada no es una URL de acceso válida. Vuelve a conectar SimpleFIN con un nuevo token de configuración."
     },
     "label": {
       "name_length": "El nombre de la etiqueta debe tener entre {min} y {max} caracteres.",

@@ -477,7 +477,10 @@
     },
     "data_page": {
       "menu_item": "Import et export",
-      "header": "Import et export"
+      "header": "Import et export",
+      "sync_all": "Synchroniser les connexions bancaires",
+      "history": "Historique des imports",
+      "sync_all_done": "{imported} importées, {matched} rapprochées, {failed} échouées"
     },
     "apple_wallet": {
       "header": "Apple Wallet",
@@ -556,6 +559,93 @@
           "submit": "Associer"
         },
         "mapped_toast": "{imported} importées, {matched} rapprochées, {skipped} ignorées"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Connectez une banque via SimpleFIN Bridge. Vos identifiants de connexion sont chiffrés sur cet appareil avec une phrase secrète que vous seul connaissez ; le serveur les stocke chiffrés et ne les voit que le temps d'une synchronisation.",
+      "forget_device": "Oublier cet appareil",
+      "connect": {
+        "intro": "Collez le jeton de configuration de votre compte SimpleFIN Bridge et choisissez une phrase secrète. La phrase secrète n'est jamais envoyée au serveur — si vous l'oubliez, vous devrez vous reconnecter avec un nouveau jeton de configuration.",
+        "reconnect_intro": "Collez un nouveau jeton de configuration de SimpleFIN Bridge. La connexion précédente sera remplacée ; vos associations de comptes sont conservées.",
+        "token_label": "Jeton de configuration",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nouvelle connexion → copiez le jeton de configuration. Un jeton ne peut être utilisé qu'une fois.",
+        "forgot_passphrase": "J'ai oublié ma phrase secrète — en définir une nouvelle",
+        "passphrase_new": "Phrase secrète",
+        "passphrase_existing": "Votre phrase secrète",
+        "passphrase_confirm": "Répétez la phrase secrète",
+        "passphrase_help": "Au moins 8 caractères. Non récupérable : personne, pas même nous, ne peut la restaurer.",
+        "submit": "Connecter",
+        "submit_reconnect": "Se reconnecter",
+        "errors": {
+          "token_required": "Collez d'abord le jeton de configuration.",
+          "passphrase_short": "La phrase secrète doit comporter au moins 8 caractères.",
+          "passphrase_mismatch": "Les phrases secrètes ne correspondent pas."
+        }
+      },
+      "unlock": {
+        "intro": "Saisissez votre phrase secrète pour utiliser SimpleFIN sur cet appareil.",
+        "passphrase": "Phrase secrète",
+        "submit": "Déverrouiller",
+        "reconnect": "Se reconnecter",
+        "wrong_passphrase": "Phrase secrète incorrecte.",
+        "forgot_help": "Oubliée ? Reconnectez-vous avec un nouveau jeton de configuration et une nouvelle phrase secrète."
+      },
+      "accounts": {
+        "header": "Comptes",
+        "empty": "Aucun compte signalé par la passerelle pour le moment.",
+        "state": {
+          "mapped": "Associé",
+          "ignored": "Ignoré",
+          "unmapped": "Non associé · {count} en attente"
+        },
+        "taps": "{count} transaction | {count} transactions",
+        "last_seen": "Vu pour la dernière fois {date}",
+        "map": "Associer à un compte",
+        "map_instead": "Associer plutôt",
+        "ignore": "Ignorer",
+        "unlink": "Dissocier",
+        "unlink_modal": {
+          "title": "Dissocier {card} ?",
+          "question": "Les nouvelles transactions de ce compte attendront une vérification jusqu'à ce que vous l'associiez à nouveau."
+        },
+        "map_modal": {
+          "header": "Associer {card}",
+          "account": "Compte",
+          "submit": "Associer"
+        },
+        "mapped_toast": "{imported} importées, {matched} rapprochées, {skipped} ignorées"
+      },
+      "sync": {
+        "button": "Synchroniser maintenant",
+        "running": "Synchronisation…",
+        "from": "Depuis",
+        "last_synced": "Dernière synchronisation {date}",
+        "never": "Jamais synchronisé",
+        "done_toast": "{imported} importées, {matched} rapprochées"
+      }
+    },
+    "runs": {
+      "header": "Historique des imports",
+      "detail_header": "Import",
+      "history_link": "Historique des imports",
+      "empty": "Aucun import pour l'instant.",
+      "rows_header": "Transactions",
+      "rows_empty": "Cet import n'a touché aucune transaction.",
+      "status": {
+        "running": "En cours",
+        "completed": "Terminé",
+        "partial": "Terminé avec des erreurs",
+        "failed": "Échoué"
+      },
+      "counts": "{imported} importées · {matched} rapprochées · {updated} montants mis à jour · {queued} en attente · {skipped} ignorées · {failed} échouées",
+      "row_status": {
+        "imported": "Importée",
+        "deleted": "Supprimée depuis",
+        "queued": "En attente de vérification",
+        "skipped": "Ignorée"
       }
     },
     "queue": {
@@ -1618,7 +1708,11 @@
       "currency_mismatch": "La devise de la carte ne correspond pas à celle du compte.",
       "link_not_queued": "Cet événement n'est pas en attente de vérification.",
       "link_not_skipped": "Cet événement n'est pas ignoré.",
-      "event_not_failed": "Cet événement n'a pas échoué."
+      "event_not_failed": "Cet événement n'a pas échoué.",
+      "setup_token_rejected": "SimpleFIN a rejeté ce jeton de configuration. Il a peut-être déjà été utilisé — générez-en un nouveau dans votre passerelle SimpleFIN.",
+      "provider_unavailable": "Impossible de joindre la passerelle bancaire. Réessayez dans quelques minutes.",
+      "sync_range_invalid": "La plage de dates n'est pas valide : le début ne doit pas être postérieur à la fin, et la plage ne doit pas dépasser 400 jours.",
+      "access_url_invalid": "L'identifiant bancaire enregistré n'est pas une URL d'accès valide. Reconnectez SimpleFIN avec un nouveau jeton de configuration."
     },
     "label": {
       "name_length": "Le nom du tag doit contenir de {min} à {max} caractères.",

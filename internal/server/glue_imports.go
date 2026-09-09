@@ -174,3 +174,30 @@ func (l *ImportsTransactionLister) ListByAccount(ctx context.Context, accountID 
 }
 
 var _ imports.TransactionLister = (*ImportsTransactionLister)(nil)
+
+type importsTransactionWriterSource interface {
+	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
+	UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
+}
+
+// importsTransactionAdapter is the transaction feature's create/update
+// use cases, narrowed to what an import touches. Update goes through the
+// labels-preserving variant: a tip amount correction changes only the
+// amount, never the reporting labels the user attached by hand.
+type importsTransactionAdapter struct {
+	svc importsTransactionWriterSource
+}
+
+func NewImportsTransactionWriter(svc importsTransactionWriterSource) imports.TransactionWriter {
+	return importsTransactionAdapter{svc: svc}
+}
+
+func (a importsTransactionAdapter) CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
+	return a.svc.CreateTransaction(ctx, userID, req)
+}
+
+func (a importsTransactionAdapter) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return a.svc.UpdateTransactionPreservingLabels(ctx, userID, req)
+}
+
+var _ imports.TransactionWriter = importsTransactionAdapter{}

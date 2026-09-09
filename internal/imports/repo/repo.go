@@ -3,6 +3,7 @@ package repo
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 
 	"github.com/econumo/econumo/internal/imports"
@@ -14,24 +15,29 @@ import (
 )
 
 type (
-	sourceRow               = sqlitegen.ImportSource
-	eventRow                = sqlitegen.ImportEvent
-	runRow                  = sqlitegen.ImportRun
-	linkRow                 = sqlitegen.ImportTransactionLink
-	insertSourceParams      = sqlitegen.InsertImportSourceParams
-	insertEventParams       = sqlitegen.InsertImportEventParams
-	updateEventParams       = sqlitegen.UpdateImportEventStatusParams
-	insertRunParams         = sqlitegen.InsertImportRunParams
-	updateRunParams         = sqlitegen.UpdateImportRunParams
-	insertLinkParams        = sqlitegen.InsertImportTransactionLinkParams
-	linkByExternalKeyPs     = sqlitegen.GetImportTransactionLinkByExternalKeyParams
-	accountLinkRow          = sqlitegen.ImportAccountLink
-	insertAccountLinkParams = sqlitegen.InsertImportAccountLinkParams
-	updateAccountLinkParams = sqlitegen.UpdateImportAccountLinkParams
-	sourceByUserProviderPs  = sqlitegen.GetImportSourceByUserProviderParams
-	eventsBySourceStatusPs  = sqlitegen.ListImportEventsBySourceStatusParams
-	updateLinkParams        = sqlitegen.UpdateImportTransactionLinkParams
-	purgeQueuedLinksParams  = sqlitegen.DeleteQueuedImportTransactionLinksByExternalAccountParams
+	sourceRow                 = sqlitegen.ImportSource
+	eventRow                  = sqlitegen.ImportEvent
+	runRow                    = sqlitegen.GetImportRunByIDRow
+	linkRow                   = sqlitegen.ImportTransactionLink
+	insertSourceParams        = sqlitegen.InsertImportSourceParams
+	insertEventParams         = sqlitegen.InsertImportEventParams
+	updateEventParams         = sqlitegen.UpdateImportEventStatusParams
+	insertRunParams           = sqlitegen.InsertImportRunParams
+	updateRunParams           = sqlitegen.UpdateImportRunParams
+	insertLinkParams          = sqlitegen.InsertImportTransactionLinkParams
+	linkByExternalKeyPs       = sqlitegen.GetImportTransactionLinkByExternalKeyParams
+	accountLinkRow            = sqlitegen.ImportAccountLink
+	insertAccountLinkParams   = sqlitegen.InsertImportAccountLinkParams
+	updateAccountLinkParams   = sqlitegen.UpdateImportAccountLinkParams
+	sourceByUserProviderPs    = sqlitegen.GetImportSourceByUserProviderParams
+	eventsBySourceStatusPs    = sqlitegen.ListImportEventsBySourceStatusParams
+	updateLinkParams          = sqlitegen.UpdateImportTransactionLinkParams
+	purgeQueuedLinksParams    = sqlitegen.DeleteQueuedImportTransactionLinksByExternalAccountParams
+	updateSourceParams        = sqlitegen.UpdateImportSourceParams
+	credentialKeyRow          = sqlitegen.ImportCredentialKey
+	upsertCredentialKeyParams = sqlitegen.UpsertImportCredentialKeyParams
+	runsByUserParams          = sqlitegen.ListImportRunsByUserParams
+	runsBySourceParams        = sqlitegen.ListImportRunsBySourceParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -65,6 +71,14 @@ type querier interface {
 	UpdateImportTransactionLink(ctx context.Context, db backend.DBTX, p updateLinkParams) error
 	ListImportTransactionLinksBySource(ctx context.Context, db backend.DBTX, sourceID string) ([]linkRow, error)
 	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, db backend.DBTX, p purgeQueuedLinksParams) error
+
+	UpdateImportSource(ctx context.Context, db backend.DBTX, p updateSourceParams) error
+	UpsertImportCredentialKey(ctx context.Context, db backend.DBTX, p upsertCredentialKeyParams) error
+	GetImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) (credentialKeyRow, error)
+	DeleteImportCredentialKey(ctx context.Context, db backend.DBTX, userID string) error
+	ListImportRunsByUser(ctx context.Context, db backend.DBTX, p runsByUserParams) ([]runRow, error)
+	ListImportRunsBySource(ctx context.Context, db backend.DBTX, p runsBySourceParams) ([]runRow, error)
+	ListImportTransactionLinksByRun(ctx context.Context, db backend.DBTX, runID *string) ([]linkRow, error)
 }
 
 type Repo struct {
@@ -199,11 +213,16 @@ func parseOptionalID(s *string) (*vo.Id, error) {
 }
 
 func (r *Repo) InsertRun(ctx context.Context, run *model.ImportRun) error {
+	if run.Trigger == "" {
+		run.Trigger = model.ImportRunTriggerManual
+	}
 	return r.q.InsertImportRun(ctx, r.db(ctx), insertRunParams{
 		ID: run.ID.String(), UserID: run.UserID.String(), SourceID: run.SourceID.String(), Provider: run.Provider,
 		Params: run.Params, Status: run.Status,
 		ImportedCount: int64(run.ImportedCount), MatchedCount: int64(run.MatchedCount),
 		SkippedCount: int64(run.SkippedCount), FailedCount: int64(run.FailedCount),
+		QueuedCount: int64(run.QueuedCount), AmountsUpdatedCount: int64(run.AmountsUpdatedCount),
+		Trigger: run.Trigger, Errors: encodeRunErrors(run.Errors),
 		StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
 	})
 }
@@ -224,8 +243,29 @@ func (r *Repo) UpdateRun(ctx context.Context, run *model.ImportRun) error {
 		Status:        run.Status,
 		ImportedCount: int64(run.ImportedCount), MatchedCount: int64(run.MatchedCount),
 		SkippedCount: int64(run.SkippedCount), FailedCount: int64(run.FailedCount),
+		QueuedCount: int64(run.QueuedCount), AmountsUpdatedCount: int64(run.AmountsUpdatedCount),
+		Errors:     encodeRunErrors(run.Errors),
 		FinishedAt: run.FinishedAt, ID: run.ID.String(),
 	})
+}
+
+func encodeRunErrors(errs []model.ImportRunError) string {
+	if len(errs) == 0 {
+		return "[]"
+	}
+	b, _ := json.Marshal(errs)
+	return string(b)
+}
+
+func decodeRunErrors(raw string) ([]model.ImportRunError, error) {
+	out := []model.ImportRunError{}
+	if raw == "" {
+		return out, nil
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
 func runFromRow(row runRow) (*model.ImportRun, error) {
@@ -241,10 +281,16 @@ func runFromRow(row runRow) (*model.ImportRun, error) {
 	if err != nil {
 		return nil, err
 	}
+	errsList, err := decodeRunErrors(row.Errors)
+	if err != nil {
+		return nil, err
+	}
 	return &model.ImportRun{
 		ID: id, UserID: userID, SourceID: sourceID, Provider: row.Provider, Params: row.Params, Status: row.Status,
 		ImportedCount: int(row.ImportedCount), MatchedCount: int(row.MatchedCount),
 		SkippedCount: int(row.SkippedCount), FailedCount: int(row.FailedCount),
+		QueuedCount: int(row.QueuedCount), AmountsUpdatedCount: int(row.AmountsUpdatedCount),
+		Trigger: row.Trigger, Errors: errsList,
 		StartedAt: row.StartedAt, FinishedAt: row.FinishedAt,
 	}, nil
 }
@@ -477,4 +523,71 @@ func (r *Repo) ListLinksBySource(ctx context.Context, sourceID vo.Id) ([]model.I
 
 func (r *Repo) DeleteQueuedLinksByExternalAccount(ctx context.Context, sourceID vo.Id, externalAccountID string) error {
 	return r.q.DeleteQueuedImportTransactionLinksByExternalAccount(ctx, r.db(ctx), purgeQueuedLinksParams{SourceID: sourceID.String(), ExternalAccountID: externalAccountID})
+}
+
+func (r *Repo) UpdateSource(ctx context.Context, s *model.ImportSource) error {
+	return r.q.UpdateImportSource(ctx, r.db(ctx), updateSourceParams{
+		Name: s.Name, CredentialCiphertext: s.CredentialCiphertext, Status: s.Status,
+		LastSyncedAt: s.LastSyncedAt, UpdatedAt: s.UpdatedAt, ID: s.ID.String(),
+	})
+}
+
+func (r *Repo) UpsertCredentialKey(ctx context.Context, k *model.ImportCredentialKey) error {
+	return r.q.UpsertImportCredentialKey(ctx, r.db(ctx), upsertCredentialKeyParams{
+		UserID: k.UserID.String(), WrappedDataKey: k.WrappedDataKey, Kdf: k.KDF, CreatedAt: k.CreatedAt, UpdatedAt: k.UpdatedAt,
+	})
+}
+
+func (r *Repo) GetCredentialKey(ctx context.Context, userID vo.Id) (*model.ImportCredentialKey, error) {
+	row, err := r.q.GetImportCredentialKey(ctx, r.db(ctx), userID.String())
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &model.ImportCredentialKey{UserID: userID, WrappedDataKey: row.WrappedDataKey, KDF: row.Kdf, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+}
+
+func (r *Repo) DeleteCredentialKey(ctx context.Context, userID vo.Id) error {
+	return r.q.DeleteImportCredentialKey(ctx, r.db(ctx), userID.String())
+}
+
+func (r *Repo) ListRunsByUser(ctx context.Context, userID vo.Id, sourceID *vo.Id, limit int) ([]model.ImportRun, error) {
+	var rows []runRow
+	var err error
+	if sourceID == nil {
+		rows, err = r.q.ListImportRunsByUser(ctx, r.db(ctx), runsByUserParams{UserID: userID.String(), Limit: int64(limit)})
+	} else {
+		rows, err = r.q.ListImportRunsBySource(ctx, r.db(ctx), runsBySourceParams{UserID: userID.String(), SourceID: sourceID.String(), Limit: int64(limit)})
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportRun, 0, len(rows))
+	for _, row := range rows {
+		run, err := runFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *run)
+	}
+	return out, nil
+}
+
+func (r *Repo) ListLinksByRun(ctx context.Context, runID vo.Id) ([]model.ImportTransactionLink, error) {
+	id := runID.String()
+	rows, err := r.q.ListImportTransactionLinksByRun(ctx, r.db(ctx), &id)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.ImportTransactionLink, 0, len(rows))
+	for _, row := range rows {
+		l, err := linkFromRow(row)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *l)
+	}
+	return out, nil
 }

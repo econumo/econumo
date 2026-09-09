@@ -187,14 +187,21 @@ keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
 no `repository.go` either. `imports` (the bank/phone transaction-import
 subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
-ships in stages: stage 1 (persistence + matcher core) and stage 2 (the Apple
-Wallet push provider) are in; it has `repository.go`, `ports.go` (account /
+ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
+Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in. The
+root package holds no provider-specific code: each provider is a subpackage —
+`internal/imports/applewallet` (the push-event parser), `internal/imports/simplefin`
+(the bridge client + stored-row parser) — that plugs into the service's
+`EventParser` and `Provider` registries in `internal/server/server.go` (a new
+provider = one subpackage + one registration line). It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with the 14 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 21 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
-`discard-event`, `get-transaction-import-list`). The package name is `imports`
+`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`get-credential-key`, `set-credential-key`, `list-external-accounts`,
+`sync-source`, `get-run-list`, `get-run`). The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
@@ -508,6 +515,14 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
   fails at boot. Read into `imports.MatcherConfig`; the matcher itself is a pure function of
   `(event, candidates, config)`.
+- `ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS` — lift the SimpleFIN client's SSRF guard (strict
+  boolean, default `false`, malformed fails at boot). With the guard on, the client resolves
+  every bridge host and refuses any address that is not global unicast (loopback, RFC1918,
+  link-local, unique-local, multicast, unspecified) — the setup token and the access URL are
+  user-supplied, so without it the server fetches whatever its own network can reach. A
+  self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
+  so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
+  the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -521,6 +536,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE` — change-email code sends per user per window (default `3`; every send counts).
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE` — failed confirm-email-change attempts per user per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
+  `ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN` — `import/claim-setup-token` calls per user per window (default `5`; every request counts).
+  `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -682,7 +699,9 @@ In the distroless image these run via the binary directly, e.g.
 ## API conventions
 
 - **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
-  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
+  `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
+  travels in the body — it must never reach a query string (logs, history, referrers).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
@@ -839,6 +858,16 @@ data unreadable. Most are also asserted by the test suite.
   request on a bad transaction — parse errors land in `import_events.status = failed`
   for the queue page's "needs attention" list. Imported transactions read
   `isImported: 1`; `get-transaction-import-list` is their provenance.
+- **Transaction import (SimpleFIN pull)**: the client claims the one-shot setup token
+  through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
+  it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
+  wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
+  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
+  "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
+  formatted into an error. A sync is one `import_runs` row; per-account failures leave the
+  run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
+  `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
 
 ## Deployment
 

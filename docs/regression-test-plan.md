@@ -250,6 +250,86 @@ navigation (single-pane vs sidebar).
       chosen account's opens the dialog with an EMPTY amount and a "Card
       amount: … EUR" line; a same-currency row is prefilled.
 
+## 5b. Imports — SimpleFIN
+
+Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
+
+- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
+      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
+      a mismatch is rejected inline before any request. 📱
+- [ ] Connect: after "Connect" the page shows the bridge's accounts as Unmapped
+      rows, the source row reads "Never synced", and the network log shows
+      `create-source` carrying `credentialCiphertext` starting `v1:` — the access
+      URL appears in no request other than `list-external-accounts`/`sync-source`
+      bodies.
+- [ ] A used/invalid setup token shows the server's error inline; nothing is
+      created (Settings → SimpleFIN still shows the connect form after reload).
+- [ ] Second device (or same browser after "Forget this device"): the page shows
+      the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
+      one lists the accounts. 📱
+- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+      from the unlock prompt with "I forgot my passphrase" ticked accepts a new
+      setup token + new passphrase and replaces the connection (account mappings
+      kept).
+- [ ] Map a bridge account to an owned account: the queue replays immediately and
+      toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
+      carry the Imported badge and their provenance sheet names the SimpleFIN
+      source.
+- [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
+      run toasts "{n} imported, {m} matched" (a partial or failed run shows no
+      toast — the run summary card is the only record of it).
+- [ ] Sync with a "From" date after today, or a range longer than 400 days, is
+      accepted by the form (there is no client-side check) but rejected by the
+      server (`import.sync_range_invalid`) and surfaced as a toast; "From"
+      defaults to 3 days before the last sync (30 days back before the first).
+- [ ] Sync twice with the same window: the second run reports 0 imported, 0
+      matched (exact duplicates are skipped) and the last-synced timestamp
+      advances.
+- [ ] An Apple Wallet tap transaction later confirmed by SimpleFIN's posted
+      version of the same purchase (same merchant tokens, within the
+      tip-tolerance window) is adopted and its amount corrected to the posted
+      value ("amounts updated" count > 0) rather than creating a second
+      transaction — needs Apple Wallet connected on the same account too.
+- [ ] A hand-entered transaction with the exact same amount as an incoming
+      bridge row, dated within a few days of it, is adopted (matched count)
+      rather than duplicated.
+- [ ] Unmapped bridge account with transactions: sync queues them (queue page
+      shows them with "Card not mapped" reason); mapping the account replays
+      the queue.
+- [ ] Per-account failure (one linked account's transaction write errors
+      mid-sync while another account succeeds — not triggered by a missing
+      rate or a deleted account, both of which queue their events instead):
+      the run shows "Completed with errors", the failing account's error is
+      listed under the run summary, other accounts' rows still import.
+- [ ] Bridge unreachable: "Sync now" toasts the server's "try again in a few
+      minutes" message, the run list shows a Failed run, and the failed state
+      stays on the page until the next successful sync.
+- [ ] Access URL revoked in the bridge (or the connection deleted there): "Sync
+      now" toasts the "access URL is no longer valid, reconnect" message rather
+      than the unreachable one, so the user reconnects instead of retrying.
+- [ ] A run where some bridge rows cannot be parsed reports "Completed with
+      errors" with a non-zero failed count and no success toast (never a clean
+      "Completed"); the rows are listed on the queue page's needs-attention
+      list.
+- [ ] Run detail names each row's bank account the way the run summary does
+      (the bank's own account name, falling back to the bridge id) — never a
+      bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+      source; with one and a locked device it navigates to Settings →
+      SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
+      row is disabled (not clickable, dimmed) while the syncs run. 📱
+- [ ] Settings → Data → Import history lists runs newest first with status,
+      counts and errors; a run opens its detail; a transaction deleted after
+      import shows struck-through with "Deleted since"; queued rows read
+      "Waiting for review". Rows have no actions in this version. 📱
+- [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
+      `sync-source` return 429 with the standard envelope.
+- [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
+      (trial-ended) user gets 402 on `claim-setup-token`, `set-credential-key`,
+      `sync-source`.
+- [ ] Apple Wallet regression: §5a still passes unchanged (the `cards` list,
+      queue, and provenance UI share code with the SimpleFIN account list).
+
 ## 6. Recurring transactions
 
 - [ ] 📱 Create a recurring rule (from a transaction's "make recurring" and
