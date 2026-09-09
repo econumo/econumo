@@ -216,6 +216,7 @@ func (s *Service) GetTransactionImportList(ctx context.Context, userID vo.Id, re
 			ExternalAccountId: l.ExternalAccountID, ExternalTransactionId: l.ExternalTransactionID,
 			ExternalPayee: l.ExternalPayee, ExternalAmount: vo.NewDecimal(l.ExternalAmount).String(), ExternalCurrency: derefString(l.ExternalCurrency),
 			ExternalPostedAt: l.ExternalPostedAt.Format(datetime.Layout), Status: l.Status, ImportedAt: l.ImportedAt.Format(datetime.Layout),
+			AppliedLabelIds: []string{},
 		})
 	}
 	return out, nil
