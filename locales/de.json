@@ -591,7 +591,8 @@
         "submit": "Entsperren",
         "reconnect": "Erneut verbinden",
         "wrong_passphrase": "Falsche Passphrase.",
-        "forgot_help": "Vergessen? Verbinde dich mit einem neuen Setup-Token und einer neuen Passphrase erneut."
+        "forgot_help": "Vergessen? Verbinde dich mit einem neuen Setup-Token und einer neuen Passphrase erneut.",
+        "stale_intro": "Deine Passphrase wurde auf einem anderen Gerät geändert. Gib die neue Passphrase ein, um SimpleFIN hier weiter zu nutzen."
       },
       "accounts": {
         "header": "Konten",

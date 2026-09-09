@@ -16,9 +16,20 @@ it('createKey stores a non-extractable key and returns a wrapped key with the do
   expect(kdf.alg).toBe('PBKDF2-SHA256')
   expect(kdf.iterations).toBe(KDF_ITERATIONS)
   expect(atob(kdf.salt)).toHaveLength(16)
-  const key = await loadStoredKey()
-  expect(key?.extractable).toBe(false)
-  expect(key?.usages.sort()).toEqual(['decrypt', 'encrypt'])
+  const stored = await loadStoredKey()
+  expect(stored?.key.extractable).toBe(false)
+  expect(stored?.key.usages.sort()).toEqual(['decrypt', 'encrypt'])
+  expect(stored?.tag).toBe(wrapped.wrappedDataKey)
+})
+
+it('the stored key is tagged with the wrapped form it came from, so a superseded key is detectable', async () => {
+  const wrapped = await createKey('pw')
+  const rewrapped = await changePassphrase('pw', wrapped, 'new')
+  expect(rewrapped.wrappedDataKey).not.toBe(wrapped.wrappedDataKey)
+  expect((await loadStoredKey())?.tag).toBe(rewrapped.wrappedDataKey)
+  await forgetKey()
+  await unlockKey('pw', wrapped)
+  expect((await loadStoredKey())?.tag).toBe(wrapped.wrappedDataKey)
 })
 
 it('round-trips a credential and uses a fresh iv per call', async () => {

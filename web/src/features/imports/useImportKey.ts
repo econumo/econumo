@@ -7,7 +7,9 @@ import { useImportCredentialKey } from './queries'
 export type ImportKeyState =
   | { status: 'loading' }
   | { status: 'none' }
-  | { status: 'locked'; wrapped: ImportCredentialKeyDto }
+  // stale: this device holds a key, but not the one the server's wrapped
+  // form describes — the passphrase was reset on another device.
+  | { status: 'locked'; wrapped: ImportCredentialKeyDto; stale: boolean }
   | { status: 'unlocked'; wrapped: ImportCredentialKeyDto }
 
 // Server half: the passphrase-wrapped key (shared by every device). Local
@@ -24,5 +26,8 @@ export function useImportKey(): { state: ImportKeyState; refresh: () => void } {
   if (!remote.data) {
     return { state: { status: 'none' }, refresh }
   }
-  return { state: { status: local.data ? 'unlocked' : 'locked', wrapped: remote.data }, refresh }
+  if (local.data?.tag === remote.data.wrappedDataKey) {
+    return { state: { status: 'unlocked', wrapped: remote.data }, refresh }
+  }
+  return { state: { status: 'locked', wrapped: remote.data, stale: local.data !== null }, refresh }
 }

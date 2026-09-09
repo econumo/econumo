@@ -591,7 +591,8 @@
         "submit": "Unlock",
         "reconnect": "Reconnect",
         "wrong_passphrase": "Wrong passphrase.",
-        "forgot_help": "Forgot it? Reconnect with a new setup token and a new passphrase."
+        "forgot_help": "Forgot it? Reconnect with a new setup token and a new passphrase.",
+        "stale_intro": "Your passphrase was changed on another device. Enter the new passphrase to keep using SimpleFIN here."
       },
       "accounts": {
         "header": "Accounts",

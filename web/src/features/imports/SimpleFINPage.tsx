@@ -113,7 +113,7 @@ export function SimpleFINPage() {
       )
     }
     if (keyState.status === 'locked') {
-      return <SimpleFINUnlock wrapped={keyState.wrapped} onUnlocked={refreshKey} onReconnect={() => setReconnecting(true)} />
+      return <SimpleFINUnlock wrapped={keyState.wrapped} stale={keyState.stale} onUnlocked={refreshKey} onReconnect={() => setReconnecting(true)} />
     }
     if (keyState.status === 'none') {
       // a source exists but its key was deleted server-side (never happens through the UI); reconnect

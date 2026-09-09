@@ -591,7 +591,8 @@
         "submit": "Desbloquear",
         "reconnect": "Reconectar",
         "wrong_passphrase": "Frase de contraseña incorrecta.",
-        "forgot_help": "¿La olvidaste? Vuelve a conectarte con un nuevo token de configuración y una nueva frase de contraseña."
+        "forgot_help": "¿La olvidaste? Vuelve a conectarte con un nuevo token de configuración y una nueva frase de contraseña.",
+        "stale_intro": "Tu frase de contraseña se cambió en otro dispositivo. Introduce la nueva frase para seguir usando SimpleFIN aquí."
       },
       "accounts": {
         "header": "Cuentas",

@@ -591,7 +591,8 @@
         "submit": "Déverrouiller",
         "reconnect": "Se reconnecter",
         "wrong_passphrase": "Phrase secrète incorrecte.",
-        "forgot_help": "Oubliée ? Reconnectez-vous avec un nouveau jeton de configuration et une nouvelle phrase secrète."
+        "forgot_help": "Oubliée ? Reconnectez-vous avec un nouveau jeton de configuration et une nouvelle phrase secrète.",
+        "stale_intro": "Votre phrase secrète a été modifiée sur un autre appareil. Saisissez la nouvelle phrase secrète pour continuer à utiliser SimpleFIN ici."
       },
       "accounts": {
         "header": "Comptes",

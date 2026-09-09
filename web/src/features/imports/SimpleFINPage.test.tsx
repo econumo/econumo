@@ -95,6 +95,22 @@ it('locked device: wrong passphrase is rejected, right one unlocks and lists bri
   expect(listBody).toEqual({ sourceId: 's2', accessUrl: ACCESS_URL })
 }, 40_000)
 
+it('stale device: a key reset elsewhere asks for the new passphrase instead of a reconnect', async () => {
+  await createKey('old')  // this device unlocked under the previous passphrase
+  const thisDevice = globalThis.indexedDB
+  globalThis.indexedDB = new IDBFactory()
+  const replacement = await createKey('new')  // ...then another device reset the key
+  const ciphertext = await encryptCredential(ACCESS_URL)
+  globalThis.indexedDB = thisDevice
+  renderPage({ importSources: [source({ credentialCiphertext: ciphertext })], importCredentialKey: { ...replacement, updatedAt: '2026-09-08 10:00:00' } })
+  expect(await screen.findByText(/passphrase was changed on another device/)).toBeInTheDocument()
+  expect(screen.queryByPlaceholderText('aHR0cHM6Ly9…')).not.toBeInTheDocument()
+  const user = userEvent.setup()
+  await user.type(screen.getByPlaceholderText('Passphrase'), 'new')
+  await user.click(screen.getByRole('button', { name: 'Unlock' }))
+  expect(await screen.findByRole('button', { name: 'Sync now' }, { timeout: 15_000 })).toBeInTheDocument()
+}, 40_000)
+
 it('unlocked device: Sync now posts the decrypted access URL and shows the run summary', async () => {
   const wrapped = await createKey('pw')
   const ciphertext = await encryptCredential(ACCESS_URL)

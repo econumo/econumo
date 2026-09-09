@@ -134,7 +134,7 @@ func init() {
 
 	register(Scenario{Name: "import_simplefin_credentials", Calls: func() []Call {
 		return []Call{
-			{Label: "err:get-credential-key-none", Method: "GET", Path: "/api/v1/import/get-credential-key", Auth: "owner"},
+			{Label: "get-credential-key-none", Method: "GET", Path: "/api/v1/import/get-credential-key", Auth: "owner"},
 			{Label: "set-credential-key", Method: "POST", Path: "/api/v1/import/set-credential-key", Auth: "owner",
 				Body: map[string]any{"wrappedDataKey": "v1:aXY=:Y3Q=", "kdf": `{"alg":"PBKDF2-SHA256","salt":"c2FsdA==","iterations":600000}`}},
 			{Label: "get-credential-key", Method: "GET", Path: "/api/v1/import/get-credential-key", Auth: "owner"},

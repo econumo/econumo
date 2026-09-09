@@ -35,8 +35,8 @@ func TestClaimSetupToken_NoClaimer(t *testing.T) {
 func TestCredentialKey_RoundTrip(t *testing.T) {
 	h := setup(t)
 	ctx := context.Background()
-	if _, err := h.svc.GetCredentialKey(ctx, vo.MustParseId(userA)); err == nil {
-		t.Fatal("expected not found before set")
+	if got, err := h.svc.GetCredentialKey(ctx, vo.MustParseId(userA)); err != nil || *got != (model.GetImportCredentialKeyResult{}) {
+		t.Fatalf("before set = %+v err %v, want the empty result", got, err)
 	}
 	res, err := h.svc.SetCredentialKey(ctx, vo.MustParseId(userA), model.SetImportCredentialKeyRequest{WrappedDataKey: "v1:iv:ct", Kdf: `{"alg":"PBKDF2-SHA256","salt":"c2FsdA==","iterations":600000}`})
 	if err != nil || res.WrappedDataKey != "v1:iv:ct" || res.UpdatedAt == "" {
@@ -50,8 +50,8 @@ func TestCredentialKey_RoundTrip(t *testing.T) {
 	if err != nil || got.WrappedDataKey != "v1:iv2:ct2" {
 		t.Fatalf("get = %+v err %v", got, err)
 	}
-	if _, err := h.svc.GetCredentialKey(ctx, vo.MustParseId(userB)); err == nil {
-		t.Fatal("keys are per user")
+	if got, err := h.svc.GetCredentialKey(ctx, vo.MustParseId(userB)); err != nil || got.WrappedDataKey != "" {
+		t.Fatalf("other user = %+v err %v, keys are per user", got, err)
 	}
 }
 

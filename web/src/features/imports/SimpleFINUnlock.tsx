@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { InfoBox } from '@/components/InfoBox'
 import { WrongPassphraseError, forgetKey, unlockKey } from '@/lib/importCrypto'
 
-export function SimpleFINUnlock({ wrapped, onUnlocked, onReconnect }: {
+export function SimpleFINUnlock({ wrapped, stale, onUnlocked, onReconnect }: {
   wrapped: ImportCredentialKeyDto
+  stale: boolean
   onUnlocked: () => void
   onReconnect: () => void
 }) {
@@ -31,7 +32,7 @@ export function SimpleFINUnlock({ wrapped, onUnlocked, onReconnect }: {
 
   return (
     <div className="flex flex-col gap-3">
-      <InfoBox>{t('imports.simplefin.unlock.intro')}</InfoBox>
+      <InfoBox>{t(stale ? 'imports.simplefin.unlock.stale_intro' : 'imports.simplefin.unlock.intro')}</InfoBox>
       <PasswordInput
         aria-label={t('imports.simplefin.unlock.passphrase')} placeholder={t('imports.simplefin.unlock.passphrase')}
         value={passphrase} onChange={(e) => setPassphrase(e.target.value)} autoComplete="current-password"
