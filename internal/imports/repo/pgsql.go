@@ -213,3 +213,96 @@ func (pgsqlQuerier) ListImportTransactionLinksByRun(ctx context.Context, db back
 	}
 	return out, nil
 }
+
+func (pgsqlQuerier) InsertImportRule(ctx context.Context, db backend.DBTX, p insertRuleParams) error {
+	return pgsqlgen.New(db).InsertImportRule(ctx, pgsqlgen.InsertImportRuleParams(p))
+}
+
+func (pgsqlQuerier) UpdateImportRule(ctx context.Context, db backend.DBTX, p updateRuleParams) error {
+	return pgsqlgen.New(db).UpdateImportRule(ctx, pgsqlgen.UpdateImportRuleParams(p))
+}
+
+func (pgsqlQuerier) DeleteImportRule(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteImportRule(ctx, id)
+}
+
+func (pgsqlQuerier) GetImportRuleByID(ctx context.Context, db backend.DBTX, id string) (ruleRow, error) {
+	r, err := pgsqlgen.New(db).GetImportRuleByID(ctx, id)
+	return ruleRow(r), err
+}
+
+func (pgsqlQuerier) ListImportRulesByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportRulesByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ruleRow, len(rows))
+	for i, row := range rows {
+		out[i] = ruleRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) DeleteImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) error {
+	return pgsqlgen.New(db).DeleteImportRuleLabels(ctx, ruleID)
+}
+
+func (pgsqlQuerier) InsertImportRuleLabel(ctx context.Context, db backend.DBTX, p insertRuleLabelParams) error {
+	return pgsqlgen.New(db).InsertImportRuleLabel(ctx, pgsqlgen.InsertImportRuleLabelParams(p))
+}
+
+func (pgsqlQuerier) ListImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) ([]ruleLabelRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportRuleLabels(ctx, ruleID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ruleLabelRow, len(rows))
+	for i, row := range rows {
+		out[i] = ruleLabelRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportRuleLabelsByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleLabelRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportRuleLabelsByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]ruleLabelRow, len(rows))
+	for i, row := range rows {
+		out[i] = ruleLabelRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) DeleteImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) error {
+	return pgsqlgen.New(db).DeleteImportLinkAppliedLabels(ctx, linkID)
+}
+
+func (pgsqlQuerier) InsertImportLinkAppliedLabel(ctx context.Context, db backend.DBTX, p insertLinkAppliedParams) error {
+	return pgsqlgen.New(db).InsertImportLinkAppliedLabel(ctx, pgsqlgen.InsertImportLinkAppliedLabelParams(p))
+}
+
+func (pgsqlQuerier) ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportLinkAppliedLabels(ctx, linkID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkAppliedLabelRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkAppliedLabelRow(row)
+	}
+	return out, nil
+}
+
+func (pgsqlQuerier) ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error) {
+	rows, err := pgsqlgen.New(db).ListImportTransactionLinksByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]linkRow, len(rows))
+	for i, row := range rows {
+		out[i] = linkRow(row)
+	}
+	return out, nil
+}
