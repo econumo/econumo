@@ -155,12 +155,66 @@ export interface TransactionImportLinkDto {
   sourceId: Id
   provider: ImportProvider
   sourceName: string
+  runId: Id | ''
   externalAccountId: string
   externalTransactionId: string
   externalPayee: string
+  externalDescription: string
   externalAmount: string
   externalCurrency: string
   externalPostedAt: string
   status: string
   importedAt: string
+  /** classification snapshot written at import time; '' / [] when nothing was applied */
+  appliedCategoryId: Id | ''
+  appliedPayeeId: Id | ''
+  appliedTagId: Id | ''
+  appliedLabelIds: Id[]
+  appliedRuleId: Id | ''
+}
+
+export type ImportRuleAction = 'classify' | 'skip'
+export type ImportRuleMatchField = 'description' | 'external_payee'
+export type ImportRuleMatchType = 'exact' | 'contains' | 'prefix'
+export type ImportRuleScope = 'run' | 'source' | 'all'
+
+export interface ImportRuleSpecDto {
+  /** '' = every source */
+  sourceId: Id | ''
+  action: ImportRuleAction
+  matchField: ImportRuleMatchField
+  matchType: ImportRuleMatchType
+  matchValue: string
+  isCaseSensitive: boolean
+  categoryId: Id | ''
+  payeeId: Id | ''
+  tagId: Id | ''
+  labelIds: Id[]
+  priority: number
+}
+
+export interface ImportRuleDto extends ImportRuleSpecDto {
+  id: Id
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ImportRuleScopeDto {
+  scope: ImportRuleScope
+  runId: Id | ''
+  scopeSourceId: Id | ''
+}
+
+export interface PreviewImportRuleDto {
+  matched: number
+  alreadyEdited: number
+}
+
+export interface ApplyImportRuleDto {
+  updated: number
+  skipped: number
+}
+
+export interface ImportRuleSuggestionDto extends ImportRuleSpecDto {
+  reason: string
 }

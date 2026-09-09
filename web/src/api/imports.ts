@@ -1,16 +1,22 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
 import type {
+  ApplyImportRuleDto,
   ExternalAccountDto,
   ImportCredentialKeyDto,
   ImportProvider,
   ImportQueueDto,
   ImportQueuedEventPayload,
   ImportQueuedEventResultDto,
+  ImportRuleDto,
+  ImportRuleScopeDto,
+  ImportRuleSpecDto,
+  ImportRuleSuggestionDto,
   ImportRunDetailDto,
   ImportRunDto,
   ImportSourceDto,
   IngestEventDto,
+  PreviewImportRuleDto,
   SyncImportSourceResultDto,
   TransactionImportLinkDto,
   UpdateImportAccountDto,
@@ -141,5 +147,43 @@ export async function getTransactionImportList(transactionId: Id): Promise<Trans
     apiUrl('/api/v1/import/get-transaction-import-list'),
     { params: { transactionId } },
   )
+  return response.data.data.items
+}
+
+export async function getImportRuleList(): Promise<ImportRuleDto[]> {
+  const response = await api.get<Envelope<{ items: ImportRuleDto[] }>>(apiUrl('/api/v1/import/get-rule-list'))
+  return response.data.data.items
+}
+
+export async function createImportRule(spec: ImportRuleSpecDto, id?: Id): Promise<ImportRuleDto> {
+  const body: Record<string, unknown> = { ...spec }
+  if (id) {
+    body.id = id
+  }
+  const response = await api.post<Envelope<ImportRuleDto>>(apiUrl('/api/v1/import/create-rule'), body)
+  return response.data.data
+}
+
+export async function updateImportRule(id: Id, spec: ImportRuleSpecDto): Promise<ImportRuleDto> {
+  const response = await api.post<Envelope<ImportRuleDto>>(apiUrl('/api/v1/import/update-rule'), { id, ...spec })
+  return response.data.data
+}
+
+export async function deleteImportRule(id: Id): Promise<void> {
+  await api.post(apiUrl('/api/v1/import/delete-rule'), { id })
+}
+
+export async function previewImportRule(spec: ImportRuleSpecDto, scope: ImportRuleScopeDto): Promise<PreviewImportRuleDto> {
+  const response = await api.post<Envelope<PreviewImportRuleDto>>(apiUrl('/api/v1/import/preview-rule'), { ...spec, ...scope })
+  return response.data.data
+}
+
+export async function applyImportRule(ruleId: Id, scope: ImportRuleScopeDto, includeEdited: boolean): Promise<ApplyImportRuleDto> {
+  const response = await api.post<Envelope<ApplyImportRuleDto>>(apiUrl('/api/v1/import/apply-rule'), { ruleId, ...scope, includeEdited })
+  return response.data.data
+}
+
+export async function suggestImportRules(scope: ImportRuleScopeDto): Promise<ImportRuleSuggestionDto[]> {
+  const response = await api.post<Envelope<{ items: ImportRuleSuggestionDto[] }>>(apiUrl('/api/v1/import/suggest-rules'), scope)
   return response.data.data.items
 }

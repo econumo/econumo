@@ -1,7 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as importsApi from '@/api/imports'
 import type { Id } from '@/api/types'
-import type { ImportProvider, ImportQueueDto, ImportQueuedEventPayload, ImportSourceDto, UpdateImportAccountDto } from '@/api/dto/imports'
+import type {
+  ImportProvider,
+  ImportQueueDto,
+  ImportQueuedEventPayload,
+  ImportRuleDto,
+  ImportRuleScopeDto,
+  ImportRuleSpecDto,
+  ImportSourceDto,
+  UpdateImportAccountDto,
+} from '@/api/dto/imports'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { useApplyTransactionItem } from '@/features/transactions/queries'
@@ -220,4 +229,68 @@ export function useImportRuns(sourceId = '') {
 
 export function useImportRun(id: Id) {
   return useQuery({ queryKey: queryKeys.importRun(id), queryFn: () => importsApi.getImportRun(id), staleTime: TEN_MINUTES })
+}
+
+export function useImportRules() {
+  return useQuery({ queryKey: queryKeys.importRules, queryFn: importsApi.getImportRuleList, staleTime: TEN_MINUTES })
+}
+
+export function useCreateImportRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ spec, id }: { spec: ImportRuleSpecDto; id?: Id }) => importsApi.createImportRule(spec, id),
+    onSuccess: (rule) => {
+      queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => [...prev.filter((r) => r.id !== rule.id), rule])
+      trackEvent(METRICS.IMPORT_RULE_CREATE, { action: rule.action })
+    },
+  })
+}
+
+export function useUpdateImportRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, spec }: { id: Id; spec: ImportRuleSpecDto }) => importsApi.updateImportRule(id, spec),
+    onSuccess: (rule) => {
+      queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => prev.map((r) => (r.id === rule.id ? rule : r)))
+    },
+  })
+}
+
+export function useDeleteImportRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: Id) => importsApi.deleteImportRule(id),
+    onSuccess: (_void, id) => {
+      queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, (prev = []) => prev.filter((r) => r.id !== id))
+    },
+  })
+}
+
+// A preview is a read that travels as a POST (the spec is the body); it is
+// never cached — the count must reflect the value the user is typing.
+export function usePreviewImportRule() {
+  return useMutation({
+    mutationFn: ({ spec, scope }: { spec: ImportRuleSpecDto; scope: ImportRuleScopeDto }) => importsApi.previewImportRule(spec, scope),
+  })
+}
+
+export function useApplyImportRule() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ ruleId, scope, includeEdited }: { ruleId: Id; scope: ImportRuleScopeDto; includeEdited: boolean }) =>
+      importsApi.applyImportRule(ruleId, scope, includeEdited),
+    onSuccess: (result) => {
+      trackEvent(METRICS.IMPORT_RULE_APPLY, { updated: result.updated, skipped: result.skipped })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.transactions })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.accounts })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    },
+  })
+}
+
+export function useSuggestImportRules() {
+  return useMutation({
+    mutationFn: (scope: ImportRuleScopeDto) => importsApi.suggestImportRules(scope),
+    onSuccess: (items) => trackEvent(METRICS.IMPORT_RULES_SUGGEST, { count: items.length }),
+  })
 }

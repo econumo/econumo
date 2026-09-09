@@ -5,15 +5,19 @@ import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
-import type { ImportQueueDto, ImportSourceDto } from '@/api/dto/imports'
+import type { ImportQueueDto, ImportRuleDto, ImportSourceDto } from '@/api/dto/imports'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import {
+  useApplyImportRule,
+  useCreateImportRule,
   useImportCredentialKey,
   useImportQueuedEvent,
+  useImportRules,
   useImportSources,
   useLinkImportAccount,
   useSkipQueuedEvent,
+  useSuggestImportRules,
   useSyncImportSource,
 } from './queries'
 
@@ -124,4 +128,67 @@ it('getImportCredentialKey maps the empty no-key-yet payload to null', async () 
   const { result } = renderHook(() => useImportCredentialKey(), { wrapper })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(result.current.data).toBeNull()
+})
+
+const wireRule: ImportRuleDto = {
+  id: 'rule1', sourceId: '', action: 'classify', matchField: 'external_payee', matchType: 'contains', matchValue: 'BLUE BOTTLE',
+  isCaseSensitive: false, categoryId: 'c1', payeeId: '', tagId: '', labelIds: [], priority: 0,
+  createdAt: '2026-09-08 10:00:00', updatedAt: '2026-09-08 10:00:00',
+}
+
+it('useImportRules fetches the rule list', async () => {
+  server.use(http.get('*/api/v1/import/get-rule-list', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [wireRule] } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useImportRules(), { wrapper })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(result.current.data![0].matchValue).toBe('BLUE BOTTLE')
+})
+
+it('useCreateImportRule posts the spec, appends to the cache, and reports the action', async () => {
+  let body: Record<string, unknown> | null = null
+  server.use(http.post('*/api/v1/import/create-rule', async ({ request }) => {
+    body = await request.json() as Record<string, unknown>
+    return HttpResponse.json({ success: true, message: '', data: { ...wireRule, action: body.action } })
+  }))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData<ImportRuleDto[]>(queryKeys.importRules, [])
+  const { result } = renderHook(() => useCreateImportRule(), { wrapper })
+  const { id: _id, createdAt: _c, updatedAt: _u, ...spec } = wireRule
+  await act(async () => { await result.current.mutateAsync({ spec: { ...spec, action: 'skip' } }) })
+  expect(body).toMatchObject({ action: 'skip', matchValue: 'BLUE BOTTLE' })
+  expect(body).not.toHaveProperty('id')
+  expect(queryClient.getQueryData<ImportRuleDto[]>(queryKeys.importRules)).toHaveLength(1)
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_CREATE, { action: 'skip' })
+})
+
+it('useApplyImportRule posts the scope and invalidates the ledger caches', async () => {
+  let body: unknown
+  server.use(http.post('*/api/v1/import/apply-rule', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: { updated: 3, skipped: 2 } })
+  }))
+  const { queryClient, wrapper } = makeWrapper()
+  const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
+  const { result } = renderHook(() => useApplyImportRule(), { wrapper })
+  let out: unknown
+  await act(async () => {
+    out = await result.current.mutateAsync({ ruleId: 'rule1', scope: { scope: 'run', runId: 'r1', scopeSourceId: '' }, includeEdited: false })
+  })
+  expect(body).toEqual({ ruleId: 'rule1', scope: 'run', runId: 'r1', scopeSourceId: '', includeEdited: false })
+  expect(out).toEqual({ updated: 3, skipped: 2 })
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.transactions })
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: queryKeys.budget })
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULE_APPLY, { updated: 3, skipped: 2 })
+})
+
+it('useSuggestImportRules returns the model proposals and fires the metric with the count', async () => {
+  server.use(http.post('*/api/v1/import/suggest-rules', () =>
+    HttpResponse.json({ success: true, message: '', data: { items: [{ ...wireRule, reason: 'Every Blue Bottle tap was categorised Coffee' }] } })))
+  const { wrapper } = makeWrapper()
+  const { result } = renderHook(() => useSuggestImportRules(), { wrapper })
+  let items: unknown[] = []
+  await act(async () => { items = await result.current.mutateAsync({ scope: 'all', runId: '', scopeSourceId: '' }) })
+  expect(items).toHaveLength(1)
+  expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_RULES_SUGGEST, { count: 1 })
 })

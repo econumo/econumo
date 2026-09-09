@@ -140,6 +140,9 @@ export const METRICS = {
   IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
   IMPORT_SHORTCUT_CHECK: 'appImportShortcutCheck',
   IMPORT_SYNC: 'appImportSync',
+  IMPORT_RULE_CREATE: 'appImportRuleCreate',
+  IMPORT_RULE_APPLY: 'appImportRuleApply',
+  IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
