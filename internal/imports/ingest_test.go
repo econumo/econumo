@@ -2,6 +2,7 @@ package imports_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"testing"
 	"time"
@@ -77,6 +78,7 @@ type fakeTxns struct {
 	builder    *fixture.Builder
 	created    []model.CreateTransactionRequest
 	updated    []model.UpdateTransactionRequest
+	replaced   []model.UpdateTransactionRequest
 	candidates []*model.Transaction
 	fail       error
 	// failOn, when non-empty, makes CreateTransaction fail for a request
@@ -109,13 +111,103 @@ func (f *fakeTxns) CreateTransaction(ctx context.Context, userID vo.Id, req mode
 		description = *req.Description
 	}
 	q := f.db.TX.Querier(ctx)
-	query := f.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	query := f.db.Rebind(`INSERT INTO transactions (id, user_id, account_id, category_id, payee_id, tag_id, type, amount, description, created_at, updated_at, spent_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if _, err := q.ExecContext(ctx, query,
-		req.Id, userID.String(), req.AccountId, aliasToType(req.Type), req.Amount.String(), description, req.Date, req.Date, req.Date); err != nil {
+		req.Id, userID.String(), req.AccountId, optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId),
+		aliasToType(req.Type), req.Amount.String(), description, req.Date, req.Date, req.Date); err != nil {
+		return nil, err
+	}
+	if err := f.replaceLabels(ctx, req.Id, req.LabelIds); err != nil {
 		return nil, err
 	}
 	return &model.CreateTransactionResult{Item: model.TransactionResult{Id: req.Id, AccountId: req.AccountId, Amount: req.Amount.String()}}, nil
 }
+
+// optID keeps a nil/blank optional id out of an FK column as NULL.
+func optID(p *string) any {
+	if p == nil || *p == "" {
+		return nil
+	}
+	return *p
+}
+
+// replaceLabels mirrors the transaction feature's label rewrite so a later
+// GetByID observes exactly the set the request carried.
+func (f *fakeTxns) replaceLabels(ctx context.Context, transactionID string, labelIDs []string) error {
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(`DELETE FROM transactions_labels WHERE transaction_id = ?`), transactionID); err != nil {
+		return err
+	}
+	for _, id := range labelIDs {
+		if _, err := q.ExecContext(ctx, f.db.Rebind(`INSERT INTO transactions_labels (transaction_id, label_id) VALUES (?, ?)`), transactionID, id); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	q := f.db.TX.Querier(ctx)
+	var (
+		userID, accountID, amount, description string
+		typ                                    int
+		cat, payee, tag                        *string
+		spentAt                                time.Time
+	)
+	row := q.QueryRowContext(ctx, f.db.Rebind(
+		`SELECT user_id, type, account_id, amount, category_id, payee_id, tag_id, description, spent_at FROM transactions WHERE id = ?`), id.String())
+	if err := row.Scan(&userID, &typ, &accountID, &amount, &cat, &payee, &tag, &description, &spentAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Transaction not found")
+		}
+		return nil, err
+	}
+	t := &model.Transaction{
+		ID: id, UserID: vo.MustParseId(userID), Type: model.TransactionType(typ),
+		AccountID: vo.MustParseId(accountID), Amount: amount, Description: description, SpentAt: spentAt,
+		CategoryID: parseOptID(cat), PayeeID: parseOptID(payee), TagID: parseOptID(tag),
+	}
+	rows, err := q.QueryContext(ctx, f.db.Rebind(`SELECT label_id FROM transactions_labels WHERE transaction_id = ? ORDER BY label_id`), id.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var raw string
+		if err := rows.Scan(&raw); err != nil {
+			return nil, err
+		}
+		t.LabelIDs = append(t.LabelIDs, vo.MustParseId(raw))
+	}
+	return t, rows.Err()
+}
+
+func parseOptID(p *string) *vo.Id {
+	if p == nil || *p == "" {
+		return nil
+	}
+	id := vo.MustParseId(*p)
+	return &id
+}
+
+func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.replaced = append(f.replaced, req)
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(
+		`UPDATE transactions SET category_id = ?, payee_id = ?, tag_id = ?, description = ? WHERE id = ?`),
+		optID(req.CategoryId), optID(req.PayeeId), optID(req.TagId), description, req.Id); err != nil {
+		return nil, err
+	}
+	if err := f.replaceLabels(ctx, req.Id, req.LabelIds); err != nil {
+		return nil, err
+	}
+	return &model.UpdateTransactionResult{}, nil
+}
+
 func (f *fakeTxns) UpdateTransaction(_ context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	f.updated = append(f.updated, req)
 	return &model.UpdateTransactionResult{}, nil
@@ -150,6 +242,36 @@ func (f *fakeTxns) seed(t *testing.T, accountID, typeAlias, amount string, at ti
 	return id
 }
 
+// fakeEntities is the owner's vocabulary as the rules engine sees it. Tests
+// register ids they want a rule to be allowed to target.
+type fakeEntities struct {
+	categories, payees, tags, labels map[vo.Id][]model.ImportNamed // by owner
+}
+
+func newFakeEntities() *fakeEntities {
+	return &fakeEntities{
+		categories: map[vo.Id][]model.ImportNamed{}, payees: map[vo.Id][]model.ImportNamed{},
+		tags: map[vo.Id][]model.ImportNamed{}, labels: map[vo.Id][]model.ImportNamed{},
+	}
+}
+
+func (f *fakeEntities) add(m map[vo.Id][]model.ImportNamed, owner vo.Id, id, name string) {
+	m[owner] = append(m[owner], model.ImportNamed{ID: id, Name: name, OwnerID: owner.String()})
+}
+
+func (f *fakeEntities) CategoriesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.categories[o], nil
+}
+func (f *fakeEntities) PayeesByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.payees[o], nil
+}
+func (f *fakeEntities) TagsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.tags[o], nil
+}
+func (f *fakeEntities) LabelsByOwner(_ context.Context, o vo.Id) ([]model.ImportNamed, error) {
+	return f.labels[o], nil
+}
+
 type limiter struct {
 	allow, fail int
 	deny        error
@@ -173,6 +295,7 @@ type harness struct {
 	accounts *fakeAccounts
 	conv     *fakeConverter
 	txns     *fakeTxns
+	entities *fakeEntities
 	lim      *limiter
 	f        *fixture.Builder
 	db       *dbtest.DB
@@ -192,15 +315,15 @@ func setup(t *testing.T) *harness {
 	f.Account(fixture.Account{ID: acctB, UserID: userB, CurrencyID: usdID, Name: "Other"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	repo := importsrepo.NewRepo(db.Engine, db.TX)
-	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, lim: &limiter{}, f: f, db: db}
-	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h := &harness{repo: repo, accounts: &fakeAccounts{}, conv: &fakeConverter{}, txns: &fakeTxns{db: db, builder: f}, entities: newFakeEntities(), lim: &limiter{}, f: f, db: db}
+	h.svc = imports.NewService(repo, h.accounts, h.conv, h.txns, h.txns, h.entities, nil, db.TX, clock{now}, imports.DefaultMatcherConfig())
 	registerParsers(h.svc)
 	return h
 }
 
 // withLimiter rebuilds the service with h.lim wired in as the rate limiter.
 func (h *harness) withLimiter() {
-	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.lim, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
+	h.svc = imports.NewService(h.repo, h.accounts, h.conv, h.txns, h.txns, h.entities, h.lim, h.db.TX, clock{now}, imports.DefaultMatcherConfig())
 	registerParsers(h.svc)
 }
 

@@ -18,7 +18,9 @@ type Service struct {
 	converter CurrencyConverter
 	txns      TransactionWriter
 	lister    TransactionLister
+	entities  ClassificationLister
 	limiter   AttemptLimiter
+	completer Completer
 	tx        port.TxRunner
 	clk       port.Clock
 	cfg       MatcherConfig
@@ -26,9 +28,13 @@ type Service struct {
 	parsers   map[string]EventParser
 }
 
-func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
-	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, limiter: limiter, tx: tx, clk: clk, cfg: cfg}
+func NewService(repo Repository, accounts AccountReader, converter CurrencyConverter, txns TransactionWriter, lister TransactionLister, entities ClassificationLister, limiter AttemptLimiter, tx port.TxRunner, clk port.Clock, cfg MatcherConfig) *Service {
+	return &Service{repo: repo, accounts: accounts, converter: converter, txns: txns, lister: lister, entities: entities, limiter: limiter, tx: tx, clk: clk, cfg: cfg, providers: map[string]Provider{}, parsers: map[string]EventParser{}}
 }
+
+// SetCompleter enables suggest-rules; leaving it unset keeps the endpoint
+// answering import.ai_disabled.
+func (s *Service) SetCompleter(c Completer) { s.completer = c }
 
 // ownedSource resolves a source the caller owns; a foreign id reads as
 // not-found so ids cannot be probed.

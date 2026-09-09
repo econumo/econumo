@@ -2,6 +2,8 @@ package api_test
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -62,9 +64,10 @@ func (fakeConverter) Convert(_ context.Context, _ vo.Id, from, to, amount string
 // in tests) while the pipeline's own transaction holds the only connection,
 // deadlocking the test.
 type fakeTxns struct {
-	db      *dbtest.DB
-	created int
-	updated []model.UpdateTransactionRequest
+	db       *dbtest.DB
+	created  int
+	updated  []model.UpdateTransactionRequest
+	replaced []model.UpdateTransactionRequest
 }
 
 func (f *fakeTxns) CreateTransaction(ctx context.Context, _ vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
@@ -91,9 +94,69 @@ func (f *fakeTxns) ListByAccount(context.Context, vo.Id, time.Time, time.Time) (
 	return nil, nil
 }
 
+func (f *fakeTxns) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	q := f.db.TX.Querier(ctx)
+	var (
+		accountID, amount, description string
+		typ                            int
+		spentAt                        time.Time
+	)
+	row := q.QueryRowContext(ctx, f.db.Rebind(
+		`SELECT type, account_id, amount, description, spent_at FROM transactions WHERE id = ?`), id.String())
+	if err := row.Scan(&typ, &accountID, &amount, &description, &spentAt); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, errs.NewNotFound("Transaction not found")
+		}
+		return nil, err
+	}
+	return &model.Transaction{
+		ID: id, UserID: vo.MustParseId(userA), Type: model.TransactionType(typ),
+		AccountID: vo.MustParseId(accountID), Amount: amount, Description: description, SpentAt: spentAt,
+	}, nil
+}
+
+func (f *fakeTxns) UpdateTransactionReplacingLabels(ctx context.Context, _ vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	f.replaced = append(f.replaced, req)
+	description := ""
+	if req.Description != nil {
+		description = *req.Description
+	}
+	q := f.db.TX.Querier(ctx)
+	if _, err := q.ExecContext(ctx, f.db.Rebind(`UPDATE transactions SET description = ? WHERE id = ?`), description, req.Id); err != nil {
+		return nil, err
+	}
+	return &model.UpdateTransactionResult{}, nil
+}
+
+// fakeEntities lists owned ids as plain slices; every id listed counts as
+// user A's.
+type fakeEntities struct{ categories, payees, tags, labels []string }
+
+func named(ids []string) []model.ImportNamed {
+	out := make([]model.ImportNamed, 0, len(ids))
+	for _, id := range ids {
+		out = append(out, model.ImportNamed{ID: id, Name: id, OwnerID: userA})
+	}
+	return out
+}
+
+func (f *fakeEntities) CategoriesByOwner(context.Context, vo.Id) ([]model.ImportNamed, error) {
+	return named(f.categories), nil
+}
+func (f *fakeEntities) PayeesByOwner(context.Context, vo.Id) ([]model.ImportNamed, error) {
+	return named(f.payees), nil
+}
+func (f *fakeEntities) TagsByOwner(context.Context, vo.Id) ([]model.ImportNamed, error) {
+	return named(f.tags), nil
+}
+func (f *fakeEntities) LabelsByOwner(context.Context, vo.Id) ([]model.ImportNamed, error) {
+	return named(f.labels), nil
+}
+
 type harness struct {
 	srv      *httptest.Server
 	txns     *fakeTxns
+	entities *fakeEntities
 	f        *fixture.Builder
 	provider *stubProvider
 }
@@ -106,7 +169,8 @@ func newHarness(t *testing.T) *harness {
 	f.Account(fixture.Account{ID: acct1, UserID: userA, CurrencyID: usdID, Name: "Card"})
 	f.ImportSource(fixture.ImportSource{ID: source, UserID: userA, Name: "iPhone"})
 	txns := &fakeTxns{db: db}
-	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
+	entities := &fakeEntities{}
+	svc := appimports.NewService(importsrepo.NewRepo(db.Engine, db.TX), fakeAccounts{}, fakeConverter{}, txns, txns, entities, nil, db.TX, clock{now}, appimports.DefaultMatcherConfig())
 	svc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
 	svc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
 	provider := &stubProvider{}
@@ -116,5 +180,5 @@ func newHarness(t *testing.T) *harness {
 	handlerimports.RegisterAPI(handlerimports.NewHandlers(svc), authstub.Authenticator{})(mux)
 	srv := httptest.NewServer(middleware.Chain(middleware.RequestID, middleware.AccessLog)(mux))
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, txns: txns, f: f, provider: provider}
+	return &harness{srv: srv, txns: txns, entities: entities, f: f, provider: provider}
 }

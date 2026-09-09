@@ -347,6 +347,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
 		NewImportsTransactionWriter(transactionSvc),
 		NewImportsTransactionLister(transactionRepo),
+		NewImportsClassificationLister(txImportCategories.CategoriesByOwner, txImportPayees.PayeesByOwner, txImportTags.TagsByOwner, txImportLabels.LabelsByOwner),
 		authLimiter, txm, clk,
 		appimports.MatcherConfig{
 			MatchDays:       cfg.ImportMatchDays,

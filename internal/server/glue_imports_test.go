@@ -159,3 +159,126 @@ func TestImportsCurrencyConverter_RealProvider(t *testing.T) {
 		t.Errorf("a rate stale by two months must be ok=false: ok=%v err=%v", ok, err)
 	}
 }
+
+type stubNamedSource struct {
+	items []model.ImportNamed
+	err   error
+}
+
+func (s stubNamedSource) byOwner(context.Context, vo.Id) ([]model.ImportNamed, error) {
+	return s.items, s.err
+}
+
+func TestImportsClassificationLister(t *testing.T) {
+	ctx, owner := context.Background(), vo.NewId()
+	named := func(name string) stubNamedSource {
+		return stubNamedSource{items: []model.ImportNamed{{ID: vo.NewId().String(), Name: name, OwnerID: owner.String()}}}
+	}
+	cats, payees, tags := named("cat"), named("payee"), named("tag")
+	labels := stubNamedSource{err: errs.NewNotFound("boom")}
+	l := NewImportsClassificationLister(cats.byOwner, payees.byOwner, tags.byOwner, labels.byOwner)
+
+	for _, tc := range []struct {
+		want string
+		call func() ([]model.ImportNamed, error)
+	}{
+		{"cat", func() ([]model.ImportNamed, error) { return l.CategoriesByOwner(ctx, owner) }},
+		{"payee", func() ([]model.ImportNamed, error) { return l.PayeesByOwner(ctx, owner) }},
+		{"tag", func() ([]model.ImportNamed, error) { return l.TagsByOwner(ctx, owner) }},
+	} {
+		got, err := tc.call()
+		if err != nil || len(got) != 1 || got[0].Name != tc.want {
+			t.Errorf("%s list = %+v, %v", tc.want, got, err)
+		}
+	}
+	if _, err := l.LabelsByOwner(ctx, owner); err == nil {
+		t.Error("a source error must propagate")
+	}
+}
+
+type stubTxSource struct {
+	tx     *model.Transaction
+	labels map[string][]string
+	getErr error
+	lblErr error
+}
+
+func (s stubTxSource) ListByAccountIDs(context.Context, []vo.Id, model.TransactionFilter) ([]*model.Transaction, error) {
+	return nil, nil
+}
+
+func (s stubTxSource) GetByID(context.Context, vo.Id) (*model.Transaction, error) {
+	if s.getErr != nil {
+		return nil, s.getErr
+	}
+	clone := *s.tx
+	return &clone, nil
+}
+
+func (s stubTxSource) LabelsByTransactionIDs(context.Context, []vo.Id) (map[string][]string, error) {
+	return s.labels, s.lblErr
+}
+
+func TestImportsTransactionLister_GetByID(t *testing.T) {
+	ctx := context.Background()
+	id, label := vo.NewId(), vo.NewId()
+	// a stale LabelIDs on the row must be replaced, not appended to
+	src := stubTxSource{
+		tx:     &model.Transaction{ID: id, LabelIDs: []vo.Id{vo.NewId()}},
+		labels: map[string][]string{id.String(): {label.String()}},
+	}
+	got, err := NewImportsTransactionLister(src).GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if len(got.LabelIDs) != 1 || !got.LabelIDs[0].Equal(label) {
+		t.Fatalf("LabelIDs = %v, want [%s]", got.LabelIDs, label)
+	}
+
+	// no labels on file -> empty set
+	bare := stubTxSource{tx: &model.Transaction{ID: id, LabelIDs: []vo.Id{vo.NewId()}}, labels: map[string][]string{}}
+	got, err = NewImportsTransactionLister(bare).GetByID(ctx, id)
+	if err != nil || len(got.LabelIDs) != 0 {
+		t.Fatalf("labelless GetByID = %v, %v", got.LabelIDs, err)
+	}
+
+	if _, err := NewImportsTransactionLister(stubTxSource{getErr: errs.NewNotFound("Transaction not found")}).GetByID(ctx, id); err == nil {
+		t.Error("a missing transaction must propagate not-found")
+	}
+	if _, err := NewImportsTransactionLister(stubTxSource{tx: &model.Transaction{ID: id}, lblErr: errs.NewNotFound("boom")}).GetByID(ctx, id); err == nil {
+		t.Error("a label read error must propagate")
+	}
+}
+
+type stubTxWriter struct{ calls []string }
+
+func (s *stubTxWriter) CreateTransaction(context.Context, vo.Id, model.CreateTransactionRequest) (*model.CreateTransactionResult, error) {
+	s.calls = append(s.calls, "create")
+	return &model.CreateTransactionResult{}, nil
+}
+
+func (s *stubTxWriter) UpdateTransaction(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	s.calls = append(s.calls, "update")
+	return &model.UpdateTransactionResult{}, nil
+}
+
+func (s *stubTxWriter) UpdateTransactionPreservingLabels(context.Context, vo.Id, model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	s.calls = append(s.calls, "preserving")
+	return &model.UpdateTransactionResult{}, nil
+}
+
+// The two update paths must not collapse into one: an amount fix keeps the
+// user's labels, while applying a rule replaces them.
+func TestImportsTransactionWriter_UpdateVariants(t *testing.T) {
+	ctx, svc := context.Background(), &stubTxWriter{}
+	w := NewImportsTransactionWriter(svc)
+	if _, err := w.UpdateTransaction(ctx, vo.NewId(), model.UpdateTransactionRequest{}); err != nil {
+		t.Fatalf("UpdateTransaction: %v", err)
+	}
+	if _, err := w.UpdateTransactionReplacingLabels(ctx, vo.NewId(), model.UpdateTransactionRequest{}); err != nil {
+		t.Fatalf("UpdateTransactionReplacingLabels: %v", err)
+	}
+	if want := []string{"preserving", "update"}; len(svc.calls) != 2 || svc.calls[0] != want[0] || svc.calls[1] != want[1] {
+		t.Errorf("calls = %v, want %v", svc.calls, want)
+	}
+}
