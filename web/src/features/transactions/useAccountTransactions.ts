@@ -8,7 +8,7 @@ import type { TagDto } from '@/api/dto/tag'
 import type { TransactionDto } from '@/api/dto/transaction'
 import type { UserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
-import { dayKey, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
+import { dayKey, formatDate, formatDayHeading, isFuture, isToday, isYesterday } from '@/lib/datetime'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories, useLabels, usePayees, useTags } from '@/features/classifications/queries'
 import { useRecurring } from '@/features/recurring/queries'
@@ -128,22 +128,43 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         recurringId: null,
         recurring: rt,
       }))
-    const merged = [...enriched, ...virtual].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    // A template that is due or overdue is money the user still has to act on,
+    // so it leads today's group instead of sitting at its own (possibly long
+    // past) date, where it reads as a transaction that already happened. The
+    // row keeps its real `date` — only the grouping and ordering move, so the
+    // preview and the post action still see when it was actually due.
+    const todayKey = formatDate(new Date())
+    const placed = [...enriched, ...virtual].map((tx) => {
+      const pinned = Boolean(tx.recurring) && !tx.isInFuture
+      return { tx, pinned, groupDay: pinned ? todayKey : dayKey(tx.date) }
+    })
+    placed.sort((a, b) => {
+      if (a.groupDay !== b.groupDay) {
+        return a.groupDay < b.groupDay ? 1 : -1
+      }
+      if (a.pinned !== b.pinned) {
+        return a.pinned ? -1 : 1
+      }
+      return a.tx.date < b.tx.date ? 1 : a.tx.date > b.tx.date ? -1 : 0
+    })
 
     const terms = search.toLowerCase().split(' ').filter(Boolean)
-    const filtered = terms.length === 0 ? merged : merged.filter((tx) => {
+    const filtered = terms.length === 0 ? placed : placed.filter(({ tx }) => {
       const hay = haystack(tx)
       return terms.every((term) => hay.includes(term))
     })
 
-    // already date-desc from the merge above; group by day
+    // already ordered by group above; emit one separator per group
     const entries: DailyListEntry[] = []
     let currentDay: string | null = null
-    for (const tx of filtered) {
-      const day = dayKey(tx.date)
-      if (day !== currentDay) {
-        currentDay = day
-        entries.push({ kind: 'separator', day, label: isToday(day) ? 'today' : isYesterday(day) ? 'yesterday' : 'date' })
+    for (const { tx, groupDay } of filtered) {
+      if (groupDay !== currentDay) {
+        currentDay = groupDay
+        entries.push({
+          kind: 'separator',
+          day: groupDay,
+          label: isToday(groupDay) ? 'today' : isYesterday(groupDay) ? 'yesterday' : 'date',
+        })
       }
       entries.push({ kind: 'transaction', transaction: tx })
     }

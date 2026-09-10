@@ -1,7 +1,7 @@
 import { v7 as uuidv7 } from 'uuid'
 import type { AccountDto } from '@/api/dto/account'
 import type { PostRecurringPayload, RecurringDto } from '@/api/dto/recurring'
-import { formatDateTime, isFuture } from '@/lib/datetime'
+import { formatDateTime } from '@/lib/datetime'
 import { normalize } from '@/lib/decimal'
 
 /**
@@ -42,8 +42,9 @@ export function recurringPostPayload(
     // with no chip row to edit, so it asks the server to inherit the template's
     // labels rather than echoing a possibly-stale cached copy of them
     description: recurring.description || '',
-    // posting ahead of schedule means "pay it now": the money moves today, so a
-    // future scheduled date is clamped to the present rather than written as-is
-    date: isFuture(recurring.nextPaymentAt) ? formatDateTime(new Date()) : recurring.nextPaymentAt,
+    // Posting is the moment the money moves, so the transaction is always
+    // dated now — never at a schedule the user posted ahead of, and never at a
+    // missed one they are only catching up on today.
+    date: formatDateTime(new Date()),
   }
 }

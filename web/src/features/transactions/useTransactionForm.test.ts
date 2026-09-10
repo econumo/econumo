@@ -101,6 +101,28 @@ it('hydrates labelIds from a recurring template being posted', () => {
   expect(initialFormState({ postRecurring: rt }, [account({})], null).labelIds).toEqual(['l1'])
 })
 
+it('seeds the date with now when the template being posted is overdue', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
+  const rt: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '50', categoryId: 'cat1', payeeId: null, tagId: null, labelIds: [], description: 'rent',
+    schedule: 'monthly', nextPaymentAt: '2026-06-15 00:00:00',
+  }
+  expect(initialFormState({ postRecurring: rt }, [account({})], null).date).toBe('2026-08-20 14:30:45')
+})
+
+it('keeps the scheduled date when the template being posted is still in the future', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
+  const rt: RecurringDto = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '50', categoryId: 'cat1', payeeId: null, tagId: null, labelIds: [], description: 'rent',
+    schedule: 'monthly', nextPaymentAt: '2026-09-01 00:00:00',
+  }
+  expect(initialFormState({ postRecurring: rt }, [account({})], null).date).toBe('2026-09-01 00:00:00')
+})
+
 describe('classificationChips', () => {
   const tag = (over: Partial<TagDto>): TagDto => ({
     id: 'tg1', ownerUserId: 'u1', name: 'vacation', icon: 'tag', position: 0, isArchived: 0, createdAt: '', updatedAt: '', ...over,

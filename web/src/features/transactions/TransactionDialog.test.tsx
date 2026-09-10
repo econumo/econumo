@@ -401,10 +401,16 @@ it('creates a category on the fly and selects it', async () => {
 })
 
 it('posting a recurring template: regular add dialog + date prefill, submits to post-recurring-transaction (not create-transaction)', async () => {
+  // relative to the real clock, not a hard-coded date: only a template still
+  // AHEAD of schedule prefills its own date, so a fixed date would silently
+  // change what this test covers once it slipped into the past
+  const due = new Date()
+  due.setDate(due.getDate() + 5)
+  const dueDay = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
   const wireRecurringDto: RecurringDto = {
     id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
     amount: '42.5', categoryId: 'cat-food', payeeId: null, tagId: null, labelIds: [], description: 'rent',
-    schedule: 'monthly', nextPaymentAt: '2026-07-05 00:00:00',
+    schedule: 'monthly', nextPaymentAt: `${dueDay} 00:00:00`,
   }
   let createCalled = false
   let postBody: Record<string, unknown> | undefined
@@ -431,7 +437,7 @@ it('posting a recurring template: regular add dialog + date prefill, submits to 
 
   // posting reads as the ordinary add dialog — the template only prefills it
   await screen.findByRole('heading', { name: 'Add transaction' })
-  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent('2026-07-05')
+  expect(screen.getByRole('button', { name: 'date' })).toHaveTextContent(dueDay)
   // the account list hasn't resolved yet at the moment the form seeds its
   // initial state (TransactionForm only mounts once the modal opens), so the
   // amount echoes normalizeNumber's un-padded value rather than the account's
