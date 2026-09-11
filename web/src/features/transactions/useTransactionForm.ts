@@ -7,7 +7,7 @@ import type { FolderDto } from '@/api/dto/folder'
 import type { Id } from '@/api/types'
 import type { OpenTransactionParams } from '@/app/uiStore'
 import type { ClassificationKind } from '@/lib/classificationKind'
-import { formatDateTime } from '@/lib/datetime'
+import { formatDateTime, isFuture } from '@/lib/datetime'
 import { moneyFormat } from '@/lib/money'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
 import { normalize, tryNormalize } from '@/lib/decimal'
@@ -54,7 +54,10 @@ export function initialFormState(params: OpenTransactionParams, accounts: Accoun
       // template's set and any toggle the user makes lands on the transaction
       labelIds: rt.labelIds ?? [],
       description: rt.description,
-      date: rt.nextPaymentAt,
+      // a missed schedule is caught up TODAY, so the date chip starts at now
+      // rather than at the past date the user is unlikely to want; a template
+      // still ahead of schedule keeps its own date for the user to confirm
+      date: isFuture(rt.nextPaymentAt) ? rt.nextPaymentAt : formatDateTime(new Date()),
     }
   }
   const tx = params.transaction

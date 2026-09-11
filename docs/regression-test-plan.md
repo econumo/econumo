@@ -132,6 +132,12 @@ navigation (single-pane vs sidebar).
       search filters the list; virtualized scroll stays smooth with 100+ rows
       (seed them via CSV import — a generated 100+-row file doubles as the
       import-at-scale test).
+- [ ] Not-posted recurring entries due today or overdue lead the "today" group,
+      above today's real transactions, however far in the past they were due —
+      so opening the account puts them first on screen. They stay dimmed with
+      the red "not posted" note; templates due in the FUTURE keep their own day
+      group above the fold. With no transactions today at all, the pinned rows
+      still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
 
 ## 5. Transactions
@@ -167,9 +173,13 @@ navigation (single-pane vs sidebar).
       from Settings → Recurring): type, amount, schedule, accounts, category.
 - [ ] Due occurrence appears on the account page as "not posted". Post from the
       account-page row preview posts immediately (dated today); Post from
-      Settings → Recurring opens a pre-filled review dialog (scheduled date)
-      that you confirm. Both advance the schedule. Skip (advances without
-      posting) is offered ONLY on the account-page row preview.
+      Settings → Recurring opens a pre-filled review dialog that you confirm.
+      Both advance the schedule. Skip (advances without posting) is offered
+      ONLY on the account-page row preview.
+- [ ] Post an OVERDUE occurrence (schedule date in the past) both ways: the
+      created transaction is dated TODAY, not at the missed date, and lands in
+      today's group. The review dialog's date chip likewise pre-fills today —
+      a template still ahead of schedule keeps pre-filling its scheduled date.
 - [ ] Month-end clamping (31st → Feb 28 → Mar 31) is long-horizon — covered by
       unit tests; in a manual run just note the next-date math looks right.
 - [ ] Edit and delete a rule; delete asks for confirmation; posted transactions
