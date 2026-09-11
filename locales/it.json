@@ -632,7 +632,8 @@
             "revoke_others": "Disconnetti gli altri dispositivi",
             "confirm_sign_out": "Uscire da questo dispositivo?",
             "confirm_revoke": "Revocare questa sessione? Il dispositivo verrà disconnesso.",
-            "confirm_revoke_others": "Disconnettere tutti gli altri dispositivi? Resterà attiva solo questa sessione."
+            "confirm_revoke_others": "Disconnettere tutti gli altri dispositivi? Resterà attiva solo questa sessione.",
+            "via": "tramite {provider}"
           },
           "tokens": {
             "menu_item": "Token API",
@@ -680,6 +681,22 @@
             },
             "revoke": "Revoca",
             "confirm_revoke": "Revocare questo token? Le integrazioni che lo usano smetteranno subito di funzionare."
+          },
+          "linked_accounts": {
+            "menu_item": "Account collegati",
+            "header": "Account collegati",
+            "description": "Account esterni con cui puoi accedere. Collegane uno per accedere senza password.",
+            "empty": "Nessun account collegato.",
+            "linked_on": "Collegato",
+            "link": "Collega",
+            "unlink": "Scollega",
+            "confirm_unlink": "Scollegare questo account? Non potrai più usarlo per accedere.",
+            "last_identity_hint": "Imposta una password prima di scollegare il tuo unico metodo di accesso.",
+            "linked_toast": "Account {provider} collegato.",
+            "set_password": {
+              "menu_item": "Imposta una password",
+              "description": "Ti sei registrato con un account esterno. Ti invieremo un codice via email per impostare una password."
+            }
           },
           "analytics": {
             "label": "Condividi le statistiche di utilizzo",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "Registrandoti, accetti la nostra <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Informativa sulla privacy</a> e i <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Termini di servizio</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "oppure continua con",
+      "button": {
+        "google": "Continua con Google",
+        "apple": "Continua con Apple",
+        "oidc": "Continua con {name}"
+      },
+      "callback": {
+        "signing_in": "Accesso in corso…"
+      },
+      "logout_notice": "Hai effettuato il logout da Econumo. La tua sessione {provider} potrebbe essere ancora attiva; esci anche da lì per terminarla.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "L'accesso è stato annullato.",
+        "invalid_state": "Il tentativo di accesso è scaduto o è già stato utilizzato. Riprova.",
+        "provider_error": "Il provider di accesso ha restituito un errore. Riprova.",
+        "email_required": "Il provider di accesso non ha condiviso un indirizzo email, richiesto da Econumo.",
+        "email_unverified": "Il provider di accesso non ha verificato questo indirizzo email.",
+        "registration_disabled": "La registrazione è disattivata su questo server. Accedi prima con un account esistente.",
+        "identity_taken": "Questo account esterno è già collegato a un altro account Econumo.",
+        "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider.",
+        "account_inactive": "Questo account è stato disattivato."
       }
     }
   },
@@ -1497,6 +1542,12 @@
       "cannot_be_merged": "I tag selezionati non possono essere uniti.",
       "list_empty": "L'elenco dei tag è vuoto"
     },
+    "oauth": {
+      "provider_not_configured": "Il provider di accesso non è configurato",
+      "handoff_invalid": "Il link di accesso non è valido o è scaduto",
+      "last_identity": "Imposta una password prima di scollegare il tuo unico metodo di accesso",
+      "identity_not_found": "Account collegato non trovato"
+    },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
       "already_exists": "Il beneficiario esiste già.",
@@ -1552,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Richiesta di modifica dell'email",
       "body": "Ciao {name},\n\nQualcuno ha richiesto di modificare l'email del tuo account in {email}. Se non sei stato tu, cambia immediatamente la tua password."
+    },
+    "identity_linked": {
+      "subject": "Un nuovo metodo di accesso è stato collegato al tuo account",
+      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. Per sicurezza, le tue altre sessioni sono state disconnesse.\n\nSe non sei stato tu, reimposta subito la password: questo chiude tutte le altre sessioni e ti permette di scollegare l'account dalle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
   }
 }

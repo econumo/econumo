@@ -87,7 +87,8 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// the move-* routes (the seven order-*-list routes were swapped 1:1, so
 	// only the three bulk-sort routes are net new).
 	// 104 -> 112 on 2026-08-05: the 8 label routes were added.
-	const minRoutes = 112
+	// 112 -> 121 on 2026-09-07: the 9 oauth routes were added.
+	const minRoutes = 121
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

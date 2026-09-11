@@ -105,6 +105,11 @@ const (
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
+
+	CodeOAuthProviderNotConfigured = "oauth.provider_not_configured"
+	CodeOAuthHandoffInvalid        = "oauth.handoff_invalid"
+	CodeOAuthLastIdentity          = "oauth.last_identity"
+	CodeOAuthIdentityNotFound      = "oauth.identity_not_found"
 )
 
 var AllCodes = []string{
@@ -204,4 +209,9 @@ var AllCodes = []string{
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
+
+	CodeOAuthProviderNotConfigured,
+	CodeOAuthHandoffInvalid,
+	CodeOAuthLastIdentity,
+	CodeOAuthIdentityNotFound,
 }

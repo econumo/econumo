@@ -21,6 +21,7 @@ type Querier interface {
 	// $1 is reused everywhere, so the generated param is a single field.
 	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountIdentitiesByUser(ctx context.Context, userID string) (int64, error)
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
@@ -37,9 +38,14 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
+	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.
@@ -114,6 +120,9 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
+	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
+	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -133,6 +142,8 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
+	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
@@ -197,6 +208,8 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
@@ -258,6 +271,7 @@ type Querier interface {
 	ListFolderAccountIDs(ctx context.Context, folderID string) ([]string, error)
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -321,6 +335,7 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

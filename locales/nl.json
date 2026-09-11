@@ -632,7 +632,8 @@
             "revoke_others": "Andere apparaten uitloggen",
             "confirm_sign_out": "Op dit apparaat uitloggen?",
             "confirm_revoke": "Deze sessie intrekken? Het apparaat wordt uitgelogd.",
-            "confirm_revoke_others": "Op alle andere apparaten uitloggen? Alleen deze sessie blijft actief."
+            "confirm_revoke_others": "Op alle andere apparaten uitloggen? Alleen deze sessie blijft actief.",
+            "via": "via {provider}"
           },
           "tokens": {
             "menu_item": "API-tokens",
@@ -680,6 +681,22 @@
             },
             "revoke": "Intrekken",
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
+          },
+          "linked_accounts": {
+            "menu_item": "Gekoppelde accounts",
+            "header": "Gekoppelde accounts",
+            "description": "Externe accounts waarmee u kunt inloggen. Koppel er een om zonder wachtwoord in te loggen.",
+            "empty": "Nog geen gekoppelde accounts.",
+            "linked_on": "Gekoppeld",
+            "link": "Koppelen",
+            "unlink": "Ontkoppelen",
+            "confirm_unlink": "Dit account ontkoppelen? U kunt hiermee niet meer inloggen.",
+            "last_identity_hint": "Stel een wachtwoord in voordat u uw enige aanmeldmethode ontkoppelt.",
+            "linked_toast": "{provider}-account gekoppeld.",
+            "set_password": {
+              "menu_item": "Wachtwoord instellen",
+              "description": "U hebt zich aangemeld met een extern account. Wij sturen u een code per e-mail om een wachtwoord in te stellen."
+            }
           },
           "analytics": {
             "label": "Gebruiksstatistieken delen",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "Door u te registreren gaat u akkoord met ons <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacybeleid</a> en onze <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Servicevoorwaarden</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "of ga verder met",
+      "button": {
+        "google": "Doorgaan met Google",
+        "apple": "Doorgaan met Apple",
+        "oidc": "Doorgaan met {name}"
+      },
+      "callback": {
+        "signing_in": "Aanmelden…"
+      },
+      "logout_notice": "U bent uitgelogd bij Econumo. Uw {provider}-sessie is mogelijk nog actief; log daar ook uit om deze te beëindigen.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Aanmelden is geannuleerd.",
+        "invalid_state": "De aanmeldpoging is verlopen of al gebruikt. Probeer het opnieuw.",
+        "provider_error": "De aanmeldprovider heeft een fout teruggegeven. Probeer het opnieuw.",
+        "email_required": "De aanmeldprovider heeft geen e-mailadres gedeeld, terwijl Econumo dat vereist.",
+        "email_unverified": "De aanmeldprovider heeft dit e-mailadres niet geverifieerd.",
+        "registration_disabled": "Registratie is uitgeschakeld op deze server. Log eerst in met een bestaand account.",
+        "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account.",
+        "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider.",
+        "account_inactive": "Dit account is gedeactiveerd."
       }
     }
   },
@@ -1497,6 +1542,12 @@
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
     },
+    "oauth": {
+      "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",
+      "handoff_invalid": "De aanmeldlink is ongeldig of verlopen",
+      "last_identity": "Stel een wachtwoord in voordat u uw enige aanmeldmethode ontkoppelt",
+      "identity_not_found": "Gekoppeld account niet gevonden"
+    },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
       "already_exists": "Deze begunstigde bestaat al.",
@@ -1552,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Wijziging van e-mailadres aangevraagd",
       "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
+    },
+    "identity_linked": {
+      "subject": "Er is een nieuwe aanmeldmethode aan uw account gekoppeld",
+      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. Voor uw veiligheid zijn uw andere sessies afgemeld.\n\nAls u dit niet was, stel dan direct uw wachtwoord opnieuw in — dat beëindigt alle andere sessies en stelt u in staat het account in Instellingen te ontkoppelen.\n\n--\nEconumo — Beheer geld. Samen.\n"
     }
   }
 }

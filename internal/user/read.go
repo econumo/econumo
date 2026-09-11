@@ -160,5 +160,6 @@ func (s *ReadService) currentUser(ctx context.Context, userID vo.Id) (model.Curr
 		ReportPeriod: reportPeriod,
 		AccessLevel:  string(level),
 		AccessUntil:  datetime.FormatOrEmpty(u.AccessUntil),
+		HasPassword:  model.HasPasswordAlgorithm(u.Algorithm),
 	}, nil
 }

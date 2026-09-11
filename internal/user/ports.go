@@ -86,3 +86,11 @@ const (
 	// resend cooldown. It carries no configured limit.
 	RateScopeEmailChangeSent = "email-change-sent"
 )
+
+// LogoutURLBuilder is the oauth feature's end-session capability, consumed by
+// Logout for sessions minted through the custom OIDC slot. nil disables it.
+type LogoutURLBuilder interface {
+	// EndSessionURL returns the IdP end-session URL for a session minted through
+	// provider with the given ID token, or "" when the provider supports none.
+	EndSessionURL(ctx context.Context, provider, idToken string) (string, error)
+}

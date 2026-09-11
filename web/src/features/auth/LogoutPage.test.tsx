@@ -1,4 +1,5 @@
-import { render } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
@@ -43,15 +44,22 @@ vi.mock('@/lib/storage', async (importOriginal) => {
   }
 })
 
+const assign = vi.fn()
+
+function renderPage() {
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  const router = createMemoryRouter([{ path: '/logout', element: <LogoutPage /> }], { initialEntries: ['/logout'] })
+  render(<RouterProvider router={router} />)
+}
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   order.length = 0
+  assign.mockClear()
 })
 
 it('calls logout, purges the token and redirects to /login', async () => {
-  const assign = vi.fn()
-  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
   let called = false
   server.use(
     http.post('*/api/v1/user/logout-user', () => {
@@ -61,8 +69,7 @@ it('calls logout, purges the token and redirects to /login', async () => {
   )
   setToken('tok')
   localStorage.setItem('econumo.query-cache', '{"stale":"finances"}')
-  const router = createMemoryRouter([{ path: '/logout', element: <LogoutPage /> }], { initialEntries: ['/logout'] })
-  render(<RouterProvider router={router} />)
+  renderPage()
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
   expect(called).toBe(true)
   expect(localStorage.getItem('token')).toBeNull()
@@ -71,4 +78,64 @@ it('calls logout, purges the token and redirects to /login', async () => {
   // identity reset has to land strictly between the tracked event and the
   // token removal that follows it.
   expect(order).toEqual(['trackEvent', 'resetAnalyticsIdentity', 'removeToken'])
+})
+
+it('navigates to the IdP end-session url when logout returns one', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(http.post('*/api/v1/user/logout-user', () =>
+    HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: 'https://idp/end?x=1', provider: 'oidc' } })))
+  renderPage()
+  await waitFor(() => expect(assign).toHaveBeenCalledWith('https://idp/end?x=1'))
+  expect(localStorage.getItem('token')).toBeNull()
+})
+
+it('shows the local-logout notice for a provider session without an end-session url', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'google' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })),
+  )
+  renderPage()
+  expect(await screen.findByText("You're signed out of Econumo. Your Google session may still be active; sign out there to end it.")).toBeInTheDocument()
+  expect(assign).not.toHaveBeenCalledWith('/login')
+  await userEvent.click(screen.getByRole('button'))
+  expect(assign).toHaveBeenCalledWith('/login')
+})
+
+it('shows the configured custom-provider name fetched from the provider list', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] })),
+  )
+  renderPage()
+  expect(await screen.findByText("You're signed out of Econumo. Your Authentik session may still be active; sign out there to end it.")).toBeInTheDocument()
+})
+
+it('falls back to the catalogue provider name when the provider list request fails', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({}, { status: 500 })),
+  )
+  renderPage()
+  expect(await screen.findByText(/Your SSO session may still be active/)).toBeInTheDocument()
+})
+
+it('in the app ignores the end-session url and logs out locally', async () => {
+  window.Capacitor = { isNativePlatform: () => true }
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: 'https://idp/end', provider: 'oidc' } })),
+    http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({}, { status: 500 })),
+  )
+  renderPage()
+  expect(await screen.findByText(/Your SSO session may still be active/)).toBeInTheDocument()
+  delete (window as { Capacitor?: unknown }).Capacitor
 })

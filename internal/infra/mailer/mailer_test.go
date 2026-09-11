@@ -123,6 +123,51 @@ func TestWithAppLink(t *testing.T) {
 	}
 }
 
+func TestIdentityLinkedSender(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if !c.called {
+		t.Fatal("expected the mailer to be called")
+	}
+	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" ||
+		c.msg.Subject != "A new sign-in method was linked to your account" {
+		t.Errorf("message envelope = %+v", c.msg)
+	}
+	if !strings.Contains(c.msg.Text, "Alice") || !strings.Contains(c.msg.Text, "Google") {
+		t.Errorf("body should contain name + provider: %q", c.msg.Text)
+	}
+}
+
+func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	ctx := reqctx.WithLanguage(context.Background(), "ru")
+	if err := s.SendIdentityLinked(ctx, "user@x.test", "Алиса", "Google", ""); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if strings.Contains(c.msg.Text, "linked to your Econumo account") {
+		t.Fatalf("empty lang should fall back to reqctx.Language, got English body: %q", c.msg.Text)
+	}
+	if !strings.Contains(c.msg.Text, "Алиса") || !strings.Contains(c.msg.Text, "Google") {
+		t.Errorf("ru body missing name/provider: %q", c.msg.Text)
+	}
+}
+
+func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	want := "Hi Alice,\n\nA Apple account was just linked to your Econumo account and can now be used to sign in. For safety, your other sessions have been signed out.\n\nIf this wasn't you, reset your password right away — that removes every other session and lets you unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
+	if c.msg.Text != want {
+		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
+	}
+}
+
 func TestResetEmailRussian(t *testing.T) {
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
 	msg := sendResetCapture(t, ctx, "u@example.test", "Алиса", "123456")

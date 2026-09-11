@@ -632,7 +632,8 @@
             "revoke_others": "Cerrar sesión en los otros dispositivos",
             "confirm_sign_out": "¿Cerrar sesión en este dispositivo?",
             "confirm_revoke": "¿Revocar esta sesión? Se cerrará la sesión en ese dispositivo.",
-            "confirm_revoke_others": "¿Cerrar sesión en todos los demás dispositivos? Solo esta sesión seguirá activa."
+            "confirm_revoke_others": "¿Cerrar sesión en todos los demás dispositivos? Solo esta sesión seguirá activa.",
+            "via": "mediante {provider}"
           },
           "tokens": {
             "menu_item": "Tokens de API",
@@ -680,6 +681,22 @@
             },
             "revoke": "Revocar",
             "confirm_revoke": "¿Revocar este token? Las integraciones que lo usen dejarán de funcionar de inmediato."
+          },
+          "linked_accounts": {
+            "menu_item": "Cuentas vinculadas",
+            "header": "Cuentas vinculadas",
+            "description": "Cuentas externas con las que puedes iniciar sesión. Vincula una para iniciar sesión sin contraseña.",
+            "empty": "Aún no tienes cuentas vinculadas.",
+            "linked_on": "Vinculada",
+            "link": "Vincular",
+            "unlink": "Desvincular",
+            "confirm_unlink": "¿Desvincular esta cuenta? Ya no podrás iniciar sesión con ella.",
+            "last_identity_hint": "Establece una contraseña antes de desvincular tu único método de inicio de sesión.",
+            "linked_toast": "Cuenta de {provider} vinculada.",
+            "set_password": {
+              "menu_item": "Establecer una contraseña",
+              "description": "Te registraste con una cuenta externa. Te enviaremos un código por correo electrónico para establecer una contraseña."
+            }
           },
           "analytics": {
             "label": "Compartir estadísticas de uso",
@@ -758,6 +775,34 @@
         "privacy": {
           "text": "Al registrarte, aceptas nuestra <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Política de privacidad</a> y nuestros <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Términos del servicio</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "o continúa con",
+      "button": {
+        "google": "Continuar con Google",
+        "apple": "Continuar con Apple",
+        "oidc": "Continuar con {name}"
+      },
+      "callback": {
+        "signing_in": "Iniciando sesión…"
+      },
+      "logout_notice": "Has cerrado sesión en Econumo. Es posible que tu sesión de {provider} siga activa; cierra sesión allí para finalizarla.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Se canceló el inicio de sesión.",
+        "invalid_state": "El intento de inicio de sesión caducó o ya se usó. Inténtalo de nuevo.",
+        "provider_error": "El proveedor de inicio de sesión devolvió un error. Inténtalo de nuevo.",
+        "email_required": "El proveedor de inicio de sesión no compartió una dirección de correo electrónico, que Econumo requiere.",
+        "email_unverified": "El proveedor de inicio de sesión no ha verificado esta dirección de correo electrónico.",
+        "registration_disabled": "El registro está desactivado en este servidor. Inicia sesión primero con una cuenta existente.",
+        "identity_taken": "Esta cuenta externa ya está vinculada a otra cuenta de Econumo.",
+        "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor.",
+        "account_inactive": "Esta cuenta ha sido desactivada."
       }
     }
   },
@@ -1497,6 +1542,12 @@
       "cannot_be_merged": "Las etiquetas seleccionadas no se pueden combinar.",
       "list_empty": "La lista de etiquetas está vacía."
     },
+    "oauth": {
+      "provider_not_configured": "El proveedor de inicio de sesión no está configurado",
+      "handoff_invalid": "El enlace de inicio de sesión no es válido o ha caducado",
+      "last_identity": "Establece una contraseña antes de desvincular tu único método de inicio de sesión",
+      "identity_not_found": "Cuenta vinculada no encontrada"
+    },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
       "already_exists": "El beneficiario ya existe.",
@@ -1552,6 +1603,10 @@
     "change_email_notice": {
       "subject": "Se solicitó un cambio de correo electrónico",
       "body": "Hola, {name}:\n\nAlguien solicitó cambiar el correo electrónico de tu cuenta a {email}. Si no fuiste tú, cambia tu contraseña de inmediato."
+    },
+    "identity_linked": {
+      "subject": "Se vinculó un nuevo método de inicio de sesión a tu cuenta",
+      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. Por seguridad, se cerraron tus demás sesiones.\n\nSi no fuiste tú, restablece tu contraseña de inmediato: eso elimina todas las demás sesiones y te permite desvincular la cuenta desde Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

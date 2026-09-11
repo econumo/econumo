@@ -19,6 +19,8 @@ type AccessToken struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time
 	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
 }
 
 type Account struct {
@@ -190,6 +192,29 @@ type MessengerMessage struct {
 	DeliveredAt *time.Time
 }
 
+type OauthHandoff struct {
+	CodeHash  string
+	UserID    string
+	Provider  string
+	FlowHash  string
+	IDToken   *string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
+type OauthState struct {
+	StateHash    string
+	Provider     string
+	Nonce        string
+	CodeVerifier string
+	FlowHash     string
+	Client       string
+	Intent       string
+	LinkUserID   *string
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+}
+
 type OperationRequestsID struct {
 	ID        string
 	IsHandled bool
@@ -317,6 +342,16 @@ type UsersHiddenCurrency struct {
 	UserID     string
 	CurrencyID string
 	CreatedAt  time.Time
+}
+
+type UsersIdentity struct {
+	ID        string
+	UserID    string
+	Provider  string
+	Subject   string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type UsersOption struct {

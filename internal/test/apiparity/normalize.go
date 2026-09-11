@@ -21,7 +21,10 @@ func NormalizeParity(b []byte) string {
 	s := uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
 	s = tokenRe.ReplaceAllString(s, "<token>")
 	s = handoffRe.ReplaceAllString(s, "${1}t=<handoff-token>")
-	return inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
+	s = inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
+	s = oauthParamRe.ReplaceAllString(s, "${1}<random>")
+	s = oauthFlowRe.ReplaceAllString(s, `"flow":"<oauth-flow>"`)
+	return fakeIssuerRe.ReplaceAllString(s, "<issuer>")
 }
 
 var (
@@ -44,6 +47,21 @@ var (
 	// `t=` would also match inside substrings like `format=v1.2` or
 	// `amount=1.5`, silently redacting strictly-compared golden content.
 	handoffRe = regexp.MustCompile(`([?&])t=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`)
+
+	// oauthParamRe redacts the per-request state/nonce/PKCE code_challenge
+	// values oidc.RandomToken mints for every authorization URL — 43-char
+	// base64url tokens (32 random bytes, RawURLEncoding), fresh every run.
+	oauthParamRe = regexp.MustCompile(`([?&](?:state|nonce|code_challenge)=)[A-Za-z0-9_-]{43}`)
+
+	// oauthFlowRe redacts the per-flow secret start-login/start-link returns —
+	// the same 43-char base64url shape as the parameters above, fresh every run.
+	oauthFlowRe = regexp.MustCompile(`"flow":"[A-Za-z0-9_-]{43}"`)
+
+	// fakeIssuerRe redacts the apiparity harness's per-run fake OIDC issuer
+	// (internal/infra/oidc/oidctest), an httptest server whose loopback port
+	// differs every run and — for the enginecompare byte-parity check — differs
+	// between the sqlite and postgresql harnesses (two separate fakes).
+	fakeIssuerRe = regexp.MustCompile(`http://127\.0\.0\.1:\d+`)
 )
 
 // NormalizeGolden makes a response body stable across runs AND engines: the

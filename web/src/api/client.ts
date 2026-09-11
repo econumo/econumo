@@ -28,7 +28,8 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const url: string = error.config?.url ?? ''
-    if (status === 401 && !url.includes('/api/v1/user/login-user')) {
+    const isCredentialExchange = url.includes('/api/v1/user/login-user') || url.includes('/api/v1/oauth/exchange-handoff')
+    if (status === 401 && !isCredentialExchange) {
       removeToken()
       // No page reload happens here (client-side navigation only), so the
       // analytics module state would otherwise survive and misattribute the

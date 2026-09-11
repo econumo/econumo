@@ -5,6 +5,8 @@
 // parity suite (sqlite-vs-pgsql byte equality, `make test`).
 package apiparity
 
+import "net/url"
+
 // Call is one request in a scenario plus a label for diff messages.
 type Call struct {
 	Label string // unique within a scenario; prefix "err:" marks an expected-non-2xx call
@@ -18,8 +20,14 @@ type Call struct {
 
 	Body any // JSON-marshalled when non-nil
 
+	// Form is a form-encoded POST body (content type
+	// application/x-www-form-urlencoded) — for endpoints that only accept a
+	// provider's form_post callback (e.g. Apple's). When Form != nil it wins
+	// over Body.
+	Form url.Values
+
 	// For non-JSON requests (multipart import). When RawBody != nil it wins over
-	// Body.
+	// Body/Form.
 	RawBody     []byte
 	ContentType string
 

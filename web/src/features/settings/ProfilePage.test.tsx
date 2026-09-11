@@ -229,3 +229,28 @@ it('logout confirm has the exact copy and navigates', async () => {
   await user.click(screen.getByRole('button', { name: 'Log out' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })
+
+it('shows a Linked accounts row in the Security group', async () => {
+  renderPage()
+  expect(await screen.findByText('Linked accounts')).toBeInTheDocument()
+  expect(screen.getByText('Change password')).toBeInTheDocument()
+})
+
+it('replaces "Change password" with "Set a password" when the user has no password', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  renderPage()
+  expect(await screen.findByText('Set a password')).toBeInTheDocument()
+  expect(screen.getByText('Linked accounts')).toBeInTheDocument()
+  expect(screen.queryByText('Change password')).not.toBeInTheDocument()
+})
+
+it('"Set a password" opens the recovery dialog with the email locked', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Set a password'))
+  const dialog = await screen.findByRole('dialog')
+  const emailField = within(dialog).getByLabelText(/e-?mail/i)
+  expect(emailField).toHaveValue(fixtureUser.email)
+  expect(emailField).toBeDisabled()
+})

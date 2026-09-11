@@ -15,6 +15,7 @@ import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
+import { ProviderButtons } from './ProviderButtons'
 import { RecoveryDialog } from './RecoveryDialog'
 import { VerifyEmailDialog } from './VerifyEmailDialog'
 import { useLogin } from './queries'
@@ -36,6 +37,7 @@ export function LoginPage() {
   const [verifyOpen, setVerifyOpen] = useState(false)
   const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
+  const oauthError = searchParams.get('oauthError')
   const customApiAllowed = config.isCustomApiAllowed()
 
   const { register, handleSubmit, setValue, getValues, watch, control, formState: { errors } } = useForm<LoginForm>({
@@ -101,6 +103,12 @@ export function LoginPage() {
         {sessionExpired ? (
           <Alert variant="destructive">
             <AlertDescription>{t('auth.page.sign_in.session_expired')}</AlertDescription>
+          </Alert>
+        ) : null}
+
+        {oauthError ? (
+          <Alert variant="destructive">
+            <AlertDescription>{t(`auth.oauth.errors.${oauthError}`, { defaultValue: t('auth.oauth.errors.provider_error') })}</AlertDescription>
           </Alert>
         ) : null}
 
@@ -172,6 +180,8 @@ export function LoginPage() {
           <Button type="button" variant="secondary" className="w-full h-11" onClick={() => setRecoveryOpen(true)}>
             {t('auth.form.sign_in.action.forget_password')}
           </Button>
+
+          <ProviderButtons intent="login" />
 
           {customApiAllowed ? (
             <CustomServerSection open={selfHostedChecked} onToggle={toggleCustomServer}>

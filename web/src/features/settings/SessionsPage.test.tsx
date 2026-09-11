@@ -13,6 +13,7 @@ const current = {
   createdAt: '2026-07-01 10:00:00',
   lastUsedAt: '2026-07-10 09:00:00',
   isCurrent: true,
+  provider: '',
 }
 const other = {
   id: '01890000-0000-7000-8000-00000000c002',
@@ -20,6 +21,7 @@ const other = {
   createdAt: '2026-07-02 10:00:00',
   lastUsedAt: '2026-07-09 09:00:00',
   isCurrent: false,
+  provider: '',
 }
 
 function mockViewport() {
@@ -54,6 +56,9 @@ beforeEach(() => {
   server.use(
     http.get('*/api/v1/user/get-session-list', () =>
       HttpResponse.json({ success: true, message: '', data: [current, other] }),
+    ),
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }, { id: 'apple', name: 'Apple' }, { id: 'oidc', name: 'Authentik' }] }),
     ),
   )
 })
@@ -121,6 +126,26 @@ it('signs out other devices', async () => {
   const confirm = await screen.findAllByRole('button', { name: 'Sign out' })
   await user.click(confirm[confirm.length - 1])
   await waitFor(() => expect(called).toBe(true))
+})
+
+it('shows a "via {provider}" badge for a session opened through OAuth', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-session-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ ...current, provider: 'google' }, other] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('via Google')).toBeInTheDocument()
+})
+
+it('shows the configured custom-provider name instead of the catalogue "SSO"', async () => {
+  server.use(
+    http.get('*/api/v1/user/get-session-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ ...current, provider: 'oidc' }, other] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByText('via Authentik')).toBeInTheDocument()
 })
 
 it('securityFormat helpers parse UA and relative time', () => {

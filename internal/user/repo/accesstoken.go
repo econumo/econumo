@@ -61,6 +61,7 @@ func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) erro
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
 		Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
+		Provider: t.Provider, IDToken: t.IDToken,
 	})
 }
 
@@ -91,6 +92,7 @@ func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 		Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Provider: row.Provider, IDToken: row.IDToken,
 	}
 }
 
@@ -149,5 +151,6 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 		Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Provider: row.Provider, IDToken: row.IDToken,
 	}, nil
 }

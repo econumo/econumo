@@ -3,7 +3,7 @@
 
 -- name: GetUserView :one
 -- See the sqlite variant for rationale on the access columns.
-SELECT id, email, name, avatar, access_level, access_until, created_at
+SELECT id, email, name, avatar, access_level, access_until, created_at, algorithm
 FROM users
 WHERE id = $1;
 

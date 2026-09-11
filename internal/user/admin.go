@@ -161,8 +161,9 @@ func (s *Service) userByEmail(ctx context.Context, email string) (*model.User, e
 	return s.repo.GetByEmail(ctx, strings.TrimSpace(email))
 }
 
-// AdminUserByID loads a user by id with the email decrypted, for the admin
-// listener (which addresses users by id, never by email).
+// AdminUserByID loads a user by id with the email decrypted: the admin
+// listener (which addresses users by id, never by email), and any other
+// caller that only holds an id (e.g. the oauth identity-linked notifier).
 func (s *Service) AdminUserByID(ctx context.Context, id vo.Id) (*model.User, string, error) {
 	u, err := s.repo.GetByID(ctx, id)
 	if err != nil {

@@ -50,7 +50,7 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
 		return nil, err
 	}
-	token, terr := s.createSession(ctx, u.ID, userAgent, now)
+	token, terr := s.createSession(ctx, u.ID, userAgent, "", nil, now)
 	if terr != nil {
 		return nil, terr
 	}

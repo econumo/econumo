@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, LogoutResultDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
 import { UserOptions } from './dto/user'
 import { deriveAccessState } from '@/lib/access'
 import { analyticsUserId } from '@/lib/analyticsId'
@@ -33,8 +33,9 @@ export async function resendVerificationCode(username: string): Promise<number> 
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
 }
 
-export async function logout(): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/logout-user'))
+export async function logout(): Promise<LogoutResultDto> {
+  const response = await api.post<Envelope<LogoutResultDto>>(apiUrl('/api/v1/user/logout-user'))
+  return response.data.data
 }
 
 export async function register(email: string, password: string, name: string): Promise<void> {

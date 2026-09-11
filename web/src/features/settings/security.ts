@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as userApi from '@/api/user'
+import * as oauthApi from '@/api/oauth'
 import type { Id } from '@/api/types'
+import type { OAuthProviderId } from '@/api/dto/oauth'
 import { queryKeys } from '@/app/queryKeys'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
@@ -53,6 +55,21 @@ export function useRevokePersonalToken() {
     onSuccess: () => {
       trackEvent(METRICS.PERSONAL_TOKEN_REVOKE)
       return queryClient.invalidateQueries({ queryKey: queryKeys.personalTokens })
+    },
+  })
+}
+
+export function useIdentities() {
+  return useQuery({ queryKey: ['oauth', 'identities'], queryFn: oauthApi.getIdentityList })
+}
+
+export function useUnlinkIdentity() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (provider: OAuthProviderId) => oauthApi.unlinkIdentity(provider),
+    onSuccess: (_data, provider) => {
+      trackEvent(METRICS.IDENTITY_UNLINKED, { provider })
+      void queryClient.invalidateQueries({ queryKey: ['oauth', 'identities'] })
     },
   })
 }

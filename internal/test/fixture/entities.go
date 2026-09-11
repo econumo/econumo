@@ -30,6 +30,8 @@ type User struct {
 
 	AccessLevel string     // default "full"
 	AccessUntil *time.Time // default nil (no expiry)
+
+	Algorithm string // default "sha512"; "none" for a passwordless (OAuth-only) user
 }
 
 // defaultSalt is a fixed 40-char sha1-shaped salt for seeded users.
@@ -77,9 +79,17 @@ func (b *Builder) User(u User) string {
 		level = "full"
 	}
 	b.insert(`INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, is_active, access_level, access_until)
-		VALUES (?, ?, ?, ?, ?, ?, ?, 'sha512', ?, ?, `+active+`, ?, ?)`,
-		id, identifier, email, u.Name, u.Avatar, password, u.Salt, now, now, level, u.AccessUntil)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, `+active+`, ?, ?)`,
+		id, identifier, email, u.Name, u.Avatar, password, u.Salt, orDefault(u.Algorithm, "sha512"), now, now, level, u.AccessUntil)
 	return id
+}
+
+// orDefault returns v if non-empty, else d.
+func orDefault(v, d string) string {
+	if v == "" {
+		return d
+	}
+	return v
 }
 
 // Option seeds a single users_options row. value is nil for a NULL value.
@@ -141,6 +151,24 @@ func (b *Builder) Connect(userA, userB string) {
 	b.t.Helper()
 	b.insert(`INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, userA, userB)
 	b.insert(`INSERT INTO users_connections (user_id, connected_user_id) VALUES (?, ?)`, userB, userA)
+}
+
+// Identity seeds one users_identities row.
+type Identity struct {
+	ID       string
+	UserID   string
+	Provider string // "google" | "apple" | "oidc"
+	Subject  string
+	Email    string
+}
+
+func (b *Builder) Identity(i Identity) string {
+	b.t.Helper()
+	id := b.orNewID(i.ID)
+	now := b.now()
+	b.insert(`INSERT INTO users_identities (id, user_id, provider, subject, email, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)`, id, i.UserID, i.Provider, i.Subject, i.Email, now, now)
+	return id
 }
 
 // Currency describes a currencies row. Code/Symbol default to a USD-like entry;

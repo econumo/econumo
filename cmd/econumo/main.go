@@ -30,6 +30,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
+	"github.com/econumo/econumo/internal/oauth"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/system"
 	"github.com/econumo/econumo/internal/version"
@@ -179,6 +180,12 @@ func run(serveArgs []string) error {
 			"verification codes will only be printed to the server log")
 	}
 
+	// Provider discovery is lazy; probe once so a misconfigured issuer shows up
+	// in the boot log instead of on the first sign-in attempt.
+	for _, p := range oauthProbe(cfg) {
+		slog.Warn("oauth provider discovery failed at boot; sign-in through it will fail until it is reachable", "provider", p.id, "err", p.err)
+	}
+
 	// Server-only requirement (the CLI path validated via config.Load does not
 	// need it). PORT is never defaulted so the bound port is never an implicit
 	// surprise.
@@ -322,6 +329,35 @@ func toMigrateMigrations(in []backend.Migration) []migrate.Migration {
 	out := make([]migrate.Migration, len(in))
 	for i, m := range in {
 		out[i] = migrate.Migration{Version: m.Version, SQL: m.Up, Command: m.Command}
+	}
+	return out
+}
+
+// probeResult is one failed oauth boot probe: either the provider whose
+// discovery document could not be fetched, or (id "config") a config-level
+// error building the provider list.
+type probeResult struct {
+	id  string
+	err string
+}
+
+// oauthProbe fetches each configured provider's OIDC discovery document once
+// at boot so an unreachable issuer shows up in the startup log rather than on
+// the first sign-in attempt. It only ever warns: a config-level error (e.g. a
+// malformed Apple private key) is reported here too, but that same error is
+// what fails boot for real when server.Build calls ProvidersFromConfig again.
+func oauthProbe(cfg config.Config) []probeResult {
+	providers, err := oauth.ProvidersFromConfig(cfg, nil)
+	if err != nil {
+		return []probeResult{{id: "config", err: err.Error()}}
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var out []probeResult
+	for _, p := range providers {
+		if _, derr := p.Client.Discover(ctx); derr != nil {
+			out = append(out, probeResult{id: p.Client.Issuer().ID, err: derr.Error()})
+		}
 	}
 	return out
 }
