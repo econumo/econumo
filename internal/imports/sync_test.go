@@ -290,3 +290,32 @@ func TestSync_FinalizesRunAfterClientDisconnect(t *testing.T) {
 		t.Fatalf("last_synced_at must be written too: %+v err %v", src, err)
 	}
 }
+
+// TestSync_LoadRulesFailureLeavesNoRunningRun guards against a real
+// loadRules error (not mere context cancellation) orphaning a run row at
+// "running": loadRules is now called before the run row is even inserted,
+// so a failure here must fail the request with no run left behind at all.
+func TestSync_LoadRulesFailureLeavesNoRunningRun(t *testing.T) {
+	h, p := bankHarness(t)
+	h.f.ImportAccountLink(fixture.ImportAccountLink{SourceID: bankSource, ExternalAccountID: "ACT-1", AccountID: acct1})
+	// A rule must exist, or loadRules short-circuits before ever calling the
+	// *ByOwner lookups this test breaks.
+	h.f.ImportRule(fixture.ImportRule{UserID: userA, Action: "skip", MatchField: "external_payee", MatchType: "contains", MatchValue: "coffee"})
+	h.entities.err = errors.New("lookup unavailable")
+	p.txs = []model.ExternalTransaction{extTx("ACT-1", "T1", "-12.50", 1755900000, "Coffee")}
+
+	_, err := h.svc.Sync(reqctx.WithLogAttrs(context.Background()), vo.MustParseId(userA), syncReq())
+	if err == nil {
+		t.Fatal("a genuine loadRules error must surface")
+	}
+
+	runs, lerr := h.repo.ListRunsByUser(context.Background(), vo.MustParseId(userA), nil, 10)
+	if lerr != nil {
+		t.Fatal(lerr)
+	}
+	for _, r := range runs {
+		if r.Status == model.ImportRunStatusRunning {
+			t.Fatalf("a loadRules failure must never leave a run at running: %+v", r)
+		}
+	}
+}

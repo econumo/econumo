@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "导入自"
+    },
+    "rules": {
+      "field": { "external_payee": "收款人", "description": "说明" },
+      "type": { "contains": "包含", "prefix": "开头是", "exact": "完全等于" },
+      "action": { "classify": "分类", "skip": "跳过" },
+      "prompt": {
+        "title": "创建导入规则",
+        "changed_category": "分类已设置为“{name}”。是否为类似的导入创建规则？",
+        "changed_payee": "收款人已设置为“{name}”。是否为类似的导入创建规则？",
+        "changed_tag": "标签已设置为“{name}”。是否为类似的导入创建规则？",
+        "changed_labels": "已添加统计标签“{names}”。是否为类似的导入创建规则？",
+        "existing_rule": "此交易已由规则“{rule}”分类。",
+        "match_count": "匹配此次导入中的 {count} 笔交易",
+        "not_now": "暂不",
+        "create_rule": "创建规则",
+        "update_rule": "更新规则",
+        "apply_question": "要将此规则应用于此次导入中匹配的 {count} 笔交易吗？",
+        "skipped_edited": "已跳过 {count} 笔（已被编辑）",
+        "include_edited": "同时更新已编辑的 {count} 笔交易",
+        "skip_apply": "跳过",
+        "apply": "应用",
+        "applied_toast": "已更新 {count} 笔交易",
+        "source_question": "是否也应用于来自“{source}”的所有导入？匹配 {count} 笔交易。",
+        "apply_source": "应用于所有导入",
+        "done": "完成"
+      },
+      "editor": {
+        "field": "匹配字段",
+        "type": "匹配类型",
+        "title_create": "新建导入规则",
+        "title_edit": "编辑导入规则",
+        "action": "操作",
+        "value": "匹配值",
+        "case_sensitive": "区分大小写",
+        "category": "分类",
+        "payee": "收款人",
+        "tag": "预算标签",
+        "labels": "统计标签",
+        "match_count": "匹配 {count} 笔已导入的交易"
+      },
+      "page": {
+        "menu_item": "导入规则",
+        "title": "导入规则",
+        "intro": "规则会自动对导入的交易进行分类或跳过，按从上到下的顺序执行；拖动可调整顺序。",
+        "add": "添加规则",
+        "empty": "还没有规则。更正一笔导入的交易，Econumo 会主动提出创建一条规则。",
+        "reorder": "调整顺序",
+        "edit": "编辑",
+        "delete": "删除",
+        "delete_title": "删除此规则？",
+        "delete_confirm": "删除规则",
+        "skip_hint": "匹配的交易不会被导入"
+      },
+      "suggest": {
+        "button": "建议规则",
+        "running": "思考中…",
+        "heading": "建议的规则",
+        "accept": "采纳",
+        "discard": "丢弃"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN 拒绝了此设置令牌。它可能已被使用 — 请在你的 SimpleFIN 网桥中生成一个新令牌。",
       "provider_unavailable": "无法连接到银行网桥。请几分钟后重试。",
       "sync_range_invalid": "日期范围无效：开始日期不能晚于结束日期，且范围不能超过 400 天。",
-      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。"
+      "access_url_invalid": "保存的银行凭据不是有效的访问 URL。请使用新的设置令牌重新连接 SimpleFIN。",
+      "rule_skip_not_applicable": "跳过规则无法应用于现有交易",
+      "ai_disabled": "此服务器未启用 AI 建议",
+      "ai_unavailable": "AI 服务不可用。请稍后重试。"
     },
     "label": {
       "name_length": "标签名称需为 {min}-{max} 个字符。",

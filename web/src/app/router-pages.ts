@@ -24,6 +24,7 @@ export const RouterPage = {
   SETTINGS_DATA: '/settings/data',
   SETTINGS_APPLE_WALLET: '/settings/apple-wallet',
   SETTINGS_SIMPLEFIN: '/settings/simplefin',
+  SETTINGS_IMPORT_RULES: '/settings/import-rules',
   IMPORT_QUEUE: '/imports/queue',
   IMPORT_RUNS: '/imports/runs',
   IMPORT_RUN: '/imports/runs/:id',

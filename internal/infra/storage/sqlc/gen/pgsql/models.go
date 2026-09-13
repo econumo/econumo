@@ -210,15 +210,15 @@ type ImportRule struct {
 	ID               string
 	UserID           string
 	SourceID         *string
-	Position         int64
-	MatchPayee       *string
-	MatchDescription *string
-	MatchAmountMin   *string
-	MatchAmountMax   *string
 	Action           string
-	CategoryID       *string
-	PayeeID          *string
-	TagID            *string
+	MatchField       string
+	MatchType        string
+	MatchValue       string
+	IsCaseSensitive  bool
+	TargetCategoryID *string
+	TargetPayeeID    *string
+	TargetTagID      *string
+	Priority         int64
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }

@@ -677,6 +677,66 @@
     },
     "provenance": {
       "header": "Importiert aus"
+    },
+    "rules": {
+      "field": { "external_payee": "Zahlungsempfänger", "description": "Beschreibung" },
+      "type": { "contains": "enthält", "prefix": "beginnt mit", "exact": "ist genau" },
+      "action": { "classify": "Klassifizieren", "skip": "Überspringen" },
+      "prompt": {
+        "title": "Importregel erstellen",
+        "changed_category": "Du hast die Kategorie auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_payee": "Du hast den Zahlungsempfänger auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_tag": "Du hast den Tag auf {name} gesetzt. Regel für ähnliche Importe erstellen?",
+        "changed_labels": "Du hast die Tags {names} hinzugefügt. Regel für ähnliche Importe erstellen?",
+        "existing_rule": "Diese Transaktion wurde durch die Regel „{rule}“ klassifiziert.",
+        "match_count": "Trifft auf {count} Transaktionen in diesem Import zu",
+        "not_now": "Nicht jetzt",
+        "create_rule": "Regel erstellen",
+        "update_rule": "Regel aktualisieren",
+        "apply_question": "Diese Regel auf {count} passende Transaktionen in diesem Import anwenden?",
+        "skipped_edited": "{count} übersprungen (von dir bearbeitet)",
+        "include_edited": "Auch die {count} von dir bearbeiteten Transaktionen aktualisieren",
+        "skip_apply": "Überspringen",
+        "apply": "Anwenden",
+        "applied_toast": "{count} Transaktionen aktualisiert",
+        "source_question": "Auch auf alle Importe von {source} anwenden? {count} Transaktionen passen.",
+        "apply_source": "Auf alle Importe anwenden",
+        "done": "Fertig"
+      },
+      "editor": {
+        "field": "Abgleichsfeld",
+        "type": "Abgleichstyp",
+        "title_create": "Neue Importregel",
+        "title_edit": "Importregel bearbeiten",
+        "action": "Aktion",
+        "value": "Abgleichswert",
+        "case_sensitive": "Groß-/Kleinschreibung beachten",
+        "category": "Kategorie",
+        "payee": "Zahlungsempfänger",
+        "tag": "Budget-Tag",
+        "labels": "Auswertungs-Tags",
+        "match_count": "Trifft auf {count} importierte Transaktionen zu"
+      },
+      "page": {
+        "menu_item": "Importregeln",
+        "title": "Importregeln",
+        "intro": "Regeln klassifizieren oder überspringen importierte Transaktionen automatisch. Sie werden von oben nach unten angewendet; zum Ändern der Reihenfolge ziehen.",
+        "add": "Regel hinzufügen",
+        "empty": "Noch keine Regeln. Korrigiere eine importierte Transaktion, und Econumo bietet an, eine zu erstellen.",
+        "reorder": "Neu anordnen",
+        "edit": "Bearbeiten",
+        "delete": "Löschen",
+        "delete_title": "Diese Regel löschen?",
+        "delete_confirm": "Regel löschen",
+        "skip_hint": "Passende Transaktionen werden nicht importiert"
+      },
+      "suggest": {
+        "button": "Regeln vorschlagen",
+        "running": "Denkt nach…",
+        "heading": "Vorgeschlagene Regeln",
+        "accept": "Übernehmen",
+        "discard": "Verwerfen"
+      }
     }
   },
   "user": {
@@ -1713,7 +1773,10 @@
       "setup_token_rejected": "SimpleFIN hat dieses Setup-Token abgelehnt. Es wurde möglicherweise bereits eingelöst – erstelle ein neues in deiner SimpleFIN-Bridge.",
       "provider_unavailable": "Die Bank-Bridge konnte nicht erreicht werden. Versuche es in ein paar Minuten erneut.",
       "sync_range_invalid": "Der Zeitraum ist ungültig: Der Beginn darf nicht nach dem Ende liegen, und der Zeitraum darf 400 Tage nicht überschreiten.",
-      "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut."
+      "access_url_invalid": "Die gespeicherte Bank-Anmeldeinformation ist keine gültige Zugriffs-URL. Verbinde SimpleFIN mit einem neuen Setup-Token erneut.",
+      "rule_skip_not_applicable": "Eine Ausschlussregel kann nicht auf vorhandene Transaktionen angewendet werden",
+      "ai_disabled": "KI-Vorschläge sind auf diesem Server nicht aktiviert",
+      "ai_unavailable": "Der KI-Dienst ist nicht verfügbar. Versuche es später erneut."
     },
     "label": {
       "name_length": "Der Tag-Name muss {min}-{max} Zeichen lang sein",

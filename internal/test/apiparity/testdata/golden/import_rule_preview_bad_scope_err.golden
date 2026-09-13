@@ -1,0 +1,3 @@
+== err:preview-rule-bad-scope POST /api/v1/import/preview-rule [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"scope":["The value you selected is not a valid choice."]}}
+

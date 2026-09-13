@@ -38,6 +38,13 @@ type (
 	upsertCredentialKeyParams = sqlitegen.UpsertImportCredentialKeyParams
 	runsByUserParams          = sqlitegen.ListImportRunsByUserParams
 	runsBySourceParams        = sqlitegen.ListImportRunsBySourceParams
+	ruleRow                   = sqlitegen.ImportRule
+	insertRuleParams          = sqlitegen.InsertImportRuleParams
+	updateRuleParams          = sqlitegen.UpdateImportRuleParams
+	ruleLabelRow              = sqlitegen.ImportRuleLabel
+	insertRuleLabelParams     = sqlitegen.InsertImportRuleLabelParams
+	linkAppliedLabelRow       = sqlitegen.ImportLinkAppliedLabel
+	insertLinkAppliedParams   = sqlitegen.InsertImportLinkAppliedLabelParams
 )
 
 // querier method signatures mirror the sqlc-generated ones exactly, including
@@ -79,6 +86,20 @@ type querier interface {
 	ListImportRunsByUser(ctx context.Context, db backend.DBTX, p runsByUserParams) ([]runRow, error)
 	ListImportRunsBySource(ctx context.Context, db backend.DBTX, p runsBySourceParams) ([]runRow, error)
 	ListImportTransactionLinksByRun(ctx context.Context, db backend.DBTX, runID *string) ([]linkRow, error)
+
+	InsertImportRule(ctx context.Context, db backend.DBTX, p insertRuleParams) error
+	UpdateImportRule(ctx context.Context, db backend.DBTX, p updateRuleParams) error
+	DeleteImportRule(ctx context.Context, db backend.DBTX, id string) error
+	GetImportRuleByID(ctx context.Context, db backend.DBTX, id string) (ruleRow, error)
+	ListImportRulesByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleRow, error)
+	DeleteImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) error
+	InsertImportRuleLabel(ctx context.Context, db backend.DBTX, p insertRuleLabelParams) error
+	ListImportRuleLabels(ctx context.Context, db backend.DBTX, ruleID string) ([]ruleLabelRow, error)
+	ListImportRuleLabelsByUser(ctx context.Context, db backend.DBTX, userID string) ([]ruleLabelRow, error)
+	DeleteImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) error
+	InsertImportLinkAppliedLabel(ctx context.Context, db backend.DBTX, p insertLinkAppliedParams) error
+	ListImportLinkAppliedLabels(ctx context.Context, db backend.DBTX, linkID string) ([]linkAppliedLabelRow, error)
+	ListImportTransactionLinksByUser(ctx context.Context, db backend.DBTX, userID string) ([]linkRow, error)
 }
 
 type Repo struct {

@@ -157,8 +157,40 @@ func hasRate(rates []model.FullRate, id vo.Id) bool {
 
 var _ imports.CurrencyConverter = (*ImportsCurrencyConverter)(nil)
 
+type importsNamedByOwner func(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error)
+
+// ImportsClassificationLister composes the four per-entity owner lists the
+// CSV importer already exposes into the one port the rules engine reads.
+type ImportsClassificationLister struct {
+	categories, payees, tags, labels importsNamedByOwner
+}
+
+func NewImportsClassificationLister(categories, payees, tags, labels importsNamedByOwner) *ImportsClassificationLister {
+	return &ImportsClassificationLister{categories: categories, payees: payees, tags: tags, labels: labels}
+}
+
+func (l *ImportsClassificationLister) CategoriesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	return l.categories(ctx, ownerID)
+}
+
+func (l *ImportsClassificationLister) PayeesByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	return l.payees(ctx, ownerID)
+}
+
+func (l *ImportsClassificationLister) TagsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	return l.tags(ctx, ownerID)
+}
+
+func (l *ImportsClassificationLister) LabelsByOwner(ctx context.Context, ownerID vo.Id) ([]model.ImportNamed, error) {
+	return l.labels(ctx, ownerID)
+}
+
+var _ imports.ClassificationLister = (*ImportsClassificationLister)(nil)
+
 type importsTransactionSource interface {
 	ListByAccountIDs(ctx context.Context, accountIDs []vo.Id, filter model.TransactionFilter) ([]*model.Transaction, error)
+	GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error)
+	LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error)
 }
 
 // ImportsTransactionLister narrows the transaction repo's account-list read
@@ -173,10 +205,34 @@ func (l *ImportsTransactionLister) ListByAccount(ctx context.Context, accountID 
 	return l.txns.ListByAccountIDs(ctx, []vo.Id{accountID}, model.TransactionFilter{PeriodStart: from, PeriodEnd: to})
 }
 
+// GetByID fills in LabelIDs, which the repo's row read leaves empty (labels
+// are a join table, not a column): apply-rule compares a transaction's
+// current label set against the rule's before it writes.
+func (l *ImportsTransactionLister) GetByID(ctx context.Context, id vo.Id) (*model.Transaction, error) {
+	t, err := l.txns.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	labels, err := l.txns.LabelsByTransactionIDs(ctx, []vo.Id{id})
+	if err != nil {
+		return nil, err
+	}
+	t.LabelIDs = t.LabelIDs[:0]
+	for _, raw := range labels[id.String()] {
+		lid, err := vo.ParseId(raw)
+		if err != nil {
+			return nil, err
+		}
+		t.LabelIDs = append(t.LabelIDs, lid)
+	}
+	return t, nil
+}
+
 var _ imports.TransactionLister = (*ImportsTransactionLister)(nil)
 
 type importsTransactionWriterSource interface {
 	CreateTransaction(ctx context.Context, userID vo.Id, req model.CreateTransactionRequest) (*model.CreateTransactionResult, error)
+	UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
 	UpdateTransactionPreservingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error)
 }
 
@@ -198,6 +254,13 @@ func (a importsTransactionAdapter) CreateTransaction(ctx context.Context, userID
 
 func (a importsTransactionAdapter) UpdateTransaction(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
 	return a.svc.UpdateTransactionPreservingLabels(ctx, userID, req)
+}
+
+// UpdateTransactionReplacingLabels is the apply-rule path: the rule's label
+// set is the user's intent, so it replaces whatever the transaction carries
+// instead of preserving it the way a tip amount fix does.
+func (a importsTransactionAdapter) UpdateTransactionReplacingLabels(ctx context.Context, userID vo.Id, req model.UpdateTransactionRequest) (*model.UpdateTransactionResult, error) {
+	return a.svc.UpdateTransaction(ctx, userID, req)
 }
 
 var _ imports.TransactionWriter = importsTransactionAdapter{}

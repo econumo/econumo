@@ -158,3 +158,58 @@ SELECT id, source_id, run_id, event_id, external_account_id, external_transactio
 FROM import_transaction_links
 WHERE run_id = ?
 ORDER BY imported_at, id;
+
+-- name: InsertImportRule :exec
+INSERT INTO import_rules (id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateImportRule :exec
+UPDATE import_rules
+SET source_id = ?, action = ?, match_field = ?, match_type = ?, match_value = ?, is_case_sensitive = ?, target_category_id = ?, target_payee_id = ?, target_tag_id = ?, priority = ?, updated_at = ?
+WHERE id = ?;
+
+-- name: DeleteImportRule :exec
+DELETE FROM import_rules WHERE id = ?;
+
+-- name: GetImportRuleByID :one
+SELECT id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at
+FROM import_rules
+WHERE id = ?;
+
+-- name: ListImportRulesByUser :many
+SELECT id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at
+FROM import_rules
+WHERE user_id = ?
+ORDER BY priority, created_at, id;
+
+-- name: DeleteImportRuleLabels :exec
+DELETE FROM import_rule_labels WHERE rule_id = ?;
+
+-- name: InsertImportRuleLabel :exec
+INSERT INTO import_rule_labels (rule_id, label_id) VALUES (?, ?);
+
+-- name: ListImportRuleLabels :many
+SELECT rule_id, label_id FROM import_rule_labels WHERE rule_id = ? ORDER BY label_id;
+
+-- name: ListImportRuleLabelsByUser :many
+SELECT rl.rule_id, rl.label_id
+FROM import_rule_labels rl
+JOIN import_rules r ON r.id = rl.rule_id
+WHERE r.user_id = ?
+ORDER BY rl.rule_id, rl.label_id;
+
+-- name: DeleteImportLinkAppliedLabels :exec
+DELETE FROM import_link_applied_labels WHERE link_id = ?;
+
+-- name: InsertImportLinkAppliedLabel :exec
+INSERT INTO import_link_applied_labels (link_id, label_id) VALUES (?, ?);
+
+-- name: ListImportLinkAppliedLabels :many
+SELECT link_id, label_id FROM import_link_applied_labels WHERE link_id = ? ORDER BY label_id;
+
+-- name: ListImportTransactionLinksByUser :many
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+FROM import_transaction_links l
+JOIN import_sources s ON s.id = l.source_id
+WHERE s.user_id = ?
+ORDER BY l.imported_at, l.id;

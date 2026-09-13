@@ -169,6 +169,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                          client-supplied operation ids on create endpoints
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
+│   │   ├── ai/ .................. OpenAI-compatible chat-completions client (rule suggestions); imports nothing internal
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
@@ -188,20 +189,27 @@ similar — it's in-memory poller state only (no persistence at all), so it has
 no `repository.go` either. `imports` (the bank/phone transaction-import
 subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
 ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
-Wallet push provider), and stage 3 (the SimpleFIN pull provider) are in. The
+Wallet push provider), stage 3 (the SimpleFIN pull provider), and stage 4
+(rule-based classification) are in. The
 root package holds no provider-specific code: each provider is a subpackage —
 `internal/imports/applewallet` (the push-event parser), `internal/imports/simplefin`
 (the bridge client + stored-row parser) — that plugs into the service's
 `EventParser` and `Provider` registries in `internal/server/server.go` (a new
-provider = one subpackage + one registration line). It has `repository.go`, `ports.go` (account /
+provider = one subpackage + one registration line). Rules (stage 4) live in
+the root package (`rules.go` matcher, `rule_*.go` use cases) and consult an
+optional `Completer` (`internal/infra/ai`, an OpenAI-compatible chat client)
+for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
+the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
 currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
-`repo/`, and `api/` with 21 routes under `/api/v1/import/` (`create-source`,
+`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
 `get-source-list`, `delete-source`, `link-account`, `ignore-account`,
 `unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
 `import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
 `discard-event`, `get-transaction-import-list`, `claim-setup-token`,
 `get-credential-key`, `set-credential-key`, `list-external-accounts`,
-`sync-source`, `get-run-list`, `get-run`). The package name is `imports`
+`sync-source`, `get-run-list`, `get-run`, `get-rule-list`, `create-rule`,
+`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `suggest-rules`).
+The package name is `imports`
 (not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
@@ -523,6 +531,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
   so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
   the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
+- `ECONUMO_AI_DSN` — `openai://<api-key>@<host>[:port][/prefix]?model=<model>` enables AI rule
+  suggestions (`suggest-rules`) against any OpenAI-compatible chat-completions endpoint; the key
+  is optional for local servers (`openai://localhost:11434?model=llama3.1`). Unset (default) =
+  disabled: the endpoint returns 400 `import.ai_disabled` and the SPA hides the action. A bad
+  scheme/missing host/missing `model` fails at boot.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -538,6 +551,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
   `ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN` — `import/claim-setup-token` calls per user per window (default `5`; every request counts).
   `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
+  `ECONUMO_RATE_LIMIT_SUGGEST_RULES` — `import/suggest-rules` calls per user per window (default `3`; every call counts — each is a paid completion).
+  `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -570,7 +585,9 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
   `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
   effective `ECONUMO_IMPORT_*` values) is always present (typed on
-  `EconumoConfig`, not consumed by any surface yet).
+  `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
+  always present, `true` iff `ECONUMO_AI_DSN` is set) drives whether the SPA
+  shows the "Suggest rules" action.
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS
@@ -868,6 +885,13 @@ data unreadable. Most are also asserted by the test suite.
   formatted into an error. A sync is one `import_runs` row; per-account failures leave the
   run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
   `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
+- **Transaction import (rules)**: one `import_rules` row per rule, per user, optionally scoped
+  to a source; `classify` rules only fill empty fields on newly imported rows (first match per
+  field in priority order, labels unioned up to 10), `skip` rules drop the row after currency
+  conversion and before matching and beat every classify rule; the ledger row snapshots what was
+  applied (`applied*` on `get-transaction-import-list`) and the SPA diffs a later edit against it
+  to offer a rule; `apply-rule` backfills existing imports by run/source/all, skipping edited
+  rows unless `includeEdited`.
 
 ## Deployment
 

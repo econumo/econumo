@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
@@ -23,7 +24,7 @@ func TestMigration20260901_ImportTablesAndTokenScope(t *testing.T) {
 		"SELECT id, source_id, run_id, payload, payload_hash, status, parse_error, received_at FROM import_events WHERE 1 = 0",
 		"SELECT id, source_id, external_account_id, external_name, external_currency, account_id, mode, created_at, updated_at FROM import_account_links WHERE 1 = 0",
 		"SELECT id, source_id, run_id, event_id, external_account_id, external_transaction_id, transaction_id, status, external_payee, external_description, external_amount, external_currency, external_posted_at, applied_category_id, applied_payee_id, applied_tag_id, applied_rule_id, imported_at FROM import_transaction_links WHERE 1 = 0",
-		"SELECT id, user_id, source_id, position, match_payee, match_description, match_amount_min, match_amount_max, action, category_id, payee_id, tag_id, created_at, updated_at FROM import_rules WHERE 1 = 0",
+		"SELECT id, user_id, source_id, action, match_field, match_type, match_value, priority FROM import_rules WHERE 1 = 0",
 		"SELECT rule_id, label_id FROM import_rule_labels WHERE 1 = 0",
 		"SELECT link_id, label_id FROM import_link_applied_labels WHERE 1 = 0",
 		"SELECT scope FROM access_tokens WHERE 1 = 0",
@@ -72,5 +73,46 @@ func TestMigration20260907_ImportRunDefaults(t *testing.T) {
 	}
 	if queued != 0 || updated != 0 || trigger != "manual" || errs != "[]" {
 		t.Fatalf("defaults = (%d, %d, %q, %q), want (0, 0, \"manual\", \"[]\")", queued, updated, trigger, errs)
+	}
+}
+
+func TestMigration20260908_ImportRules(t *testing.T) {
+	db := dbtest.New(t)
+	ctx := context.Background()
+	for _, q := range []string{
+		`SELECT id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive,
+		        target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at
+		   FROM import_rules WHERE 1 = 0`,
+		`SELECT rule_id, label_id FROM import_rule_labels WHERE 1 = 0`,
+		`SELECT link_id, label_id FROM import_link_applied_labels WHERE 1 = 0`,
+	} {
+		if _, err := db.Raw.ExecContext(ctx, db.Rebind(q)); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	// the placeholder shape must be gone
+	if _, err := db.Raw.ExecContext(ctx, db.Rebind(`SELECT match_payee FROM import_rules WHERE 1 = 0`)); err == nil {
+		t.Fatal("placeholder column match_payee still exists")
+	}
+
+	f := fixture.New(t, db)
+	user := f.User(fixture.User{Email: "rules@example.test"})
+	cat := f.Category(fixture.Category{UserID: user})
+	insert := func(id, action string, category *string) error {
+		_, err := db.Raw.ExecContext(ctx, db.Rebind(`INSERT INTO import_rules
+			(id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive,
+			 target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at)
+			VALUES (?, ?, NULL, ?, 'external_payee', 'contains', 'STARBUCKS', ?, ?, NULL, NULL, 0, ?, ?)`),
+			id, user, action, false, category, "2026-09-08 00:00:00", "2026-09-08 00:00:00")
+		return err
+	}
+	if err := insert(vo.NewId().String(), "classify", &cat); err != nil {
+		t.Fatalf("classify rule with a target must insert: %v", err)
+	}
+	if err := insert(vo.NewId().String(), "skip", nil); err != nil {
+		t.Fatalf("skip rule without targets must insert: %v", err)
+	}
+	if err := insert(vo.NewId().String(), "skip", &cat); err == nil {
+		t.Fatal("CHECK must reject a skip rule with a target")
 	}
 }

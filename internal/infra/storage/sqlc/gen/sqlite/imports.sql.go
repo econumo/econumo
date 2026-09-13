@@ -37,6 +37,33 @@ func (q *Queries) DeleteImportEvent(ctx context.Context, id string) error {
 	return err
 }
 
+const deleteImportLinkAppliedLabels = `-- name: DeleteImportLinkAppliedLabels :exec
+DELETE FROM import_link_applied_labels WHERE link_id = ?
+`
+
+func (q *Queries) DeleteImportLinkAppliedLabels(ctx context.Context, linkID string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportLinkAppliedLabels, linkID)
+	return err
+}
+
+const deleteImportRule = `-- name: DeleteImportRule :exec
+DELETE FROM import_rules WHERE id = ?
+`
+
+func (q *Queries) DeleteImportRule(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportRule, id)
+	return err
+}
+
+const deleteImportRuleLabels = `-- name: DeleteImportRuleLabels :exec
+DELETE FROM import_rule_labels WHERE rule_id = ?
+`
+
+func (q *Queries) DeleteImportRuleLabels(ctx context.Context, ruleID string) error {
+	_, err := q.db.ExecContext(ctx, deleteImportRuleLabels, ruleID)
+	return err
+}
+
 const deleteImportSource = `-- name: DeleteImportSource :exec
 DELETE FROM import_sources WHERE id = ?
 `
@@ -120,6 +147,34 @@ func (q *Queries) GetImportEventByID(ctx context.Context, id string) (ImportEven
 		&i.Status,
 		&i.ParseError,
 		&i.ReceivedAt,
+	)
+	return i, err
+}
+
+const getImportRuleByID = `-- name: GetImportRuleByID :one
+SELECT id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at
+FROM import_rules
+WHERE id = ?
+`
+
+func (q *Queries) GetImportRuleByID(ctx context.Context, id string) (ImportRule, error) {
+	row := q.db.QueryRowContext(ctx, getImportRuleByID, id)
+	var i ImportRule
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.SourceID,
+		&i.Action,
+		&i.MatchField,
+		&i.MatchType,
+		&i.MatchValue,
+		&i.IsCaseSensitive,
+		&i.TargetCategoryID,
+		&i.TargetPayeeID,
+		&i.TargetTagID,
+		&i.Priority,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -367,6 +422,76 @@ func (q *Queries) InsertImportEvent(ctx context.Context, arg InsertImportEventPa
 	return result.RowsAffected()
 }
 
+const insertImportLinkAppliedLabel = `-- name: InsertImportLinkAppliedLabel :exec
+INSERT INTO import_link_applied_labels (link_id, label_id) VALUES (?, ?)
+`
+
+type InsertImportLinkAppliedLabelParams struct {
+	LinkID  string
+	LabelID string
+}
+
+func (q *Queries) InsertImportLinkAppliedLabel(ctx context.Context, arg InsertImportLinkAppliedLabelParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportLinkAppliedLabel, arg.LinkID, arg.LabelID)
+	return err
+}
+
+const insertImportRule = `-- name: InsertImportRule :exec
+INSERT INTO import_rules (id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`
+
+type InsertImportRuleParams struct {
+	ID               string
+	UserID           string
+	SourceID         *string
+	Action           string
+	MatchField       string
+	MatchType        string
+	MatchValue       string
+	IsCaseSensitive  bool
+	TargetCategoryID *string
+	TargetPayeeID    *string
+	TargetTagID      *string
+	Priority         int64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+func (q *Queries) InsertImportRule(ctx context.Context, arg InsertImportRuleParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportRule,
+		arg.ID,
+		arg.UserID,
+		arg.SourceID,
+		arg.Action,
+		arg.MatchField,
+		arg.MatchType,
+		arg.MatchValue,
+		arg.IsCaseSensitive,
+		arg.TargetCategoryID,
+		arg.TargetPayeeID,
+		arg.TargetTagID,
+		arg.Priority,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+	)
+	return err
+}
+
+const insertImportRuleLabel = `-- name: InsertImportRuleLabel :exec
+INSERT INTO import_rule_labels (rule_id, label_id) VALUES (?, ?)
+`
+
+type InsertImportRuleLabelParams struct {
+	RuleID  string
+	LabelID string
+}
+
+func (q *Queries) InsertImportRuleLabel(ctx context.Context, arg InsertImportRuleLabelParams) error {
+	_, err := q.db.ExecContext(ctx, insertImportRuleLabel, arg.RuleID, arg.LabelID)
+	return err
+}
+
 const insertImportRun = `-- name: InsertImportRun :exec
 INSERT INTO import_runs (id, user_id, source_id, provider, params, status, imported_count, matched_count, skipped_count, failed_count, queued_count, amounts_updated_count, trigger, errors, started_at, finished_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -568,6 +693,136 @@ func (q *Queries) ListImportEventsBySourceStatus(ctx context.Context, arg ListIm
 			&i.Status,
 			&i.ParseError,
 			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportLinkAppliedLabels = `-- name: ListImportLinkAppliedLabels :many
+SELECT link_id, label_id FROM import_link_applied_labels WHERE link_id = ? ORDER BY label_id
+`
+
+func (q *Queries) ListImportLinkAppliedLabels(ctx context.Context, linkID string) ([]ImportLinkAppliedLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listImportLinkAppliedLabels, linkID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportLinkAppliedLabel{}
+	for rows.Next() {
+		var i ImportLinkAppliedLabel
+		if err := rows.Scan(&i.LinkID, &i.LabelID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportRuleLabels = `-- name: ListImportRuleLabels :many
+SELECT rule_id, label_id FROM import_rule_labels WHERE rule_id = ? ORDER BY label_id
+`
+
+func (q *Queries) ListImportRuleLabels(ctx context.Context, ruleID string) ([]ImportRuleLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listImportRuleLabels, ruleID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportRuleLabel{}
+	for rows.Next() {
+		var i ImportRuleLabel
+		if err := rows.Scan(&i.RuleID, &i.LabelID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportRuleLabelsByUser = `-- name: ListImportRuleLabelsByUser :many
+SELECT rl.rule_id, rl.label_id
+FROM import_rule_labels rl
+JOIN import_rules r ON r.id = rl.rule_id
+WHERE r.user_id = ?
+ORDER BY rl.rule_id, rl.label_id
+`
+
+func (q *Queries) ListImportRuleLabelsByUser(ctx context.Context, userID string) ([]ImportRuleLabel, error) {
+	rows, err := q.db.QueryContext(ctx, listImportRuleLabelsByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportRuleLabel{}
+	for rows.Next() {
+		var i ImportRuleLabel
+		if err := rows.Scan(&i.RuleID, &i.LabelID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listImportRulesByUser = `-- name: ListImportRulesByUser :many
+SELECT id, user_id, source_id, action, match_field, match_type, match_value, is_case_sensitive, target_category_id, target_payee_id, target_tag_id, priority, created_at, updated_at
+FROM import_rules
+WHERE user_id = ?
+ORDER BY priority, created_at, id
+`
+
+func (q *Queries) ListImportRulesByUser(ctx context.Context, userID string) ([]ImportRule, error) {
+	rows, err := q.db.QueryContext(ctx, listImportRulesByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportRule{}
+	for rows.Next() {
+		var i ImportRule
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.SourceID,
+			&i.Action,
+			&i.MatchField,
+			&i.MatchType,
+			&i.MatchValue,
+			&i.IsCaseSensitive,
+			&i.TargetCategoryID,
+			&i.TargetPayeeID,
+			&i.TargetTagID,
+			&i.Priority,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -914,6 +1169,56 @@ func (q *Queries) ListImportTransactionLinksByTransaction(ctx context.Context, t
 	return items, nil
 }
 
+const listImportTransactionLinksByUser = `-- name: ListImportTransactionLinksByUser :many
+SELECT l.id, l.source_id, l.run_id, l.event_id, l.external_account_id, l.external_transaction_id, l.transaction_id, l.status, l.external_payee, l.external_description, l.external_amount, l.external_currency, l.external_posted_at, l.applied_category_id, l.applied_payee_id, l.applied_tag_id, l.applied_rule_id, l.imported_at
+FROM import_transaction_links l
+JOIN import_sources s ON s.id = l.source_id
+WHERE s.user_id = ?
+ORDER BY l.imported_at, l.id
+`
+
+func (q *Queries) ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error) {
+	rows, err := q.db.QueryContext(ctx, listImportTransactionLinksByUser, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ImportTransactionLink{}
+	for rows.Next() {
+		var i ImportTransactionLink
+		if err := rows.Scan(
+			&i.ID,
+			&i.SourceID,
+			&i.RunID,
+			&i.EventID,
+			&i.ExternalAccountID,
+			&i.ExternalTransactionID,
+			&i.TransactionID,
+			&i.Status,
+			&i.ExternalPayee,
+			&i.ExternalDescription,
+			&i.ExternalAmount,
+			&i.ExternalCurrency,
+			&i.ExternalPostedAt,
+			&i.AppliedCategoryID,
+			&i.AppliedPayeeID,
+			&i.AppliedTagID,
+			&i.AppliedRuleID,
+			&i.ImportedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateImportAccountLink = `-- name: UpdateImportAccountLink :exec
 UPDATE import_account_links SET external_currency = ?, account_id = ?, mode = ?, updated_at = ? WHERE id = ?
 `
@@ -954,6 +1259,45 @@ func (q *Queries) UpdateImportEventStatus(ctx context.Context, arg UpdateImportE
 		arg.Status,
 		arg.ParseError,
 		arg.RunID,
+		arg.ID,
+	)
+	return err
+}
+
+const updateImportRule = `-- name: UpdateImportRule :exec
+UPDATE import_rules
+SET source_id = ?, action = ?, match_field = ?, match_type = ?, match_value = ?, is_case_sensitive = ?, target_category_id = ?, target_payee_id = ?, target_tag_id = ?, priority = ?, updated_at = ?
+WHERE id = ?
+`
+
+type UpdateImportRuleParams struct {
+	SourceID         *string
+	Action           string
+	MatchField       string
+	MatchType        string
+	MatchValue       string
+	IsCaseSensitive  bool
+	TargetCategoryID *string
+	TargetPayeeID    *string
+	TargetTagID      *string
+	Priority         int64
+	UpdatedAt        time.Time
+	ID               string
+}
+
+func (q *Queries) UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error {
+	_, err := q.db.ExecContext(ctx, updateImportRule,
+		arg.SourceID,
+		arg.Action,
+		arg.MatchField,
+		arg.MatchType,
+		arg.MatchValue,
+		arg.IsCaseSensitive,
+		arg.TargetCategoryID,
+		arg.TargetPayeeID,
+		arg.TargetTagID,
+		arg.Priority,
+		arg.UpdatedAt,
 		arg.ID,
 	)
 	return err

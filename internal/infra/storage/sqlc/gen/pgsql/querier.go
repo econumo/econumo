@@ -42,6 +42,9 @@ type Querier interface {
 	DeleteImportAccountLink(ctx context.Context, id string) error
 	DeleteImportCredentialKey(ctx context.Context, userID string) error
 	DeleteImportEvent(ctx context.Context, id string) error
+	DeleteImportLinkAppliedLabels(ctx context.Context, linkID string) error
+	DeleteImportRule(ctx context.Context, id string) error
+	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
 	DeleteImportSource(ctx context.Context, id string) error
 	DeleteLabel(ctx context.Context, id string) error
 	DeletePayee(ctx context.Context, id string) error
@@ -122,6 +125,7 @@ type Querier interface {
 	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
 	GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error)
 	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
+	GetImportRuleByID(ctx context.Context, id string) (ImportRule, error)
 	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
 	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
 	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
@@ -217,6 +221,9 @@ type Querier interface {
 	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
 	// the caller reads the row count to learn whether this payload was new.
 	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
+	InsertImportLinkAppliedLabel(ctx context.Context, arg InsertImportLinkAppliedLabelParams) error
+	InsertImportRule(ctx context.Context, arg InsertImportRuleParams) error
+	InsertImportRuleLabel(ctx context.Context, arg InsertImportRuleLabelParams) error
 	InsertImportRun(ctx context.Context, arg InsertImportRunParams) error
 	// Transaction import: sources, the push-event inbox, runs, and the link
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
@@ -285,12 +292,17 @@ type Querier interface {
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
 	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportLinkAppliedLabels(ctx context.Context, linkID string) ([]ImportLinkAppliedLabel, error)
+	ListImportRuleLabels(ctx context.Context, ruleID string) ([]ImportRuleLabel, error)
+	ListImportRuleLabelsByUser(ctx context.Context, userID string) ([]ImportRuleLabel, error)
+	ListImportRulesByUser(ctx context.Context, userID string) ([]ImportRule, error)
 	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
 	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
 	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
 	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
 	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -339,6 +351,7 @@ type Querier interface {
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
 	// Note: sets run_id too so a processed event records the run that consumed it.
 	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
+	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
 	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
 	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
 	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error

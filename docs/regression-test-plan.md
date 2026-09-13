@@ -334,6 +334,60 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] Apple Wallet regression: §5a still passes unchanged (the `cards` list,
       queue, and provenance UI share code with the SimpleFIN account list).
 
+## 5c. Imports — Rules
+
+Preconditions: at least one import source with a completed run (§5a or §5b) whose transactions are still unedited.
+
+- [ ] Edit an imported transaction and change only its category: after "Update"
+      a "Create an import rule" prompt opens with the payee prefilled as a
+      trimmed match value (store number, city, state and processor prefix
+      dropped) and a live "Matches N transactions in this import" count that
+      updates as the value is edited. 📱
+- [ ] Edit the same transaction again changing only notes/amount/date: no prompt.
+      Re-open it and pick the category the import already applied (or that a
+      previous rule set): no prompt.
+- [ ] After creating a rule from a transaction and applying it (that source row
+      is counted as "skipped — you edited it"), re-open THAT transaction and
+      save a notes-only change: still no prompt, and no second copy of the rule
+      is ever offered. Changing its category again does prompt.
+- [ ] Prompt → "Create rule" → "Apply": the matching unedited transactions in
+      that import take the category; "N skipped (you've edited these)" names
+      the edited ones and the "Also update the N transactions you edited"
+      checkbox is off by default. Ticking it rewrites them too.
+- [ ] After applying to the run, the "Also apply to all imports from <source>?"
+      step shows its own count; "Apply to all imports" updates the older runs,
+      "Done" leaves them alone. "Not now" on the first step creates nothing.
+- [ ] A transaction that a rule classified (Import rules page shows the rule):
+      changing its category offers "Update rule" (match shown read-only, no
+      editor) rather than a second rule; the rule's targets change.
+- [ ] Same flow on a rule that sets two or more labels: add a THIRD label to an
+      imported transaction and choose "Update rule" — the rule keeps its
+      original labels and gains the new one (the label set is unioned, never
+      replaced by the single added label).
+- [ ] Settings → Import & export → Import rules (also under Settings → Data):
+      rules list in priority order, skip rules carry a red "Skip" badge and no
+      targets; "Add rule" opens the editor with a live "Matches N imported
+      transactions" count; Save/Edit/Delete round-trip; drag (or focus the
+      grip, Space, arrow, Space) reorders and the order survives reload. 📱
+- [ ] A skip rule with prefix "PAYMENT THANK YOU" on description: the next
+      sync/ingest of a matching row lands as `skipped` in the run summary and
+      creates no transaction; a classify rule on payee sets category/payee/
+      tag/labels on newly imported rows only where the row had none.
+- [ ] `ECONUMO_AI_DSN` unset: no "Suggest rules" button; `suggest-rules` returns
+      400 `import.ai_disabled`. Set to a working OpenAI-compatible endpoint:
+      the button proposes rules with a reason and a live count each; Accept
+      creates the rule at the bottom of the list, Edit opens the editor
+      prefilled, Discard removes the row; a 4th click inside the window gets
+      429 with the standard envelope.
+- [ ] Typing in either rule editor fires `preview-rule` on a 300 ms debounce and
+      it is capped per user (`ECONUMO_RATE_LIMIT_PREVIEW_RULE`, default 120 per
+      window): set it to 1 and the second preview returns 429 with the standard
+      envelope while the rest of the editor still works.
+- [ ] Ingest-scoped PATs get 401 on every rule endpoint; a read-only
+      (trial-ended) user gets 402 on `create-rule`/`update-rule`/`delete-rule`/
+      `apply-rule`/`suggest-rules` and 402 on `preview-rule` as well, and 200
+      on `get-rule-list`.
+
 ## 6. Recurring transactions
 
 - [ ] 📱 Create a recurring rule (from a transaction's "make recurring" and

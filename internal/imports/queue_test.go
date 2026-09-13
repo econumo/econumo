@@ -7,6 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/fixture"
 )
 
 func TestGetQueue_ReasonsAndSections(t *testing.T) {
@@ -67,6 +68,9 @@ func TestImportQueuedEvent(t *testing.T) {
 	q, _ := h.svc.GetQueue(ctx, uA)
 	linkID := q.Queued[0].LinkId
 	cat := "0b000000-0000-0000-0000-0000000000c1"
+	// a real row: fakeTxns now persists the request's classification, and
+	// transactions.category_id is a real FK
+	h.f.Category(fixture.Category{ID: cat, UserID: userA, Name: "Coffee"})
 	res, err := h.svc.ImportQueuedEvent(ctx, uA, model.ImportQueuedEventRequest{LinkId: linkID, Transaction: model.CreateTransactionRequest{
 		Id: vo.NewId().String(), Type: "expense", Amount: vo.NewFlexString("4.75"), AccountId: acct1, Date: "2026-08-20 10:42:03", CategoryId: &cat,
 	}})

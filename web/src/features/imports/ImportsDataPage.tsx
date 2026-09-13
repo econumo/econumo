@@ -92,6 +92,7 @@ export function ImportsDataPage() {
         {pullSources.length > 0 ? (
           <ActionRow label={syncing ? t('imports.simplefin.sync.running') : t('imports.data_page.sync_all')} onClick={() => void syncAll()} disabled={syncing} />
         ) : null}
+        <LinkRow label={t('imports.rules.page.menu_item')} to={RouterPage.SETTINGS_IMPORT_RULES} />
         <LinkRow label={t('imports.data_page.history')} to={RouterPage.IMPORT_RUNS} />
       </div>
 

@@ -53,4 +53,16 @@ type Repository interface {
 	// DeleteQueuedLinksByExternalAccount purges only queued rows: seen rows
 	// (linked/skipped/tombstone) are the dedupe memory and must survive.
 	DeleteQueuedLinksByExternalAccount(ctx context.Context, sourceID vo.Id, externalAccountID string) error
+
+	// rules
+	InsertRule(ctx context.Context, r *model.ImportRule) error
+	UpdateRule(ctx context.Context, r *model.ImportRule) error
+	DeleteRule(ctx context.Context, id vo.Id) error
+	GetRule(ctx context.Context, id vo.Id) (*model.ImportRule, error)
+	ListRulesByUser(ctx context.Context, userID vo.Id) ([]model.ImportRule, error)
+	// applied-label snapshot on ledger rows
+	ReplaceLinkAppliedLabels(ctx context.Context, linkID vo.Id, labelIDs []vo.Id) error
+	ListLinkAppliedLabels(ctx context.Context, linkID vo.Id) ([]vo.Id, error)
+	// scope=all for preview/apply
+	ListLinksByUser(ctx context.Context, userID vo.Id) ([]model.ImportTransactionLink, error)
 }
