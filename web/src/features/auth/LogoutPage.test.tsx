@@ -4,6 +4,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { setToken } from '@/lib/storage'
+import { navigateTo } from '@/app/routerRef'
 import { LogoutPage } from './LogoutPage'
 
 // Tracks real call order (not just "was called") so a refactor that moves
@@ -44,6 +45,14 @@ vi.mock('@/lib/storage', async (importOriginal) => {
   }
 })
 
+vi.mock('@/app/routerRef', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/routerRef')>()
+  return {
+    ...actual,
+    navigateTo: vi.fn(actual.navigateTo),
+  }
+})
+
 const assign = vi.fn()
 
 function renderPage() {
@@ -57,6 +66,7 @@ beforeEach(() => {
   window.econumoConfig = {}
   order.length = 0
   assign.mockClear()
+  vi.mocked(navigateTo).mockClear()
 })
 
 it('calls logout, purges the token and redirects to /login', async () => {
@@ -125,6 +135,18 @@ it('falls back to the catalogue provider name when the provider list request fai
   )
   renderPage()
   expect(await screen.findByText(/Your SSO session may still be active/)).toBeInTheDocument()
+})
+
+it('a 401 from logout-user does not flash the session-expired banner — LogoutPage owns the exit', async () => {
+  setToken('expired-tok')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 }),
+    ),
+  )
+  renderPage()
+  await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
+  expect(navigateTo).not.toHaveBeenCalledWith('/login?reason=expired')
 })
 
 it('in the app ignores the end-session url and logs out locally', async () => {

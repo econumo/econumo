@@ -28,8 +28,11 @@ api.interceptors.response.use(
   (error) => {
     const status = error.response?.status
     const url: string = error.config?.url ?? ''
-    const isCredentialExchange = url.includes('/api/v1/user/login-user') || url.includes('/api/v1/oauth/exchange-handoff')
-    if (status === 401 && !isCredentialExchange) {
+    // login-user/exchange-handoff report a 401 as "wrong credentials", not "session expired";
+    // logout-user's 401 means the session was already gone before the request — LogoutPage
+    // owns the cleanup (removeToken/clearPersistedQueryCache) and the exit itself either way.
+    const ownsIts401 = url.includes('/api/v1/user/login-user') || url.includes('/api/v1/oauth/exchange-handoff') || url.includes('/api/v1/user/logout-user')
+    if (status === 401 && !ownsIts401) {
       removeToken()
       // No page reload happens here (client-side navigation only), so the
       // analytics module state would otherwise survive and misattribute the
