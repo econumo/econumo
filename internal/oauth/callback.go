@@ -159,9 +159,12 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 		if !u.IsActive {
 			return s.errorURLFor(st, "account_inactive")
 		}
-		// u.CredentialsGeneration is the fence value read WITH the user row; the
-		// identity row was read before it, so a reclaim between the two reads
-		// has deleted the identity and the fenced UPDATE finds no row.
+		// u.CredentialsGeneration is the fence value read WITH the user row. The
+		// identity row was read before it, so a reclaim landing between the two
+		// reads has deleted the identity — unless it vouches for the very
+		// address the reset proved, which ReclaimAccount keeps, and the flow
+		// legitimately continues under the new generation. The fenced UPDATE
+		// decides which of the two happened.
 		id.UpdateEmail(email, now)
 		if n, serr := s.identities.UpdateIfCurrent(ctx, id, u.CredentialsGeneration); serr != nil || n != 1 {
 			logWarn(ctx, "oauth callback: identity save", orReclaimed(serr), "provider", provider)

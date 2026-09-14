@@ -273,12 +273,13 @@ func pendingEmailChanges(t *testing.T, db *dbtest.DB, userID string) int {
 	return n
 }
 
-// The login ordering guarantee, pinned at the repo level because the real race
-// needs a hook: the generation Login presents must be the one that came out of
-// the SAME row read as the password hash. A reset committing after that read
-// bumps past it, so the session insert writes nothing. Reintroducing a separate
-// generation read (a fresh GetByID here) would make this pass wrongly — and
-// that is exactly the bug this pins shut.
+// The repo-level half of the login fence: a generation read BEFORE a reset
+// commits no longer opens the session insert, whatever the caller does with it.
+// This pins the storage contract only. The service-level guarantee — that Login
+// presents the generation from the SAME row read as the password hash, rather
+// than re-reading it later — is pinned by
+// TestLogin_ResetBetweenTheEvidenceReadAndTheSessionInsertMintsNothing in
+// internal/user.
 func TestLogin_SessionInsertIsFencedByTheGenerationReadWithTheHash(t *testing.T) {
 	db := dbtest.New(t)
 	users := userrepo.NewRepo(db.Engine, db.TX)
