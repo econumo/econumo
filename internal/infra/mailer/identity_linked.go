@@ -8,7 +8,8 @@ import (
 )
 
 // IdentityLinkedSender notifies the account owner when an oauth provider is
-// auto-linked to their existing password account, mirroring VerifySender so
+// auto-linked to their existing passwordless account (a verified email
+// matching a password account is refused instead), mirroring VerifySender so
 // the oauth feature stays free of any mail dependency.
 type IdentityLinkedSender struct {
 	m       Mailer

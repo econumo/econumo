@@ -466,8 +466,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `_SCOPES` (comma-separated, default `openid,profile,email`; must contain `openid` or boot
   fails). Any enabled slot requires `ECONUMO_URL` — every callback URI derives from it as
   `<ECONUMO_URL>/api/v1/oauth/callback-<google|apple|oidc>`, the one URL to register with the
-  provider; there is no separate redirect-URI variable. Discovery documents and JWKS are
-  fetched lazily and cached for the process lifetime; `serve` builds the provider clients once,
+  provider; there is no separate redirect-URI variable. Discovery documents are fetched lazily
+  and cached for the process lifetime; the JWKS is cached and re-fetched when a token names an
+  unknown key id (at most once a minute per issuer), so a signing-key rotation needs no restart.
+  `serve` builds the provider clients once,
   probes each configured issuer's discovery document in the background right after the listener
   is up (one 5-second timeout per provider) and logs a WARN (never fails boot) when one is
   unreachable, so sign-in through it fails until the issuer answers.
@@ -617,6 +619,9 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
+- Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
+  a curly quote) in a comment silently truncates the generated SQL constant, and the failure
+  surfaces at runtime as `SQL logic error: incomplete input`, not at `sqlc generate`.
 - Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command

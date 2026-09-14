@@ -1611,7 +1611,7 @@
     },
     "identity_linked": {
       "subject": "A new sign-in method was linked to your account",
-      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. {provider} confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo — Manage money. Together.\n"
+      "body": "Hi {name},\n\nYour {provider} account was just linked to your Econumo account and can now be used to sign in. {provider} confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }
