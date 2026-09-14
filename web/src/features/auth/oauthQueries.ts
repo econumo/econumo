@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
@@ -87,12 +87,18 @@ export function useStartOAuth() {
 }
 
 export function useExchangeHandoff() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.exchangeHandoff(code, flow),
-    onSuccess: (data) => {
-      // the new session may belong to a different user — never restore the
-      // previous user's persisted finances
+    onSuccess: async (data) => {
+      // The new session may belong to a different user, and the app can reach
+      // this without a page reload (the browser sheet returns to the same SPA
+      // instance). Dropping only the persisted snapshot would leave the
+      // previous user's profile and accounts live in memory, still inside
+      // their staleTime — so cancel what is in flight and empty the cache too.
+      await queryClient.cancelQueries()
       clearPersistedQueryCache()
+      queryClient.clear()
       setToken(data.token)
       trackEvent(METRICS.OAUTH_LOGIN_COMPLETED)
       if (isFreshAccount(data.user.createdAt)) {

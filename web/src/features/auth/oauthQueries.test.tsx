@@ -77,6 +77,25 @@ it('useExchangeHandoff stores the token and clears the persisted cache', async (
   expect(localStorage.getItem('econumo.query-cache')).toBeNull()
 })
 
+// The app returns from the browser sheet into the SAME SPA instance, so the
+// previous user's queries are still in memory and still inside their
+// staleTime; dropping only the persisted snapshot would show them to whoever
+// signed in next.
+it('useExchangeHandoff empties the in-memory cache of the previous session', async () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  qc.setQueryData(['user', 'data'], { id: 'previous-user' })
+  qc.setQueryData(['accounts'], [{ id: 'a1', name: 'Previous account' }])
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
+    HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u2', options: [], accessLevel: 'full', accessUntil: '' } })))
+  const { result } = renderHook(() => useExchangeHandoff(), {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+  })
+  await result.current.mutateAsync({ code: 'code', flow: 'f1' })
+  expect(qc.getQueryData(['user', 'data'])).toBeUndefined()
+  expect(qc.getQueryData(['accounts'])).toBeUndefined()
+  expect(qc.getQueryCache().getAll()).toHaveLength(0)
+})
+
 describe('isFreshAccount', () => {
   const now = new Date('2026-09-07T12:00:00Z')
 
