@@ -3,6 +3,7 @@ import { create } from 'zustand'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
+import { backendHost } from '@/lib/config'
 import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
@@ -42,6 +43,26 @@ export function takeOAuthFlow(): string {
 
 export function oauthClient(): oauthApi.OAuthClient {
   return isNativeApp() ? 'app' : 'web'
+}
+
+// On the web the flow returns to the BACKEND's origin (ECONUMO_URL), where a
+// tab pointed at a different backend has no flow secret and cannot finish the
+// exchange, so it must not offer to start one — for either the login buttons or
+// Settings' "Link" buttons; the linked list itself stays visible and unlink
+// keeps working, since neither needs a return trip. The app always leaves the
+// WebView for the system browser sheet, which returns via a deep link
+// regardless of origin, so it can always offer the flow. Origins (not raw
+// strings) so a trailing slash on a same-origin host doesn't look off-origin,
+// and a malformed stored host fails closed instead of throwing.
+export function oauthFlowCanReturnHere(): boolean {
+  if (isNativeApp()) {
+    return true
+  }
+  try {
+    return new URL(backendHost()).origin === window.location.origin
+  } catch {
+    return false
+  }
 }
 
 // The app leaves the WebView for the browser sheet and the start mutation

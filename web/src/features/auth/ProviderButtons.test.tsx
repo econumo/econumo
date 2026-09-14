@@ -81,3 +81,12 @@ it('hides the buttons on the web when the SPA is served from a different origin 
   await new Promise((r) => setTimeout(r, 20))
   expect(container.querySelector('[data-testid="provider-buttons"]')).toBeNull()
 })
+
+it('shows the buttons when the stored backend host is same-origin but for a trailing slash', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: true }
+  localStorage.setItem('selfHosted', JSON.stringify(true))
+  localStorage.setItem('backendHost', JSON.stringify(`${window.location.origin}/`))
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })))
+  renderButtons()
+  expect(await screen.findByTestId('provider-buttons')).toBeInTheDocument()
+})

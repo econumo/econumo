@@ -166,6 +166,9 @@ navigation (single-pane vs sidebar).
       closes or the sign-in returns.
 - [ ] Web: with a custom backend selected (different origin than the page),
       no provider buttons are shown.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      Settings → Profile → Linked accounts shows the linked list but offers no
+      Link buttons.
 
 ## 3. Onboarding (fresh user)
 

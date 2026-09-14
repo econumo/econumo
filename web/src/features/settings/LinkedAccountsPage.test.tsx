@@ -190,6 +190,21 @@ it('keeps the Link button disabled after the start mutation settles, and re-enab
   await waitFor(() => expect(button).not.toBeDisabled())
 })
 
+// The link callback returns to the backend's origin: a custom backend on a
+// different origin than this page has no way to complete the flow, so the
+// "unlinked providers" list must not offer it. The linked list (and unlink)
+// need no return trip, so they stay.
+it('hides Link buttons but keeps the linked list when the backend is a different origin', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: true }
+  localStorage.setItem('selfHosted', JSON.stringify(true))
+  localStorage.setItem('backendHost', JSON.stringify('https://money.example.org'))
+  mockUser(true)
+  renderPage()
+  expect(await screen.findByText('me@gmail.test')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Unlink' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Link' })).not.toBeInTheDocument()
+})
+
 it('points the disabled Unlink button at the hint that explains it', async () => {
   mockUser(false)
   renderPage()

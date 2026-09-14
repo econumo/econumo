@@ -10,7 +10,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from './SettingsShell'
@@ -89,7 +89,11 @@ export function LinkedAccountsPage() {
   const hasPassword = user.data?.hasPassword ?? true
   const lastIdentityLocked = !hasPassword && (identities.data?.length ?? 0) <= 1
   const linkedIds = new Set(identities.data?.map((i) => i.provider))
-  const unlinked = (providers.data ?? []).filter((p) => !linkedIds.has(p.id))
+  // A custom backend on a different origin than this page can never complete
+  // the link callback (it returns to the backend's origin), so the "add a
+  // provider" list must not offer a dead end; the linked list and unlink stay,
+  // since neither needs a return trip.
+  const unlinked = oauthFlowCanReturnHere() ? (providers.data ?? []).filter((p) => !linkedIds.has(p.id)) : []
 
   return (
     <SettingsShell

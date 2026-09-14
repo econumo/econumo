@@ -1,10 +1,8 @@
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import type { OAuthProviderId } from '@/api/dto/oauth'
-import { isNativeApp } from '@/lib/platform'
-import { backendHost } from '@/lib/config'
 import { ProviderMark } from './providerIcons'
-import { useOAuthInFlight, useProviders, useStartOAuth } from './oauthQueries'
+import { oauthFlowCanReturnHere, useOAuthInFlight, useProviders, useStartOAuth } from './oauthQueries'
 
 // Apple's button must be black-on-white or white-on-black with the mark;
 // Google's must be light with the multi-colour mark. Both get the auth pages'
@@ -27,10 +25,7 @@ export function ProviderButtons({ intent }: { intent: 'login' | 'link' }) {
   const providers = useProviders()
   const start = useStartOAuth()
   const inFlight = useOAuthInFlight((s) => s.inFlight)
-  // On the web the flow returns to the BACKEND's origin (ECONUMO_URL), where
-  // this tab's sessionStorage flow secret does not exist; a SPA pointed at a
-  // different backend cannot finish the exchange, so it must not offer it.
-  if (!isNativeApp() && backendHost() !== window.location.origin) {
+  if (!oauthFlowCanReturnHere()) {
     return null
   }
   if (!providers.data || providers.data.length === 0) {
