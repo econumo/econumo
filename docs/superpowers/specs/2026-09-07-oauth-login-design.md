@@ -35,7 +35,9 @@ OAuth 2.0 / OIDC **relying party** (client) of an external issuer.
 - OAuth state is stored server-side (a table), not in cookies: Apple's
   cross-site `form_post` carries no SameSite cookie and the app's browser sheet
   shares no storage with the SPA.
-- Identities live in `users_identities (provider, issuer, subject)`. Email claims are
+- Identities live in `users_identities (provider, issuer, subject)`; the stored
+  email records which address the provider vouches for (read by the reclaim,
+  §6.4b). Email claims are
   used only when verified (or trusted by the operator); an unverified email
   rejects the sign-in outright, so a misconfigured IdP can neither take over
   nor create an account.
@@ -413,6 +415,28 @@ caller. Only then is the identity written, re-running the taken /
 already-linked checks inside the authenticated request (coded 400
 `oauth.identity_taken` / `oauth.provider_already_linked`). The response is
 `{provider}`, which the SPA turns into the success toast.
+
+### 6.4b Recovery (the reclaim)
+
+The refusal in step 6 sends the account's owner to `remind-password` /
+`reset-password`, so that flow has to finish the job. Completing a reset is the
+only proof of mailbox ownership Econumo has, and the user feature treats it as
+the account's reclaim: it revokes every session and every personal token, and
+calls `oauth.UnlinkForeignIdentities` through the `user.IdentityReclaimer` port
+to remove each linked identity whose provider vouches for a different address.
+Without that last step the squatter's own linked provider account outlives the
+reclaim and hands them the reclaimed account — which is exactly what happened
+when only the password and tokens were evicted. An identity claiming the proven
+address stays: only the mailbox owner could have obtained one, and that keeps
+the passwordless "Set a password" path (the same endpoint) from stripping the
+provider a user still needs. The whole cascade shares the password write's
+transaction, so a partial reclaim cannot be observed.
+
+Corollary: `users_identities.email` is no longer purely decorative. It is still
+never a lookup key, but it records which address a provider vouches for, and
+the reclaim reads it. A user who changes their primary email keeps identities
+claiming the old address until their next sign-in through that provider; a
+password reset in between unlinks them, and they re-link from Settings.
 
 ### 6.5 Unlink
 

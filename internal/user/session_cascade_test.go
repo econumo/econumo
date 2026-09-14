@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -97,7 +98,11 @@ func TestAdminDeactivate_RevokesEverything(t *testing.T) {
 	}
 }
 
-func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
+// A reset is the account's ownership proof, so it is also its reclaim: unlike
+// update-password, it takes the personal tokens too. An attacker who had
+// registered someone else's address would otherwise keep API access after the
+// rightful owner reset the password.
+func TestResetPassword_RevokesEverySessionAndToken(t *testing.T) {
 	svc, tokens, _, uid, pwreqs := newAuthEnvFull(t)
 	ctx := context.Background()
 	exp := authT0.Add(appuser.SessionTTL)
@@ -116,6 +121,9 @@ func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
 		t.Fatalf("seed password request: %v", err)
 	}
 
+	reclaimer := &fakeReclaimer{}
+	svc.SetIdentityReclaimer(reclaimer)
+
 	_, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
 		Username: "auth@econumo.test", Code: "482913", Password: "next-secret",
 	})
@@ -126,16 +134,53 @@ func TestResetPassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
 	now := authT0.Add(time.Minute)
 	for _, tc := range []struct {
 		id   vo.Id
-		live bool
 		name string
-	}{{sesA, false, "session a"}, {sesB, false, "session b"}, {pat, true, "pat"}} {
+	}{{sesA, "session a"}, {sesB, "session b"}, {pat, "pat"}} {
 		tok, gerr := tokens.GetByID(ctx, tc.id)
 		if gerr != nil {
 			t.Fatalf("GetByID(%s): %v", tc.name, gerr)
 		}
-		if tok.IsLive(now) != tc.live {
-			t.Errorf("%s live=%v, want %v", tc.name, tok.IsLive(now), tc.live)
+		if tok.IsLive(now) {
+			t.Errorf("%s must be revoked by a reset", tc.name)
 		}
+	}
+	if len(reclaimer.calls) != 1 || reclaimer.calls[0].userID != uid.String() || reclaimer.calls[0].email != "auth@econumo.test" {
+		t.Fatalf("the proven address must drive the identity reclaim: %+v", reclaimer.calls)
+	}
+}
+
+// fakeReclaimer records the oauth-side unlink the reset cascade delegates.
+type fakeReclaimer struct {
+	calls []struct{ userID, email string }
+	fail  error
+}
+
+func (f *fakeReclaimer) UnlinkForeignIdentities(_ context.Context, userID vo.Id, provenEmail string) (int64, error) {
+	f.calls = append(f.calls, struct{ userID, email string }{userID.String(), provenEmail})
+	return 0, f.fail
+}
+
+// The reclaim shares the password write's transaction: a failure to drop a
+// foreign sign-in method must not leave a reset that only changed the password.
+func TestResetPassword_RollsBackWhenTheIdentityReclaimFails(t *testing.T) {
+	svc, _, _, uid, pwreqs := newAuthEnvFull(t)
+	ctx := context.Background()
+	pr := &model.PasswordRequest{
+		ID: vo.NewId(), UserID: uid, Code: appuser.HashResetCode("482913"),
+		CreatedAt: authT0, UpdatedAt: authT0, ExpiredAt: authT0.Add(10 * time.Minute),
+	}
+	if err := pwreqs.Save(ctx, pr); err != nil {
+		t.Fatalf("seed password request: %v", err)
+	}
+	svc.SetIdentityReclaimer(&fakeReclaimer{fail: errors.New("boom")})
+
+	if _, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
+		Username: "auth@econumo.test", Code: "482913", Password: "next-secret",
+	}); err == nil {
+		t.Fatal("a failed reclaim must fail the reset")
+	}
+	if _, err := svc.Login(ctx, model.LoginRequest{Username: "auth@econumo.test", Password: "next-secret"}, "ua", authT0); err == nil {
+		t.Fatal("the password write must have rolled back with it")
 	}
 }
 

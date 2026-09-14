@@ -717,7 +717,8 @@
       "instruction": "We've sent a security code to your email. Enter it below and choose a new password.",
       "new_password": "New password",
       "send_failed": "Couldn't send the code. Check the email address and try again.",
-      "reset_failed": "The password wasn't reset. Check the code and try again."
+      "reset_failed": "The password wasn't reset. Check the code and try again.",
+      "reclaim_notice": "Resetting the password signs out every session, revokes API tokens, and removes linked sign-in methods that use a different email address."
     },
     "verify_email": {
       "header": "Verify your email",

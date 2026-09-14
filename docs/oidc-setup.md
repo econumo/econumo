@@ -193,6 +193,16 @@ user database.
   registered yours before you did. Signing in once with the password (use
   "Forgot password" if you never set one; the code goes to that mailbox) and
   then linking from Settings is the safe path, and only has to be done once.
+- **A password reset is a full account reclaim.** Completing one is the only
+  way to prove you control the address, so it also signs out every session,
+  revokes every personal access token, and unlinks any sign-in method whose
+  provider reports a *different* email address — otherwise someone who had
+  registered your address first could keep a provider account linked to it and
+  walk straight back in. A provider that reports the same address as the
+  account survives the reset (only the mailbox owner could have linked it),
+  which is why setting a password on a provider-created account does not
+  disturb it. If you had linked a provider under a different address, link it
+  again from Settings afterwards.
 - **Linking a provider from Settings is finished by the browser that started
   it.** The provider's answer carries nothing that identifies you, so Econumo
   parks the result and only writes the link when the browser that began it

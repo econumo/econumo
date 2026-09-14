@@ -2,9 +2,11 @@ package server
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -93,4 +95,127 @@ func TestOAuthUsers_FullyHydratesFromRealUserService(t *testing.T) {
 	if byEmail.ID.Value() != userID {
 		t.Fatalf("FindByEmail resolved id %q, want %q", byEmail.ID.Value(), userID)
 	}
+}
+
+var wiringResetCodeRe = regexp.MustCompile(`code is: (\d{6})`)
+
+// TestRecovery_ReclaimsAnAccountFromASquatter drives the reported takeover end
+// to end against the real handler. Someone registers an address they do not
+// own, links their own provider identity to it, and mints a personal token.
+// The rightful owner then does the only thing they can: reset the password with
+// a code sent to their mailbox. That reset is the account's ownership proof, so
+// nothing the squatter left may survive it — not the password, not the token,
+// and not the linked sign-in method.
+func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
+		AppURL: "https://app.example.test", OAuthGoogleClientID: "g", OAuthGoogleClientSecret: "s",
+		RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+	mail := &captureMailer{}
+	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{Mailer: mail}))
+	t.Cleanup(srv.Close)
+
+	post := func(path, token string, body string) (int, string) {
+		t.Helper()
+		req, _ := http.NewRequest(http.MethodPost, srv.URL+path, strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		if token != "" {
+			req.Header.Set("Authorization", "Bearer "+token)
+		}
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(raw)
+	}
+	tokenOf := func(body string) string {
+		t.Helper()
+		// login answers with the raw {token,user} body; create-personal-token
+		// wraps its one-time token in the standard envelope.
+		var v struct {
+			Token string `json:"token"`
+			Data  struct {
+				Token string `json:"token"`
+			} `json:"data"`
+		}
+		if err := json.Unmarshal([]byte(body), &v); err != nil {
+			t.Fatalf("token from %s: %v", body, err)
+		}
+		if v.Token != "" {
+			return v.Token
+		}
+		return v.Data.Token
+	}
+
+	// The squatter registers the victim's address and signs in.
+	if code, body := post("/api/v1/user/register-user", "",
+		`{"name":"Squatter","email":"victim@example.test","password":"squatter-pass"}`); code != 200 {
+		t.Fatalf("register: %d %s", code, body)
+	}
+	_, loginBody := post("/api/v1/user/login-user", "", `{"username":"victim@example.test","password":"squatter-pass"}`)
+	squatterSession := tokenOf(loginBody)
+	if squatterSession == "" {
+		t.Fatalf("login: %s", loginBody)
+	}
+	_, patBody := post("/api/v1/user/create-personal-token", squatterSession, `{"name":"squatter-ci"}`)
+	squatterPAT := tokenOf(patBody)
+	if squatterPAT == "" {
+		t.Fatalf("create-personal-token: %s", patBody)
+	}
+	// ...and links their OWN provider account to it (the identity a credential
+	// eviction leaves behind).
+	uid := userIDByEmail(t, db, "victim@example.test")
+	fixture.New(t, db).Identity(fixture.Identity{UserID: uid, Provider: "google",
+		Issuer: "https://accounts.google.com", Subject: "squatter-google-sub", Email: "squatter@example.test"})
+
+	// The victim reclaims through the mailbox they control.
+	if code, body := post("/api/v1/user/remind-password", "", `{"username":"victim@example.test"}`); code != 200 {
+		t.Fatalf("remind: %d %s", code, body)
+	}
+	m := wiringResetCodeRe.FindStringSubmatch(mail.msg.Text)
+	if m == nil {
+		t.Fatalf("no reset code in %q", mail.msg.Text)
+	}
+	if code, body := post("/api/v1/user/reset-password", "",
+		`{"username":"victim@example.test","code":"`+m[1]+`","password":"victim-pass"}`); code != 200 {
+		t.Fatalf("reset: %d %s", code, body)
+	}
+
+	// Nothing the squatter left behind still works.
+	if code, _ := post("/api/v1/user/logout-user", squatterSession, `{}`); code != 401 {
+		t.Errorf("squatter session still authenticates (%d)", code)
+	}
+	if code, _ := post("/api/v1/user/logout-user", squatterPAT, `{}`); code != 401 {
+		t.Errorf("squatter personal token still authenticates (%d)", code)
+	}
+	if code, body := post("/api/v1/user/login-user", "", `{"username":"victim@example.test","password":"squatter-pass"}`); code == 200 {
+		t.Errorf("squatter password still signs in: %d %s", code, body)
+	}
+	_, victimBody := post("/api/v1/user/login-user", "", `{"username":"victim@example.test","password":"victim-pass"}`)
+	victimSession := tokenOf(victimBody)
+	if victimSession == "" {
+		t.Fatalf("the owner must be able to sign in: %s", victimBody)
+	}
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/oauth/get-identity-list", nil)
+	req.Header.Set("Authorization", "Bearer "+victimSession)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	listed, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(listed), `"data":[]`) {
+		t.Errorf("the squatter's sign-in method survived the reclaim: %s", listed)
+	}
+}
+
+func userIDByEmail(t *testing.T, db *dbtest.DB, email string) string {
+	t.Helper()
+	var id string
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT id FROM users WHERE lower(email) = lower(?)`), email).Scan(&id); err != nil {
+		t.Fatalf("user id for %s: %v", email, err)
+	}
+	return id
 }

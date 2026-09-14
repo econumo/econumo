@@ -717,7 +717,8 @@
       "instruction": "Wysłaliśmy kod potwierdzający na Twój adres e-mail. Wpisz go poniżej i ustaw nowe hasło.",
       "new_password": "Nowe hasło",
       "send_failed": "Nie udało się wysłać kodu. Sprawdź adres e-mail i spróbuj ponownie.",
-      "reset_failed": "Hasło nie zostało zresetowane. Sprawdź kod i spróbuj ponownie."
+      "reset_failed": "Hasło nie zostało zresetowane. Sprawdź kod i spróbuj ponownie.",
+      "reclaim_notice": "Zresetowanie hasła wylogowuje wszystkie sesje, unieważnia tokeny API i usuwa powiązane metody logowania, które używają innego adresu e-mail."
     },
     "verify_email": {
       "header": "Potwierdź swój adres e-mail",

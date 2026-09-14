@@ -47,6 +47,7 @@ type Service struct {
 	trialDays           int
 	emailVerification   bool
 	logoutURLs          LogoutURLBuilder
+	identities          IdentityReclaimer
 }
 
 func NewService(
@@ -96,6 +97,10 @@ func NewService(
 // SetLogoutURLBuilder installs the oauth feature's end-session adapter after
 // construction (the composition root wires the two features in either order).
 func (s *Service) SetLogoutURLBuilder(b LogoutURLBuilder) { s.logoutURLs = b }
+
+// SetIdentityReclaimer installs the oauth feature's identity store for the
+// password-reset cascade, wired the same way and for the same reason.
+func (s *Service) SetIdentityReclaimer(r IdentityReclaimer) { s.identities = r }
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).

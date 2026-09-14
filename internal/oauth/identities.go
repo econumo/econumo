@@ -2,6 +2,7 @@ package oauth
 
 import (
 	"context"
+	"strings"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/datetime"
@@ -47,4 +48,31 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.Un
 		return nil, err
 	}
 	return &model.UnlinkIdentityResult{}, nil
+}
+
+// UnlinkForeignIdentities implements the user feature's recovery port: it
+// removes every identity of the user whose provider does not vouch for
+// provenEmail — the address a completed password reset just proved the caller
+// controls. An identity claiming that same address stays: obtaining one
+// requires the mailbox, so it cannot predate the owner. This is what stops a
+// squatter's own linked provider account from outliving the reclaim of an
+// address they never owned.
+func (s *Service) UnlinkForeignIdentities(ctx context.Context, userID vo.Id, provenEmail string) (int64, error) {
+	rows, err := s.identities.ListByUser(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+	proven := strings.ToLower(strings.TrimSpace(provenEmail))
+	var removed int64
+	for _, r := range rows {
+		if strings.ToLower(strings.TrimSpace(r.Email)) == proven {
+			continue
+		}
+		n, derr := s.identities.DeleteByUserProvider(ctx, userID, r.Provider)
+		if derr != nil {
+			return removed, derr
+		}
+		removed += n
+	}
+	return removed, nil
 }

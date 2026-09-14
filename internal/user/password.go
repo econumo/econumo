@@ -14,6 +14,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -150,6 +151,16 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if herr != nil {
 		return nil, herr
 	}
+	// A completed reset is the account's ownership proof: it is the one flow
+	// that demonstrates control of the mailbox. So everything that could sign in
+	// WITHOUT that proof goes with the old password — every session, every
+	// personal token, and every linked identity whose provider vouches for a
+	// different address. The last one matters because registration does not
+	// always verify email: someone who claimed the address first could have
+	// linked their own provider account to it, and that link would otherwise
+	// outlive the reclaim (a provider claiming this same address survives —
+	// only the mailbox owner could have obtained one). All of it shares the
+	// password write's transaction, so a half-done reclaim cannot happen.
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		// Completing a reset proves mailbox ownership, so it also satisfies the
@@ -158,13 +169,24 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		return s.passwordRequests.Delete(ctx, pr.ID)
+		if derr := s.passwordRequests.Delete(ctx, pr.ID); derr != nil {
+			return derr
+		}
+		if rerr := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal); rerr != nil {
+			return rerr
+		}
+		if s.identities == nil {
+			return nil
+		}
+		n, ierr := s.identities.UnlinkForeignIdentities(ctx, u.ID, lowered)
+		if ierr != nil {
+			return ierr
+		}
+		if n > 0 {
+			reqctx.AddLogAttr(ctx, "identities_unlinked", n)
+		}
+		return nil
 	}); err != nil {
-		return nil, err
-	}
-	// The reset flow has no presenting session, so ALL sessions are revoked —
-	// whoever holds the account's email owns the account now.
-	if err := s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	s.clearAttempt(RateScopeReset, lowered)

@@ -87,6 +87,20 @@ const (
 	RateScopeEmailChangeSent = "email-change-sent"
 )
 
+// IdentityReclaimer is the oauth feature's identity store as the recovery flow
+// sees it. Completing a password reset proves control of the mailbox, so it
+// must also take away the sign-in methods that never proved it: otherwise
+// someone who registered the address before its owner — and linked their own
+// provider account to it — keeps a way in after the owner reclaims. nil
+// disables the step (tests, CLI).
+type IdentityReclaimer interface {
+	// UnlinkForeignIdentities removes every linked identity whose provider does
+	// NOT vouch for provenEmail, and reports how many were removed. An identity
+	// claiming that same address survives: only the mailbox owner could have
+	// obtained one.
+	UnlinkForeignIdentities(ctx context.Context, userID vo.Id, provenEmail string) (int64, error)
+}
+
 // LogoutURLBuilder is the oauth feature's end-session capability, consumed by
 // Logout for sessions minted through the custom OIDC slot. nil disables it.
 type LogoutURLBuilder interface {

@@ -717,7 +717,8 @@
       "instruction": "Abbiamo inviato un codice di sicurezza alla tua email. Inseriscilo qui sotto e scegli una nuova password.",
       "new_password": "Nuova password",
       "send_failed": "Impossibile inviare il codice. Controlla l'indirizzo email e riprova.",
-      "reset_failed": "La password non è stata reimpostata. Controlla il codice e riprova."
+      "reset_failed": "La password non è stata reimpostata. Controlla il codice e riprova.",
+      "reclaim_notice": "Reimpostare la password disconnette tutte le sessioni, revoca i token API e rimuove i metodi di accesso collegati che usano un altro indirizzo email."
     },
     "verify_email": {
       "header": "Verifica la tua email",

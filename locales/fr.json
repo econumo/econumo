@@ -717,7 +717,8 @@
       "instruction": "Nous avons envoyé un code de sécurité à votre adresse e-mail. Saisissez-le ci-dessous et choisissez un nouveau mot de passe.",
       "new_password": "Nouveau mot de passe",
       "send_failed": "Impossible d’envoyer le code. Vérifiez l’adresse e-mail et réessayez.",
-      "reset_failed": "Le mot de passe n’a pas été réinitialisé. Vérifiez le code et réessayez."
+      "reset_failed": "Le mot de passe n’a pas été réinitialisé. Vérifiez le code et réessayez.",
+      "reclaim_notice": "La réinitialisation du mot de passe déconnecte toutes les sessions, révoque les jetons d’API et supprime les méthodes de connexion associées qui utilisent une autre adresse e-mail."
     },
     "verify_email": {
       "header": "Confirmez votre adresse e-mail",

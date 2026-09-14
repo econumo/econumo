@@ -102,6 +102,7 @@ export function RecoveryDialog({ open, onClose, email }: { open: boolean; onClos
               />
               {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
             </div>
+            <p className="text-sm text-muted-foreground">{t('auth.access_recovery_modal.reclaim_notice')}</p>
             {reset.isError ? (
               <p className="text-sm text-destructive">{t('auth.access_recovery_modal.reset_failed')}</p>
             ) : null}

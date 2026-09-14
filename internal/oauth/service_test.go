@@ -776,3 +776,36 @@ func TestCallback_AutoLinkRepointsAnIdentityAfterAnIssuerChange(t *testing.T) {
 		t.Fatalf("one row per slot, got %d", n)
 	}
 }
+
+// The recovery half of the squatting defence: a completed password reset proves
+// the mailbox, so every sign-in method that never proved it goes — but the one
+// that vouches for the very address just proven stays, because obtaining it
+// needs that same mailbox.
+func TestUnlinkForeignIdentities(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "owner@example.test", model.AlgorithmArgon2id)
+	ctx := context.Background()
+	mine := model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g-owner", "Owner@Example.test", h.clock.Now())
+	theirs := model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o-squatter", "squatter@example.test", h.clock.Now())
+	for _, i := range []*model.Identity{mine, theirs} {
+		if err := h.ids.Save(ctx, i); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	n, err := h.svc.UnlinkForeignIdentities(ctx, u.ID, "owner@example.test")
+	if err != nil || n != 1 {
+		t.Fatalf("removed %d (%v), want 1", n, err)
+	}
+	if _, err := h.ids.GetByUserProvider(ctx, u.ID, "oidc"); err == nil {
+		t.Fatal("an identity claiming another address must not survive the reclaim")
+	}
+	if _, err := h.ids.GetByUserProvider(ctx, u.ID, "google"); err != nil {
+		t.Fatalf("the identity vouching for the proven address stays: %v", err)
+	}
+
+	// Idempotent: nothing foreign is left to remove.
+	if n, err := h.svc.UnlinkForeignIdentities(ctx, u.ID, "owner@example.test"); err != nil || n != 0 {
+		t.Fatalf("removed %d (%v), want 0", n, err)
+	}
+}

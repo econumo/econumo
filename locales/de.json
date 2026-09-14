@@ -717,7 +717,8 @@
       "instruction": "Wir haben einen Sicherheitscode an Ihre E-Mail-Adresse gesendet. Geben Sie ihn unten ein und wählen Sie ein neues Passwort.",
       "new_password": "Neues Passwort",
       "send_failed": "Der Code konnte nicht gesendet werden. Prüfen Sie die E-Mail-Adresse und versuchen Sie es erneut.",
-      "reset_failed": "Das Passwort wurde nicht zurückgesetzt. Prüfen Sie den Code und versuchen Sie es erneut."
+      "reset_failed": "Das Passwort wurde nicht zurückgesetzt. Prüfen Sie den Code und versuchen Sie es erneut.",
+      "reclaim_notice": "Beim Zurücksetzen des Passworts werden alle Sitzungen abgemeldet, API-Token widerrufen und verknüpfte Anmeldemethoden mit einer anderen E-Mail-Adresse entfernt."
     },
     "verify_email": {
       "header": "Bestätigen Sie Ihre E-Mail-Adresse",

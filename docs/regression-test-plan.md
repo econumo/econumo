@@ -122,6 +122,16 @@ navigation (single-pane vs sidebar).
       server. Sign in with an existing account first."
 - [ ] Cancelling at the provider (deny consent / close the flow) returns to
       Econumo showing "Sign-in was cancelled."
+- [ ] Password reset is a full reclaim: on an account with an open session, a
+      personal access token and two linked providers (one whose provider email
+      matches the account's, one whose does not), completing "Forgot password"
+      signs the session out, makes the token stop authenticating, removes the
+      provider with the different email from Settings → Profile → Linked
+      accounts, and keeps the matching one. The recovery dialog says so before
+      the reset is submitted.
+- [ ] A provider-created (passwordless) account using Settings → Profile →
+      "Set a password" keeps its linked provider through that flow — it is the
+      same reset endpoint, and the provider vouches for the account's address.
 - [ ] Linking from Settings completes only in the browser that started it:
       start the link in one browser, then open the returned Econumo callback
       URL in a DIFFERENT browser signed in as another user — that user's

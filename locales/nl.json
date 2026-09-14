@@ -717,7 +717,8 @@
       "instruction": "We hebben een beveiligingscode naar uw e-mailadres gestuurd. Voer die hieronder in en kies een nieuw wachtwoord.",
       "new_password": "Nieuw wachtwoord",
       "send_failed": "De code kon niet worden verzonden. Controleer het e-mailadres en probeer het opnieuw.",
-      "reset_failed": "Het wachtwoord is niet gereset. Controleer de code en probeer het opnieuw."
+      "reset_failed": "Het wachtwoord is niet gereset. Controleer de code en probeer het opnieuw.",
+      "reclaim_notice": "Het opnieuw instellen van het wachtwoord meldt alle sessies af, trekt API-tokens in en verwijdert gekoppelde aanmeldmethoden met een ander e-mailadres."
     },
     "verify_email": {
       "header": "Bevestig uw e-mailadres",

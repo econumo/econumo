@@ -717,7 +717,8 @@
       "instruction": "Enviámos um código de segurança para o seu email. Introduza-o abaixo e escolha uma nova palavra-passe.",
       "new_password": "Nova palavra-passe",
       "send_failed": "Não foi possível enviar o código. Verifique o endereço de email e tente novamente.",
-      "reset_failed": "A palavra-passe não foi reposta. Verifique o código e tente novamente."
+      "reset_failed": "A palavra-passe não foi reposta. Verifique o código e tente novamente.",
+      "reclaim_notice": "Redefinir a palavra-passe termina todas as sessões, revoga os tokens de API e remove os métodos de início de sessão associados que usam outro endereço de e-mail."
     },
     "verify_email": {
       "header": "Confirme o seu email",

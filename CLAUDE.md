@@ -715,9 +715,19 @@ In the distroless image these run via the binary directly, e.g.
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
 - Revocation cascades: `update-password` revokes all sessions EXCEPT the presenting
-  one; `reset-password` and CLI `user:change-password` revoke ALL sessions;
-  `user:deactivate` revokes sessions AND PATs (which is why per-request auth needs no
-  `is_active` join). PATs survive password changes.
+  one (PATs survive — integrations must outlive a password change); CLI
+  `user:change-password` revokes all sessions; `user:deactivate` revokes sessions AND
+  PATs (which is why per-request auth needs no `is_active` join). **`reset-password` is
+  the reclaim**: completing it is the account's proof of mailbox ownership, so it
+  revokes every session AND every PAT, and unlinks every external identity whose
+  provider vouches for a DIFFERENT address (`user.IdentityReclaimer` →
+  `oauth.UnlinkForeignIdentities`, wired in `internal/server`). Registration does not
+  always verify email, so a squatter could have linked their own provider account to an
+  address they never owned; revoking passwords and tokens alone would leave that link
+  as a way back in. An identity claiming the proven address survives — obtaining one
+  needs that mailbox — which is also why the passwordless "Set a password" flow (the
+  same reset endpoint) keeps its provider. All of it shares the password write's
+  transaction.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).
@@ -743,7 +753,8 @@ In the distroless image these run via the binary directly, e.g.
   is thorough enough there — a squatter's other linked identities, shares and invites
   would be inherited by whoever the provider vouched for — so the owner signs in with
   their password (or resets it through the mailbox the provider just proved they hold)
-  and links the provider from Settings instead. **A link started from Settings writes nothing on
+  and links the provider from Settings instead. That reset is itself the reclaim: see
+  the revocation cascade above for what it takes away. **A link started from Settings writes nothing on
   the callback**: the provider redirects whichever browser followed the authorization URL,
   so the callback parks the resolved identity in a one-shot *link* handoff and the
   authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating

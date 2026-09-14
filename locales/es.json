@@ -717,7 +717,8 @@
       "instruction": "Hemos enviado un código de seguridad a tu correo electrónico. Introdúcelo abajo y elige una nueva contraseña.",
       "new_password": "Nueva contraseña",
       "send_failed": "No se pudo enviar el código. Revisa la dirección de correo electrónico e inténtalo de nuevo.",
-      "reset_failed": "La contraseña no se restableció. Revisa el código e inténtalo de nuevo."
+      "reset_failed": "La contraseña no se restableció. Revisa el código e inténtalo de nuevo.",
+      "reclaim_notice": "Restablecer la contraseña cierra todas las sesiones, revoca los tokens de API y elimina los métodos de inicio de sesión vinculados que usan otra dirección de correo."
     },
     "verify_email": {
       "header": "Verifica tu correo electrónico",
