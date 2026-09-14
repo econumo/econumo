@@ -5,11 +5,11 @@
 // is written to the device — $install_id and the identity fields all live in
 // memory only, cleared by resetAnalyticsIdentity on logout (the group survives,
 // since it describes the instance rather than the visitor).
-// Wire format: POST /api/events, one batch per flush.
+// Wire format: POST /ingest/events, one batch per flush.
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
 
-const COLLECTOR_URL = 'https://t.econumo.com/api/events'
+const COLLECTOR_URL = 'https://t.econumo.com/ingest/events'
 // An ingest key is public by design (it can only ingest events). It belongs
 // to the collector's `econumo` project (identity=identified) — the in-app
 // transport is that project's only source. The cloud's liltag snippet posts
