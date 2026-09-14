@@ -15,9 +15,11 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/oidc"
+	"github.com/econumo/econumo/internal/infra/oidc/oidctest"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/model"
+	appoauth "github.com/econumo/econumo/internal/oauth"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -304,5 +306,27 @@ func TestLogin_SessionInsertIsFencedByTheGenerationReadWithTheHash(t *testing.T)
 	}
 	if n != 0 {
 		t.Fatalf("session minted on a pre-reclaim read: n=%d", n)
+	}
+}
+
+// TestBuildAPI_UsesInjectedProviders pins the seam serve relies on: the
+// provider clients are built once and handed in, so the boot probe warms the
+// same discovery cache the request path uses.
+func TestBuildAPI_UsesInjectedProviders(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := oidctest.New(t)
+	// No OIDC/Google/Apple variables: the list can only come from the seam.
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", RateLimitWindow: 15 * time.Minute}
+	injected := []appoauth.Provider{{Name: "Injected", Client: oidc.NewClient(f.Issuer("oidc", false), f.Server.Client())}}
+	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{OAuthProviders: injected}))
+	t.Cleanup(srv.Close)
+	resp, err := http.Get(srv.URL + "/api/v1/oauth/get-provider-list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	if !strings.Contains(string(body), `"name":"Injected"`) {
+		t.Fatalf("provider list did not come from the seam: %s", body)
 	}
 }

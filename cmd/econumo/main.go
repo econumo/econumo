@@ -180,10 +180,12 @@ func run(serveArgs []string) error {
 			"verification codes will only be printed to the server log")
 	}
 
-	// Provider discovery is lazy; probe once so a misconfigured issuer shows up
-	// in the boot log instead of on the first sign-in attempt.
-	for _, p := range oauthProbe(cfg) {
-		slog.Warn("oauth provider discovery failed at boot; sign-in through it will fail until it is reachable", "provider", p.id, "err", p.err)
+	// Built here rather than inside server.Build so the boot probe below and the
+	// request path share one set of clients (and therefore one discovery cache).
+	// A config-level error (e.g. a malformed Apple private key) fails boot here.
+	oauthProviders, err := oauth.ProvidersFromConfig(cfg, nil)
+	if err != nil {
+		return err
 	}
 
 	// Server-only requirement (the CLI path validated via config.Load does not
@@ -226,7 +228,7 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates})
+	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates, OAuthProviders: oauthProviders})
 	if err != nil {
 		return err
 	}
@@ -272,6 +274,12 @@ func run(serveArgs []string) error {
 			errCh <- nil
 		}(s)
 	}
+
+	// Probing in the background, after the listeners are up, keeps an
+	// unreachable issuer out of the startup critical path. Deliberately not
+	// sigCtx: a shutdown mid-probe would cancel the fetch and log a failure for
+	// a provider that was never actually unreachable.
+	go probeProviders(ctx, oauthProviders)
 
 	var runErr error
 	select {
@@ -333,31 +341,17 @@ func toMigrateMigrations(in []backend.Migration) []migrate.Migration {
 	return out
 }
 
-// probeResult is one failed oauth boot probe: either the provider whose
-// discovery document could not be fetched, or (id "config") a config-level
-// error building the provider list.
-type probeResult struct {
-	id  string
-	err string
-}
-
-// oauthProbe fetches each configured provider's OIDC discovery document once
-// at boot so an unreachable issuer shows up in the startup log rather than on
-// the first sign-in attempt. It only ever warns: a config-level error (e.g. a
-// malformed Apple private key) is reported here too, but that same error is
-// what fails boot for real when server.Build calls ProvidersFromConfig again.
-func oauthProbe(cfg config.Config) []probeResult {
-	providers, err := oauth.ProvidersFromConfig(cfg, nil)
-	if err != nil {
-		return []probeResult{{id: "config", err: err.Error()}}
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	var out []probeResult
+// probeProviders fetches each provider's discovery document once, after the
+// listener is up, so an unreachable issuer shows in the boot log without
+// delaying startup; each provider gets its own timeout so one slow issuer
+// cannot make the others report a false failure.
+func probeProviders(ctx context.Context, providers []oauth.Provider) {
 	for _, p := range providers {
-		if _, derr := p.Client.Discover(ctx); derr != nil {
-			out = append(out, probeResult{id: p.Client.Issuer().ID, err: derr.Error()})
+		pctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		if _, err := p.Client.Discover(pctx); err != nil {
+			slog.Warn("oauth provider discovery failed at boot; sign-in through it will fail until it is reachable",
+				"provider", p.Client.Issuer().ID, "err", err.Error())
 		}
+		cancel()
 	}
-	return out
 }

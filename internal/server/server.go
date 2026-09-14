@@ -98,6 +98,14 @@ type Seams struct {
 	// transport (console default / Resend); tests inject a recording transport to
 	// capture the emitted reset code, which is no longer readable from the DB.
 	Mailer mailer.Mailer
+	// OAuthProviders, when non-nil, are the provider clients to mount; serve
+	// builds them once (so the boot probe warms the same discovery cache the
+	// server uses) and tests inject fakes. nil builds them from cfg.
+	OAuthProviders []appoauth.Provider
+	// OAuthHTTPClient is the HTTP client for provider discovery/token/JWKS
+	// calls when providers are built from cfg (nil = the default 10s client);
+	// the apiparity harness maps a fixed literal issuer onto its fake.
+	OAuthHTTPClient *http.Client
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -196,9 +204,12 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
 
-	oauthProviders, err := appoauth.ProvidersFromConfig(cfg, nil)
-	if err != nil {
-		return nil, nil, nil, err
+	oauthProviders := seams.OAuthProviders
+	if oauthProviders == nil {
+		oauthProviders, err = appoauth.ProvidersFromConfig(cfg, seams.OAuthHTTPClient)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 	}
 	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),

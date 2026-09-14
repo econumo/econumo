@@ -45,6 +45,10 @@ type Fake struct {
 	// DiscoveryIssuer overrides the `issuer` field of the discovery document,
 	// for testing the client's issuer-consistency check.
 	DiscoveryIssuer string
+	// PublicURL, when set, is the issuer and endpoint base this fake presents
+	// instead of its (per-run, port-dependent) loopback URL. Reach it through
+	// Transport().
+	PublicURL string
 
 	mu       sync.Mutex
 	key      *rsa.PrivateKey
@@ -71,10 +75,31 @@ func New(t testing.TB) *Fake {
 	return f
 }
 
-func (f *Fake) IssuerURL() string { return f.Server.URL }
+func (f *Fake) IssuerURL() string {
+	if f.PublicURL != "" {
+		return f.PublicURL
+	}
+	return f.Server.URL
+}
+
+// Transport routes requests for PublicURL to the in-process server, so a
+// client configured with a fixed, deterministic issuer (goldens compare
+// byte-for-byte across runs and engines) still talks to this fake.
+func (f *Fake) Transport() http.RoundTripper {
+	target := f.Server.Listener.Addr().String()
+	return roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		r2 := r.Clone(r.Context())
+		r2.URL.Scheme, r2.URL.Host, r2.Host = "http", target, target
+		return http.DefaultTransport.RoundTrip(r2)
+	})
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 func (f *Fake) Issuer(id string, trust bool) oidc.Issuer {
-	return oidc.Issuer{ID: id, IssuerURL: f.Server.URL, ClientID: f.ClientID, ClientSecret: oidc.StaticSecret(f.Secret),
+	return oidc.Issuer{ID: id, IssuerURL: f.IssuerURL(), ClientID: f.ClientID, ClientSecret: oidc.StaticSecret(f.Secret),
 		Scopes: []string{"openid", "profile", "email"}, UsePKCE: true, TrustEmail: trust}
 }
 
@@ -111,7 +136,7 @@ func (f *Fake) Claims(nonce string) map[string]any { return f.claims(nonce) }
 
 func (f *Fake) claims(nonce string) map[string]any {
 	now := time.Now()
-	m := map[string]any{"iss": f.Server.URL, "aud": f.ClientID, "sub": f.Subject, "nonce": nonce,
+	m := map[string]any{"iss": f.IssuerURL(), "aud": f.ClientID, "sub": f.Subject, "nonce": nonce,
 		"iat": now.Unix(), "exp": now.Add(5 * time.Minute).Unix()}
 	if f.Name != "" {
 		m["name"] = f.Name
@@ -154,19 +179,20 @@ func (f *Fake) record(w http.ResponseWriter, r *http.Request) {
 
 func (f *Fake) discovery(w http.ResponseWriter, r *http.Request) {
 	f.note(r)
-	issuer := f.Server.URL
+	base := f.IssuerURL()
+	issuer := base
 	if f.DiscoveryIssuer != "" {
 		issuer = f.DiscoveryIssuer
 	}
 	d := map[string]string{
-		"issuer": issuer, "authorization_endpoint": f.Server.URL + "/authorize",
-		"token_endpoint": f.Server.URL + "/token", "jwks_uri": f.Server.URL + "/jwks",
+		"issuer": issuer, "authorization_endpoint": base + "/authorize",
+		"token_endpoint": base + "/token", "jwks_uri": base + "/jwks",
 	}
 	if !f.NoUserInfo {
-		d["userinfo_endpoint"] = f.Server.URL + "/userinfo"
+		d["userinfo_endpoint"] = base + "/userinfo"
 	}
 	if f.EndSession {
-		d["end_session_endpoint"] = f.Server.URL + "/end-session"
+		d["end_session_endpoint"] = base + "/end-session"
 	}
 	_ = json.NewEncoder(w).Encode(d)
 }

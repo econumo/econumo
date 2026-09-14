@@ -23,8 +23,7 @@ func NormalizeParity(b []byte) string {
 	s = handoffRe.ReplaceAllString(s, "${1}t=<handoff-token>")
 	s = inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
 	s = oauthParamRe.ReplaceAllString(s, "${1}<random>")
-	s = oauthFlowRe.ReplaceAllString(s, `"flow":"<oauth-flow>"`)
-	return fakeIssuerRe.ReplaceAllString(s, "<issuer>")
+	return oauthFlowRe.ReplaceAllString(s, `"flow":"<oauth-flow>"`)
 }
 
 var (
@@ -59,12 +58,6 @@ var (
 	// oauthFlowRe redacts the per-flow secret start-login/start-link returns —
 	// the same 43-char base64url shape as the parameters above, fresh every run.
 	oauthFlowRe = regexp.MustCompile(`"flow":"[A-Za-z0-9_-]{43}"`)
-
-	// fakeIssuerRe redacts the apiparity harness's per-run fake OIDC issuer
-	// (internal/infra/oidc/oidctest), an httptest server whose loopback port
-	// differs every run and — for the enginecompare byte-parity check — differs
-	// between the sqlite and postgresql harnesses (two separate fakes).
-	fakeIssuerRe = regexp.MustCompile(`http://127\.0\.0\.1:\d+`)
 )
 
 // NormalizeGolden makes a response body stable across runs AND engines: the

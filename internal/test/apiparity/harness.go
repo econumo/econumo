@@ -86,12 +86,14 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	// The SAME instant is used on both engines so created-row timestamps match.
 	clk := fixedClock{t: ClockTime}
 
-	// A fake OIDC issuer per harness — a fresh httptest server per run/engine,
-	// so its port (and therefore IssuerURL) differs each time; normalize.go's
-	// fakeIssuerRe redacts it for both the golden comparison and the
-	// sqlite-vs-pgsql enginecompare byte-parity check. Google and Apple stay
+	// A fake OIDC issuer per harness. Its httptest port differs every run (and
+	// between the sqlite and pgsql harnesses the enginecompare suite compares
+	// byte-for-byte), so the issuer the server sees is a FIXED literal and the
+	// seam below maps it onto this in-process fake — no golden carries a
+	// loopback URL, and no normalizer has to redact one. Google and Apple stay
 	// unconfigured (no client id) so the suite never touches the network.
 	fakeIDP := oidctest.New(t)
+	fakeIDP.PublicURL = "http://idp.example.test"
 
 	cfg := config.Config{
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters
@@ -133,6 +135,9 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		Clock:   clk,
 		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
 		Mailer:  rec,
+		// Every discovery/token/JWKS/userinfo call for the fixed issuer above is
+		// rewritten onto the fake's real loopback address.
+		OAuthHTTPClient: &http.Client{Transport: fakeIDP.Transport(), Timeout: 10 * time.Second},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)

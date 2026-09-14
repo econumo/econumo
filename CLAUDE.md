@@ -467,11 +467,13 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   fails). Any enabled slot requires `ECONUMO_URL` — every callback URI derives from it as
   `<ECONUMO_URL>/api/v1/oauth/callback-<google|apple|oidc>`, the one URL to register with the
   provider; there is no separate redirect-URI variable. Discovery documents and JWKS are
-  fetched lazily and cached for the process lifetime; `serve` probes every configured issuer
-  once at boot and logs a WARN (never fails boot) when discovery is unreachable, so sign-in
-  through it fails until the issuer answers. `ECONUMO_OIDC_TRUST_EMAIL` (strict bool, default
-  `false`) treats the custom issuer's email claim as verified; `false` rejects any token
-  without `email_verified=true` with `email_unverified`, for every intent (login, auto-link,
+  fetched lazily and cached for the process lifetime; `serve` builds the provider clients once,
+  probes each configured issuer's discovery document in the background right after the listener
+  is up (one 5-second timeout per provider) and logs a WARN (never fails boot) when one is
+  unreachable, so sign-in through it fails until the issuer answers.
+  `ECONUMO_OIDC_TRUST_EMAIL` (strict bool, default `false`) treats the custom issuer's email
+  claim as verified; `false` rejects any token without `email_verified=true` with
+  `email_unverified`, for every intent (login, auto-link,
   and linking from Settings) — an issuer that never sends that claim needs the flag set or no
   sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes; Apple is
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
