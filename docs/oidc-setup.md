@@ -94,8 +94,8 @@ never lets you download it again, so save it somewhere safe immediately.
    ECONUMO_OAUTH_APPLE_PRIVATE_KEY=<the one-line key from step 6>
    ```
 
-Apple is a fixed issuer (`https://appleid.apple.com`) and, like Google,
-its email claim is always treated as verified. Apple only sends the user's
+Apple is a fixed issuer (`https://appleid.apple.com`) and its email claim
+is always treated as verified. Apple only sends the user's
 name on the very first sign-in — Econumo captures it then, so if the
 first attempt fails for another reason, a later successful sign-in may not
 have a name to use (it falls back to the email's local part).
