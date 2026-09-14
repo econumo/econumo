@@ -157,7 +157,10 @@ navigation (single-pane vs sidebar).
       active; sign out there to end it.") instead of an IdP redirect.
 - [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
       embedded web view; completing sign-in returns via the `econumo://`
-      deep link and the sheet closes automatically.
+      deep link and the sheet closes automatically. An expired or
+      already-used attempt returns to the app's login page with "The sign-in
+      attempt expired or was already used." (not a web page inside the
+      sheet).
 
 ## 3. Onboarding (fresh user)
 

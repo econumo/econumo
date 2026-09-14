@@ -428,6 +428,21 @@ func TestCallback_StateErrors(t *testing.T) {
 	}
 }
 
+// TestCallback_UnknownStateReturnsToTheClientThatStartedTheFlow covers Task
+// 8: an expired/consumed state can't be looked up for its intent+client, but
+// the client prefix baked into the state value itself (start's "web."/"app."
+// prefix) is still enough to send the browser back to the surface it came
+// from, instead of always landing an app flow on the web login page.
+func TestCallback_UnknownStateReturnsToTheClientThatStartedTheFlow(t *testing.T) {
+	h := newHarness(t, false, true)
+	if r := h.svc.Callback(context.Background(), "oidc", appoauth.CallbackInput{Code: "c", State: "app.doesnotexist"}); r != "econumo://oauth?error=invalid_state" {
+		t.Fatalf("app: got %s", r)
+	}
+	if r := h.svc.Callback(context.Background(), "oidc", appoauth.CallbackInput{Code: "c", State: "web.doesnotexist"}); r != "https://app.example.test/login?oauthError=invalid_state" {
+		t.Fatalf("web: got %s", r)
+	}
+}
+
 func mustQuery(t *testing.T, raw string) url.Values {
 	t.Helper()
 	u, err := url.Parse(raw)

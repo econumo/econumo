@@ -51,7 +51,10 @@ var (
 	// oauthParamRe redacts the per-request state/nonce/PKCE code_challenge
 	// values oidc.RandomToken mints for every authorization URL — 43-char
 	// base64url tokens (32 random bytes, RawURLEncoding), fresh every run.
-	oauthParamRe = regexp.MustCompile(`([?&](?:state|nonce|code_challenge)=)[A-Za-z0-9_-]{43}`)
+	// state additionally carries a leading "web."/"app." display-hint prefix
+	// (see clientFromState in internal/oauth/callback.go), which is also
+	// redacted so the golden doesn't pin which client a scenario used.
+	oauthParamRe = regexp.MustCompile(`([?&](?:state|nonce|code_challenge)=)(?:web\.|app\.)?[A-Za-z0-9_-]{43}`)
 
 	// oauthFlowRe redacts the per-flow secret start-login/start-link returns —
 	// the same 43-char base64url shape as the parameters above, fresh every run.

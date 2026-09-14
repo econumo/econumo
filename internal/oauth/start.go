@@ -30,6 +30,11 @@ func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent
 	if err != nil {
 		return nil, err
 	}
+	// Prefixed before it is hashed or embedded in the authorization URL, so an
+	// unknown/expired state at the callback (the row itself is gone) still
+	// carries which surface started the flow. Display hint only: the row,
+	// when found, still decides everything.
+	state = req.Client + "." + state
 	nonce, err := oidc.RandomToken()
 	if err != nil {
 		return nil, err

@@ -32,9 +32,10 @@ func (s *Service) Callback(ctx context.Context, provider string, in CallbackInpu
 	st, err := s.consumeState(ctx, provider, in.State)
 	if err != nil {
 		logWarn(ctx, "oauth callback: state", err, "provider", provider)
-		// The intent (and the client) live in the state row, so an unknown or
-		// expired state can only be reported on the web login page.
-		return s.errorURL(model.OAuthClientWeb, "invalid_state")
+		// The row (and with it the intent) is gone; the client prefix on the
+		// state value itself still says which surface to report on. It is a
+		// display hint only — nothing is authorized by it.
+		return s.errorURL(clientFromState(in.State), "invalid_state")
 	}
 	reqctx.AddLogAttr(ctx, "oauth_intent", st.Intent)
 	if in.Error != "" {
@@ -104,6 +105,18 @@ func (s *Service) consumeState(ctx context.Context, provider, state string) (*mo
 		return nil, errs.NewNotFound("state expired")
 	}
 	return st, nil
+}
+
+// clientFromState reads the display-hint prefix start() bakes into the state
+// value (web./app.) so a miss in consumeState can still pick an error
+// surface. Anything that isn't recognizably the app's prefix defaults to web,
+// same as an empty/garbage State would have hit the web page before this
+// change.
+func clientFromState(state string) string {
+	if strings.HasPrefix(state, model.OAuthClientApp+".") {
+		return model.OAuthClientApp
+	}
+	return model.OAuthClientWeb
 }
 
 // userinfoFallback fills email/verified/name only where the ID token left them
