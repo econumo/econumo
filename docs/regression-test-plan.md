@@ -116,7 +116,8 @@ navigation (single-pane vs sidebar).
       browser that started the flow can complete it.
 - [ ] Sign-in with a provider that reports an unverified email is rejected
       with "The sign-in provider has not verified this email address."; no
-      account created or linked.
+      account created or linked (this includes a Google account whose
+      sign-in address Google reports as unverified).
 - [ ] With `ECONUMO_ALLOW_REGISTRATION=false` (separate boot) and no matching
       account: sign-in via a provider shows "Registration is disabled on this
       server. Sign in with an existing account first."

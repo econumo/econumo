@@ -22,7 +22,7 @@ func TestProvidersFromConfig(t *testing.T) {
 		t.Fatalf("%+v %v", ps, err)
 	}
 	g := ps[0].Client.Issuer()
-	if g.IssuerURL != "https://accounts.google.com" || !g.TrustEmail || !g.UsePKCE || g.ExtraAuthParams["prompt"] != "select_account" {
+	if g.IssuerURL != "https://accounts.google.com" || g.TrustEmail || !g.UsePKCE || g.ExtraAuthParams["prompt"] != "select_account" {
 		t.Fatalf("google issuer %+v", g)
 	}
 	o := ps[1].Client.Issuer()
@@ -32,6 +32,17 @@ func TestProvidersFromConfig(t *testing.T) {
 	cfg.OAuthAppleClientID, cfg.OAuthAppleTeamID, cfg.OAuthAppleKeyID, cfg.OAuthApplePrivateKey = "com.example.web", "TEAM", "KEY", "not a pem"
 	if _, err := ProvidersFromConfig(cfg, nil); err == nil {
 		t.Fatal("a bad apple key must fail")
+	}
+}
+
+func TestProvidersFromConfig_GoogleDoesNotTrustUnverifiedEmail(t *testing.T) {
+	cfg := config.Config{OAuthGoogleClientID: "id", OAuthGoogleClientSecret: "s"}
+	ps, err := ProvidersFromConfig(cfg, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ps[0].Client.Issuer().TrustEmail {
+		t.Fatal("Google slot must honour email_verified: Google documents false for unverified addresses")
 	}
 }
 

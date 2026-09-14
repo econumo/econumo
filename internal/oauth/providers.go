@@ -30,7 +30,11 @@ func ProvidersFromConfig(cfg config.Config, hc *http.Client) ([]Provider, error)
 		out = append(out, Provider{Name: "Google", Client: oidc.NewClient(oidc.Issuer{
 			ID: model.OAuthProviderGoogle, IssuerURL: googleIssuerURL, ClientID: cfg.OAuthGoogleClientID,
 			ClientSecret: oidc.StaticSecret(cfg.OAuthGoogleClientSecret),
-			Scopes:       []string{"openid", "email", "profile"}, UsePKCE: true, TrustEmail: true,
+			Scopes:       []string{"openid", "email", "profile"}, UsePKCE: true,
+			// Google always sends email_verified and documents false for unverified
+			// sign-in addresses; trusting the claim blindly would only ever matter in
+			// that one case.
+			TrustEmail:      false,
 			ExtraAuthParams: map[string]string{"prompt": "select_account"},
 		}, hc)})
 	}

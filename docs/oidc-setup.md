@@ -38,7 +38,9 @@ the Authentik and Cloudflare Access sections below for when that applies).
    ```
 
 Google is a fixed issuer (`https://accounts.google.com`) — there is no issuer
-URL to configure, and Google's email claim is always treated as verified.
+URL to configure. Google's email claim is used only when Google reports it as
+verified (`email_verified`); an unverified Google address is rejected with
+"The sign-in provider has not verified this email address."
 
 **Callback URL to register:** `<ECONUMO_URL>/api/v1/oauth/callback-google`
 

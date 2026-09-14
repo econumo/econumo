@@ -298,8 +298,11 @@ Common prefix:
    userinfo fallback of §5.3.
 4. No email claim → `email_required` (issue #217 Case C is out of scope,
    §14). Then `verified := claims.EmailVerified || issuer.TrustEmail`; not
-   verified → `email_unverified`. Google and Apple are configured with
-   `TrustEmail = true`; the custom slot follows `ECONUMO_OIDC_TRUST_EMAIL`.
+   verified → `email_unverified`. Apple is configured with `TrustEmail = true`
+   (every Apple ID address is verified); Google with `TrustEmail = false` —
+   Google always sends `email_verified` and documents `false` for unverified
+   addresses, so the claim is honoured (review ruling 2026-09-14); the custom
+   slot follows `ECONUMO_OIDC_TRUST_EMAIL`.
    This check runs for every intent, including an already-linked identity and
    a link from Settings: an issuer whose tokens carry no `email_verified`
    claim cannot be used at all until the operator sets the trust flag, which

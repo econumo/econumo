@@ -473,8 +473,10 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `false`) treats the custom issuer's email claim as verified; `false` rejects any token
   without `email_verified=true` with `email_unverified`, for every intent (login, auto-link,
   and linking from Settings) — an issuer that never sends that claim needs the flag set or no
-  sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes and are
-  always treated as trusted. See `docs/oidc-setup.md`.
+  sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes; Apple is
+  always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
+  claim is honoured, not trusted blindly — Google always sends it and documents `false` for
+  unverified addresses. See `docs/oidc-setup.md`.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
