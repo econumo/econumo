@@ -20,7 +20,6 @@ import (
 type (
 	accessTokenRow                   = sqlitegen.AccessToken
 	accessTokenWithAccessRow         = sqlitegen.GetAccessTokenByHashRow
-	insertAccessTokenParams          = sqlitegen.InsertAccessTokenParams
 	updateAccessTokenParams          = sqlitegen.UpdateAccessTokenParams
 	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
 	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
@@ -29,7 +28,6 @@ type (
 )
 
 type accessTokenQuerier interface {
-	InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error
 	InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error)
 	InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error)
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
@@ -59,15 +57,6 @@ func NewAccessTokenRepo(driver string, tx *backend.TxManager) *AccessTokenRepo {
 }
 
 func (r *AccessTokenRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
-
-func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) error {
-	return r.q.InsertAccessToken(ctx, r.db(ctx), insertAccessTokenParams{
-		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
-		Name: t.Name, UserAgent: t.UserAgent,
-		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
-		Provider: t.Provider, IDToken: t.IDToken,
-	})
-}
 
 func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
 	return r.q.InsertAccessTokenIfGeneration(ctx, r.db(ctx), insertTokenIfGenParams{
@@ -110,13 +99,14 @@ func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.Ac
 
 // tokenRowFromHashRow strips the joined access_level/access_until columns
 // back down to the plain access_tokens row shape shared by every other query.
+// The hot-path query does not select provider/id_token (see
+// GetAccessTokenByHash's SQL comment), so both stay nil here.
 func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 	return accessTokenRow{
 		ID: row.ID, UserID: row.UserID, Kind: row.Kind, TokenHash: row.TokenHash,
 		Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
-		Provider: row.Provider, IDToken: row.IDToken,
 	}
 }
 

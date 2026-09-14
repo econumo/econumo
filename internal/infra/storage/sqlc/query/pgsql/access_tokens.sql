@@ -1,10 +1,6 @@
 -- Access-token queries (access_tokens). See the sqlite sibling for the flow;
 -- liveness is evaluated in the app layer, not SQL.
 
--- name: InsertAccessToken :exec
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);
-
 -- name: InsertAccessTokenIfGeneration :execrows
 -- See the sqlite sibling.
 INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
@@ -18,9 +14,10 @@ SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = $13 AND p.user_id = $14 AND p.revoked_at IS NULL);
 
 -- name: GetAccessTokenByHash :one
--- Joins users for access_level/access_until; see the sqlite sibling for why.
+-- Joins users for access_level/access_until; see the sqlite sibling for why
+-- provider/id_token are deliberately omitted here.
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
-       t.created_at, t.last_used_at, t.expires_at, t.revoked_at, t.provider, t.id_token,
+       t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
        u.access_level, u.access_until
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id

@@ -63,12 +63,12 @@ type Querier interface {
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
-	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
-	// Joins users for access_level/access_until; see the sqlite sibling for why.
+	// Joins users for access_level/access_until; see the sqlite sibling for why
+	// provider/id_token are deliberately omitted here.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
@@ -203,7 +203,6 @@ type Querier interface {
 	HideGlobalCurrencies(ctx context.Context, arg HideGlobalCurrenciesParams) error
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.
-	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	// See the sqlite sibling.
 	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
 	// See the sqlite sibling.

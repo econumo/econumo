@@ -10,15 +10,6 @@ import (
 	"time"
 )
 
-const deleteUserPasswordRequest = `-- name: DeleteUserPasswordRequest :exec
-DELETE FROM users_password_requests WHERE id = ?
-`
-
-func (q *Queries) DeleteUserPasswordRequest(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, deleteUserPasswordRequest, id)
-	return err
-}
-
 const deleteUserPasswordRequestsByUser = `-- name: DeleteUserPasswordRequestsByUser :exec
 
 DELETE FROM users_password_requests WHERE user_id = ?

@@ -72,8 +72,8 @@ func seedToken(t *testing.T, tokens *userrepo.AccessTokenRepo, userID vo.Id, kin
 		ID: vo.NewId(), UserID: userID, Kind: kind, TokenHash: appuser.HashAccessToken(raw),
 		CreatedAt: authT0, LastUsedAt: authT0, ExpiresAt: exp,
 	}
-	if err := tokens.Insert(context.Background(), tok); err != nil {
-		t.Fatalf("seed token: %v", err)
+	if n, err := tokens.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
+		t.Fatalf("seed token: %d %v", n, err)
 	}
 	return tok.ID
 }

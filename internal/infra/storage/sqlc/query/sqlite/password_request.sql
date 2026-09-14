@@ -15,6 +15,3 @@ VALUES (?, ?, ?, ?, ?, ?);
 SELECT id, user_id, code, created_at, updated_at, expired_at
 FROM users_password_requests
 WHERE user_id = ? AND code = ?;
-
--- name: DeleteUserPasswordRequest :exec
-DELETE FROM users_password_requests WHERE id = ?;

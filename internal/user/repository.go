@@ -76,8 +76,6 @@ type Repository interface {
 // is evaluated in the domain (AccessToken.IsLive), not in SQL. Lookups on a
 // missing row return *errs.NotFoundError.
 type AccessTokens interface {
-	Insert(ctx context.Context, t *model.AccessToken) error
-
 	// InsertIfGeneration writes a session row only while the user's credentials
 	// generation still matches the one the caller's evidence was read under,
 	// reporting the rows written. Zero means an account reclaim landed in
@@ -131,8 +129,6 @@ type PasswordRequests interface {
 	Save(ctx context.Context, pr *model.PasswordRequest) error
 	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
 	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error)
-	// Delete removes a request by id.
-	Delete(ctx context.Context, id vo.Id) error
 }
 
 // EmailVerifications persists login email-verification codes

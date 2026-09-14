@@ -11,10 +11,6 @@ type accessTokenPgsqlQuerier struct{}
 
 var _ accessTokenQuerier = accessTokenPgsqlQuerier{}
 
-func (accessTokenPgsqlQuerier) InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error {
-	return pgsqlgen.New(db).InsertAccessToken(ctx, pgsqlgen.InsertAccessTokenParams(p))
-}
-
 func (accessTokenPgsqlQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	row, err := pgsqlgen.New(db).GetAccessTokenByHash(ctx, hash)
 	return accessTokenWithAccessRow(row), err

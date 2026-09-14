@@ -23,7 +23,3 @@ func (passwordRequestPgsqlQuerier) GetUserPasswordRequestByUserAndCode(ctx conte
 	row, err := pgsqlgen.New(db).GetUserPasswordRequestByUserAndCode(ctx, pgsqlgen.GetUserPasswordRequestByUserAndCodeParams(p))
 	return passwordRequestRow(row), err
 }
-
-func (passwordRequestPgsqlQuerier) DeleteUserPasswordRequest(ctx context.Context, db backend.DBTX, id string) error {
-	return pgsqlgen.New(db).DeleteUserPasswordRequest(ctx, id)
-}

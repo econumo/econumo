@@ -11,10 +11,6 @@ type accessTokenSqliteQuerier struct{}
 
 var _ accessTokenQuerier = accessTokenSqliteQuerier{}
 
-func (accessTokenSqliteQuerier) InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error {
-	return sqlitegen.New(db).InsertAccessToken(ctx, p)
-}
-
 func (accessTokenSqliteQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	return sqlitegen.New(db).GetAccessTokenByHash(ctx, hash)
 }

@@ -40,7 +40,7 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
-       t.created_at, t.last_used_at, t.expires_at, t.revoked_at, t.provider, t.id_token,
+       t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
        u.access_level, u.access_until
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id
@@ -58,8 +58,6 @@ type GetAccessTokenByHashRow struct {
 	LastUsedAt  time.Time
 	ExpiresAt   *time.Time
 	RevokedAt   *time.Time
-	Provider    *string
-	IDToken     *string
 	AccessLevel string
 	AccessUntil *time.Time
 }
@@ -67,7 +65,9 @@ type GetAccessTokenByHashRow struct {
 // Joins users for access_level/access_until so per-request auth can report
 // the caller's effective access level in the same round trip. This does NOT
 // reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
-// lapsed user must still authenticate, just read-only.
+// lapsed user must still authenticate, just read-only. Deliberately omits
+// provider/id_token: nothing on the per-request hot path reads them (logout
+// uses GetByID, the sessions list uses ListByUser), so they stay off it.
 func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccessTokenByHash, tokenHash)
 	var i GetAccessTokenByHashRow
@@ -82,8 +82,6 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
-		&i.Provider,
-		&i.IDToken,
 		&i.AccessLevel,
 		&i.AccessUntil,
 	)
@@ -116,50 +114,8 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 	return i, err
 }
 
-const insertAccessToken = `-- name: InsertAccessToken :exec
-
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`
-
-type InsertAccessTokenParams struct {
-	ID         string
-	UserID     string
-	Kind       string
-	TokenHash  string
-	Name       *string
-	UserAgent  *string
-	CreatedAt  time.Time
-	LastUsedAt time.Time
-	ExpiresAt  *time.Time
-	RevokedAt  *time.Time
-	Provider   *string
-	IDToken    *string
-}
-
-// Access-token queries (access_tokens): login sessions + personal access
-// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
-// time.Time), not in SQL, to avoid engine date-format differences; the
-// list/get queries return raw rows.
-func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, insertAccessToken,
-		arg.ID,
-		arg.UserID,
-		arg.Kind,
-		arg.TokenHash,
-		arg.Name,
-		arg.UserAgent,
-		arg.CreatedAt,
-		arg.LastUsedAt,
-		arg.ExpiresAt,
-		arg.RevokedAt,
-		arg.Provider,
-		arg.IDToken,
-	)
-	return err
-}
-
 const insertAccessTokenIfGeneration = `-- name: InsertAccessTokenIfGeneration :execrows
+
 INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
@@ -182,6 +138,10 @@ type InsertAccessTokenIfGenerationParams struct {
 	CredentialsGeneration int64
 }
 
+// Access-token queries (access_tokens): login sessions + personal access
+// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
+// time.Time), not in SQL, to avoid engine date-format differences; the
+// list/get queries return raw rows.
 // Mints a token only while the user's credentials generation is still the one
 // the caller's evidence was read under: an account reclaim bumps it, so a
 // session built on evidence from before the reclaim inserts nothing.

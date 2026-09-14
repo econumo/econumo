@@ -77,7 +77,6 @@ type Querier interface {
 	// deletes it once verified. Expiry is compared in the app layer (Go time),
 	// not in SQL, to avoid engine date-format differences.
 	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
-	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). The reset flow:
 	// remind-password deletes the user's old codes and inserts a fresh one;
 	// reset-password looks it up by (user, code), checks expiry in Go, then deletes
@@ -88,7 +87,9 @@ type Querier interface {
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
-	// lapsed user must still authenticate, just read-only.
+	// lapsed user must still authenticate, just read-only. Deliberately omits
+	// provider/id_token: nothing on the per-request hot path reads them (logout
+	// uses GetByID, the sessions list uses ListByUser), so they stay off it.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
@@ -293,7 +294,6 @@ type Querier interface {
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 	// time.Time), not in SQL, to avoid engine date-format differences; the
 	// list/get queries return raw rows.
-	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	// Mints a token only while the user's credentials generation is still the one
 	// the caller's evidence was read under: an account reclaim bumps it, so a
 	// session built on evidence from before the reclaim inserts nothing.
