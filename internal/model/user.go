@@ -236,19 +236,6 @@ func (u *User) UpdatePassword(passwordHash, algorithm string, now time.Time) {
 	u.UpdatedAt = now
 }
 
-// ClearPassword removes the stored hash, leaving external identities as the
-// only way in. Used when a provider proves the address of an account whose
-// password was set by someone who never had to: the password is evidence of
-// nothing, so it is dropped rather than trusted (a reset via the mailbox
-// restores one).
-func (u *User) ClearPassword(now time.Time) {
-	if !u.HasPassword() {
-		return
-	}
-	u.Password, u.Salt, u.Algorithm = "", "", AlgorithmNone
-	u.UpdatedAt = now
-}
-
 // UpdateEmail replaces the encrypted email. The identifier column is derived
 // from the row id at persistence time, so it needs no update here.
 func (u *User) UpdateEmail(encryptedEmail string, now time.Time) {

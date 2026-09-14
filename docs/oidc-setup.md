@@ -178,20 +178,21 @@ user database.
 
 ## How accounts are matched
 
-- **Signing in for the first time with a provider whose email matches an
-  existing Econumo account** links the two automatically — no extra
-  confirmation step, because the provider already vouches that the email is
-  verified. You'll be signed in to your existing account, and the provider
-  now appears as a linked account under Settings → Profile → Linked
-  accounts. If that account had a password, everything that predated the link
-  is retired: its open sessions are signed out, its personal access tokens are
-  revoked, and password sign-in is turned off. The provider proved that whoever
-  just signed in owns the address, which is not something the password holder
-  necessarily ever proved — so someone who had registered that address first
-  keeps nothing. The account's owner is emailed a notice naming the provider,
-  so an unexpected auto-link is noticeable, and can set a fresh password from
-  Settings → Profile → "Set a password" (it is emailed to the address the
-  provider just verified).
+- **Signing in with a provider whose email matches an existing account that
+  has no password** links the two automatically — that account was itself
+  created through a provider, so both sides have proven the same address.
+  You're signed in to the existing account and the new provider appears under
+  Settings → Profile → Linked accounts; the account owner gets an email saying
+  so, because gaining a sign-in method unasked should be noticeable.
+- **If the matching account HAS a password, the sign-in is refused** with "An
+  account with this email address already exists. Sign in with your password
+  (or reset it), then link this provider from Settings." Econumo will not merge
+  a provider identity into an account whose owner has not authenticated:
+  registration does not always verify email addresses, so a password on an
+  account is no evidence that its holder owns the address — someone could have
+  registered yours before you did. Signing in once with the password (use
+  "Forgot password" if you never set one; the code goes to that mailbox) and
+  then linking from Settings is the safe path, and only has to be done once.
 - **Linking a provider from Settings is finished by the browser that started
   it.** The provider's answer carries nothing that identifies you, so Econumo
   parks the result and only writes the link when the browser that began it

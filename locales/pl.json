@@ -802,7 +802,8 @@
         "registration_disabled": "Rejestracja jest wyłączona na tym serwerze. Najpierw zaloguj się na istniejące konto.",
         "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo.",
         "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy.",
-        "account_inactive": "To konto zostało dezaktywowane."
+        "account_inactive": "To konto zostało dezaktywowane.",
+        "account_exists_password": "Konto z tym adresem e-mail już istnieje. Zaloguj się hasłem (lub zresetuj je), a następnie powiąż tego dostawcę w Ustawieniach."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Do Twojego konta powiązano nową metodę logowania",
-      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. Ponieważ to dostawca, a nie hasło, potwierdził, że ten adres e-mail należy do Ciebie, logowanie hasłem zostało wyłączone, a wszystkie sesje i tokeny API zostały unieważnione.\n\nJeśli to nie Ty, użyj opcji „Nie pamiętam hasła”, aby natychmiast ustawić nowe, a następnie odłącz konto w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. {provider} potwierdził, że adres e-mail Twojego konta należy do niego, więc powiązanie nastąpiło automatycznie.\n\nJeśli to nie Ty, natychmiast odłącz to konto w Ustawieniach i ustaw hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

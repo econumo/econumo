@@ -736,12 +736,14 @@ In the distroless image these run via the binary directly, e.g.
   or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
   on the web, `localStorage` in the app) that the client must present alongside the handoff:
   the flow is bound to the client that began it, so a forged callback cannot log a victim
-  into an attacker's account. Auto-linking a provider to an account that already has a
-  password evicts every credential that predates the link — the password is cleared,
-  and all sessions AND personal tokens are revoked — and marks its email verified: the
-  provider proved the address, the password holder may never have, so an attacker who
-  pre-registered the address keeps nothing (the owner restores a password through the
-  reset flow, which needs the mailbox). **A link started from Settings writes nothing on
+  into an attacker's account. **Auto-link happens only into a PASSWORDLESS account**
+  (one a provider created, whose owner therefore already proved the address); a verified
+  email matching an account that has a password is refused with `account_exists_password`,
+  because whoever set that password never had to prove they own the address. No eviction
+  is thorough enough there — a squatter's other linked identities, shares and invites
+  would be inherited by whoever the provider vouched for — so the owner signs in with
+  their password (or resets it through the mailbox the provider just proved they hold)
+  and links the provider from Settings instead. **A link started from Settings writes nothing on
   the callback**: the provider redirects whichever browser followed the authorization URL,
   so the callback parks the resolved identity in a one-shot *link* handoff and the
   authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating
@@ -853,15 +855,16 @@ data unreadable. Most are also asserted by the test suite.
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
 - **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
-  `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing account by
-  `lower(email)` (no matching identity yet) — no confirmation screen, since the email is
-  already trustworthy at that point. An unverified email is rejected (`email_unverified`) for
-  every intent, including an already-linked identity signing in again and a link started from
-  Settings — there is no path around the trust flag. When the auto-linked account has a
-  password, its owner is emailed a best-effort notice (`emails.identity_linked.*`) once the
-  eviction transaction commits, naming the provider's display name in the account's stored
-  language; a failure to send never affects the redirect, and a passwordless auto-link (which
-  keeps its credentials) sends nothing.
+  `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
+  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  the account's address and the new claim were proven by providers. A match on an account
+  that has a password is refused (`account_exists_password`), never merged. An unverified
+  email is rejected (`email_unverified`) for every intent, including an already-linked
+  identity signing in again and a link started from Settings — there is no path around the
+  trust flag. Every auto-link emails the account owner a best-effort notice
+  (`emails.identity_linked.*`) naming the provider's display name in the account's stored
+  language — gaining a sign-in method unasked must be noticeable; a failure to send never
+  affects the redirect.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case

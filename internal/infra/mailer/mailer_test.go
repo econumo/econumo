@@ -162,7 +162,7 @@ func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	want := "Hi Alice,\n\nA Apple account was just linked to your Econumo account and can now be used to sign in. Because the provider — not a password — proved this email address is yours, password sign-in has been turned off and every session and API token was revoked.\n\nIf this wasn't you, use \"Forgot password\" to set a new password right away, then unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
+	want := "Hi Alice,\n\nA Apple account was just linked to your Econumo account and can now be used to sign in. Apple confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
 	if c.msg.Text != want {
 		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
 	}

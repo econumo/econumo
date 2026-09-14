@@ -121,7 +121,7 @@ func newHarnessWith(t *testing.T, limiter appoauth.AttemptLimiter) *harness {
 		{Client: oidc.NewClient(appleIssuer, nil), Name: "Apple"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, limiter, "https://app.example.test", true)
+	svc := appoauth.NewService(providers, users, ids, states, hands, clk, limiter, "https://app.example.test", true)
 	handlers := handleroauth.NewHandlers(svc)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

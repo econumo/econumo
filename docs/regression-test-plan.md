@@ -98,15 +98,18 @@ navigation (single-pane vs sidebar).
 - [ ] First sign-in through a provider (no matching Econumo account, email
       verified) creates a new account and lands on onboarding.
 - [ ] Sign-in through a provider whose verified email matches an existing
-      password account auto-links (no confirmation dialog) and signs into
-      that account; the provider then appears under Settings → Profile →
-      Linked accounts. The link evicts everything that predated it: any OTHER
-      session of that account (a second browser signed in with the password)
-      is signed out, its personal access tokens stop authenticating, and the
-      old password no longer signs in (Settings → Profile now offers "Set a
-      password"). The account owner's notice email arrives (console transport
-      prints it to server stdout in dev) naming the provider and saying
-      password sign-in was turned off.
+      account that HAS a password is refused with "An account with this email
+      address already exists. Sign in with your password (or reset it), then
+      link this provider from Settings." — no session, no linked identity, and
+      the account is otherwise untouched (its password, sessions and personal
+      access tokens all keep working). Signing in with the password and
+      linking from Settings then works.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      PASSWORDLESS account (one created through another provider) auto-links
+      with no confirmation dialog, signs into that account, shows the new
+      provider under Settings → Profile → Linked accounts, and delivers the
+      owner's notice email (console transport prints it to server stdout in
+      dev) naming the provider.
 - [ ] Starting a provider sign-in in one browser and opening the returned
       Econumo callback URL in a DIFFERENT browser (or a private window) fails
       with "The sign-in attempt expired or was already used." — only the
@@ -391,8 +394,11 @@ User C sees none of it.
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"
       toast AND the newly linked provider already in the list (no manual
-      reload — the return trip is what writes the link); unlinking a provider
-      (with confirm dialog) removes it from the list.
+      reload — the return trip is what writes the link); linking a SECOND
+      provider straight afterwards, without leaving the page, works the same
+      way (📱 especially in the app, where the deep link returns to the same
+      screen); unlinking a provider (with confirm dialog) removes it from the
+      list.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
       your only sign-in method.").

@@ -802,7 +802,8 @@
         "registration_disabled": "Registratie is uitgeschakeld op deze server. Log eerst in met een bestaand account.",
         "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account.",
         "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider.",
-        "account_inactive": "Dit account is gedeactiveerd."
+        "account_inactive": "Dit account is gedeactiveerd.",
+        "account_exists_password": "Er bestaat al een account met dit e-mailadres. Log in met uw wachtwoord (of stel het opnieuw in) en koppel deze provider daarna in Instellingen."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Er is een nieuwe aanmeldmethode aan uw account gekoppeld",
-      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. Omdat de provider — en niet een wachtwoord — heeft aangetoond dat dit e-mailadres van u is, is inloggen met een wachtwoord uitgeschakeld en zijn alle sessies en API-tokens ingetrokken.\n\nAls u dit niet was, stel dan via ‘Wachtwoord vergeten’ direct een nieuw wachtwoord in en ontkoppel het account daarna in Instellingen.\n\n--\nEconumo — Beheer geld. Samen.\n"
+      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. {provider} heeft bevestigd dat het e-mailadres van uw account daar geregistreerd staat, dus de koppeling is automatisch gemaakt.\n\nAls u dit niet was, ontkoppel het account dan direct in Instellingen en stel een wachtwoord in.\n\n--\nEconumo — Beheer geld. Samen.\n"
     }
   }
 }

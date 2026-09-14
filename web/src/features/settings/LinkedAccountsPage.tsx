@@ -27,7 +27,10 @@ export function LinkedAccountsPage() {
   const unlink = useUnlinkIdentity()
   const complete = useCompleteLink()
   const [confirm, setConfirm] = useState<OAuthProviderId | null>(null)
-  const completing = useRef(false)
+  // Keyed on the code, not a one-shot flag: in the app the deep link returns to
+  // this same mounted page, so a second link attempt must not be swallowed by
+  // the first one's latch.
+  const completedCode = useRef('')
   // Held in state because the parameter is cleared from the URL immediately —
   // a reload must not resurrect the message.
   const [linkError, setLinkError] = useState('')
@@ -38,10 +41,11 @@ export function LinkedAccountsPage() {
   // secret it stored when the link started — may prove the link was its own.
   useEffect(() => {
     const code = new URLSearchParams(hash.replace(/^#/, '')).get('linkHandoff')
-    if (!code || completing.current) {
+    if (!code || completedCode.current === code) {
       return
     }
-    completing.current = true
+    completedCode.current = code
+    setLinkError('')
     const flow = takeOAuthFlow()
     if (window.location.hash) {
       window.history.replaceState(null, '', window.location.pathname)

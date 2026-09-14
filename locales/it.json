@@ -802,7 +802,8 @@
         "registration_disabled": "La registrazione è disattivata su questo server. Accedi prima con un account esistente.",
         "identity_taken": "Questo account esterno è già collegato a un altro account Econumo.",
         "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider.",
-        "account_inactive": "Questo account è stato disattivato."
+        "account_inactive": "Questo account è stato disattivato.",
+        "account_exists_password": "Esiste già un account con questo indirizzo email. Accedi con la tua password (o reimpostala), poi collega questo provider dalle Impostazioni."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Un nuovo metodo di accesso è stato collegato al tuo account",
-      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. Poiché è stato il provider, e non una password, a dimostrare che questo indirizzo email è tuo, l'accesso con password è stato disattivato e tutte le sessioni e i token API sono stati revocati.\n\nSe non sei stato tu, usa subito «Password dimenticata» per impostarne una nuova e poi scollega l'account dalle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. {provider} ha confermato di possedere l'indirizzo email del tuo account, quindi il collegamento è avvenuto automaticamente.\n\nSe non sei stato tu, scollega subito l'account dalle Impostazioni e imposta una password.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
   }
 }

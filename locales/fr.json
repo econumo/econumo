@@ -802,7 +802,8 @@
         "registration_disabled": "L'inscription est désactivée sur ce serveur. Connectez-vous d'abord avec un compte existant.",
         "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo.",
         "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur.",
-        "account_inactive": "Ce compte a été désactivé."
+        "account_inactive": "Ce compte a été désactivé.",
+        "account_exists_password": "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe (ou réinitialisez-le), puis associez ce fournisseur depuis les Paramètres."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Une nouvelle méthode de connexion a été associée à votre compte",
-      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. Comme c’est le fournisseur, et non un mot de passe, qui a prouvé que cette adresse e-mail est la vôtre, la connexion par mot de passe a été désactivée et toutes les sessions et jetons d’API ont été révoqués.\n\nSi ce n’était pas vous, utilisez « Mot de passe oublié » pour définir un nouveau mot de passe immédiatement, puis dissociez le compte depuis les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. {provider} a confirmé détenir l’adresse e-mail de votre compte : l’association a donc été faite automatiquement.\n\nSi ce n’était pas vous, dissociez le compte depuis les Paramètres sans attendre et définissez un mot de passe.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
   }
 }

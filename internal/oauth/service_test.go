@@ -33,8 +33,6 @@ type fakeUsers struct {
 	byEmail   map[string]*model.User
 	minted    []string // providers of minted sessions
 	replaced  []string // emails mirrored via ReplaceVerifiedEmail
-	evicted   []string // user ids whose local credentials were dropped on auto-link
-	verified  []string // user ids marked email-verified on auto-link
 	provision int
 
 	// Fault injection for coverage of the service's error-handling branches:
@@ -43,7 +41,6 @@ type fakeUsers struct {
 	failFindByEmail       error
 	failProvisionExternal error
 	failMintSession       error
-	failEvict             error
 }
 
 func newFakeUsers(t *testing.T, db *dbtest.DB) *fakeUsers {
@@ -87,14 +84,6 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 }
 func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string) error {
 	f.replaced = append(f.replaced, email)
-	return nil
-}
-func (f *fakeUsers) EvictLocalCredentials(_ context.Context, userID vo.Id) error {
-	f.evicted = append(f.evicted, userID.String())
-	return f.failEvict
-}
-func (f *fakeUsers) MarkEmailVerified(_ context.Context, userID vo.Id) error {
-	f.verified = append(f.verified, userID.String())
 	return nil
 }
 func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provider string, idToken *string) (*model.LoginResult, error) {
@@ -143,7 +132,7 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderGoogle, true), nil), Name: "Google"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, trust), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration)
+	svc := appoauth.NewService(providers, users, ids, states, hands, clk, nil, "https://app.example.test", allowRegistration)
 	notifier := &fakeNotifier{}
 	svc.SetNotifier(notifier)
 	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers, notifier: notifier}
@@ -274,7 +263,7 @@ func TestCallback_EmailDriftNotMirroredWhenAddressTaken(t *testing.T) {
 
 func TestCallback_AutoLinksVerifiedEmail(t *testing.T) {
 	h := newHarness(t, false, true)
-	u := h.users.seed(t, "match@example.test", model.AlgorithmArgon2id)
+	u := h.users.seed(t, "match@example.test", model.AlgorithmNone)
 	h.fake.Email, h.fake.EmailVerified = "match@example.test", true
 	redirect := h.login("oidc", "web")
 	if handoffOf(t, redirect) == "" {
@@ -559,51 +548,69 @@ func TestEndSessionURL(t *testing.T) {
 	}
 }
 
-func TestCallback_AutoLinkEvictsAPreRegisteredPasswordAccount(t *testing.T) {
+// An account with a password is never merged into. Whoever set that password
+// never had to prove they own the address, so the account may be a squatter's:
+// evicting the password is not enough, because everything else they left on it
+// (other linked identities above all) would be inherited by the person the
+// provider just vouched for.
+func TestCallback_RefusesToMergeIntoAPasswordAccount(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
 	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
-	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=account_exists_password" {
 		t.Fatalf("redirect %s", r)
 	}
-	if len(h.users.evicted) != 1 || h.users.evicted[0] != u.ID.String() {
-		t.Fatalf("a password account must lose every local credential on auto-link: %v", h.users.evicted)
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc"); err == nil {
+		t.Fatal("no identity may be attached to an account whose owner has not authenticated")
 	}
-	if len(h.users.verified) != 1 || h.users.verified[0] != u.ID.String() {
-		t.Fatalf("the provider's assertion must mark the address verified: %v", h.users.verified)
+	if len(h.users.minted) != 0 {
+		t.Fatalf("no session may be minted: %v", h.users.minted)
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("nothing happened, so nothing to notify about: %+v", h.notifier.calls)
 	}
 }
 
-func TestCallback_AutoLinkLeavesAPasswordlessAccountAlone(t *testing.T) {
+// The takeover the refusal closes: a squatter who pre-registered the address
+// AND linked their own provider identity to it keeps that identity through any
+// credential eviction, so the identity — not just the password — is why the
+// merge cannot happen at all.
+func TestCallback_RefusesEvenWhenTheSquatterAlreadyLinkedAProvider(t *testing.T) {
 	h := newHarness(t, false, true)
-	h.users.seed(t, "external@example.test", model.AlgorithmNone)
+	squatted := h.users.seed(t, "victim@example.test", model.AlgorithmArgon2id)
+	attacker := model.NewIdentity(vo.NewId(), squatted.ID, "google", h.fake.IssuerURL(), "attacker-google-sub", "attacker@example.test", h.clock.Now())
+	if err := h.ids.Save(context.Background(), attacker); err != nil {
+		t.Fatal(err)
+	}
+	h.fake.Email, h.fake.EmailVerified = "victim@example.test", true
+	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=account_exists_password" {
+		t.Fatalf("redirect %s", r)
+	}
+	still, err := h.ids.GetByUserProvider(context.Background(), squatted.ID, "google")
+	if err != nil || still.Subject != "attacker-google-sub" {
+		t.Fatalf("the pre-existing identity is untouched, because nothing was merged: %+v %v", still, err)
+	}
+	if n, _ := h.ids.CountByUser(context.Background(), squatted.ID); n != 1 {
+		t.Fatalf("no second identity may be attached: %d", n)
+	}
+}
+
+func TestCallback_AutoLinksIntoAPasswordlessAccount(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "external@example.test", model.AlgorithmNone)
 	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
 	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
-		t.Fatalf("redirect %s", r)
+		t.Fatalf("a provider-created account already proved the address: %s", r)
 	}
-	if len(h.users.evicted) != 0 || len(h.users.verified) != 0 {
-		t.Fatalf("a provider-created account already proved the address: evicted=%v verified=%v", h.users.evicted, h.users.verified)
-	}
-}
-
-func TestCallback_AutoLinkRollsBackWhenTheEvictionFails(t *testing.T) {
-	h := newHarness(t, false, true)
-	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
-	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
-	h.users.failEvict = errBoom
-	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=provider_error" {
-		t.Fatalf("redirect %s", r)
-	}
-	// No half-linked identity: the next attempt would otherwise skip the eviction.
-	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc"); err == nil {
-		t.Fatal("the identity insert must roll back with the eviction")
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc"); err != nil {
+		t.Fatalf("identity not linked: %v", err)
 	}
 }
 
 func TestCallback_AutoLinkNotifiesTheAccountOwner(t *testing.T) {
 	h := newHarness(t, false, true)
-	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
-	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	u := h.users.seed(t, "external@example.test", model.AlgorithmNone)
+	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
 	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
 		t.Fatalf("redirect %s", r)
 	}
@@ -617,8 +624,8 @@ func TestCallback_AutoLinkNotifiesTheAccountOwner(t *testing.T) {
 
 func TestCallback_AutoLinkNotifiesWithTheProviderDisplayName(t *testing.T) {
 	h := newHarness(t, true, true)
-	h.users.seed(t, "squatted-google@example.test", model.AlgorithmArgon2id)
-	h.fake.Email, h.fake.EmailVerified = "squatted-google@example.test", true
+	h.users.seed(t, "external-google@example.test", model.AlgorithmNone)
+	h.fake.Email, h.fake.EmailVerified = "external-google@example.test", true
 	if r := h.login("google", "web"); handoffOf(t, r) == "" {
 		t.Fatalf("redirect %s", r)
 	}
@@ -629,8 +636,8 @@ func TestCallback_AutoLinkNotifiesWithTheProviderDisplayName(t *testing.T) {
 
 func TestCallback_AutoLinkNotifierFailureDoesNotBreakTheRedirect(t *testing.T) {
 	h := newHarness(t, false, true)
-	h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
-	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
+	h.users.seed(t, "external@example.test", model.AlgorithmNone)
+	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
 	h.notifier.fail = errBoom
 	r := h.login("oidc", "web")
 	if handoffOf(t, r) == "" {
@@ -638,18 +645,6 @@ func TestCallback_AutoLinkNotifierFailureDoesNotBreakTheRedirect(t *testing.T) {
 	}
 	if len(h.notifier.calls) != 1 {
 		t.Fatalf("notifier should still have been called once: %+v", h.notifier.calls)
-	}
-}
-
-func TestCallback_PasswordlessAutoLinkDoesNotNotify(t *testing.T) {
-	h := newHarness(t, false, true)
-	h.users.seed(t, "external@example.test", model.AlgorithmNone)
-	h.fake.Email, h.fake.EmailVerified = "external@example.test", true
-	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
-		t.Fatalf("redirect %s", r)
-	}
-	if len(h.notifier.calls) != 0 {
-		t.Fatalf("a passwordless account was already provider-verified: %+v", h.notifier.calls)
 	}
 }
 
@@ -699,7 +694,7 @@ func (l *stubLimiter) Allow(scope, key string) error {
 func TestStartLogin_SurfacesTheRateLimit(t *testing.T) {
 	h := newHarness(t, false, true)
 	lim := &stubLimiter{}
-	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, lim,
+	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.clock, lim,
 		"https://app.example.test", true)
 	_, err := svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if _, ok := errs.AsTooManyRequests(err); !ok {
@@ -730,7 +725,7 @@ func loginVia(t *testing.T, svc *appoauth.Service, f *oidctest.Fake, provider, c
 // issuer — what an operator does by repointing ECONUMO_OIDC_ISSUER_URL.
 func (h *harness) serviceOver(f *oidctest.Fake) *appoauth.Service {
 	return appoauth.NewService([]appoauth.Provider{{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "New IdP"}},
-		h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
+		h.users, h.ids, h.states, h.hands, h.clock, nil, "https://app.example.test", true)
 }
 
 // The custom slot's provider id is always "oidc", so a subject is only unique

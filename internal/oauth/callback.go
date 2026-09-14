@@ -177,6 +177,19 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 		if !u.IsActive {
 			return s.errorURLFor(st, "account_inactive")
 		}
+		// A password on the account proves nothing about who owns the address:
+		// registration does not always verify it, so anyone could have claimed
+		// it first. Merging into such an account is refused outright — no
+		// eviction is thorough enough, because everything the squatter left
+		// behind (other linked identities, shared budgets, invites) would be
+		// inherited by whoever the provider just vouched for. The account owner
+		// signs in with their password (or resets it through the mailbox the
+		// provider just proved they hold) and links the provider from Settings,
+		// where the link is bound to an authenticated session.
+		if u.HasPassword() {
+			reqctx.AddLogAttr(ctx, "oauth_password_account", true)
+			return s.errorURLFor(st, "account_exists_password")
+		}
 		if serr := s.autoLink(ctx, u, provider, issuer, claims.Subject, email, now); serr != nil {
 			logWarn(ctx, "oauth callback: auto-link", serr, "provider", provider)
 			return s.errorURLFor(st, "provider_error")
@@ -206,35 +219,17 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 	return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
 }
 
-// autoLink attaches the provider identity to an account found by email. When
-// that account has a password, whoever set it never had to prove they own the
-// address (registration does not always verify), so nothing that predates the
-// link may survive it: the password is cleared and every session and personal
-// token is revoked, leaving the provider — which did prove the address — as the
-// way in. A mailbox the owner controls still restores a password through the
-// reset flow. A passwordless account was created through a provider, so its
-// owner already proved the address and keeps its credentials. The writes share
-// one transaction: a half-applied link would leave the eviction undone while
-// step 5 signs the attacker in. Once that commits, the owner of a
-// has-a-password account is notified best-effort — an eviction they didn't
-// initiate must be noticeable.
+// autoLink attaches the provider identity to a PASSWORDLESS account found by
+// email. Such an account was created through a provider, so its owner already
+// proved the address and a second provider asserting the same verified address
+// is the same person; an account with a password never reaches here (step 6).
+// The owner is still told, best-effort: gaining a sign-in method without
+// asking for one must be noticeable.
 func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer, subject, email string, now time.Time) error {
-	hasPassword := u.HasPassword()
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.saveLinkedIdentity(ctx, u.ID, provider, issuer, subject, email, now); err != nil {
-			return err
-		}
-		if !hasPassword {
-			return nil
-		}
-		if err := s.users.EvictLocalCredentials(ctx, u.ID); err != nil {
-			return err
-		}
-		return s.users.MarkEmailVerified(ctx, u.ID)
-	}); err != nil {
+	if err := s.saveLinkedIdentity(ctx, u.ID, provider, issuer, subject, email, now); err != nil {
 		return err
 	}
-	if hasPassword && s.notifier != nil {
+	if s.notifier != nil {
 		if nerr := s.notifier.IdentityLinked(ctx, u.ID, s.byID[provider].Name); nerr != nil {
 			logWarn(ctx, "oauth callback: identity-linked notice", nerr, "user_id", u.ID.String(), "provider", provider)
 		}

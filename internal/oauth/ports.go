@@ -20,13 +20,6 @@ type Users interface {
 	// MintSession opens a session stamped with the provider (and the ID token
 	// for the custom slot) and returns the login-shaped result.
 	MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string) (*model.LoginResult, error)
-	// EvictLocalCredentials clears the password and revokes every session and
-	// personal token of an account a provider has just proved the address of.
-	// Whoever set that password never had to prove the address, so nothing
-	// predating the link may outlive it.
-	EvictLocalCredentials(ctx context.Context, userID vo.Id) error
-	// MarkEmailVerified records the provider's assertion of mailbox ownership.
-	MarkEmailVerified(ctx context.Context, userID vo.Id) error
 }
 
 // AttemptLimiter is the brute-force seam for start-login/start-link. Only Allow
@@ -44,8 +37,9 @@ type AttemptLimiter interface {
 const RateScopeOAuthStart = "oauth-start"
 
 // Notifier tells the account owner a provider was auto-linked to their
-// existing password account (step 6 of Callback). A nil Notifier on Service
-// disables the notification (tests, and any composition root that opts out).
+// existing (passwordless) account (step 6 of Callback). A nil Notifier on
+// Service disables the notification (tests, and any composition root that
+// opts out).
 type Notifier interface {
 	IdentityLinked(ctx context.Context, userID vo.Id, providerName string) error
 }

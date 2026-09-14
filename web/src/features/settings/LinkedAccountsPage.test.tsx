@@ -35,6 +35,7 @@ function renderPage(initialEntry = '/settings/profile/linked-accounts') {
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return router
 }
 
 beforeEach(() => {
@@ -89,6 +90,25 @@ it('completes the link from #linkHandoff= and shows the toast', async () => {
   renderPage('/settings/profile/linked-accounts#linkHandoff=abc')
   expect(await screen.findByText('Google account linked.')).toBeInTheDocument()
   expect(posted).toEqual({ code: 'abc', flow: 'f1' })
+})
+
+// In the app the deep link navigates back into this SAME mounted page, so a
+// second link must not be swallowed by the first one's latch.
+it('completes a second link on the same mounted page', async () => {
+  mockUser(true)
+  sessionStorage.setItem('oauthFlow', 'f1')
+  const codes: string[] = []
+  server.use(http.post('*/api/v1/oauth/complete-link', async ({ request }) => {
+    const body = (await request.json()) as { code: string }
+    codes.push(body.code)
+    return HttpResponse.json({ success: true, message: '', data: { provider: 'apple' } })
+  }))
+  const router = renderPage('/settings/profile/linked-accounts#linkHandoff=first')
+  await waitFor(() => expect(codes).toEqual(['first']))
+
+  sessionStorage.setItem('oauthFlow', 'f2')
+  await router.navigate('/settings/profile/linked-accounts#linkHandoff=second')
+  await waitFor(() => expect(codes).toEqual(['first', 'second']))
 })
 
 // The flow secret is what proves this client started the link; without it the

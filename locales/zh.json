@@ -802,7 +802,8 @@
         "registration_disabled": "此服务器已禁用注册。请先使用现有账户登录。",
         "identity_taken": "该外部账户已关联到另一个 Econumo 账户。",
         "provider_already_linked": "您的账户已关联了该提供方的另一个账户。",
-        "account_inactive": "该账户已被停用。"
+        "account_inactive": "该账户已被停用。",
+        "account_exists_password": "该邮箱地址已有账户。请用密码登录（或重置密码），然后在设置中关联该提供方。"
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "您的账户绑定了新的登录方式",
-      "body": "您好，{name}：\n\n刚刚有一个 {provider} 账户绑定到了您的 Econumo 账户，现在可以用它登录。由于证明该邮箱属于您的是该提供方而不是密码，密码登录已被关闭，所有会话和 API 令牌也已被吊销。\n\n如果这不是您本人的操作，请立即通过“忘记密码”设置新密码，然后在设置中解除该账户的绑定。\n\n--\nEconumo — 一起管理财务。\n"
+      "body": "您好，{name}：\n\n刚刚有一个 {provider} 账户绑定到了您的 Econumo 账户，现在可以用它登录。{provider} 确认该邮箱地址属于它，因此自动完成了绑定。\n\n如果这不是您本人的操作，请立即在设置中解除绑定并设置密码。\n\n--\nEconumo — 一起管理财务。\n"
     }
   }
 }

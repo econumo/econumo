@@ -802,7 +802,8 @@
         "registration_disabled": "Registration is disabled on this server. Sign in with an existing account first.",
         "identity_taken": "This external account is already linked to another Econumo account.",
         "provider_already_linked": "Your account already has a different account linked for this provider.",
-        "account_inactive": "This account has been deactivated."
+        "account_inactive": "This account has been deactivated.",
+        "account_exists_password": "An account with this email address already exists. Sign in with your password (or reset it), then link this provider from Settings."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "A new sign-in method was linked to your account",
-      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. Because the provider — not a password — proved this email address is yours, password sign-in has been turned off and every session and API token was revoked.\n\nIf this wasn't you, use \"Forgot password\" to set a new password right away, then unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
+      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. {provider} confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

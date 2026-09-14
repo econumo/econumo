@@ -802,7 +802,8 @@
         "registration_disabled": "O registo está desativado neste servidor. Inicie sessão primeiro com uma conta existente.",
         "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo.",
         "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor.",
-        "account_inactive": "Esta conta foi desativada."
+        "account_inactive": "Esta conta foi desativada.",
+        "account_exists_password": "Já existe uma conta com este endereço de e-mail. Inicie sessão com a sua palavra-passe (ou redefina-a) e depois associe este fornecedor nas Definições."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Foi associado um novo método de início de sessão à sua conta",
-      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. Uma vez que foi o fornecedor, e não uma palavra-passe, que provou que este endereço de e-mail é seu, o início de sessão com palavra-passe foi desativado e todas as sessões e tokens de API foram revogados.\n\nSe não foi você, use «Esqueci-me da palavra-passe» para definir uma nova de imediato e depois desassocie a conta a partir das Definições.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
+      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. O {provider} confirmou que o endereço de e-mail da sua conta lhe pertence, por isso a associação foi feita automaticamente.\n\nSe não foi você, desassocie a conta nas Definições de imediato e defina uma palavra-passe.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
     }
   }
 }

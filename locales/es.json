@@ -802,7 +802,8 @@
         "registration_disabled": "El registro está desactivado en este servidor. Inicia sesión primero con una cuenta existente.",
         "identity_taken": "Esta cuenta externa ya está vinculada a otra cuenta de Econumo.",
         "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor.",
-        "account_inactive": "Esta cuenta ha sido desactivada."
+        "account_inactive": "Esta cuenta ha sido desactivada.",
+        "account_exists_password": "Ya existe una cuenta con esta dirección de correo. Inicia sesión con tu contraseña (o restablécela) y luego vincula este proveedor desde Configuración."
       }
     }
   },
@@ -1609,7 +1610,7 @@
     },
     "identity_linked": {
       "subject": "Se vinculó un nuevo método de inicio de sesión a tu cuenta",
-      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. Como fue el proveedor, y no una contraseña, quien demostró que esta dirección de correo es tuya, se desactivó el inicio de sesión con contraseña y se revocaron todas las sesiones y los tokens de API.\n\nSi no fuiste tú, usa «He olvidado mi contraseña» para establecer una nueva de inmediato y luego desvincula la cuenta desde Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. {provider} confirmó que la dirección de correo de tu cuenta le pertenece, así que el enlace se hizo automáticamente.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración de inmediato y establece una contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

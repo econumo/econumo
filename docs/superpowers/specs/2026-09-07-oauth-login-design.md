@@ -309,25 +309,23 @@ Common prefix:
    `account_inactive`. Otherwise apply the email-drift rule below and mint a
    handoff.
 6. No identity, a user with that email exists (`lower(email)`): inactive →
-   `account_inactive`; else insert the identity and mint a handoff. This is the
-   auto-link. Step 4 proves that whoever is signing in owns the address — but
-   it says nothing about whoever set that account's password, who may never
-   have proved it (registration does not always verify). So when the account
-   **has** a password the auto-link also evicts every credential that predates
-   it — the password is cleared (`algorithm = 'none'`) and every session AND
-   personal token is revoked — and marks the email verified. Revoking sessions
-   alone is not enough: an attacker who pre-registered the victim's address
-   would keep a working password and live API tokens after the victim signed
-   in. The mailbox owner is the account owner, so the legitimate owner restores
-   a password through `remind-password` (or keeps signing in with the
-   provider). A passwordless account was created through a provider, so its
-   owner already proved the address and keeps its credentials. The insert and
-   the eviction share one transaction — a half-applied link would leave the
-   eviction undone while step 5 signs the attacker straight in. Once that
-   commits, the account owner is emailed a notice (best-effort, in their stored
-   language) naming what happened — an eviction they did not initiate must be
-   noticeable, and the email is where they learn to reset their password if it
-   was not them. A passwordless account gets no notice.
+   `account_inactive`; **has a password → `account_exists_password`, refused**;
+   otherwise insert the identity and mint a handoff. This is the auto-link, and
+   it is deliberately narrow. Step 4 proves that whoever is signing in owns the
+   address — it says nothing about whoever holds that account. A passwordless
+   account was created through a provider that proved the same address, so the
+   two are the same person and the merge is sound. An account with a password
+   proves nothing: registration does not always verify the address, so anyone
+   could have registered it first. Evicting the password is not enough — an
+   earlier round of this design did exactly that, and a squatter who had also
+   linked their own provider identity (or shared a budget, or left an invite
+   open) kept access through it. The account's owner instead signs in with the
+   password, or resets it through the mailbox the provider just proved they
+   hold, and links the provider from Settings (§6.2 `intent = link`), where the
+   write is bound to an authenticated session. Every auto-link emails the
+   account owner a best-effort notice in their stored language: gaining a
+   sign-in method without asking for one must be noticeable.
+
 7. No user: registration disabled → `registration_disabled`. Else provision
    (§7) with the email marked verified, insert the identity, mint a handoff.
 
@@ -382,7 +380,7 @@ The web handoff travels in the fragment so it never reaches server logs or
 rendered by the SPA in the user's language: `denied`, `invalid_state`,
 `provider_error`, `email_required`, `email_unverified`,
 `registration_disabled`, `identity_taken`, `provider_already_linked`,
-`account_inactive`. A failure whose
+`account_exists_password`, `account_inactive`. A failure whose
 state row named `intent = link` takes the link-error row: a signed-in user
 would never see a message rendered on the login page. The intent lives in the
 state row, so a failure BEFORE that row loads (unknown or expired state) has no
