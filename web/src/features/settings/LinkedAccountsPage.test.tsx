@@ -131,6 +131,24 @@ it('refuses to complete a link this client did not start', async () => {
   expect(called).toBe(false)
 })
 
+// The providers query can still be pending when complete-link resolves (both
+// fire on mount); the toast must name the configured provider from whatever
+// resolves the fetch, not the placeholder the effect's stale closure saw.
+it('names the configured custom provider even when its list resolves after the link completes', async () => {
+  mockUser(true)
+  sessionStorage.setItem('oauthFlow', 'f1')
+  server.use(
+    http.get('*/api/v1/oauth/get-provider-list', async () => {
+      await new Promise((r) => setTimeout(r, 30))
+      return HttpResponse.json({ success: true, message: '', data: [...providers, { id: 'oidc', name: 'Authentik' }] })
+    }),
+    http.post('*/api/v1/oauth/complete-link', () =>
+      HttpResponse.json({ success: true, message: '', data: { provider: 'oidc' } })),
+  )
+  renderPage('/settings/profile/linked-accounts#linkHandoff=abc')
+  expect(await screen.findByText('Authentik account linked.')).toBeInTheDocument()
+})
+
 it('shows the server message when completing the link fails', async () => {
   mockUser(true)
   sessionStorage.setItem('oauthFlow', 'f1')

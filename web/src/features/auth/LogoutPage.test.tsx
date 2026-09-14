@@ -5,6 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { setToken } from '@/lib/storage'
 import { navigateTo } from '@/app/routerRef'
+import i18n from '@/app/i18n'
 import { LogoutPage } from './LogoutPage'
 
 // Tracks real call order (not just "was called") so a refactor that moves
@@ -147,6 +148,29 @@ it('a 401 from logout-user does not flash the session-expired banner — LogoutP
   renderPage()
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/login'))
   expect(navigateTo).not.toHaveBeenCalledWith('/login?reason=expired')
+})
+
+// A hung/slow get-provider-list must not leave the page sitting on a purged
+// token with a blank screen, and a language switch mid-flight must not re-run
+// the effect and slip in an extra redirect while the notice is on screen.
+it('fetches the provider list before purging the token, and a language change does not re-run the effect', async () => {
+  localStorage.setItem('token', 'eco_ses_x')
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'google' } })),
+    http.get('*/api/v1/oauth/get-provider-list', async () => {
+      await new Promise((r) => setTimeout(r, 50))
+      return HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })
+    }),
+  )
+  renderPage()
+  expect(localStorage.getItem('token')).toBe('eco_ses_x')
+  const notice = await screen.findByText("You're signed out of Econumo. Your Google session may still be active; sign out there to end it.")
+  expect(localStorage.getItem('token')).toBeNull()
+  await i18n.changeLanguage('de')
+  await i18n.changeLanguage('en')
+  expect(notice).toBeInTheDocument()
+  expect(assign).not.toHaveBeenCalledWith('/login')
 })
 
 it('in the app ignores the end-session url and logs out locally', async () => {

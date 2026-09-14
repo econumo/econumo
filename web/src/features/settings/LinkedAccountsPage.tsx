@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useSearchParams } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
-import type { OAuthProviderId } from '@/api/dto/oauth'
+import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { providerDisplayName, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from './SettingsShell'
@@ -20,6 +21,7 @@ export function LinkedAccountsPage() {
   const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
   const { hash } = useLocation()
+  const queryClient = useQueryClient()
   const providers = useProviders()
   const identities = useIdentities()
   const user = useUserData()
@@ -59,13 +61,22 @@ export function LinkedAccountsPage() {
       { code, flow },
       {
         onSuccess: ({ provider }) => {
-          const name = providerDisplayName(provider, providers.data, t)
+          // The providers query can still be pending here (both fire on mount), so
+          // read the cache directly at toast time instead of the possibly-stale
+          // `providers.data` this closure captured over.
+          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey) ?? providers.data, t)
+          if (provider === 'oidc' && name === t('auth.oauth.provider_name.oidc')) {
+            void providers.refetch().then((r) => {
+              toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: providerDisplayName(provider, r.data, t) }))
+            })
+            return
+          }
           toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: name }))
         },
         onError: (err: unknown) => setLinkError(apiErrorMessage(err)),
       },
     )
-  }, [complete, hash, providers.data, t])
+  }, [complete, hash, queryClient, t])
 
   useEffect(() => {
     if (!oauthError) {
