@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { setToken } from '@/lib/storage'
+import { getToken, setToken } from '@/lib/storage'
 import { navigateTo } from '@/app/routerRef'
 import i18n from '@/app/i18n'
 import { LogoutPage } from './LogoutPage'
@@ -155,17 +155,24 @@ it('a 401 from logout-user does not flash the session-expired banner — LogoutP
 // the effect and slip in an extra redirect while the notice is on screen.
 it('fetches the provider list before purging the token, and a language change does not re-run the effect', async () => {
   localStorage.setItem('token', 'eco_ses_x')
+  // Captured synchronously as the request arrives, before the handler's own
+  // delay — this is what actually distinguishes "fetched in parallel with
+  // logout()" from "fetched after removeToken()": under the old sequential
+  // code the token would already be gone by the time this request is even
+  // issued, so this capture would be null regardless of the delay below.
+  let seenTokenAtRequest: string | null | undefined
   server.use(
     http.post('*/api/v1/user/logout-user', () =>
       HttpResponse.json({ success: true, message: '', data: { result: 'test', logoutUrl: '', provider: 'google' } })),
     http.get('*/api/v1/oauth/get-provider-list', async () => {
+      seenTokenAtRequest = getToken()
       await new Promise((r) => setTimeout(r, 50))
       return HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })
     }),
   )
   renderPage()
-  expect(localStorage.getItem('token')).toBe('eco_ses_x')
   const notice = await screen.findByText("You're signed out of Econumo. Your Google session may still be active; sign out there to end it.")
+  expect(seenTokenAtRequest).toBe('eco_ses_x')
   expect(localStorage.getItem('token')).toBeNull()
   await i18n.changeLanguage('de')
   await i18n.changeLanguage('en')
