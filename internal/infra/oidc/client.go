@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -24,6 +25,9 @@ type Issuer struct {
 	ResponseMode    string
 	TrustEmail      bool
 	ExtraAuthParams map[string]string
+	// IssuerAliases are extra literal iss values accepted for this issuer
+	// (Google documents both "https://accounts.google.com" and "accounts.google.com").
+	IssuerAliases []string
 }
 
 // StaticSecret adapts a plain client secret to the ClientSecret seam.
@@ -209,7 +213,7 @@ func (c *Client) VerifyIDToken(ctx context.Context, raw, nonce string, now time.
 		return Claims{}, err
 	}
 	iss := strings.TrimSuffix(cl.Iss, "/")
-	if iss != strings.TrimSuffix(d.Issuer, "/") && iss != c.issuer.IssuerURL {
+	if iss != strings.TrimSuffix(d.Issuer, "/") && iss != c.issuer.IssuerURL && !slices.Contains(c.issuer.IssuerAliases, iss) {
 		return Claims{}, fmt.Errorf("%w: issuer %q", ErrInvalidToken, cl.Iss)
 	}
 	if !audienceContains(cl.Aud, c.issuer.ClientID) {

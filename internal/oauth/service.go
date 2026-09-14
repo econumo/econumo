@@ -5,11 +5,16 @@ import (
 	"log/slog"
 	"net/url"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/port"
 )
+
+// sweepInterval throttles the expired-row sweep in sweepExpired.
+const sweepInterval = time.Minute
 
 type Service struct {
 	providers         []Provider
@@ -23,6 +28,8 @@ type Service struct {
 	appURL            string
 	allowRegistration bool
 	notifier          Notifier
+
+	lastSweep atomic.Int64 // unix seconds of the last expired-row sweep
 }
 
 func NewService(providers []Provider, users Users, identities Identities, states States, handoffs Handoffs,
@@ -41,6 +48,22 @@ func NewService(providers []Provider, users Users, identities Identities, states
 // features, which would otherwise widen NewService's signature). A nil
 // notifier (the zero value) leaves auto-link notification disabled.
 func (s *Service) SetNotifier(n Notifier) { s.notifier = n }
+
+// sweepExpired purges expired states and handoffs at most once per
+// sweepInterval per process: start-login is anonymous, and three write
+// statements per click (two almost-always-empty DELETEs plus the insert)
+// contend with real user writes on SQLite's single writer.
+func (s *Service) sweepExpired(ctx context.Context, now time.Time) error {
+	last := s.lastSweep.Load()
+	if now.Unix()-last < int64(sweepInterval/time.Second) || !s.lastSweep.CompareAndSwap(last, now.Unix()) {
+		return nil
+	}
+	if _, err := s.states.DeleteExpired(ctx, now); err != nil {
+		return err
+	}
+	_, err := s.handoffs.DeleteExpired(ctx, now)
+	return err
+}
 
 // allowStart guards the optional limiter, mirroring the user feature's pattern.
 func (s *Service) allowStart() error {

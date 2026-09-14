@@ -36,6 +36,7 @@ func ProvidersFromConfig(cfg config.Config, hc *http.Client) ([]Provider, error)
 			// that one case.
 			TrustEmail:      false,
 			ExtraAuthParams: map[string]string{"prompt": "select_account"},
+			IssuerAliases:   []string{"accounts.google.com"},
 		}, hc)})
 	}
 	if cfg.OAuthAppleEnabled() {

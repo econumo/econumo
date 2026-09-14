@@ -23,6 +23,31 @@ type fixedClock struct{ t time.Time }
 
 func (c *fixedClock) Now() time.Time { return c.t }
 
+func (c *fixedClock) advance(d time.Duration) { c.t = c.t.Add(d) }
+
+// countingStates wraps a real States repo and counts DeleteExpired calls, so
+// tests can assert the start-login sweep throttle actually skips redundant sweeps.
+type countingStates struct {
+	appoauth.States
+	deleteExpiredCalls int
+}
+
+func (c *countingStates) DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error) {
+	c.deleteExpiredCalls++
+	return c.States.DeleteExpired(ctx, cutoff)
+}
+
+// countingHandoffs is countingStates' counterpart for Handoffs.
+type countingHandoffs struct {
+	appoauth.Handoffs
+	deleteExpiredCalls int
+}
+
+func (c *countingHandoffs) DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error) {
+	c.deleteExpiredCalls++
+	return c.Handoffs.DeleteExpired(ctx, cutoff)
+}
+
 // fakeUsers is the Users port over the seeded users table: rows are real (so
 // the FK constraints on identities/handoffs hold) but the aggregate is kept in
 // memory, which is all the oauth service reads.
@@ -150,8 +175,8 @@ type harness struct {
 	users     *fakeUsers
 	svc       *appoauth.Service
 	ids       appoauth.Identities
-	states    appoauth.States
-	hands     appoauth.Handoffs
+	states    *countingStates
+	hands     *countingHandoffs
 	clock     *fixedClock
 	providers []appoauth.Provider
 	notifier  *fakeNotifier
@@ -163,8 +188,8 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 	f := oidctest.New(t)
 	users := newFakeUsers(t, db)
 	ids := oauthrepo.NewIdentityRepo(db.Engine, db.TX)
-	states := oauthrepo.NewStateRepo(db.Engine, db.TX)
-	hands := oauthrepo.NewHandoffRepo(db.Engine, db.TX)
+	states := &countingStates{States: oauthrepo.NewStateRepo(db.Engine, db.TX)}
+	hands := &countingHandoffs{Handoffs: oauthrepo.NewHandoffRepo(db.Engine, db.TX)}
 	clk := &fixedClock{t: time.Now().UTC().Truncate(time.Second)}
 	providers := []appoauth.Provider{
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderGoogle, true), nil), Name: "Google"},
@@ -222,6 +247,25 @@ func TestStartLogin_UnconfiguredProvider(t *testing.T) {
 	v, ok := errs.AsValidation(err)
 	if !ok || v.MsgCode != errs.CodeOAuthProviderNotConfigured {
 		t.Fatalf("want provider_not_configured, got %v", err)
+	}
+}
+
+func TestStart_SweepsExpiredRowsAtMostOncePerMinute(t *testing.T) {
+	h := newHarness(t, false, true)
+	for i := 0; i < 3; i++ {
+		if _, err := h.svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "oidc", Client: "web"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if h.states.deleteExpiredCalls != 1 || h.hands.deleteExpiredCalls != 1 {
+		t.Fatalf("sweeps: states=%d handoffs=%d, want 1/1", h.states.deleteExpiredCalls, h.hands.deleteExpiredCalls)
+	}
+	h.clock.advance(2 * time.Minute)
+	if _, err := h.svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "oidc", Client: "web"}); err != nil {
+		t.Fatal(err)
+	}
+	if h.states.deleteExpiredCalls != 2 {
+		t.Fatalf("sweep did not re-arm after the interval: %d", h.states.deleteExpiredCalls)
 	}
 }
 

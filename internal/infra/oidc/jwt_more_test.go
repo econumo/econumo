@@ -102,3 +102,19 @@ func TestVerifyIDToken_UnknownKidThrottled(t *testing.T) {
 		t.Fatalf("a flood of distinct unknown kids within the throttle window must not refetch: %d -> %d", afterFirst, afterFlood)
 	}
 }
+
+func TestVerifyIDToken_AcceptsConfiguredIssuerAlias(t *testing.T) {
+	f := oidctest.New(t)
+	iss := f.Issuer("google", false)
+	iss.IssuerAliases = []string{"accounts.google.com"}
+	c := oidc.NewClient(iss, f.Server.Client())
+	claims := f.Claims("nonce-1")
+	claims["iss"] = "accounts.google.com"
+	if _, err := c.VerifyIDToken(context.Background(), f.SignIDToken(claims), "nonce-1", time.Now()); err != nil {
+		t.Fatalf("alias rejected: %v", err)
+	}
+	plain := oidc.NewClient(f.Issuer("oidc", false), f.Server.Client())
+	if _, err := plain.VerifyIDToken(context.Background(), f.SignIDToken(claims), "nonce-1", time.Now()); err == nil {
+		t.Fatal("an unconfigured alias must still be rejected")
+	}
+}

@@ -48,10 +48,7 @@ func (s *Service) start(ctx context.Context, req model.StartOAuthRequest, intent
 		challenge = oidc.PKCEChallenge(verifier)
 	}
 	now := s.clock.Now()
-	if _, err := s.states.DeleteExpired(ctx, now); err != nil {
-		return nil, err
-	}
-	if _, err := s.handoffs.DeleteExpired(ctx, now); err != nil {
+	if err := s.sweepExpired(ctx, now); err != nil {
 		return nil, err
 	}
 	if err := s.states.Insert(ctx, &model.OAuthState{

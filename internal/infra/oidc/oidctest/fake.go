@@ -105,6 +105,10 @@ func (f *Fake) Requests() []string {
 	return append([]string(nil), f.requests...)
 }
 
+// Claims exposes the claim set a real token/userinfo response would carry,
+// for tests that need to hand-craft and re-sign a token (e.g. issuer aliasing).
+func (f *Fake) Claims(nonce string) map[string]any { return f.claims(nonce) }
+
 func (f *Fake) claims(nonce string) map[string]any {
 	now := time.Now()
 	m := map[string]any{"iss": f.Server.URL, "aud": f.ClientID, "sub": f.Subject, "nonce": nonce,
