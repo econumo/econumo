@@ -2,12 +2,12 @@
 -- liveness is evaluated in the app layer, not SQL.
 
 -- name: InsertAccessToken :exec
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);
 
 -- name: GetAccessTokenByHash :one
 -- Joins users for access_level/access_until; see the sqlite sibling for why.
-SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
+SELECT t.id, t.user_id, t.kind, t.token_hash, t.scope, t.name, t.user_agent,
        t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
        u.access_level, u.access_until
 FROM access_tokens t
@@ -15,7 +15,7 @@ JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = $1;
 
 -- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
 WHERE id = $1;
 
@@ -23,7 +23,7 @@ WHERE id = $1;
 UPDATE access_tokens SET last_used_at = $1, expires_at = $2, revoked_at = $3 WHERE id = $4;
 
 -- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
 WHERE user_id = $1 AND kind = $2
 ORDER BY created_at, id;

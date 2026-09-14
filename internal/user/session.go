@@ -22,6 +22,7 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 	exp := now.Add(SessionTTL)
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindSession, TokenHash: hash,
+		Scope:     model.TokenScopeFull,
 		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if userAgent != "" {

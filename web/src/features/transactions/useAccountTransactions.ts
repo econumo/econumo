@@ -126,6 +126,7 @@ export function useAccountTransactions(accountId: Id | undefined, search: string
         // not posted yet, so there is no originating template on the row itself;
         // `recurring` below is what marks this as a synthesized preview
         recurringId: null,
+        isImported: 0,
         recurring: rt,
       }))
     // A template that is due or overdue is money the user still has to act on,
