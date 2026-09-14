@@ -3,6 +3,7 @@ import { isNativeApp, nativePlugin } from './platform'
 export interface BrowserPlugin {
   open(o: { url: string }): Promise<void>
   close(): Promise<void>
+  addListener?(ev: 'browserFinished', cb: () => void): unknown
 }
 
 // In-app navigation uses relative hrefs (react-router), so any absolute

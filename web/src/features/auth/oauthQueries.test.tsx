@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { isFreshAccount, oauthClient, openAuthorizationUrl, takeOAuthFlow, useExchangeHandoff, useStartOAuth } from './oauthQueries'
+import { isFreshAccount, oauthClient, openAuthorizationUrl, rememberOAuthFlow, takeOAuthFlow, useExchangeHandoff, useOAuthInFlight, useStartOAuth } from './oauthQueries'
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -61,6 +61,23 @@ it('stores the flow secret in localStorage inside the app, where the browser she
   await result.current.mutateAsync({ provider: 'google', intent: 'login' })
   expect(localStorage.getItem('oauthFlow')).toBe('appflow')
   expect(sessionStorage.getItem('oauthFlow')).toBeNull()
+})
+
+it('in the app, a flow stays in flight until the browser sheet finishes or the flow secret is taken', async () => {
+  const listeners: Record<string, () => void> = {}
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: {
+    open: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    addListener: vi.fn((ev: string, cb: () => void) => { listeners[ev] = cb }),
+  } } }
+  openAuthorizationUrl('https://idp/x')
+  expect(useOAuthInFlight.getState().inFlight).toBe(true)
+  listeners.browserFinished()
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
+  openAuthorizationUrl('https://idp/y')
+  rememberOAuthFlow('f')
+  takeOAuthFlow()
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
 })
 
 it('useExchangeHandoff stores the token and clears the persisted cache', async () => {

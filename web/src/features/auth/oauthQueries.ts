@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { create } from 'zustand'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
@@ -28,6 +29,7 @@ export function rememberOAuthFlow(flow: string): void {
 }
 
 export function takeOAuthFlow(): string {
+  useOAuthInFlight.getState().set(false)
   try {
     const store = flowStore()
     const flow = store.getItem(FLOW_KEY) ?? ''
@@ -42,11 +44,28 @@ export function oauthClient(): oauthApi.OAuthClient {
   return isNativeApp() ? 'app' : 'web'
 }
 
+// The app leaves the WebView for the browser sheet and the start mutation
+// resolves as soon as the sheet is asked to open, so `isPending` alone lets a
+// second tap mint a second flow whose secret overwrites the first's. The
+// sheet's own lifecycle (browserFinished) or the deep-link return (which
+// takes the flow secret) is what ends the flow.
+export const useOAuthInFlight = create<{ inFlight: boolean; set: (v: boolean) => void }>((set) => ({
+  inFlight: false,
+  set: (inFlight) => set({ inFlight }),
+}))
+
+let browserFinishedInstalled = false
+
 // A top-level navigation on the web (Google and Apple require it); the system
 // browser sheet in the app (embedded web views are blocked by Google).
 export function openAuthorizationUrl(url: string): void {
   const browser = nativePlugin<BrowserPlugin>('Browser')
   if (browser) {
+    if (!browserFinishedInstalled && browser.addListener) {
+      browserFinishedInstalled = true
+      browser.addListener('browserFinished', () => useOAuthInFlight.getState().set(false))
+    }
+    useOAuthInFlight.getState().set(true)
     void browser.open({ url })
     return
   }

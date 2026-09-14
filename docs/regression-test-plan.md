@@ -161,6 +161,11 @@ navigation (single-pane vs sidebar).
       already-used attempt returns to the app's login page with "The sign-in
       attempt expired or was already used." (not a web page inside the
       sheet).
+- [ ] 📱 App: tapping a provider button twice while the browser sheet is
+      opening starts ONE flow; the buttons stay disabled until the sheet
+      closes or the sign-in returns.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      no provider buttons are shown.
 
 ## 3. Onboarding (fresh user)
 

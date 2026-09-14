@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -13,6 +13,7 @@ function renderButtons(intent: 'login' | 'link' = 'login') {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  delete (window as { Capacitor?: unknown }).Capacitor
 })
 
 it('renders nothing when no provider is configured', async () => {
@@ -39,4 +40,27 @@ it('renders one button per provider, in order, and starts the flow on click', as
   expect(screen.getByText('or continue with')).toBeInTheDocument()
   await userEvent.click(buttons[2])
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://idp/oidc'))
+})
+
+it('keeps the buttons disabled while an app flow is in flight', async () => {
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { open: vi.fn().mockResolvedValue(undefined), addListener: vi.fn() } } }
+  server.use(
+    http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })),
+    http.post('*/api/v1/oauth/start-login', () => HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/google', flow: 'f1' } })),
+  )
+  renderButtons()
+  const button = await screen.findByRole('button')
+  await userEvent.click(button)
+  await waitFor(() => expect(button).toBeDisabled())
+  delete window.Capacitor
+})
+
+it('hides the buttons on the web when the SPA is served from a different origin than the backend', async () => {
+  window.econumoConfig = { ALLOW_CUSTOM_API: true }
+  localStorage.setItem('selfHosted', JSON.stringify(true))
+  localStorage.setItem('backendHost', JSON.stringify('https://money.example.org'))
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })))
+  const { container } = renderButtons()
+  await new Promise((r) => setTimeout(r, 20))
+  expect(container.querySelector('[data-testid="provider-buttons"]')).toBeNull()
 })
