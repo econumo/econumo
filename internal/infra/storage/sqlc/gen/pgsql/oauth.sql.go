@@ -74,12 +74,36 @@ func (q *Queries) DeleteOAuthHandoff(ctx context.Context, codeHash string) (int6
 	return result.RowsAffected()
 }
 
+const deleteOAuthHandoffsByUser = `-- name: DeleteOAuthHandoffsByUser :execrows
+DELETE FROM oauth_handoffs WHERE user_id = $1
+`
+
+func (q *Queries) DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthHandoffsByUser, userID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteOAuthState = `-- name: DeleteOAuthState :execrows
 DELETE FROM oauth_states WHERE state_hash = $1
 `
 
 func (q *Queries) DeleteOAuthState(ctx context.Context, stateHash string) (int64, error) {
 	result, err := q.db.ExecContext(ctx, deleteOAuthState, stateHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const deleteOAuthStatesByLinkUser = `-- name: DeleteOAuthStatesByLinkUser :execrows
+DELETE FROM oauth_states WHERE link_user_id = $1
+`
+
+func (q *Queries) DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthStatesByLinkUser, linkUserID)
 	if err != nil {
 		return 0, err
 	}

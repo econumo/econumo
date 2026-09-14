@@ -719,9 +719,14 @@ In the distroless image these run via the binary directly, e.g.
   `user:change-password` revokes all sessions; `user:deactivate` revokes sessions AND
   PATs (which is why per-request auth needs no `is_active` join). **`reset-password` is
   the reclaim**: completing it is the account's proof of mailbox ownership, so it
-  revokes every session AND every PAT, and unlinks every external identity whose
-  provider vouches for a DIFFERENT address (`user.IdentityReclaimer` →
-  `oauth.UnlinkForeignIdentities`, wired in `internal/server`). Registration does not
+  revokes every session AND every PAT, drops every pending grant (outstanding reset
+  codes, a pending email change, and on the oauth side every unredeemed handoff — a
+  60-second sign-in code is a session in waiting — plus in-flight link states naming
+  the account), and unlinks every external identity whose provider vouches for a
+  DIFFERENT address (`user.OAuthReclaimer` → `oauth.ReclaimAccount`, wired in
+  `internal/server`). What it deliberately does NOT touch is data sharing: connections
+  and budget grants survive, because a routine reset must not dissolve a family's
+  shared budget. Registration does not
   always verify email, so a squatter could have linked their own provider account to an
   address they never owned; revoking passwords and tokens alone would leave that link
   as a way back in. An identity claiming the proven address survives — obtaining one

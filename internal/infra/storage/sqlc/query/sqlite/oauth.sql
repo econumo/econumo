@@ -43,6 +43,9 @@ WHERE state_hash = ?;
 -- name: DeleteOAuthState :execrows
 DELETE FROM oauth_states WHERE state_hash = ?;
 
+-- name: DeleteOAuthStatesByLinkUser :execrows
+DELETE FROM oauth_states WHERE link_user_id = ?;
+
 -- name: DeleteExpiredOAuthStates :execrows
 DELETE FROM oauth_states WHERE expires_at < ?;
 
@@ -57,6 +60,9 @@ WHERE code_hash = ?;
 
 -- name: DeleteOAuthHandoff :execrows
 DELETE FROM oauth_handoffs WHERE code_hash = ?;
+
+-- name: DeleteOAuthHandoffsByUser :execrows
+DELETE FROM oauth_handoffs WHERE user_id = ?;
 
 -- name: DeleteExpiredOAuthHandoffs :execrows
 DELETE FROM oauth_handoffs WHERE expires_at < ?;

@@ -204,7 +204,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
 		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), clk, authLimiter, cfg.AppURL, cfg.AllowRegistration)
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
-	userSvc.SetIdentityReclaimer(oauthIdentityReclaimer{oauth: oauthSvc})
+	userSvc.SetOAuthReclaimer(oauthIdentityReclaimer{oauth: oauthSvc})
 	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityLinkedMailer))
 	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 

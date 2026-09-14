@@ -154,13 +154,16 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	// A completed reset is the account's ownership proof: it is the one flow
 	// that demonstrates control of the mailbox. So everything that could sign in
 	// WITHOUT that proof goes with the old password — every session, every
-	// personal token, and every linked identity whose provider vouches for a
-	// different address. The last one matters because registration does not
-	// always verify email: someone who claimed the address first could have
-	// linked their own provider account to it, and that link would otherwise
-	// outlive the reclaim (a provider claiming this same address survives —
-	// only the mailbox owner could have obtained one). All of it shares the
-	// password write's transaction, so a half-done reclaim cannot happen.
+	// personal token, every pending grant (outstanding reset codes, a pending
+	// email change, and on the oauth side any unredeemed sign-in handoff, which
+	// is a session waiting to be claimed), and every linked identity whose
+	// provider vouches for a different address. That last one matters because
+	// registration does not always verify email: someone who claimed the address
+	// first could have linked their own provider account to it, and that link
+	// would otherwise outlive the reclaim (a provider claiming this same address
+	// survives — only the mailbox owner could have obtained one). All of it
+	// shares the password write's transaction, so a half-done reclaim cannot
+	// happen.
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		// Completing a reset proves mailbox ownership, so it also satisfies the
@@ -169,21 +172,28 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		if derr := s.passwordRequests.Delete(ctx, pr.ID); derr != nil {
+		// Every outstanding code, not just the one presented.
+		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
+			return derr
+		}
+		if derr := s.emailChangeRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}
 		if rerr := s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal); rerr != nil {
 			return rerr
 		}
-		if s.identities == nil {
+		if s.oauthGrants == nil {
 			return nil
 		}
-		n, ierr := s.identities.UnlinkForeignIdentities(ctx, u.ID, lowered)
+		identities, grants, ierr := s.oauthGrants.ReclaimAccount(ctx, u.ID, lowered)
 		if ierr != nil {
 			return ierr
 		}
-		if n > 0 {
-			reqctx.AddLogAttr(ctx, "identities_unlinked", n)
+		if identities > 0 {
+			reqctx.AddLogAttr(ctx, "identities_unlinked", identities)
+		}
+		if grants > 0 {
+			reqctx.AddLogAttr(ctx, "oauth_grants_revoked", grants)
 		}
 		return nil
 	}); err != nil {

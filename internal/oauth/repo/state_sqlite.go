@@ -24,6 +24,10 @@ func (stateSqliteQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX,
 	return sqlitegen.New(db).DeleteOAuthState(ctx, hash)
 }
 
+func (stateSqliteQuerier) DeleteOAuthStatesByLinkUser(ctx context.Context, db backend.DBTX, userID *string) (int64, error) {
+	return sqlitegen.New(db).DeleteOAuthStatesByLinkUser(ctx, userID)
+}
+
 func (stateSqliteQuerier) DeleteExpiredOAuthStates(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error) {
 	return sqlitegen.New(db).DeleteExpiredOAuthStates(ctx, cutoff)
 }

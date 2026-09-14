@@ -14,8 +14,10 @@ import (
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
+	"github.com/econumo/econumo/internal/infra/oidc"
 	"github.com/econumo/econumo/internal/infra/ratelimit"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -170,6 +172,18 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	fixture.New(t, db).Identity(fixture.Identity{UserID: uid, Provider: "google",
 		Issuer: "https://accounts.google.com", Subject: "squatter-google-sub", Email: "squatter@example.test"})
 
+	// ...leaves a pending email change to an address they control...
+	if code, body := post("/api/v1/user/request-email-change", squatterSession,
+		`{"newEmail":"squatter@example.test","password":"squatter-pass"}`); code != 200 {
+		t.Fatalf("request-email-change: %d %s", code, body)
+	}
+	// ...and, moments before the reset, pockets a sign-in handoff for the
+	// account: a 60-second code that mints a session with no further proof.
+	// (Minted directly, because driving a real provider consent here would add
+	// an issuer to a test about what the reset takes away.)
+	handoffCode := "eco-pending-handoff-code"
+	seedLoginHandoff(t, db, uid, handoffCode, "f10wsecret")
+
 	// The victim reclaims through the mailbox they control.
 	if code, body := post("/api/v1/user/remind-password", "", `{"username":"victim@example.test"}`); code != 200 {
 		t.Fatalf("remind: %d %s", code, body)
@@ -198,6 +212,13 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	if victimSession == "" {
 		t.Fatalf("the owner must be able to sign in: %s", victimBody)
 	}
+	if n := pendingEmailChanges(t, db, uid); n != 0 {
+		t.Errorf("a pending email change survived the reclaim (%d rows)", n)
+	}
+	if code, body := post("/api/v1/oauth/exchange-handoff", "",
+		`{"code":"`+handoffCode+`","flow":"f10wsecret"}`); code == 200 {
+		t.Errorf("a handoff minted before the reset still bought a session: %d %s", code, body)
+	}
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/oauth/get-identity-list", nil)
 	req.Header.Set("Authorization", "Bearer "+victimSession)
 	resp, err := http.DefaultClient.Do(req)
@@ -218,4 +239,27 @@ func userIDByEmail(t *testing.T, db *dbtest.DB, email string) string {
 		t.Fatalf("user id for %s: %v", email, err)
 	}
 	return id
+}
+
+// seedLoginHandoff writes the row a resolved oauth callback would have left:
+// an unredeemed sign-in code for the user, valid for the next minute.
+func seedLoginHandoff(t *testing.T, db *dbtest.DB, userID, code, flow string) {
+	t.Helper()
+	now := time.Now().UTC().Truncate(time.Second)
+	_, err := db.Raw.Exec(db.Rebind(`INSERT INTO oauth_handoffs
+		(code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
+		VALUES (?, ?, ?, ?, '', '', '', ?, NULL, ?, ?)`),
+		oidc.Sha256Hex(code), model.OAuthHandoffKindLogin, userID, "google", oidc.Sha256Hex(flow), now, now.Add(model.OAuthHandoffTTL))
+	if err != nil {
+		t.Fatalf("seed handoff: %v", err)
+	}
+}
+
+func pendingEmailChanges(t *testing.T, db *dbtest.DB, userID string) int {
+	t.Helper()
+	var n int
+	if err := db.Raw.QueryRow(db.Rebind(`SELECT COUNT(*) FROM users_email_change_requests WHERE user_id = ?`), userID).Scan(&n); err != nil {
+		t.Fatalf("count email change requests: %v", err)
+	}
+	return n
 }

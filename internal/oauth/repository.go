@@ -29,6 +29,9 @@ type States interface {
 	// Delete returns the number of rows removed, so a caller can tell a real
 	// delete from a concurrent replay that found the row already gone.
 	Delete(ctx context.Context, stateHash string) (int64, error)
+	// DeleteByLinkUser drops the in-flight link requests naming a user, so a
+	// consent begun before an account reclaim cannot land after it.
+	DeleteByLinkUser(ctx context.Context, userID vo.Id) (int64, error)
 	DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
@@ -39,5 +42,8 @@ type Handoffs interface {
 	// Delete returns the number of rows removed, so a caller can tell a real
 	// delete from a concurrent replay that found the row already gone.
 	Delete(ctx context.Context, codeHash string) (int64, error)
+	// DeleteByUser drops every unredeemed code minted for a user: a handoff is a
+	// session in waiting, so it must not survive an account reclaim.
+	DeleteByUser(ctx context.Context, userID vo.Id) (int64, error)
 	DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error)
 }

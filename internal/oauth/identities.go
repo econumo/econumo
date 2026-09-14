@@ -50,29 +50,43 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.Un
 	return &model.UnlinkIdentityResult{}, nil
 }
 
-// UnlinkForeignIdentities implements the user feature's recovery port: it
-// removes every identity of the user whose provider does not vouch for
-// provenEmail — the address a completed password reset just proved the caller
-// controls. An identity claiming that same address stays: obtaining one
-// requires the mailbox, so it cannot predate the owner. This is what stops a
-// squatter's own linked provider account from outliving the reclaim of an
-// address they never owned.
-func (s *Service) UnlinkForeignIdentities(ctx context.Context, userID vo.Id, provenEmail string) (int64, error) {
+// ReclaimAccount implements the user feature's recovery port. A completed
+// password reset proves control of provenEmail, so everything on the oauth side
+// that could sign in as this user WITHOUT that proof has to go:
+//
+//   - identities whose provider vouches for a different address. Registration
+//     does not always verify email, so someone who claimed the address first
+//     could have linked their own provider account to it. An identity claiming
+//     the proven address stays: obtaining one needs that mailbox.
+//   - every pending grant: an unredeemed handoff is a session in waiting (60
+//     seconds is long enough to hold one across a reset), and an in-flight link
+//     request names the account it would attach an identity to.
+//
+// Returns how many identities and how many pending grants were removed.
+func (s *Service) ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail string) (int64, int64, error) {
 	rows, err := s.identities.ListByUser(ctx, userID)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	proven := strings.ToLower(strings.TrimSpace(provenEmail))
-	var removed int64
+	var identities int64
 	for _, r := range rows {
 		if strings.ToLower(strings.TrimSpace(r.Email)) == proven {
 			continue
 		}
 		n, derr := s.identities.DeleteByUserProvider(ctx, userID, r.Provider)
 		if derr != nil {
-			return removed, derr
+			return identities, 0, derr
 		}
-		removed += n
+		identities += n
 	}
-	return removed, nil
+	grants, err := s.handoffs.DeleteByUser(ctx, userID)
+	if err != nil {
+		return identities, 0, err
+	}
+	states, err := s.states.DeleteByLinkUser(ctx, userID)
+	if err != nil {
+		return identities, grants, err
+	}
+	return identities, grants + states, nil
 }

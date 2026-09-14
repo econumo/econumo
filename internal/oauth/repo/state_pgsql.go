@@ -25,6 +25,10 @@ func (statePgsqlQuerier) DeleteOAuthState(ctx context.Context, db backend.DBTX, 
 	return pgsqlgen.New(db).DeleteOAuthState(ctx, hash)
 }
 
+func (statePgsqlQuerier) DeleteOAuthStatesByLinkUser(ctx context.Context, db backend.DBTX, userID *string) (int64, error) {
+	return pgsqlgen.New(db).DeleteOAuthStatesByLinkUser(ctx, userID)
+}
+
 func (statePgsqlQuerier) DeleteExpiredOAuthStates(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error) {
 	return pgsqlgen.New(db).DeleteExpiredOAuthStates(ctx, cutoff)
 }

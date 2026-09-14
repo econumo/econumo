@@ -132,7 +132,24 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 0 {
 		t.Fatalf("second delete must affect no rows: %d %v", n, err)
 	}
-	_, _ = handoffs.Delete(ctx, "c3")
+	// Reclaim shape: every pending grant of one user goes at once.
+	if n, err := handoffs.DeleteByUser(ctx, uid); err != nil || n != 1 {
+		t.Fatalf("DeleteByUser removed %d (%v), want 1", n, err)
+	}
+	if _, err := handoffs.Get(ctx, "c3"); err == nil {
+		t.Fatal("the user's pending handoff must be gone")
+	}
+	if n, err := states.DeleteByLinkUser(ctx, uid); err != nil || n != 0 {
+		t.Fatalf("DeleteByLinkUser removed %d (%v), want 0 — no link state seeded", n, err)
+	}
+	linkState := &model.OAuthState{StateHash: "h9", Provider: "google", Nonce: "n9", Client: "web",
+		Intent: model.OAuthIntentLink, LinkUserID: uid, CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL)}
+	if err := states.Insert(ctx, linkState); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := states.DeleteByLinkUser(ctx, uid); err != nil || n != 1 {
+		t.Fatalf("DeleteByLinkUser removed %d (%v), want 1", n, err)
+	}
 	old := &model.OAuthHandoff{CodeHash: "c2", Kind: model.OAuthHandoffKindLogin, UserID: uid, Provider: "google", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}
 	_ = handoffs.Insert(ctx, old)
 	if n, _ := handoffs.DeleteExpired(ctx, now); n != 1 {

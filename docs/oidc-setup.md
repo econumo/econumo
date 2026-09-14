@@ -195,7 +195,9 @@ user database.
   then linking from Settings is the safe path, and only has to be done once.
 - **A password reset is a full account reclaim.** Completing one is the only
   way to prove you control the address, so it also signs out every session,
-  revokes every personal access token, and unlinks any sign-in method whose
+  revokes every personal access token, cancels anything still pending on the
+  account (an unfinished provider sign-in, a requested email change), and
+  unlinks any sign-in method whose
   provider reports a *different* email address — otherwise someone who had
   registered your address first could keep a provider account linked to it and
   walk straight back in. A provider that reports the same address as the

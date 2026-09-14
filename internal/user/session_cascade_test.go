@@ -122,7 +122,7 @@ func TestResetPassword_RevokesEverySessionAndToken(t *testing.T) {
 	}
 
 	reclaimer := &fakeReclaimer{}
-	svc.SetIdentityReclaimer(reclaimer)
+	svc.SetOAuthReclaimer(reclaimer)
 
 	_, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
 		Username: "auth@econumo.test", Code: "482913", Password: "next-secret",
@@ -155,9 +155,9 @@ type fakeReclaimer struct {
 	fail  error
 }
 
-func (f *fakeReclaimer) UnlinkForeignIdentities(_ context.Context, userID vo.Id, provenEmail string) (int64, error) {
+func (f *fakeReclaimer) ReclaimAccount(_ context.Context, userID vo.Id, provenEmail string) (int64, int64, error) {
 	f.calls = append(f.calls, struct{ userID, email string }{userID.String(), provenEmail})
-	return 0, f.fail
+	return 0, 0, f.fail
 }
 
 // The reclaim shares the password write's transaction: a failure to drop a
@@ -172,7 +172,7 @@ func TestResetPassword_RollsBackWhenTheIdentityReclaimFails(t *testing.T) {
 	if err := pwreqs.Save(ctx, pr); err != nil {
 		t.Fatalf("seed password request: %v", err)
 	}
-	svc.SetIdentityReclaimer(&fakeReclaimer{fail: errors.New("boom")})
+	svc.SetOAuthReclaimer(&fakeReclaimer{fail: errors.New("boom")})
 
 	if _, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
 		Username: "auth@econumo.test", Code: "482913", Password: "next-secret",

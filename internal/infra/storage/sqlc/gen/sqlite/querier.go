@@ -48,7 +48,9 @@ type Querier interface {
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error

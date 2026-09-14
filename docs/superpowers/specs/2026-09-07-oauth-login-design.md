@@ -421,12 +421,19 @@ already-linked checks inside the authenticated request (coded 400
 The refusal in step 6 sends the account's owner to `remind-password` /
 `reset-password`, so that flow has to finish the job. Completing a reset is the
 only proof of mailbox ownership Econumo has, and the user feature treats it as
-the account's reclaim: it revokes every session and every personal token, and
-calls `oauth.UnlinkForeignIdentities` through the `user.IdentityReclaimer` port
-to remove each linked identity whose provider vouches for a different address.
-Without that last step the squatter's own linked provider account outlives the
-reclaim and hands them the reclaimed account — which is exactly what happened
-when only the password and tokens were evicted. An identity claiming the proven
+the account's reclaim: it revokes every session and every personal token, drops
+the account's pending grants (outstanding reset codes and a pending email
+change on its own side), and calls `oauth.ReclaimAccount` through the
+`user.OAuthReclaimer` port. That removes each linked identity whose provider
+vouches for a different address **and every unredeemed handoff or in-flight
+link state of the user**: a sign-in code already minted for this account is a
+session waiting to be claimed, and sixty seconds is long enough to hold one
+across the reset. Each omission of this sweep has been exploitable in turn —
+first the sessions, then the tokens, then the identity, then the pending
+handoff — so the rule is the sweep, not the list: nothing that can authenticate
+as the user without proving the mailbox may cross the reset boundary. Data
+sharing (connections, budget grants) deliberately survives; it is not a way to
+sign in, and a routine reset must not dissolve it. An identity claiming the proven
 address stays: only the mailbox owner could have obtained one, and that keeps
 the passwordless "Set a password" path (the same endpoint) from stripping the
 provider a user still needs. The whole cascade shares the password write's

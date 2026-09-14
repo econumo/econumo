@@ -45,7 +45,9 @@ type Querier interface {
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.

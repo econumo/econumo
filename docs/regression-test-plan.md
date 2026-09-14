@@ -127,7 +127,10 @@ navigation (single-pane vs sidebar).
       matches the account's, one whose does not), completing "Forgot password"
       signs the session out, makes the token stop authenticating, removes the
       provider with the different email from Settings → Profile → Linked
-      accounts, and keeps the matching one. The recovery dialog says so before
+      accounts, and keeps the matching one. A provider sign-in started just
+      before the reset can no longer be completed afterwards (the returning
+      browser lands on the login page with an error instead of a session), and
+      a pending email change is cancelled. The recovery dialog says so before
       the reset is submitted.
 - [ ] A provider-created (passwordless) account using Settings → Profile →
       "Set a password" keeps its linked provider through that flow — it is the

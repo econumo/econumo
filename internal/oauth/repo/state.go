@@ -23,6 +23,7 @@ type stateQuerier interface {
 	InsertOAuthState(ctx context.Context, db backend.DBTX, p insertStateParams) error
 	GetOAuthState(ctx context.Context, db backend.DBTX, hash string) (stateRow, error)
 	DeleteOAuthState(ctx context.Context, db backend.DBTX, hash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, db backend.DBTX, userID *string) (int64, error)
 	DeleteExpiredOAuthStates(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error)
 }
 
@@ -81,6 +82,11 @@ func (r *StateRepo) Get(ctx context.Context, hash string) (*model.OAuthState, er
 
 func (r *StateRepo) Delete(ctx context.Context, hash string) (int64, error) {
 	return r.q.DeleteOAuthState(ctx, r.db(ctx), hash)
+}
+
+func (r *StateRepo) DeleteByLinkUser(ctx context.Context, userID vo.Id) (int64, error) {
+	id := userID.String()
+	return r.q.DeleteOAuthStatesByLinkUser(ctx, r.db(ctx), &id)
 }
 
 func (r *StateRepo) DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error) {
