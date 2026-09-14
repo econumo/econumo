@@ -9,7 +9,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { providerDisplayName, takeOAuthFlow, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { providerDisplayName, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from './SettingsShell'
@@ -24,6 +24,7 @@ export function LinkedAccountsPage() {
   const identities = useIdentities()
   const user = useUserData()
   const start = useStartOAuth()
+  const inFlight = useOAuthInFlight((s) => s.inFlight)
   const unlink = useUnlinkIdentity()
   const complete = useCompleteLink()
   const [confirm, setConfirm] = useState<OAuthProviderId | null>(null)
@@ -131,7 +132,7 @@ export function LinkedAccountsPage() {
             <li key={p.id} className="flex items-center gap-3 rounded-md px-3 py-2.5">
               <ProviderMark id={p.id} />
               <div className="flex-1 text-sm">{p.name}</div>
-              <Button type="button" size="sm" disabled={start.isPending} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
+              <Button type="button" size="sm" disabled={start.isPending || inFlight} onClick={() => start.mutate({ provider: p.id, intent: 'link' })}>
                 {t('user.page.settings.profile.linked_accounts.link')}
               </Button>
             </li>

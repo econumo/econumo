@@ -1,10 +1,11 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { Toaster } from '@/components/ui/sonner'
+import { useOAuthInFlight } from '@/features/auth/oauthQueries'
 import { LinkedAccountsPage } from './LinkedAccountsPage'
 
 const providers = [{ id: 'google', name: 'Google' }, { id: 'apple', name: 'Apple' }]
@@ -42,11 +43,16 @@ beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.econumoConfig = {}
+  delete (window as { Capacitor?: unknown }).Capacitor
   mockViewport()
   server.use(
     http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: providers })),
     http.get('*/api/v1/oauth/get-identity-list', () => HttpResponse.json({ success: true, message: '', data: identities })),
   )
+})
+
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
 })
 
 it('lists linked identities and offers Link for the rest', async () => {
@@ -144,6 +150,26 @@ it('falls back to the generic provider error for an unknown code', async () => {
   mockUser(true)
   renderPage('/settings/profile/linked-accounts?oauthError=made_up')
   expect(await screen.findByText('The sign-in provider returned an error. Please try again.')).toBeInTheDocument()
+})
+
+it('keeps the Link button disabled after the start mutation settles, and re-enables it once the browser sheet finishes', async () => {
+  mockUser(true)
+  const listeners: Record<string, () => void> = {}
+  const browserOpen = vi.fn().mockResolvedValue(undefined)
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: {
+    open: browserOpen,
+    addListener: vi.fn((ev: string, cb: () => void) => { listeners[ev] = cb }),
+  } } }
+  server.use(http.post('*/api/v1/oauth/start-link', () =>
+    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/apple', flow: 'f1' } })))
+  renderPage()
+  const button = await screen.findByRole('button', { name: 'Link' })
+  await userEvent.click(button)
+  await waitFor(() => expect(browserOpen).toHaveBeenCalled())
+  await act(async () => {})
+  expect(button).toBeDisabled()
+  listeners.browserFinished()
+  await waitFor(() => expect(button).not.toBeDisabled())
 })
 
 it('points the disabled Unlink button at the hint that explains it', async () => {

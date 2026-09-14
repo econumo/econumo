@@ -46,9 +46,13 @@ export function oauthClient(): oauthApi.OAuthClient {
 
 // The app leaves the WebView for the browser sheet and the start mutation
 // resolves as soon as the sheet is asked to open, so `isPending` alone lets a
-// second tap mint a second flow whose secret overwrites the first's. The
-// sheet's own lifecycle (browserFinished) or the deep-link return (which
-// takes the flow secret) is what ends the flow.
+// second tap mint a second flow whose secret overwrites the first's. Ended by
+// whichever comes first: the sheet's own lifecycle (browserFinished), or the
+// deep-link return — handleAppUrl (web/src/lib/deepLinks.ts) clears this
+// explicitly for EVERY recognised econumo://oauth link, success or failure;
+// a successful handoff/link additionally takes the flow secret via
+// takeOAuthFlow, which also clears it (belt and suspenders with the deep-link
+// path, since a web caller has no deep link at all).
 export const useOAuthInFlight = create<{ inFlight: boolean; set: (v: boolean) => void }>((set) => ({
   inFlight: false,
   set: (inFlight) => set({ inFlight }),

@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { useOAuthInFlight } from './oauthQueries'
 import { ProviderButtons } from './ProviderButtons'
 
 function renderButtons(intent: 'login' | 'link' = 'login') {
@@ -14,6 +15,10 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   delete (window as { Capacitor?: unknown }).Capacitor
+})
+
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
 })
 
 it('renders nothing when no provider is configured', async () => {
@@ -42,8 +47,13 @@ it('renders one button per provider, in order, and starts the flow on click', as
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('https://idp/oidc'))
 })
 
-it('keeps the buttons disabled while an app flow is in flight', async () => {
-  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { open: vi.fn().mockResolvedValue(undefined), addListener: vi.fn() } } }
+it('keeps the button disabled after the start mutation settles, and re-enables it once the browser sheet finishes', async () => {
+  const listeners: Record<string, () => void> = {}
+  const browserOpen = vi.fn().mockResolvedValue(undefined)
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: {
+    open: browserOpen,
+    addListener: vi.fn((ev: string, cb: () => void) => { listeners[ev] = cb }),
+  } } }
   server.use(
     http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [{ id: 'google', name: 'Google' }] })),
     http.post('*/api/v1/oauth/start-login', () => HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/google', flow: 'f1' } })),
@@ -51,8 +61,15 @@ it('keeps the buttons disabled while an app flow is in flight', async () => {
   renderButtons()
   const button = await screen.findByRole('button')
   await userEvent.click(button)
-  await waitFor(() => expect(button).toBeDisabled())
-  delete window.Capacitor
+  // Wait past openAuthorizationUrl (proof the mutation's async work ran), then
+  // flush react-query's own state update so `start.isPending` itself settles
+  // back to false — isolating that `inFlight`, not `isPending`, is what still
+  // holds the button disabled here.
+  await waitFor(() => expect(browserOpen).toHaveBeenCalled())
+  await act(async () => {})
+  expect(button).toBeDisabled()
+  listeners.browserFinished()
+  await waitFor(() => expect(button).not.toBeDisabled())
 })
 
 it('hides the buttons on the web when the SPA is served from a different origin than the backend', async () => {

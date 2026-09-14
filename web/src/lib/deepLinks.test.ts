@@ -1,8 +1,13 @@
 import { handleAppUrl, installDeepLinkHandler } from './deepLinks'
+import { useOAuthInFlight } from '@/features/auth/oauthQueries'
 import * as routerRef from '@/app/routerRef'
 
 beforeEach(() => {
   delete (window as { Capacitor?: unknown }).Capacitor
+})
+
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
 })
 
 it('routes handoff, link-handoff, link-error and error urls and closes the browser sheet', () => {
@@ -20,6 +25,14 @@ it('routes handoff, link-handoff, link-error and error urls and closes the brows
   handleAppUrl('https://example.com/other')
   expect(nav).toHaveBeenCalledTimes(4)
   expect(close).toHaveBeenCalledTimes(4)
+})
+
+it('clears the in-flight flag for every recognised deep link, including an error return', () => {
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { close: vi.fn().mockResolvedValue(undefined) } } }
+  vi.spyOn(routerRef, 'navigateTo').mockImplementation(() => {})
+  useOAuthInFlight.getState().set(true)
+  handleAppUrl('econumo://oauth?error=denied')
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
 })
 
 it('installs the appUrlOpen listener on the App plugin', () => {

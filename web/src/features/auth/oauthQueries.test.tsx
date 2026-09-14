@@ -17,6 +17,10 @@ beforeEach(() => {
   delete (window as { Capacitor?: unknown }).Capacitor
 })
 
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
+})
+
 it('oauthClient reports web outside the app and app inside it', () => {
   expect(oauthClient()).toBe('web')
   window.Capacitor = { isNativePlatform: () => true }

@@ -1,5 +1,6 @@
 import { navigateTo } from '@/app/routerRef'
 import { RouterPage } from '@/app/router-pages'
+import { useOAuthInFlight } from '@/features/auth/oauthQueries'
 import type { BrowserPlugin } from './externalLinks'
 import { nativePlugin } from './platform'
 
@@ -21,6 +22,10 @@ export function handleAppUrl(raw: string): void {
     return
   }
   void nativePlugin<BrowserPlugin>('Browser')?.close().catch(() => {})
+  // The deep link is itself proof the flow ended (success or failure) — clear
+  // it explicitly here rather than relying on the sheet's `browserFinished`
+  // event, which races this navigation and is not guaranteed to fire first.
+  useOAuthInFlight.getState().set(false)
   const q = url.searchParams
   const handoff = q.get('handoff')
   const linkHandoff = q.get('linkHandoff')
