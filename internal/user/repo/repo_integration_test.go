@@ -11,6 +11,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -425,5 +426,36 @@ func TestUserEmailVerifiedRoundTrip(t *testing.T) {
 	}
 	if !again.EmailVerified {
 		t.Error("MarkEmailVerified must persist")
+	}
+}
+
+// The reclaim fence must ride on the user row itself: every flow that reads a
+// user as its evidence gets the generation in the same read, so a reset
+// committing afterwards cannot slip between an evidence read and a fence read.
+func TestUserRepo_GetByIDAndEmail_CarryCredentialsGeneration(t *testing.T) {
+	repo, _, db := newRepos(t)
+	ctx := context.Background()
+	email := "fenced@example.test"
+	id := vo.MustParseId(fixture.New(t, db).User(fixture.User{Email: email}))
+
+	for range 2 {
+		if err := repo.BumpCredentialsGeneration(ctx, id); err != nil {
+			t.Fatalf("bump: %v", err)
+		}
+	}
+
+	byID, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if byID.CredentialsGeneration != 2 {
+		t.Errorf("GetByID CredentialsGeneration = %d, want 2", byID.CredentialsGeneration)
+	}
+	byEmail, err := repo.GetByEmail(ctx, email)
+	if err != nil {
+		t.Fatalf("GetByEmail: %v", err)
+	}
+	if byEmail.CredentialsGeneration != 2 {
+		t.Errorf("GetByEmail CredentialsGeneration = %d, want 2", byEmail.CredentialsGeneration)
 	}
 }

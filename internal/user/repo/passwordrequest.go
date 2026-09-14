@@ -28,7 +28,6 @@ type passwordRequestQuerier interface {
 	DeleteUserPasswordRequestsByUser(ctx context.Context, db backend.DBTX, userID string) error
 	InsertUserPasswordRequest(ctx context.Context, db backend.DBTX, p insertParams) error
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, db backend.DBTX, p getByUserAndCodeParams) (passwordRequestRow, error)
-	DeleteUserPasswordRequest(ctx context.Context, db backend.DBTX, id string) error
 }
 
 type PasswordRequestRepo struct {
@@ -72,10 +71,6 @@ func (r *PasswordRequestRepo) GetByUserAndCode(ctx context.Context, userID vo.Id
 		return nil, mapErr(err)
 	}
 	return reconstitute(row.ID, row.UserID, row.Code, row.CreatedAt, row.UpdatedAt, row.ExpiredAt)
-}
-
-func (r *PasswordRequestRepo) Delete(ctx context.Context, id vo.Id) error {
-	return r.q.DeleteUserPasswordRequest(ctx, r.db(ctx), id.String())
 }
 
 func reconstitute(id, userID, code string, created, updated, expired time.Time) (*model.PasswordRequest, error) {

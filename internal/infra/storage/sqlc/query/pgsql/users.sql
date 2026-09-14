@@ -1,5 +1,5 @@
 -- name: GetUserByID :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE id = $1;
 
@@ -27,6 +27,16 @@ ON CONFLICT (id) DO UPDATE SET
     access_until = excluded.access_until,
     email_verified = excluded.email_verified;
 
+-- name: BumpUserCredentialsGeneration :execrows
+UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1;
+
+-- name: UpdateUserPasswordIfGeneration :execrows
+-- The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+-- only under the generation the login verified the hash under, so a reset
+-- committing mid-login is never overwritten by a stale aggregate save.
+UPDATE users SET password = $1, salt = $2, algorithm = $3, updated_at = $4
+WHERE id = $5 AND credentials_generation = $6;
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2;
 
@@ -40,7 +50,7 @@ UPDATE users SET timezone = $1 WHERE id = $2;
 SELECT language FROM users WHERE id = $1;
 
 -- name: GetUserByEmail :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE lower(email) = lower($1);
 

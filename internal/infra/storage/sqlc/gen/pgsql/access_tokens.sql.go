@@ -62,7 +62,8 @@ type GetAccessTokenByHashRow struct {
 	AccessUntil *time.Time
 }
 
-// Joins users for access_level/access_until; see the sqlite sibling for why.
+// Joins users for access_level/access_until; see the sqlite sibling for why
+// provider/id_token are deliberately omitted here.
 func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccessTokenByHash, tokenHash)
 	var i GetAccessTokenByHashRow
@@ -84,7 +85,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE id = $1
 `
@@ -103,33 +104,41 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Provider,
+		&i.IDToken,
 	)
 	return i, err
 }
 
-const insertAccessToken = `-- name: InsertAccessToken :exec
+const insertAccessTokenIfGeneration = `-- name: InsertAccessTokenIfGeneration :execrows
 
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $13 AND u.credentials_generation = $14)
 `
 
-type InsertAccessTokenParams struct {
-	ID         string
-	UserID     string
-	Kind       string
-	TokenHash  string
-	Name       *string
-	UserAgent  *string
-	CreatedAt  time.Time
-	LastUsedAt time.Time
-	ExpiresAt  *time.Time
-	RevokedAt  *time.Time
+type InsertAccessTokenIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Kind                  string
+	TokenHash             string
+	Name                  *string
+	UserAgent             *string
+	CreatedAt             time.Time
+	LastUsedAt            time.Time
+	ExpiresAt             *time.Time
+	RevokedAt             *time.Time
+	Provider              *string
+	IDToken               *string
+	ID_2                  string
+	CredentialsGeneration int64
 }
 
 // Access-token queries (access_tokens). See the sqlite sibling for the flow;
 // liveness is evaluated in the app layer, not SQL.
-func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, insertAccessToken,
+// See the sqlite sibling.
+func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfGeneration,
 		arg.ID,
 		arg.UserID,
 		arg.Kind,
@@ -140,12 +149,66 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.CredentialsGeneration,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAccessTokenIfPresenterLive = `-- name: InsertAccessTokenIfPresenterLive :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = $13 AND p.user_id = $14 AND p.revoked_at IS NULL)
+`
+
+type InsertAccessTokenIfPresenterLiveParams struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
+	ID_2       string
+	UserID_2   string
+}
+
+// See the sqlite sibling.
+func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfPresenterLive,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Name,
+		arg.UserAgent,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.UserID_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE user_id = $1 AND kind = $2
 ORDER BY created_at, id
@@ -176,6 +239,8 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Provider,
+			&i.IDToken,
 		); err != nil {
 			return nil, err
 		}

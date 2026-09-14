@@ -150,6 +150,11 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	if herr != nil {
 		return nil, herr
 	}
+	// A completed reset is the account's ownership proof: it is the one flow
+	// that demonstrates control of the mailbox. So everything that could sign in
+	// WITHOUT that proof goes with the old password — see reclaimCredentials,
+	// which runs inside the password write's transaction so a half-done reclaim
+	// cannot happen.
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		// Completing a reset proves mailbox ownership, so it also satisfies the
@@ -158,13 +163,8 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		return s.passwordRequests.Delete(ctx, pr.ID)
+		return s.reclaimCredentials(ctx, u, lowered)
 	}); err != nil {
-		return nil, err
-	}
-	// The reset flow has no presenting session, so ALL sessions are revoked —
-	// whoever holds the account's email owns the account now.
-	if err := s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	s.clearAttempt(RateScopeReset, lowered)

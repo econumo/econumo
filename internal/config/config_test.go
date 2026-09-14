@@ -560,3 +560,84 @@ func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_OAuthGoogleRequiresBoth(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc.apps.googleusercontent.com")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET") {
+		t.Fatalf("half-configured google slot must name the missing variable, got %v", err)
+	}
+}
+
+func TestLoad_OAuthRequiresAppURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_URL") {
+		t.Fatalf("a provider without ECONUMO_URL must fail naming ECONUMO_URL, got %v", err)
+	}
+}
+
+func TestLoad_OAuthGoogleEnabled(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.OAuthGoogleEnabled() || c.OAuthAppleEnabled() || c.OIDCEnabled() || !c.OAuthEnabled() {
+		t.Fatalf("google=%v apple=%v oidc=%v any=%v", c.OAuthGoogleEnabled(), c.OAuthAppleEnabled(), c.OIDCEnabled(), c.OAuthEnabled())
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyUnescapesNewlines(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_APPLE_CLIENT_ID", "com.example.web")
+	t.Setenv("ECONUMO_OAUTH_APPLE_TEAM_ID", "TEAM123456")
+	t.Setenv("ECONUMO_OAUTH_APPLE_KEY_ID", "KEY1234567")
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY", `-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----`)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(c.OAuthApplePrivateKey, "\nMIGH\n") {
+		t.Fatalf("literal \\n must be unescaped, got %q", c.OAuthApplePrivateKey)
+	}
+}
+
+func TestLoad_OIDCDefaultsAndValidation(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "https://auth.example.test/application/o/econumo/")
+	t.Setenv("ECONUMO_OIDC_CLIENT_ID", "cid")
+	t.Setenv("ECONUMO_OIDC_CLIENT_SECRET", "sec")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.OIDCName != "SSO" || strings.Join(c.OIDCScopes, " ") != "openid profile email" || c.OIDCTrustEmail {
+		t.Fatalf("defaults: name=%q scopes=%v trust=%v", c.OIDCName, c.OIDCScopes, c.OIDCTrustEmail)
+	}
+
+	t.Setenv("ECONUMO_OIDC_SCOPES", "profile,email")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "openid") {
+		t.Fatalf("scopes without openid must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_SCOPES", "openid,email")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://auth.example.test")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "https") {
+		t.Fatalf("plain http issuer on a non-loopback host must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://127.0.0.1:9000")
+	if _, err := Load(); err != nil {
+		t.Fatalf("loopback http issuer must be accepted: %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_TRUST_EMAIL", "maybe")
+	if _, err := Load(); err == nil {
+		t.Fatal("malformed ECONUMO_OIDC_TRUST_EMAIL must fail")
+	}
+}

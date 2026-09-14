@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,21 @@ type Config struct {
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+
+	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
+	// A slot is enabled when every required variable is set; a partial slot fails at boot.
+	OAuthGoogleClientID     string   // ECONUMO_OAUTH_GOOGLE_CLIENT_ID
+	OAuthGoogleClientSecret string   // ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET
+	OAuthAppleClientID      string   // ECONUMO_OAUTH_APPLE_CLIENT_ID (the Services ID)
+	OAuthAppleTeamID        string   // ECONUMO_OAUTH_APPLE_TEAM_ID
+	OAuthAppleKeyID         string   // ECONUMO_OAUTH_APPLE_KEY_ID
+	OAuthApplePrivateKey    string   // ECONUMO_OAUTH_APPLE_PRIVATE_KEY: the .p8 PEM; literal "\n" escapes unescaped
+	OIDCIssuerURL           string   // ECONUMO_OIDC_ISSUER_URL
+	OIDCClientID            string   // ECONUMO_OIDC_CLIENT_ID
+	OIDCClientSecret        string   // ECONUMO_OIDC_CLIENT_SECRET
+	OIDCName                string   // ECONUMO_OIDC_NAME: button label, default "SSO"
+	OIDCScopes              []string // ECONUMO_OIDC_SCOPES: default openid profile email; must contain openid
+	OIDCTrustEmail          bool     // ECONUMO_OIDC_TRUST_EMAIL: treat the issuer's email claim as verified (default false)
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -92,6 +108,13 @@ func isLoopbackHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+func (c Config) OAuthGoogleEnabled() bool { return c.OAuthGoogleClientID != "" }
+func (c Config) OAuthAppleEnabled() bool  { return c.OAuthAppleClientID != "" }
+func (c Config) OIDCEnabled() bool        { return c.OIDCIssuerURL != "" }
+func (c Config) OAuthEnabled() bool {
+	return c.OAuthGoogleEnabled() || c.OAuthAppleEnabled() || c.OIDCEnabled()
 }
 
 // Load reads and validates configuration from the environment.
@@ -218,6 +241,10 @@ func Load() (Config, error) {
 		c.AppURL = v
 	}
 
+	if err := loadOAuth(&c); err != nil {
+		return Config{}, err
+	}
+
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
 		return Config{}, err
@@ -259,6 +286,80 @@ func Load() (Config, error) {
 	// the CLI's composition entry point, and those commands never bind a port.
 	// Only DATABASE_URL is universally required.
 	return c, nil
+}
+
+// loadOAuth reads the three provider slots. A slot is all-or-nothing: the
+// first missing required variable of a partially set slot is named in the
+// error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
+func loadOAuth(c *Config) error {
+	requireAll := func(slot string, vars ...string) (bool, error) {
+		set := 0
+		for _, v := range vars {
+			if os.Getenv(v) != "" {
+				set++
+			}
+		}
+		if set == 0 {
+			return false, nil
+		}
+		for _, v := range vars {
+			if os.Getenv(v) == "" {
+				return false, fmt.Errorf("%s: %s is required when the other %s variables are set", slot, v, slot)
+			}
+		}
+		return true, nil
+	}
+
+	google, err := requireAll("ECONUMO_OAUTH_GOOGLE", "ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET")
+	if err != nil {
+		return err
+	}
+	if google {
+		c.OAuthGoogleClientID = os.Getenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID")
+		c.OAuthGoogleClientSecret = os.Getenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET")
+	}
+
+	apple, err := requireAll("ECONUMO_OAUTH_APPLE", "ECONUMO_OAUTH_APPLE_CLIENT_ID", "ECONUMO_OAUTH_APPLE_TEAM_ID", "ECONUMO_OAUTH_APPLE_KEY_ID", "ECONUMO_OAUTH_APPLE_PRIVATE_KEY")
+	if err != nil {
+		return err
+	}
+	if apple {
+		c.OAuthAppleClientID = os.Getenv("ECONUMO_OAUTH_APPLE_CLIENT_ID")
+		c.OAuthAppleTeamID = os.Getenv("ECONUMO_OAUTH_APPLE_TEAM_ID")
+		c.OAuthAppleKeyID = os.Getenv("ECONUMO_OAUTH_APPLE_KEY_ID")
+		// Env files are single-line; the PEM's newlines arrive as literal "\n".
+		c.OAuthApplePrivateKey = strings.ReplaceAll(os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY"), `\n`, "\n")
+	}
+
+	oidc, err := requireAll("ECONUMO_OIDC", "ECONUMO_OIDC_ISSUER_URL", "ECONUMO_OIDC_CLIENT_ID", "ECONUMO_OIDC_CLIENT_SECRET")
+	if err != nil {
+		return err
+	}
+	if oidc {
+		raw := os.Getenv("ECONUMO_OIDC_ISSUER_URL")
+		u, perr := url.Parse(raw)
+		if perr != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+			return fmt.Errorf("ECONUMO_OIDC_ISSUER_URL: must be an absolute https URL (plain http only for loopback hosts): %q", raw)
+		}
+		c.OIDCIssuerURL = strings.TrimSuffix(raw, "/")
+		c.OIDCClientID = os.Getenv("ECONUMO_OIDC_CLIENT_ID")
+		c.OIDCClientSecret = os.Getenv("ECONUMO_OIDC_CLIENT_SECRET")
+		c.OIDCName = getEnv("ECONUMO_OIDC_NAME", "SSO")
+		c.OIDCScopes = getStringList("ECONUMO_OIDC_SCOPES", []string{"openid", "profile", "email"})
+		if !slices.Contains(c.OIDCScopes, "openid") {
+			return fmt.Errorf("ECONUMO_OIDC_SCOPES: must contain \"openid\", got %q", strings.Join(c.OIDCScopes, ","))
+		}
+		trust, terr := getBoolStrict("ECONUMO_OIDC_TRUST_EMAIL", false)
+		if terr != nil {
+			return terr
+		}
+		c.OIDCTrustEmail = trust
+	}
+
+	if (google || apple || oidc) && c.AppURL == "" {
+		return fmt.Errorf("ECONUMO_URL is required when an OAuth/OIDC provider is configured (redirect URIs derive from it)")
+	}
+	return nil
 }
 
 // driverFromURL maps a DATABASE_URL scheme to a backend driver name.

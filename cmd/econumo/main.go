@@ -30,6 +30,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/logging"
+	"github.com/econumo/econumo/internal/oauth"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/system"
 	"github.com/econumo/econumo/internal/version"
@@ -179,6 +180,14 @@ func run(serveArgs []string) error {
 			"verification codes will only be printed to the server log")
 	}
 
+	// Built here rather than inside server.Build so the boot probe below and the
+	// request path share one set of clients (and therefore one discovery cache).
+	// A config-level error (e.g. a malformed Apple private key) fails boot here.
+	oauthProviders, err := oauth.ProvidersFromConfig(cfg, nil)
+	if err != nil {
+		return err
+	}
+
 	// Server-only requirement (the CLI path validated via config.Load does not
 	// need it). PORT is never defaulted so the bound port is never an implicit
 	// surprise.
@@ -219,7 +228,7 @@ func run(serveArgs []string) error {
 	slog.Info("migrations applied", "backend", be.Name())
 
 	updates := system.NewService(cfg.CheckUpdates, system.DefaultFeedURL)
-	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates})
+	handler, adminHandler, rateUpdater, err := server.Build(cfg, db, server.Seams{Updates: updates, OAuthProviders: oauthProviders})
 	if err != nil {
 		return err
 	}
@@ -265,6 +274,12 @@ func run(serveArgs []string) error {
 			errCh <- nil
 		}(s)
 	}
+
+	// Probing in the background, after the listeners are up, keeps an
+	// unreachable issuer out of the startup critical path. Deliberately not
+	// sigCtx: a shutdown mid-probe would cancel the fetch and log a failure for
+	// a provider that was never actually unreachable.
+	go probeProviders(ctx, oauthProviders)
 
 	var runErr error
 	select {
@@ -324,4 +339,19 @@ func toMigrateMigrations(in []backend.Migration) []migrate.Migration {
 		out[i] = migrate.Migration{Version: m.Version, SQL: m.Up, Command: m.Command}
 	}
 	return out
+}
+
+// probeProviders fetches each provider's discovery document once, after the
+// listener is up, so an unreachable issuer shows in the boot log without
+// delaying startup; each provider gets its own timeout so one slow issuer
+// cannot make the others report a false failure.
+func probeProviders(ctx context.Context, providers []oauth.Provider) {
+	for _, p := range providers {
+		pctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		if _, err := p.Client.Discover(pctx); err != nil {
+			slog.Warn("oauth provider discovery failed at boot; sign-in through it will fail until it is reachable",
+				"provider", p.Client.Issuer().ID, "err", err.Error())
+		}
+		cancel()
+	}
 }

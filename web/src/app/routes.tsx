@@ -7,6 +7,7 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegistrationPage } from '@/features/auth/RegistrationPage'
 import { LogoutPage } from '@/features/auth/LogoutPage'
+import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage'
 import { HomePage } from '@/features/home/HomePage'
 import { AccountPage } from '@/features/accounts/AccountPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -15,6 +16,7 @@ import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import { ChangeEmailPage } from '@/features/settings/ChangeEmailPage'
 import { SessionsPage } from '@/features/settings/SessionsPage'
 import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
+import { LinkedAccountsPage } from '@/features/settings/LinkedAccountsPage'
 import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
 import { PayeesPage } from '@/features/classifications/PayeesPage'
@@ -39,6 +41,7 @@ export function createRouter() {
           ],
         },
         { path: '/logout', element: <LogoutPage /> },
+        { path: '/oauth/callback', element: <OAuthCallbackPage /> },
         {
           element: <RequireAuth />,
           children: [
@@ -56,6 +59,7 @@ export function createRouter() {
                 { path: '/settings/profile/change-email', element: <ChangeEmailPage /> },
                 { path: '/settings/profile/sessions', element: <SessionsPage /> },
                 { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
+                { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },
                 { path: '/settings/categories', element: <CategoriesPage /> },
                 { path: '/settings/payees', element: <PayeesPage /> },

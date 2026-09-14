@@ -9,6 +9,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
@@ -39,8 +40,8 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		TokenHash: "hash-1", UserAgent: &ua,
 		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
-	if err := repo.Insert(ctx, tok); err != nil {
-		t.Fatalf("Insert: %v", err)
+	if n, err := repo.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
+		t.Fatalf("Insert: %d %v", n, err)
 	}
 
 	got, _, _, err := repo.GetByHash(ctx, "hash-1")
@@ -83,8 +84,8 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindPersonal,
 		TokenHash: "hash-2", Name: &name, CreatedAt: now.Add(time.Second), LastUsedAt: now.Add(time.Second),
 	}
-	if err := repo.Insert(ctx, pat); err != nil {
-		t.Fatalf("Insert pat: %v", err)
+	if n, err := repo.InsertIfGeneration(ctx, pat, 0); err != nil || n != 1 {
+		t.Fatalf("Insert pat: %d %v", n, err)
 	}
 	sessions, err := repo.ListByUser(ctx, vo.MustParseId(userA), model.TokenKindSession)
 	if err != nil || len(sessions) != 1 {
@@ -111,7 +112,7 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
 		TokenHash: "hash-2", CreatedAt: now, LastUsedAt: now,
 	}
-	if err := repo.Insert(ctx, dup); err == nil {
+	if _, err := repo.InsertIfGeneration(ctx, dup, 0); err == nil {
 		t.Error("duplicate token_hash insert must fail")
 	}
 
@@ -142,8 +143,8 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 			ID: vo.NewId(), UserID: vo.MustParseId(userA), Kind: model.TokenKindSession,
 			TokenHash: hash, CreatedAt: now, LastUsedAt: now, ExpiresAt: exp, RevokedAt: revoked,
 		}
-		if err := repo.Insert(ctx, tok); err != nil {
-			t.Fatalf("Insert %s: %v", hash, err)
+		if n, err := repo.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
+			t.Fatalf("Insert %s: %d %v", hash, n, err)
 		}
 		return tok
 	}
@@ -177,5 +178,70 @@ func TestAccessTokenRepo_DeleteDead(t *testing.T) {
 		if gone != tc.gone {
 			t.Errorf("%s: gone=%v, want %v", tc.name, gone, tc.gone)
 		}
+	}
+}
+
+func TestAccessTokenRepo_ProviderAndIDTokenRoundTrip(t *testing.T) {
+	db := dbtest.New(t)
+	userID := fixture.New(t, db).User(fixture.User{})
+	repo := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+	provider, idTok := "oidc", "eyJ.header.sig"
+	exp := now.Add(time.Hour)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
+		TokenHash: "h-provider", CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		Provider: &provider, IDToken: &idTok,
+	}
+	if n, err := repo.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
+		t.Fatalf("insert: %d %v", n, err)
+	}
+	got, err := repo.GetByID(context.Background(), tok.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Provider == nil || *got.Provider != "oidc" || got.IDToken == nil || *got.IDToken != idTok {
+		t.Fatalf("provider/id_token not persisted: %+v", got)
+	}
+	byHash, _, _, err := repo.GetByHash(context.Background(), "h-provider")
+	if err != nil || byHash.Provider != nil || byHash.IDToken != nil {
+		t.Fatalf("GetByHash (the per-request auth path) must not carry provider/id_token: %+v %v", byHash, err)
+	}
+	list, err := repo.ListByUser(context.Background(), tok.UserID, model.TokenKindSession)
+	if err != nil || len(list) != 1 || list[0].Provider == nil {
+		t.Fatalf("ListByUser must carry provider: %+v %v", list, err)
+	}
+}
+
+func TestGetByHash_DoesNotCarryTheIDToken(t *testing.T) {
+	db := dbtest.New(t)
+	r := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	userID := fixture.New(t, db).User(fixture.User{})
+	ctx := context.Background()
+	idToken, provider := "eyJ.stub.token", "oidc"
+	exp := time.Now().Add(time.Hour)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-hot-path",
+		CreatedAt: time.Now(), LastUsedAt: time.Now(), ExpiresAt: &exp, Provider: &provider, IDToken: &idToken,
+	}
+	if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
+		t.Fatalf("insert: %d %v", n, err)
+	}
+	got, _, _, err := r.GetByHash(ctx, "h-hot-path")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.IDToken != nil {
+		t.Fatal("the per-request auth path must not load id_token")
+	}
+	if got.Provider != nil {
+		t.Fatal("the per-request auth path must not load provider")
+	}
+	byID, err := r.GetByID(ctx, tok.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if byID.IDToken == nil || *byID.IDToken != idToken || byID.Provider == nil {
+		t.Fatal("GetByID must still carry provider and id_token for logout")
 	}
 }

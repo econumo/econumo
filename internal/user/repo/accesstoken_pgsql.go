@@ -11,10 +11,6 @@ type accessTokenPgsqlQuerier struct{}
 
 var _ accessTokenQuerier = accessTokenPgsqlQuerier{}
 
-func (accessTokenPgsqlQuerier) InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error {
-	return pgsqlgen.New(db).InsertAccessToken(ctx, pgsqlgen.InsertAccessTokenParams(p))
-}
-
 func (accessTokenPgsqlQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	row, err := pgsqlgen.New(db).GetAccessTokenByHash(ctx, hash)
 	return accessTokenWithAccessRow(row), err
@@ -47,4 +43,12 @@ func (accessTokenPgsqlQuerier) DeleteAccessToken(ctx context.Context, db backend
 
 func (accessTokenPgsqlQuerier) DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error) {
 	return pgsqlgen.New(db).DeleteDeadAccessTokens(ctx, pgsqlgen.DeleteDeadAccessTokensParams(p))
+}
+
+func (accessTokenPgsqlQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
+	return pgsqlgen.New(db).InsertAccessTokenIfGeneration(ctx, pgsqlgen.InsertAccessTokenIfGenerationParams(p))
+}
+
+func (accessTokenPgsqlQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {
+	return pgsqlgen.New(db).InsertAccessTokenIfPresenterLive(ctx, pgsqlgen.InsertAccessTokenIfPresenterLiveParams(p))
 }

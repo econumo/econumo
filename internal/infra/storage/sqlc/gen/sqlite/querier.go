@@ -14,12 +14,14 @@ type Querier interface {
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
+	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
 	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountIdentitiesByUser(ctx context.Context, userID string) (int64, error)
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
@@ -38,11 +40,18 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
+	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
+	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
@@ -68,7 +77,6 @@ type Querier interface {
 	// deletes it once verified. Expiry is compared in the app layer (Go time),
 	// not in SQL, to avoid engine date-format differences.
 	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
-	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). The reset flow:
 	// remind-password deletes the user's old codes and inserts a fresh one;
 	// reset-password looks it up by (user, code), checks expiry in Go, then deletes
@@ -79,7 +87,9 @@ type Querier interface {
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
-	// lapsed user must still authenticate, just read-only.
+	// lapsed user must still authenticate, just read-only. Deliberately omits
+	// provider/id_token: nothing on the per-request hot path reads them (logout
+	// uses GetByID, the sessions list uses ListByUser), so they stay off it.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
@@ -176,6 +186,9 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
+	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
+	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
 	// Write-side queries for the label module. The read-side query lives in
 	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
@@ -202,6 +215,8 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
+	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module. The read-side query lives in
 	// payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
@@ -279,7 +294,16 @@ type Querier interface {
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 	// time.Time), not in SQL, to avoid engine date-format differences; the
 	// list/get queries return raw rows.
-	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	// Mints a token only while the user's credentials generation is still the one
+	// the caller's evidence was read under: an account reclaim bumps it, so a
+	// session built on evidence from before the reclaim inserts nothing.
+	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
+	// Mints a personal token only while the credential that authenticated the
+	// request (the presenting token) is still unrevoked: the reclaim revokes
+	// every token in the same transaction that bumps the generation, so a
+	// request that passed the auth middleware before the reclaim inserts
+	// nothing after it.
+	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -295,6 +319,12 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+	// user before an account reclaim must not land an identity after it. A plain
+	// INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
+	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
+	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The
 	// shared OperationGuard (internal/infra/operation) is built on these.
@@ -387,6 +417,7 @@ type Querier interface {
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	// The user's folders. Ordering is applied by the caller/assembler (by sort key).
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -456,7 +487,12 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+	// only under the generation the login verified the hash under, so a reset
+	// committing mid-login is never overwritten by a stale aggregate save.
+	UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error)
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error

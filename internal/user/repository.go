@@ -30,6 +30,14 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// BumpCredentialsGeneration invalidates every flow that read its evidence
+	// before this call. Part of the reclaim, inside its transaction.
+	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error
+
+	// UpdatePasswordIfGeneration rewrites only the credential columns, and only
+	// while the generation still matches (see login.go rehashLegacyPassword).
+	UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error)
+
 	// UpsertOption writes a single option row without touching the user row or
 	// any other option — the narrow write the analytics-preference backfill
 	// needs (Save would rewrite the whole user aggregate per row, which does
@@ -68,7 +76,21 @@ type Repository interface {
 // is evaluated in the domain (AccessToken.IsLive), not in SQL. Lookups on a
 // missing row return *errs.NotFoundError.
 type AccessTokens interface {
-	Insert(ctx context.Context, t *model.AccessToken) error
+	// InsertIfGeneration writes a session row only while the user's credentials
+	// generation still matches the one the caller's evidence was read under,
+	// reporting the rows written. Zero means an account reclaim landed in
+	// between and this session must not exist: the check happens at write time,
+	// inside the database, because a Go-side read would be exactly the race it
+	// is meant to close.
+	InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error)
+
+	// InsertIfPresenterLive writes a personal token only while presentingTokenID
+	// — the request's authenticated credential — is still unrevoked, reporting
+	// the rows written. Used for PATs: unlike a session (evidence is a password
+	// check), a PAT is minted mid-session, so the fence is "is the credential
+	// that got me here still good", checked at write time inside the database
+	// for the same race-closing reason as InsertIfGeneration.
+	InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error)
 
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
 	// path behind every authenticated request — joining the owning user's
@@ -107,8 +129,6 @@ type PasswordRequests interface {
 	Save(ctx context.Context, pr *model.PasswordRequest) error
 	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
 	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error)
-	// Delete removes a request by id.
-	Delete(ctx context.Context, id vo.Id) error
 }
 
 // EmailVerifications persists login email-verification codes

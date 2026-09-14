@@ -31,13 +31,20 @@ const testSalt = "0123456789abcdef"
 // services tests assert against.
 func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
 	t.Helper()
+	return newUserSvcWithRepo(t, db, userrepo.NewRepo(db.Engine, db.TX))
+}
+
+// newUserSvcWithRepo is newUserSvc with the persistence port swapped, so a test
+// can wrap it to land a concurrent write between two of a use case's reads.
+func newUserSvcWithRepo(t *testing.T, db *dbtest.DB, repo appuser.Repository) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
+	t.Helper()
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
-	repo := userrepo.NewRepo(db.Engine, db.TX)
 	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
+		userrepo.NewPasswordRequestRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)

@@ -12,9 +12,12 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// createSession mints a session row for a fresh login and returns the raw
-// bearer token (the only moment it exists server-side).
-func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent string, now time.Time) (string, error) {
+// createSession mints a session under the credentials generation the caller
+// read its evidence at (the password hash it verified, or the oauth flow it
+// resolved). The insert is conditional on that generation still being current,
+// so a reclaim committing anywhere between the read and this write leaves the
+// session unwritten instead of racing it — checking in Go would be the race.
+func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time, generation int64) (string, error) {
 	raw, hash, err := generateAccessToken(model.TokenKindSession)
 	if err != nil {
 		return "", err
@@ -22,13 +25,20 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 	exp := now.Add(SessionTTL)
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindSession, TokenHash: hash,
-		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp, IDToken: idToken,
 	}
 	if userAgent != "" {
 		t.UserAgent = &userAgent
 	}
-	if err := s.tokens.Insert(ctx, t); err != nil {
+	if provider != "" {
+		t.Provider = &provider
+	}
+	n, err := s.tokens.InsertIfGeneration(ctx, t, generation)
+	if err != nil {
 		return "", err
+	}
+	if n != 1 {
+		return "", &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	return raw, nil
 }
@@ -50,11 +60,16 @@ func (s *Service) ListSessions(ctx context.Context, userID, currentTokenID vo.Id
 		if rows[i].UserAgent != nil {
 			ua = *rows[i].UserAgent
 		}
+		provider := ""
+		if rows[i].Provider != nil {
+			provider = *rows[i].Provider
+		}
 		out = append(out, model.SessionItem{
 			Id:         rows[i].ID.String(),
 			UserAgent:  ua,
 			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
 			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
+			Provider:   provider,
 			IsCurrent:  rows[i].ID.Equal(currentTokenID),
 		})
 	}

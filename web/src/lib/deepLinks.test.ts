@@ -1,0 +1,43 @@
+import { handleAppUrl, installDeepLinkHandler } from './deepLinks'
+import { useOAuthInFlight } from '@/features/auth/oauthQueries'
+import * as routerRef from '@/app/routerRef'
+
+beforeEach(() => {
+  delete (window as { Capacitor?: unknown }).Capacitor
+})
+
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
+})
+
+it('routes handoff, link-handoff, link-error and error urls and closes the browser sheet', () => {
+  const close = vi.fn().mockResolvedValue(undefined)
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { close } } }
+  const nav = vi.spyOn(routerRef, 'navigateTo').mockImplementation(() => {})
+  handleAppUrl('econumo://oauth?handoff=abc')
+  expect(nav).toHaveBeenLastCalledWith('/oauth/callback#handoff=abc')
+  handleAppUrl('econumo://oauth?linkHandoff=xyz')
+  expect(nav).toHaveBeenLastCalledWith('/settings/profile/linked-accounts#linkHandoff=xyz')
+  handleAppUrl('econumo://oauth?linkError=identity_taken')
+  expect(nav).toHaveBeenLastCalledWith('/settings/profile/linked-accounts?oauthError=identity_taken')
+  handleAppUrl('econumo://oauth?error=denied')
+  expect(nav).toHaveBeenLastCalledWith('/login?oauthError=denied')
+  handleAppUrl('https://example.com/other')
+  expect(nav).toHaveBeenCalledTimes(4)
+  expect(close).toHaveBeenCalledTimes(4)
+})
+
+it('clears the in-flight flag for every recognised deep link, including an error return', () => {
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { close: vi.fn().mockResolvedValue(undefined) } } }
+  vi.spyOn(routerRef, 'navigateTo').mockImplementation(() => {})
+  useOAuthInFlight.getState().set(true)
+  handleAppUrl('econumo://oauth?error=denied')
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
+})
+
+it('installs the appUrlOpen listener on the App plugin', () => {
+  const addListener = vi.fn()
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { App: { addListener } } }
+  installDeepLinkHandler()
+  expect(addListener).toHaveBeenCalledWith('appUrlOpen', expect.any(Function))
+})

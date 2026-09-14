@@ -19,6 +19,7 @@ type SessionItem struct {
 	UserAgent  string `json:"userAgent"` // "" when the login sent no User-Agent
 	CreatedAt  string `json:"createdAt"`
 	LastUsedAt string `json:"lastUsedAt"`
+	Provider   string `json:"provider"`
 	IsCurrent  bool   `json:"isCurrent"`
 }
 

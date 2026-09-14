@@ -14,6 +14,7 @@ import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { CustomServerSection } from './CustomServerSection'
+import { ProviderButtons } from './ProviderButtons'
 import { useRegister } from './queries'
 
 interface RegistrationForm {
@@ -163,6 +164,8 @@ export function RegistrationPage() {
           <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={registerMutation.isPending}>
             {t('auth.form.sign_up.action.sign_up')}
           </Button>
+
+          {config.isRegistrationAllowed() ? <ProviderButtons intent="login" /> : null}
 
           {customApiAllowed ? (
             <CustomServerSection open={selfHostedChecked} onToggle={toggleCustomServer}>
