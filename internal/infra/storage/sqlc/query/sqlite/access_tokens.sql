@@ -15,6 +15,16 @@ INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, crea
 SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
 WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
 
+-- name: InsertAccessTokenIfPresenterLive :execrows
+-- Mints a personal token only while the credential that authenticated the
+-- request (the presenting token) is still unrevoked: the reclaim revokes
+-- every token in the same transaction that bumps the generation, so a
+-- request that passed the auth middleware before the reclaim inserts
+-- nothing after it.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = ? AND p.user_id = ? AND p.revoked_at IS NULL);
+
 -- name: GetAccessTokenByHash :one
 -- Joins users for access_level/access_until so per-request auth can report
 -- the caller's effective access level in the same round trip. This does NOT

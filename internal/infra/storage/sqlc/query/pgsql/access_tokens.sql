@@ -11,6 +11,12 @@ INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, crea
 SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
 WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $13 AND u.credentials_generation = $14);
 
+-- name: InsertAccessTokenIfPresenterLive :execrows
+-- See the sqlite sibling.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = $13 AND p.user_id = $14 AND p.revoked_at IS NULL);
+
 -- name: GetAccessTokenByHash :one
 -- Joins users for access_level/access_until; see the sqlite sibling for why.
 SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,

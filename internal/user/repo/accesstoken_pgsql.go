@@ -52,3 +52,7 @@ func (accessTokenPgsqlQuerier) DeleteDeadAccessTokens(ctx context.Context, db ba
 func (accessTokenPgsqlQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
 	return pgsqlgen.New(db).InsertAccessTokenIfGeneration(ctx, pgsqlgen.InsertAccessTokenIfGenerationParams(p))
 }
+
+func (accessTokenPgsqlQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {
+	return pgsqlgen.New(db).InsertAccessTokenIfPresenterLive(ctx, pgsqlgen.InsertAccessTokenIfPresenterLiveParams(p))
+}

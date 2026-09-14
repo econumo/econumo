@@ -206,6 +206,8 @@ type Querier interface {
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
 	// See the sqlite sibling.
 	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
+	// See the sqlite sibling.
+	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.

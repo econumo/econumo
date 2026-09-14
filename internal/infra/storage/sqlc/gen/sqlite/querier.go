@@ -298,6 +298,12 @@ type Querier interface {
 	// the caller's evidence was read under: an account reclaim bumps it, so a
 	// session built on evidence from before the reclaim inserts nothing.
 	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
+	// Mints a personal token only while the credential that authenticated the
+	// request (the presenting token) is still unrevoked: the reclaim revokes
+	// every token in the same transaction that bumps the generation, so a
+	// request that passed the auth middleware before the reclaim inserts
+	// nothing after it.
+	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create

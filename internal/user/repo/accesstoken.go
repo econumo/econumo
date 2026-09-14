@@ -18,18 +18,20 @@ import (
 )
 
 type (
-	accessTokenRow            = sqlitegen.AccessToken
-	accessTokenWithAccessRow  = sqlitegen.GetAccessTokenByHashRow
-	insertAccessTokenParams   = sqlitegen.InsertAccessTokenParams
-	updateAccessTokenParams   = sqlitegen.UpdateAccessTokenParams
-	listAccessTokensParams    = sqlitegen.ListAccessTokensByUserParams
-	deleteDeadAccessTokParams = sqlitegen.DeleteDeadAccessTokensParams
-	insertTokenIfGenParams    = sqlitegen.InsertAccessTokenIfGenerationParams
+	accessTokenRow                   = sqlitegen.AccessToken
+	accessTokenWithAccessRow         = sqlitegen.GetAccessTokenByHashRow
+	insertAccessTokenParams          = sqlitegen.InsertAccessTokenParams
+	updateAccessTokenParams          = sqlitegen.UpdateAccessTokenParams
+	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
+	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
+	insertTokenIfGenParams           = sqlitegen.InsertAccessTokenIfGenerationParams
+	insertTokenIfPresenterLiveParams = sqlitegen.InsertAccessTokenIfPresenterLiveParams
 )
 
 type accessTokenQuerier interface {
 	InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error
 	InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error)
+	InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error)
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
 	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
@@ -74,6 +76,16 @@ func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.Acces
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 		Provider: t.Provider, IDToken: t.IDToken,
 		ID_2: t.UserID.String(), CredentialsGeneration: generation,
+	})
+}
+
+func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error) {
+	return r.q.InsertAccessTokenIfPresenterLive(ctx, r.db(ctx), insertTokenIfPresenterLiveParams{
+		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
+		Name: t.Name, UserAgent: t.UserAgent,
+		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
+		Provider: t.Provider, IDToken: t.IDToken,
+		ID_2: presentingTokenID.String(), UserID_2: t.UserID.String(),
 	})
 }
 

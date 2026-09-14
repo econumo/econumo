@@ -86,6 +86,14 @@ type AccessTokens interface {
 	// is meant to close.
 	InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error)
 
+	// InsertIfPresenterLive writes a personal token only while presentingTokenID
+	// — the request's authenticated credential — is still unrevoked, reporting
+	// the rows written. Used for PATs: unlike a session (evidence is a password
+	// check), a PAT is minted mid-session, so the fence is "is the credential
+	// that got me here still good", checked at write time inside the database
+	// for the same race-closing reason as InsertIfGeneration.
+	InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error)
+
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
 	// path behind every authenticated request — joining the owning user's
 	// stored access level and expiry in the same round trip so Authenticate

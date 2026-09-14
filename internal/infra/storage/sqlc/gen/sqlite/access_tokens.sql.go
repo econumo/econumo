@@ -208,6 +208,57 @@ func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertA
 	return result.RowsAffected()
 }
 
+const insertAccessTokenIfPresenterLive = `-- name: InsertAccessTokenIfPresenterLive :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = ? AND p.user_id = ? AND p.revoked_at IS NULL)
+`
+
+type InsertAccessTokenIfPresenterLiveParams struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
+	ID_2       string
+	UserID_2   string
+}
+
+// Mints a personal token only while the credential that authenticated the
+// request (the presenting token) is still unrevoked: the reclaim revokes
+// every token in the same transaction that bumps the generation, so a
+// request that passed the auth middleware before the reclaim inserts
+// nothing after it.
+func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfPresenterLive,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Name,
+		arg.UserAgent,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.UserID_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
