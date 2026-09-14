@@ -23,8 +23,6 @@ type Users interface {
 	// refused if a reclaim has bumped it since (an account whose owner reset the
 	// password must not be reachable by a sign-in already in the air).
 	MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, generation int64) (*model.LoginResult, error)
-	// CredentialsGeneration reads that fence value when a callback resolves a user.
-	CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error)
 }
 
 // AttemptLimiter is the brute-force seam for start-login/start-link. Only Allow

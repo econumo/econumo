@@ -173,7 +173,6 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
 	// placeholders are needed (neither query is parameterised). See the sqlite
 	// variant for documentation.
@@ -214,6 +213,8 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// See the sqlite sibling.
+	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
@@ -323,6 +324,7 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
@@ -341,9 +343,6 @@ type Querier interface {
 	// index. Mirrors CurrencyRatesUpdateService (get-or-create then updateRate).
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
-	UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error
-	// See the sqlite sibling.
-	UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error)
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

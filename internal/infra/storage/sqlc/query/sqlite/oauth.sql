@@ -19,26 +19,19 @@ ORDER BY created_at, id;
 -- name: CountIdentitiesByUser :one
 SELECT COUNT(*) FROM users_identities WHERE user_id = ?;
 
--- name: UpsertIdentity :exec
-INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at;
-
--- name: UpsertIdentityIfGeneration :execrows
+-- name: InsertIdentityIfGeneration :execrows
 -- Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
--- user before an account reclaim must not land an identity after it.
+-- user before an account reclaim must not land an identity after it. A plain
+-- INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
 INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
 SELECT ?, ?, ?, ?, ?, ?, ?, ?
-WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at;
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
+
+-- name: UpdateIdentityIfGeneration :execrows
+UPDATE users_identities
+SET issuer = ?, subject = ?, email = ?, updated_at = ?
+WHERE users_identities.id = ?
+  AND EXISTS (SELECT 1 FROM users u WHERE u.id = users_identities.user_id AND u.credentials_generation = ?);
 
 -- name: DeleteIdentityByUserProvider :execrows
 DELETE FROM users_identities WHERE user_id = ? AND provider = ?;

@@ -114,9 +114,15 @@ type User struct {
 	EmailVerified bool
 	AccessLevel   AccessLevel
 	AccessUntil   *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Options       []UserOption
+	// CredentialsGeneration is the account-reclaim fence as of the row read
+	// that produced this aggregate. A flow that authenticates with this row
+	// (password hash, linked identity, provisioned user) presents the value at
+	// write time; the reclaim bumps it, so a write built on a pre-reclaim read
+	// affects zero rows. Zero for an aggregate that has never been persisted.
+	CredentialsGeneration int64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	Options               []UserOption
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has

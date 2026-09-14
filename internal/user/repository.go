@@ -30,11 +30,6 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
-	// CredentialsGeneration reads the user's reclaim fencing token — the value a
-	// flow captures when it reads its evidence, and presents again at write
-	// time (see AccessTokens.InsertIfGeneration).
-	CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error)
-
 	// BumpCredentialsGeneration invalidates every flow that read its evidence
 	// before this call. Part of the reclaim, inside its transaction.
 	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error

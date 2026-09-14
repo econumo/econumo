@@ -1,5 +1,5 @@
 -- name: GetUserByID :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE id = $1;
 
@@ -27,9 +27,6 @@ ON CONFLICT (id) DO UPDATE SET
     access_until = excluded.access_until,
     email_verified = excluded.email_verified;
 
--- name: GetUserCredentialsGeneration :one
-SELECT credentials_generation FROM users WHERE id = $1;
-
 -- name: BumpUserCredentialsGeneration :execrows
 UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1;
 
@@ -46,7 +43,7 @@ UPDATE users SET timezone = $1 WHERE id = $2;
 SELECT language FROM users WHERE id = $1;
 
 -- name: GetUserByEmail :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE lower(email) = lower($1);
 

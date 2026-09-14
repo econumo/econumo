@@ -37,8 +37,12 @@ func (identityPgsqlQuerier) CountIdentitiesByUser(ctx context.Context, db backen
 	return pgsqlgen.New(db).CountIdentitiesByUser(ctx, userID)
 }
 
-func (identityPgsqlQuerier) UpsertIdentity(ctx context.Context, db backend.DBTX, p upsertIdentityParams) (int64, error) {
-	return pgsqlgen.New(db).UpsertIdentityIfGeneration(ctx, pgsqlgen.UpsertIdentityIfGenerationParams(p))
+func (identityPgsqlQuerier) InsertIdentityIfGeneration(ctx context.Context, db backend.DBTX, p insertIdentityParams) (int64, error) {
+	return pgsqlgen.New(db).InsertIdentityIfGeneration(ctx, pgsqlgen.InsertIdentityIfGenerationParams(p))
+}
+
+func (identityPgsqlQuerier) UpdateIdentityIfGeneration(ctx context.Context, db backend.DBTX, p updateIdentityParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateIdentityIfGeneration(ctx, pgsqlgen.UpdateIdentityIfGenerationParams(p))
 }
 
 func (identityPgsqlQuerier) DeleteIdentityByUserProvider(ctx context.Context, db backend.DBTX, p deleteIdentityParams) (int64, error) {

@@ -11,6 +11,7 @@ package oauth_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/econumo/econumo/internal/infra/oidc"
@@ -46,11 +47,18 @@ func (f faultIdentities) GetByUserProvider(ctx context.Context, userID vo.Id, pr
 	return f.Identities.GetByUserProvider(ctx, userID, provider)
 }
 
-func (f faultIdentities) SaveIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
+func (f faultIdentities) InsertIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
 	if f.save != nil {
 		return 0, f.save
 	}
-	return f.Identities.SaveIfCurrent(ctx, i, generation)
+	return f.Identities.InsertIfCurrent(ctx, i, generation)
+}
+
+func (f faultIdentities) UpdateIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
+	if f.save != nil {
+		return 0, f.save
+	}
+	return f.Identities.UpdateIfCurrent(ctx, i, generation)
 }
 
 func (f faultIdentities) ListByUser(ctx context.Context, userID vo.Id) ([]model.Identity, error) {
@@ -294,6 +302,17 @@ func TestCompleteLink_InsertSaveFails(t *testing.T) {
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, save: errBoom}, h.states, h.hands, true)
 	if err := completeLinkVia(t, h, svc2, u.ID); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
+	}
+}
+
+func TestCallback_Link_OwnerLookupFails(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	// The link callback reads the owner to capture the fence for the deferred
+	// write; without that value the handoff must not be minted at all.
+	h.users.failFindByID = errBoom
+	if r := h.startLink(u.ID, "google", "web"); !strings.HasSuffix(r, "?oauthError=provider_error") {
+		t.Fatalf("redirect %s", r)
 	}
 }
 

@@ -84,8 +84,6 @@ func (f *fakeUsers) MarkEmailVerified(_ context.Context, _ vo.Id) error     { re
 
 // MintSession returns a session-shaped token: eco_ses_ + 43 chars, matching
 // the real access-token format so tests can assert on the wire shape.
-func (f *fakeUsers) CredentialsGeneration(_ context.Context, _ vo.Id) (int64, error) { return 0, nil }
-
 func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provider string, idToken *string, _ int64) (*model.LoginResult, error) {
 	tok, err := oidc.RandomToken()
 	if err != nil {

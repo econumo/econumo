@@ -272,3 +272,36 @@ func pendingEmailChanges(t *testing.T, db *dbtest.DB, userID string) int {
 	}
 	return n
 }
+
+// The login ordering guarantee, pinned at the repo level because the real race
+// needs a hook: the generation Login presents must be the one that came out of
+// the SAME row read as the password hash. A reset committing after that read
+// bumps past it, so the session insert writes nothing. Reintroducing a separate
+// generation read (a fresh GetByID here) would make this pass wrongly — and
+// that is exactly the bug this pins shut.
+func TestLogin_SessionInsertIsFencedByTheGenerationReadWithTheHash(t *testing.T) {
+	db := dbtest.New(t)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	email := "fenced-login@example.test"
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{Email: email}))
+
+	loaded, err := users.GetByEmail(ctx, email) // the evidence read: hash + generation in one row
+	if err != nil {
+		t.Fatalf("GetByEmail: %v", err)
+	}
+	if err := users.BumpCredentialsGeneration(ctx, uid); err != nil { // the reset commits
+		t.Fatalf("bump: %v", err)
+	}
+
+	exp := time.Now().Add(time.Hour)
+	n, err := tokens.InsertIfGeneration(ctx, &model.AccessToken{ID: vo.NewId(), UserID: uid, Kind: model.TokenKindSession,
+		TokenHash: "h", CreatedAt: time.Now(), LastUsedAt: time.Now(), ExpiresAt: &exp}, loaded.CredentialsGeneration)
+	if err != nil {
+		t.Fatalf("InsertIfGeneration: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("session minted on a pre-reclaim read: n=%d", n)
+	}
+}

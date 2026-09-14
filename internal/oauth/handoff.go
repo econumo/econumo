@@ -77,19 +77,16 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 		return nil, invalid
 	}
 	now := s.clock.Now()
-	// The caller's session was checked by the middleware, which is already in
-	// the past; the fence is what makes the write itself lose to a reclaim.
-	gen, gerr := s.users.CredentialsGeneration(ctx, userID)
-	if gerr != nil {
-		return nil, gerr
-	}
+	// The fence value was captured when the callback resolved the account
+	// (h.Generation); the write is refused if a reclaim bumped it since,
+	// whatever this request's session looked like at the middleware.
 	existing, err := s.identities.GetByProviderSubject(ctx, h.Provider, h.Issuer, h.Subject)
 	switch {
 	case err == nil && !existing.UserID.Equal(userID):
 		return nil, &errs.ValidationError{Msg: "This external account is already linked to another Econumo account", MsgCode: errs.CodeOAuthIdentityTaken}
 	case err == nil:
 		existing.UpdateEmail(h.Email, now)
-		if n, serr := s.identities.SaveIfCurrent(ctx, existing, gen); serr != nil {
+		if n, serr := s.identities.UpdateIfCurrent(ctx, existing, h.Generation); serr != nil {
 			return nil, serr
 		} else if n != 1 {
 			return nil, invalid
@@ -103,7 +100,7 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 		} else if _, ok := errs.AsNotFound(gerr); !ok {
 			return nil, gerr
 		}
-		if n, serr := s.identities.SaveIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now), gen); serr != nil {
+		if n, serr := s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now), h.Generation); serr != nil {
 			return nil, serr
 		} else if n != 1 {
 			return nil, invalid

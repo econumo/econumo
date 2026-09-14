@@ -253,7 +253,6 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
-	GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// Read-model queries for the currency module (CQRS read side). Both currency
 	// endpoints are pure reads, so the whole module lives on the read side; there is
 	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
@@ -314,6 +313,10 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+	// user before an account reclaim must not land an identity after it. A plain
+	// INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
+	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
@@ -478,6 +481,7 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
@@ -501,10 +505,6 @@ type Querier interface {
 	// (identifier_uniq_currencies_rates) upsert dedupes per day.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
-	UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error
-	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
-	// user before an account reclaim must not land an identity after it.
-	UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error)
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

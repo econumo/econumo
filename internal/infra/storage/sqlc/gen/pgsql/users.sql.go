@@ -34,26 +34,27 @@ func (q *Queries) ExistsUserByEmail(ctx context.Context, lower string) (bool, er
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE lower(email) = lower($1)
 `
 
 type GetUserByEmailRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
@@ -74,31 +75,33 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -119,19 +122,9 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
-}
-
-const getUserCredentialsGeneration = `-- name: GetUserCredentialsGeneration :one
-SELECT credentials_generation FROM users WHERE id = $1
-`
-
-func (q *Queries) GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error) {
-	row := q.db.QueryRowContext(ctx, getUserCredentialsGeneration, id)
-	var credentials_generation int64
-	err := row.Scan(&credentials_generation)
-	return credentials_generation, err
 }
 
 const getUserLanguage = `-- name: GetUserLanguage :one

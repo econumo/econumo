@@ -68,12 +68,6 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 	return err
 }
 
-// CredentialsGeneration exposes the reclaim fence to the oauth feature, which
-// captures it when a callback resolves a user and presents it again at mint.
-func (s *Service) CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error) {
-	return s.repo.CredentialsGeneration(ctx, userID)
-}
-
 func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
 	return s.repo.GetByID(ctx, id)
 }

@@ -217,6 +217,45 @@ func (q *Queries) GetOAuthState(ctx context.Context, stateHash string) (OauthSta
 	return i, err
 }
 
+const insertIdentityIfGeneration = `-- name: InsertIdentityIfGeneration :execrows
+INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+SELECT $1, $2, $3, $4, $5, $6, $7, $8
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $9 AND u.credentials_generation = $10)
+`
+
+type InsertIdentityIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ID_2                  string
+	CredentialsGeneration int64
+}
+
+// See the sqlite sibling.
+func (q *Queries) InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertIdentityIfGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.Provider,
+		arg.Issuer,
+		arg.Subject,
+		arg.Email,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.ID_2,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const insertOAuthHandoff = `-- name: InsertOAuthHandoff :exec
 INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at, credentials_generation)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
@@ -328,77 +367,29 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 	return items, nil
 }
 
-const upsertIdentity = `-- name: UpsertIdentity :exec
-INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at
+const updateIdentityIfGeneration = `-- name: UpdateIdentityIfGeneration :execrows
+UPDATE users_identities
+SET issuer = $1, subject = $2, email = $3, updated_at = $4
+WHERE users_identities.id = $5
+  AND EXISTS (SELECT 1 FROM users u WHERE u.id = users_identities.user_id AND u.credentials_generation = $6)
 `
 
-type UpsertIdentityParams struct {
-	ID        string
-	UserID    string
-	Provider  string
-	Issuer    string
-	Subject   string
-	Email     string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-}
-
-func (q *Queries) UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error {
-	_, err := q.db.ExecContext(ctx, upsertIdentity,
-		arg.ID,
-		arg.UserID,
-		arg.Provider,
-		arg.Issuer,
-		arg.Subject,
-		arg.Email,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	return err
-}
-
-const upsertIdentityIfGeneration = `-- name: UpsertIdentityIfGeneration :execrows
-INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
-SELECT $1, $2, $3, $4, $5, $6, $7, $8
-WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $9 AND u.credentials_generation = $10)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at
-`
-
-type UpsertIdentityIfGenerationParams struct {
-	ID                    string
-	UserID                string
-	Provider              string
+type UpdateIdentityIfGenerationParams struct {
 	Issuer                string
 	Subject               string
 	Email                 string
-	CreatedAt             time.Time
 	UpdatedAt             time.Time
-	ID_2                  string
+	ID                    string
 	CredentialsGeneration int64
 }
 
-// See the sqlite sibling.
-func (q *Queries) UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error) {
-	result, err := q.db.ExecContext(ctx, upsertIdentityIfGeneration,
-		arg.ID,
-		arg.UserID,
-		arg.Provider,
+func (q *Queries) UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateIdentityIfGeneration,
 		arg.Issuer,
 		arg.Subject,
 		arg.Email,
-		arg.CreatedAt,
 		arg.UpdatedAt,
-		arg.ID_2,
+		arg.ID,
 		arg.CredentialsGeneration,
 	)
 	if err != nil {

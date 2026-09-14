@@ -18,11 +18,14 @@ type Identities interface {
 	GetByUserProvider(ctx context.Context, userID vo.Id, provider string) (*model.Identity, error)
 	ListByUser(ctx context.Context, userID vo.Id) ([]model.Identity, error)
 	CountByUser(ctx context.Context, userID vo.Id) (int64, error)
-	// SaveIfCurrent writes the identity only while the owner's credentials
+	// InsertIfCurrent writes a NEW identity only while the owner's credentials
 	// generation still matches the one the flow resolved them under, reporting
-	// the rows written. Zero means an account reclaim landed mid-flow: the write
-	// must not resurrect an identity the reclaim just removed.
-	SaveIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error)
+	// the rows written (0 = an account reclaim landed mid-flow). Never an
+	// upsert: a row the reclaim deleted must not come back.
+	InsertIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error)
+	// UpdateIfCurrent rewrites issuer/subject/email of an EXISTING identity
+	// under the same fence; 0 rows means the row is gone or the generation moved.
+	UpdateIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error)
 	DeleteByUserProvider(ctx context.Context, userID vo.Id, provider string) (int64, error)
 }
 

@@ -38,6 +38,9 @@ type (
 		AccessUntil   *time.Time
 		Timezone      string
 		EmailVerified bool
+		// Last, like the SELECT's last column: the whole-struct conversions
+		// from the generated row types are positional.
+		CredentialsGeneration int64
 	}
 	optionRow      = sqlitegen.UsersOption
 	userParams     = sqlitegen.UpsertUserParams
@@ -53,7 +56,6 @@ type querier interface {
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
-	GetUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
@@ -216,17 +218,13 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 	return nil
 }
 
-// UpsertOption writes a single option row only — no user-row write, no other
-// option touched. Narrower than Save, which upserts the whole aggregate.
-func (r *Repo) CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error) {
-	return r.q.GetUserCredentialsGeneration(ctx, r.db(ctx), userID.String())
-}
-
 func (r *Repo) BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error {
 	_, err := r.q.BumpUserCredentialsGeneration(ctx, r.db(ctx), userID.String())
 	return err
 }
 
+// UpsertOption writes a single option row only — no user-row write, no other
+// option touched. Narrower than Save, which upserts the whole aggregate.
 func (r *Repo) UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error {
 	return r.q.UpsertUserOption(ctx, r.db(ctx), optionParams{
 		ID:        o.ID.String(),
@@ -283,7 +281,8 @@ func (r *Repo) hydrate(ctx context.Context, row userRow) (*model.User, error) {
 	return &model.User{ID: id, Email: row.Email, Name: row.Name,
 		Avatar: row.Avatar, Password: row.Password, Salt: row.Salt, Algorithm: row.Algorithm,
 		IsActive: row.IsActive, EmailVerified: row.EmailVerified, AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
-		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
+		CredentialsGeneration: row.CredentialsGeneration,
+		CreatedAt:             row.CreatedAt, UpdatedAt: row.UpdatedAt, Options: opts}, nil
 }
 
 func toDomainOptions(rows []optionRow) ([]model.UserOption, error) {

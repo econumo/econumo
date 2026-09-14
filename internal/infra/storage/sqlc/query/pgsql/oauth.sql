@@ -19,25 +19,17 @@ ORDER BY created_at, id;
 -- name: CountIdentitiesByUser :one
 SELECT COUNT(*) FROM users_identities WHERE user_id = $1;
 
--- name: UpsertIdentity :exec
-INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at;
-
--- name: UpsertIdentityIfGeneration :execrows
+-- name: InsertIdentityIfGeneration :execrows
 -- See the sqlite sibling.
 INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
 SELECT $1, $2, $3, $4, $5, $6, $7, $8
-WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $9 AND u.credentials_generation = $10)
-ON CONFLICT (id) DO UPDATE SET
-    issuer     = excluded.issuer,
-    subject    = excluded.subject,
-    email      = excluded.email,
-    updated_at = excluded.updated_at;
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $9 AND u.credentials_generation = $10);
+
+-- name: UpdateIdentityIfGeneration :execrows
+UPDATE users_identities
+SET issuer = $1, subject = $2, email = $3, updated_at = $4
+WHERE users_identities.id = $5
+  AND EXISTS (SELECT 1 FROM users u WHERE u.id = users_identities.user_id AND u.credentials_generation = $6);
 
 -- name: DeleteIdentityByUserProvider :execrows
 DELETE FROM users_identities WHERE user_id = $1 AND provider = $2;

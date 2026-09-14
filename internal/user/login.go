@@ -33,13 +33,6 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		s.failAttempt(RateScopeLogin, limitKey)
 		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
-	// The hash just verified is the evidence; this fences the session against a
-	// reclaim that commits while the rest of the login runs.
-	generation, gerr := s.repo.CredentialsGeneration(ctx, u.ID)
-	if gerr != nil {
-		return nil, gerr
-	}
-
 	// Transparently upgrade a legacy (sha512) hash to argon2id now that we hold the
 	// verified plaintext. Best-effort: a failure must never block a valid login.
 	s.rehashLegacyPassword(ctx, u, req.Password, now)
@@ -56,7 +49,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
 		return nil, err
 	}
-	token, terr := s.createSession(ctx, u.ID, userAgent, "", nil, now, generation)
+	// u.CredentialsGeneration came out of the SAME row read as the hash just
+	// verified, so a reset committing from here on bumps past it and the
+	// guarded insert refuses the session.
+	token, terr := s.createSession(ctx, u.ID, userAgent, "", nil, now, u.CredentialsGeneration)
 	if terr != nil {
 		return nil, terr
 	}

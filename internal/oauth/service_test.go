@@ -27,16 +27,17 @@ func (c *fixedClock) Now() time.Time { return c.t }
 // the FK constraints on identities/handoffs hold) but the aggregate is kept in
 // memory, which is all the oauth service reads.
 type fakeUsers struct {
-	t       *testing.T
-	db      *dbtest.DB
-	byID    map[string]*model.User
-	byEmail map[string]*model.User
-	minted  []string // providers of minted sessions
-	// generation models the DB-side reclaim fence: MintSession refuses a stale
-	// one exactly as the guarded insert does.
-	generation map[string]int64
-	replaced   []string // emails mirrored via ReplaceVerifiedEmail
-	provision  int
+	t         *testing.T
+	db        *dbtest.DB
+	byID      map[string]*model.User
+	byEmail   map[string]*model.User
+	minted    []string // providers of minted sessions
+	replaced  []string // emails mirrored via ReplaceVerifiedEmail
+	provision int
+
+	// beforeFindByID runs once on the next FindByID, then clears itself: the
+	// seam for landing a reclaim between two of the flow's reads.
+	beforeFindByID func()
 
 	// Fault injection for coverage of the service's error-handling branches:
 	// non-nil forces the corresponding method to fail regardless of state.
@@ -47,7 +48,7 @@ type fakeUsers struct {
 }
 
 func newFakeUsers(t *testing.T, db *dbtest.DB) *fakeUsers {
-	return &fakeUsers{t: t, db: db, byID: map[string]*model.User{}, byEmail: map[string]*model.User{}, generation: map[string]int64{}}
+	return &fakeUsers{t: t, db: db, byID: map[string]*model.User{}, byEmail: map[string]*model.User{}}
 }
 
 func (f *fakeUsers) seed(t *testing.T, email string, algorithm string) *model.User {
@@ -68,6 +69,11 @@ func (f *fakeUsers) FindByEmail(_ context.Context, email string) (*model.User, e
 	return nil, errs.NewNotFound("User not found")
 }
 func (f *fakeUsers) FindByID(_ context.Context, id vo.Id) (*model.User, error) {
+	if f.beforeFindByID != nil {
+		hook := f.beforeFindByID
+		f.beforeFindByID = nil
+		hook()
+	}
 	if f.failFindByID != nil {
 		return nil, f.failFindByID
 	}
@@ -89,17 +95,29 @@ func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email 
 	f.replaced = append(f.replaced, email)
 	return nil
 }
-func (f *fakeUsers) CredentialsGeneration(_ context.Context, userID vo.Id) (int64, error) {
-	return f.generation[userID.String()], nil
+
+// generationOf is what a real repository read hands back with the aggregate.
+func (f *fakeUsers) generationOf(userID vo.Id) int64 {
+	if u, ok := f.byID[userID.String()]; ok {
+		return u.CredentialsGeneration
+	}
+	return 0
 }
 
-// reclaim bumps the fence the way a completed password reset does — in this
-// fake AND in the users row the guarded writes read, so the two agree.
+// reclaim bumps the fence the way a completed password reset does — on the
+// in-memory aggregate AND in the users row the guarded writes read, so the two
+// agree — and drops the identities the reclaim removes.
 func (f *fakeUsers) reclaim(userID vo.Id) {
-	f.generation[userID.String()]++
-	if _, err := f.db.Raw.Exec(f.db.Rebind(
-		`UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?`), userID.String()); err != nil {
-		f.t.Fatalf("bump generation: %v", err)
+	if u, ok := f.byID[userID.String()]; ok {
+		u.CredentialsGeneration++
+	}
+	for _, q := range []string{
+		`UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?`,
+		`DELETE FROM users_identities WHERE user_id = ?`,
+	} {
+		if _, err := f.db.Raw.Exec(f.db.Rebind(q), userID.String()); err != nil {
+			f.t.Fatalf("reclaim: %v", err)
+		}
 	}
 }
 
@@ -107,7 +125,7 @@ func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provi
 	if f.failMintSession != nil {
 		return nil, f.failMintSession
 	}
-	if generation != f.generation[userID.String()] {
+	if generation != f.generationOf(userID) {
 		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	f.minted = append(f.minted, provider)
@@ -844,8 +862,7 @@ func TestReclaimAccount(t *testing.T) {
 // current generation, the way a live flow would.
 func saveIdentity(t *testing.T, h *harness, i *model.Identity) {
 	t.Helper()
-	gen, _ := h.users.CredentialsGeneration(context.Background(), i.UserID)
-	n, err := h.ids.SaveIfCurrent(context.Background(), i, gen)
+	n, err := h.ids.InsertIfCurrent(context.Background(), i, h.users.generationOf(i.UserID))
 	if err != nil || n != 1 {
 		t.Fatalf("seed identity: %d %v", n, err)
 	}
@@ -880,7 +897,7 @@ func TestCallback_IdentityWriteRefusedAfterAReclaim(t *testing.T) {
 	h.users.reclaim(u.ID) // the flow below reads the stale generation 0
 
 	stale := model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "sub", "owner@example.test", h.clock.Now())
-	n, err := h.ids.SaveIfCurrent(context.Background(), stale, 0)
+	n, err := h.ids.InsertIfCurrent(context.Background(), stale, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -890,4 +907,37 @@ func TestCallback_IdentityWriteRefusedAfterAReclaim(t *testing.T) {
 	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err == nil {
 		t.Fatal("no identity may exist")
 	}
+}
+
+// The gap the fence used to leave open: the callback reads the identity, the
+// reclaim commits, and only then does the callback read the user. Reading the
+// generation WITH the user closes it — the identity row is already gone, so the
+// fenced UPDATE writes nothing and the flow is void.
+func TestCallback_ExistingIdentity_ReclaimBetweenIdentityAndUserReadIsRefused(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "victim@example.test", model.AlgorithmNone)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "squatter@example.test", h.clock.Now()))
+	h.fake.Email, h.fake.EmailVerified = "squatter@example.test", true
+	// The reclaim lands after GetByProviderSubject and before FindByID.
+	h.users.beforeFindByID = func() { h.users.reclaim(u.ID) }
+
+	redirect := h.login("google", "web")
+	if !strings.Contains(redirect, "oauthError=provider_error") {
+		t.Fatalf("expected provider_error redirect, got %s", redirect)
+	}
+	if n := handoffCount(t, h.db); n != 0 {
+		t.Fatalf("a handoff was minted after the reclaim: %d", n)
+	}
+	if _, err := h.ids.GetByProviderSubject(context.Background(), "google", h.fake.IssuerURL(), h.fake.Subject); err == nil {
+		t.Fatal("the reclaimed identity was resurrected")
+	}
+}
+
+func handoffCount(t *testing.T, db *dbtest.DB) int {
+	t.Helper()
+	var n int
+	if err := db.Raw.QueryRow(`SELECT COUNT(*) FROM oauth_handoffs`).Scan(&n); err != nil {
+		t.Fatalf("count handoffs: %v", err)
+	}
+	return n
 }
