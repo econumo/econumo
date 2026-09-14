@@ -68,7 +68,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 
 // rehashLegacyPassword upgrades a still-sha512 hash to argon2id in place. It runs
 // only on a verified login (the plaintext is proven correct) and is best-effort:
-// any failure is logged and swallowed so a valid login always succeeds.
+// any failure is logged and swallowed so a valid login always succeeds. It writes
+// ONLY the credential columns, guarded by the generation u was loaded under, so a
+// reset that commits between Login's evidence read and this call is never
+// overwritten by this stale aggregate (see model.User.CredentialsGeneration).
 func (s *Service) rehashLegacyPassword(ctx context.Context, u *model.User, plaintext string, now time.Time) {
 	if u.Algorithm == model.AlgorithmArgon2id {
 		return
@@ -78,10 +81,12 @@ func (s *Service) rehashLegacyPassword(ctx context.Context, u *model.User, plain
 		slog.WarnContext(ctx, "legacy password rehash: hashing failed", "err", err.Error())
 		return
 	}
-	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
-		return s.repo.Save(txCtx, u)
-	}); err != nil {
+	n, err := s.repo.UpdatePasswordIfGeneration(ctx, u.ID, newHash, u.Salt, model.AlgorithmArgon2id, now, u.CredentialsGeneration)
+	if err != nil {
 		slog.WarnContext(ctx, "legacy password rehash: persist failed", "err", err.Error())
+		return
+	}
+	if n == 1 {
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
 	}
 }

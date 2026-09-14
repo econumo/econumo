@@ -483,6 +483,10 @@ type Querier interface {
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+	// only under the generation the login verified the hash under, so a reset
+	// committing mid-login is never overwritten by a stale aggregate save.
+	UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error)
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error

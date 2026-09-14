@@ -226,6 +226,38 @@ func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguage
 	return err
 }
 
+const updateUserPasswordIfGeneration = `-- name: UpdateUserPasswordIfGeneration :execrows
+UPDATE users SET password = ?, salt = ?, algorithm = ?, updated_at = ?
+WHERE id = ? AND credentials_generation = ?
+`
+
+type UpdateUserPasswordIfGenerationParams struct {
+	Password              string
+	Salt                  string
+	Algorithm             string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+// only under the generation the login verified the hash under, so a reset
+// committing mid-login is never overwritten by a stale aggregate save.
+func (q *Queries) UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserPasswordIfGeneration,
+		arg.Password,
+		arg.Salt,
+		arg.Algorithm,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserTimezone = `-- name: UpdateUserTimezone :exec
 UPDATE users SET timezone = ? WHERE id = ?
 `

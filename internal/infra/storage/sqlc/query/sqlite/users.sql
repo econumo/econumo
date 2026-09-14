@@ -30,6 +30,13 @@ ON CONFLICT (id) DO UPDATE SET
 -- name: BumpUserCredentialsGeneration :execrows
 UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?;
 
+-- name: UpdateUserPasswordIfGeneration :execrows
+-- The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+-- only under the generation the login verified the hash under, so a reset
+-- committing mid-login is never overwritten by a stale aggregate save.
+UPDATE users SET password = ?, salt = ?, algorithm = ?, updated_at = ?
+WHERE id = ? AND credentials_generation = ?;
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = ? WHERE id = ?;
 

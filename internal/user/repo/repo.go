@@ -42,11 +42,12 @@ type (
 		// from the generated row types are positional.
 		CredentialsGeneration int64
 	}
-	optionRow      = sqlitegen.UsersOption
-	userParams     = sqlitegen.UpsertUserParams
-	optionParams   = sqlitegen.UpsertUserOptionParams
-	languageParams = sqlitegen.UpdateUserLanguageParams
-	timezoneParams = sqlitegen.UpdateUserTimezoneParams
+	optionRow           = sqlitegen.UsersOption
+	userParams          = sqlitegen.UpsertUserParams
+	optionParams        = sqlitegen.UpsertUserOptionParams
+	languageParams      = sqlitegen.UpdateUserLanguageParams
+	timezoneParams      = sqlitegen.UpdateUserTimezoneParams
+	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
 )
 
 type querier interface {
@@ -57,6 +58,7 @@ type querier interface {
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error)
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
@@ -221,6 +223,19 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 func (r *Repo) BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error {
 	_, err := r.q.BumpUserCredentialsGeneration(ctx, r.db(ctx), userID.String())
 	return err
+}
+
+// UpdatePasswordIfGeneration rewrites only the credential columns, and only
+// while the generation still matches (see user.Repository docs).
+func (r *Repo) UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error) {
+	return r.q.UpdateUserPasswordIfGeneration(ctx, r.db(ctx), passwordIfGenParams{
+		Password:              hash,
+		Salt:                  salt,
+		Algorithm:             algorithm,
+		UpdatedAt:             now,
+		ID:                    userID.String(),
+		CredentialsGeneration: generation,
+	})
 }
 
 // UpsertOption writes a single option row only — no user-row write, no other
