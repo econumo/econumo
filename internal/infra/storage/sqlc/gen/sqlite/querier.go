@@ -14,6 +14,7 @@ type Querier interface {
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
+	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
@@ -252,6 +253,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (Transaction, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// Read-model queries for the currency module (CQRS read side). Both currency
 	// endpoints are pure reads, so the whole module lives on the read side; there is
 	// no write aggregate. Kept separate from currencies.sql (the user-module lookup)
@@ -293,6 +295,10 @@ type Querier interface {
 	// time.Time), not in SQL, to avoid engine date-format differences; the
 	// list/get queries return raw rows.
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	// Mints a token only while the user's credentials generation is still the one
+	// the caller's evidence was read under: an account reclaim bumps it, so a
+	// session built on evidence from before the reclaim inserts nothing.
+	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -496,6 +502,9 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error
+	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+	// user before an account reclaim must not land an identity after it.
+	UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error)
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

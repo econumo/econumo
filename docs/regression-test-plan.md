@@ -130,8 +130,10 @@ navigation (single-pane vs sidebar).
       accounts, and keeps the matching one. A provider sign-in started just
       before the reset can no longer be completed afterwards (the returning
       browser lands on the login page with an error instead of a session), and
-      a pending email change is cancelled. The recovery dialog says so before
-      the reset is submitted.
+      a pending email change is cancelled. A provider sign-in that was already
+      mid-flight when the reset landed cannot be completed either — finishing
+      it returns the sign-in error rather than a session. The recovery dialog
+      says so before the reset is submitted.
 - [ ] A provider-created (passwordless) account using Settings → Profile →
       "Set a password" keeps its linked provider through that flow — it is the
       same reset endpoint, and the provider vouches for the account's address.

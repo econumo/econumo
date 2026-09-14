@@ -110,10 +110,14 @@ type OAuthHandoff struct {
 	Email    string
 	// FlowHash is copied from the state row; only the client that started the
 	// flow can present the matching secret at exchange time.
-	FlowHash  string
-	IDToken   *string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	FlowHash string
+	IDToken  *string
+	// Generation is the user's credentials generation at the moment the callback
+	// resolved them. Redeeming the handoff presents it again, and the insert is
+	// refused if an account reclaim has bumped it in the meantime.
+	Generation int64
+	CreatedAt  time.Time
+	ExpiresAt  time.Time
 }
 
 func (h *OAuthHandoff) IsExpired(now time.Time) bool { return !now.Before(h.ExpiresAt) }

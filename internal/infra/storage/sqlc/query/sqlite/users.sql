@@ -27,6 +27,12 @@ ON CONFLICT (id) DO UPDATE SET
     access_until = excluded.access_until,
     email_verified = excluded.email_verified;
 
+-- name: GetUserCredentialsGeneration :one
+SELECT credentials_generation FROM users WHERE id = ?;
+
+-- name: BumpUserCredentialsGeneration :execrows
+UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?;
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = ? WHERE id = ?;
 

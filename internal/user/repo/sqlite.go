@@ -61,3 +61,11 @@ func (sqliteQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p 
 func (sqliteQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return sqlitegen.New(db).GetUserLanguage(ctx, id)
 }
+
+func (sqliteQuerier) GetUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return sqlitegen.New(db).GetUserCredentialsGeneration(ctx, userID)
+}
+
+func (sqliteQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return sqlitegen.New(db).BumpUserCredentialsGeneration(ctx, userID)
+}

@@ -28,6 +28,18 @@ ON CONFLICT (id) DO UPDATE SET
     email      = excluded.email,
     updated_at = excluded.updated_at;
 
+-- name: UpsertIdentityIfGeneration :execrows
+-- Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+-- user before an account reclaim must not land an identity after it.
+INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
+ON CONFLICT (id) DO UPDATE SET
+    issuer     = excluded.issuer,
+    subject    = excluded.subject,
+    email      = excluded.email,
+    updated_at = excluded.updated_at;
+
 -- name: DeleteIdentityByUserProvider :execrows
 DELETE FROM users_identities WHERE user_id = ? AND provider = ?;
 
@@ -50,11 +62,11 @@ DELETE FROM oauth_states WHERE link_user_id = ?;
 DELETE FROM oauth_states WHERE expires_at < ?;
 
 -- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at, credentials_generation)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetOAuthHandoff :one
-SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at
+SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at, credentials_generation
 FROM oauth_handoffs
 WHERE code_hash = ?;
 

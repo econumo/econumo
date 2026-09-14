@@ -219,6 +219,15 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 		`{"code":"`+handoffCode+`","flow":"f10wsecret"}`); code == 200 {
 		t.Errorf("a handoff minted before the reset still bought a session: %d %s", code, body)
 	}
+	// The race the sweep alone cannot win: a callback that resolved this user
+	// BEFORE the reset lands its handoff AFTER it (here, written straight to the
+	// table, which is what that in-flight request would do). Sweeping found
+	// nothing to delete — the fence is what refuses the redemption.
+	seedLoginHandoff(t, db, uid, "late-arriving-code", "lateflow")
+	if code, body := post("/api/v1/oauth/exchange-handoff", "",
+		`{"code":"late-arriving-code","flow":"lateflow"}`); code == 200 {
+		t.Errorf("a handoff from a flow that predates the reclaim still bought a session: %d %s", code, body)
+	}
 	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/oauth/get-identity-list", nil)
 	req.Header.Set("Authorization", "Bearer "+victimSession)
 	resp, err := http.DefaultClient.Do(req)

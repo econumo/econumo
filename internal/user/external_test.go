@@ -46,7 +46,7 @@ func TestCreateExternalSession_StampsProviderAndReturnsLogin(t *testing.T) {
 		t.Fatal(err)
 	}
 	idTok := "raw.id.token"
-	res, err := s.CreateExternalSession(ctx, u.ID, "Mozilla/5.0", model.OAuthProviderOIDC, &idTok)
+	res, err := s.CreateExternalSession(ctx, u.ID, "Mozilla/5.0", model.OAuthProviderOIDC, &idTok, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestCreateExternalSession_StampsProviderAndReturnsLogin(t *testing.T) {
 	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateExternalSession(ctx, u.ID, "ua", model.OAuthProviderOIDC, nil); err == nil {
+	if _, err := s.CreateExternalSession(ctx, u.ID, "ua", model.OAuthProviderOIDC, nil, 0); err == nil {
 		t.Fatal("inactive user must not get a session")
 	}
 }
@@ -104,7 +104,7 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 		t.Fatal(err)
 	}
 	idTok := "t"
-	res, err := s.CreateExternalSession(ctx, u.ID, "ua", "oidc", &idTok)
+	res, err := s.CreateExternalSession(ctx, u.ID, "ua", "oidc", &idTok, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 	}
 
 	// A Google session (no id token) logs out locally but still names the provider.
-	res2, err := s.CreateExternalSession(ctx, u.ID, "ua", "google", nil)
+	res2, err := s.CreateExternalSession(ctx, u.ID, "ua", "google", nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}

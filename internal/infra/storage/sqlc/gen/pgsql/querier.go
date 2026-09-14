@@ -14,6 +14,7 @@ type Querier interface {
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
+	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
@@ -172,6 +173,7 @@ type Querier interface {
 	GetTransactionByID(ctx context.Context, id string) (GetTransactionByIDRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error)
 	GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error)
+	GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// Read-model queries for the currency module (PostgreSQL variant). No $N
 	// placeholders are needed (neither query is parameterised). See the sqlite
 	// variant for documentation.
@@ -203,6 +205,8 @@ type Querier interface {
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.
 	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	// See the sqlite sibling.
+	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
@@ -338,6 +342,8 @@ type Querier interface {
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) error
+	// See the sqlite sibling.
+	UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error)
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

@@ -18,8 +18,13 @@ type Users interface {
 	// ReplaceVerifiedEmail mirrors an IdP-side email change onto the primary email.
 	ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string) error
 	// MintSession opens a session stamped with the provider (and the ID token
-	// for the custom slot) and returns the login-shaped result.
-	MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string) (*model.LoginResult, error)
+	// for the custom slot) and returns the login-shaped result. generation is
+	// the credentials generation the flow resolved its user under; the write is
+	// refused if a reclaim has bumped it since (an account whose owner reset the
+	// password must not be reachable by a sign-in already in the air).
+	MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, generation int64) (*model.LoginResult, error)
+	// CredentialsGeneration reads that fence value when a callback resolves a user.
+	CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error)
 }
 
 // AttemptLimiter is the brute-force seam for start-login/start-link. Only Allow

@@ -168,7 +168,7 @@ func (q *Queries) GetIdentityByUserProvider(ctx context.Context, arg GetIdentity
 }
 
 const getOAuthHandoff = `-- name: GetOAuthHandoff :one
-SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at
+SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at, credentials_generation
 FROM oauth_handoffs
 WHERE code_hash = ?
 `
@@ -188,6 +188,7 @@ func (q *Queries) GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHa
 		&i.IDToken,
 		&i.CreatedAt,
 		&i.ExpiresAt,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
@@ -217,22 +218,23 @@ func (q *Queries) GetOAuthState(ctx context.Context, stateHash string) (OauthSta
 }
 
 const insertOAuthHandoff = `-- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at, credentials_generation)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 
 type InsertOAuthHandoffParams struct {
-	CodeHash  string
-	Kind      string
-	UserID    string
-	Provider  string
-	Issuer    string
-	Subject   string
-	Email     string
-	FlowHash  string
-	IDToken   *string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	CodeHash              string
+	Kind                  string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	FlowHash              string
+	IDToken               *string
+	CreatedAt             time.Time
+	ExpiresAt             time.Time
+	CredentialsGeneration int64
 }
 
 func (q *Queries) InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error {
@@ -248,6 +250,7 @@ func (q *Queries) InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoff
 		arg.IDToken,
 		arg.CreatedAt,
 		arg.ExpiresAt,
+		arg.CredentialsGeneration,
 	)
 	return err
 }
@@ -358,4 +361,49 @@ func (q *Queries) UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) 
 		arg.UpdatedAt,
 	)
 	return err
+}
+
+const upsertIdentityIfGeneration = `-- name: UpsertIdentityIfGeneration :execrows
+INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
+ON CONFLICT (id) DO UPDATE SET
+    issuer     = excluded.issuer,
+    subject    = excluded.subject,
+    email      = excluded.email,
+    updated_at = excluded.updated_at
+`
+
+type UpsertIdentityIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ID_2                  string
+	CredentialsGeneration int64
+}
+
+// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+// user before an account reclaim must not land an identity after it.
+func (q *Queries) UpsertIdentityIfGeneration(ctx context.Context, arg UpsertIdentityIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, upsertIdentityIfGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.Provider,
+		arg.Issuer,
+		arg.Subject,
+		arg.Email,
+		arg.CreatedAt,
+		arg.UpdatedAt,
+		arg.ID_2,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

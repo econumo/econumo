@@ -23,10 +23,11 @@ func (s *Service) ProvisionExternalUser(ctx context.Context, name, email string)
 	}, true, false)
 }
 
-// CreateExternalSession mints a session for a user resolved by the oauth
-// feature, stamping the provider (and, for the custom slot, the ID token for
-// RP-initiated logout). Inactive users are refused like a password login.
-func (s *Service) CreateExternalSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string) (*model.LoginResult, error) {
+// CreateExternalSession mints the session an oauth handoff buys. generation is
+// the credentials generation the FLOW resolved its user under, carried on the
+// handoff row: a reclaim that lands while the flow is in the air bumps it, and
+// the guarded insert refuses.
+func (s *Service) CreateExternalSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, generation int64) (*model.LoginResult, error) {
 	u, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -38,7 +39,7 @@ func (s *Service) CreateExternalSession(ctx context.Context, userID vo.Id, userA
 	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
 		return nil, err
 	}
-	token, terr := s.createSession(ctx, u.ID, userAgent, provider, idToken, now)
+	token, terr := s.createSession(ctx, u.ID, userAgent, provider, idToken, now, generation)
 	if terr != nil {
 		return nil, terr
 	}
@@ -65,6 +66,12 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 		return nil
 	})
 	return err
+}
+
+// CredentialsGeneration exposes the reclaim fence to the oauth feature, which
+// captures it when a callback resolves a user and presents it again at mint.
+func (s *Service) CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error) {
+	return s.repo.CredentialsGeneration(ctx, userID)
 }
 
 func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {

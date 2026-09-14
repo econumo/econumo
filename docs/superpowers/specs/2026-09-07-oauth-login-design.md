@@ -439,6 +439,18 @@ the passwordless "Set a password" path (the same endpoint) from stripping the
 provider a user still needs. The whole cascade shares the password write's
 transaction, so a partial reclaim cannot be observed.
 
+Sweeping is necessary but not sufficient: a request that read its evidence
+before the reclaim can still write after it — the exchange that consumed its
+handoff a moment earlier, or a callback already in flight whose identity insert
+lands after the sweep. `users.credentials_generation` fences that. Every flow
+captures it when it reads its evidence (the oauth callback when it resolves the
+user, carried onto the handoff row; the password login when it verifies the
+hash) and presents it at write time, where `InsertAccessTokenIfGeneration` and
+`UpsertIdentityIfGeneration` make the write conditional on it *in SQL*. The
+reclaim bumps the generation inside its transaction, so every in-flight write
+affects zero rows and fails closed — the database decides the race, which is the
+only place it can be decided without a Go-side read that is itself the race.
+
 Corollary: `users_identities.email` is no longer purely decorative. It is still
 never a lookup key, but it records which address a provider vouches for, and
 the reclaim reads it. A user who changes their primary email keeps identities

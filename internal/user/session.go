@@ -16,7 +16,12 @@ import (
 // bearer token (the only moment it exists server-side). provider/idToken stamp
 // the session's OAuth origin ("" and nil for password logins); idToken is kept
 // only for the custom OIDC slot so Logout can send id_token_hint.
-func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time) (string, error) {
+// createSession mints a session under the credentials generation the caller
+// read its evidence at (the password hash it verified, or the oauth flow it
+// resolved). The insert is conditional on that generation still being current,
+// so a reclaim committing anywhere between the read and this write leaves the
+// session unwritten instead of racing it — checking in Go would be the race.
+func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time, generation int64) (string, error) {
 	raw, hash, err := generateAccessToken(model.TokenKindSession)
 	if err != nil {
 		return "", err
@@ -32,8 +37,12 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, pr
 	if provider != "" {
 		t.Provider = &provider
 	}
-	if err := s.tokens.Insert(ctx, t); err != nil {
+	n, err := s.tokens.InsertIfGeneration(ctx, t, generation)
+	if err != nil {
 		return "", err
+	}
+	if n != 1 {
+		return "", &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	return raw, nil
 }

@@ -7,6 +7,14 @@
 INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+-- name: InsertAccessTokenIfGeneration :execrows
+-- Mints a token only while the user's credentials generation is still the one
+-- the caller's evidence was read under: an account reclaim bumps it, so a
+-- session built on evidence from before the reclaim inserts nothing.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
+
 -- name: GetAccessTokenByHash :one
 -- Joins users for access_level/access_until so per-request auth can report
 -- the caller's effective access level in the same round trip. This does NOT

@@ -16,7 +16,7 @@ import (
 
 type (
 	identityRow            = sqlitegen.UsersIdentity
-	upsertIdentityParams   = sqlitegen.UpsertIdentityParams
+	upsertIdentityParams   = sqlitegen.UpsertIdentityIfGenerationParams
 	identityByUserProvider = sqlitegen.GetIdentityByUserProviderParams
 	identityBySubject      = sqlitegen.GetIdentityByProviderSubjectParams
 	deleteIdentityParams   = sqlitegen.DeleteIdentityByUserProviderParams
@@ -27,7 +27,7 @@ type identityQuerier interface {
 	GetIdentityByUserProvider(ctx context.Context, db backend.DBTX, p identityByUserProvider) (identityRow, error)
 	ListIdentitiesByUser(ctx context.Context, db backend.DBTX, userID string) ([]identityRow, error)
 	CountIdentitiesByUser(ctx context.Context, db backend.DBTX, userID string) (int64, error)
-	UpsertIdentity(ctx context.Context, db backend.DBTX, p upsertIdentityParams) error
+	UpsertIdentity(ctx context.Context, db backend.DBTX, p upsertIdentityParams) (int64, error)
 	DeleteIdentityByUserProvider(ctx context.Context, db backend.DBTX, p deleteIdentityParams) (int64, error)
 }
 
@@ -95,10 +95,11 @@ func (r *IdentityRepo) CountByUser(ctx context.Context, userID vo.Id) (int64, er
 	return r.q.CountIdentitiesByUser(ctx, r.db(ctx), userID.String())
 }
 
-func (r *IdentityRepo) Save(ctx context.Context, i *model.Identity) error {
+func (r *IdentityRepo) SaveIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
 	return r.q.UpsertIdentity(ctx, r.db(ctx), upsertIdentityParams{
 		ID: i.ID.String(), UserID: i.UserID.String(), Provider: i.Provider, Issuer: i.Issuer, Subject: i.Subject, Email: i.Email,
 		CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
+		ID_2: i.UserID.String(), CredentialsGeneration: generation,
 	})
 }
 

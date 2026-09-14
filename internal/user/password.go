@@ -172,6 +172,11 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
+		// The fence: every flow that read its evidence before this point is now
+		// invalid, whatever it does next (see AccessTokens.InsertIfGeneration).
+		if berr := s.repo.BumpCredentialsGeneration(ctx, u.ID); berr != nil {
+			return berr
+		}
 		// Every outstanding code, not just the one presented.
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr

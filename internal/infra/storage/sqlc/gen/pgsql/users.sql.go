@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const bumpUserCredentialsGeneration = `-- name: BumpUserCredentialsGeneration :execrows
+UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1
+`
+
+func (q *Queries) BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, bumpUserCredentialsGeneration, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const existsUserByEmail = `-- name: ExistsUserByEmail :one
 SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1))
 `
@@ -109,6 +121,17 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.EmailVerified,
 	)
 	return i, err
+}
+
+const getUserCredentialsGeneration = `-- name: GetUserCredentialsGeneration :one
+SELECT credentials_generation FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserCredentialsGeneration(ctx context.Context, id string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getUserCredentialsGeneration, id)
+	var credentials_generation int64
+	err := row.Scan(&credentials_generation)
+	return credentials_generation, err
 }
 
 const getUserLanguage = `-- name: GetUserLanguage :one

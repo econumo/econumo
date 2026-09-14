@@ -68,3 +68,11 @@ func (pgsqlQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p t
 func (pgsqlQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return pgsqlgen.New(db).GetUserLanguage(ctx, id)
 }
+
+func (pgsqlQuerier) GetUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return pgsqlgen.New(db).GetUserCredentialsGeneration(ctx, userID)
+}
+
+func (pgsqlQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return pgsqlgen.New(db).BumpUserCredentialsGeneration(ctx, userID)
+}

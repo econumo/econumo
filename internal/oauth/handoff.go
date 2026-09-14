@@ -24,7 +24,7 @@ func (s *Service) ExchangeHandoff(ctx context.Context, req model.ExchangeHandoff
 	if h == nil {
 		return nil, invalid
 	}
-	res, err := s.users.MintSession(ctx, h.UserID, userAgent, h.Provider, h.IDToken)
+	res, err := s.users.MintSession(ctx, h.UserID, userAgent, h.Provider, h.IDToken, h.Generation)
 	if err != nil {
 		return nil, err
 	}
@@ -77,14 +77,22 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 		return nil, invalid
 	}
 	now := s.clock.Now()
+	// The caller's session was checked by the middleware, which is already in
+	// the past; the fence is what makes the write itself lose to a reclaim.
+	gen, gerr := s.users.CredentialsGeneration(ctx, userID)
+	if gerr != nil {
+		return nil, gerr
+	}
 	existing, err := s.identities.GetByProviderSubject(ctx, h.Provider, h.Issuer, h.Subject)
 	switch {
 	case err == nil && !existing.UserID.Equal(userID):
 		return nil, &errs.ValidationError{Msg: "This external account is already linked to another Econumo account", MsgCode: errs.CodeOAuthIdentityTaken}
 	case err == nil:
 		existing.UpdateEmail(h.Email, now)
-		if serr := s.identities.Save(ctx, existing); serr != nil {
+		if n, serr := s.identities.SaveIfCurrent(ctx, existing, gen); serr != nil {
 			return nil, serr
+		} else if n != 1 {
+			return nil, invalid
 		}
 	default:
 		if _, ok := errs.AsNotFound(err); !ok {
@@ -95,8 +103,10 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 		} else if _, ok := errs.AsNotFound(gerr); !ok {
 			return nil, gerr
 		}
-		if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now)); serr != nil {
+		if n, serr := s.identities.SaveIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now), gen); serr != nil {
 			return nil, serr
+		} else if n != 1 {
+			return nil, invalid
 		}
 	}
 	reqctx.AddLogAttr(ctx, "provider", h.Provider)

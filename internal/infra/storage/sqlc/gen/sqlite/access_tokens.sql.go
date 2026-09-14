@@ -159,6 +159,55 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 	return err
 }
 
+const insertAccessTokenIfGeneration = `-- name: InsertAccessTokenIfGeneration :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
+`
+
+type InsertAccessTokenIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Kind                  string
+	TokenHash             string
+	Name                  *string
+	UserAgent             *string
+	CreatedAt             time.Time
+	LastUsedAt            time.Time
+	ExpiresAt             *time.Time
+	RevokedAt             *time.Time
+	Provider              *string
+	IDToken               *string
+	ID_2                  string
+	CredentialsGeneration int64
+}
+
+// Mints a token only while the user's credentials generation is still the one
+// the caller's evidence was read under: an account reclaim bumps it, so a
+// session built on evidence from before the reclaim inserts nothing.
+func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Name,
+		arg.UserAgent,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens

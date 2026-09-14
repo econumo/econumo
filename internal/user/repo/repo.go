@@ -53,6 +53,8 @@ type querier interface {
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
+	GetUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
@@ -216,6 +218,15 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 
 // UpsertOption writes a single option row only — no user-row write, no other
 // option touched. Narrower than Save, which upserts the whole aggregate.
+func (r *Repo) CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error) {
+	return r.q.GetUserCredentialsGeneration(ctx, r.db(ctx), userID.String())
+}
+
+func (r *Repo) BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error {
+	_, err := r.q.BumpUserCredentialsGeneration(ctx, r.db(ctx), userID.String())
+	return err
+}
+
 func (r *Repo) UpsertOption(ctx context.Context, userID vo.Id, o model.UserOption) error {
 	return r.q.UpsertUserOption(ctx, r.db(ctx), optionParams{
 		ID:        o.ID.String(),

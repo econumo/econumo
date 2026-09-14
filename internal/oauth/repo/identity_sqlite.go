@@ -27,8 +27,8 @@ func (identitySqliteQuerier) CountIdentitiesByUser(ctx context.Context, db backe
 	return sqlitegen.New(db).CountIdentitiesByUser(ctx, userID)
 }
 
-func (identitySqliteQuerier) UpsertIdentity(ctx context.Context, db backend.DBTX, p upsertIdentityParams) error {
-	return sqlitegen.New(db).UpsertIdentity(ctx, p)
+func (identitySqliteQuerier) UpsertIdentity(ctx context.Context, db backend.DBTX, p upsertIdentityParams) (int64, error) {
+	return sqlitegen.New(db).UpsertIdentityIfGeneration(ctx, p)
 }
 
 func (identitySqliteQuerier) DeleteIdentityByUserProvider(ctx context.Context, db backend.DBTX, p deleteIdentityParams) (int64, error) {

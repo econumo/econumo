@@ -193,17 +193,18 @@ type MessengerMessage struct {
 }
 
 type OauthHandoff struct {
-	CodeHash  string
-	Kind      string
-	UserID    string
-	Provider  string
-	Issuer    string
-	Subject   string
-	Email     string
-	FlowHash  string
-	IDToken   *string
-	CreatedAt time.Time
-	ExpiresAt time.Time
+	CodeHash              string
+	Kind                  string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	FlowHash              string
+	IDToken               *string
+	CreatedAt             time.Time
+	ExpiresAt             time.Time
+	CredentialsGeneration int64
 }
 
 type OauthState struct {
@@ -294,22 +295,23 @@ type TransactionsLabel struct {
 }
 
 type User struct {
-	ID            string
-	Identifier    string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	Timezone      string
-	Language      string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	EmailVerified bool
+	ID                    string
+	Identifier            string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	Timezone              string
+	Language              string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 type UsersConnection struct {

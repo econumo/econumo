@@ -733,6 +733,17 @@ In the distroless image these run via the binary directly, e.g.
   needs that mailbox — which is also why the passwordless "Set a password" flow (the
   same reset endpoint) keeps its provider. All of it shares the password write's
   transaction.
+- **The credentials fence** (`users.credentials_generation`): sweeping what exists is
+  not enough on its own, because a request that read its evidence BEFORE the reclaim
+  can still write after it — redeeming a handoff it consumed a moment earlier, landing
+  an identity from a callback already in flight, or minting a PAT under a session the
+  reclaim just revoked. Every such flow captures the user's generation when it reads
+  its evidence (the verified password hash, the resolved oauth user — carried on the
+  handoff row as `oauth_handoffs.credentials_generation`) and presents it again at
+  write time. Session inserts (`InsertAccessTokenIfGeneration`) and identity writes
+  (`UpsertIdentityIfGeneration`) are conditional on it inside the SQL, so the DATABASE
+  decides the race: the reclaim bumps the generation, and anything in flight writes
+  zero rows and fails closed. Checking in Go would be the race it is meant to close.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).
@@ -759,7 +770,8 @@ In the distroless image these run via the binary directly, e.g.
   would be inherited by whoever the provider vouched for — so the owner signs in with
   their password (or resets it through the mailbox the provider just proved they hold)
   and links the provider from Settings instead. That reset is itself the reclaim: see
-  the revocation cascade above for what it takes away. **A link started from Settings writes nothing on
+  the revocation cascade above for what it takes away, and the credentials fence below
+  for what stops an in-flight sign-in from outrunning it. **A link started from Settings writes nothing on
   the callback**: the provider redirects whichever browser followed the authorization URL,
   so the callback parks the resolved identity in a one-shot *link* handoff and the
   authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating

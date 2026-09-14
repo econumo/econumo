@@ -36,8 +36,19 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req mod
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindPersonal, TokenHash: hash,
 		Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
 	}
-	if err := s.tokens.Insert(ctx, t); err != nil {
+	// Fenced like a session: the caller's session was authenticated before this
+	// point, so a reclaim committing in between must not leave them a brand-new
+	// credential behind it.
+	generation, gerr := s.repo.CredentialsGeneration(ctx, userID)
+	if gerr != nil {
+		return nil, gerr
+	}
+	n, err := s.tokens.InsertIfGeneration(ctx, t, generation)
+	if err != nil {
 		return nil, err
+	}
+	if n != 1 {
+		return nil, errs.NewUnauthorized("Invalid access token")
 	}
 	return &model.CreatePersonalTokenResult{
 		Id: t.ID.String(), Name: name, Token: raw,

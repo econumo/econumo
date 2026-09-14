@@ -3,6 +3,7 @@ package oauth
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"log/slog"
 	"strings"
 	"time"
@@ -158,13 +159,20 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 		if !u.IsActive {
 			return s.errorURLFor(st, "account_inactive")
 		}
+		// Read the reclaim fence with the user: every write this flow still has
+		// to make carries it, so a reset committing from here on wins the race.
+		gen, gerr := s.users.CredentialsGeneration(ctx, u.ID)
+		if gerr != nil {
+			logWarn(ctx, "oauth callback: generation", gerr, "provider", provider)
+			return s.errorURLFor(st, "provider_error")
+		}
 		id.UpdateEmail(email, now)
-		if serr := s.identities.Save(ctx, id); serr != nil {
-			logWarn(ctx, "oauth callback: identity save", serr, "provider", provider)
+		if n, serr := s.identities.SaveIfCurrent(ctx, id, gen); serr != nil || n != 1 {
+			logWarn(ctx, "oauth callback: identity save", orReclaimed(serr), "provider", provider)
 			return s.errorURLFor(st, "provider_error")
 		}
 		s.mirrorEmailDrift(ctx, u, email, provider)
-		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
+		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, gen)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: identity lookup", err, "provider", provider)
@@ -190,12 +198,17 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 			reqctx.AddLogAttr(ctx, "oauth_password_account", true)
 			return s.errorURLFor(st, "account_exists_password")
 		}
-		if serr := s.autoLink(ctx, u, provider, issuer, claims.Subject, email, now); serr != nil {
+		gen, gerr := s.users.CredentialsGeneration(ctx, u.ID)
+		if gerr != nil {
+			logWarn(ctx, "oauth callback: generation", gerr, "provider", provider)
+			return s.errorURLFor(st, "provider_error")
+		}
+		if serr := s.autoLink(ctx, u, provider, issuer, claims.Subject, email, now, gen); serr != nil {
 			logWarn(ctx, "oauth callback: auto-link", serr, "provider", provider)
 			return s.errorURLFor(st, "provider_error")
 		}
 		reqctx.AddLogAttr(ctx, "oauth_linked", true)
-		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
+		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, gen)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: user lookup", err, "provider", provider)
@@ -211,12 +224,19 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 		logWarn(ctx, "oauth callback: provision", err, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
-	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, issuer, claims.Subject, email, now)); serr != nil {
-		logWarn(ctx, "oauth callback: identity insert", serr, "provider", provider)
+	// Freshly provisioned: nothing can have reclaimed it, but the write takes
+	// the same guarded path so there is only one way to persist an identity.
+	gen, gerr := s.users.CredentialsGeneration(ctx, u.ID)
+	if gerr != nil {
+		logWarn(ctx, "oauth callback: generation", gerr, "provider", provider)
+		return s.errorURLFor(st, "provider_error")
+	}
+	if n, serr := s.identities.SaveIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, issuer, claims.Subject, email, now), gen); serr != nil || n != 1 {
+		logWarn(ctx, "oauth callback: identity insert", orReclaimed(serr), "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "oauth_provisioned", true)
-	return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession)
+	return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, gen)
 }
 
 // autoLink attaches the provider identity to a PASSWORDLESS account found by
@@ -225,8 +245,8 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 // is the same person; an account with a password never reaches here (step 6).
 // The owner is still told, best-effort: gaining a sign-in method without
 // asking for one must be noticeable.
-func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer, subject, email string, now time.Time) error {
-	if err := s.saveLinkedIdentity(ctx, u.ID, provider, issuer, subject, email, now); err != nil {
+func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer, subject, email string, now time.Time, generation int64) error {
+	if err := s.saveLinkedIdentity(ctx, u.ID, provider, issuer, subject, email, now, generation); err != nil {
 		return err
 	}
 	if s.notifier != nil {
@@ -241,18 +261,39 @@ func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer,
 // existing row when the issuer or subject moved (an operator changing
 // ECONUMO_OIDC_ISSUER_URL): one row per (user, provider) is all the schema
 // allows, and the verified email already proved the account is theirs.
-func (s *Service) saveLinkedIdentity(ctx context.Context, userID vo.Id, provider, issuer, subject, email string, now time.Time) error {
+func (s *Service) saveLinkedIdentity(ctx context.Context, userID vo.Id, provider, issuer, subject, email string, now time.Time, generation int64) error {
 	existing, err := s.identities.GetByUserProvider(ctx, userID, provider)
 	switch {
 	case err == nil:
 		existing.Repoint(issuer, subject, email, now)
-		return s.identities.Save(ctx, existing)
+		return rowsOrReclaimed(s.identities.SaveIfCurrent(ctx, existing, generation))
 	default:
 		if _, ok := errs.AsNotFound(err); !ok {
 			return err
 		}
-		return s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, provider, issuer, subject, email, now))
+		return rowsOrReclaimed(s.identities.SaveIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, provider, issuer, subject, email, now), generation))
 	}
+}
+
+// errReclaimed reports a write the account's reclaim fence refused: the user
+// reset their password after this flow read its evidence, so the flow is void.
+var errReclaimed = errors.New("account reclaimed mid-flow")
+
+func rowsOrReclaimed(n int64, err error) error {
+	if err != nil {
+		return err
+	}
+	if n != 1 {
+		return errReclaimed
+	}
+	return nil
+}
+
+func orReclaimed(err error) error {
+	if err != nil {
+		return err
+	}
+	return errReclaimed
 }
 
 // mirrorEmailDrift applies the spec's email-drift rule for an existing identity.
@@ -284,14 +325,14 @@ func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, pr
 	}
 }
 
-func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID vo.Id, provider string, idToken *string) string {
+func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID vo.Id, provider string, idToken *string, generation int64) string {
 	code, err := oidc.RandomToken()
 	if err != nil {
 		return s.errorURLFor(st, "provider_error")
 	}
 	now := s.clock.Now()
 	if err := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), Kind: model.OAuthHandoffKindLogin, UserID: userID, Provider: provider,
-		FlowHash: st.FlowHash, IDToken: idToken, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
+		FlowHash: st.FlowHash, IDToken: idToken, Generation: generation, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
 		logWarn(ctx, "oauth callback: handoff insert", err, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}

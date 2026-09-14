@@ -25,16 +25,22 @@ func TestIdentityRepo(t *testing.T) {
 		t.Fatalf("want *errs.NotFoundError, got %T", err)
 	}
 	id := model.NewIdentity(r.NextIdentity(), uid, "google", "https://idp.example.test", "s1", "a@example.test", now)
-	if err := r.Save(ctx, id); err != nil {
-		t.Fatal(err)
+	if n, err := r.SaveIfCurrent(ctx, id, 0); err != nil || n != 1 {
+		t.Fatalf("save %d %v", n, err)
 	}
 	got, err := r.GetByProviderSubject(ctx, "google", "https://idp.example.test", "s1")
 	if err != nil || !got.UserID.Equal(uid) || got.Email != "a@example.test" {
 		t.Fatalf("%+v %v", got, err)
 	}
 	id.UpdateEmail("b@example.test", now.Add(time.Minute))
-	if err := r.Save(ctx, id); err != nil {
-		t.Fatal(err)
+	if n, err := r.SaveIfCurrent(ctx, id, 0); err != nil || n != 1 {
+		t.Fatalf("save %d %v", n, err)
+	}
+	// The reclaim fence: the same write at a generation the account has moved
+	// past touches nothing, which is what stops an in-flight callback from
+	// resurrecting an identity a password reset just removed.
+	if n, err := r.SaveIfCurrent(ctx, id, 7); err != nil || n != 0 {
+		t.Fatalf("stale-generation save %d %v, want 0 rows", n, err)
 	}
 	got, _ = r.GetByUserProvider(ctx, uid, "google")
 	if got.Email != "b@example.test" || !got.UpdatedAt.Equal(now.Add(time.Minute)) {
@@ -43,8 +49,8 @@ func TestIdentityRepo(t *testing.T) {
 	// Another issuer's row may reuse the subject: the key is (provider, issuer, subject).
 	other := model.NewIdentity(r.NextIdentity(), vo.MustParseId(fixture.New(t, db).User(fixture.User{Email: "two@example.test"})),
 		"google", "https://other.example.test", "s1", "c@example.test", now)
-	if err := r.Save(ctx, other); err != nil {
-		t.Fatalf("a colliding subject at another issuer must insert: %v", err)
+	if n, err := r.SaveIfCurrent(ctx, other, 0); err != nil || n != 1 {
+		t.Fatalf("a colliding subject at another issuer must insert: %d %v", n, err)
 	}
 	if got, err := r.GetByProviderSubject(ctx, "google", "https://other.example.test", "s1"); err != nil || got.Email != "c@example.test" {
 		t.Fatalf("issuer must select the row: %+v %v", got, err)

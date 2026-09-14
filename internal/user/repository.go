@@ -30,6 +30,15 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// CredentialsGeneration reads the user's reclaim fencing token — the value a
+	// flow captures when it reads its evidence, and presents again at write
+	// time (see AccessTokens.InsertIfGeneration).
+	CredentialsGeneration(ctx context.Context, userID vo.Id) (int64, error)
+
+	// BumpCredentialsGeneration invalidates every flow that read its evidence
+	// before this call. Part of the reclaim, inside its transaction.
+	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error
+
 	// UpsertOption writes a single option row without touching the user row or
 	// any other option — the narrow write the analytics-preference backfill
 	// needs (Save would rewrite the whole user aggregate per row, which does
@@ -69,6 +78,14 @@ type Repository interface {
 // missing row return *errs.NotFoundError.
 type AccessTokens interface {
 	Insert(ctx context.Context, t *model.AccessToken) error
+
+	// InsertIfGeneration writes a session row only while the user's credentials
+	// generation still matches the one the caller's evidence was read under,
+	// reporting the rows written. Zero means an account reclaim landed in
+	// between and this session must not exist: the check happens at write time,
+	// inside the database, because a Go-side read would be exactly the race it
+	// is meant to close.
+	InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error)
 
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
 	// path behind every authenticated request — joining the owning user's

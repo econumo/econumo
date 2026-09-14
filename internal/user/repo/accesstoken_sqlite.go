@@ -38,3 +38,7 @@ func (accessTokenSqliteQuerier) DeleteAccessToken(ctx context.Context, db backen
 func (accessTokenSqliteQuerier) DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error) {
 	return sqlitegen.New(db).DeleteDeadAccessTokens(ctx, p)
 }
+
+func (accessTokenSqliteQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
+	return sqlitegen.New(db).InsertAccessTokenIfGeneration(ctx, p)
+}

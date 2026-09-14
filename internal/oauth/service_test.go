@@ -27,13 +27,16 @@ func (c *fixedClock) Now() time.Time { return c.t }
 // the FK constraints on identities/handoffs hold) but the aggregate is kept in
 // memory, which is all the oauth service reads.
 type fakeUsers struct {
-	t         *testing.T
-	db        *dbtest.DB
-	byID      map[string]*model.User
-	byEmail   map[string]*model.User
-	minted    []string // providers of minted sessions
-	replaced  []string // emails mirrored via ReplaceVerifiedEmail
-	provision int
+	t       *testing.T
+	db      *dbtest.DB
+	byID    map[string]*model.User
+	byEmail map[string]*model.User
+	minted  []string // providers of minted sessions
+	// generation models the DB-side reclaim fence: MintSession refuses a stale
+	// one exactly as the guarded insert does.
+	generation map[string]int64
+	replaced   []string // emails mirrored via ReplaceVerifiedEmail
+	provision  int
 
 	// Fault injection for coverage of the service's error-handling branches:
 	// non-nil forces the corresponding method to fail regardless of state.
@@ -44,7 +47,7 @@ type fakeUsers struct {
 }
 
 func newFakeUsers(t *testing.T, db *dbtest.DB) *fakeUsers {
-	return &fakeUsers{t: t, db: db, byID: map[string]*model.User{}, byEmail: map[string]*model.User{}}
+	return &fakeUsers{t: t, db: db, byID: map[string]*model.User{}, byEmail: map[string]*model.User{}, generation: map[string]int64{}}
 }
 
 func (f *fakeUsers) seed(t *testing.T, email string, algorithm string) *model.User {
@@ -86,9 +89,26 @@ func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email 
 	f.replaced = append(f.replaced, email)
 	return nil
 }
-func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provider string, idToken *string) (*model.LoginResult, error) {
+func (f *fakeUsers) CredentialsGeneration(_ context.Context, userID vo.Id) (int64, error) {
+	return f.generation[userID.String()], nil
+}
+
+// reclaim bumps the fence the way a completed password reset does — in this
+// fake AND in the users row the guarded writes read, so the two agree.
+func (f *fakeUsers) reclaim(userID vo.Id) {
+	f.generation[userID.String()]++
+	if _, err := f.db.Raw.Exec(f.db.Rebind(
+		`UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?`), userID.String()); err != nil {
+		f.t.Fatalf("bump generation: %v", err)
+	}
+}
+
+func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provider string, idToken *string, generation int64) (*model.LoginResult, error) {
 	if f.failMintSession != nil {
 		return nil, f.failMintSession
+	}
+	if generation != f.generation[userID.String()] {
+		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	f.minted = append(f.minted, provider)
 	return &model.LoginResult{Token: "eco_ses_test", User: model.CurrentUserResult{Id: userID.String()}}, nil
@@ -223,7 +243,7 @@ func TestCallback_AppClientRedirectsToScheme(t *testing.T) {
 func TestCallback_ExistingIdentityLogsIn(t *testing.T) {
 	h := newHarness(t, false, false) // registration off: must not matter
 	u := h.users.seed(t, "old@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "changed@example.test"
 	redirect := h.login("google", "web")
 	if handoffOf(t, redirect) == "" {
@@ -241,7 +261,7 @@ func TestCallback_ExistingIdentityLogsIn(t *testing.T) {
 func TestCallback_EmailDriftMirroredForPasswordlessSingleIdentity(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "renamed@example.test"
 	h.login("google", "web")
 	if len(h.users.replaced) != 1 || h.users.replaced[0] != "renamed@example.test" {
@@ -253,7 +273,7 @@ func TestCallback_EmailDriftNotMirroredWhenAddressTaken(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmNone)
 	h.users.seed(t, "taken@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "taken@example.test"
 	redirect := h.login("google", "web")
 	if handoffOf(t, redirect) == "" || len(h.users.replaced) != 0 {
@@ -468,7 +488,7 @@ func TestCompleteLink_RejectsAForeignFlowSecretAndReplays(t *testing.T) {
 func TestCompleteLink_RejectsASignInHandoff(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "me@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "me@example.test", h.clock.Now()))
 	redirect := h.login("google", "web")
 	_, err := h.svc.CompleteLink(context.Background(), u.ID, model.CompleteLinkRequest{Code: handoffOf(t, redirect), Flow: h.flow})
 	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLinkInvalid {
@@ -489,7 +509,7 @@ func TestCompleteLink_ExpiredCode(t *testing.T) {
 func TestListAndUnlinkIdentities(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
 	list, err := h.svc.ListIdentities(context.Background(), u.ID)
 	if err != nil || len(list) != 1 || list[0].Provider != "google" || list[0].CreatedAt == "" {
 		t.Fatalf("%+v %v", list, err)
@@ -498,7 +518,7 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLastIdentity {
 		t.Fatalf("passwordless single identity must refuse: %v", err)
 	}
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o1", "me@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o1", "me@example.test", h.clock.Now()))
 	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
 		t.Fatal(err)
 	}
@@ -506,7 +526,7 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 		t.Fatal("unlinking a missing identity is an error")
 	}
 	pw := h.users.seed(t, "pw@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), pw.ID, "google", h.fake.IssuerURL(), "g2", "pw@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), pw.ID, "google", h.fake.IssuerURL(), "g2", "pw@example.test", h.clock.Now()))
 	if _, err := h.svc.UnlinkIdentity(context.Background(), pw.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
 		t.Fatalf("a password user may unlink their only identity: %v", err)
 	}
@@ -516,7 +536,7 @@ func TestInactiveUserRejected(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "gone@example.test", model.AlgorithmArgon2id)
 	u.IsActive = false
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "gone@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "gone@example.test", h.clock.Now()))
 	if r := h.login("google", "web"); r != "https://app.example.test/login?oauthError=account_inactive" {
 		t.Fatalf("redirect %s", r)
 	}
@@ -579,9 +599,7 @@ func TestCallback_RefusesEvenWhenTheSquatterAlreadyLinkedAProvider(t *testing.T)
 	h := newHarness(t, false, true)
 	squatted := h.users.seed(t, "victim@example.test", model.AlgorithmArgon2id)
 	attacker := model.NewIdentity(vo.NewId(), squatted.ID, "google", h.fake.IssuerURL(), "attacker-google-sub", "attacker@example.test", h.clock.Now())
-	if err := h.ids.Save(context.Background(), attacker); err != nil {
-		t.Fatal(err)
-	}
+	saveIdentity(t, h, attacker)
 	h.fake.Email, h.fake.EmailVerified = "victim@example.test", true
 	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=account_exists_password" {
 		t.Fatalf("redirect %s", r)
@@ -761,7 +779,7 @@ func TestCallback_IdentitiesAreScopedToTheIssuer(t *testing.T) {
 func TestCallback_AutoLinkRepointsAnIdentityAfterAnIssuerChange(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "same@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "oidc", "https://old.example.test", "old-subject", "same@example.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "oidc", "https://old.example.test", "old-subject", "same@example.test", h.clock.Now()))
 
 	other := oidctest.New(t)
 	other.Subject, other.Email, other.EmailVerified = "new-subject", "same@example.test", true
@@ -788,9 +806,7 @@ func TestReclaimAccount(t *testing.T) {
 	mine := model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g-owner", "Owner@Example.test", h.clock.Now())
 	theirs := model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o-squatter", "squatter@example.test", h.clock.Now())
 	for _, i := range []*model.Identity{mine, theirs} {
-		if err := h.ids.Save(ctx, i); err != nil {
-			t.Fatal(err)
-		}
+		saveIdentity(t, h, i)
 	}
 
 	// A sign-in code minted moments ago is a session waiting to be claimed, and
@@ -821,5 +837,57 @@ func TestReclaimAccount(t *testing.T) {
 	// Idempotent: nothing foreign or pending is left to remove.
 	if n, grants, err := h.svc.ReclaimAccount(ctx, u.ID, "owner@example.test"); err != nil || n != 0 || grants != 0 {
 		t.Fatalf("removed %d/%d (%v), want 0/0", n, grants, err)
+	}
+}
+
+// saveIdentity seeds an identity through the guarded write at the user's
+// current generation, the way a live flow would.
+func saveIdentity(t *testing.T, h *harness, i *model.Identity) {
+	t.Helper()
+	gen, _ := h.users.CredentialsGeneration(context.Background(), i.UserID)
+	n, err := h.ids.SaveIfCurrent(context.Background(), i, gen)
+	if err != nil || n != 1 {
+		t.Fatalf("seed identity: %d %v", n, err)
+	}
+}
+
+// The reported race, without the racing: a redemption that consumed its
+// handoff before the reclaim must not mint a session after it. The fence is a
+// generation stamped on the handoff and checked by the database at insert
+// time, so the outcome does not depend on when the goroutine was paused.
+func TestExchangeHandoff_RefusedAfterAReclaim(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "owner@example.test", model.AlgorithmNone)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "owner@example.test", h.clock.Now()))
+	h.fake.Email, h.fake.EmailVerified = "owner@example.test", true
+	redirect := h.login("google", "web")
+	if handoffOf(t, redirect) == "" {
+		t.Fatalf("redirect %s", redirect)
+	}
+
+	h.users.reclaim(u.ID) // the owner completes a password reset
+
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
+		t.Fatal("a handoff resolved before the reclaim must not mint a session after it")
+	}
+}
+
+// The other half of the same race: a callback already in flight must not land
+// an identity the reclaim has just removed.
+func TestCallback_IdentityWriteRefusedAfterAReclaim(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "owner@example.test", model.AlgorithmNone)
+	h.users.reclaim(u.ID) // the flow below reads the stale generation 0
+
+	stale := model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "sub", "owner@example.test", h.clock.Now())
+	n, err := h.ids.SaveIfCurrent(context.Background(), stale, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatal("a write from before the reclaim must affect no rows")
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err == nil {
+		t.Fatal("no identity may exist")
 	}
 }

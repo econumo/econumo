@@ -24,10 +24,12 @@ type (
 	updateAccessTokenParams   = sqlitegen.UpdateAccessTokenParams
 	listAccessTokensParams    = sqlitegen.ListAccessTokensByUserParams
 	deleteDeadAccessTokParams = sqlitegen.DeleteDeadAccessTokensParams
+	insertTokenIfGenParams    = sqlitegen.InsertAccessTokenIfGenerationParams
 )
 
 type accessTokenQuerier interface {
 	InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error
+	InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error)
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
 	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
@@ -62,6 +64,16 @@ func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) erro
 		Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
 		Provider: t.Provider, IDToken: t.IDToken,
+	})
+}
+
+func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
+	return r.q.InsertAccessTokenIfGeneration(ctx, r.db(ctx), insertTokenIfGenParams{
+		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
+		Name: t.Name, UserAgent: t.UserAgent,
+		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
+		Provider: t.Provider, IDToken: t.IDToken,
+		ID_2: t.UserID.String(), CredentialsGeneration: generation,
 	})
 }
 

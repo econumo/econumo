@@ -52,6 +52,7 @@ func (r *HandoffRepo) Insert(ctx context.Context, h *model.OAuthHandoff) error {
 		CodeHash: h.CodeHash, Kind: h.Kind, UserID: h.UserID.String(), Provider: h.Provider, Issuer: h.Issuer,
 		Subject: h.Subject, Email: h.Email, FlowHash: h.FlowHash,
 		IDToken: h.IDToken, CreatedAt: h.CreatedAt, ExpiresAt: h.ExpiresAt,
+		CredentialsGeneration: h.Generation,
 	})
 }
 
@@ -69,7 +70,8 @@ func (r *HandoffRepo) Get(ctx context.Context, codeHash string) (*model.OAuthHan
 	}
 	return &model.OAuthHandoff{CodeHash: row.CodeHash, Kind: row.Kind, UserID: uid, Provider: row.Provider,
 		Issuer: row.Issuer, Subject: row.Subject, Email: row.Email, FlowHash: row.FlowHash,
-		IDToken: row.IDToken, CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
+		IDToken: row.IDToken, Generation: row.CredentialsGeneration,
+		CreatedAt: row.CreatedAt, ExpiresAt: row.ExpiresAt}, nil
 }
 
 func (r *HandoffRepo) Delete(ctx context.Context, codeHash string) (int64, error) {
