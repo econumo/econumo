@@ -92,7 +92,8 @@ const (
 // every way in that never proved it: otherwise someone who registered the
 // address before its owner keeps their own linked provider account — or simply
 // holds an unredeemed sign-in code minted moments earlier — and walks back in
-// after the reclaim. nil disables the step (tests, CLI).
+// after the reclaim. The operator's user:change-password reclaims the same way.
+// nil disables the step (tests).
 type OAuthReclaimer interface {
 	// ReclaimAccount removes the identities whose provider does NOT vouch for
 	// provenEmail plus every pending grant of the user (unredeemed handoffs and

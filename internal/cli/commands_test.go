@@ -25,7 +25,11 @@ import (
 // doc comment: "it assumes an already-migrated database"), so this helper
 // migrates the fresh file itself before any command touches it — the same way
 // dbtest does for repo/app tests, just against a file DB instead of in-memory.
-func cliEnv(t *testing.T) {
+func cliEnv(t *testing.T) { cliEnvDB(t) }
+
+// cliEnvDB is cliEnv for tests that also inspect the rows a command wrote: it
+// returns the path of the migrated database the container will open.
+func cliEnvDB(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db.sqlite")
@@ -50,6 +54,7 @@ func cliEnv(t *testing.T) {
 	}
 
 	t.Setenv("DATABASE_URL", "sqlite://"+dbPath)
+	return dbPath
 }
 
 // TestUserCommandLifecycle drives the user management commands end to end
@@ -396,5 +401,48 @@ func TestTokenPurge(t *testing.T) {
 		if got := Run(args); got != 1 {
 			t.Fatalf("Run(%v) = %d, want 1", args, got)
 		}
+	}
+}
+
+// The operator's user:change-password is the account reclaim, so the CLI
+// container has to wire the oauth side of it: an intruder's linked identity is
+// a way back into the account that the lost password does not close. Nothing
+// else in the CLI needs the oauth service, which is exactly why it is easy to
+// leave unwired — this test is the guard.
+func TestUserChangePasswordUnlinksAForeignIdentity(t *testing.T) {
+	dbPath := cliEnvDB(t)
+	if got := Run([]string{"user:create", "Victim", "victim@example.test", "victim-pw"}); got != 0 {
+		t.Fatalf("user:create = %d, want 0", got)
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	defer db.Close()
+	ctx := context.Background()
+	var uid string
+	if err := db.QueryRowContext(ctx, `SELECT id FROM users WHERE lower(email) = 'victim@example.test'`).Scan(&uid); err != nil {
+		t.Fatalf("user id: %v", err)
+	}
+	// The identity the intruder linked: their own provider account, vouching for
+	// an address that is not this one.
+	if _, err := db.ExecContext(ctx, `INSERT INTO users_identities
+		(id, user_id, provider, issuer, subject, email, created_at, updated_at)
+		VALUES (?, ?, 'google', 'https://accounts.google.com', 'squatter-sub', 'squatter@example.test', ?, ?)`,
+		vo.NewId().String(), uid, "2026-01-01 00:00:00", "2026-01-01 00:00:00"); err != nil {
+		t.Fatalf("seed identity: %v", err)
+	}
+
+	if got := Run([]string{"user:change-password", "victim@example.test", "operator-set-pw"}); got != 0 {
+		t.Fatalf("user:change-password = %d, want 0", got)
+	}
+
+	var n int
+	if err := db.QueryRowContext(ctx, `SELECT COUNT(*) FROM users_identities WHERE user_id = ?`, uid).Scan(&n); err != nil {
+		t.Fatalf("count identities: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("%d foreign identity row(s) survived user:change-password", n)
 	}
 }

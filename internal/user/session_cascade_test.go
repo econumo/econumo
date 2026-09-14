@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/dbtest"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
@@ -71,18 +72,52 @@ func TestUpdatePassword_RevokesOtherSessionsKeepsCurrentAndPATs(t *testing.T) {
 	}
 }
 
-func TestAdminChangePassword_RevokesAllSessionsKeepsPATs(t *testing.T) {
-	e := newCascadeEnv(t)
+// The operator's user:change-password is the account reclaim too: it is what an
+// admin runs to evict whoever holds the account, so nothing that never proved
+// the mailbox may outlive it — not a personal token, not an in-flight sign-in,
+// and not a linked identity vouching for someone else's address.
+func TestAdminChangePassword_IsAFullReclaim(t *testing.T) {
+	db := dbtest.New(t)
+	svc, tokens, _, uid := newAuthEnvOn(t, db)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	exp := authT0.Add(appuser.SessionTTL)
+	patExp := authT0.Add(90 * 24 * time.Hour)
+	ses := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_admin-reclaim", &exp)
+	pat := seedToken(t, tokens, uid, model.TokenKindPersonal, "eco_pat_admin-reclaim", &patExp)
+	reclaimer := &fakeReclaimer{}
+	svc.SetOAuthReclaimer(reclaimer)
 
-	if err := e.svc.AdminChangePassword(context.Background(), "auth@econumo.test", "next-secret"); err != nil {
+	before, err := users.GetByID(ctx, uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if err := svc.AdminChangePassword(ctx, "auth@econumo.test", "operator-set-pw-1"); err != nil {
 		t.Fatalf("AdminChangePassword: %v", err)
 	}
-	a, b, pat := e.liveness(t, authT0.Add(time.Minute))
-	if a || b {
-		t.Errorf("all sessions must be revoked (a=%v b=%v)", a, b)
+
+	now := authT0.Add(time.Minute)
+	for _, tc := range []struct {
+		id   vo.Id
+		name string
+	}{{ses, "session"}, {pat, "personal token"}} {
+		tok, gerr := tokens.GetByID(ctx, tc.id)
+		if gerr != nil {
+			t.Fatalf("GetByID(%s): %v", tc.name, gerr)
+		}
+		if tok.IsLive(now) {
+			t.Errorf("%s must be revoked by the operator's password change", tc.name)
+		}
 	}
-	if !pat {
-		t.Error("PATs must survive an admin password change")
+	after, err := users.GetByID(ctx, uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if after.CredentialsGeneration != before.CredentialsGeneration+1 {
+		t.Errorf("credentials generation %d -> %d, want +1", before.CredentialsGeneration, after.CredentialsGeneration)
+	}
+	if len(reclaimer.calls) != 1 || reclaimer.calls[0].userID != uid.String() || reclaimer.calls[0].email != "auth@econumo.test" {
+		t.Fatalf("the account's own address must drive the identity reclaim: %+v", reclaimer.calls)
 	}
 }
 

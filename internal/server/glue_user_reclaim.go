@@ -18,3 +18,9 @@ var _ appuser.OAuthReclaimer = oauthIdentityReclaimer{}
 func (a oauthIdentityReclaimer) ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail string) (int64, int64, error) {
 	return a.oauth.ReclaimAccount(ctx, userID, provenEmail)
 }
+
+// NewOAuthReclaimer exposes the reclaim adapter to the CLI container, which
+// wires the same reclaim behind user:change-password.
+func NewOAuthReclaimer(svc *appoauth.Service) appuser.OAuthReclaimer {
+	return oauthIdentityReclaimer{oauth: svc}
+}

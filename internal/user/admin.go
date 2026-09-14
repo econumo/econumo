@@ -61,8 +61,9 @@ func (s *Service) AdminChangeEmail(ctx context.Context, oldEmail, newEmail strin
 }
 
 // AdminChangePassword sets a user's password, rehashed with the current
-// algorithm (argon2id), looked up by email. All the user's sessions are
-// revoked (there is no presenting session on the CLI path); PATs survive.
+// algorithm (argon2id), looked up by email. An operator setting a password is
+// evicting whoever holds the account, so it is a full reclaim, exactly like a
+// completed reset (see reclaimCredentials).
 func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
@@ -72,13 +73,19 @@ func (s *Service) AdminChangePassword(ctx context.Context, email, newPassword st
 	if herr != nil {
 		return herr
 	}
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
-		return s.repo.Save(ctx, u)
-	}); err != nil {
-		return err
+	// The operator is authoritative, so the account's own address is the proven
+	// one: an identity vouching for it survives, everything else goes.
+	provenEmail, derr := s.encode.Decode(u.Email)
+	if derr != nil {
+		return derr
 	}
-	return s.revokeSessions(ctx, u.ID, vo.Id{}, s.clock.Now())
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
+		if serr := s.repo.Save(ctx, u); serr != nil {
+			return serr
+		}
+		return s.reclaimCredentials(ctx, u, provenEmail)
+	})
 }
 
 // AdminActivate marks the user active, looked up by email.

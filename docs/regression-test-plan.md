@@ -133,7 +133,9 @@ navigation (single-pane vs sidebar).
       a pending email change is cancelled. A provider sign-in that was already
       mid-flight when the reset landed cannot be completed either — finishing
       it returns the sign-in error rather than a session. The recovery dialog
-      says so before the reset is submitted.
+      says so before the reset is submitted. CLI `user:change-password <email>
+      <new>` performs the same reclaim (sessions, tokens, foreign identity,
+      pending grants).
 - [ ] A provider-created (passwordless) account using Settings → Profile →
       "Set a password" keeps its linked provider through that flow — it is the
       same reset endpoint, and the provider vouches for the account's address.

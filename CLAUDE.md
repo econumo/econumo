@@ -714,21 +714,25 @@ In the distroless image these run via the binary directly, e.g.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
-- Revocation cascades: `update-password` revokes all sessions EXCEPT the presenting
-  one (PATs survive — integrations must outlive a password change); CLI
-  `user:change-password` revokes all sessions; `user:deactivate` revokes sessions AND
-  PATs (which is why per-request auth needs no `is_active` join). **`reset-password` is
-  the reclaim**: completing it is the account's proof of mailbox ownership, so it
-  revokes every session AND every PAT, drops every pending grant (outstanding reset
+- Revocation cascades: `update-password` (the user changing their own password) revokes
+  only the OTHER sessions and keeps PATs and identities — integrations must outlive a
+  password change; `user:deactivate` revokes sessions AND
+  PATs (which is why per-request auth needs no `is_active` join). **`reset-password` and
+  CLI `user:change-password` are the account RECLAIM** (one primitive,
+  `user.reclaimCredentials`): a completed reset is the account's proof of mailbox
+  ownership and an operator setting a password is evicting whoever holds the account, so
+  both revoke every session AND every PAT, drop every pending grant (outstanding reset
   codes, a pending email change, and on the oauth side every unredeemed handoff — a
   60-second sign-in code is a session in waiting — plus in-flight link states naming
-  the account), and unlinks every external identity whose provider vouches for a
+  the account), and unlink every external identity whose provider vouches for a
   DIFFERENT address (`user.OAuthReclaimer` → `oauth.ReclaimAccount`, wired in
-  `internal/server`). What it deliberately does NOT touch is data sharing: connections
-  and budget grants survive, because a routine reset must not dissolve a family's
-  shared budget. Registration does not
-  always verify email, so a squatter could have linked their own provider account to an
-  address they never owned; revoking passwords and tokens alone would leave that link
+  `internal/server` for the API and by the CLI container over the same
+  `server.NewOAuthReclaimer`; the proven address is the presented one on the reset path
+  and the account's own on the CLI path, where the operator is authoritative). What the
+  reclaim deliberately does NOT touch is data sharing: connections and budget grants
+  survive, because a routine reset must not dissolve a family's shared budget.
+  Registration does not always verify email, so a squatter could have linked their own
+  provider account to an address they never owned; revoking passwords and tokens alone would leave that link
   as a way back in. An identity claiming the proven address survives — obtaining one
   needs that mailbox — which is also why the passwordless "Set a password" flow (the
   same reset endpoint) keeps its provider. All of it shares the password write's
