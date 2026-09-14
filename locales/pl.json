@@ -1546,7 +1546,10 @@
       "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",
       "handoff_invalid": "Link logowania jest nieprawidłowy lub wygasł",
       "last_identity": "Ustaw hasło przed odłączeniem jedynej metody logowania",
-      "identity_not_found": "Nie znaleziono powiązanego konta"
+      "identity_not_found": "Nie znaleziono powiązanego konta",
+      "link_invalid": "Sesja powiązania jest nieprawidłowa lub wygasła",
+      "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo",
+      "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy"
     },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Do Twojego konta powiązano nową metodę logowania",
-      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. Dla bezpieczeństwa Twoje pozostałe sesje zostały wylogowane.\n\nJeśli to nie Ty, natychmiast zresetuj hasło — spowoduje to zakończenie wszystkich pozostałych sesji i umożliwi odłączenie konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. Ponieważ to dostawca, a nie hasło, potwierdził, że ten adres e-mail należy do Ciebie, logowanie hasłem zostało wyłączone, a wszystkie sesje i tokeny API zostały unieważnione.\n\nJeśli to nie Ty, użyj opcji „Nie pamiętam hasła”, aby natychmiast ustawić nowe, a następnie odłącz konto w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

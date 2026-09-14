@@ -67,11 +67,21 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 	return err
 }
 
-// RevokeAllSessions ends every session of the user, PATs untouched — the
-// reset-password cascade, reused by the oauth feature when a provider takes
-// over an account that was pre-registered with a password.
-func (s *Service) RevokeAllSessions(ctx context.Context, userID vo.Id) error {
-	return s.revokeSessions(ctx, userID, vo.Id{}, s.clock.Now())
+// EvictLocalCredentials clears the password and revokes every credential —
+// sessions AND personal tokens — of an account an external provider has just
+// proved the email address of. Registration does not always verify addresses,
+// so a password on such an account is evidence of nothing: an attacker who
+// pre-registered the address would otherwise keep a working password and live
+// API tokens after the rightful owner signed in through the provider. The
+// owner recovers a password through the mailbox they demonstrably control.
+func (s *Service) EvictLocalCredentials(ctx context.Context, userID vo.Id) error {
+	if _, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
+		u.ClearPassword(now)
+		return nil
+	}); err != nil {
+		return err
+	}
+	return s.revokeTokens(ctx, userID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
 }
 
 // MarkEmailVerified records proof of mailbox ownership established elsewhere

@@ -183,18 +183,32 @@ user database.
   confirmation step, because the provider already vouches that the email is
   verified. You'll be signed in to your existing account, and the provider
   now appears as a linked account under Settings → Profile → Linked
-  accounts. If that account had a password, every one of its open sessions is
-  signed out (as a password reset does): the provider proved that whoever just
-  signed in owns the address, which is not something the password holder
-  necessarily ever proved. That account's owner is also emailed a notice that
-  a sign-in method was linked and their other sessions were signed out, so an
-  unexpected auto-link is noticeable.
-- **A sign-in can only be completed by the browser that started it.** The
+  accounts. If that account had a password, everything that predated the link
+  is retired: its open sessions are signed out, its personal access tokens are
+  revoked, and password sign-in is turned off. The provider proved that whoever
+  just signed in owns the address, which is not something the password holder
+  necessarily ever proved — so someone who had registered that address first
+  keeps nothing. The account's owner is emailed a notice naming the provider,
+  so an unexpected auto-link is noticeable, and can set a fresh password from
+  Settings → Profile → "Set a password" (it is emailed to the address the
+  provider just verified).
+- **Linking a provider from Settings is finished by the browser that started
+  it.** The provider's answer carries nothing that identifies you, so Econumo
+  parks the result and only writes the link when the browser that began it
+  comes back signed in and presenting its one-flow secret. A "link this
+  account" URL someone else sends you therefore cannot attach your provider
+  account to theirs.
+- **A sign-in, too, can only be completed by the browser that started it.** The
   "Continue with ..." button receives a one-flow secret from the server and
   keeps it locally; the browser must present it together with the one-time
   handoff code to receive a session. Starting a sign-in in one browser and
   finishing it in another therefore fails with "The sign-in attempt expired or
   was already used" — as does a sign-in link someone else hands you.
+- **Changing `ECONUMO_OIDC_ISSUER_URL` later is safe.** A linked identity
+  records the issuer it came from, so a user at the new issuer can never be
+  mistaken for a user at the old one, even if the two hand out the same
+  subject id. Existing users are re-matched by their verified email on the next
+  sign-in and their linked account moves to the new issuer by itself.
 - **An email the provider has not verified is always rejected**, even if it
   would otherwise match an existing account. This is what
   `ECONUMO_OIDC_TRUST_EMAIL` is for: some providers (see Cloudflare Access

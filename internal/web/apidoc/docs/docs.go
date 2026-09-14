@@ -5514,6 +5514,75 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/oauth/complete-link": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Redeems the one-shot code the link callback returned, together with the flow secret held by the client that started the link.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "OAuth"
+                ],
+                "summary": "Finish linking a provider to the current account",
+                "parameters": [
+                    {
+                        "description": "Link handoff code and flow secret",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.CompleteLinkRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/apidoc.JsonResponseOk"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.CompleteLinkResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseUnauthorized"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/apidoc.JsonResponseException"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/oauth/exchange-handoff": {
             "post": {
                 "consumes": [
@@ -10475,6 +10544,25 @@ const docTemplate = `{
             "properties": {
                 "item": {
                     "$ref": "#/definitions/model.BudgetResult"
+                }
+            }
+        },
+        "model.CompleteLinkRequest": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "flow": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.CompleteLinkResult": {
+            "type": "object",
+            "properties": {
+                "provider": {
+                    "type": "string"
                 }
             }
         },

@@ -68,11 +68,12 @@ func (s *Service) Callback(ctx context.Context, provider string, in CallbackInpu
 		return s.errorURLFor(st, "email_unverified")
 	}
 	email := strings.ToLower(strings.TrimSpace(claims.Email))
+	issuer := p.Client.Issuer().IssuerURL
 
 	if st.Intent == model.OAuthIntentLink {
-		return s.link(ctx, st, provider, claims.Subject, email)
+		return s.link(ctx, st, provider, issuer, claims.Subject, email)
 	}
-	return s.login(ctx, st, provider, claims, email, toks.IDToken)
+	return s.login(ctx, st, provider, issuer, claims, email, toks.IDToken)
 }
 
 // consumeState loads and DELETES the state row; a consumed state is invalid.
@@ -138,7 +139,7 @@ func appleName(raw string) string {
 	return strings.TrimSpace(u.Name.FirstName + " " + u.Name.LastName)
 }
 
-func (s *Service) login(ctx context.Context, st *model.OAuthState, provider string, claims oidc.Claims, email, idToken string) string {
+func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, issuer string, claims oidc.Claims, email, idToken string) string {
 	now := s.clock.Now()
 	var tokenForSession *string
 	if provider == model.OAuthProviderOIDC {
@@ -147,7 +148,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 	}
 
 	// Step 5: existing identity.
-	id, err := s.identities.GetByProviderSubject(ctx, provider, claims.Subject)
+	id, err := s.identities.GetByProviderSubject(ctx, provider, issuer, claims.Subject)
 	if err == nil {
 		u, uerr := s.users.FindByID(ctx, id.UserID)
 		if uerr != nil {
@@ -176,7 +177,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 		if !u.IsActive {
 			return s.errorURLFor(st, "account_inactive")
 		}
-		if serr := s.autoLink(ctx, u, provider, claims.Subject, email, now); serr != nil {
+		if serr := s.autoLink(ctx, u, provider, issuer, claims.Subject, email, now); serr != nil {
 			logWarn(ctx, "oauth callback: auto-link", serr, "provider", provider)
 			return s.errorURLFor(st, "provider_error")
 		}
@@ -197,7 +198,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 		logWarn(ctx, "oauth callback: provision", err, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
-	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, claims.Subject, email, now)); serr != nil {
+	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, issuer, claims.Subject, email, now)); serr != nil {
 		logWarn(ctx, "oauth callback: identity insert", serr, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
@@ -207,24 +208,26 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider stri
 
 // autoLink attaches the provider identity to an account found by email. When
 // that account has a password, whoever set it never had to prove they own the
-// address (registration does not always verify), so the sign-in is treated
-// like a password reset: every session of the account is revoked, and the
-// provider's assertion marks the address verified. A passwordless account was
-// created through a provider, so its owner already proved the address and
-// keeps their sessions. The three writes share one transaction: a half-applied
-// link would leave the eviction undone while step 5 signs the attacker in.
-// Once that commits, the owner of a has-a-password account is notified
-// best-effort — a session eviction they didn't initiate must be noticeable.
-func (s *Service) autoLink(ctx context.Context, u *model.User, provider, subject, email string, now time.Time) error {
+// address (registration does not always verify), so nothing that predates the
+// link may survive it: the password is cleared and every session and personal
+// token is revoked, leaving the provider — which did prove the address — as the
+// way in. A mailbox the owner controls still restores a password through the
+// reset flow. A passwordless account was created through a provider, so its
+// owner already proved the address and keeps its credentials. The writes share
+// one transaction: a half-applied link would leave the eviction undone while
+// step 5 signs the attacker in. Once that commits, the owner of a
+// has-a-password account is notified best-effort — an eviction they didn't
+// initiate must be noticeable.
+func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer, subject, email string, now time.Time) error {
 	hasPassword := u.HasPassword()
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if err := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, subject, email, now)); err != nil {
+		if err := s.saveLinkedIdentity(ctx, u.ID, provider, issuer, subject, email, now); err != nil {
 			return err
 		}
 		if !hasPassword {
 			return nil
 		}
-		if err := s.users.RevokeAllSessions(ctx, u.ID); err != nil {
+		if err := s.users.EvictLocalCredentials(ctx, u.ID); err != nil {
 			return err
 		}
 		return s.users.MarkEmailVerified(ctx, u.ID)
@@ -237,6 +240,24 @@ func (s *Service) autoLink(ctx context.Context, u *model.User, provider, subject
 		}
 	}
 	return nil
+}
+
+// saveLinkedIdentity writes the slot's identity for a user, repointing the
+// existing row when the issuer or subject moved (an operator changing
+// ECONUMO_OIDC_ISSUER_URL): one row per (user, provider) is all the schema
+// allows, and the verified email already proved the account is theirs.
+func (s *Service) saveLinkedIdentity(ctx context.Context, userID vo.Id, provider, issuer, subject, email string, now time.Time) error {
+	existing, err := s.identities.GetByUserProvider(ctx, userID, provider)
+	switch {
+	case err == nil:
+		existing.Repoint(issuer, subject, email, now)
+		return s.identities.Save(ctx, existing)
+	default:
+		if _, ok := errs.AsNotFound(err); !ok {
+			return err
+		}
+		return s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, provider, issuer, subject, email, now))
+	}
 }
 
 // mirrorEmailDrift applies the spec's email-drift rule for an existing identity.
@@ -274,7 +295,7 @@ func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID 
 		return s.errorURLFor(st, "provider_error")
 	}
 	now := s.clock.Now()
-	if err := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), UserID: userID, Provider: provider,
+	if err := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), Kind: model.OAuthHandoffKindLogin, UserID: userID, Provider: provider,
 		FlowHash: st.FlowHash, IDToken: idToken, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
 		logWarn(ctx, "oauth callback: handoff insert", err, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
@@ -283,30 +304,42 @@ func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID 
 	return s.successURL(st.Client, code)
 }
 
-func (s *Service) link(ctx context.Context, st *model.OAuthState, provider, subject, email string) string {
-	now := s.clock.Now()
-	existing, err := s.identities.GetByProviderSubject(ctx, provider, subject)
+// link resolves the callback of a link flow WITHOUT writing the identity. The
+// callback carries no proof of who started the flow — the provider redirects
+// whichever browser followed the authorization URL — so an attacker could
+// otherwise mail their own start-link URL to a victim and have the victim's
+// identity saved against the attacker's account. The resolved identity is
+// parked in a one-shot link handoff instead; CompleteLink performs the write
+// once the initiating client presents its flow secret on an authenticated
+// request. The taken/already-linked checks still run here so the user sees the
+// real reason on the redirect rather than after a pointless round trip.
+func (s *Service) link(ctx context.Context, st *model.OAuthState, provider, issuer, subject, email string) string {
+	existing, err := s.identities.GetByProviderSubject(ctx, provider, issuer, subject)
 	switch {
 	case err == nil && !existing.UserID.Equal(st.LinkUserID):
 		return s.errorURLFor(st, "identity_taken")
 	case err == nil:
-		existing.UpdateEmail(email, now)
-		if serr := s.identities.Save(ctx, existing); serr != nil {
+		// Already this user's identity; CompleteLink refreshes its email.
+	default:
+		if _, ok := errs.AsNotFound(err); !ok {
+			logWarn(ctx, "oauth link: identity lookup", err, "provider", provider)
 			return s.errorURLFor(st, "provider_error")
 		}
-		return s.linkedURL(st.Client, provider)
+		if _, gerr := s.identities.GetByUserProvider(ctx, st.LinkUserID, provider); gerr == nil {
+			return s.errorURLFor(st, "provider_already_linked")
+		}
 	}
-	if _, ok := errs.AsNotFound(err); !ok {
-		logWarn(ctx, "oauth link: identity lookup", err, "provider", provider)
+	code, cerr := oidc.RandomToken()
+	if cerr != nil {
 		return s.errorURLFor(st, "provider_error")
 	}
-	if _, gerr := s.identities.GetByUserProvider(ctx, st.LinkUserID, provider); gerr == nil {
-		return s.errorURLFor(st, "provider_already_linked")
-	}
-	if serr := s.identities.Save(ctx, model.NewIdentity(s.identities.NextIdentity(), st.LinkUserID, provider, subject, email, now)); serr != nil {
-		logWarn(ctx, "oauth link: identity insert", serr, "provider", provider)
+	now := s.clock.Now()
+	if ierr := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), Kind: model.OAuthHandoffKindLink,
+		UserID: st.LinkUserID, Provider: provider, Issuer: issuer, Subject: subject, Email: email,
+		FlowHash: st.FlowHash, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); ierr != nil {
+		logWarn(ctx, "oauth link: handoff insert", ierr, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "user_id", st.LinkUserID.String())
-	return s.linkedURL(st.Client, provider)
+	return s.linkPendingURL(st.Client, code)
 }

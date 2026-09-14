@@ -1546,7 +1546,10 @@
       "provider_not_configured": "Il provider di accesso non è configurato",
       "handoff_invalid": "Il link di accesso non è valido o è scaduto",
       "last_identity": "Imposta una password prima di scollegare il tuo unico metodo di accesso",
-      "identity_not_found": "Account collegato non trovato"
+      "identity_not_found": "Account collegato non trovato",
+      "link_invalid": "La sessione di collegamento non è valida o è scaduta",
+      "identity_taken": "Questo account esterno è già collegato a un altro account Econumo",
+      "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider"
     },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Un nuovo metodo di accesso è stato collegato al tuo account",
-      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. Per sicurezza, le tue altre sessioni sono state disconnesse.\n\nSe non sei stato tu, reimposta subito la password: questo chiude tutte le altre sessioni e ti permette di scollegare l'account dalle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+      "body": "Ciao {name},\n\nUn account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere. Poiché è stato il provider, e non una password, a dimostrare che questo indirizzo email è tuo, l'accesso con password è stato disattivato e tutte le sessioni e i token API sono stati revocati.\n\nSe non sei stato tu, usa subito «Password dimenticata» per impostarne una nuova e poi scollega l'account dalle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
   }
 }

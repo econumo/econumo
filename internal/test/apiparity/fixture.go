@@ -182,5 +182,5 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	// have a real row to read/remove. The guest has a password (SeedPassword
 	// above), so unlinking their only identity succeeds.
 	f.Identity(fixture.Identity{ID: "1d000000-0000-0000-0000-000000000001", UserID: GuestID,
-		Provider: "google", Subject: "guest-google-sub", Email: GuestEmail})
+		Provider: "google", Issuer: "https://accounts.google.com", Subject: "guest-google-sub", Email: GuestEmail})
 }

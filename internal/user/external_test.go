@@ -135,7 +135,7 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 	}
 }
 
-func TestRevokeAllSessionsAndMarkEmailVerified(t *testing.T) {
+func TestEvictLocalCredentialsAndMarkEmailVerified(t *testing.T) {
 	db := dbtest.New(t)
 	s, repo, _ := newTrialSvc(t, db, 0)
 	ctx := context.Background()
@@ -154,14 +154,26 @@ func TestRevokeAllSessionsAndMarkEmailVerified(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := s.RevokeAllSessions(ctx, uid); err != nil {
+	if err := s.EvictLocalCredentials(ctx, uid); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, _, err := s.Authenticate(ctx, first.Token); err == nil {
 		t.Fatal("every session must be revoked")
 	}
-	if _, _, _, err := s.Authenticate(ctx, pat.Token); err != nil {
-		t.Fatalf("personal tokens survive: %v", err)
+	// Unlike a password change, an eviction also kills the personal tokens: an
+	// attacker who pre-registered the address would otherwise keep API access.
+	if _, _, _, err := s.Authenticate(ctx, pat.Token); err == nil {
+		t.Fatal("personal tokens must be revoked too")
+	}
+	evicted, err := repo.GetByID(ctx, uid)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if evicted.HasPassword() {
+		t.Fatalf("the password must be gone: algorithm %q", evicted.Algorithm)
+	}
+	if _, err := s.Login(ctx, model.LoginRequest{Username: "eve@example.test", Password: "secret123"}, "ua", time.Now()); err == nil {
+		t.Fatal("the evicted password must no longer sign in")
 	}
 
 	if err := s.MarkEmailVerified(ctx, uid); err != nil {

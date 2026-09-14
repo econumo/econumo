@@ -145,6 +145,27 @@ func (h *Handlers) ExchangeHandoff(w http.ResponseWriter, r *http.Request) {
 	httpx.Raw(w, res)
 }
 
+// CompleteLink handles POST /api/v1/oauth/complete-link (auth): the second
+// half of a link flow, where the client that started it proves itself.
+//
+// @Summary     Finish linking a provider to the current account
+// @Description Redeems the one-shot code the link callback returned, together with the flow secret held by the client that started the link.
+// @Tags        OAuth
+// @Accept      json
+// @Produce     json
+// @Param       request body     model.CompleteLinkRequest true "Link handoff code and flow secret"
+// @Success     200     {object} apidoc.JsonResponseOk{data=model.CompleteLinkResult}
+// @Failure     400     {object} apidoc.JsonResponseError
+// @Failure     401     {object} apidoc.JsonResponseUnauthorized
+// @Failure     500     {object} apidoc.JsonResponseException
+// @Security    Bearer
+// @Router      /api/v1/oauth/complete-link [post]
+func (h *Handlers) CompleteLink(w http.ResponseWriter, r *http.Request) {
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.CompleteLinkRequest) (*model.CompleteLinkResult, error) {
+		return h.svc.CompleteLink(ctx, userID, req)
+	})
+}
+
 // GetIdentityList handles GET /api/v1/oauth/get-identity-list (auth).
 //
 // @Summary     List linked accounts

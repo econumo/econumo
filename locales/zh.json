@@ -1546,7 +1546,10 @@
       "provider_not_configured": "登录提供方未配置",
       "handoff_invalid": "登录链接无效或已过期",
       "last_identity": "在解除唯一登录方式的关联前，请先设置密码",
-      "identity_not_found": "未找到关联账户"
+      "identity_not_found": "未找到关联账户",
+      "link_invalid": "关联会话无效或已过期",
+      "identity_taken": "该外部账户已关联到另一个 Econumo 账户",
+      "provider_already_linked": "您的账户已关联了该提供方的另一个账户"
     },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "您的账户绑定了新的登录方式",
-      "body": "您好，{name}：\n\n刚刚有一个 {provider} 账户绑定到了您的 Econumo 账户，现在可以用它登录。为了安全起见，您的其他会话已被登出。\n\n如果这不是您本人的操作，请立即重置密码——这将结束所有其他会话，并允许您在设置中解除该账户的绑定。\n\n--\nEconumo — 一起管理财务。\n"
+      "body": "您好，{name}：\n\n刚刚有一个 {provider} 账户绑定到了您的 Econumo 账户，现在可以用它登录。由于证明该邮箱属于您的是该提供方而不是密码，密码登录已被关闭，所有会话和 API 令牌也已被吊销。\n\n如果这不是您本人的操作，请立即通过“忘记密码”设置新密码，然后在设置中解除该账户的绑定。\n\n--\nEconumo — 一起管理财务。\n"
     }
   }
 }

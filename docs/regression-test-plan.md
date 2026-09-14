@@ -100,11 +100,13 @@ navigation (single-pane vs sidebar).
 - [ ] Sign-in through a provider whose verified email matches an existing
       password account auto-links (no confirmation dialog) and signs into
       that account; the provider then appears under Settings → Profile →
-      Linked accounts. Any OTHER session of that account (a second browser
-      signed in with the password) is signed out by the link, its personal
-      access tokens keep working, AND the account owner's notice email
-      arrives (console transport prints it to server stdout in dev) naming
-      the provider that was linked.
+      Linked accounts. The link evicts everything that predated it: any OTHER
+      session of that account (a second browser signed in with the password)
+      is signed out, its personal access tokens stop authenticating, and the
+      old password no longer signs in (Settings → Profile now offers "Set a
+      password"). The account owner's notice email arrives (console transport
+      prints it to server stdout in dev) naming the provider and saying
+      password sign-in was turned off.
 - [ ] Starting a provider sign-in in one browser and opening the returned
       Econumo callback URL in a DIFFERENT browser (or a private window) fails
       with "The sign-in attempt expired or was already used." — only the
@@ -117,6 +119,11 @@ navigation (single-pane vs sidebar).
       server. Sign in with an existing account first."
 - [ ] Cancelling at the provider (deny consent / close the flow) returns to
       Econumo showing "Sign-in was cancelled."
+- [ ] Linking from Settings completes only in the browser that started it:
+      start the link in one browser, then open the returned Econumo callback
+      URL in a DIFFERENT browser signed in as another user — that user's
+      Linked accounts page shows an error and gains NO identity, and the
+      provider account stays unlinked everywhere.
 - [ ] A FAILED link from Settings (e.g. linking a provider account already
       linked to another Econumo user) returns to Settings → Profile → Linked
       accounts with the error banner there ("This external account is already
@@ -384,8 +391,8 @@ User C sees none of it.
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"
       toast AND the newly linked provider already in the list (no manual
-      reload); unlinking a provider (with confirm dialog) removes it from the
-      list.
+      reload — the return trip is what writes the link); unlinking a provider
+      (with confirm dialog) removes it from the list.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
       your only sign-in method.").

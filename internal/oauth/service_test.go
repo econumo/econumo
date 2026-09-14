@@ -33,7 +33,7 @@ type fakeUsers struct {
 	byEmail   map[string]*model.User
 	minted    []string // providers of minted sessions
 	replaced  []string // emails mirrored via ReplaceVerifiedEmail
-	revoked   []string // user ids whose sessions were revoked on auto-link
+	evicted   []string // user ids whose local credentials were dropped on auto-link
 	verified  []string // user ids marked email-verified on auto-link
 	provision int
 
@@ -43,7 +43,7 @@ type fakeUsers struct {
 	failFindByEmail       error
 	failProvisionExternal error
 	failMintSession       error
-	failRevokeAllSessions error
+	failEvict             error
 }
 
 func newFakeUsers(t *testing.T, db *dbtest.DB) *fakeUsers {
@@ -89,9 +89,9 @@ func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email 
 	f.replaced = append(f.replaced, email)
 	return nil
 }
-func (f *fakeUsers) RevokeAllSessions(_ context.Context, userID vo.Id) error {
-	f.revoked = append(f.revoked, userID.String())
-	return f.failRevokeAllSessions
+func (f *fakeUsers) EvictLocalCredentials(_ context.Context, userID vo.Id) error {
+	f.evicted = append(f.evicted, userID.String())
+	return f.failEvict
 }
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, userID vo.Id) error {
 	f.verified = append(f.verified, userID.String())
@@ -217,7 +217,7 @@ func TestCallback_ProvisionsNewUserAndHandoffExchanges(t *testing.T) {
 		t.Fatal("handoff must be single use")
 	}
 	// identity recorded
-	id, err := h.ids.GetByProviderSubject(context.Background(), "oidc", h.fake.Subject)
+	id, err := h.ids.GetByProviderSubject(context.Background(), "oidc", h.fake.IssuerURL(), h.fake.Subject)
 	if err != nil || id.Email != "new@example.test" {
 		t.Fatalf("%+v %v", id, err)
 	}
@@ -234,13 +234,13 @@ func TestCallback_AppClientRedirectsToScheme(t *testing.T) {
 func TestCallback_ExistingIdentityLogsIn(t *testing.T) {
 	h := newHarness(t, false, false) // registration off: must not matter
 	u := h.users.seed(t, "old@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "old@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "changed@example.test"
 	redirect := h.login("google", "web")
 	if handoffOf(t, redirect) == "" {
 		t.Fatalf("redirect %s", redirect)
 	}
-	id, _ := h.ids.GetByProviderSubject(context.Background(), "google", h.fake.Subject)
+	id, _ := h.ids.GetByProviderSubject(context.Background(), "google", h.fake.IssuerURL(), h.fake.Subject)
 	if id.Email != "changed@example.test" {
 		t.Fatal("identity email must follow the claim")
 	}
@@ -252,7 +252,7 @@ func TestCallback_ExistingIdentityLogsIn(t *testing.T) {
 func TestCallback_EmailDriftMirroredForPasswordlessSingleIdentity(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "old@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "renamed@example.test"
 	h.login("google", "web")
 	if len(h.users.replaced) != 1 || h.users.replaced[0] != "renamed@example.test" {
@@ -264,7 +264,7 @@ func TestCallback_EmailDriftNotMirroredWhenAddressTaken(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmNone)
 	h.users.seed(t, "taken@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "old@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.fake.Email = "taken@example.test"
 	redirect := h.login("google", "web")
 	if handoffOf(t, redirect) == "" || len(h.users.replaced) != 0 {
@@ -366,47 +366,141 @@ func mustQuery(t *testing.T, raw string) url.Values {
 	return u.Query()
 }
 
+// startLink drives start-link + consent + callback and returns the redirect,
+// remembering the flow secret so completeLink can present it.
+func (h *harness) startLink(userID vo.Id, provider, client string) string {
+	h.t.Helper()
+	res, err := h.svc.StartLink(context.Background(), userID, model.StartOAuthRequest{Provider: provider, Client: client})
+	if err != nil {
+		h.t.Fatal(err)
+	}
+	h.flow = res.Flow
+	q := mustQuery(h.t, res.Url)
+	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
+	return h.svc.Callback(context.Background(), provider, appoauth.CallbackInput{Code: code, State: q.Get("state")})
+}
+
+func linkHandoffOf(t *testing.T, redirect string) string {
+	t.Helper()
+	u, _ := url.Parse(redirect)
+	if strings.HasPrefix(redirect, "econumo://") {
+		return u.Query().Get("linkHandoff")
+	}
+	frag, _ := url.ParseQuery(u.Fragment)
+	return frag.Get("linkHandoff")
+}
+
+// completeLink redeems the parked identity as the SPA does.
+func (h *harness) completeLink(userID vo.Id, redirect string) (*model.CompleteLinkResult, error) {
+	h.t.Helper()
+	return h.svc.CompleteLink(context.Background(), userID, model.CompleteLinkRequest{Code: linkHandoffOf(h.t, redirect), Flow: h.flow})
+}
+
 func TestStartLinkAndCallback_Link(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
-	res, err := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
-	if err != nil {
-		t.Fatal(err)
-	}
-	q := mustQuery(t, res.Url)
-	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
-	r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")})
-	if r != "https://app.example.test/settings/profile/linked-accounts?linked=google" {
+	r := h.startLink(u.ID, "google", "web")
+	if !strings.HasPrefix(r, "https://app.example.test/settings/profile/linked-accounts#linkHandoff=") {
 		t.Fatalf("redirect %s", r)
 	}
 	if len(h.users.minted) != 0 {
 		t.Fatal("link must mint no session")
 	}
-	// Linking the same subject again is idempotent; a different user gets identity_taken.
-	res2, _ := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "app"})
-	q2 := mustQuery(t, res2.Url)
-	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q2.Get("nonce"), q2.Get("code_challenge")), State: q2.Get("state")}); r != "econumo://oauth?linked=google" {
-		t.Fatalf("redirect %s", r)
+	res, err := h.completeLink(u.ID, r)
+	if err != nil || res.Provider != "google" {
+		t.Fatalf("%+v %v", res, err)
 	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err != nil {
+		t.Fatalf("identity not written: %v", err)
+	}
+	// Linking the same subject again is idempotent, on the app scheme too.
+	r2 := h.startLink(u.ID, "google", "app")
+	if !strings.HasPrefix(r2, "econumo://oauth?linkHandoff=") {
+		t.Fatalf("redirect %s", r2)
+	}
+	if _, err := h.completeLink(u.ID, r2); err != nil {
+		t.Fatal(err)
+	}
+	// A different user with the same provider subject: identity_taken.
 	other := h.users.seed(t, "other@example.test", model.AlgorithmArgon2id)
-	res3, _ := h.svc.StartLink(context.Background(), other.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
-	q3 := mustQuery(t, res3.Url)
-	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q3.Get("nonce"), q3.Get("code_challenge")), State: q3.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=identity_taken" {
+	if r := h.startLink(other.ID, "google", "web"); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=identity_taken" {
 		t.Fatalf("redirect %s", r)
 	}
 	// The same user linking google with a DIFFERENT subject: provider_already_linked.
 	h.fake.Subject = "another-google-account"
-	res4, _ := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
-	q4 := mustQuery(t, res4.Url)
-	if r := h.svc.Callback(context.Background(), "google", appoauth.CallbackInput{Code: h.fake.IssueCode(q4.Get("nonce"), q4.Get("code_challenge")), State: q4.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_already_linked" {
+	if r := h.startLink(u.ID, "google", "web"); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_already_linked" {
 		t.Fatalf("redirect %s", r)
+	}
+}
+
+// The callback of a link flow arrives in whatever browser followed the
+// authorization URL, with no proof of who started the flow. It must therefore
+// write nothing: an attacker who mails their own start-link URL to a victim
+// would otherwise bind the victim's provider identity to the attacker account.
+func TestLinkCallback_WritesNothingUntilTheInitiatingClientCompletesIt(t *testing.T) {
+	h := newHarness(t, false, true)
+	attacker := h.users.seed(t, "attacker@example.test", model.AlgorithmArgon2id)
+	victim := h.users.seed(t, "victim@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(attacker.ID, "google", "web")
+	if linkHandoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	if _, err := h.ids.GetByProviderSubject(context.Background(), "google", h.fake.IssuerURL(), h.fake.Subject); err == nil {
+		t.Fatal("the callback must not persist the identity")
+	}
+	// The victim, signed in to their own account, cannot redeem the attacker's code.
+	if _, err := h.completeLink(victim.ID, r); err == nil {
+		t.Fatal("a handoff minted for another account must be refused")
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), victim.ID, "google"); err == nil {
+		t.Fatal("no identity may be written for the victim")
+	}
+}
+
+func TestCompleteLink_RejectsAForeignFlowSecretAndReplays(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	code := linkHandoffOf(t, r)
+	other, _ := oidc.RandomToken()
+	_, err := h.svc.CompleteLink(context.Background(), u.ID, model.CompleteLinkRequest{Code: code, Flow: other})
+	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLinkInvalid {
+		t.Fatalf("want link_invalid, got %v", err)
+	}
+	// Single use: the rejected attempt consumed the code.
+	if _, err := h.completeLink(u.ID, r); err == nil {
+		t.Fatal("the rejected attempt must still consume the link handoff")
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err == nil {
+		t.Fatal("nothing may have been written")
+	}
+}
+
+func TestCompleteLink_RejectsASignInHandoff(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "me@example.test", h.clock.Now()))
+	redirect := h.login("google", "web")
+	_, err := h.svc.CompleteLink(context.Background(), u.ID, model.CompleteLinkRequest{Code: handoffOf(t, redirect), Flow: h.flow})
+	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLinkInvalid {
+		t.Fatalf("a sign-in handoff is not a link handoff: %v", err)
+	}
+}
+
+func TestCompleteLink_ExpiredCode(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	h.clock.t = h.clock.t.Add(model.OAuthHandoffTTL + time.Second)
+	if _, err := h.completeLink(u.ID, r); err == nil {
+		t.Fatal("an expired link handoff must be refused")
 	}
 }
 
 func TestListAndUnlinkIdentities(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", "g1", "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
 	list, err := h.svc.ListIdentities(context.Background(), u.ID)
 	if err != nil || len(list) != 1 || list[0].Provider != "google" || list[0].CreatedAt == "" {
 		t.Fatalf("%+v %v", list, err)
@@ -415,7 +509,7 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLastIdentity {
 		t.Fatalf("passwordless single identity must refuse: %v", err)
 	}
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "oidc", "o1", "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o1", "me@example.test", h.clock.Now()))
 	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
 		t.Fatal(err)
 	}
@@ -423,7 +517,7 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 		t.Fatal("unlinking a missing identity is an error")
 	}
 	pw := h.users.seed(t, "pw@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), pw.ID, "google", "g2", "pw@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), pw.ID, "google", h.fake.IssuerURL(), "g2", "pw@example.test", h.clock.Now()))
 	if _, err := h.svc.UnlinkIdentity(context.Background(), pw.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
 		t.Fatalf("a password user may unlink their only identity: %v", err)
 	}
@@ -433,7 +527,7 @@ func TestInactiveUserRejected(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "gone@example.test", model.AlgorithmArgon2id)
 	u.IsActive = false
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "gone@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "gone@example.test", h.clock.Now()))
 	if r := h.login("google", "web"); r != "https://app.example.test/login?oauthError=account_inactive" {
 		t.Fatalf("redirect %s", r)
 	}
@@ -472,8 +566,8 @@ func TestCallback_AutoLinkEvictsAPreRegisteredPasswordAccount(t *testing.T) {
 	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
 		t.Fatalf("redirect %s", r)
 	}
-	if len(h.users.revoked) != 1 || h.users.revoked[0] != u.ID.String() {
-		t.Fatalf("a password account must lose every session on auto-link: %v", h.users.revoked)
+	if len(h.users.evicted) != 1 || h.users.evicted[0] != u.ID.String() {
+		t.Fatalf("a password account must lose every local credential on auto-link: %v", h.users.evicted)
 	}
 	if len(h.users.verified) != 1 || h.users.verified[0] != u.ID.String() {
 		t.Fatalf("the provider's assertion must mark the address verified: %v", h.users.verified)
@@ -487,8 +581,8 @@ func TestCallback_AutoLinkLeavesAPasswordlessAccountAlone(t *testing.T) {
 	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
 		t.Fatalf("redirect %s", r)
 	}
-	if len(h.users.revoked) != 0 || len(h.users.verified) != 0 {
-		t.Fatalf("a provider-created account already proved the address: revoked=%v verified=%v", h.users.revoked, h.users.verified)
+	if len(h.users.evicted) != 0 || len(h.users.verified) != 0 {
+		t.Fatalf("a provider-created account already proved the address: evicted=%v verified=%v", h.users.evicted, h.users.verified)
 	}
 }
 
@@ -496,7 +590,7 @@ func TestCallback_AutoLinkRollsBackWhenTheEvictionFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "squatted@example.test", model.AlgorithmArgon2id)
 	h.fake.Email, h.fake.EmailVerified = "squatted@example.test", true
-	h.users.failRevokeAllSessions = errBoom
+	h.users.failEvict = errBoom
 	if r := h.login("oidc", "web"); r != "https://app.example.test/login?oauthError=provider_error" {
 		t.Fatalf("redirect %s", r)
 	}
@@ -616,5 +710,74 @@ func TestStartLogin_SurfacesTheRateLimit(t *testing.T) {
 	}
 	if _, err := svc.StartLink(context.Background(), vo.NewId(), model.StartOAuthRequest{Provider: "google", Client: "web"}); err == nil {
 		t.Fatal("start-link is capped too")
+	}
+}
+
+// loginVia drives a full sign-in through another service/issuer pair, for the
+// operator-repointed-the-issuer cases below.
+func loginVia(t *testing.T, svc *appoauth.Service, f *oidctest.Fake, provider, client string) string {
+	t.Helper()
+	res, err := svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: provider, Client: client})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := mustQuery(t, res.Url)
+	code := f.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
+	return svc.Callback(context.Background(), provider, appoauth.CallbackInput{Code: code, State: q.Get("state")})
+}
+
+// serviceOver builds a second service on the same storage but a different
+// issuer — what an operator does by repointing ECONUMO_OIDC_ISSUER_URL.
+func (h *harness) serviceOver(f *oidctest.Fake) *appoauth.Service {
+	return appoauth.NewService([]appoauth.Provider{{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "New IdP"}},
+		h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
+}
+
+// The custom slot's provider id is always "oidc", so a subject is only unique
+// within its issuer. A user at a replacement issuer whose subject collides with
+// a stored one must NOT be authenticated as that row's owner.
+func TestCallback_IdentitiesAreScopedToTheIssuer(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.fake.Subject, h.fake.Email, h.fake.EmailVerified = "shared-subject", "first@example.test", true
+	if r := h.login("oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	first, err := h.ids.GetByProviderSubject(context.Background(), "oidc", h.fake.IssuerURL(), "shared-subject")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	other := oidctest.New(t)
+	other.Subject, other.Email, other.EmailVerified = "shared-subject", "second@example.test", true
+	if r := loginVia(t, h.serviceOver(other), other, "oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	got, err := h.ids.GetByProviderSubject(context.Background(), "oidc", other.IssuerURL(), "shared-subject")
+	if err != nil {
+		t.Fatalf("the new issuer's identity must be its own row: %v", err)
+	}
+	if got.UserID.Equal(first.UserID) {
+		t.Fatal("a subject collision across issuers must not resolve to the first issuer's user")
+	}
+}
+
+// After an issuer change the returning user still matches by verified email;
+// their one row per slot is repointed rather than colliding on (user, provider).
+func TestCallback_AutoLinkRepointsAnIdentityAfterAnIssuerChange(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "same@example.test", model.AlgorithmNone)
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "oidc", "https://old.example.test", "old-subject", "same@example.test", h.clock.Now()))
+
+	other := oidctest.New(t)
+	other.Subject, other.Email, other.EmailVerified = "new-subject", "same@example.test", true
+	if r := loginVia(t, h.serviceOver(other), other, "oidc", "web"); handoffOf(t, r) == "" {
+		t.Fatalf("redirect %s", r)
+	}
+	got, err := h.ids.GetByUserProvider(context.Background(), u.ID, "oidc")
+	if err != nil || got.Issuer != other.IssuerURL() || got.Subject != "new-subject" {
+		t.Fatalf("identity must follow the new issuer: %+v %v", got, err)
+	}
+	if n, _ := h.ids.CountByUser(context.Background(), u.ID); n != 1 {
+		t.Fatalf("one row per slot, got %d", n)
 	}
 }

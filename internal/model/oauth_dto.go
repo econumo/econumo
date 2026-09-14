@@ -56,6 +56,32 @@ func (r ExchangeHandoffRequest) Validate() error {
 	return nil
 }
 
+// CompleteLinkRequest redeems the link handoff the callback parked. Both
+// halves are required: the code proves the provider answered, the flow secret
+// proves this client started the link.
+type CompleteLinkRequest struct {
+	Code string `json:"code"`
+	Flow string `json:"flow"`
+}
+
+func (r CompleteLinkRequest) Validate() error {
+	var fields []errs.FieldError
+	if strings.TrimSpace(r.Code) == "" {
+		fields = append(fields, errs.FieldError{Key: "code", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if strings.TrimSpace(r.Flow) == "" {
+		fields = append(fields, errs.FieldError{Key: "flow", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
+	}
+	if len(fields) > 0 {
+		return errs.NewValidation("Validation failed", fields...)
+	}
+	return nil
+}
+
+type CompleteLinkResult struct {
+	Provider string `json:"provider"`
+}
+
 type IdentityItem struct {
 	Provider  string `json:"provider"`
 	Email     string `json:"email"`

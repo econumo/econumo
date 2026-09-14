@@ -53,8 +53,8 @@ func (r *IdentityRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querie
 
 func (r *IdentityRepo) NextIdentity() vo.Id { return vo.NewId() }
 
-func (r *IdentityRepo) GetByProviderSubject(ctx context.Context, provider, subject string) (*model.Identity, error) {
-	row, err := r.q.GetIdentityByProviderSubject(ctx, r.db(ctx), identityBySubject{Provider: provider, Subject: subject})
+func (r *IdentityRepo) GetByProviderSubject(ctx context.Context, provider, issuer, subject string) (*model.Identity, error) {
+	row, err := r.q.GetIdentityByProviderSubject(ctx, r.db(ctx), identityBySubject{Provider: provider, Issuer: issuer, Subject: subject})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, errs.NewNotFound("Identity not found")
@@ -97,7 +97,7 @@ func (r *IdentityRepo) CountByUser(ctx context.Context, userID vo.Id) (int64, er
 
 func (r *IdentityRepo) Save(ctx context.Context, i *model.Identity) error {
 	return r.q.UpsertIdentity(ctx, r.db(ctx), upsertIdentityParams{
-		ID: i.ID.String(), UserID: i.UserID.String(), Provider: i.Provider, Subject: i.Subject, Email: i.Email,
+		ID: i.ID.String(), UserID: i.UserID.String(), Provider: i.Provider, Issuer: i.Issuer, Subject: i.Subject, Email: i.Email,
 		CreatedAt: i.CreatedAt, UpdatedAt: i.UpdatedAt,
 	})
 }
@@ -115,6 +115,6 @@ func identityFromRow(row identityRow) (*model.Identity, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &model.Identity{ID: id, UserID: uid, Provider: row.Provider, Subject: row.Subject, Email: row.Email,
+	return &model.Identity{ID: id, UserID: uid, Provider: row.Provider, Issuer: row.Issuer, Subject: row.Subject, Email: row.Email,
 		CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
 }

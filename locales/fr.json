@@ -1546,7 +1546,10 @@
       "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",
       "handoff_invalid": "Le lien de connexion n'est pas valide ou a expiré",
       "last_identity": "Définissez un mot de passe avant de dissocier votre seule méthode de connexion",
-      "identity_not_found": "Compte lié introuvable"
+      "identity_not_found": "Compte lié introuvable",
+      "link_invalid": "La session de liaison est invalide ou a expiré",
+      "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo",
+      "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur"
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Une nouvelle méthode de connexion a été associée à votre compte",
-      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. Par mesure de sécurité, vos autres sessions ont été déconnectées.\n\nSi ce n’était pas vous, réinitialisez votre mot de passe immédiatement — cela met fin à toutes les autres sessions et vous permet de dissocier le compte depuis les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. Comme c’est le fournisseur, et non un mot de passe, qui a prouvé que cette adresse e-mail est la vôtre, la connexion par mot de passe a été désactivée et toutes les sessions et jetons d’API ont été révoqués.\n\nSi ce n’était pas vous, utilisez « Mot de passe oublié » pour définir un nouveau mot de passe immédiatement, puis dissociez le compte depuis les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
   }
 }

@@ -1546,7 +1546,10 @@
       "provider_not_configured": "O provedor de início de sessão não está configurado",
       "handoff_invalid": "O link de início de sessão é inválido ou expirou",
       "last_identity": "Defina uma palavra-passe antes de desvincular o seu único método de início de sessão",
-      "identity_not_found": "Conta vinculada não encontrada"
+      "identity_not_found": "Conta vinculada não encontrada",
+      "link_invalid": "A sessão de vinculação é inválida ou expirou",
+      "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo",
+      "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor"
     },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Foi associado um novo método de início de sessão à sua conta",
-      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. Por segurança, as suas outras sessões foram terminadas.\n\nSe não foi você, redefina a sua palavra-passe de imediato — isso termina todas as outras sessões e permite-lhe desassociar a conta a partir das Definições.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
+      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. Uma vez que foi o fornecedor, e não uma palavra-passe, que provou que este endereço de e-mail é seu, o início de sessão com palavra-passe foi desativado e todas as sessões e tokens de API foram revogados.\n\nSe não foi você, use «Esqueci-me da palavra-passe» para definir uma nova de imediato e depois desassocie a conta a partir das Definições.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
     }
   }
 }

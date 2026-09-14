@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import { toast } from 'sonner'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -10,51 +9,66 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { providerDisplayName, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { providerDisplayName, takeOAuthFlow, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
-import { METRICS, trackEvent } from '@/lib/metrics'
+import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from './SettingsShell'
-import { useIdentities, useUnlinkIdentity } from './security'
+import { useCompleteLink, useIdentities, useUnlinkIdentity } from './security'
 import { parseUtcDateTime } from './securityFormat'
 
 export function LinkedAccountsPage() {
   const { t, i18n } = useTranslation()
   const [searchParams, setSearchParams] = useSearchParams()
+  const { hash } = useLocation()
   const providers = useProviders()
   const identities = useIdentities()
   const user = useUserData()
   const start = useStartOAuth()
   const unlink = useUnlinkIdentity()
+  const complete = useCompleteLink()
   const [confirm, setConfirm] = useState<OAuthProviderId | null>(null)
-  const toasted = useRef(false)
-  const queryClient = useQueryClient()
+  const completing = useRef(false)
   // Held in state because the parameter is cleared from the URL immediately —
   // a reload must not resurrect the message.
   const [linkError, setLinkError] = useState('')
 
-  const linked = searchParams.get('linked')
   const oauthError = searchParams.get('oauthError')
+  // The callback deliberately did NOT write the identity: it parked it behind a
+  // one-shot code, because only this client — signed in, and holding the flow
+  // secret it stored when the link started — may prove the link was its own.
   useEffect(() => {
-    if (!linked || toasted.current) {
+    const code = new URLSearchParams(hash.replace(/^#/, '')).get('linkHandoff')
+    if (!code || completing.current) {
       return
     }
-    toasted.current = true
-    const name = providerDisplayName(linked, providers.data, t)
-    toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: name }))
-    trackEvent(METRICS.IDENTITY_LINKED, { provider: linked })
-    // The link happened on the backend while the browser was away, so the
-    // cached identity list is stale on return.
-    void queryClient.invalidateQueries({ queryKey: ['oauth', 'identities'] })
-    setSearchParams({}, { replace: true })
-  }, [linked, providers.data, queryClient, setSearchParams, t])
+    completing.current = true
+    const flow = takeOAuthFlow()
+    if (window.location.hash) {
+      window.history.replaceState(null, '', window.location.pathname)
+    }
+    if (!flow) {
+      setLinkError(t('auth.oauth.errors.invalid_state'))
+      return
+    }
+    complete.mutate(
+      { code, flow },
+      {
+        onSuccess: ({ provider }) => {
+          const name = providerDisplayName(provider, providers.data, t)
+          toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: name }))
+        },
+        onError: (err: unknown) => setLinkError(apiErrorMessage(err)),
+      },
+    )
+  }, [complete, hash, providers.data, t])
 
   useEffect(() => {
     if (!oauthError) {
       return
     }
-    setLinkError(oauthError)
+    setLinkError(t(`auth.oauth.errors.${oauthError}`, { defaultValue: t('auth.oauth.errors.provider_error') }))
     setSearchParams({}, { replace: true })
-  }, [oauthError, setSearchParams])
+  }, [oauthError, setSearchParams, t])
 
   const hasPassword = user.data?.hasPassword ?? true
   const lastIdentityLocked = !hasPassword && (identities.data?.length ?? 0) <= 1
@@ -73,9 +87,7 @@ export function LinkedAccountsPage() {
       <InfoBox>{t('user.page.settings.profile.linked_accounts.description')}</InfoBox>
       {linkError ? (
         <Alert variant="destructive" className="mb-2">
-          <AlertDescription>
-            {t(`auth.oauth.errors.${linkError}`, { defaultValue: t('auth.oauth.errors.provider_error') })}
-          </AlertDescription>
+          <AlertDescription>{linkError}</AlertDescription>
         </Alert>
       ) : null}
       {identities.data?.length === 0 ? (

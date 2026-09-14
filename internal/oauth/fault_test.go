@@ -32,11 +32,11 @@ type faultIdentities struct {
 	deleteByUserProvider error
 }
 
-func (f faultIdentities) GetByProviderSubject(ctx context.Context, provider, subject string) (*model.Identity, error) {
+func (f faultIdentities) GetByProviderSubject(ctx context.Context, provider, issuer, subject string) (*model.Identity, error) {
 	if f.getByProviderSubject != nil {
 		return nil, f.getByProviderSubject
 	}
-	return f.Identities.GetByProviderSubject(ctx, provider, subject)
+	return f.Identities.GetByProviderSubject(ctx, provider, issuer, subject)
 }
 
 func (f faultIdentities) GetByUserProvider(ctx context.Context, userID vo.Id, provider string) (*model.Identity, error) {
@@ -135,7 +135,7 @@ func newFaultService(h *harness, users appoauth.Users, ids appoauth.Identities, 
 func TestCallback_Login_IdentityOwnerLookupFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "old@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	h.users.failFindByID = errBoom
 	if r := h.login("google", "web"); r != "https://app.example.test/login?oauthError=provider_error" {
 		t.Fatalf("redirect %s", r)
@@ -145,7 +145,7 @@ func TestCallback_Login_IdentityOwnerLookupFails(t *testing.T) {
 func TestCallback_Login_ExistingIdentitySaveFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "old@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "old@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "old@example.test", h.clock.Now()))
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, save: errBoom}, h.states, h.hands, true)
 	res, err := svc2.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if err != nil {
@@ -242,20 +242,35 @@ func TestCallback_Login_HandoffInsertFails(t *testing.T) {
 	}
 }
 
-func TestCallback_Link_ExistingIdentityUpdateSaveFails(t *testing.T) {
+// The identity write moved to CompleteLink, so a failing Save surfaces there —
+// the callback itself only parks the resolved identity.
+func TestCompleteLink_ExistingIdentityUpdateSaveFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.Subject, "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "me@example.test", h.clock.Now()))
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, save: errBoom}, h.states, h.hands, true)
-	res, err := svc2.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
+	if err := completeLinkVia(t, h, svc2, u.ID); !errors.Is(err, errBoom) {
+		t.Fatalf("want errBoom, got %v", err)
+	}
+}
+
+// completeLinkVia drives start-link + consent + callback + complete-link
+// through svc2 and returns complete-link's error.
+func completeLinkVia(t *testing.T, h *harness, svc2 *appoauth.Service, userID vo.Id) error {
+	t.Helper()
+	res, err := svc2.StartLink(context.Background(), userID, model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	q := mustQuery(t, res.Url)
 	code := h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
-	if r := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")}); r != "https://app.example.test/settings/profile/linked-accounts?oauthError=provider_error" {
-		t.Fatalf("redirect %s", r)
+	redirect := svc2.Callback(context.Background(), "google", appoauth.CallbackInput{Code: code, State: q.Get("state")})
+	handoff := linkHandoffOf(t, redirect)
+	if handoff == "" {
+		t.Fatalf("callback did not park a link handoff: %s", redirect)
 	}
+	_, cerr := svc2.CompleteLink(context.Background(), userID, model.CompleteLinkRequest{Code: handoff, Flow: res.Flow})
+	return cerr
 }
 
 func TestCallback_Link_IdentityLookupFails(t *testing.T) {
@@ -273,10 +288,38 @@ func TestCallback_Link_IdentityLookupFails(t *testing.T) {
 	}
 }
 
-func TestCallback_Link_InsertSaveFails(t *testing.T) {
+func TestCompleteLink_InsertSaveFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, save: errBoom}, h.states, h.hands, true)
+	if err := completeLinkVia(t, h, svc2, u.ID); !errors.Is(err, errBoom) {
+		t.Fatalf("want errBoom, got %v", err)
+	}
+}
+
+func TestCompleteLink_UserProviderLookupFails(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	res, err := h.svc.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := mustQuery(t, res.Url)
+	redirect := h.svc.Callback(context.Background(), "google",
+		appoauth.CallbackInput{Code: h.fake.IssueCode(q.Get("nonce"), q.Get("code_challenge")), State: q.Get("state")})
+	// The eager check ran on the callback; the completion re-runs it, and that
+	// second lookup is the one forced to fail here.
+	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, getByUserProvider: errBoom}, h.states, h.hands, true)
+	if _, err := svc2.CompleteLink(context.Background(), u.ID,
+		model.CompleteLinkRequest{Code: linkHandoffOf(t, redirect), Flow: res.Flow}); !errors.Is(err, errBoom) {
+		t.Fatalf("want errBoom, got %v", err)
+	}
+}
+
+func TestCallback_Link_HandoffInsertFails(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	svc2 := newFaultService(h, h.users, h.ids, h.states, faultHandoffs{Handoffs: h.hands, insert: errBoom}, true)
 	res, err := svc2.StartLink(context.Background(), u.ID, model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if err != nil {
 		t.Fatal(err)
@@ -380,7 +423,7 @@ func TestUnlinkIdentity_LookupFails(t *testing.T) {
 func TestUnlinkIdentity_UserLookupFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", "g1", "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
 	h.users.failFindByID = errBoom
 	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
@@ -390,7 +433,7 @@ func TestUnlinkIdentity_UserLookupFails(t *testing.T) {
 func TestUnlinkIdentity_CountFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", "g1", "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, countByUser: errBoom}, h.states, h.hands, true)
 	if _, err := svc2.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)
@@ -400,7 +443,7 @@ func TestUnlinkIdentity_CountFails(t *testing.T) {
 func TestUnlinkIdentity_DeleteFails(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
-	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", "g1", "me@example.test", h.clock.Now()))
+	_ = h.ids.Save(context.Background(), model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
 	svc2 := newFaultService(h, h.users, faultIdentities{Identities: h.ids, deleteByUserProvider: errBoom}, h.states, h.hands, true)
 	if _, err := svc2.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); !errors.Is(err, errBoom) {
 		t.Fatalf("want errBoom, got %v", err)

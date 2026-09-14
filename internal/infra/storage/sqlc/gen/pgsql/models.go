@@ -194,8 +194,12 @@ type MessengerMessage struct {
 
 type OauthHandoff struct {
 	CodeHash  string
+	Kind      string
 	UserID    string
 	Provider  string
+	Issuer    string
+	Subject   string
+	Email     string
 	FlowHash  string
 	IDToken   *string
 	CreatedAt time.Time
@@ -348,6 +352,7 @@ type UsersIdentity struct {
 	ID        string
 	UserID    string
 	Provider  string
+	Issuer    string
 	Subject   string
 	Email     string
 	CreatedAt time.Time

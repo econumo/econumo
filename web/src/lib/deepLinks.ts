@@ -23,13 +23,13 @@ export function handleAppUrl(raw: string): void {
   void nativePlugin<BrowserPlugin>('Browser')?.close().catch(() => {})
   const q = url.searchParams
   const handoff = q.get('handoff')
-  const linked = q.get('linked')
+  const linkHandoff = q.get('linkHandoff')
   const linkError = q.get('linkError')
   const error = q.get('error')
   if (handoff) {
     navigateTo(`${RouterPage.OAUTH_CALLBACK}#handoff=${encodeURIComponent(handoff)}`)
-  } else if (linked) {
-    navigateTo(`${RouterPage.SETTINGS_LINKED_ACCOUNTS}?linked=${encodeURIComponent(linked)}`)
+  } else if (linkHandoff) {
+    navigateTo(`${RouterPage.SETTINGS_LINKED_ACCOUNTS}#linkHandoff=${encodeURIComponent(linkHandoff)}`)
   } else if (linkError) {
     navigateTo(`${RouterPage.SETTINGS_LINKED_ACCOUNTS}?oauthError=${encodeURIComponent(linkError)}`)
   } else if (error) {

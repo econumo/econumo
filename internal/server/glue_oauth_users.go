@@ -32,8 +32,8 @@ func (a *OAuthUsers) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, ema
 func (a *OAuthUsers) MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string) (*model.LoginResult, error) {
 	return a.users.CreateExternalSession(ctx, userID, userAgent, provider, idToken)
 }
-func (a *OAuthUsers) RevokeAllSessions(ctx context.Context, userID vo.Id) error {
-	return a.users.RevokeAllSessions(ctx, userID)
+func (a *OAuthUsers) EvictLocalCredentials(ctx context.Context, userID vo.Id) error {
+	return a.users.EvictLocalCredentials(ctx, userID)
 }
 func (a *OAuthUsers) MarkEmailVerified(ctx context.Context, userID vo.Id) error {
 	return a.users.MarkEmailVerified(ctx, userID)

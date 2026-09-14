@@ -79,8 +79,8 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string) error {
 	return nil
 }
-func (f *fakeUsers) RevokeAllSessions(_ context.Context, _ vo.Id) error { return nil }
-func (f *fakeUsers) MarkEmailVerified(_ context.Context, _ vo.Id) error { return nil }
+func (f *fakeUsers) EvictLocalCredentials(_ context.Context, _ vo.Id) error { return nil }
+func (f *fakeUsers) MarkEmailVerified(_ context.Context, _ vo.Id) error     { return nil }
 
 // MintSession returns a session-shaped token: eco_ses_ + 43 chars, matching
 // the real access-token format so tests can assert on the wire shape.

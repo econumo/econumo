@@ -1546,7 +1546,10 @@
       "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",
       "handoff_invalid": "De aanmeldlink is ongeldig of verlopen",
       "last_identity": "Stel een wachtwoord in voordat u uw enige aanmeldmethode ontkoppelt",
-      "identity_not_found": "Gekoppeld account niet gevonden"
+      "identity_not_found": "Gekoppeld account niet gevonden",
+      "link_invalid": "De koppelingssessie is ongeldig of verlopen",
+      "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account",
+      "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider"
     },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Er is een nieuwe aanmeldmethode aan uw account gekoppeld",
-      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. Voor uw veiligheid zijn uw andere sessies afgemeld.\n\nAls u dit niet was, stel dan direct uw wachtwoord opnieuw in — dat beëindigt alle andere sessies en stelt u in staat het account in Instellingen te ontkoppelen.\n\n--\nEconumo — Beheer geld. Samen.\n"
+      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. Omdat de provider — en niet een wachtwoord — heeft aangetoond dat dit e-mailadres van u is, is inloggen met een wachtwoord uitgeschakeld en zijn alle sessies en API-tokens ingetrokken.\n\nAls u dit niet was, stel dan via ‘Wachtwoord vergeten’ direct een nieuw wachtwoord in en ontkoppel het account daarna in Instellingen.\n\n--\nEconumo — Beheer geld. Samen.\n"
     }
   }
 }

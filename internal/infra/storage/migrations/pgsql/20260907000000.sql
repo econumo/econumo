@@ -4,6 +4,7 @@ CREATE TABLE users_identities
     id           UUID     NOT NULL
     , user_id    UUID     NOT NULL
     , provider   TEXT     NOT NULL
+    , issuer     TEXT     NOT NULL DEFAULT ''
     , subject    TEXT     NOT NULL
     , email      TEXT     NOT NULL DEFAULT ''
     , created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
@@ -11,7 +12,7 @@ CREATE TABLE users_identities
     , PRIMARY KEY (id)
     , FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
-CREATE UNIQUE INDEX users_identities_provider_subject_uniq ON users_identities (provider, subject);
+CREATE UNIQUE INDEX users_identities_provider_issuer_subject_uniq ON users_identities (provider, issuer, subject);
 CREATE UNIQUE INDEX users_identities_user_provider_uniq ON users_identities (user_id, provider);
 
 CREATE TABLE oauth_states
@@ -33,8 +34,12 @@ CREATE INDEX oauth_states_expires_at_idx ON oauth_states (expires_at);
 CREATE TABLE oauth_handoffs
 (
     code_hash    TEXT     NOT NULL
+    , kind       TEXT     NOT NULL DEFAULT 'login'
     , user_id    UUID     NOT NULL
     , provider   TEXT     NOT NULL
+    , issuer     TEXT     NOT NULL DEFAULT ''
+    , subject    TEXT     NOT NULL DEFAULT ''
+    , email      TEXT     NOT NULL DEFAULT ''
     , flow_hash  TEXT     NOT NULL DEFAULT ''
     , id_token   TEXT
     , created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL

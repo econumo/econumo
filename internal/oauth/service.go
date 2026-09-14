@@ -90,11 +90,15 @@ func (s *Service) successURL(client, handoff string) string {
 	return s.appURL + "/oauth/callback#handoff=" + url.QueryEscape(handoff)
 }
 
-func (s *Service) linkedURL(client, provider string) string {
+// linkPendingURL sends the browser back to Settings carrying the one-shot code
+// for the identity write the callback deferred (spec §6.5). Like the sign-in
+// handoff it rides in the fragment on the web, so it never reaches a server log
+// or a Referer header.
+func (s *Service) linkPendingURL(client, code string) string {
 	if client == model.OAuthClientApp {
-		return "econumo://oauth?linked=" + url.QueryEscape(provider)
+		return "econumo://oauth?linkHandoff=" + url.QueryEscape(code)
 	}
-	return s.appURL + "/settings/profile/linked-accounts?linked=" + url.QueryEscape(provider)
+	return s.appURL + "/settings/profile/linked-accounts#linkHandoff=" + url.QueryEscape(code)
 }
 
 // errorURLFor reports the failure on the surface the flow started from: a link

@@ -20,9 +20,11 @@ type Users interface {
 	// MintSession opens a session stamped with the provider (and the ID token
 	// for the custom slot) and returns the login-shaped result.
 	MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string) (*model.LoginResult, error)
-	// RevokeAllSessions ends every session of the user (PATs survive), as a
-	// password reset does.
-	RevokeAllSessions(ctx context.Context, userID vo.Id) error
+	// EvictLocalCredentials clears the password and revokes every session and
+	// personal token of an account a provider has just proved the address of.
+	// Whoever set that password never had to prove the address, so nothing
+	// predating the link may outlive it.
+	EvictLocalCredentials(ctx context.Context, userID vo.Id) error
 	// MarkEmailVerified records the provider's assertion of mailbox ownership.
 	MarkEmailVerified(ctx context.Context, userID vo.Id) error
 }

@@ -19,16 +19,16 @@ func TestIdentityRepo(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
 
-	if _, err := r.GetByProviderSubject(ctx, "google", "s1"); err == nil {
+	if _, err := r.GetByProviderSubject(ctx, "google", "https://idp.example.test", "s1"); err == nil {
 		t.Fatal("want not found")
 	} else if _, ok := errs.AsNotFound(err); !ok {
 		t.Fatalf("want *errs.NotFoundError, got %T", err)
 	}
-	id := model.NewIdentity(r.NextIdentity(), uid, "google", "s1", "a@example.test", now)
+	id := model.NewIdentity(r.NextIdentity(), uid, "google", "https://idp.example.test", "s1", "a@example.test", now)
 	if err := r.Save(ctx, id); err != nil {
 		t.Fatal(err)
 	}
-	got, err := r.GetByProviderSubject(ctx, "google", "s1")
+	got, err := r.GetByProviderSubject(ctx, "google", "https://idp.example.test", "s1")
 	if err != nil || !got.UserID.Equal(uid) || got.Email != "a@example.test" {
 		t.Fatalf("%+v %v", got, err)
 	}
@@ -39,6 +39,15 @@ func TestIdentityRepo(t *testing.T) {
 	got, _ = r.GetByUserProvider(ctx, uid, "google")
 	if got.Email != "b@example.test" || !got.UpdatedAt.Equal(now.Add(time.Minute)) {
 		t.Fatalf("upsert must refresh email/updated_at: %+v", got)
+	}
+	// Another issuer's row may reuse the subject: the key is (provider, issuer, subject).
+	other := model.NewIdentity(r.NextIdentity(), vo.MustParseId(fixture.New(t, db).User(fixture.User{Email: "two@example.test"})),
+		"google", "https://other.example.test", "s1", "c@example.test", now)
+	if err := r.Save(ctx, other); err != nil {
+		t.Fatalf("a colliding subject at another issuer must insert: %v", err)
+	}
+	if got, err := r.GetByProviderSubject(ctx, "google", "https://other.example.test", "s1"); err != nil || got.Email != "c@example.test" {
+		t.Fatalf("issuer must select the row: %+v %v", got, err)
 	}
 	if n, _ := r.CountByUser(ctx, uid); n != 1 {
 		t.Fatalf("count %d", n)
@@ -95,13 +104,24 @@ func TestStateAndHandoffRepos(t *testing.T) {
 
 	handoffs := NewHandoffRepo(db.Engine, db.TX)
 	tok := "id.tok"
-	h := &model.OAuthHandoff{CodeHash: "c1", UserID: uid, Provider: "oidc", FlowHash: "fh1", IDToken: &tok, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
+	h := &model.OAuthHandoff{CodeHash: "c1", Kind: model.OAuthHandoffKindLogin, UserID: uid, Provider: "oidc", FlowHash: "fh1",
+		IDToken: &tok, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
 	if err := handoffs.Insert(ctx, h); err != nil {
 		t.Fatal(err)
 	}
 	hg, err := handoffs.Get(ctx, "c1")
-	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) || hg.FlowHash != "fh1" {
+	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) || hg.FlowHash != "fh1" || hg.Kind != model.OAuthHandoffKindLogin {
 		t.Fatalf("%+v %v", hg, err)
+	}
+	// A link handoff round-trips the identity the callback refused to write.
+	link := &model.OAuthHandoff{CodeHash: "c3", Kind: model.OAuthHandoffKindLink, UserID: uid, Provider: "google",
+		Issuer: "https://idp.example.test", Subject: "s9", Email: "l@example.test", FlowHash: "fh2", CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
+	if err := handoffs.Insert(ctx, link); err != nil {
+		t.Fatal(err)
+	}
+	lg, err := handoffs.Get(ctx, "c3")
+	if err != nil || lg.Kind != model.OAuthHandoffKindLink || lg.Issuer != "https://idp.example.test" || lg.Subject != "s9" || lg.Email != "l@example.test" {
+		t.Fatalf("%+v %v", lg, err)
 	}
 	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 1 {
 		t.Fatalf("first delete %d %v", n, err)
@@ -112,7 +132,8 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 0 {
 		t.Fatalf("second delete must affect no rows: %d %v", n, err)
 	}
-	old := &model.OAuthHandoff{CodeHash: "c2", UserID: uid, Provider: "google", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}
+	_, _ = handoffs.Delete(ctx, "c3")
+	old := &model.OAuthHandoff{CodeHash: "c2", Kind: model.OAuthHandoffKindLogin, UserID: uid, Provider: "google", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}
 	_ = handoffs.Insert(ctx, old)
 	if n, _ := handoffs.DeleteExpired(ctx, now); n != 1 {
 		t.Fatalf("expired purge %d", n)

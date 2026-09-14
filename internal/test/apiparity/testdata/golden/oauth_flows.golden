@@ -31,6 +31,15 @@ Location: https://app.example.test/login?oauthError=invalid_state
 == err:exchange-handoff-blank-flow POST /api/v1/oauth/exchange-handoff [] -> 400
 {"success":false,"message":"Form validation error","code":400,"errors":{"flow":["This value should not be blank."]}}
 
+== err:complete-link-unknown POST /api/v1/oauth/complete-link [owner] -> 400
+{"success":false,"message":"Linking session is invalid or has expired","code":400,"errors":{}}
+
+== err:complete-link-blank POST /api/v1/oauth/complete-link [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"code":["This value should not be blank."],"flow":["This value should not be blank."]}}
+
+== err:complete-link-readonly-reaches-the-handler POST /api/v1/oauth/complete-link [readonly] -> 400
+{"success":false,"message":"Linking session is invalid or has expired","code":400,"errors":{}}
+
 == get-identity-list-empty GET /api/v1/oauth/get-identity-list [owner] -> 200
 {"success":true,"message":"","data":[]}
 

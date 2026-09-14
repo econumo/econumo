@@ -158,6 +158,7 @@ type Identity struct {
 	ID       string
 	UserID   string
 	Provider string // "google" | "apple" | "oidc"
+	Issuer   string // the provider's issuer URL; part of the identity key
 	Subject  string
 	Email    string
 }
@@ -166,8 +167,8 @@ func (b *Builder) Identity(i Identity) string {
 	b.t.Helper()
 	id := b.orNewID(i.ID)
 	now := b.now()
-	b.insert(`INSERT INTO users_identities (id, user_id, provider, subject, email, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)`, id, i.UserID, i.Provider, i.Subject, i.Email, now, now)
+	b.insert(`INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, id, i.UserID, i.Provider, i.Issuer, i.Subject, i.Email, now, now)
 	return id
 }
 

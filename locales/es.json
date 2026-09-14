@@ -1546,7 +1546,10 @@
       "provider_not_configured": "El proveedor de inicio de sesión no está configurado",
       "handoff_invalid": "El enlace de inicio de sesión no es válido o ha caducado",
       "last_identity": "Establece una contraseña antes de desvincular tu único método de inicio de sesión",
-      "identity_not_found": "Cuenta vinculada no encontrada"
+      "identity_not_found": "Cuenta vinculada no encontrada",
+      "link_invalid": "La sesión de vinculación no es válida o ha caducado",
+      "identity_taken": "Esta cuenta externa ya está vinculada a otra cuenta de Econumo",
+      "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor"
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Se vinculó un nuevo método de inicio de sesión a tu cuenta",
-      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. Por seguridad, se cerraron tus demás sesiones.\n\nSi no fuiste tú, restablece tu contraseña de inmediato: eso elimina todas las demás sesiones y te permite desvincular la cuenta desde Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. Como fue el proveedor, y no una contraseña, quien demostró que esta dirección de correo es tuya, se desactivó el inicio de sesión con contraseña y se revocaron todas las sesiones y los tokens de API.\n\nSi no fuiste tú, usa «He olvidado mi contraseña» para establecer una nueva de inmediato y luego desvincula la cuenta desde Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

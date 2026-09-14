@@ -1546,7 +1546,10 @@
       "provider_not_configured": "Sign-in provider is not configured",
       "handoff_invalid": "Sign-in link is invalid or has expired",
       "last_identity": "Set a password before unlinking your only sign-in method",
-      "identity_not_found": "Linked account not found"
+      "identity_not_found": "Linked account not found",
+      "link_invalid": "Linking session is invalid or has expired",
+      "identity_taken": "This external account is already linked to another Econumo account",
+      "provider_already_linked": "Your account already has a different account linked for this provider"
     },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "A new sign-in method was linked to your account",
-      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. For safety, your other sessions have been signed out.\n\nIf this wasn't you, reset your password right away — that removes every other session and lets you unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
+      "body": "Hi {name},\n\nA {provider} account was just linked to your Econumo account and can now be used to sign in. Because the provider — not a password — proved this email address is yours, password sign-in has been turned off and every session and API token was revoked.\n\nIf this wasn't you, use \"Forgot password\" to set a new password right away, then unlink the account from Settings.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

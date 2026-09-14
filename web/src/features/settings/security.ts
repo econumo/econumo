@@ -63,6 +63,17 @@ export function useIdentities() {
   return useQuery({ queryKey: ['oauth', 'identities'], queryFn: oauthApi.getIdentityList })
 }
 
+export function useCompleteLink() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.completeLink(code, flow),
+    onSuccess: ({ provider }) => {
+      trackEvent(METRICS.IDENTITY_LINKED, { provider })
+      void queryClient.invalidateQueries({ queryKey: ['oauth', 'identities'] })
+    },
+  })
+}
+
 export function useUnlinkIdentity() {
   const queryClient = useQueryClient()
   return useMutation({

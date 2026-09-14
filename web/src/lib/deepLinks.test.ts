@@ -5,14 +5,14 @@ beforeEach(() => {
   delete (window as { Capacitor?: unknown }).Capacitor
 })
 
-it('routes handoff, linked, link-error and error urls and closes the browser sheet', () => {
+it('routes handoff, link-handoff, link-error and error urls and closes the browser sheet', () => {
   const close = vi.fn().mockResolvedValue(undefined)
   window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { close } } }
   const nav = vi.spyOn(routerRef, 'navigateTo').mockImplementation(() => {})
   handleAppUrl('econumo://oauth?handoff=abc')
   expect(nav).toHaveBeenLastCalledWith('/oauth/callback#handoff=abc')
-  handleAppUrl('econumo://oauth?linked=google')
-  expect(nav).toHaveBeenLastCalledWith('/settings/profile/linked-accounts?linked=google')
+  handleAppUrl('econumo://oauth?linkHandoff=xyz')
+  expect(nav).toHaveBeenLastCalledWith('/settings/profile/linked-accounts#linkHandoff=xyz')
   handleAppUrl('econumo://oauth?linkError=identity_taken')
   expect(nav).toHaveBeenLastCalledWith('/settings/profile/linked-accounts?oauthError=identity_taken')
   handleAppUrl('econumo://oauth?error=denied')

@@ -14,7 +14,7 @@ import (
 // *errs.NotFoundError.
 type Identities interface {
 	NextIdentity() vo.Id
-	GetByProviderSubject(ctx context.Context, provider, subject string) (*model.Identity, error)
+	GetByProviderSubject(ctx context.Context, provider, issuer, subject string) (*model.Identity, error)
 	GetByUserProvider(ctx context.Context, userID vo.Id, provider string) (*model.Identity, error)
 	ListByUser(ctx context.Context, userID vo.Id) ([]model.Identity, error)
 	CountByUser(ctx context.Context, userID vo.Id) (int64, error)

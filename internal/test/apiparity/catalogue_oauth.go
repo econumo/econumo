@@ -5,8 +5,8 @@ import "net/url"
 // OAuth-module scenarios. The success callback needs a live consent step and is
 // covered by internal/oauth's own suite; here the deterministic edges are
 // pinned: provider list, start-login/link URLs (random params and the per-flow
-// secret redacted), the error redirects, the raw handoff 401, and the identity
-// list/unlink envelopes.
+// secret redacted), the error redirects, the raw handoff 401, the link
+// completion's rejection envelopes, and the identity list/unlink envelopes.
 func init() {
 	register(Scenario{Name: "oauth_flows", Calls: func() []Call {
 		return []Call{
@@ -22,6 +22,9 @@ func init() {
 			{Label: "err:exchange-handoff-unknown", Method: "POST", Path: "/api/v1/oauth/exchange-handoff", Body: map[string]any{"code": "nope", "flow": "x"}},
 			{Label: "err:exchange-handoff-blank", Method: "POST", Path: "/api/v1/oauth/exchange-handoff", Body: map[string]any{"code": "", "flow": "x"}},
 			{Label: "err:exchange-handoff-blank-flow", Method: "POST", Path: "/api/v1/oauth/exchange-handoff", Body: map[string]any{"code": "nope", "flow": ""}},
+			{Label: "err:complete-link-unknown", Method: "POST", Path: "/api/v1/oauth/complete-link", Auth: "owner", Body: map[string]any{"code": "nope", "flow": "x"}},
+			{Label: "err:complete-link-blank", Method: "POST", Path: "/api/v1/oauth/complete-link", Auth: "owner", Body: map[string]any{"code": "", "flow": ""}},
+			{Label: "err:complete-link-readonly-reaches-the-handler", Method: "POST", Path: "/api/v1/oauth/complete-link", Auth: "readonly", Body: map[string]any{"code": "nope", "flow": "x"}},
 			{Label: "get-identity-list-empty", Method: "GET", Path: "/api/v1/oauth/get-identity-list", Auth: "owner"},
 			{Label: "err:unlink-identity-missing", Method: "POST", Path: "/api/v1/oauth/unlink-identity", Auth: "owner", Body: map[string]any{"provider": "google"}},
 			{Label: "get-identity-list-seeded", Method: "GET", Path: "/api/v1/oauth/get-identity-list", Auth: "guest"},

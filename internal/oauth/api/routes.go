@@ -7,7 +7,7 @@ import (
 	"github.com/econumo/econumo/internal/web/router"
 )
 
-// RegisterAPI mounts the nine oauth endpoints. The callbacks are one literal
+// RegisterAPI mounts the ten oauth endpoints. The callbacks are one literal
 // route per provider so the apiparity route scanner keeps them under guard.
 func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.RegisterAPI {
 	return func(mux *http.ServeMux) {
@@ -24,6 +24,7 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 
 		// Authenticated group.
 		mux.Handle("POST /api/v1/oauth/start-link", auth(h.StartLink))
+		mux.Handle("POST /api/v1/oauth/complete-link", auth(h.CompleteLink))
 		mux.Handle("GET /api/v1/oauth/get-identity-list", auth(h.GetIdentityList))
 		mux.Handle("POST /api/v1/oauth/unlink-identity", auth(h.UnlinkIdentity))
 	}

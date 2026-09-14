@@ -1,17 +1,17 @@
 -- OAuth feature queries: identities, in-flight states, one-shot handoffs.
 
 -- name: GetIdentityByProviderSubject :one
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
-WHERE provider = ? AND subject = ?;
+WHERE provider = ? AND issuer = ? AND subject = ?;
 
 -- name: GetIdentityByUserProvider :one
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
 WHERE user_id = ? AND provider = ?;
 
 -- name: ListIdentitiesByUser :many
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
 WHERE user_id = ?
 ORDER BY created_at, id;
@@ -20,9 +20,11 @@ ORDER BY created_at, id;
 SELECT COUNT(*) FROM users_identities WHERE user_id = ?;
 
 -- name: UpsertIdentity :exec
-INSERT INTO users_identities (id, user_id, provider, subject, email, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (id) DO UPDATE SET
+    issuer     = excluded.issuer,
+    subject    = excluded.subject,
     email      = excluded.email,
     updated_at = excluded.updated_at;
 
@@ -45,11 +47,11 @@ DELETE FROM oauth_states WHERE state_hash = ?;
 DELETE FROM oauth_states WHERE expires_at < ?;
 
 -- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at)
-VALUES (?, ?, ?, ?, ?, ?, ?);
+INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 -- name: GetOAuthHandoff :one
-SELECT code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at
+SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at
 FROM oauth_handoffs
 WHERE code_hash = ?;
 

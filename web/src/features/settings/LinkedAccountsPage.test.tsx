@@ -39,6 +39,7 @@ function renderPage(initialEntry = '/settings/profile/linked-accounts') {
 
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   window.econumoConfig = {}
   mockViewport()
   server.use(
@@ -77,10 +78,40 @@ it('disables Unlink with a hint for a passwordless user with one identity', asyn
   expect(screen.getByText('Set a password before unlinking your only sign-in method.')).toBeInTheDocument()
 })
 
-it('shows the linked toast from ?linked=', async () => {
+it('completes the link from #linkHandoff= and shows the toast', async () => {
   mockUser(true)
-  renderPage('/settings/profile/linked-accounts?linked=google')
+  sessionStorage.setItem('oauthFlow', 'f1')
+  let posted: unknown
+  server.use(http.post('*/api/v1/oauth/complete-link', async ({ request }) => {
+    posted = await request.json()
+    return HttpResponse.json({ success: true, message: '', data: { provider: 'google' } })
+  }))
+  renderPage('/settings/profile/linked-accounts#linkHandoff=abc')
   expect(await screen.findByText('Google account linked.')).toBeInTheDocument()
+  expect(posted).toEqual({ code: 'abc', flow: 'f1' })
+})
+
+// The flow secret is what proves this client started the link; without it the
+// callback's code is worthless, and the server is never asked.
+it('refuses to complete a link this client did not start', async () => {
+  mockUser(true)
+  let called = false
+  server.use(http.post('*/api/v1/oauth/complete-link', () => {
+    called = true
+    return HttpResponse.json({ success: true, message: '', data: { provider: 'google' } })
+  }))
+  renderPage('/settings/profile/linked-accounts#linkHandoff=abc')
+  expect(await screen.findByText('The sign-in attempt expired or was already used. Please try again.')).toBeInTheDocument()
+  expect(called).toBe(false)
+})
+
+it('shows the server message when completing the link fails', async () => {
+  mockUser(true)
+  sessionStorage.setItem('oauthFlow', 'f1')
+  server.use(http.post('*/api/v1/oauth/complete-link', () =>
+    HttpResponse.json({ success: false, message: 'Linking session is invalid or has expired', code: 400, errors: {} }, { status: 400 })))
+  renderPage('/settings/profile/linked-accounts#linkHandoff=abc')
+  expect(await screen.findByText('Linking session is invalid or has expired')).toBeInTheDocument()
 })
 
 it('shows the link error from ?oauthError= and clears the parameter', async () => {

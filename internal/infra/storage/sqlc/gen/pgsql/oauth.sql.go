@@ -88,24 +88,26 @@ func (q *Queries) DeleteOAuthState(ctx context.Context, stateHash string) (int64
 
 const getIdentityByProviderSubject = `-- name: GetIdentityByProviderSubject :one
 
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
-WHERE provider = $1 AND subject = $2
+WHERE provider = $1 AND issuer = $2 AND subject = $3
 `
 
 type GetIdentityByProviderSubjectParams struct {
 	Provider string
+	Issuer   string
 	Subject  string
 }
 
 // OAuth feature queries: identities, in-flight states, one-shot handoffs.
 func (q *Queries) GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error) {
-	row := q.db.QueryRowContext(ctx, getIdentityByProviderSubject, arg.Provider, arg.Subject)
+	row := q.db.QueryRowContext(ctx, getIdentityByProviderSubject, arg.Provider, arg.Issuer, arg.Subject)
 	var i UsersIdentity
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Provider,
+		&i.Issuer,
 		&i.Subject,
 		&i.Email,
 		&i.CreatedAt,
@@ -115,7 +117,7 @@ func (q *Queries) GetIdentityByProviderSubject(ctx context.Context, arg GetIdent
 }
 
 const getIdentityByUserProvider = `-- name: GetIdentityByUserProvider :one
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
 WHERE user_id = $1 AND provider = $2
 `
@@ -132,6 +134,7 @@ func (q *Queries) GetIdentityByUserProvider(ctx context.Context, arg GetIdentity
 		&i.ID,
 		&i.UserID,
 		&i.Provider,
+		&i.Issuer,
 		&i.Subject,
 		&i.Email,
 		&i.CreatedAt,
@@ -141,7 +144,7 @@ func (q *Queries) GetIdentityByUserProvider(ctx context.Context, arg GetIdentity
 }
 
 const getOAuthHandoff = `-- name: GetOAuthHandoff :one
-SELECT code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at
+SELECT code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at
 FROM oauth_handoffs
 WHERE code_hash = $1
 `
@@ -151,8 +154,12 @@ func (q *Queries) GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHa
 	var i OauthHandoff
 	err := row.Scan(
 		&i.CodeHash,
+		&i.Kind,
 		&i.UserID,
 		&i.Provider,
+		&i.Issuer,
+		&i.Subject,
+		&i.Email,
 		&i.FlowHash,
 		&i.IDToken,
 		&i.CreatedAt,
@@ -186,14 +193,18 @@ func (q *Queries) GetOAuthState(ctx context.Context, stateHash string) (OauthSta
 }
 
 const insertOAuthHandoff = `-- name: InsertOAuthHandoff :exec
-INSERT INTO oauth_handoffs (code_hash, user_id, provider, flow_hash, id_token, created_at, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO oauth_handoffs (code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type InsertOAuthHandoffParams struct {
 	CodeHash  string
+	Kind      string
 	UserID    string
 	Provider  string
+	Issuer    string
+	Subject   string
+	Email     string
 	FlowHash  string
 	IDToken   *string
 	CreatedAt time.Time
@@ -203,8 +214,12 @@ type InsertOAuthHandoffParams struct {
 func (q *Queries) InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error {
 	_, err := q.db.ExecContext(ctx, insertOAuthHandoff,
 		arg.CodeHash,
+		arg.Kind,
 		arg.UserID,
 		arg.Provider,
+		arg.Issuer,
+		arg.Subject,
+		arg.Email,
 		arg.FlowHash,
 		arg.IDToken,
 		arg.CreatedAt,
@@ -248,7 +263,7 @@ func (q *Queries) InsertOAuthState(ctx context.Context, arg InsertOAuthStatePara
 }
 
 const listIdentitiesByUser = `-- name: ListIdentitiesByUser :many
-SELECT id, user_id, provider, subject, email, created_at, updated_at
+SELECT id, user_id, provider, issuer, subject, email, created_at, updated_at
 FROM users_identities
 WHERE user_id = $1
 ORDER BY created_at, id
@@ -267,6 +282,7 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 			&i.ID,
 			&i.UserID,
 			&i.Provider,
+			&i.Issuer,
 			&i.Subject,
 			&i.Email,
 			&i.CreatedAt,
@@ -286,9 +302,11 @@ func (q *Queries) ListIdentitiesByUser(ctx context.Context, userID string) ([]Us
 }
 
 const upsertIdentity = `-- name: UpsertIdentity :exec
-INSERT INTO users_identities (id, user_id, provider, subject, email, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO users_identities (id, user_id, provider, issuer, subject, email, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (id) DO UPDATE SET
+    issuer     = excluded.issuer,
+    subject    = excluded.subject,
     email      = excluded.email,
     updated_at = excluded.updated_at
 `
@@ -297,6 +315,7 @@ type UpsertIdentityParams struct {
 	ID        string
 	UserID    string
 	Provider  string
+	Issuer    string
 	Subject   string
 	Email     string
 	CreatedAt time.Time
@@ -308,6 +327,7 @@ func (q *Queries) UpsertIdentity(ctx context.Context, arg UpsertIdentityParams) 
 		arg.ID,
 		arg.UserID,
 		arg.Provider,
+		arg.Issuer,
 		arg.Subject,
 		arg.Email,
 		arg.CreatedAt,

@@ -35,7 +35,7 @@ OAuth 2.0 / OIDC **relying party** (client) of an external issuer.
 - OAuth state is stored server-side (a table), not in cookies: Apple's
   cross-site `form_post` carries no SameSite cookie and the app's browser sheet
   shares no storage with the SPA.
-- Identities live in `users_identities (provider, subject)`. Email claims are
+- Identities live in `users_identities (provider, issuer, subject)`. Email claims are
   used only when verified (or trusted by the operator); an unverified email
   rejects the sign-in outright, so a misconfigured IdP can neither take over
   nor create an account.
@@ -110,13 +110,18 @@ Migrations for both engines, same version stamp.
 | `id` | TEXT PK | UUIDv7 |
 | `user_id` | TEXT FK → users(id) ON DELETE CASCADE | |
 | `provider` | TEXT | `google` / `apple` / `oidc` |
+| `issuer` | TEXT | the slot's issuer URL at link time; part of the key |
 | `subject` | TEXT | the ID token `sub` |
 | `email` | TEXT | last email claim seen; display only, never a lookup key |
 | `created_at`, `updated_at` | DATETIME | frozen layout |
 
-Unique `(provider, subject)`; index on `user_id`. The custom slot's identities
-are keyed by provider id `oidc`, not by issuer URL: changing the issuer of the
-slot orphans nothing but also does not migrate subjects (documented).
+Unique `(provider, issuer, subject)` and `(user_id, provider)`. The issuer is
+part of the key because the custom slot's provider id is always `oidc`: without
+it, an operator repointing `ECONUMO_OIDC_ISSUER_URL` would let a user at the new
+issuer whose `sub` happens to match a stored one authenticate as that row's
+owner. After such a change a returning user is matched by verified email again
+(the auto-link path), and their single row for the slot is repointed onto the
+new issuer/subject rather than colliding on `(user_id, provider)`.
 
 ### 4.2 `oauth_states`
 
@@ -141,8 +146,10 @@ tokens at login.
 | column | notes |
 |---|---|
 | `code_hash` TEXT PK | `hex(sha256(code))`; `code` is 32 random bytes base64url |
-| `user_id` TEXT FK → users(id) ON DELETE CASCADE | resolved user |
+| `kind` TEXT | `login` (redeemed for a session) / `link` (redeemed for the deferred identity write); neither is redeemable at the other's endpoint |
+| `user_id` TEXT FK → users(id) ON DELETE CASCADE | resolved user, or the account a link was started from |
 | `provider` TEXT | recorded on the session for analytics/logout |
+| `issuer`, `subject`, `email` TEXT | `kind = link` only: the identity the callback resolved but refused to persist unattended |
 | `flow_hash` TEXT | copied from the state row; the exchange must present the matching secret |
 | `id_token` TEXT NULL | the raw ID token, custom slot only (§8) |
 | `created_at`, `expires_at` DATETIME | TTL 60 seconds |
@@ -252,10 +259,11 @@ Routes under `/api/v1/oauth/`, registered in `internal/oauth/api/routes.go`
 |---|---|---|
 | `GET get-provider-list` | public | `[{id, name}]`, fixed order google, apple, oidc; only enabled slots; `name` is `Google`, `Apple`, or `ECONUMO_OIDC_NAME`. |
 | `POST start-login` | public | Body `{provider, client}`. Creates a state row, returns `{url, flow}` — `flow` is the per-flow secret the client stores and presents at `exchange-handoff`. |
-| `POST start-link` | authed, 402 allowlist | Same with `intent = link` and the caller as `link_user_id`. A flow secret is minted too (uniform row shape); the link flow ends on a redirect and never presents it. |
+| `POST start-link` | authed, 402 allowlist | Same with `intent = link` and the caller as `link_user_id`. The flow secret matters here too: `complete-link` demands it. |
 | `GET callback-google`, `GET callback-oidc` | public | `code` + `state` (or `error`) in the query. Respond 302. |
 | `POST callback-apple` | public | Apple's `form_post`: `code`, `state`, `id_token`, `user` as form fields. Responds 302. |
 | `POST exchange-handoff` | public | Body `{code, flow}`, both required. Returns the raw `{token, user}` of login (no envelope; the second such exception after login). |
+| `POST complete-link` | authed, 402 allowlist | Body `{code, flow}`, both required. Performs the identity write the link callback deferred; returns `{provider}`. |
 | `GET get-identity-list` | authed | `[{provider, email, createdAt}]`. |
 | `POST unlink-identity` | authed, 402 allowlist | Body `{provider}`. |
 
@@ -305,27 +313,42 @@ Common prefix:
    auto-link. Step 4 proves that whoever is signing in owns the address — but
    it says nothing about whoever set that account's password, who may never
    have proved it (registration does not always verify). So when the account
-   **has** a password the auto-link also revokes every session of that account
-   and marks its email verified, exactly as `reset-password` does: the mailbox
-   owner is the account owner. A passwordless account was created through a
-   provider, so its owner already proved the address and keeps their sessions.
-   The insert and the eviction share one transaction — a half-applied link
-   would leave the eviction undone while step 5 signs the attacker straight in.
-   Once that commits, the account owner is emailed a notice (best-effort, in
-   their stored language) that a sign-in method was linked and their other
-   sessions were signed out — a session eviction they did not initiate must be
+   **has** a password the auto-link also evicts every credential that predates
+   it — the password is cleared (`algorithm = 'none'`) and every session AND
+   personal token is revoked — and marks the email verified. Revoking sessions
+   alone is not enough: an attacker who pre-registered the victim's address
+   would keep a working password and live API tokens after the victim signed
+   in. The mailbox owner is the account owner, so the legitimate owner restores
+   a password through `remind-password` (or keeps signing in with the
+   provider). A passwordless account was created through a provider, so its
+   owner already proved the address and keeps its credentials. The insert and
+   the eviction share one transaction — a half-applied link would leave the
+   eviction undone while step 5 signs the attacker straight in. Once that
+   commits, the account owner is emailed a notice (best-effort, in their stored
+   language) naming what happened — an eviction they did not initiate must be
    noticeable, and the email is where they learn to reset their password if it
-   was not them. A passwordless account gets no notice: it already keeps its
-   sessions.
+   was not them. A passwordless account gets no notice.
 7. No user: registration disabled → `registration_disabled`. Else provision
    (§7) with the email marked verified, insert the identity, mint a handoff.
 
 `intent = link`:
 
-5. Identity exists for another user → `identity_taken`. Exists for
-   `link_user_id` → idempotent success. Else insert. No handoff: the user is
-   already signed in. Redirect to the Settings page (web) or the scheme with
-   `linked=<provider>` (app).
+5. Identity exists for another user → `identity_taken`. The same user already
+   has another identity for the slot → `provider_already_linked`. Otherwise the
+   callback writes **nothing** and parks the resolved identity in a link
+   handoff (`kind = link`, carrying issuer/subject/email and the state's
+   `flow_hash`), redirecting to the Settings page with `#linkHandoff=<code>`
+   (web) or `econumo://oauth?linkHandoff=<code>` (app).
+
+   The deferral is the whole point: the callback arrives in whatever browser
+   followed the authorization URL, carrying no credential of the account that
+   started the flow. Writing there would let an attacker start a link on their
+   own account, send the authorization URL to a victim, and have the victim's
+   provider identity bound to the attacker's account — after which the victim's
+   own provider sign-ins land in that account. The client that started the link
+   finishes it at `complete-link` (§6.4a), where three things must agree: the
+   one-shot code, the flow secret only that client holds, and a session for the
+   account named on the handoff.
 
 On every successful identity load or insert, `users_identities.email` is
 refreshed from the claim.
@@ -350,7 +373,7 @@ reassignment.
 | outcome | `client = web` | `client = app` |
 |---|---|---|
 | login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `econumo://oauth?handoff=<code>` |
-| link success | `<ECONUMO_URL>/settings/profile/linked-accounts?linked=<provider>` | `econumo://oauth?linked=<provider>` |
+| link resolved | `<ECONUMO_URL>/settings/profile/linked-accounts#linkHandoff=<code>` | `econumo://oauth?linkHandoff=<code>` |
 | link error | `<ECONUMO_URL>/settings/profile/linked-accounts?oauthError=<code>` | `econumo://oauth?linkError=<code>` |
 | error | `<ECONUMO_URL>/login?oauthError=<code>` | `econumo://oauth?error=<code>` |
 
@@ -358,7 +381,8 @@ The web handoff travels in the fragment so it never reaches server logs or
 `Referer` headers. Error codes are catalogue keys under `auth.oauth.errors.*`
 rendered by the SPA in the user's language: `denied`, `invalid_state`,
 `provider_error`, `email_required`, `email_unverified`,
-`registration_disabled`, `identity_taken`, `account_inactive`. A failure whose
+`registration_disabled`, `identity_taken`, `provider_already_linked`,
+`account_inactive`. A failure whose
 state row named `intent = link` takes the link-error row: a signed-in user
 would never see a message rendered on the login page. The intent lives in the
 state row, so a failure BEFORE that row loads (unknown or expired state) has no
@@ -379,6 +403,18 @@ tokens, mint a session with the **exchanging request's** user agent (the real
 client, not the provider's browser sheet), stamp `provider` and `id_token` on
 the session row, best-effort persist the request language exactly as login
 does, and return `{token, user}`.
+
+### 6.4a Link completion
+
+`complete-link` is `exchange-handoff`'s sibling and shares its consumption
+logic: hash the code, load the row, delete it, and let the DELETE's
+affected-row count settle the race. It then rejects — with a coded 400
+`oauth.link_invalid` — a row of the wrong `kind`, an expired row, a mismatched
+`flow_hash` (constant time), or a row whose `user_id` is not the authenticated
+caller. Only then is the identity written, re-running the taken /
+already-linked checks inside the authenticated request (coded 400
+`oauth.identity_taken` / `oauth.provider_already_linked`). The response is
+`{provider}`, which the SPA turns into the success toast.
 
 ### 6.5 Unlink
 
@@ -503,7 +539,8 @@ to end it." Password sessions show nothing new.
   (provider, email, linked date); "Link" for every enabled provider not yet
   linked (posts `start-link`, navigates); "Unlink" with confirmation, disabled
   with an explanation when the account has no password and one identity.
-  `?linked=<provider>` shows a success toast and invalidates the identity list
+  `#linkHandoff=<code>` calls `complete-link` with the stored flow secret, then
+  shows a success toast and invalidates the identity list
   (the link happened on the backend while the browser was away);
   `?oauthError=<code>` renders the `auth.oauth.errors.*` message (falling back
   to `provider_error`) and clears the parameter. The disabled Unlink button is

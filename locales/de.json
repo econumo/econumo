@@ -1546,7 +1546,10 @@
       "provider_not_configured": "Der Anbieter für die Anmeldung ist nicht konfiguriert",
       "handoff_invalid": "Der Anmeldelink ist ungültig oder abgelaufen",
       "last_identity": "Legen Sie ein Passwort fest, bevor Sie Ihre einzige Anmeldemethode entfernen",
-      "identity_not_found": "Verknüpftes Konto nicht gefunden"
+      "identity_not_found": "Verknüpftes Konto nicht gefunden",
+      "link_invalid": "Die Verknüpfungssitzung ist ungültig oder abgelaufen",
+      "identity_taken": "Dieses externe Konto ist bereits mit einem anderen Econumo-Konto verknüpft",
+      "provider_already_linked": "Ihr Konto hat für diesen Anbieter bereits ein anderes Konto verknüpft"
     },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
@@ -1606,7 +1609,7 @@
     },
     "identity_linked": {
       "subject": "Eine neue Anmeldemethode wurde mit Ihrem Konto verknüpft",
-      "body": "Hallo {name},\n\nEin {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden. Zu Ihrer Sicherheit wurden Ihre anderen Sitzungen abgemeldet.\n\nFalls Sie das nicht waren, setzen Sie umgehend Ihr Passwort zurück — das beendet alle anderen Sitzungen und ermöglicht es Ihnen, das Konto in den Einstellungen zu trennen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+      "body": "Hallo {name},\n\nEin {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden. Da der Anbieter — und nicht ein Passwort — nachgewiesen hat, dass diese E-Mail-Adresse Ihnen gehört, wurde die Anmeldung mit Passwort deaktiviert und alle Sitzungen und API-Token wurden widerrufen.\n\nFalls Sie das nicht waren, vergeben Sie über „Passwort vergessen“ umgehend ein neues Passwort und trennen Sie das Konto anschließend in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
     }
   }
 }

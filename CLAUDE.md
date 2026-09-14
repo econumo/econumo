@@ -700,7 +700,8 @@ In the distroless image these run via the binary directly, e.g.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update, email change, `oauth/start-link`, `oauth/unlink-identity` —
+  revocation, password update, email change, `oauth/start-link`,
+  `oauth/complete-link`, `oauth/unlink-identity` —
   plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
   paid feature, so it must work regardless of access level); `GET` reads are never restricted.
 
@@ -727,16 +728,30 @@ In the distroless image these run via the binary directly, e.g.
 - Token refresh is not implemented (sessions slide instead; clients re-authenticate
   after 30 days of inactivity).
 - **Provider sign-in** (`internal/oauth`): a state-carrying redirect to the provider, a
-  callback that verifies the ID token and resolves to an existing `(provider, subject)`
-  identity, an auto-link by verified email, or (when `ECONUMO_ALLOW_REGISTRATION` is on) a
+  callback that verifies the ID token and resolves to an existing
+  `(provider, issuer, subject)` identity, an auto-link by verified email, or (when
+  `ECONUMO_ALLOW_REGISTRATION` is on) a
   new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
   handoff code the client exchanges for a normal session — never a token in a redirect URL
   or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
   on the web, `localStorage` in the app) that the client must present alongside the handoff:
   the flow is bound to the client that began it, so a forged callback cannot log a victim
   into an attacker's account. Auto-linking a provider to an account that already has a
-  password revokes that account's sessions and marks its email verified — the provider
-  proved the address, the password holder may never have. Identities live in `users_identities`, keyed by `(provider, subject)`.
+  password evicts every credential that predates the link — the password is cleared,
+  and all sessions AND personal tokens are revoked — and marks its email verified: the
+  provider proved the address, the password holder may never have, so an attacker who
+  pre-registered the address keeps nothing (the owner restores a password through the
+  reset flow, which needs the mailbox). **A link started from Settings writes nothing on
+  the callback**: the provider redirects whichever browser followed the authorization URL,
+  so the callback parks the resolved identity in a one-shot *link* handoff and the
+  authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating
+  client presents both its flow secret and a session for the account the link started
+  from — without that, an attacker's own start-link URL opened by a victim would bind the
+  victim's identity to the attacker's account. Identities live in `users_identities`,
+  keyed by `(provider, issuer, subject)`; the issuer is in the key because the custom
+  slot's provider id is always `oidc`, so repointing `ECONUMO_OIDC_ISSUER_URL` must not
+  let a subject collision at the new issuer resolve to the old issuer's user (a returning
+  user matched by verified email has their one row per slot repointed instead).
   Every oauth-originated session stamps `provider` on the row (Google, Apple, and the custom
   OIDC slot alike); only the custom OIDC slot also stores `id_token`, since Google and Apple
   publish no end-session endpoint. `logout-user` returns a non-empty `logoutUrl` only for a
@@ -846,7 +861,7 @@ data unreadable. Most are also asserted by the test suite.
   password, its owner is emailed a best-effort notice (`emails.identity_linked.*`) once the
   eviction transaction commits, naming the provider's display name in the account's stored
   language; a failure to send never affects the redirect, and a passwordless auto-link (which
-  keeps its sessions) sends nothing.
+  keeps its credentials) sends nothing.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case

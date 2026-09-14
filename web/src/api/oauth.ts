@@ -47,6 +47,14 @@ export async function exchangeHandoff(code: string, flow: string): Promise<UserL
   return response.data
 }
 
+// The link callback parks the resolved identity behind a one-shot code instead
+// of writing it: only this call — authenticated, and carrying the flow secret
+// of the client that started the link — completes it.
+export async function completeLink(code: string, flow: string): Promise<{ provider: OAuthProviderId }> {
+  const response = await api.post<Envelope<{ provider: OAuthProviderId }>>(apiUrl('/api/v1/oauth/complete-link'), { code, flow })
+  return response.data.data
+}
+
 export async function getIdentityList(): Promise<IdentityDto[]> {
   const response = await api.get<Envelope<IdentityDto[]>>(apiUrl('/api/v1/oauth/get-identity-list'))
   return response.data.data
