@@ -426,8 +426,10 @@ User C sees none of it.
 - [ ] For a passwordless user, Settings → Profile shows a "Set a password"
       row in place of "Change password"; it sends a reset code to the
       account's email (the email field pre-filled/locked) and, after
-      entering the code and a new password, the account can sign in with
-      that password (and "Set a password" reverts to "Change password").
+      entering the code and a new password the app signs the user out (the
+      reset ends every session, including this one) and lands on the login
+      page; signing in with the new password works and Settings → Profile
+      now shows "Change password" instead of "Set a password".
 - [ ] Sessions list (Settings → Profile → Sessions) shows "via Google" (or
       Apple/SSO) under a session opened through a provider; a password
       session shows nothing extra.

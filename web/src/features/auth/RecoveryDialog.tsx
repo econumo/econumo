@@ -14,7 +14,7 @@ interface RecoveryForm {
   password: string
 }
 
-export function RecoveryDialog({ open, onClose, email }: { open: boolean; onClose: () => void; email?: string }) {
+export function RecoveryDialog({ open, onClose, onSuccess, email }: { open: boolean; onClose: () => void; onSuccess?: () => void; email?: string }) {
   const { t } = useTranslation()
   const [isCodeSent, setIsCodeSent] = useState(false)
   const remind = useRemindPassword()
@@ -34,7 +34,11 @@ export function RecoveryDialog({ open, onClose, email }: { open: boolean; onClos
   const changePassword = handleSubmit(async ({ email, code, password }) => {
     try {
       await reset.mutateAsync({ username: email, code, password })
-      onClose()
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        onClose()
+      }
     } catch {
       // stay on the step — the inline error below explains
     }

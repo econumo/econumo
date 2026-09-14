@@ -254,3 +254,19 @@ it('"Set a password" opens the recovery dialog with the email locked', async () 
   expect(emailField).toHaveValue(fixtureUser.email)
   expect(emailField).toBeDisabled()
 })
+
+it('signs out after a passwordless user sets a password (the reset revoked this session)', async () => {
+  server.use(
+    ...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }),
+    http.post('*/api/v1/user/remind-password', () => HttpResponse.json({ success: true, message: '', data: {} })),
+    http.post('*/api/v1/user/reset-password', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Set a password'))
+  await user.click(screen.getByRole('button', { name: 'Send code' }))
+  await user.type(await screen.findByLabelText(/code/i), '123456')
+  await user.type(screen.getByLabelText(/new password/i), 'Password123!')
+  await user.click(screen.getByRole('button', { name: 'Reset password' }))
+  expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
+})

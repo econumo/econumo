@@ -255,7 +255,7 @@ export function ProfilePage() {
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
 
       {recoveryOpen ? (
-        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} email={user?.email} />
+        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT)} email={user?.email} />
       ) : null}
 
       <ConfirmDialog
