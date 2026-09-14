@@ -726,7 +726,9 @@ In the distroless image these run via the binary directly, e.g.
 - Revocation cascades: `update-password` (the user changing their own password) revokes
   only the OTHER sessions and keeps PATs and identities — integrations must outlive a
   password change; `user:deactivate` revokes sessions AND
-  PATs (which is why per-request auth needs no `is_active` join). **`reset-password` and
+  PATs and bumps the credentials generation, all in the deactivating transaction
+  (which is why per-request auth needs no `is_active` join, and why a login racing the
+  deactivation cannot mint a session that outlives it). **`reset-password` and
   CLI `user:change-password` are the account RECLAIM** (one primitive,
   `user.reclaimCredentials`): a completed reset is the account's proof of mailbox
   ownership and an operator setting a password is evicting whoever holds the account, so

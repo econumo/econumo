@@ -32,6 +32,8 @@ func (s *Service) reclaimCredentials(ctx context.Context, u *model.User, provenE
 		return err
 	}
 	if s.oauthGrants == nil {
+		// The two request stores above are constructor-required; the reclaimer is
+		// an optional seam (a build without oauth wiring has nothing to reclaim).
 		return nil
 	}
 	identities, grants, err := s.oauthGrants.ReclaimAccount(ctx, u.ID, strings.ToLower(strings.TrimSpace(provenEmail)))

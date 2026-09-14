@@ -103,19 +103,28 @@ func (s *Service) AdminActivate(ctx context.Context, email string) error {
 // AdminDeactivate marks the user inactive, looked up by email, and revokes
 // EVERY credential (sessions AND personal tokens) — this is why per-request
 // authentication needs no is_active join: a deactivated user simply has no
-// live tokens left.
+// live tokens left. The revoke runs INSIDE the same transaction as the
+// deactivation, and the credentials generation is bumped alongside it: a
+// password login that read the row while still active must not be able to
+// mint a session after this commits (see createSession's generation fence).
+// Unlike a password reclaim, this must not unlink oauth identities or drop
+// pending grants — deactivation is reversible, so those stay put for
+// AdminActivate to hand back.
 func (s *Service) AdminDeactivate(ctx context.Context, email string) error {
 	u, err := s.userByEmail(ctx, email)
 	if err != nil {
 		return err
 	}
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
 		u.Deactivate(s.clock.Now())
-		return s.repo.Save(ctx, u)
-	}); err != nil {
-		return err
-	}
-	return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
+		if err := s.repo.Save(ctx, u); err != nil {
+			return err
+		}
+		if err := s.repo.BumpCredentialsGeneration(ctx, u.ID); err != nil {
+			return err
+		}
+		return s.revokeTokens(ctx, u.ID, vo.Id{}, s.clock.Now(), model.TokenKindSession, model.TokenKindPersonal)
+	})
 }
 
 // AdminVerifyEmail marks a user's email verified (support/rescue hatch for

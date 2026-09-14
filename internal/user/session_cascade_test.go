@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	appuser "github.com/econumo/econumo/internal/user"
@@ -15,6 +16,7 @@ import (
 
 // cascadeEnv: a user with two live sessions and one live PAT.
 type cascadeEnv struct {
+	db       *dbtest.DB
 	svc      *appuser.Service
 	tokens   *userrepo.AccessTokenRepo
 	uid      vo.Id
@@ -25,11 +27,12 @@ type cascadeEnv struct {
 
 func newCascadeEnv(t *testing.T) *cascadeEnv {
 	t.Helper()
-	svc, tokens, _, uid := newAuthEnv(t)
+	db := dbtest.New(t)
+	svc, tokens, _, uid := newAuthEnvOn(t, db)
 	exp := authT0.Add(appuser.SessionTTL)
 	patExp := authT0.Add(90 * 24 * time.Hour)
 	return &cascadeEnv{
-		svc: svc, tokens: tokens, uid: uid,
+		db: db, svc: svc, tokens: tokens, uid: uid,
 		sessionA: seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_cascade-a", &exp),
 		sessionB: seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_cascade-b", &exp),
 		pat:      seedToken(t, tokens, uid, model.TokenKindPersonal, "eco_pat_cascade", &patExp),
@@ -123,13 +126,78 @@ func TestAdminChangePassword_IsAFullReclaim(t *testing.T) {
 
 func TestAdminDeactivate_RevokesEverything(t *testing.T) {
 	e := newCascadeEnv(t)
+	ctx := context.Background()
+	users := userrepo.NewRepo(e.db.Engine, e.db.TX)
+	before, err := users.GetByID(ctx, e.uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
 
-	if err := e.svc.AdminDeactivate(context.Background(), "auth@econumo.test"); err != nil {
+	if err := e.svc.AdminDeactivate(ctx, "auth@econumo.test"); err != nil {
 		t.Fatalf("AdminDeactivate: %v", err)
 	}
 	a, b, pat := e.liveness(t, authT0.Add(time.Minute))
 	if a || b || pat {
 		t.Errorf("deactivate must revoke everything (a=%v b=%v pat=%v)", a, b, pat)
+	}
+	after, err := users.GetByID(ctx, e.uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if after.CredentialsGeneration != before.CredentialsGeneration+1 {
+		t.Errorf("credentials generation %d -> %d, want +1", before.CredentialsGeneration, after.CredentialsGeneration)
+	}
+}
+
+// deactivatingRepo lands a deactivation in the window between Login's evidence
+// read and its session insert, the same race resettingRepo exercises for a
+// password reset: AdminDeactivate is the last credential-eviction path that
+// used to leave that window unfenced.
+type deactivatingRepo struct {
+	appuser.Repository
+	svc   *appuser.Service
+	armed bool
+}
+
+func (r *deactivatingRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	u, err := r.Repository.GetByEmail(ctx, email)
+	if err != nil || !r.armed {
+		return u, err
+	}
+	r.armed = false
+	return u, r.svc.AdminDeactivate(ctx, email)
+}
+
+// Login must present the generation that came out of the SAME row read as the
+// password hash it verified. A deactivation landing after that read, inside
+// its own transaction, must bump the generation so the guarded session insert
+// still fails closed — a deactivated user must never end up with a live
+// session, even one that raced the deactivation.
+func TestLogin_DeactivateBetweenTheEvidenceReadAndTheSessionInsertMintsNothing(t *testing.T) {
+	db := dbtest.New(t)
+	repo := &deactivatingRepo{Repository: userrepo.NewRepo(db.Engine, db.TX)}
+	svc, _, _ := newUserSvcWithRepo(t, db, repo)
+	repo.svc = svc
+	ctx := context.Background()
+
+	id, err := svc.AdminCreateUser(ctx, "Raced Deactivation", "raced-deactivate@econumo.test", "secretpass")
+	if err != nil {
+		t.Fatalf("AdminCreateUser: %v", err)
+	}
+	repo.armed = true
+
+	_, err = svc.Login(ctx, model.LoginRequest{Username: "raced-deactivate@econumo.test", Password: "secretpass"}, "test-agent", time.Now())
+	var unauthorized *errs.UnauthorizedError
+	if !errors.As(err, &unauthorized) || unauthorized.Msg != "Invalid credentials." {
+		t.Fatalf("Login err = %v, want *errs.UnauthorizedError %q", err, "Invalid credentials.")
+	}
+	var n int
+	if err := db.Raw.QueryRowContext(ctx, db.Rebind(
+		"SELECT COUNT(*) FROM access_tokens WHERE user_id = ? AND kind = ? AND revoked_at IS NULL"), id.String(), model.TokenKindSession).Scan(&n); err != nil {
+		t.Fatalf("count live sessions: %v", err)
+	}
+	if n != 0 {
+		t.Fatalf("the deactivation was outrun: %d live session rows", n)
 	}
 }
 

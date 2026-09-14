@@ -12,10 +12,6 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// createSession mints a session row for a fresh login and returns the raw
-// bearer token (the only moment it exists server-side). provider/idToken stamp
-// the session's OAuth origin ("" and nil for password logins); idToken is kept
-// only for the custom OIDC slot so Logout can send id_token_hint.
 // createSession mints a session under the credentials generation the caller
 // read its evidence at (the password hash it verified, or the oauth flow it
 // resolved). The insert is conditional on that generation still being current,

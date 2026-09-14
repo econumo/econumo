@@ -69,6 +69,8 @@ func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.Acces
 }
 
 func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error) {
+	// ID_2 is the presenting token's id (the guard condition); UserID_2 is the
+	// owner the new row is inserted for — t.UserID, not the presenter's user.
 	return r.q.InsertAccessTokenIfPresenterLive(ctx, r.db(ctx), insertTokenIfPresenterLiveParams{
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
 		Name: t.Name, UserAgent: t.UserAgent,

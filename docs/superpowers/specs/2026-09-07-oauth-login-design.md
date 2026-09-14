@@ -453,6 +453,13 @@ hash) and presents it at write time, where `InsertAccessTokenIfGeneration` and
 reclaim bumps the generation inside its transaction, so every in-flight write
 affects zero rows and fails closed — the database decides the race, which is the
 only place it can be decided without a Go-side read that is itself the race.
+On PostgreSQL (read committed) the fence is evaluated against whatever is
+committed at the moment the guarded write runs, so a mint that lands while the
+reclaim's transaction is still open can still pass — the window is that one
+short transaction, not eliminated by it. SQLite's single writer excludes the
+window entirely (no second transaction can be mid-flight to race). The window
+is accepted: it is bounded to one short transaction's duration, not the
+unbounded gap the generation fence itself closes.
 
 Corollary: `users_identities.email` is no longer purely decorative. It is still
 never a lookup key, but it records which address a provider vouches for, and
