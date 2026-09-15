@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import type { ImportSourceDto } from '@/api/dto/imports'
@@ -6,7 +6,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { useCreatePersonalToken, usePersonalTokens } from '@/features/settings/security'
+import { useCreatePersonalToken, usePersonalTokens, useRevokePersonalToken } from '@/features/settings/security'
 import { apiErrorMessage } from '@/lib/apiError'
 import { backendHost, getWebsiteUrl } from '@/lib/config'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -61,12 +61,15 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
   const createSource = useCreateImportSource()
   const deleteSource = useDeleteImportSource()
   const createToken = useCreatePersonalToken()
+  const revokeToken = useRevokePersonalToken()
   const discardEvent = useDiscardImportEvent()
   const sources = useImportSources()
   const queue = useImportQueue()
   const tokens = usePersonalTokens()
   const [disconnectOpen, setDisconnectOpen] = useState(false)
   const [configured, setConfigured] = useState(false)
+  const [configuring, setConfiguring] = useState(false)
+  const configuringRef = useRef(false)
   const [showSteps, setShowSteps] = useState(false)
   const [testMissing, setTestMissing] = useState(false)
   const [paymentMissing, setPaymentMissing] = useState(false)
@@ -83,14 +86,32 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
     setItem(ticksKey(source.id), next)
   }
 
+  // The shortcut on the phone must be the only holder of a live ingest
+  // credential, so configuring revokes every ingest token first — re-read
+  // from the server, not the rendered list, which may be stale (minted from
+  // another device, or a list request that failed while the button showed).
   const configureHere = async () => {
+    // A double tap must not mint twice: the ref closes the window before the
+    // disabled state has rendered.
+    if (configuringRef.current) {
+      return
+    }
+    configuringRef.current = true
+    setConfiguring(true)
     try {
+      const current = (await tokens.refetch()).data ?? []
+      for (const tok of current.filter((t) => t.scope === 'ingest')) {
+        await revokeToken.mutateAsync(tok.id)
+      }
       const created = await createToken.mutateAsync({ name: INGEST_TOKEN_NAME, expiresAt: null, scope: 'ingest' })
       trackEvent(METRICS.IMPORT_SHORTCUT_CONFIGURE)
       setConfigured(true)
       nav.openDeepLink(setupDeepLink(serverUrl, created.token))
     } catch (err) {
       toast.error(apiErrorMessage(err))
+    } finally {
+      configuringRef.current = false
+      setConfiguring(false)
     }
   }
 
@@ -228,7 +249,7 @@ export function AppleWalletSetup({ source }: { source: ImportSourceDto | null })
                 <span className="text-muted-foreground">{t('imports.apple_wallet.steps.configure.text')}</span>
                 <div className="flex flex-wrap items-center gap-3 pt-1">
                   {ios ? (
-                    <Button type="button" className="h-11" disabled={createToken.isPending} onClick={() => void configureHere()}>
+                    <Button type="button" className="h-11" disabled={configuring} onClick={() => void configureHere()}>
                       {t('imports.apple_wallet.steps.configure.button')}
                     </Button>
                   ) : null}

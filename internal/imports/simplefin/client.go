@@ -112,6 +112,43 @@ func (c checkedRoundTripper) RoundTrip(req *http.Request) (*http.Response, error
 	return c.next.RoundTrip(req)
 }
 
+// reservedNets are the non-routable ranges net.IP's IsGlobalUnicast/IsPrivate
+// pair still reports as public: shared address space (CGNAT — Tailscale and
+// some cloud metadata endpoints), IETF protocol assignments, benchmarking,
+// class E, and the NAT64 prefixes that map a private IPv4 target into IPv6.
+var reservedNets = mustCIDRs(
+	"100.64.0.0/10",
+	"192.0.0.0/24",
+	"198.18.0.0/15",
+	"240.0.0.0/4",
+	"64:ff9b::/96",
+	"64:ff9b:1::/48",
+)
+
+func mustCIDRs(cidrs ...string) []*net.IPNet {
+	out := make([]*net.IPNet, 0, len(cidrs))
+	for _, c := range cidrs {
+		_, n, err := net.ParseCIDR(c)
+		if err != nil {
+			panic("simplefin: bad reserved CIDR " + c)
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func addressAllowed(ip net.IP) bool {
+	if !ip.IsGlobalUnicast() || ip.IsPrivate() {
+		return false
+	}
+	for _, n := range reservedNets {
+		if n.Contains(ip) {
+			return false
+		}
+	}
+	return true
+}
+
 func resolveAllowed(ctx context.Context, host string) ([]net.IPAddr, error) {
 	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 	if err != nil || len(ips) == 0 {
@@ -120,7 +157,7 @@ func resolveAllowed(ctx context.Context, host string) ([]net.IPAddr, error) {
 	for _, a := range ips {
 		// One blocked answer condemns the whole host: otherwise a rebinding
 		// record only has to win a retry.
-		if !a.IP.IsGlobalUnicast() || a.IP.IsPrivate() {
+		if !addressAllowed(a.IP) {
 			return nil, errBlockedAddress
 		}
 	}

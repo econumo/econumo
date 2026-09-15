@@ -191,6 +191,10 @@ navigation (single-pane vs sidebar).
       who already holds an `ingest` PAT sees step 3 ticked on load. "Configure
       manually" opens `https://econumo.com/docs/user-guide/apple-wallet` in a
       new tab (no in-app token/recipe panel).
+- [ ] iOS only 📱: Configure with an `ingest` PAT minted meanwhile from another
+      device (page rendered before it existed) revokes that token first and
+      mints a fresh one — Profile → Tokens shows exactly one live `ingest`
+      PAT afterwards; `full` PATs are untouched.
 - [ ] Desktop: an "Open this page on your iPhone…" hint sits above the list and
       the iOS-only buttons ("Configure on this iPhone", "Run econumo-wallet-v1")
       are absent; downloads, "Configure manually", both "Check" buttons and the

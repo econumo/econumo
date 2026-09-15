@@ -135,6 +135,57 @@ it('iOS configure mints an ingest token, opens the shortcuts deep link and ticks
   spy.mockRestore()
 })
 
+it('iOS configure revokes the ingest tokens the server holds at click time before minting, leaving full tokens alone', async () => {
+  mockIsIOS.value = true
+  const fullToken = { ...ingestToken, id: 'p2', name: 'CLI', scope: 'full' }
+  const revoked: string[] = []
+  const calls: string[] = []
+  server.use(http.post('*/api/v1/user/create-personal-token', () => {
+    calls.push('create')
+    return HttpResponse.json({ success: true, message: '', data: { id: 'p3', name: 'Apple Wallet', token: 'eco_pat_new', createdAt: '2026-08-01 00:00:00', expiresAt: null } })
+  }))
+  server.use(http.post('*/api/v1/user/revoke-personal-token', async ({ request }) => {
+    calls.push('revoke')
+    revoked.push(((await request.json()) as { id: string }).id)
+    return HttpResponse.json({ success: true, message: '', data: {} })
+  }))
+  const spy = vi.spyOn(nav, 'openDeepLink').mockImplementation(() => {})
+  const user = userEvent.setup()
+  renderSetup(source)
+  // The list was empty when the page rendered (so the button shows); by the
+  // time the user taps, another device has minted an ingest token.
+  let listCalls = 0
+  server.use(http.get('*/api/v1/user/get-personal-token-list', () => {
+    listCalls++
+    return HttpResponse.json({ success: true, message: '', data: listCalls === 1 ? [fullToken] : [ingestToken, fullToken] })
+  }))
+  await user.click(screen.getByRole('button', { name: 'Configure on this iPhone' }))
+  await waitFor(() => expect(calls).toContain('create'))
+  expect(revoked).toEqual(['p1'])
+  expect(calls).toEqual(['revoke', 'create'])
+  spy.mockRestore()
+})
+
+it('a double tap on configure runs the flow once', async () => {
+  mockIsIOS.value = true
+  let creates = 0
+  server.use(http.post('*/api/v1/user/create-personal-token', () => {
+    creates++
+    return HttpResponse.json({ success: true, message: '', data: { id: 'p3', name: 'Apple Wallet', token: 'eco_pat_new', createdAt: '2026-08-01 00:00:00', expiresAt: null } })
+  }))
+  const spy = vi.spyOn(nav, 'openDeepLink').mockImplementation(() => {})
+  const user = userEvent.setup()
+  renderSetup(source)
+  const btn = screen.getByRole('button', { name: 'Configure on this iPhone' })
+  const first = user.click(btn)
+  await user.click(btn)
+  await first
+  await waitFor(() => expect(creates).toBe(1))
+  await waitFor(() => expect(spy).toHaveBeenCalledTimes(1))
+  expect(creates).toBe(1)
+  spy.mockRestore()
+})
+
 it('iOS configure toasts the server error and leaves the step unticked when minting fails', async () => {
   mockIsIOS.value = true
   server.use(http.post('*/api/v1/user/create-personal-token', () =>
