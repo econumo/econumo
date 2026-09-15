@@ -43,6 +43,10 @@ func (s *Service) MigrateRemoveDataSalt(ctx context.Context, salt string) (migra
 
 	err = s.tx.WithTx(ctx, func(ctx context.Context) error {
 		for _, id := range ids {
+			// Same rule as every other whole-aggregate writer: lock, then read.
+			if lerr := s.repo.LockRow(ctx, id); lerr != nil {
+				return lerr
+			}
 			u, gerr := s.repo.GetByID(ctx, id)
 			if gerr != nil {
 				return gerr

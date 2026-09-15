@@ -155,7 +155,19 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 	// WITHOUT that proof goes with the old password — see reclaimCredentials,
 	// which runs inside the password write's transaction so a half-done reclaim
 	// cannot happen.
+	userID := u.ID
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The row lock first, then a fresh read: the lookups above ran outside
+		// this transaction, and saving that aggregate back would undo whatever
+		// committed in between (a confirmed email change, a renamed profile).
+		// Every other writer takes the same lock first, so they serialize.
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		u, gerr := s.repo.GetByID(ctx, userID)
+		if gerr != nil {
+			return gerr
+		}
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		// Completing a reset proves mailbox ownership, so it also satisfies the
 		// email-verification gate.

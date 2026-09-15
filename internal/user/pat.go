@@ -40,9 +40,19 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID, presentingTok
 	// session was authenticated before this call, so a reclaim revoking it in
 	// between must not leave them a brand-new credential behind it. Checked at
 	// write time inside the database — a Go-side read would be exactly the
-	// race this is meant to close.
-	n, err := s.tokens.InsertIfPresenterLive(ctx, t, presentingTokenID)
-	if err != nil {
+	// race this is meant to close. Under the user's row lock, taken first (the
+	// reclaim's order), because the fence only sees COMMITTED rows: on
+	// PostgreSQL a mint racing the reclaim's still-open transaction would
+	// otherwise find the presenting token unrevoked and survive the sweep.
+	var n int64
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		var ierr error
+		n, ierr = s.tokens.InsertIfPresenterLive(ctx, t, presentingTokenID)
+		return ierr
+	}); err != nil {
 		return nil, err
 	}
 	if n != 1 {

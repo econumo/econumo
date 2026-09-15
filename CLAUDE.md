@@ -778,6 +778,12 @@ In the distroless image these run via the binary directly, e.g.
   (`UpsertIdentityIfGeneration`) are conditional on it inside the SQL, so the DATABASE
   decides the race: the reclaim bumps the generation, and anything in flight writes
   zero rows and fails closed. Checking in Go would be the race it is meant to close.
+  The fence only sees COMMITTED rows, so it is paired with a lock: every write to an
+  existing user's row and every credential mint runs under the user row lock
+  (`Repository.LockRow`), taken before the row is read, and the reclaim takes it first
+  too (it bumps `users` before it sweeps) — so on PostgreSQL a write racing the
+  reclaim's still-open transaction blocks instead of slipping past, and a
+  whole-aggregate `Save` can never put back a row read before the reclaim landed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).

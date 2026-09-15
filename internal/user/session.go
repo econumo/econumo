@@ -33,8 +33,21 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, pr
 	if provider != "" {
 		t.Provider = &provider
 	}
-	n, err := s.tokens.InsertIfGeneration(ctx, t, generation)
-	if err != nil {
+	// Under the user's row lock, because the generation fence alone is evaluated
+	// against what is COMMITTED: on PostgreSQL a mint running while the
+	// reclaim's users UPDATE is still open would read the old generation, pass,
+	// and outlive the sweep. The lock is taken first here too (the reclaim's
+	// order), so the two serialize; inside the oauth redemption's transaction,
+	// which already holds it, this re-lock is a no-op.
+	var n int64
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		var ierr error
+		n, ierr = s.tokens.InsertIfGeneration(ctx, t, generation)
+		return ierr
+	}); err != nil {
 		return "", err
 	}
 	if n != 1 {

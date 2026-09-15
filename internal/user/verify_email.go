@@ -44,7 +44,9 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
-	u, err := s.repo.GetByEmail(ctx, lowered)
+	// This lookup only resolves WHOSE row to lock; everything the confirmation
+	// decides on is read again inside the transaction, under that lock.
+	found, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeConfirmEmail, lowered)
@@ -52,29 +54,44 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		}
 		return nil, err
 	}
-	ev, err := s.emailVerifications.GetByUser(ctx, u.ID)
-	if err != nil {
-		if isNotFound(err) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
-			return nil, invalid
-		}
-		return nil, err
-	}
-	if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
-		s.failAttempt(RateScopeConfirmEmail, lowered)
-		return nil, invalid
-	}
-	if ev.IsExpired(s.clock.Now()) {
-		s.failAttempt(RateScopeConfirmEmail, lowered)
-		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
-	}
+	userID := found.ID
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The row lock first, then the read the whole-aggregate Save is built
+		// from: a row read before a reclaim committed would carry the pre-reset
+		// password back. Same order the reclaim takes, so the two serialize.
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		u, gerr := s.repo.GetByID(ctx, userID)
+		if gerr != nil {
+			if isNotFound(gerr) {
+				s.failAttempt(RateScopeConfirmEmail, lowered)
+				return invalid
+			}
+			return gerr
+		}
+		ev, verr := s.emailVerifications.GetByUser(ctx, userID)
+		if verr != nil {
+			if isNotFound(verr) {
+				s.failAttempt(RateScopeConfirmEmail, lowered)
+				return invalid
+			}
+			return verr
+		}
+		if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
+			s.failAttempt(RateScopeConfirmEmail, lowered)
+			return invalid
+		}
+		if ev.IsExpired(s.clock.Now()) {
+			s.failAttempt(RateScopeConfirmEmail, lowered)
+			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
+		}
 		u.MarkEmailVerified(s.clock.Now())
 		if serr := s.repo.Save(ctx, u); serr != nil {
 			return serr
 		}
-		return s.emailVerifications.DeleteByUser(ctx, u.ID)
+		return s.emailVerifications.DeleteByUser(ctx, userID)
 	}); err != nil {
 		return nil, err
 	}

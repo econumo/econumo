@@ -133,12 +133,21 @@ func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResul
 	return out, nil
 }
 
-// mutate loads the user, applies fn inside a transaction, and saves. It returns
+// mutate locks the user row, loads the user, applies fn, and saves — all in one
+// transaction, in that order (see the lock comment below). It returns
 // the mutated (in-memory) aggregate so the caller can build its result without
 // a second read — the saved state and the in-memory state are identical.
 func (s *Service) mutate(ctx context.Context, userID vo.Id, fn func(u *model.User, now time.Time) error) (*model.User, error) {
 	var loaded *model.User
 	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The lock comes before the read, because the write below is the WHOLE
+		// aggregate: a row read before a reclaim committed would otherwise be
+		// saved back over it, restoring the password it just replaced. The users
+		// row is the first lock every path takes (the reclaim included), so
+		// these serialize and cannot deadlock.
+		if err := s.repo.LockRow(ctx, userID); err != nil {
+			return err
+		}
 		u, err := s.repo.GetByID(ctx, userID)
 		if err != nil {
 			return err

@@ -477,11 +477,16 @@ affects zero rows and fails closed — the database decides the race, which is t
 only place it can be decided without a Go-side read that is itself the race.
 On PostgreSQL (read committed) the fence is evaluated against whatever is
 committed at the moment the guarded write runs, so a mint that lands while the
-reclaim's transaction is still open can still pass — the window is that one
-short transaction, not eliminated by it. SQLite's single writer excludes the
-window entirely (no second transaction can be mid-flight to race). The window
-is accepted: it is bounded to one short transaction's duration, not the
-unbounded gap the generation fence itself closes.
+reclaim's transaction is still open would still pass it. The user row lock
+closes that window, and the rule is system-wide: every transaction that writes
+an EXISTING user's row or mints a credential for one takes
+`Repository.LockRow(userID)` FIRST, then reads, then writes — the reclaim takes
+the same lock first too (it bumps `users` before it sweeps), so the two can only
+serialize, never deadlock and never interleave. Locking before READING is the
+other half of the same rule: a whole-aggregate `Save` built from a row read
+before the reclaim committed would put the pre-reset password back, which is why
+the lock precedes the read and the row is re-read under it. SQLite's single
+writer excludes the window on its own.
 
 Corollary: `users_identities.email` is no longer purely decorative. It is still
 never a lookup key, but it records which address a provider vouches for, and
