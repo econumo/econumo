@@ -52,9 +52,9 @@ func TestBudgetReadRepo_AccountsBalances(t *testing.T) {
 	seedExpense(t, db, "70000000-0000-0000-0000-000000000003", acctA, cat, "0.30", "2024-03-12 00:00:00")
 
 	onDate := time.Date(2024, 4, 1, 0, 0, 0, 0, time.UTC)
-	rows, err := read.AccountsBalancesOnDate(ctx, []vo.Id{vo.MustParseId(acctA)}, onDate)
+	rows, err := read.AccountsBalancesBeforeDate(ctx, []vo.Id{vo.MustParseId(acctA)}, onDate)
 	if err != nil {
-		t.Fatalf("AccountsBalancesOnDate: %v", err)
+		t.Fatalf("AccountsBalancesBeforeDate: %v", err)
 	}
 	if len(rows) != 1 {
 		t.Fatalf("want 1 balance row, got %d", len(rows))
@@ -68,7 +68,7 @@ func TestBudgetReadRepo_AccountsBalances(t *testing.T) {
 	}
 
 	// Empty id set -> nil.
-	none, err := read.AccountsBalancesOnDate(ctx, nil, onDate)
+	none, err := read.AccountsBalancesBeforeDate(ctx, nil, onDate)
 	if err != nil || none != nil {
 		t.Errorf("empty ids should be nil,nil; got %v, %v", none, err)
 	}

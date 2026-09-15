@@ -21,6 +21,7 @@ import (
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
 	"github.com/econumo/econumo/internal/infra/storage/migrations"
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 )
 
 // DB bundles a migrated *sql.DB with a TxManager over it, plus the engine name.
@@ -62,7 +63,7 @@ func NewSQLite(t testing.TB) *DB {
 	t.Helper()
 	// A per-test-named shared-cache in-memory DB: isolated between tests, shared
 	// across this test's (single) connection.
-	dsn := "file:" + t.Name() + "?mode=memory&cache=shared"
+	dsn := sqlite.WithFrozenTimeFormat("file:" + t.Name() + "?mode=memory&cache=shared")
 	raw, err := sql.Open("sqlite", dsn)
 	if err != nil {
 		t.Fatalf("dbtest: open sqlite: %v", err)

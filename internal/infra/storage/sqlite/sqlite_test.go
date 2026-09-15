@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestNormalizeDSN(t *testing.T) {
@@ -19,6 +20,51 @@ func TestNormalizeDSN(t *testing.T) {
 		if got := normalizeDSN(c.in); got != c.want {
 			t.Errorf("normalizeDSN(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// Times must be stored and bound as the frozen 'Y-m-d H:i:s' layout: that is
+// what legacy rows hold, what the hand-built SQL binds, and the only form
+// SQLite's date functions and text comparisons agree on. The driver default is
+// time.Time.String(), and a user-supplied _time_format must not change it.
+func TestOpen_StoresTimesInFrozenLayout(t *testing.T) {
+	for _, suffix := range []string{"", "?_time_format=sqlite", "?_txlock=immediate"} {
+		t.Run(suffix, func(t *testing.T) {
+			ctx := context.Background()
+			dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite") + suffix
+			db, err := New().Open(ctx, dsn)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer db.Close()
+
+			if _, err := db.ExecContext(ctx, `CREATE TABLE t (at DATETIME)`); err != nil {
+				t.Fatal(err)
+			}
+			at := time.Date(2026, 9, 14, 10, 0, 0, 123456789, time.UTC)
+			if _, err := db.ExecContext(ctx, `INSERT INTO t (at) VALUES (?)`, at); err != nil {
+				t.Fatal(err)
+			}
+			var stored string
+			var matched int
+			if err := db.QueryRowContext(ctx, `SELECT CAST(at AS TEXT), at = ? FROM t`, at).Scan(&stored, &matched); err != nil {
+				t.Fatal(err)
+			}
+			if stored != "2026-09-14 10:00:00" {
+				t.Errorf("stored %q, want %q", stored, "2026-09-14 10:00:00")
+			}
+			if matched != 1 {
+				t.Errorf("a bound time.Time does not compare equal to the stored value")
+			}
+		})
+	}
+}
+
+func TestOpen_RejectsMalformedDSNQuery(t *testing.T) {
+	dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite") + "?_txlock=%zz"
+	if db, err := New().Open(context.Background(), dsn); err == nil {
+		db.Close()
+		t.Fatal("Open accepted a malformed DSN query")
 	}
 }
 
