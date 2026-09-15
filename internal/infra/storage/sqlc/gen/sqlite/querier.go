@@ -471,12 +471,11 @@ type Querier interface {
 	// One invite row per user (user_id PK). code/expired_at are nullable (a cleared
 	// invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
 	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
-	// Insert or update a rate for (published_at, currency, base). published_at is a
-	// DATE; the repo passes a time.Time truncated to midnight UTC. modernc stores
-	// date/datetime columns in ISO8601 (like every other date the Go repos write);
-	// the read path is format-agnostic because it compares via date()/MAX, and the
-	// midnight truncation keeps the value stable so the ON CONFLICT
-	// (identifier_uniq_currencies_rates) upsert dedupes per day.
+	// Insert or update a rate for (published_at, currency, base). published_at is
+	// bound as 'Y-m-d' TEXT, never a time.Time: modernc stores a time.Time as
+	// "2026-09-14 00:00:00 +0000 UTC", which date()/datetime() read as NULL, hiding
+	// the row from the convertor. A fixed per-day value also keeps the ON CONFLICT
+	// (identifier_uniq_currencies_rates) upsert deduping per day.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error

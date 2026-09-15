@@ -261,6 +261,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       tooltips.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
+- [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
+      applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
+      account in a budget-currency category counts in the category's spent at
+      the converted amount (not 1:1), in both the table and the plan sheet, and
+      `get-budget` `currencyRates` lists the global rates, not only custom ones.
 
 ## 10. Budget lifecycle & list
 

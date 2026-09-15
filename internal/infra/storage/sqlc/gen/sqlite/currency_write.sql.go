@@ -404,7 +404,7 @@ func (q *Queries) UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyD
 
 const upsertCurrencyRate = `-- name: UpsertCurrencyRate :exec
 INSERT INTO currencies_rates (id, currency_id, base_currency_id, published_at, rate)
-VALUES (?, ?, ?, ?, ?)
+VALUES (?1, ?2, ?3, CAST(?4 AS TEXT), ?5)
 ON CONFLICT (published_at, currency_id, base_currency_id)
 DO UPDATE SET rate = excluded.rate
 `
@@ -413,16 +413,15 @@ type UpsertCurrencyRateParams struct {
 	ID             string
 	CurrencyID     string
 	BaseCurrencyID string
-	PublishedAt    time.Time
+	PublishedAt    string
 	Rate           string
 }
 
-// Insert or update a rate for (published_at, currency, base). published_at is a
-// DATE; the repo passes a time.Time truncated to midnight UTC. modernc stores
-// date/datetime columns in ISO8601 (like every other date the Go repos write);
-// the read path is format-agnostic because it compares via date()/MAX, and the
-// midnight truncation keeps the value stable so the ON CONFLICT
-// (identifier_uniq_currencies_rates) upsert dedupes per day.
+// Insert or update a rate for (published_at, currency, base). published_at is
+// bound as 'Y-m-d' TEXT, never a time.Time: modernc stores a time.Time as
+// "2026-09-14 00:00:00 +0000 UTC", which date()/datetime() read as NULL, hiding
+// the row from the convertor. A fixed per-day value also keeps the ON CONFLICT
+// (identifier_uniq_currencies_rates) upsert deduping per day.
 func (q *Queries) UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error {
 	_, err := q.db.ExecContext(ctx, upsertCurrencyRate,
 		arg.ID,
