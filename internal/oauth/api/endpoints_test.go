@@ -103,7 +103,7 @@ func TestCallbackApple_FormPost(t *testing.T) {
 	code := h.fake.IssueCode(q.Get("nonce"), "")
 	form := url.Values{"code": {code}, "state": {q.Get("state")}, "user": {`{"name":{"firstName":"Ada","lastName":"Lovelace"}}`}}
 	resp := h.rawPostForm(t, "/api/v1/oauth/callback-apple", form)
-	if resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), "econumo://oauth?handoff=") {
+	if resp.StatusCode != http.StatusFound || !strings.HasPrefix(resp.Header.Get("Location"), "com.econumo.app://oauth#handoff=") {
 		t.Fatalf("%d %s", resp.StatusCode, resp.Header.Get("Location"))
 	}
 }

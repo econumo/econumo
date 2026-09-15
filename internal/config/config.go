@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/url"
 	"os"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -41,6 +42,13 @@ type Config struct {
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+
+	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
+	// either one and the OAuth app flow returns through an https URL on AppURL
+	// that only the associated app may claim, instead of the private scheme any
+	// app on the device can register.
+	AppLinksIOSAppIDs []string         // ECONUMO_APP_LINKS_IOS: <TEAMID>.<bundle id> entries
+	AppLinksAndroid   []AndroidAppLink // ECONUMO_APP_LINKS_ANDROID: <package>=<SHA-256 fingerprint> entries
 
 	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
 	// A slot is enabled when every required variable is set; a partial slot fails at boot.
@@ -108,6 +116,19 @@ func isLoopbackHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// AndroidAppLink is one Digital Asset Links target: an Android package plus the
+// SHA-256 fingerprints of the certificates it may be signed with. Play App
+// Signing gives a package two (the upload key and the app-signing key), so the
+// list is plural.
+type AndroidAppLink struct {
+	Package      string
+	Fingerprints []string
+}
+
+func (c Config) AppLinksEnabled() bool {
+	return len(c.AppLinksIOSAppIDs) > 0 || len(c.AppLinksAndroid) > 0
 }
 
 func (c Config) OAuthGoogleEnabled() bool { return c.OAuthGoogleClientID != "" }
@@ -245,6 +266,10 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	if err := loadAppLinks(&c); err != nil {
+		return Config{}, err
+	}
+
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
 		return Config{}, err
@@ -291,6 +316,49 @@ func Load() (Config, error) {
 // loadOAuth reads the three provider slots. A slot is all-or-nothing: the
 // first missing required variable of a partially set slot is named in the
 // error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
+var (
+	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
+	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)
+	// A Digital Asset Links fingerprint is the certificate's SHA-256 digest as
+	// 32 colon-separated hex bytes, exactly as keytool prints it.
+	androidFingerprintRe = regexp.MustCompile(`^([0-9A-F]{2}:){31}[0-9A-F]{2}$`)
+)
+
+func loadAppLinks(c *Config) error {
+	for _, v := range getStringList("ECONUMO_APP_LINKS_IOS", nil) {
+		if !iosAppIDRe.MatchString(v) {
+			return fmt.Errorf("ECONUMO_APP_LINKS_IOS: %q is not a <TEAMID>.<bundle id> pair (ten upper-case alphanumerics, a dot, the bundle id)", v)
+		}
+		c.AppLinksIOSAppIDs = append(c.AppLinksIOSAppIDs, v)
+	}
+	for _, v := range getStringList("ECONUMO_APP_LINKS_ANDROID", nil) {
+		pkg, fingerprint, ok := strings.Cut(v, "=")
+		pkg, fingerprint = strings.TrimSpace(pkg), strings.ToUpper(strings.TrimSpace(fingerprint))
+		if !ok || pkg == "" || !androidFingerprintRe.MatchString(fingerprint) {
+			return fmt.Errorf("ECONUMO_APP_LINKS_ANDROID: %q is not a <package>=<SHA-256 fingerprint> pair (32 colon-separated hex bytes)", v)
+		}
+		// Repeated entries for one package accumulate: an app signed through
+		// Play App Signing has both an upload and an app-signing certificate,
+		// and only listing both lets debug and store builds verify.
+		if i := slices.IndexFunc(c.AppLinksAndroid, func(a AndroidAppLink) bool { return a.Package == pkg }); i >= 0 {
+			c.AppLinksAndroid[i].Fingerprints = append(c.AppLinksAndroid[i].Fingerprints, fingerprint)
+			continue
+		}
+		c.AppLinksAndroid = append(c.AppLinksAndroid, AndroidAppLink{Package: pkg, Fingerprints: []string{fingerprint}})
+	}
+	if !c.AppLinksEnabled() {
+		return nil
+	}
+	// Both platforms fetch the association document over https and refuse to
+	// verify a plain-http link, so app links on a non-https instance would be a
+	// silently dead configuration.
+	u, err := url.Parse(c.AppURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("ECONUMO_APP_LINKS_IOS/ECONUMO_APP_LINKS_ANDROID require ECONUMO_URL to be an https URL, got %q", c.AppURL)
+	}
+	return nil
+}
+
 func loadOAuth(c *Config) error {
 	requireAll := func(slot string, vars ...string) (bool, error) {
 		set := 0

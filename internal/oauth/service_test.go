@@ -233,6 +233,10 @@ type harness struct {
 }
 
 func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
+	return newHarnessWith(t, trust, allowRegistration, false)
+}
+
+func newHarnessWith(t *testing.T, trust, allowRegistration, appLinks bool) *harness {
 	db := dbtest.New(t)
 	f := oidctest.New(t)
 	users := newFakeUsers(t, db)
@@ -244,7 +248,7 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderGoogle, true), nil), Name: "Google"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, trust), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration)
+	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration, appLinks)
 	notifier := &fakeNotifier{}
 	svc.SetNotifier(notifier)
 	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers, notifier: notifier}
@@ -275,9 +279,6 @@ func (h *harness) exchangeReq(t *testing.T, redirect string) model.ExchangeHando
 func handoffOf(t *testing.T, redirect string) string {
 	t.Helper()
 	u, _ := url.Parse(redirect)
-	if strings.HasPrefix(redirect, "econumo://") {
-		return u.Query().Get("handoff")
-	}
 	frag, _ := url.ParseQuery(u.Fragment)
 	return frag.Get("handoff")
 }
@@ -343,10 +344,10 @@ func TestCallback_ProvisionsNewUserAndHandoffExchanges(t *testing.T) {
 	}
 }
 
-func TestCallback_AppClientRedirectsToScheme(t *testing.T) {
+func TestCallback_AppClientRedirectsToPrivateScheme(t *testing.T) {
 	h := newHarness(t, false, true)
 	redirect := h.login("google", "app")
-	if !strings.HasPrefix(redirect, "econumo://oauth?handoff=") {
+	if !strings.HasPrefix(redirect, "com.econumo.app://oauth#handoff=") {
 		t.Fatalf("redirect %s", redirect)
 	}
 }
@@ -413,7 +414,7 @@ func TestCallback_UnverifiedEmailRejectedUnlessTrusted(t *testing.T) {
 		t.Fatalf("redirect %s", r)
 	}
 	h.fake.EmailVerified = nil // claim absent
-	if r := h.login("oidc", "app"); r != "econumo://oauth?error=email_unverified" {
+	if r := h.login("oidc", "app"); r != "com.econumo.app://oauth?error=email_unverified" {
 		t.Fatalf("redirect %s", r)
 	}
 	trusted := newHarness(t, true, true)
@@ -484,7 +485,7 @@ func TestCallback_StateErrors(t *testing.T) {
 // from, instead of always landing an app flow on the web login page.
 func TestCallback_UnknownStateReturnsToTheClientThatStartedTheFlow(t *testing.T) {
 	h := newHarness(t, false, true)
-	if r := h.svc.Callback(context.Background(), "oidc", appoauth.CallbackInput{Code: "c", State: "app.doesnotexist"}); r != "econumo://oauth?error=invalid_state" {
+	if r := h.svc.Callback(context.Background(), "oidc", appoauth.CallbackInput{Code: "c", State: "app.doesnotexist"}); r != "com.econumo.app://oauth?error=invalid_state" {
 		t.Fatalf("app: got %s", r)
 	}
 	if r := h.svc.Callback(context.Background(), "oidc", appoauth.CallbackInput{Code: "c", State: "web.doesnotexist"}); r != "https://app.example.test/login?oauthError=invalid_state" {
@@ -518,9 +519,6 @@ func (h *harness) startLink(userID vo.Id, provider, client string) string {
 func linkHandoffOf(t *testing.T, redirect string) string {
 	t.Helper()
 	u, _ := url.Parse(redirect)
-	if strings.HasPrefix(redirect, "econumo://") {
-		return u.Query().Get("linkHandoff")
-	}
 	frag, _ := url.ParseQuery(u.Fragment)
 	return frag.Get("linkHandoff")
 }
@@ -550,7 +548,7 @@ func TestStartLinkAndCallback_Link(t *testing.T) {
 	}
 	// Linking the same subject again is idempotent, on the app scheme too.
 	r2 := h.startLink(u.ID, "google", "app")
-	if !strings.HasPrefix(r2, "econumo://oauth?linkHandoff=") {
+	if !strings.HasPrefix(r2, "com.econumo.app://oauth#linkHandoff=") {
 		t.Fatalf("redirect %s", r2)
 	}
 	if _, err := h.completeLink(u.ID, r2); err != nil {
@@ -899,7 +897,7 @@ func TestStartLogin_SurfacesTheRateLimit(t *testing.T) {
 	h := newHarness(t, false, true)
 	lim := &stubLimiter{}
 	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, lim,
-		"https://app.example.test", true)
+		"https://app.example.test", true, false)
 	_, err := svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if _, ok := errs.AsTooManyRequests(err); !ok {
 		t.Fatalf("want 429, got %v", err)
@@ -929,7 +927,7 @@ func loginVia(t *testing.T, svc *appoauth.Service, f *oidctest.Fake, provider, c
 // issuer — what an operator does by repointing ECONUMO_OIDC_ISSUER_URL.
 func (h *harness) serviceOver(f *oidctest.Fake) *appoauth.Service {
 	return appoauth.NewService([]appoauth.Provider{{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "New IdP"}},
-		h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
+		h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true, false)
 }
 
 // The custom slot's provider id is always "oidc", so a subject is only unique
@@ -1133,5 +1131,41 @@ func TestCallback_EmailDrift_ResetBetweenChecksAndWriteIsRefused(t *testing.T) {
 	}
 	if len(h.users.replaced) != 0 {
 		t.Fatalf("replaced %v", h.users.replaced)
+	}
+}
+
+// With verified app links configured the app flow returns over https on the
+// instance's own domain — a URL only the associated app can claim — instead of
+// the globally claimable private scheme.
+func TestAppReturn_VerifiedAppLinks(t *testing.T) {
+	h := newHarnessWith(t, false, true, true)
+
+	redirect := h.login("google", "app")
+	if !strings.HasPrefix(redirect, "https://app.example.test/oauth/app-return#handoff=") {
+		t.Fatalf("success redirect %s", redirect)
+	}
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "UA/1"); err != nil {
+		t.Fatalf("handoff not readable from the app-link redirect: %v", err)
+	}
+
+	h.fake.EmailVerified = false
+	if r := h.login("oidc", "app"); r != "https://app.example.test/oauth/app-return?error=email_unverified" {
+		t.Fatalf("error redirect %s", r)
+	}
+	h.fake.EmailVerified = true
+
+	// The google identity already belongs to the sign-in above, so the link
+	// pair below uses the still-unlinked oidc provider.
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "oidc", "app")
+	if !strings.HasPrefix(r, "https://app.example.test/oauth/app-return#linkHandoff=") {
+		t.Fatalf("link pending redirect %s", r)
+	}
+	if _, err := h.completeLink(u.ID, r); err != nil {
+		t.Fatal(err)
+	}
+	other := h.users.seed(t, "other@example.test", model.AlgorithmArgon2id)
+	if r := h.startLink(other.ID, "oidc", "app"); r != "https://app.example.test/oauth/app-return?linkError=identity_taken" {
+		t.Fatalf("link error redirect %s", r)
 	}
 }

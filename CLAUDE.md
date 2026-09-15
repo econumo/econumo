@@ -483,6 +483,20 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
   claim is honoured, not trusted blindly — Google always sends it and documents `false` for
   unverified addresses. See `docs/oidc-setup.md`.
+- `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
+  `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
+  OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
+  `<Team ID>.<bundle id>` (`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`). Android: comma-separated
+  `<package>=<SHA-256 signing fingerprint>` (32 colon-separated hex bytes, upper-cased on load;
+  repeating a package adds a second certificate, as Play App Signing requires). Either one set
+  enables app links and makes the server publish `/.well-known/apple-app-site-association` and
+  `/.well-known/assetlinks.json` (`internal/web/applinks`, mounted on the root mux next to
+  `/health`; the platform with no entries 404s). A malformed entry fails boot, as does an
+  `ECONUMO_URL` that is not `https://` — neither OS verifies a plain-http link. They only make
+  sense on the domain the store app is actually associated with (`app.econumo.com`): a
+  self-hosted backend used from the store app must leave them unset and keeps the private
+  `com.econumo.app://oauth` scheme, whose residual risk is that any app on the device may
+  register it.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -910,6 +924,14 @@ data unreadable. Most are also asserted by the test suite.
   (`emails.identity_linked.*`) naming the provider's display name in the account's stored
   language — gaining a sign-in method unasked must be noticeable; a failure to send never
   affects the redirect.
+- **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
+  app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
+  `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
+  fragment (`#handoff=` / `#linkHandoff=`) and failures in the query (`?error=` /
+  `?linkError=`), so a handoff never reaches a server log or a `Referer` header on the https
+  variant. The https form matters because only the associated app can receive it (RFC 8252
+  §7): a counterfeit app that registers the private scheme can otherwise start its own flow,
+  hold the flow secret, and catch the victim's handoff.
 - **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
   stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
   one linked identity, and no other user already holds the new address — in that narrow case

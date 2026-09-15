@@ -178,6 +178,54 @@ user database.
 
 **Callback URL to register:** `<ECONUMO_URL>/api/v1/oauth/callback-oidc`
 
+## Mobile app return
+
+The iOS and Android apps open the sign-in page in the system browser, so the
+provider has to send the browser back to the app afterwards. Econumo does that
+in one of two ways.
+
+**Verified app links (preferred).** When `ECONUMO_APP_LINKS_IOS` or
+`ECONUMO_APP_LINKS_ANDROID` is set, the return URL is
+`<ECONUMO_URL>/oauth/app-return` — an ordinary https URL on your own domain
+that the operating system hands to the app *only* if the app proves it belongs
+to that domain. The server publishes the two association documents the
+platforms fetch to check that:
+
+| Path | Platform | Built from |
+| --- | --- | --- |
+| `/.well-known/apple-app-site-association` | iOS (Universal Links) | `ECONUMO_APP_LINKS_IOS` |
+| `/.well-known/assetlinks.json` | Android (App Links) | `ECONUMO_APP_LINKS_ANDROID` |
+
+Both are served with `Content-Type: application/json` and cached for an hour.
+`ECONUMO_URL` must be `https://` — neither platform verifies a plain-http link,
+and boot fails if it is not.
+
+```bash
+# comma-separated <Team ID>.<bundle id>
+ECONUMO_APP_LINKS_IOS=TEAMID1234.com.econumo.app
+# comma-separated <package>=<SHA-256 signing fingerprint>
+ECONUMO_APP_LINKS_ANDROID=com.econumo.app=AA:BB:...:ZZ
+```
+
+- **Apple Team ID**: Apple Developer → Membership (ten characters, e.g.
+  `TEAMID1234`); the bundle id is the app target's, e.g. `com.econumo.app`.
+- **Android signing fingerprint**: for a store build take it from Play Console →
+  your app → Setup → App signing (SHA-256 certificate fingerprint); for a local
+  keystore run
+  `keytool -list -v -keystore my-release.keystore -alias my-alias` and copy the
+  `SHA256:` line. A Play-signed app has two certificates (upload and app
+  signing) — list both by repeating the package:
+  `com.econumo.app=AA:...,com.econumo.app=BB:...`.
+
+**Private URL scheme (fallback).** With neither variable set the return goes to
+`com.econumo.app://oauth?…` instead. This works without any per-domain setup,
+which is why it is the default for self-hosted instances used from the store
+app — but a URL scheme is claimed globally on the device, so an app that
+registers the same scheme can receive the return. The window is narrow (the
+handoff code is one-shot, short-lived and must be presented together with the
+flow secret the app kept), but if you run the app against your own backend and
+control the domain, configure app links.
+
 ## How accounts are matched
 
 - **Signing in with a provider whose email matches an existing account that
