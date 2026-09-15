@@ -22,8 +22,18 @@ import (
 type (
 	codeRow         = sqlitegen.ListCurrencyCodesRow
 	insertCurrencyP = sqlitegen.InsertCurrencyParams
-	upsertRateP     = sqlitegen.UpsertCurrencyRateParams
 )
+
+// upsertRateP carries the rate date as a time.Time so the pgsql adapter passes
+// it to its native DATE column untouched; only the sqlite adapter renders the
+// 'Y-m-d' text its query binds.
+type upsertRateP struct {
+	ID             string
+	CurrencyID     string
+	BaseCurrencyID string
+	PublishedAt    time.Time
+	Rate           string
+}
 
 // writeQuerier is the engine-agnostic write surface, in the canonical types.
 type writeQuerier interface {
@@ -100,7 +110,7 @@ func (r *WriteRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
 		ID:             rr.ID,
 		CurrencyID:     rr.CurrencyID,
 		BaseCurrencyID: rr.BaseCurrencyID,
-		PublishedAt:    rr.Date.Format(datetime.DateLayout),
+		PublishedAt:    rr.Date,
 		Rate:           rr.Rate,
 	})
 }
@@ -150,7 +160,13 @@ func (sqliteWriteQuerier) InsertCurrency(ctx context.Context, db backend.DBTX, p
 }
 
 func (sqliteWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error {
-	return sqlitegen.New(db).UpsertCurrencyRate(ctx, p)
+	return sqlitegen.New(db).UpsertCurrencyRate(ctx, sqlitegen.UpsertCurrencyRateParams{
+		ID:             p.ID,
+		CurrencyID:     p.CurrencyID,
+		BaseCurrencyID: p.BaseCurrencyID,
+		PublishedAt:    p.PublishedAt.Format(datetime.DateLayout),
+		Rate:           p.Rate,
+	})
 }
 
 func (sqliteWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
@@ -188,17 +204,7 @@ func (pgsqlWriteQuerier) InsertCurrency(ctx context.Context, db backend.DBTX, p 
 }
 
 func (pgsqlWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error {
-	day, err := time.Parse(datetime.DateLayout, p.PublishedAt)
-	if err != nil {
-		return err
-	}
-	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams{
-		ID:             p.ID,
-		CurrencyID:     p.CurrencyID,
-		BaseCurrencyID: p.BaseCurrencyID,
-		PublishedAt:    day,
-		Rate:           p.Rate,
-	})
+	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams(p))
 }
 
 func (pgsqlWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
