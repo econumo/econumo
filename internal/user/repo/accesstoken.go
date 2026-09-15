@@ -137,9 +137,19 @@ func (r *AccessTokenRepo) Revoke(ctx context.Context, id vo.Id, now time.Time) e
 	return r.q.RevokeAccessToken(ctx, r.db(ctx), revokeAccessTokenParams{RevokedAt: &now, ID: id.String()})
 }
 
+// noExceptedTokenID stands in for the zero id in RevokeAll's `id <> ?` guard.
+// The zero id's own string is empty, which PostgreSQL rejects as uuid syntax
+// before the statement ever runs; the nil UUID is valid uuid text on both
+// engines and can never collide with a real UUIDv7 id.
+const noExceptedTokenID = "00000000-0000-0000-0000-000000000000"
+
 func (r *AccessTokenRepo) RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error {
+	except := noExceptedTokenID
+	if !exceptID.IsZero() {
+		except = exceptID.String()
+	}
 	return r.q.RevokeUserAccessTokens(ctx, r.db(ctx), revokeUserAccessTokensParams{
-		RevokedAt: &now, UserID: userID.String(), Kind: kind, ID: exceptID.String(),
+		RevokedAt: &now, UserID: userID.String(), Kind: kind, ID: except,
 	})
 }
 
