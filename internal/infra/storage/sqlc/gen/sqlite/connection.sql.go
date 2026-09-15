@@ -115,8 +115,7 @@ type GetConnectionInviteByCodeParams struct {
 }
 
 // Look up a non-expired invite by code. The caller passes 'now' as a
-// 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
-// (a time.Time bound mis-compares at the boundary; see the budget read notes).
+// 'Y-m-d H:i:s' string, the layout the datetime TEXT is stored in.
 func (q *Queries) GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error) {
 	row := q.db.QueryRowContext(ctx, getConnectionInviteByCode, arg.Code, arg.Datetime)
 	var i UsersConnectionsInvite
