@@ -364,6 +364,11 @@ func TestAppLinks_ServedWhenConfigured(t *testing.T) {
 		if !strings.Contains(string(body), "com.econumo.app") {
 			t.Fatalf("%s: body = %s", path, body)
 		}
+		// They run through the global chain, so a platform's fetch carries a
+		// request id and lands in the access log like any other request.
+		if resp.Header.Get("X-Request-Id") == "" {
+			t.Fatalf("%s: no X-Request-Id — not wrapped in the global middleware chain", path)
+		}
 	}
 }
 

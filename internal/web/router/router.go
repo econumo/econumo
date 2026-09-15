@@ -139,10 +139,12 @@ func New(deps Deps) http.Handler {
 
 	// Mobile-app association documents, on the root mux beside /health (their
 	// paths are fixed by Apple and Google, and being outside /api keeps them
-	// away from the REST parity scanner). Unmounted when no app is associated,
-	// so the spa handler's reserved-path rule answers an honest 404 there.
+	// away from the REST parity scanner). Wrapped in the same global chain, so a
+	// platform's fetch is observable in the access log like any other request.
+	// Unmounted when no app is associated, so the spa handler's reserved-path
+	// rule answers an honest 404 there.
 	if deps.Cfg.AppLinksEnabled() {
-		assoc := applinks.Handler(deps.Cfg)
+		assoc := global(applinks.Handler(deps.Cfg))
 		root.Handle("GET "+applinks.AASAPath, assoc)
 		root.Handle("GET "+applinks.AssetLinksPath, assoc)
 	}

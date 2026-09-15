@@ -662,6 +662,9 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 // holds both calls inside that window; under the row lock the second call
 // cannot reach the count while the first holds the row, so the gate also
 // releases on a timeout and the assertion is the outcome, not the ordering.
+// The test DB is pinned to one connection, so this proves the transaction, not
+// the lock — the lock itself is asserted on a real pool in
+// TestLockRow_BlocksASecondConnectionUntilCommit (internal/user/repo).
 func TestUnlinkIdentity_ConcurrentUnlinksKeepOneSignInMethod(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "p@x.test", model.AlgorithmNone)

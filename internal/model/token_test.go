@@ -30,7 +30,7 @@ func TestAccessToken_IsLive(t *testing.T) {
 		t.Error("past expiry must be dead")
 	}
 	revoked := tokenAt(TokenKindPersonal, nil)
-	revoked.Revoke(now)
+	revoked.RevokedAt = &now
 	if revoked.IsLive(now.Add(time.Second)) {
 		t.Error("revoked must be dead")
 	}
@@ -73,17 +73,6 @@ func TestAccessToken_NeedsTouch(t *testing.T) {
 	}
 }
 
-func TestAccessToken_RevokeIsIdempotent(t *testing.T) {
-	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
-	tok := tokenAt(TokenKindSession, nil)
-	tok.Revoke(now)
-	first := *tok.RevokedAt
-	tok.Revoke(now.Add(time.Hour))
-	if !tok.RevokedAt.Equal(first) {
-		t.Error("second Revoke must not move the timestamp")
-	}
-}
-
 func TestAccessToken_IsDead(t *testing.T) {
 	now := time.Date(2026, 7, 10, 12, 0, 0, 0, time.UTC)
 	retention := 30 * 24 * time.Hour
@@ -103,7 +92,8 @@ func TestAccessToken_IsDead(t *testing.T) {
 		t.Error("recently expired stays within retention")
 	}
 	revoked := tokenAt(TokenKindSession, nil)
-	revoked.Revoke(now.Add(-retention - time.Hour))
+	longRevoked := now.Add(-retention - time.Hour)
+	revoked.RevokedAt = &longRevoked
 	if !revoked.IsDead(now, retention) {
 		t.Error("revoked past retention must be dead")
 	}

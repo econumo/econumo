@@ -56,12 +56,6 @@ func (t *AccessToken) Touch(now time.Time, sessionTTL time.Duration) {
 	}
 }
 
-func (t *AccessToken) Revoke(now time.Time) {
-	if t.RevokedAt == nil {
-		t.RevokedAt = &now
-	}
-}
-
 // IsDead reports whether the row has been expired/revoked for longer than the
 // retention window and can be purged.
 func (t *AccessToken) IsDead(now time.Time, retention time.Duration) bool {
