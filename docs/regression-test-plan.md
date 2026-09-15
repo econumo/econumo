@@ -156,11 +156,16 @@ navigation (single-pane vs sidebar).
       shows the local-logout notice ("Your {provider} session may still be
       active; sign out there to end it.") instead of an IdP redirect.
 - [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
-      embedded web view; completing sign-in returns via the `econumo://`
-      deep link and the sheet closes automatically. An expired or
-      already-used attempt returns to the app's login page with "The sign-in
-      attempt expired or was already used." (not a web page inside the
-      sheet).
+      embedded web view; completing sign-in returns to the app (the verified
+      `https://<backend>/oauth/app-return` link, or the
+      `com.econumo.app://oauth` scheme on a backend without app links) and the
+      sheet closes automatically. An expired or already-used attempt returns to
+      the app's login page with "The sign-in attempt expired or was already
+      used." (not a web page inside the sheet).
+- [ ] 📱 With app links configured, the return from the provider opens the app
+      directly; opening the return URL in a browser with the app not installed
+      shows the "return to the app" page with a single "Open the app" link (and
+      no handoff code visible in the page text).
 - [ ] 📱 App: tapping a provider button twice while the browser sheet is
       opening starts ONE flow; the buttons stay disabled until the sheet
       closes or the sign-in returns.

@@ -788,6 +788,10 @@
       "callback": {
         "signing_in": "Aanmelden…"
       },
+      "app_return": {
+        "title": "Aanmelden voltooid — ga terug naar de Econumo-app.",
+        "open_app": "App openen"
+      },
       "logout_notice": "U bent uitgelogd bij Econumo. Uw {provider}-sessie is mogelijk nog actief; log daar ook uit om deze te beëindigen.",
       "provider_name": {
         "google": "Google",

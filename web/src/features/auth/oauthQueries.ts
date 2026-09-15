@@ -70,7 +70,7 @@ export function oauthFlowCanReturnHere(): boolean {
 // second tap mint a second flow whose secret overwrites the first's. Ended by
 // whichever comes first: the sheet's own lifecycle (browserFinished), or the
 // deep-link return — handleAppUrl (web/src/lib/deepLinks.ts) clears this
-// explicitly for EVERY recognised econumo://oauth link, success or failure;
+// explicitly for EVERY recognised app-return link, success or failure;
 // a successful handoff/link additionally takes the flow secret via
 // takeOAuthFlow, which also clears it (belt and suspenders with the deep-link
 // path, since a web caller has no deep link at all).

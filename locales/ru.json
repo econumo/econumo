@@ -788,6 +788,10 @@
       "callback": {
         "signing_in": "Выполняется вход…"
       },
+      "app_return": {
+        "title": "Вход выполнен — вернитесь в приложение Econumo.",
+        "open_app": "Открыть приложение"
+      },
       "logout_notice": "Вы вышли из Econumo. Сессия {provider} может быть ещё активна; выйдите там же, чтобы завершить её.",
       "provider_name": {
         "google": "Google",

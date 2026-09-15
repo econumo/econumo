@@ -788,6 +788,10 @@
       "callback": {
         "signing_in": "Iniciando sesión…"
       },
+      "app_return": {
+        "title": "Inicio de sesión finalizado: vuelve a la aplicación de Econumo.",
+        "open_app": "Abrir la aplicación"
+      },
       "logout_notice": "Has cerrado sesión en Econumo. Es posible que tu sesión de {provider} siga activa; cierra sesión allí para finalizarla.",
       "provider_name": {
         "google": "Google",

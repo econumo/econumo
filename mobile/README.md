@@ -119,16 +119,52 @@ servers" — standard for self-hosting clients.
 
 OAuth sign-in opens the backend's authorization URL in the system browser
 (via `@capacitor/browser`). The browser performs the OAuth handshake with the
-provider (Google, Apple, etc.) and the provider redirects back to the app via
-the `econumo://` URL scheme, registered in both native projects:
+provider (Google, Apple, etc.) and the backend redirects back to the app over
+one of two return shapes:
 
-- **iOS** (`Info.plist`): `CFBundleURLTypes` with scheme `econumo`.
-- **Android** (`AndroidManifest.xml`): VIEW/BROWSABLE intent filter on
-  `MainActivity` with scheme `econumo` and host `oauth`.
+- **The verified app link** `https://<backend>/oauth/app-return…` — preferred,
+  and the only shape a look-alike app cannot claim. The backend emits it when
+  its `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` are set (they also
+  make it serve the two association documents:
+  `/.well-known/apple-app-site-association` and
+  `/.well-known/assetlinks.json`).
+- **The private URL scheme** `com.econumo.app://oauth…` — the fallback when the
+  backend has no app links configured.
 
-The SPA dispatch handler (`web/src/lib/deepLinks.ts`) parses the
-`econumo://oauth?handoff=…|linked=…|error=…` callback and resolves the
-handoff token into a session or handles errors.
+Both carry the same parameters: `handoff` / `linkHandoff` in the fragment,
+`error` / `linkError` in the query. The SPA dispatch handler
+(`web/src/lib/deepLinks.ts`) accepts either shape and resolves the handoff into
+a session or renders the error.
+
+Claiming the app link needs one step per platform:
+
+- **iOS** — Xcode → the App target → Signing & Capabilities → **+ Capability**
+  → **Associated Domains**, then add `applinks:app.econumo.com`. The entitlement
+  lives in the Xcode project, not in `Info.plist`; iOS fetches the AASA through
+  Apple's CDN, so allow a few minutes after a backend change. The Team ID +
+  bundle id pair (`ABCDE12345.com.econumo.app`) must be listed in the backend's
+  `ECONUMO_APP_LINKS_IOS`.
+- **Android** — `AndroidManifest.xml` already carries the `autoVerify` VIEW
+  intent filter for `https` host `app.econumo.com`, path prefix
+  `/oauth/app-return`. Verification matches the app's **signing** certificate,
+  so the backend's `ECONUMO_APP_LINKS_ANDROID` must list the SHA-256 fingerprint
+  Play App Signing shows (Play Console → Setup → App integrity), plus the upload
+  certificate's fingerprint if you also want locally built/uploaded APKs to
+  verify. Check a device with `adb shell pm get-app-links com.econumo.app`.
+
+The private scheme stays registered in both projects (iOS `CFBundleURLTypes`,
+Android a second VIEW intent filter with scheme `com.econumo.app` host `oauth`)
+because a **self-hosted** backend can never be an association domain of the
+store app: its host is not in the app's entitlement, so app links cannot work
+there and the scheme is the only way back. Residual risk, documented: on the
+scheme any app installed on the device may register the same URL and receive the
+redirect. The handoff is single-use, short-lived and only exchangeable by the
+client that began the flow (it must present the flow secret), which keeps the
+damage to a denied sign-in rather than a stolen session.
+
+When neither shape reaches the app (app not installed, or an unverified
+association), the browser simply lands on the SPA page `/oauth/app-return`,
+which offers a single "Open the app" link on the private scheme.
 
 The backend's OAuth callback URL is always its own `/api/v1/oauth/callback-<provider>`
 (Google, Apple, etc.) — no per-backend configuration needed. App Store rule 4.8

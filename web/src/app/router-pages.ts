@@ -3,6 +3,7 @@ export const RouterPage = {
   REGISTER: '/register',
   LOGOUT: '/logout',
   OAUTH_CALLBACK: '/oauth/callback',
+  OAUTH_APP_RETURN: '/oauth/app-return',
   HOME: '/',
   ACCOUNT: (id: string) => `/account/${id}`,
   BUDGET: '/budget',

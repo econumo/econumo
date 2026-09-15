@@ -8,6 +8,7 @@ import { LoginPage } from '@/features/auth/LoginPage'
 import { RegistrationPage } from '@/features/auth/RegistrationPage'
 import { LogoutPage } from '@/features/auth/LogoutPage'
 import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage'
+import { AppReturnPage } from '@/features/auth/AppReturnPage'
 import { HomePage } from '@/features/home/HomePage'
 import { AccountPage } from '@/features/accounts/AccountPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -42,6 +43,7 @@ export function createRouter() {
         },
         { path: '/logout', element: <LogoutPage /> },
         { path: '/oauth/callback', element: <OAuthCallbackPage /> },
+        { path: '/oauth/app-return', element: <AppReturnPage /> },
         {
           element: <RequireAuth />,
           children: [

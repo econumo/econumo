@@ -26,7 +26,7 @@ OAuth 2.0 / OIDC **relying party** (client) of an external issuer.
 - One backend-mediated authorization-code flow serves web and app. The client
   asks the backend for an authorization URL, the provider redirects to a
   callback on the backend, the backend resolves the identity and redirects the
-  browser back to the SPA (web) or to the `econumo://` scheme (app) with a
+  browser back to the SPA (web) or to the app's return URL (app) with a
   short-lived single-use **handoff code**. The client exchanges the handoff for
   the ordinary `{token, user}` login response, presenting the **flow secret**
   the `start-*` call handed it: the flow is bound to the client that began it,
@@ -341,7 +341,7 @@ Common prefix:
    callback writes **nothing** and parks the resolved identity in a link
    handoff (`kind = link`, carrying issuer/subject/email and the state's
    `flow_hash`), redirecting to the Settings page with `#linkHandoff=<code>`
-   (web) or `econumo://oauth?linkHandoff=<code>` (app).
+   (web) or to the app return with the same fragment (app, §6.3).
 
    The deferral is the whole point: the callback arrives in whatever browser
    followed the authorization URL, carrying no credential of the account that
@@ -373,15 +373,27 @@ reassignment.
 
 ### 6.3 Redirect targets
 
+An app flow returns over one of two shapes, written `<app-return>` below. With
+`ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` configured it is the
+verified https app link `<ECONUMO_URL>/oauth/app-return`, which only the
+associated app may claim; without them it is the reverse-domain private scheme
+`com.econumo.app://oauth`, which any app on the device may register (the
+residual risk a self-hosted backend cannot avoid, since it cannot be an
+association domain of the store app).
+
 | outcome | `client = web` | `client = app` |
 |---|---|---|
-| login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `econumo://oauth?handoff=<code>` |
-| link resolved | `<ECONUMO_URL>/settings/profile/linked-accounts#linkHandoff=<code>` | `econumo://oauth?linkHandoff=<code>` |
-| link error | `<ECONUMO_URL>/settings/profile/linked-accounts?oauthError=<code>` | `econumo://oauth?linkError=<code>` |
-| error | `<ECONUMO_URL>/login?oauthError=<code>` | `econumo://oauth?error=<code>` |
+| login success | `<ECONUMO_URL>/oauth/callback#handoff=<code>` | `<app-return>#handoff=<code>` |
+| link resolved | `<ECONUMO_URL>/settings/profile/linked-accounts#linkHandoff=<code>` | `<app-return>#linkHandoff=<code>` |
+| link error | `<ECONUMO_URL>/settings/profile/linked-accounts?oauthError=<code>` | `<app-return>?linkError=<code>` |
+| error | `<ECONUMO_URL>/login?oauthError=<code>` | `<app-return>?error=<code>` |
 
-The web handoff travels in the fragment so it never reaches server logs or
-`Referer` headers. Error codes are catalogue keys under `auth.oauth.errors.*`
+Handoffs travel in the fragment on every shape so they never reach server logs or
+`Referer` headers; error codes are ordinary query parameters. The https shape also
+resolves as an SPA route: a browser that could not hand the link to the app (not
+installed, association unverified) renders `/oauth/app-return`, which shows one
+link on the private scheme carrying the same parameters — the handoff stays inside
+the `href` and is never rendered as text. Error codes are catalogue keys under `auth.oauth.errors.*`
 rendered by the SPA in the user's language: `denied`, `invalid_state`,
 `provider_error`, `email_required`, `email_unverified`,
 `registration_disabled`, `identity_taken`, `provider_already_linked`,
@@ -607,18 +619,23 @@ to end it." Password sessions show nothing new.
 
 ## 10. Mobile app (`mobile/`)
 
-- Register the `econumo` URL scheme: iOS `CFBundleURLTypes` in `Info.plist`;
-  Android an intent filter (`VIEW`, `BROWSABLE`, `DEFAULT`, `data
-  android:scheme="econumo" android:host="oauth"`) on the existing single-task
-  `MainActivity`, so the redirect resumes the running instance.
+- Register the `com.econumo.app` URL scheme: iOS `CFBundleURLTypes` in
+  `Info.plist`; Android an intent filter (`VIEW`, `BROWSABLE`, `DEFAULT`, `data
+  android:scheme="com.econumo.app" android:host="oauth"`) on the existing
+  single-task `MainActivity`, so the redirect resumes the running instance.
+- Claim the verified app link as well: Android a second, `autoVerify` intent
+  filter for `https` host `app.econumo.com` path prefix `/oauth/app-return`;
+  iOS the Associated Domains entitlement `applinks:app.econumo.com` (an Xcode
+  step, documented in `mobile/README.md`). Both are backed by the association
+  documents the backend serves from `ECONUMO_APP_LINKS_*`.
 - At boot (the existing app bootstrap), install one listener on the App
   plugin's `appUrlOpen` through `nativePlugin('App')`, keeping `web/` free of
-  the Capacitor dependency. On `econumo://oauth`: close the Browser sheet, then
-  dispatch: `handoff` → the same exchange as the web route; `linked` →
-  navigate to the linked-accounts page with the marker; `error` → `/login`
-  with the code.
-- The app's `client = app` state means every redirect lands on the scheme;
-  the backend never redirects an app flow to an https SPA route.
+  the Capacitor dependency. On either return shape (§6.3): close the Browser
+  sheet, then dispatch: `handoff` → the same exchange as the web route;
+  `linkHandoff` → the linked-accounts page with the code; `error`/`linkError` →
+  the login or linked-accounts page with the code.
+- The app's `client = app` state means every redirect lands on the app return;
+  the backend never redirects an app flow to a plain SPA route.
 - App Store rule 4.8: Sign in with Apple appears wherever Google does. The
   cloud backend configures both slots; the app renders whatever the selected
   backend advertises.

@@ -788,6 +788,10 @@
       "callback": {
         "signing_in": "Signing you in…"
       },
+      "app_return": {
+        "title": "Sign-in finished — return to the Econumo app.",
+        "open_app": "Open the app"
+      },
       "logout_notice": "You're signed out of Econumo. Your {provider} session may still be active; sign out there to end it.",
       "provider_name": {
         "google": "Google",
