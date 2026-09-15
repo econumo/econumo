@@ -17,13 +17,15 @@ import (
 )
 
 type (
-	emailChangeRow          = sqlitegen.UsersEmailChangeRequest
-	emailChangeInsertParams = sqlitegen.InsertUserEmailChangeRequestParams
+	emailChangeRow           = sqlitegen.UsersEmailChangeRequest
+	emailChangeInsertParams  = sqlitegen.InsertUserEmailChangeRequestIfGenerationParams
+	emailChangeConsumeParams = sqlitegen.ConsumeUserEmailChangeRequestParams
 )
 
 type emailChangeQuerier interface {
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, db backend.DBTX, userID string) error
-	InsertUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) error
+	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) (int64, error)
+	ConsumeUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeConsumeParams) (int64, error)
 	GetUserEmailChangeRequestByUser(ctx context.Context, db backend.DBTX, userID string) (emailChangeRow, error)
 }
 
@@ -51,15 +53,26 @@ func (r *EmailChangeRequestRepo) DeleteByUser(ctx context.Context, userID vo.Id)
 	return r.q.DeleteUserEmailChangeRequestsByUser(ctx, r.db(ctx), userID.String())
 }
 
-func (r *EmailChangeRequestRepo) Save(ctx context.Context, cr *model.EmailChangeRequest) error {
-	return r.q.InsertUserEmailChangeRequest(ctx, r.db(ctx), emailChangeInsertParams{
-		ID:        cr.ID.String(),
-		UserID:    cr.UserID.String(),
-		NewEmail:  cr.NewEmail,
-		Code:      cr.Code,
-		CreatedAt: cr.CreatedAt,
-		UpdatedAt: cr.UpdatedAt,
-		ExpiredAt: cr.ExpiredAt,
+// Save inserts the pending change fenced on the credentials generation, and
+// Consume takes it back row-counted (see user.EmailChangeRequests).
+func (r *EmailChangeRequestRepo) Save(ctx context.Context, cr *model.EmailChangeRequest, generation int64) (int64, error) {
+	return r.q.InsertUserEmailChangeRequestIfGeneration(ctx, r.db(ctx), emailChangeInsertParams{
+		ID:                    cr.ID.String(),
+		UserID:                cr.UserID.String(),
+		NewEmail:              cr.NewEmail,
+		Code:                  cr.Code,
+		CreatedAt:             cr.CreatedAt,
+		UpdatedAt:             cr.UpdatedAt,
+		ExpiredAt:             cr.ExpiredAt,
+		ID_2:                  cr.UserID.String(),
+		CredentialsGeneration: generation,
+	})
+}
+
+func (r *EmailChangeRequestRepo) Consume(ctx context.Context, id, userID vo.Id) (int64, error) {
+	return r.q.ConsumeUserEmailChangeRequest(ctx, r.db(ctx), emailChangeConsumeParams{
+		ID:     id.String(),
+		UserID: userID.String(),
 	})
 }
 

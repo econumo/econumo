@@ -15,6 +15,10 @@ type Querier interface {
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	// The confirm path's evidence and its consumption are the same row: taking it
+	// row-counted is how a confirmation learns that the reclaim (or a concurrent
+	// confirm) already took the grant.
+	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
@@ -335,7 +339,11 @@ type Querier interface {
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
-	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
+	// A pending change is a grant to rewrite the login key, so it must not be
+	// created by a session an account reclaim has already invalidated: the reclaim
+	// bumps the generation, and the insert only lands under the one the password
+	// check read.
+	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
@@ -502,6 +510,10 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	// The confirm-email-change path writes ONLY the email columns, under the
+	// generation it read after taking the user row's lock, so a stale aggregate can
+	// never be saved over an account a reset has just reclaimed.
+	UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error)
 	// The oauth email-drift mirror writes the provider's new address onto the
 	// primary email only while the account is still passwordless and still at the
 	// generation the callback resolved it under: a password reset committing after

@@ -15,8 +15,12 @@ func (emailChangeSqliteQuerier) DeleteUserEmailChangeRequestsByUser(ctx context.
 	return sqlitegen.New(db).DeleteUserEmailChangeRequestsByUser(ctx, userID)
 }
 
-func (emailChangeSqliteQuerier) InsertUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) error {
-	return sqlitegen.New(db).InsertUserEmailChangeRequest(ctx, p)
+func (emailChangeSqliteQuerier) InsertUserEmailChangeRequestIfGeneration(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) (int64, error) {
+	return sqlitegen.New(db).InsertUserEmailChangeRequestIfGeneration(ctx, p)
+}
+
+func (emailChangeSqliteQuerier) ConsumeUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeConsumeParams) (int64, error) {
+	return sqlitegen.New(db).ConsumeUserEmailChangeRequest(ctx, p)
 }
 
 func (emailChangeSqliteQuerier) GetUserEmailChangeRequestByUser(ctx context.Context, db backend.DBTX, userID string) (emailChangeRow, error) {

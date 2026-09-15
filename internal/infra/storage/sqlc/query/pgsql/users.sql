@@ -53,6 +53,12 @@ WHERE id = $5 AND credentials_generation = $6;
 UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
 WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none';
 
+-- name: UpdateUserEmailIfGeneration :execrows
+-- See the sqlite sibling: the confirm-email-change path writes only the email
+-- columns, under the generation read after the row lock.
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4;
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2;
 

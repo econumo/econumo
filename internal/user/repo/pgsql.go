@@ -84,3 +84,7 @@ func (pgsqlQuerier) UpdateUserPasswordIfGeneration(ctx context.Context, db backe
 func (pgsqlQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error) {
 	return pgsqlgen.New(db).UpdateUserEmailIfPasswordlessAndGeneration(ctx, pgsqlgen.UpdateUserEmailIfPasswordlessAndGenerationParams(p))
 }
+
+func (pgsqlQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateUserEmailIfGeneration(ctx, pgsqlgen.UpdateUserEmailIfGenerationParams(p))
+}

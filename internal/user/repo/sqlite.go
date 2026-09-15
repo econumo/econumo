@@ -77,3 +77,7 @@ func (sqliteQuerier) UpdateUserPasswordIfGeneration(ctx context.Context, db back
 func (sqliteQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error) {
 	return sqlitegen.New(db).UpdateUserEmailIfPasswordlessAndGeneration(ctx, p)
 }
+
+func (sqliteQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
+	return sqlitegen.New(db).UpdateUserEmailIfGeneration(ctx, p)
+}

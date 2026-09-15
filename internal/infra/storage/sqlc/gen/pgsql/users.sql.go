@@ -226,6 +226,33 @@ func (q *Queries) LockUserRow(ctx context.Context, id string) error {
 	return err
 }
 
+const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4
+`
+
+type UpdateUserEmailIfGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// See the sqlite sibling: the confirm-email-change path writes only the email
+// columns, under the generation read after the row lock.
+func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
 UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
 WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none'

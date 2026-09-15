@@ -52,6 +52,13 @@ type Repository interface {
 	// recovered account's own address. Returns the rows affected.
 	ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)
 
+	// ReplaceEmailIfGeneration writes the confirmed new address onto the
+	// primary email (marking it verified) only while the account is still at
+	// the given generation — read after LockRow, so the confirm path can never
+	// save a stale aggregate over an account a reset has just reclaimed.
+	// Returns the rows affected.
+	ReplaceEmailIfGeneration(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)
+
 	// UpsertOption writes a single option row without touching the user row or
 	// any other option — the narrow write the analytics-preference backfill
 	// needs (Save would rewrite the whole user aggregate per row, which does
@@ -175,6 +182,21 @@ type EmailVerifications interface {
 // missing row returns *errs.NotFoundError.
 type EmailChangeRequests interface {
 	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailChangeRequest, error)
-	Save(ctx context.Context, r *model.EmailChangeRequest) error
+
+	// Save inserts a pending change only while the user's credentials
+	// generation still matches the one the password check was read under,
+	// reporting the rows written. A pending change is a grant to rewrite the
+	// login key, so zero rows means a reclaim landed in between and the grant
+	// must not exist (same fence, and the same reason, as
+	// AccessTokens.InsertIfGeneration).
+	Save(ctx context.Context, r *model.EmailChangeRequest, generation int64) (int64, error)
+
+	// Consume deletes one pending row by (id, user), reporting the rows
+	// deleted. The confirm path reads that row as its evidence and consumes it
+	// under the user's row lock, so zero rows means the reclaim (or a
+	// concurrent confirm) already took the grant and this confirmation must
+	// fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
+
 	DeleteByUser(ctx context.Context, userID vo.Id) error
 }

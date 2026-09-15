@@ -226,6 +226,34 @@ func (q *Queries) LockUserRow(ctx context.Context, id string) error {
 	return err
 }
 
+const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
+WHERE id = ? AND credentials_generation = ?
+`
+
+type UpdateUserEmailIfGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The confirm-email-change path writes ONLY the email columns, under the
+// generation it read after taking the user row's lock, so a stale aggregate can
+// never be saved over an account a reset has just reclaimed.
+func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
 UPDATE users SET email = ?, email_verified = 1, updated_at = ?
 WHERE id = ? AND credentials_generation = ? AND algorithm = 'none'

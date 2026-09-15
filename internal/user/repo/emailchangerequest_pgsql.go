@@ -15,8 +15,12 @@ func (emailChangePgsqlQuerier) DeleteUserEmailChangeRequestsByUser(ctx context.C
 	return pgsqlgen.New(db).DeleteUserEmailChangeRequestsByUser(ctx, userID)
 }
 
-func (emailChangePgsqlQuerier) InsertUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) error {
-	return pgsqlgen.New(db).InsertUserEmailChangeRequest(ctx, pgsqlgen.InsertUserEmailChangeRequestParams(p))
+func (emailChangePgsqlQuerier) InsertUserEmailChangeRequestIfGeneration(ctx context.Context, db backend.DBTX, p emailChangeInsertParams) (int64, error) {
+	return pgsqlgen.New(db).InsertUserEmailChangeRequestIfGeneration(ctx, pgsqlgen.InsertUserEmailChangeRequestIfGenerationParams(p))
+}
+
+func (emailChangePgsqlQuerier) ConsumeUserEmailChangeRequest(ctx context.Context, db backend.DBTX, p emailChangeConsumeParams) (int64, error) {
+	return pgsqlgen.New(db).ConsumeUserEmailChangeRequest(ctx, pgsqlgen.ConsumeUserEmailChangeRequestParams(p))
 }
 
 func (emailChangePgsqlQuerier) GetUserEmailChangeRequestByUser(ctx context.Context, db backend.DBTX, userID string) (emailChangeRow, error) {

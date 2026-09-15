@@ -53,6 +53,13 @@ WHERE id = ? AND credentials_generation = ?;
 UPDATE users SET email = ?, email_verified = 1, updated_at = ?
 WHERE id = ? AND credentials_generation = ? AND algorithm = 'none';
 
+-- name: UpdateUserEmailIfGeneration :execrows
+-- The confirm-email-change path writes ONLY the email columns, under the
+-- generation it read after taking the user row's lock, so a stale aggregate can
+-- never be saved over an account a reset has just reclaimed.
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
+WHERE id = ? AND credentials_generation = ?;
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = ? WHERE id = ?;
 
