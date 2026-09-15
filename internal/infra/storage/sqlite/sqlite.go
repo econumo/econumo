@@ -76,21 +76,24 @@ func (b *Backend) Migrations() []backend.Migration {
 	return out
 }
 
-// WithFrozenTimeFormat forces the driver to store and bind time.Time as
-// 'Y-m-d H:i:s'. Its default, time.Time.String(), yields
-// "2026-09-14 10:00:00.123456789 +0000 UTC": SQLite's date functions read that
-// as NULL, and it sorts against legacy rows and 'Y-m-d H:i:s' bounds by
-// accident rather than by time. Every stored time is UTC wall-clock, so the
-// dropped offset carries nothing; the dropped sub-seconds match PostgreSQL's
-// TIMESTAMP(0). A caller-supplied _time_format is overridden.
+// WithFrozenTimeFormat forces the driver to store and bind a time.Time as its
+// UTC wall clock in 'Y-m-d H:i:s'. The driver default, time.Time.String(),
+// yields "2026-09-14 10:00:00.123456789 +0000 UTC": SQLite's date functions
+// read that as NULL, and it sorts against legacy rows and 'Y-m-d H:i:s' bounds
+// by accident rather than by time. _timezone=UTC makes the driver convert a
+// zoned value before formatting (it otherwise writes the value's own wall
+// clock and drops the offset), and parse stored text back as UTC. Both keys
+// override any caller-supplied value. The dropped sub-seconds match
+// PostgreSQL's TIMESTAMP(0).
 func WithFrozenTimeFormat(dsn string) string {
 	path, query, _ := strings.Cut(dsn, "?")
 	q, err := url.ParseQuery(query)
 	if err != nil {
-		// Keep the malformed query intact so the driver rejects it at Open.
-		return dsn + "&_time_format=datetime"
+		// The driver parses the same query at Open and rejects it there.
+		return dsn
 	}
 	q.Set("_time_format", "datetime")
+	q.Set("_timezone", "UTC")
 	return path + "?" + q.Encode()
 }
 

@@ -5,7 +5,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -24,9 +23,6 @@ import (
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	applabel "github.com/econumo/econumo/internal/label"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
@@ -92,27 +88,14 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	for _, o := range opts {
 		o(&options)
 	}
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-	// Production (internal/infra/storage/sqlite) and dbtest both turn this on;
-	// without it, ON DELETE CASCADE (e.g. transactions_labels on a transaction
-	// delete) silently never fires, so writes here could pass while the
-	// equivalent production behavior would differ.
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
-		t.Fatalf("pragma foreign_keys: %v", err)
-	}
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	// The shared opener: production DSN settings (frozen datetime layout,
+	// foreign keys, single connection) and every migration.
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
-	txm := backend.NewTxManager(db)
+	txm := tdb.TX
 
-	f := fixture.New(t, &dbtest.DB{Raw: db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	// A category is needed for non-transfer transactions.
 	f.Folder(fixture.Folder{ID: folderID, UserID: seedUserID, Name: "Main"})
@@ -174,14 +157,6 @@ func newHarness(t *testing.T, opts ...harnessOption) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db, svc: svc, acc: accSvc}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
-	}
-	return out
 }
 
 func (h *harness) token(t *testing.T) string {

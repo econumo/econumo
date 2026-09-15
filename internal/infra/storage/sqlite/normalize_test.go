@@ -36,8 +36,12 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 
 	seedUser(t, db, "go-utc", "2026-09-14 10:00:00.123456789 +0000 UTC", "2026-09-14 10:00:00 +0000 UTC", nil)
 	seedUser(t, db, "go-offset", "2026-09-14 13:00:00 +0300 MSK", "2026-01-01 00:30:00.5 -0100 -01", "2026-10-01 00:00:00 +0000 UTC m=+0.000012345")
+	// A zone with no abbreviation (an RFC3339 offset parsed by the CSV
+	// importer) prints its offset twice.
+	seedUser(t, db, "go-fixed", "2024-04-10 10:00:00 +0300 +0300", "2024-04-10 10:00:00.25 -0130 -0130", nil)
 	seedUser(t, db, "legacy", "2021-08-12 21:05:48", "2021-08-12 21:05:48", "2026-10-01 00:00:00")
 	seedUser(t, db, "odd", "2026-08-01T00:00:00Z", "2026-02-30 10:00:00 +0000 UTC", nil)
+	seedUser(t, db, "odd-fraction", "2026-01-01 10:00:00.5x +0000 UTC", "2026-01-01 10:00:00", nil)
 	firstMigration := text(t, db, `SELECT CAST(applied_at AS TEXT) FROM schema_migrations ORDER BY version LIMIT 1`)
 
 	report, err := sqlite.NormalizeDatetimes(ctx, db)
@@ -51,11 +55,14 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 		{"go-offset", "created_at", "2026-09-14 10:00:00"},
 		{"go-offset", "updated_at", "2026-01-01 01:30:00"},
 		{"go-offset", "access_until", "2026-10-01 00:00:00"},
+		{"go-fixed", "created_at", "2024-04-10 07:00:00"},
+		{"go-fixed", "updated_at", "2024-04-10 11:30:00"},
 		{"legacy", "created_at", "2021-08-12 21:05:48"},
 		{"legacy", "access_until", "2026-10-01 00:00:00"},
 		// Not the driver's form: left exactly as stored.
 		{"odd", "created_at", "2026-08-01T00:00:00Z"},
 		{"odd", "updated_at", "2026-02-30 10:00:00 +0000 UTC"},
+		{"odd-fraction", "created_at", "2026-01-01 10:00:00.5x +0000 UTC"},
 	} {
 		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM users WHERE id = ?`, c.id); got.String != c.want {
 			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
@@ -69,11 +76,11 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 		t.Errorf("schema_migrations.applied_at changed: %q -> %q", firstMigration.String, got.String)
 	}
 
-	if report.Rewritten != 5 {
-		t.Errorf("Rewritten = %d, want 5", report.Rewritten)
+	if report.Rewritten != 7 {
+		t.Errorf("Rewritten = %d, want 7", report.Rewritten)
 	}
-	if got := report.Unparseable["users.created_at"] + report.Unparseable["users.updated_at"]; got != 2 {
-		t.Errorf("Unparseable = %v, want users.created_at:1 users.updated_at:1", report.Unparseable)
+	if report.Unparseable != 3 {
+		t.Errorf("Unparseable = %d, want 3 (odd.created_at, odd.updated_at, odd-fraction.created_at)", report.Unparseable)
 	}
 
 	again, err := sqlite.NormalizeDatetimes(ctx, db)

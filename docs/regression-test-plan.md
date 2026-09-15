@@ -273,7 +273,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       month's starting balance equals the previous month's ending balance.
 - [ ] SQLite instance upgraded from a release before this fix: after the first
       boot, account balances and transaction lists (dates included) match the
-      pre-upgrade figures.
+      pre-upgrade figures. Include transactions imported from a CSV whose date
+      column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
+      they list and export at the UTC time after the upgrade instead of
+      failing the list.
 
 ## 10. Budget lifecycle & list
 

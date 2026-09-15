@@ -2,7 +2,6 @@ package cli
 
 import (
 	"context"
-	"database/sql"
 	"path/filepath"
 	"testing"
 
@@ -15,7 +14,7 @@ import (
 	// backend.Get, the same way cmd/econumo does. Without this, newContainer's
 	// backend.Get(cfg.DatabaseDriver) fails even though the migrated file DB
 	// this package's tests build is fine.
-	_ "github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -30,12 +29,11 @@ func cliEnv(t *testing.T) {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db.sqlite")
 
-	raw, err := sql.Open("sqlite", dbPath)
+	// The production opener, so the migrated file holds exactly what serve
+	// would write (frozen datetime layout, foreign keys on).
+	raw, err := sqlite.New().Open(context.Background(), "sqlite://"+dbPath)
 	if err != nil {
 		t.Fatalf("cliEnv: open sqlite: %v", err)
-	}
-	if _, err := raw.ExecContext(context.Background(), "PRAGMA foreign_keys = ON;"); err != nil {
-		t.Fatalf("cliEnv: pragma foreign_keys: %v", err)
 	}
 	migs := migrations.SQLite()
 	runnerMigs := make([]migrate.Migration, len(migs))

@@ -53,12 +53,8 @@ func migrationCommands() []command {
 				if err != nil {
 					return err
 				}
-				unparseable := 0
-				for _, n := range report.Unparseable {
-					unparseable += n
-				}
 				fmt.Printf("normalized %d datetime value(s) across %d column(s); left %d unparseable value(s) unchanged\n",
-					report.Rewritten, report.Columns, unparseable)
+					report.Rewritten, report.Columns, report.Unparseable)
 				return nil
 			},
 		},

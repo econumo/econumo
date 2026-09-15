@@ -55,28 +55,22 @@ func (d *DB) Rebind(query string) string {
 	return b.String()
 }
 
-// NewSQLite opens a fresh in-memory SQLite database, runs every migration, and
-// returns it pinned to a single connection (SQLite's shared-cache in-memory DB
-// needs MaxOpenConns(1) so all statements see the same data and the single
-// writer rule holds). It is closed automatically at test end.
+// NewSQLite opens a fresh in-memory SQLite database through the production
+// opener, runs every migration, and returns it pinned to a single connection
+// (SQLite's shared-cache in-memory DB needs MaxOpenConns(1) so all statements
+// see the same data and the single writer rule holds). It is closed
+// automatically at test end.
 func NewSQLite(t testing.TB) *DB {
 	t.Helper()
 	// A per-test-named shared-cache in-memory DB: isolated between tests, shared
-	// across this test's (single) connection.
-	dsn := sqlite.WithFrozenTimeFormat("file:" + t.Name() + "?mode=memory&cache=shared")
-	raw, err := sql.Open("sqlite", dsn)
+	// across this test's (single) connection. sqlite.Backend.Open applies the
+	// production connection settings: the frozen datetime layout, foreign-key
+	// enforcement, and the single-connection cap.
+	raw, err := sqlite.New().Open(context.Background(), "file:"+t.Name()+"?mode=memory&cache=shared")
 	if err != nil {
 		t.Fatalf("dbtest: open sqlite: %v", err)
 	}
-	raw.SetMaxOpenConns(1)
 	t.Cleanup(func() { _ = raw.Close() })
-
-	// Tests must run with the same pragmas as production: sqlite.Backend.Open
-	// enables FK enforcement right after opening, and the schema relies on FK
-	// cascade/SET NULL semantics.
-	if _, err := raw.ExecContext(context.Background(), "PRAGMA foreign_keys = ON;"); err != nil {
-		t.Fatalf("dbtest: sqlite pragma foreign_keys: %v", err)
-	}
 
 	if err := migrate.Run(context.Background(), raw, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
 		t.Fatalf("dbtest: migrate sqlite: %v", err)

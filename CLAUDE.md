@@ -350,7 +350,12 @@ the `internal/test/i18ntest` guards derive their language list from
 
 Tests live alongside the Go code:
 - `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
-  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+  `dbtest.NewSQLite` opens through the production opener `sqlite.Backend.Open`,
+  so tests get the same connection settings as `serve`: the frozen datetime
+  layout DSN parameters, `foreign_keys = ON`, one connection). Feature API
+  harnesses and the CLI test env go through the same opener — never open a
+  test SQLite with a raw `sql.Open`, or rows land in the driver's default
+  `time.Time.String()` form that production no longer writes.
 - `internal/test/apiparity/` — the shared API scenario catalogue: every registered
   route is replayed against the REAL production handler (`server.BuildAPI`).
   Two consumers: the untagged **smoke suite** (every `make go-test`) diffs each
@@ -595,6 +600,22 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - **SQLite** (default): pure-Go `modernc.org/sqlite` driver (CGO off).
 - **PostgreSQL**: `jackc/pgx/v5` (stdlib), simple protocol (PgBouncer-safe).
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
+- **SQLite datetime storage contract.** DATETIME/TIMESTAMP columns hold bare
+  `Y-m-d H:i:s` UTC TEXT (19 characters; PostgreSQL's `TIMESTAMP(0)` is the
+  same wall clock). Every SQLite connection is opened with
+  `_time_format=datetime&_timezone=UTC` (`sqlite.WithFrozenTimeFormat`, applied
+  by `Backend.Open` and therefore by `dbtest`), so a bound `time.Time` is
+  converted to UTC and stored in that layout, and stored text parses back as
+  UTC. Rows written before this setting held `time.Time.String()` text; the
+  command migration `migration:normalize-sqlite-datetimes` (boot step
+  `20260915000001`) rewrites them. `currencies_rates.published_at` is the one
+  DATE column and is `Y-m-d`: its write query binds that text explicitly
+  because the driver would store a time part and split one day into two keys
+  of the textual unique index. The hand-built budget/account SQL still binds
+  its range bounds as `datetime.Layout` strings (`sqliteDatetime`,
+  `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
+  that is deliberate belt-and-braces so those comparisons never depend on a
+  DSN parameter, not a sign that the driver still needs it.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
