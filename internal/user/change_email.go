@@ -191,7 +191,12 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 // NOT rate-limit — callers own that. The insert is fenced on u's credentials
 // generation — the one read together with the password the caller verified —
 // so a reset committing in between refuses the grant rather than handing the
-// old session a way to rewrite the recovered account's login key.
+// old session a way to rewrite the recovered account's login key. The users row
+// is locked first (the same order the reclaim takes, so the two serialize and
+// cannot deadlock) because the fence alone is not enough on PostgreSQL: under
+// READ COMMITTED a reclaim whose users UPDATE has not committed yet is
+// invisible to the EXISTS check, so an unfenced insert could still land after
+// the reclaim swept the pending rows.
 func (s *Service) issueEmailChangeCode(ctx context.Context, u *model.User, newEmail string, now time.Time) error {
 	code, err := generatePasswordCode()
 	if err != nil {
@@ -199,6 +204,9 @@ func (s *Service) issueEmailChangeCode(ctx context.Context, u *model.User, newEm
 	}
 	cr := model.NewEmailChangeRequest(vo.NewId(), u.ID, newEmail, HashResetCode(code), now)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.repo.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
 		if derr := s.emailChangeRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}
