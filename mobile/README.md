@@ -152,6 +152,24 @@ Claiming the app link needs one step per platform:
   certificate's fingerprint if you also want locally built/uploaded APKs to
   verify. Check a device with `adb shell pm get-app-links com.econumo.app`.
 
+**Unverified on iOS.** The app-link return has not been confirmed on a real
+iOS device. The chain ends in a same-origin 302 (the backend's
+`/api/v1/oauth/callback-<provider>` redirecting to `/oauth/app-return` on the
+same host), and iOS does not open a universal link for a navigation that stays
+on the same domain; universal links triggered by a 30x inside
+`SFSafariViewController` have also historically been unreliable. What to verify
+on a device: with the backend's `ECONUMO_APP_LINKS_IOS` set (and the
+`applinks:` entitlement in the build), finishing a Google / Apple / OIDC
+sign-in returns straight into the app rather than leaving Safari on the SPA
+page. If it does not, the flow still completes through the fallback — the
+browser stays on `/oauth/app-return` and the user taps its "Open the app"
+button, which uses the private scheme and so reopens the counterfeit-app risk
+described in the next paragraph. The durable fix, if the device test fails, is to port the iOS
+flow to `ASWebAuthenticationSession` with a `callbackURLScheme` (RFC 8252
+§8.1): the system binds the callback to the calling process, which no other
+installed app can intercept, and it also covers self-hosted backends that app
+links can never reach. Android App Links are unaffected.
+
 The private scheme stays registered in both projects (iOS `CFBundleURLTypes`,
 Android a second VIEW intent filter with scheme `com.econumo.app` host `oauth`)
 because a **self-hosted** backend can never be an association domain of the

@@ -198,7 +198,15 @@ platforms fetch to check that:
 
 Both are served with `Content-Type: application/json` and cached for an hour.
 `ECONUMO_URL` must be `https://` — neither platform verifies a plain-http link,
-and boot fails if it is not.
+and boot fails if it is not. It must also be a bare origin with no path
+(`https://app.example.com`, not `https://example.com/econumo`): both platforms
+fetch the association documents from the origin root, so an instance served
+under a sub-path cannot use app links.
+
+> **Unverified on iOS.** The app-link return has not been confirmed on a real
+> iOS device yet — see "Sign-in with Google / Apple / SSO" in `mobile/README.md`
+> for what to verify, the fallback if it does not work, and the change to make
+> if it fails. Android App Links are unaffected.
 
 ```bash
 # comma-separated <Team ID>.<bundle id>
@@ -218,9 +226,10 @@ ECONUMO_APP_LINKS_ANDROID=com.econumo.app=AA:BB:...:ZZ
   `com.econumo.app=AA:...,com.econumo.app=BB:...`.
 
 **Private URL scheme (fallback).** With neither variable set the return goes to
-`com.econumo.app://oauth?…` instead. This works without any per-domain setup,
-which is why it is the default for self-hosted instances used from the store
-app — but a URL scheme is claimed globally on the device, so an app that
+`com.econumo.app://oauth` instead, carrying the handoff in the URL **fragment**
+(`#handoff=…`, so it never reaches a server or a log) and any failure in the
+query (`?error=…`). This works without any per-domain setup, which is why it is
+the default for self-hosted instances used from the store app — but a URL scheme is claimed globally on the device, so an app that
 registers the same scheme can receive the return. The window is narrow (the
 handoff code is one-shot, short-lived and must be presented together with the
 flow secret the app kept), but if you run the app against your own backend and
