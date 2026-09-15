@@ -395,7 +395,18 @@ func (h *hookedRequests) GetByUser(ctx context.Context, userID vo.Id) (*model.Em
 // verifies the password against.
 type hookedUsers struct {
 	appuser.Repository
-	afterGetByID func()
+	afterGetByID    func()
+	afterGetByEmail func()
+}
+
+func (h *hookedUsers) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	u, err := h.Repository.GetByEmail(ctx, email)
+	if err == nil && h.afterGetByEmail != nil {
+		fire := h.afterGetByEmail
+		h.afterGetByEmail = nil
+		fire()
+	}
+	return u, err
 }
 
 func (h *hookedUsers) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
@@ -493,5 +504,63 @@ func TestRequestEmailChange_ResetBetweenThePasswordCheckAndTheInsertIsRefused(t 
 	}
 	if _, gerr := ecRepo.GetByUser(ctx, uid); !isNotFound(gerr) {
 		t.Fatalf("a pending request was created after the reclaim: %v", gerr)
+	}
+}
+
+// A reset code proves control of ONE address, and only for as long as that
+// address is still the account's. A confirmed email change landing between the
+// reset's lookup and its row lock leaves the locked row pointing at a different
+// mailbox, so the reset must refuse it rather than hand the new password (and a
+// verified stamp) to whoever owns that address now.
+func TestResetPassword_EmailChangeConfirmedBeforeTheLockIsRefused(t *testing.T) {
+	db := dbtest.New(t)
+	clk := &testClock{now: authT0}
+	enc := auth.NewEncodeService("")
+	users := &hookedUsers{Repository: userrepo.NewRepo(db.Engine, db.TX)}
+	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
+	cap := &captureMailer{}
+	svc, prRepo := newChangeEmailSvc(t, db, users, ecRepo, enc, cap, clk)
+	ctx := context.Background()
+
+	uid := createChangeEmailUser(t, svc, "Owner", "owner@econumo.test", "secretpass1")
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "attacker@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	changeCode := changeCodeFrom(t, cap.msgs[0].Text)
+
+	pr := &model.PasswordRequest{
+		ID: vo.NewId(), UserID: uid, Code: appuser.HashResetCode("482913"),
+		CreatedAt: authT0, UpdatedAt: authT0, ExpiredAt: authT0.Add(10 * time.Minute),
+	}
+	if err := prRepo.Save(ctx, pr); err != nil {
+		t.Fatalf("seed password request: %v", err)
+	}
+
+	// The window: the reset has resolved the user by the address its code
+	// proves, and has not taken the row lock yet (the argon2 hash sits in
+	// between).
+	users.afterGetByEmail = func() {
+		if _, err := svc.ConfirmEmailChange(ctx, uid, vo.Id{}, model.ConfirmEmailChangeRequest{Code: changeCode}); err != nil {
+			t.Fatalf("ConfirmEmailChange: %v", err)
+		}
+	}
+
+	_, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
+		Username: "owner@econumo.test", Code: "482913", Password: "reset-password",
+	})
+	if !isValidationCode(err, errs.CodeUserResetPasswordError) {
+		t.Fatalf("want the reset-password error, got %v", err)
+	}
+	u, gerr := userrepo.NewRepo(db.Engine, db.TX).GetByID(ctx, uid)
+	if gerr != nil {
+		t.Fatalf("GetByID: %v", gerr)
+	}
+	if got, _ := enc.Decode(u.Email); got != "attacker@econumo.test" {
+		t.Fatalf("email = %q, want the confirmed change to stand", got)
+	}
+	if auth.NewPasswordHasher().Verify(u.Algorithm, u.Password, "reset-password", u.Salt) {
+		t.Fatal("the reset wrote its password onto a row whose address it never proved")
 	}
 }

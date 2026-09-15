@@ -233,9 +233,15 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 	}
 	// Freshly provisioned: nothing can have reclaimed it, so the generation the
 	// provisioning read returned is still current; the write takes the same
-	// guarded path so there is only one way to persist an identity.
-	if n, serr := s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, issuer, claims.Subject, email, now), u.CredentialsGeneration); serr != nil || n != 1 {
-		logWarn(ctx, "oauth callback: identity insert", orReclaimed(serr), "provider", provider)
+	// guarded path — lock, then fenced insert — so there is only one way to
+	// persist an identity.
+	if serr := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.users.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
+		return rowsOrReclaimed(s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), u.ID, provider, issuer, claims.Subject, email, now), u.CredentialsGeneration))
+	}); serr != nil {
+		logWarn(ctx, "oauth callback: identity insert", serr, "provider", provider)
 		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "oauth_provisioned", true)
@@ -263,19 +269,27 @@ func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer,
 // saveLinkedIdentity writes the slot's identity for a user, repointing the
 // existing row when the issuer or subject moved (an operator changing
 // ECONUMO_OIDC_ISSUER_URL): one row per (user, provider) is all the schema
-// allows, and the verified email already proved the account is theirs.
+// allows, and the verified email already proved the account is theirs. The
+// account's row lock is held across the lookup and the write, so the generation
+// fence cannot be read from inside an account reclaim that is still open (see
+// CompleteLink).
 func (s *Service) saveLinkedIdentity(ctx context.Context, userID vo.Id, provider, issuer, subject, email string, now time.Time, generation int64) error {
-	existing, err := s.identities.GetByUserProvider(ctx, userID, provider)
-	switch {
-	case err == nil:
-		existing.Repoint(issuer, subject, email, now)
-		return rowsOrReclaimed(s.identities.UpdateIfCurrent(ctx, existing, generation))
-	default:
-		if _, ok := errs.AsNotFound(err); !ok {
-			return err
+	return s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.users.LockRow(ctx, userID); lerr != nil {
+			return lerr
 		}
-		return rowsOrReclaimed(s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, provider, issuer, subject, email, now), generation))
-	}
+		existing, err := s.identities.GetByUserProvider(ctx, userID, provider)
+		switch {
+		case err == nil:
+			existing.Repoint(issuer, subject, email, now)
+			return rowsOrReclaimed(s.identities.UpdateIfCurrent(ctx, existing, generation))
+		default:
+			if _, ok := errs.AsNotFound(err); !ok {
+				return err
+			}
+			return rowsOrReclaimed(s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, provider, issuer, subject, email, now), generation))
+		}
+	})
 }
 
 // errReclaimed reports a write the account's reclaim fence refused: the user

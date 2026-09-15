@@ -2,6 +2,7 @@ package oauth_test
 
 import (
 	"context"
+	"database/sql"
 	"net/url"
 	"strings"
 	"sync"
@@ -57,6 +58,40 @@ func (c *countingHandoffs) DeleteExpired(ctx context.Context, cutoff time.Time) 
 type hookIdentities struct {
 	appoauth.Identities
 	afterCountByUser func()
+
+	// db + lock are the lock-order guard's seam: with lock set, every fenced
+	// identity mint records itself (and whether it is running inside a unit of
+	// work) alongside the account lock the flow took.
+	db   *dbtest.DB
+	lock *lockLog
+}
+
+// lockLog records the order of a flow's account lock and identity writes.
+type lockLog struct{ calls []string }
+
+func (l *lockLog) add(call string) { l.calls = append(l.calls, call) }
+
+// txMark reports whether the call is inside a unit of work: an identity mint
+// must be, because the row lock it relies on is only held to commit.
+func txMark(db *dbtest.DB, ctx context.Context) string {
+	if _, ok := db.TX.Querier(ctx).(*sql.Tx); ok {
+		return "(tx)"
+	}
+	return "(no-tx)"
+}
+
+func (h *hookIdentities) InsertIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
+	if h.lock != nil {
+		h.lock.add("InsertIfCurrent" + txMark(h.db, ctx))
+	}
+	return h.Identities.InsertIfCurrent(ctx, i, generation)
+}
+
+func (h *hookIdentities) UpdateIfCurrent(ctx context.Context, i *model.Identity, generation int64) (int64, error) {
+	if h.lock != nil {
+		h.lock.add("UpdateIfCurrent" + txMark(h.db, ctx))
+	}
+	return h.Identities.UpdateIfCurrent(ctx, i, generation)
 }
 
 func (h *hookIdentities) CountByUser(ctx context.Context, userID vo.Id) (int64, error) {
@@ -78,6 +113,7 @@ type fakeUsers struct {
 	minted    []string // providers of minted sessions
 	replaced  []string // emails mirrored via ReplaceVerifiedEmail
 	provision int
+	lock      *lockLog // set by the lock-order guard; see hookIdentities
 
 	// beforeFindByID runs once on the next FindByID, then clears itself: the
 	// seam for landing a reclaim between two of the flow's reads.
@@ -135,6 +171,9 @@ func (f *fakeUsers) FindByID(_ context.Context, id vo.Id) (*model.User, error) {
 // unlink transaction is the statement that repo issues, so a stub here would
 // test nothing.
 func (f *fakeUsers) LockRow(ctx context.Context, userID vo.Id) error {
+	if f.lock != nil {
+		f.lock.add("LockRow")
+	}
 	return userrepo.NewRepo(f.db.Engine, f.db.TX).LockRow(ctx, userID)
 }
 
@@ -249,7 +288,7 @@ func newHarnessWith(t *testing.T, trust, allowRegistration, appLinks bool) *harn
 	db := dbtest.New(t)
 	f := oidctest.New(t)
 	users := newFakeUsers(t, db)
-	ids := &hookIdentities{Identities: oauthrepo.NewIdentityRepo(db.Engine, db.TX)}
+	ids := &hookIdentities{Identities: oauthrepo.NewIdentityRepo(db.Engine, db.TX), db: db}
 	states := &countingStates{States: oauthrepo.NewStateRepo(db.Engine, db.TX)}
 	hands := &countingHandoffs{Handoffs: oauthrepo.NewHandoffRepo(db.Engine, db.TX)}
 	clk := &fixedClock{t: time.Now().UTC().Truncate(time.Second)}

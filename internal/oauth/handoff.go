@@ -119,32 +119,44 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 	now := s.clock.Now()
 	// The fence value was captured when the callback resolved the account
 	// (h.Generation); the write is refused if a reclaim bumped it since,
-	// whatever this request's session looked like at the middleware.
-	existing, err := s.identities.GetByProviderSubject(ctx, h.Provider, h.Issuer, h.Subject)
-	switch {
-	case err == nil && !existing.UserID.Equal(userID):
-		return nil, &errs.ValidationError{Msg: "This external account is already linked to another Econumo account", MsgCode: errs.CodeOAuthIdentityTaken}
-	case err == nil:
-		existing.UpdateEmail(h.Email, now)
-		if n, serr := s.identities.UpdateIfCurrent(ctx, existing, h.Generation); serr != nil {
-			return nil, serr
-		} else if n != 1 {
-			return nil, invalid
+	// whatever this request's session looked like at the middleware. The row
+	// lock is what makes that refusal reliable on PostgreSQL: under READ
+	// COMMITTED the fence's EXISTS cannot see a reclaim that has not committed
+	// yet, so an unlocked insert would slip behind its identity sweep and leave
+	// the account with a sign-in method the recovery was supposed to remove.
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.users.LockRow(ctx, userID); lerr != nil {
+			return lerr
 		}
-	default:
-		if _, ok := errs.AsNotFound(err); !ok {
-			return nil, err
+		existing, gerr := s.identities.GetByProviderSubject(ctx, h.Provider, h.Issuer, h.Subject)
+		switch {
+		case gerr == nil && !existing.UserID.Equal(userID):
+			return &errs.ValidationError{Msg: "This external account is already linked to another Econumo account", MsgCode: errs.CodeOAuthIdentityTaken}
+		case gerr == nil:
+			existing.UpdateEmail(h.Email, now)
+			if n, serr := s.identities.UpdateIfCurrent(ctx, existing, h.Generation); serr != nil {
+				return serr
+			} else if n != 1 {
+				return invalid
+			}
+		default:
+			if _, ok := errs.AsNotFound(gerr); !ok {
+				return gerr
+			}
+			if _, lerr := s.identities.GetByUserProvider(ctx, userID, h.Provider); lerr == nil {
+				return &errs.ValidationError{Msg: "Your account already has a different account linked for this provider", MsgCode: errs.CodeOAuthProviderAlreadyLinked}
+			} else if _, ok := errs.AsNotFound(lerr); !ok {
+				return lerr
+			}
+			if n, serr := s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now), h.Generation); serr != nil {
+				return serr
+			} else if n != 1 {
+				return invalid
+			}
 		}
-		if _, gerr := s.identities.GetByUserProvider(ctx, userID, h.Provider); gerr == nil {
-			return nil, &errs.ValidationError{Msg: "Your account already has a different account linked for this provider", MsgCode: errs.CodeOAuthProviderAlreadyLinked}
-		} else if _, ok := errs.AsNotFound(gerr); !ok {
-			return nil, gerr
-		}
-		if n, serr := s.identities.InsertIfCurrent(ctx, model.NewIdentity(s.identities.NextIdentity(), userID, h.Provider, h.Issuer, h.Subject, h.Email, now), h.Generation); serr != nil {
-			return nil, serr
-		} else if n != 1 {
-			return nil, invalid
-		}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 	reqctx.AddLogAttr(ctx, "provider", h.Provider)
 	return &model.CompleteLinkResult{Provider: h.Provider}, nil

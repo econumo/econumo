@@ -111,6 +111,18 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 				t.Fatalf("ConfirmEmail: %v", err)
 			}
 		}},
+		{"reset-password", func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
+			ctx := context.Background()
+			pr := model.NewPasswordRequest(vo.NewId(), uid, appuser.HashResetCode("482913"), time.Now().UTC())
+			if err := userrepo.NewPasswordRequestRepo(db.Engine, db.TX).Save(ctx, pr); err != nil {
+				t.Fatalf("seed password request: %v", err)
+			}
+			if _, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
+				Username: email, Code: "482913", Password: "reset-password",
+			}); err != nil {
+				t.Fatalf("ResetPassword: %v", err)
+			}
+		}},
 		{"admin change-email", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminChangeEmail(context.Background(), email, "lock-order-new@econumo.test"); err != nil {
 				t.Fatalf("AdminChangeEmail: %v", err)

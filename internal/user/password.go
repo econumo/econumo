@@ -168,6 +168,17 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		if gerr != nil {
 			return gerr
 		}
+		// The code proves control of `lowered` and of nothing else, so the row
+		// the lock handed back must still be that address's account: a change of
+		// email confirmed since the lookup above means this reset would set the
+		// password (and the verified stamp) on someone else's login key.
+		cur, derr := s.encode.Decode(u.Email)
+		if derr != nil {
+			return derr
+		}
+		if strings.ToLower(strings.TrimSpace(cur)) != lowered {
+			return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
+		}
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())
 		// Completing a reset proves mailbox ownership, so it also satisfies the
 		// email-verification gate.
