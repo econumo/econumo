@@ -23,6 +23,7 @@ type Service struct {
 	identities        Identities
 	states            States
 	handoffs          Handoffs
+	tx                port.TxRunner
 	clock             port.Clock
 	limiter           AttemptLimiter
 	appURL            string
@@ -33,13 +34,13 @@ type Service struct {
 }
 
 func NewService(providers []Provider, users Users, identities Identities, states States, handoffs Handoffs,
-	clock port.Clock, limiter AttemptLimiter, appURL string, allowRegistration bool) *Service {
+	tx port.TxRunner, clock port.Clock, limiter AttemptLimiter, appURL string, allowRegistration bool) *Service {
 	byID := map[string]Provider{}
 	for _, p := range providers {
 		byID[p.Client.Issuer().ID] = p
 	}
 	return &Service{providers: providers, byID: byID, users: users, identities: identities, states: states,
-		handoffs: handoffs, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
+		handoffs: handoffs, tx: tx, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
 		allowRegistration: allowRegistration}
 }
 

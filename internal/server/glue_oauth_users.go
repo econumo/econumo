@@ -23,6 +23,9 @@ func (a *OAuthUsers) FindByEmail(ctx context.Context, email string) (*model.User
 func (a *OAuthUsers) FindByID(ctx context.Context, id vo.Id) (*model.User, error) {
 	return a.users.GetByID(ctx, id)
 }
+func (a *OAuthUsers) LockRow(ctx context.Context, userID vo.Id) error {
+	return a.users.LockRow(ctx, userID)
+}
 func (a *OAuthUsers) ProvisionExternal(ctx context.Context, name, email string) (*model.User, error) {
 	return a.users.ProvisionExternalUser(ctx, name, email)
 }

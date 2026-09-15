@@ -23,28 +23,37 @@ func (s *Service) ListIdentities(ctx context.Context, userID vo.Id) ([]model.Ide
 }
 
 // UnlinkIdentity refuses to remove the last identity of a passwordless user:
-// it would lock them out.
+// it would lock them out. The whole check-then-delete runs in one transaction
+// that opens by taking the user row's lock, so two unlinks arriving together
+// cannot both count two identities and both delete.
 func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.UnlinkIdentityRequest) (*model.UnlinkIdentityResult, error) {
-	if _, err := s.identities.GetByUserProvider(ctx, userID, req.Provider); err != nil {
-		if _, ok := errs.AsNotFound(err); ok {
-			return nil, &errs.ValidationError{Msg: "Linked account not found", MsgCode: errs.CodeOAuthIdentityNotFound}
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.users.LockRow(ctx, userID); err != nil {
+			return err
 		}
-		return nil, err
-	}
-	u, err := s.users.FindByID(ctx, userID)
+		if _, err := s.identities.GetByUserProvider(ctx, userID, req.Provider); err != nil {
+			if _, ok := errs.AsNotFound(err); ok {
+				return &errs.ValidationError{Msg: "Linked account not found", MsgCode: errs.CodeOAuthIdentityNotFound}
+			}
+			return err
+		}
+		u, err := s.users.FindByID(ctx, userID)
+		if err != nil {
+			return err
+		}
+		if !u.HasPassword() {
+			n, cerr := s.identities.CountByUser(ctx, userID)
+			if cerr != nil {
+				return cerr
+			}
+			if n <= 1 {
+				return &errs.ValidationError{Msg: "Set a password before unlinking your only sign-in method", MsgCode: errs.CodeOAuthLastIdentity}
+			}
+		}
+		_, err = s.identities.DeleteByUserProvider(ctx, userID, req.Provider)
+		return err
+	})
 	if err != nil {
-		return nil, err
-	}
-	if !u.HasPassword() {
-		n, cerr := s.identities.CountByUser(ctx, userID)
-		if cerr != nil {
-			return nil, cerr
-		}
-		if n <= 1 {
-			return nil, &errs.ValidationError{Msg: "Set a password before unlinking your only sign-in method", MsgCode: errs.CodeOAuthLastIdentity}
-		}
-	}
-	if _, err := s.identities.DeleteByUserProvider(ctx, userID, req.Provider); err != nil {
 		return nil, err
 	}
 	return &model.UnlinkIdentityResult{}, nil

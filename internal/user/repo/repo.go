@@ -58,6 +58,7 @@ type querier interface {
 	ListUserIDs(ctx context.Context, db backend.DBTX) ([]string, error)
 	ListUserIDsMissingOption(ctx context.Context, db backend.DBTX, name string) ([]string, error)
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
+	LockUserRow(ctx context.Context, db backend.DBTX, id string) error
 	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error)
 	UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error)
@@ -220,6 +221,12 @@ func (r *Repo) Save(ctx context.Context, u *model.User) error {
 		}
 	}
 	return nil
+}
+
+// LockRow takes the user row's write lock for the rest of the transaction
+// (see user.Repository.LockRow); it writes nothing.
+func (r *Repo) LockRow(ctx context.Context, userID vo.Id) error {
+	return r.q.LockUserRow(ctx, r.db(ctx), userID.String())
 }
 
 func (r *Repo) BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error {

@@ -67,6 +67,14 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 	return s.repo.ReplaceEmailIfPasswordless(ctx, userID, encrypted, s.clock.Now(), generation)
 }
 
+// LockRow serializes the oauth feature's identity unlink against itself: the
+// caller re-reads the account's sign-in methods and deletes one, which is only
+// safe while it holds the user row (see user.Repository.LockRow). It must run
+// inside the caller's transaction.
+func (s *Service) LockRow(ctx context.Context, userID vo.Id) error {
+	return s.repo.LockRow(ctx, userID)
+}
+
 func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
 	return s.repo.GetByID(ctx, id)
 }

@@ -445,6 +445,11 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Serializes writers that must re-read a user's sign-in methods before
+	// deleting one (identity unlink): the no-op UPDATE takes the row lock, held to
+	// commit on PostgreSQL and promoting the transaction to SQLite's single
+	// writer, so a check-then-delete pair cannot interleave.
+	LockUserRow(ctx context.Context, id string) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)

@@ -62,6 +62,10 @@ func (sqliteQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id st
 	return sqlitegen.New(db).GetUserLanguage(ctx, id)
 }
 
+func (sqliteQuerier) LockUserRow(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).LockUserRow(ctx, id)
+}
+
 func (sqliteQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
 	return sqlitegen.New(db).BumpUserCredentialsGeneration(ctx, userID)
 }

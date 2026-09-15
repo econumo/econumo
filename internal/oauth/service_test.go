@@ -4,6 +4,8 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -16,6 +18,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 )
 
 // fixedClock is a pointer so a test can advance it after the service is built.
@@ -46,6 +49,22 @@ type countingHandoffs struct {
 func (c *countingHandoffs) DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error) {
 	c.deleteExpiredCalls++
 	return c.Handoffs.DeleteExpired(ctx, cutoff)
+}
+
+// hookIdentities wraps a real Identities repo so a test can interleave two
+// calls at the exact point the unlink lost-update window opens: right after
+// the last-identity count, before the delete.
+type hookIdentities struct {
+	appoauth.Identities
+	afterCountByUser func()
+}
+
+func (h *hookIdentities) CountByUser(ctx context.Context, userID vo.Id) (int64, error) {
+	n, err := h.Identities.CountByUser(ctx, userID)
+	if h.afterCountByUser != nil {
+		h.afterCountByUser()
+	}
+	return n, err
 }
 
 // fakeUsers is the Users port over the seeded users table: rows are real (so
@@ -111,6 +130,14 @@ func (f *fakeUsers) FindByID(_ context.Context, id vo.Id) (*model.User, error) {
 	}
 	return nil, errs.NewNotFound("User not found")
 }
+
+// LockRow goes through the REAL user repository: the whole point of the
+// unlink transaction is the statement that repo issues, so a stub here would
+// test nothing.
+func (f *fakeUsers) LockRow(ctx context.Context, userID vo.Id) error {
+	return userrepo.NewRepo(f.db.Engine, f.db.TX).LockRow(ctx, userID)
+}
+
 func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*model.User, error) {
 	if f.failProvisionExternal != nil {
 		return nil, f.failProvisionExternal
@@ -196,7 +223,7 @@ type harness struct {
 	fake      *oidctest.Fake
 	users     *fakeUsers
 	svc       *appoauth.Service
-	ids       appoauth.Identities
+	ids       *hookIdentities
 	states    *countingStates
 	hands     *countingHandoffs
 	clock     *fixedClock
@@ -209,7 +236,7 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 	db := dbtest.New(t)
 	f := oidctest.New(t)
 	users := newFakeUsers(t, db)
-	ids := oauthrepo.NewIdentityRepo(db.Engine, db.TX)
+	ids := &hookIdentities{Identities: oauthrepo.NewIdentityRepo(db.Engine, db.TX)}
 	states := &countingStates{States: oauthrepo.NewStateRepo(db.Engine, db.TX)}
 	hands := &countingHandoffs{Handoffs: oauthrepo.NewHandoffRepo(db.Engine, db.TX)}
 	clk := &fixedClock{t: time.Now().UTC().Truncate(time.Second)}
@@ -217,7 +244,7 @@ func newHarness(t *testing.T, trust, allowRegistration bool) *harness {
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderGoogle, true), nil), Name: "Google"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, trust), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, clk, nil, "https://app.example.test", allowRegistration)
+	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, nil, "https://app.example.test", allowRegistration)
 	notifier := &fakeNotifier{}
 	svc.SetNotifier(notifier)
 	return &harness{t: t, db: db, fake: f, users: users, svc: svc, ids: ids, states: states, hands: hands, clock: clk, providers: providers, notifier: notifier}
@@ -631,6 +658,66 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 	}
 }
 
+// Two unlinks racing on a passwordless account with exactly two identities:
+// both read a count of 2, so a check-then-delete outside a transaction lets
+// both deletes land and leaves the account with no way to sign in. The gate
+// holds both calls inside that window; under the row lock the second call
+// cannot reach the count while the first holds the row, so the gate also
+// releases on a timeout and the assertion is the outcome, not the ordering.
+func TestUnlinkIdentity_ConcurrentUnlinksKeepOneSignInMethod(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "p@x.test", model.AlgorithmNone)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g", "p@x.test", h.clock.Now()))
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), "o", "p@x.test", h.clock.Now()))
+
+	gate := make(chan struct{})
+	var counted atomic.Int32
+	var closeGate sync.Once
+	h.ids.afterCountByUser = func() {
+		if counted.Add(1) == 2 {
+			closeGate.Do(func() { close(gate) })
+		}
+		select {
+		case <-gate:
+		case <-time.After(200 * time.Millisecond):
+		}
+	}
+
+	results := make([]error, 2)
+	var wg sync.WaitGroup
+	for i, provider := range []string{"google", "oidc"} {
+		wg.Add(1)
+		go func(i int, provider string) {
+			defer wg.Done()
+			_, results[i] = h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: provider})
+		}(i, provider)
+	}
+	wg.Wait()
+	h.ids.afterCountByUser = nil
+
+	n, err := h.ids.CountByUser(context.Background(), u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 1 {
+		t.Fatalf("passwordless user left with %d identities, want 1 (results: %v)", n, results)
+	}
+	var ok, refused int
+	for _, e := range results {
+		switch v, isValidation := errs.AsValidation(e); {
+		case e == nil:
+			ok++
+		case isValidation && v.MsgCode == errs.CodeOAuthLastIdentity:
+			refused++
+		default:
+			t.Fatalf("unexpected unlink error: %v", e)
+		}
+	}
+	if ok != 1 || refused != 1 {
+		t.Fatalf("succeeded=%d refused=%d, want 1/1 (results: %v)", ok, refused, results)
+	}
+}
+
 func TestInactiveUserRejected(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "gone@example.test", model.AlgorithmArgon2id)
@@ -811,7 +898,7 @@ func (l *stubLimiter) Allow(scope, key string) error {
 func TestStartLogin_SurfacesTheRateLimit(t *testing.T) {
 	h := newHarness(t, false, true)
 	lim := &stubLimiter{}
-	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.clock, lim,
+	svc := appoauth.NewService(h.providers, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, lim,
 		"https://app.example.test", true)
 	_, err := svc.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"})
 	if _, ok := errs.AsTooManyRequests(err); !ok {
@@ -842,7 +929,7 @@ func loginVia(t *testing.T, svc *appoauth.Service, f *oidctest.Fake, provider, c
 // issuer — what an operator does by repointing ECONUMO_OIDC_ISSUER_URL.
 func (h *harness) serviceOver(f *oidctest.Fake) *appoauth.Service {
 	return appoauth.NewService([]appoauth.Provider{{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "New IdP"}},
-		h.users, h.ids, h.states, h.hands, h.clock, nil, "https://app.example.test", true)
+		h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
 }
 
 // The custom slot's provider id is always "oidc", so a subject is only unique

@@ -24,6 +24,7 @@ import (
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
 	"github.com/econumo/econumo/internal/web/router"
 )
 
@@ -76,6 +77,10 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 	return u, nil
 }
 
+func (f *fakeUsers) LockRow(ctx context.Context, userID vo.Id) error {
+	return userrepo.NewRepo(f.db.Engine, f.db.TX).LockRow(ctx, userID)
+}
+
 func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, _ vo.Id, _ string, _ int64) (int64, error) {
 	return 1, nil
 }
@@ -121,7 +126,7 @@ func newHarnessWith(t *testing.T, limiter appoauth.AttemptLimiter) *harness {
 		{Client: oidc.NewClient(appleIssuer, nil), Name: "Apple"},
 		{Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), nil), Name: "Authentik"},
 	}
-	svc := appoauth.NewService(providers, users, ids, states, hands, clk, limiter, "https://app.example.test", true)
+	svc := appoauth.NewService(providers, users, ids, states, hands, db.TX, clk, limiter, "https://app.example.test", true)
 	handlers := handleroauth.NewHandlers(svc)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

@@ -12,6 +12,10 @@ import (
 type Users interface {
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 	FindByID(ctx context.Context, id vo.Id) (*model.User, error)
+	// LockRow holds the user row for the rest of the caller's transaction, so a
+	// decision taken over the account's sign-in methods still holds when the
+	// caller writes. UnlinkIdentity is the only user of it.
+	LockRow(ctx context.Context, userID vo.Id) error
 	// ProvisionExternal creates a passwordless, email-verified user with the
 	// registration defaults (trial, options, currency).
 	ProvisionExternal(ctx context.Context, name, email string) (*model.User, error)

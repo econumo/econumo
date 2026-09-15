@@ -137,7 +137,7 @@ func (f faultHandoffs) Delete(ctx context.Context, codeHash string) (int64, erro
 // newFaultService builds a second Service over the harness's real fake OIDC
 // provider and database, letting a test swap in a wrapped dependency.
 func newFaultService(h *harness, users appoauth.Users, ids appoauth.Identities, states appoauth.States, hands appoauth.Handoffs, allowRegistration bool) *appoauth.Service {
-	return appoauth.NewService(h.providers, users, ids, states, hands, h.clock, nil, "https://app.example.test", allowRegistration)
+	return appoauth.NewService(h.providers, users, ids, states, hands, h.db.TX, h.clock, nil, "https://app.example.test", allowRegistration)
 }
 
 func TestCallback_Login_IdentityOwnerLookupFails(t *testing.T) {
@@ -476,7 +476,7 @@ func TestStartLogin_DiscoveryFails(t *testing.T) {
 		ID: "google", IssuerURL: "http://127.0.0.1:1", ClientID: "x", ClientSecret: oidc.StaticSecret("s"),
 		Scopes: []string{"openid"}, UsePKCE: true, TrustEmail: true,
 	}, nil)}}
-	svc2 := appoauth.NewService(unreachable, h.users, h.ids, h.states, h.hands, h.clock, nil, "https://app.example.test", true)
+	svc2 := appoauth.NewService(unreachable, h.users, h.ids, h.states, h.hands, h.db.TX, h.clock, nil, "https://app.example.test", true)
 	if _, err := svc2.StartLogin(context.Background(), model.StartOAuthRequest{Provider: "google", Client: "web"}); err == nil {
 		t.Fatal("unreachable issuer must fail discovery")
 	}

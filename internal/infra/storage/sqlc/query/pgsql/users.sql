@@ -27,6 +27,13 @@ ON CONFLICT (id) DO UPDATE SET
     access_until = excluded.access_until,
     email_verified = excluded.email_verified;
 
+-- name: LockUserRow :exec
+-- Serializes writers that must re-read a user's sign-in methods before
+-- deleting one (identity unlink): the no-op UPDATE takes the row lock, held to
+-- commit on PostgreSQL and promoting the transaction to SQLite's single
+-- writer, so a check-then-delete pair cannot interleave.
+UPDATE users SET updated_at = updated_at WHERE id = $1;
+
 -- name: BumpUserCredentialsGeneration :execrows
 UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1;
 

@@ -212,6 +212,19 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const lockUserRow = `-- name: LockUserRow :exec
+UPDATE users SET updated_at = updated_at WHERE id = ?
+`
+
+// Serializes writers that must re-read a user's sign-in methods before
+// deleting one (identity unlink): the no-op UPDATE takes the row lock, held to
+// commit on PostgreSQL and promoting the transaction to SQLite's single
+// writer, so a check-then-delete pair cannot interleave.
+func (q *Queries) LockUserRow(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, lockUserRow, id)
+	return err
+}
+
 const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
 UPDATE users SET email = ?, email_verified = 1, updated_at = ?
 WHERE id = ? AND credentials_generation = ? AND algorithm = 'none'

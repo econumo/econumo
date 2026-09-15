@@ -69,6 +69,10 @@ func (pgsqlQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id str
 	return pgsqlgen.New(db).GetUserLanguage(ctx, id)
 }
 
+func (pgsqlQuerier) LockUserRow(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).LockUserRow(ctx, id)
+}
+
 func (pgsqlQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
 	return pgsqlgen.New(db).BumpUserCredentialsGeneration(ctx, userID)
 }

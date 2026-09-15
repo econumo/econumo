@@ -430,7 +430,8 @@ User C sees none of it.
       list.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
-      your only sign-in method.").
+      your only sign-in method."), including two unlink requests sent at the
+      same time — one succeeds, the other is refused.
 - [ ] For a passwordless user, Settings → Profile shows a "Set a password"
       row in place of "Change password"; it sends a reset code to the
       account's email (the email field pre-filled/locked) and, after

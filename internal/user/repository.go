@@ -30,6 +30,13 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// LockRow takes the user row's write lock for the rest of the caller's
+	// transaction without changing anything. It is how a read-then-write over a
+	// user's sign-in methods (the oauth identity unlink) serializes: two
+	// concurrent unlinks would otherwise both count two identities and both
+	// delete, stranding a passwordless account with none.
+	LockRow(ctx context.Context, userID vo.Id) error
+
 	// BumpCredentialsGeneration invalidates every flow that read its evidence
 	// before this call. Part of the reclaim, inside its transaction.
 	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error
