@@ -775,15 +775,24 @@ In the distroless image these run via the binary directly, e.g.
   its evidence (the verified password hash, the resolved oauth user — carried on the
   handoff row as `oauth_handoffs.credentials_generation`) and presents it again at
   write time. Session inserts (`InsertAccessTokenIfGeneration`) and identity writes
-  (`UpsertIdentityIfGeneration`) are conditional on it inside the SQL, so the DATABASE
+  (`InsertIdentityIfGeneration` / `UpdateIdentityIfGeneration`) are conditional on it
+  inside the SQL, so the DATABASE
   decides the race: the reclaim bumps the generation, and anything in flight writes
   zero rows and fails closed. Checking in Go would be the race it is meant to close.
   The fence only sees COMMITTED rows, so it is paired with a lock: every write to an
-  existing user's row and every credential mint runs under the user row lock
-  (`Repository.LockRow`), taken before the row is read, and the reclaim takes it first
+  existing user's row and every credential mint — session and PAT inserts, and the
+  identity INSERTs of complete-link, auto-link and provisioning — runs under the user
+  row lock (`Repository.LockRow`), taken before the row is read and held in the same
+  transaction as the write, and the reclaim takes it first
   too (it bumps `users` before it sweeps) — so on PostgreSQL a write racing the
   reclaim's still-open transaction blocks instead of slipping past, and a
   whole-aggregate `Save` can never put back a row read before the reclaim landed.
+  The narrow fenced `users` UPDATEs (`rehashLegacyPassword`, `mirrorEmailDrift`) are
+  the one exception, and need no lock: PostgreSQL serializes concurrent UPDATEs on the
+  row itself and re-evaluates their WHERE against the committed version, so the fence
+  is decided after the reclaim rather than before it. The reset re-reads the locked
+  row's address too: a confirmed email change landing in the window makes it a
+  different account, and the reset is refused rather than written to it.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).

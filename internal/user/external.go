@@ -68,9 +68,9 @@ func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email 
 }
 
 // LockRow serializes the oauth feature's writes over an account's sign-in
-// methods — an identity unlink against itself, and against the redemption of a
-// handoff that provider authorized (see user.Repository.LockRow). It must run
-// inside the caller's transaction.
+// methods — an identity unlink against itself, and the redemption of a handoff
+// or the writing of an identity against an account reclaim (see
+// user.Repository.LockRow). It must run inside the caller's transaction.
 func (s *Service) LockRow(ctx context.Context, userID vo.Id) error {
 	return s.repo.LockRow(ctx, userID)
 }

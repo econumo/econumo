@@ -412,7 +412,12 @@ handoffs), then consume the code and, before minting, re-validate that the
 identity the handoff carries (`provider` + `issuer` + `subject`, stamped by the
 callback) still exists and still belongs to this user — otherwise the same 401.
 A rejected redemption still COMMITS the consume: the code must be spent even
-when the presenter is refused.
+when the presenter is refused. That holds for the rejections the closure
+reports by returning no session — wrong flow secret, unknown/moved identity,
+wrong kind, expired — which leave the transaction to commit its DELETE. A
+rejection raised by the mint itself (the generation fence, an inactive user)
+returns an ERROR, so the transaction rolls back and the code survives until its
+TTL; harmless, because every retry is refused identically.
 
 Hash the code, load the row, then delete it. The DELETE's affected-row count
 decides the race: a presenter whose delete removed no row is rejected, so a
@@ -470,8 +475,9 @@ handoff a moment earlier, or a callback already in flight whose identity insert
 lands after the sweep. `users.credentials_generation` fences that. Every flow
 captures it when it reads its evidence (the oauth callback when it resolves the
 user, carried onto the handoff row; the password login when it verifies the
-hash) and presents it at write time, where `InsertAccessTokenIfGeneration` and
-`UpsertIdentityIfGeneration` make the write conditional on it *in SQL*. The
+hash) and presents it at write time, where `InsertAccessTokenIfGeneration`,
+`InsertIdentityIfGeneration` and `UpdateIdentityIfGeneration` make the write
+conditional on it *in SQL*. The
 reclaim bumps the generation inside its transaction, so every in-flight write
 affects zero rows and fails closed — the database decides the race, which is the
 only place it can be decided without a Go-side read that is itself the race.
@@ -482,11 +488,20 @@ closes that window, and the rule is system-wide: every transaction that writes
 an EXISTING user's row or mints a credential for one takes
 `Repository.LockRow(userID)` FIRST, then reads, then writes — the reclaim takes
 the same lock first too (it bumps `users` before it sweeps), so the two can only
-serialize, never deadlock and never interleave. Locking before READING is the
+serialize, never deadlock and never interleave. Credential mints are the session
+and PAT inserts AND every identity INSERT: completing a link, the auto-link by
+verified email, and the provisioning insert each run lock-then-insert in one
+transaction. The exception is the narrow fenced `users` UPDATEs
+(`rehashLegacyPassword`, `mirrorEmailDrift`), which need no lock because
+PostgreSQL serializes concurrent UPDATEs on the row itself and re-evaluates the
+WHERE against the version the reclaim committed. Locking before READING is the
 other half of the same rule: a whole-aggregate `Save` built from a row read
 before the reclaim committed would put the pre-reset password back, which is why
-the lock precedes the read and the row is re-read under it. SQLite's single
-writer excludes the window on its own.
+the lock precedes the read and the row is re-read under it — and, for the reset
+itself, why the row it locks is re-checked against the address the code proved
+(an email change confirmed in the window would otherwise hand the new password
+to whoever owns that address now). SQLite's single writer excludes the window on
+its own.
 
 Corollary: `users_identities.email` is no longer purely decorative. It is still
 never a lookup key, but it records which address a provider vouches for, and

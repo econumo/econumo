@@ -31,10 +31,20 @@ type Repository interface {
 	Save(ctx context.Context, u *model.User) error
 
 	// LockRow takes the user row's write lock for the rest of the caller's
-	// transaction without changing anything. It is how a read-then-write over a
-	// user's sign-in methods (the oauth identity unlink) serializes: two
-	// concurrent unlinks would otherwise both count two identities and both
-	// delete, stranding a passwordless account with none.
+	// transaction without changing anything. It is the primitive behind every
+	// write to an existing user's row and every credential mint (sessions, PATs,
+	// oauth identities): taken FIRST, it orders them against an account reclaim,
+	// which holds the same lock while it bumps the generation and sweeps. It is
+	// also how a read-then-write over a user's sign-in methods (the oauth
+	// identity unlink) serializes: two concurrent unlinks would otherwise both
+	// count two identities and both delete, stranding a passwordless account
+	// with none.
+	//
+	// A MISSING user succeeds silently (the no-op UPDATE matches zero rows and
+	// returns no error), and two error shapes depend on that: ConfirmEmail's
+	// anti-enumeration generic invalid-code, raised by the GetByID that follows,
+	// and the mints' fence, which then writes zero rows and yields a 401 rather
+	// than a 500. Never "fix" it to error on a missing row.
 	LockRow(ctx context.Context, userID vo.Id) error
 
 	// BumpCredentialsGeneration invalidates every flow that read its evidence

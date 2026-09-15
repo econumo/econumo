@@ -21,7 +21,10 @@ import (
 // The salt arrives as a parameter rather than via s.encode: the service's own
 // encoder is salt-free (the API ignores ECONUMO_DATA_SALT), so this method builds
 // the salted encoder it needs locally. The whole sweep runs in one transaction,
-// so a mid-run failure rolls everything back.
+// so a mid-run failure rolls everything back — and because it locks each row
+// before reading it, by the end it holds EVERY user's row lock until the commit:
+// concurrent logins, resets and profile writes block behind it, so run it while
+// writes are quiet.
 //
 // It is idempotent and mixed-state safe: a row whose email is already plaintext
 // fails the salted Decode (bad base64 / HMAC mismatch) and is counted as

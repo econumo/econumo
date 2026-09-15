@@ -14,8 +14,10 @@ type Users interface {
 	FindByID(ctx context.Context, id vo.Id) (*model.User, error)
 	// LockRow holds the user row for the rest of the caller's transaction, so a
 	// decision taken over the account's sign-in methods still holds when the
-	// caller writes. Unlinking an identity and redeeming a sign-in handoff both
-	// take it, which is what serializes the two against each other.
+	// caller writes. Unlinking an identity, redeeming a sign-in handoff, and
+	// every identity write (complete-link, auto-link, provisioning) take it,
+	// which is what serializes them against each other and against an account
+	// reclaim, whose transaction takes the same lock first.
 	LockRow(ctx context.Context, userID vo.Id) error
 	// ProvisionExternal creates a passwordless, email-verified user with the
 	// registration defaults (trial, options, currency).
