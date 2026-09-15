@@ -221,3 +221,45 @@ Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
 ## Final gate
 
 `make go-test`; `cd web && pnpm test && pnpm lint && npx tsc -b` (no web changes expected — confirm with `git diff --stat`); PostgreSQL: enginecompare + `DBTEST_ENGINE=pgsql` for `./internal/user/... ./internal/oauth/... ./internal/server/... ./internal/cli/...`.
+
+---
+
+### Task 3: Every remaining whole-aggregate save on an existing user runs under the user row lock; session and PAT mints too
+
+**Why (found by the Task 1 review):** `Service.mutate` (`internal/user/usecase.go:140-160`) reloads the user INSIDE its transaction but takes no row lock, then `Save`s the whole aggregate. On PostgreSQL READ COMMITTED a reset committing between that read and the `Save` is overwritten — `update-name`/avatar/locale/options/`update-password` can write the pre-reset `password`/`algorithm`/`email` back and undo a reclaim (an attacker with a live session can loop `update-name` while the owner resets). `ConfirmEmail` (`internal/user/verify_email.go:47,74`, a PUBLIC route) loads `u` OUTSIDE its transaction and `Save`s it inside. The CLI admin writers (`internal/user/admin.go` `Save` sites) do the same from a pre-transaction read. And the session/PAT mints (`InsertAccessTokenIfGeneration` / `InsertAccessTokenIfPresenterLive`) are fence-only: a mint whose fenced INSERT runs while the reclaim's `users` UPDATE (or its `RevokeAll`) is still uncommitted passes the `EXISTS` and survives the sweep.
+
+**Rule (round 8, now applied everywhere):** any transaction that writes an EXISTING user's row, or mints a credential for one, takes `Repository.LockRow(userID)` FIRST, then reads, then writes. `reclaimCredentials` already bumps `users` first, so all of these serialize with it and none can deadlock.
+
+**Files:**
+- Modify: `internal/user/usecase.go` (`mutate`: `LockRow` before `GetByID`), `internal/user/verify_email.go` (`ConfirmEmail`: move the `GetByEmail`/code checks inside the tx after `LockRow` — lock by the id the pre-tx lookup returned, then re-read), `internal/user/admin.go` (every `WithTx` that `Save`s an existing user: `LockRow` first and re-read inside; `AdminChangePassword`/`AdminDeactivate` keep their reclaim/revoke order after the save), `internal/user/session.go` (`createSession`: `WithTx{ LockRow; InsertIfGeneration }`), `internal/user/pat.go` (`CreatePersonalToken`: `WithTx{ LockRow; InsertIfPresenterLive }`)
+- Test: `internal/user/login_test.go` / `session_cascade_test.go` / `verify_email_test.go` / `admin_integration_test.go`
+
+**Interfaces:** consumes `Repository.LockRow`, `TxManager.WithTx` (savepoint-reentrant — `CreateExternalSession` is already called inside the oauth redemption transaction that holds the same lock; a nested `LockRow` on the same connection is a no-op re-lock).
+
+- [ ] **Step 1: Failing race test — `update-name` racing a reset must not restore the old password**
+
+In `internal/user/session_cascade_test.go` (reuse the `deactivatingRepo`/`resettingRepo` decorator style; here decorate `Repository.GetByID` to run the REAL `ResetPassword` once after returning the row, i.e. inside `mutate`'s transaction after its read):
+
+```go
+func TestUpdateName_ResetBetweenTheReadAndTheSaveDoesNotRestoreTheOldPassword(t *testing.T) {
+	svc, repo, u := … // sqlite-backed service with a password user; capture the pre-reset hash
+	repo.afterGetByID = func() { resetPassword(t, svc, u, "owner-new-password") } // real ResetPassword: new hash + bump + revoke
+	_, _ = svc.UpdateName(ctx, u.ID, model.UpdateNameRequest{Name: "Mallory"}) // any mutate caller
+	after, _ := repo.GetByID(ctx, u.ID)
+	if after.Password == oldHash || after.Algorithm != model.AlgorithmArgon2id {
+		t.Fatal("a stale aggregate save restored the pre-reset password")
+	}
+}
+```
+
+On SQLite the decorator hook runs inside the same connection's transaction, so the reset's own transaction is nested (savepoint) — that models "the reset committed while we held a stale aggregate" only if the hook runs BEFORE `mutate` opens its tx. Place the hook on the pre-tx path if `mutate` has none (it reads inside the tx) — in that case make the hook fire on the FIRST `GetByID` call inside the tx and let the reset run nested: the assertion still discriminates because without `LockRow` the outer `Save` overwrites the nested reset's hash (both on one connection), and with `LockRow`… the nested reset cannot block on a lock its own connection holds. If the SQLite modelling cannot discriminate, write the discriminating test as a PostgreSQL two-connection test in `internal/user/repo/` style (`lockrow_pgsql_test.go` shows the second-pool recipe) that runs `mutate` on pool 1 with a hook that performs the reset on pool 2 between read and save, and assert the reset's hash survives. Record which modelling you used and why; RED must be demonstrated on the old code on at least one engine.
+
+- [ ] **Step 2: Implement** — `mutate`: `if err := s.repo.LockRow(ctx, userID); err != nil { return err }` as the first statement inside `WithTx`, with a two-line comment (why: a stale aggregate over a reclaimed account; ordering rule). `ConfirmEmail`: resolve the user id before the tx (existing `GetByEmail`), then inside `WithTx`: `LockRow(id)` → `GetByID` → the code/expiry checks → `Save` → `emailVerifications.DeleteByUser`. `admin.go`: same shape for each existing-row writer (helper `mutateByEmail` if it removes duplication). `createSession`: wrap the fenced insert in `s.tx.WithTx(ctx, func(ctx) error { LockRow; InsertIfGeneration })`; `CreatePersonalToken` likewise with `InsertIfPresenterLive`. Keep every error text.
+
+- [ ] **Step 3: Verify both engines, docs, commit** — `go test ./internal/user/... ./internal/oauth/... ./internal/server/... ./internal/cli/... ./internal/test/apiparity/ ./internal/test/mcpparity/` and the pgsql run of `./internal/user/... ./internal/oauth/...`; no golden changes. CLAUDE.md Authentication section: one sentence stating the rule ("every write to an existing user's row and every credential mint runs under the user row lock, taken before the row is read; reclaim takes it first too"). Spec §11: same sentence.
+
+```bash
+git commit -m "fix(user): take the user row lock before every existing-row save and every credential mint
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```
