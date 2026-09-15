@@ -15,6 +15,7 @@ import (
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
 	sqlitegen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/sqlite"
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
 )
 
 // Canonical write row/param types (the sqlite-generated ones).
@@ -92,17 +93,14 @@ func (r *WriteRepo) InsertCurrency(ctx context.Context, c model.CurrencyRow) err
 	})
 }
 
-// UpsertRate inserts or updates a single rate. The published date is truncated
-// to midnight UTC so the value is stable per day (SQLite stores it ISO8601 via
-// modernc; PostgreSQL as a native DATE) and the per-day ON CONFLICT upsert
-// dedupes correctly.
+// UpsertRate inserts or updates a single rate for the calendar day of rr.Date,
+// so the per-day ON CONFLICT upsert dedupes correctly.
 func (r *WriteRepo) UpsertRate(ctx context.Context, rr model.RateRow) error {
-	day := time.Date(rr.Date.Year(), rr.Date.Month(), rr.Date.Day(), 0, 0, 0, 0, time.UTC)
 	return r.q.UpsertCurrencyRate(ctx, r.db(ctx), upsertRateP{
 		ID:             rr.ID,
 		CurrencyID:     rr.CurrencyID,
 		BaseCurrencyID: rr.BaseCurrencyID,
-		PublishedAt:    day,
+		PublishedAt:    rr.Date.Format(datetime.DateLayout),
 		Rate:           rr.Rate,
 	})
 }
@@ -190,7 +188,17 @@ func (pgsqlWriteQuerier) InsertCurrency(ctx context.Context, db backend.DBTX, p 
 }
 
 func (pgsqlWriteQuerier) UpsertCurrencyRate(ctx context.Context, db backend.DBTX, p upsertRateP) error {
-	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams(p))
+	day, err := time.Parse(datetime.DateLayout, p.PublishedAt)
+	if err != nil {
+		return err
+	}
+	return pgsqlgen.New(db).UpsertCurrencyRate(ctx, pgsqlgen.UpsertCurrencyRateParams{
+		ID:             p.ID,
+		CurrencyID:     p.CurrencyID,
+		BaseCurrencyID: p.BaseCurrencyID,
+		PublishedAt:    day,
+		Rate:           p.Rate,
+	})
 }
 
 func (pgsqlWriteQuerier) GetLatestRateDate(ctx context.Context, db backend.DBTX) (time.Time, error) {
