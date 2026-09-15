@@ -743,6 +743,24 @@ func TestExchangeHandoff_ExpiredAndUnknown(t *testing.T) {
 	}
 }
 
+// A wrong flow secret costs the attacker the code: the consuming DELETE
+// commits even though the redemption is refused, so a stolen code cannot be
+// probed twice.
+func TestExchangeHandoff_WrongFlowSecretStillConsumesTheCode(t *testing.T) {
+	h := newHarness(t, false, true)
+	redirect := h.login("google", "web")
+	bad := model.ExchangeHandoffRequest{Code: handoffOf(t, redirect), Flow: "not-the-flow-secret"}
+	if _, err := h.svc.ExchangeHandoff(context.Background(), bad, "ua"); err == nil {
+		t.Fatal("a wrong flow secret must be refused")
+	}
+	if n := handoffCount(t, h.db); n != 0 {
+		t.Fatalf("the refused attempt left %d handoff rows, want 0", n)
+	}
+	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
+		t.Fatal("the code must be gone after the refused attempt")
+	}
+}
+
 func TestEndSessionURL(t *testing.T) {
 	h := newHarness(t, false, true)
 	h.fake.EndSession = true
@@ -1055,6 +1073,32 @@ func TestExchangeHandoff_RefusedAfterAReclaim(t *testing.T) {
 
 	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
 		t.Fatal("a handoff resolved before the reclaim must not mint a session after it")
+	}
+}
+
+// A sign-in through a provider that was unlinked while the handoff sat
+// unredeemed must not mint a session: whoever controls the provider account
+// was cut off the moment the owner unlinked it.
+func TestExchangeHandoff_RefusedAfterTheProviderWasUnlinked(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "p@x.test", model.AlgorithmArgon2id) // a password account may unlink its only identity
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "oidc", h.fake.IssuerURL(), h.fake.Subject, "p@x.test", h.clock.Now()))
+	h.fake.Email, h.fake.EmailVerified = "p@x.test", true
+	redirect := h.login("oidc", "web")
+	if handoffOf(t, redirect) == "" {
+		t.Fatalf("redirect %s", redirect)
+	}
+
+	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "oidc"}); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua")
+	if e, ok := errs.AsUnauthorized(err); !ok || e.Code != errs.CodeOAuthHandoffInvalid {
+		t.Fatalf("handoff redeemed after unlink: %v", err)
+	}
+	if len(h.users.minted) != 0 {
+		t.Fatalf("a session was minted after the unlink: %v", h.users.minted)
 	}
 }
 

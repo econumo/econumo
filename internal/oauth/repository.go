@@ -52,5 +52,8 @@ type Handoffs interface {
 	// DeleteByUser drops every unredeemed code minted for a user: a handoff is a
 	// session in waiting, so it must not survive an account reclaim.
 	DeleteByUser(ctx context.Context, userID vo.Id) (int64, error)
+	// DeleteByUserProvider is the same for one provider only: unlinking it must
+	// take the sign-ins it already authorized with it.
+	DeleteByUserProvider(ctx context.Context, userID vo.Id, provider string) (int64, error)
 	DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error)
 }

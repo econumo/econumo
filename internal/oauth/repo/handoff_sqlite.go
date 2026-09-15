@@ -28,6 +28,10 @@ func (handoffSqliteQuerier) DeleteOAuthHandoffsByUser(ctx context.Context, db ba
 	return sqlitegen.New(db).DeleteOAuthHandoffsByUser(ctx, userID)
 }
 
+func (handoffSqliteQuerier) DeleteOAuthHandoffsByUserProvider(ctx context.Context, db backend.DBTX, userID, provider string) (int64, error) {
+	return sqlitegen.New(db).DeleteOAuthHandoffsByUserProvider(ctx, sqlitegen.DeleteOAuthHandoffsByUserProviderParams{UserID: userID, Provider: provider})
+}
+
 func (handoffSqliteQuerier) DeleteExpiredOAuthHandoffs(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error) {
 	return sqlitegen.New(db).DeleteExpiredOAuthHandoffs(ctx, cutoff)
 }

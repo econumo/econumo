@@ -184,7 +184,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 			return s.errorURLFor(st, "provider_error")
 		}
 		s.mirrorEmailDrift(ctx, u, email, provider)
-		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, u.CredentialsGeneration)
+		return s.mintHandoff(ctx, st, u.ID, provider, issuer, claims.Subject, tokenForSession, u.CredentialsGeneration)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: identity lookup", err, "provider", provider)
@@ -215,7 +215,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 			return s.errorURLFor(st, "provider_error")
 		}
 		reqctx.AddLogAttr(ctx, "oauth_linked", true)
-		return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, u.CredentialsGeneration)
+		return s.mintHandoff(ctx, st, u.ID, provider, issuer, claims.Subject, tokenForSession, u.CredentialsGeneration)
 	}
 	if _, ok := errs.AsNotFound(err); !ok {
 		logWarn(ctx, "oauth callback: user lookup", err, "provider", provider)
@@ -239,7 +239,7 @@ func (s *Service) login(ctx context.Context, st *model.OAuthState, provider, iss
 		return s.errorURLFor(st, "provider_error")
 	}
 	reqctx.AddLogAttr(ctx, "oauth_provisioned", true)
-	return s.mintHandoff(ctx, st, u.ID, provider, tokenForSession, u.CredentialsGeneration)
+	return s.mintHandoff(ctx, st, u.ID, provider, issuer, claims.Subject, tokenForSession, u.CredentialsGeneration)
 }
 
 // autoLink attaches the provider identity to a PASSWORDLESS account found by
@@ -337,13 +337,17 @@ func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, pr
 	}
 }
 
-func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID vo.Id, provider string, idToken *string, generation int64) string {
+// mintHandoff parks the resolved sign-in as a one-shot code. It carries the
+// identity the provider authenticated (issuer + subject) so the redemption can
+// re-check that it is still linked to this user.
+func (s *Service) mintHandoff(ctx context.Context, st *model.OAuthState, userID vo.Id, provider, issuer, subject string, idToken *string, generation int64) string {
 	code, err := oidc.RandomToken()
 	if err != nil {
 		return s.errorURLFor(st, "provider_error")
 	}
 	now := s.clock.Now()
 	if err := s.handoffs.Insert(ctx, &model.OAuthHandoff{CodeHash: oidc.Sha256Hex(code), Kind: model.OAuthHandoffKindLogin, UserID: userID, Provider: provider,
+		Issuer: issuer, Subject: subject,
 		FlowHash: st.FlowHash, IDToken: idToken, Generation: generation, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}); err != nil {
 		logWarn(ctx, "oauth callback: handoff insert", err, "provider", provider)
 		return s.errorURLFor(st, "provider_error")

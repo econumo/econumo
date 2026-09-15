@@ -24,6 +24,7 @@ type handoffQuerier interface {
 	GetOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (handoffRow, error)
 	DeleteOAuthHandoff(ctx context.Context, db backend.DBTX, codeHash string) (int64, error)
 	DeleteOAuthHandoffsByUser(ctx context.Context, db backend.DBTX, userID string) (int64, error)
+	DeleteOAuthHandoffsByUserProvider(ctx context.Context, db backend.DBTX, userID, provider string) (int64, error)
 	DeleteExpiredOAuthHandoffs(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error)
 }
 
@@ -80,6 +81,10 @@ func (r *HandoffRepo) Delete(ctx context.Context, codeHash string) (int64, error
 
 func (r *HandoffRepo) DeleteByUser(ctx context.Context, userID vo.Id) (int64, error) {
 	return r.q.DeleteOAuthHandoffsByUser(ctx, r.db(ctx), userID.String())
+}
+
+func (r *HandoffRepo) DeleteByUserProvider(ctx context.Context, userID vo.Id, provider string) (int64, error) {
+	return r.q.DeleteOAuthHandoffsByUserProvider(ctx, r.db(ctx), userID.String(), provider)
 }
 
 func (r *HandoffRepo) DeleteExpired(ctx context.Context, cutoff time.Time) (int64, error) {

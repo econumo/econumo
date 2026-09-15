@@ -164,6 +164,45 @@ func TestStateAndHandoffRepos(t *testing.T) {
 	}
 }
 
+// Unlinking one provider must take only that provider's pending codes, and
+// only for that user: the other provider's sign-in link and another account's
+// codes keep working.
+func TestHandoffRepo_DeleteByUserProviderTakesOnlyThatProvidersCodes(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	uid := vo.MustParseId(f.User(fixture.User{Email: "a@example.test"}))
+	other := vo.MustParseId(f.User(fixture.User{Email: "b@example.test"}))
+	ctx := context.Background()
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	handoffs := NewHandoffRepo(db.Engine, db.TX)
+	for _, h := range []*model.OAuthHandoff{
+		{CodeHash: "a-google", UserID: uid, Provider: "google"},
+		{CodeHash: "a-oidc", UserID: uid, Provider: "oidc"},
+		{CodeHash: "b-google", UserID: other, Provider: "google"},
+	} {
+		h.Kind, h.CreatedAt, h.ExpiresAt = model.OAuthHandoffKindLogin, now, now.Add(model.OAuthHandoffTTL)
+		if err := handoffs.Insert(ctx, h); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if n, err := handoffs.DeleteByUserProvider(ctx, uid, "google"); err != nil || n != 1 {
+		t.Fatalf("DeleteByUserProvider removed %d (%v), want 1", n, err)
+	}
+	if _, err := handoffs.Get(ctx, "a-google"); err == nil {
+		t.Fatal("the unlinked provider's code must be gone")
+	}
+	for _, code := range []string{"a-oidc", "b-google"} {
+		if _, err := handoffs.Get(ctx, code); err != nil {
+			t.Fatalf("%s must survive: %v", code, err)
+		}
+	}
+	if n, err := handoffs.DeleteByUserProvider(ctx, uid, "google"); err != nil || n != 0 {
+		t.Fatalf("a second delete must affect no rows: %d %v", n, err)
+	}
+}
+
 // A reclaim deletes the identities that never proved the address. A callback
 // already in flight then holds a stale *model.Identity; its update must find
 // nothing rather than write the row back (which an upsert would do).

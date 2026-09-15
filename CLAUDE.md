@@ -763,7 +763,10 @@ In the distroless image these run via the binary directly, e.g.
   as a way back in. An identity claiming the proven address survives — obtaining one
   needs that mailbox — which is also why the passwordless "Set a password" flow (the
   same reset endpoint) keeps its provider. All of it shares the password write's
-  transaction.
+  transaction. `unlink-identity` carries a small cascade of its own: it drops that
+  provider's pending sign-in handoffs along with the identity row, and a redemption
+  re-checks its identity under the same user row lock, so a code the unlinked provider
+  authorized can no longer be claimed.
 - **The credentials fence** (`users.credentials_generation`): sweeping what exists is
   not enough on its own, because a request that read its evidence BEFORE the reclaim
   can still write after it — redeeming a handoff it consumed a moment earlier, landing

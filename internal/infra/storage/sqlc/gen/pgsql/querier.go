@@ -49,6 +49,7 @@ type Querier interface {
 	DeleteLabel(ctx context.Context, id string) error
 	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
 	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
+	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
 	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
 	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error

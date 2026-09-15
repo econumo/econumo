@@ -86,6 +86,23 @@ func (q *Queries) DeleteOAuthHandoffsByUser(ctx context.Context, userID string) 
 	return result.RowsAffected()
 }
 
+const deleteOAuthHandoffsByUserProvider = `-- name: DeleteOAuthHandoffsByUserProvider :execrows
+DELETE FROM oauth_handoffs WHERE user_id = ? AND provider = ?
+`
+
+type DeleteOAuthHandoffsByUserProviderParams struct {
+	UserID   string
+	Provider string
+}
+
+func (q *Queries) DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteOAuthHandoffsByUserProvider, arg.UserID, arg.Provider)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteOAuthState = `-- name: DeleteOAuthState :execrows
 DELETE FROM oauth_states WHERE state_hash = ?
 `

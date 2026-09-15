@@ -50,7 +50,14 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.Un
 				return &errs.ValidationError{Msg: "Set a password before unlinking your only sign-in method", MsgCode: errs.CodeOAuthLastIdentity}
 			}
 		}
-		_, err = s.identities.DeleteByUserProvider(ctx, userID, req.Provider)
+		if _, err := s.identities.DeleteByUserProvider(ctx, userID, req.Provider); err != nil {
+			return err
+		}
+		// An unredeemed handoff is a session in waiting: a sign-in this provider
+		// authorized minutes ago must not still be redeemable once the owner cut
+		// the provider off. The lock taken above serializes this delete with any
+		// redemption, which takes the same lock before it consumes its code.
+		_, err = s.handoffs.DeleteByUserProvider(ctx, userID, req.Provider)
 		return err
 	})
 	if err != nil {

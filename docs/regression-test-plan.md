@@ -436,6 +436,9 @@ User C sees none of it.
       way (📱 especially in the app, where the deep link returns to the same
       screen); unlinking a provider (with confirm dialog) removes it from the
       list.
+- [ ] Unlink a provider while a sign-in through it is mid-flight (callback
+      done, handoff not yet exchanged): the exchange fails with the
+      sign-in-link-invalid error and no session is opened.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
       your only sign-in method."), including two unlink requests sent at the

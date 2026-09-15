@@ -483,8 +483,12 @@ password reset in between unlinks them, and they re-link from Settings.
 
 Refuse with a coded 400 `oauth.last_identity` when the identity is the user's
 only one **and** the user has no password: removing it would lock them out.
-Otherwise delete the row. Sessions opened through that identity stay valid
-(they are Econumo sessions; the user revokes them from the sessions page).
+Otherwise delete the row, together with that provider's unredeemed handoffs,
+and note that the redemption re-checks the identity under the same user row
+lock the unlink takes first — a sign-in the provider authorized minutes ago is
+a session in waiting, and unlinking must cut it off too. Sessions opened
+through that identity stay valid (they are Econumo sessions; the user revokes
+them from the sessions page).
 
 ### 6.6 Rate limiting
 

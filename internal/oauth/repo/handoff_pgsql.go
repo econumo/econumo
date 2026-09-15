@@ -29,6 +29,10 @@ func (handoffPgsqlQuerier) DeleteOAuthHandoffsByUser(ctx context.Context, db bac
 	return pgsqlgen.New(db).DeleteOAuthHandoffsByUser(ctx, userID)
 }
 
+func (handoffPgsqlQuerier) DeleteOAuthHandoffsByUserProvider(ctx context.Context, db backend.DBTX, userID, provider string) (int64, error) {
+	return pgsqlgen.New(db).DeleteOAuthHandoffsByUserProvider(ctx, pgsqlgen.DeleteOAuthHandoffsByUserProviderParams{UserID: userID, Provider: provider})
+}
+
 func (handoffPgsqlQuerier) DeleteExpiredOAuthHandoffs(ctx context.Context, db backend.DBTX, cutoff time.Time) (int64, error) {
 	return pgsqlgen.New(db).DeleteExpiredOAuthHandoffs(ctx, cutoff)
 }

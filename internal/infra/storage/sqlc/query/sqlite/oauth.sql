@@ -69,5 +69,8 @@ DELETE FROM oauth_handoffs WHERE code_hash = ?;
 -- name: DeleteOAuthHandoffsByUser :execrows
 DELETE FROM oauth_handoffs WHERE user_id = ?;
 
+-- name: DeleteOAuthHandoffsByUserProvider :execrows
+DELETE FROM oauth_handoffs WHERE user_id = ? AND provider = ?;
+
 -- name: DeleteExpiredOAuthHandoffs :execrows
 DELETE FROM oauth_handoffs WHERE expires_at < ?;
