@@ -28,8 +28,16 @@ SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at
 FROM access_tokens
 WHERE id = $1;
 
--- name: UpdateAccessToken :exec
-UPDATE access_tokens SET last_used_at = $1, expires_at = $2, revoked_at = $3 WHERE id = $4;
+-- name: TouchAccessToken :execrows
+-- See the sqlite sibling.
+UPDATE access_tokens SET last_used_at = $1, expires_at = $2 WHERE id = $3 AND revoked_at IS NULL;
+
+-- name: RevokeAccessToken :exec
+UPDATE access_tokens SET revoked_at = $1 WHERE id = $2 AND revoked_at IS NULL;
+
+-- name: RevokeUserAccessTokens :exec
+-- See the sqlite sibling.
+UPDATE access_tokens SET revoked_at = $1 WHERE user_id = $2 AND kind = $3 AND revoked_at IS NULL AND id <> $4;
 
 -- name: ListAccessTokensByUser :many
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token

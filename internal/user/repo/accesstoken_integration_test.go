@@ -63,12 +63,14 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 		t.Errorf("GetByHash(miss) = %T, want NotFound", err)
 	}
 
-	// Update persists touch + revoke.
+	// Touch then Revoke persist the mutable lifecycle fields.
 	later := now.Add(10 * time.Minute)
 	got.Touch(later, 30*24*time.Hour)
-	got.Revoke(later)
-	if err := repo.Update(ctx, got); err != nil {
-		t.Fatalf("Update: %v", err)
+	if n, err := repo.Touch(ctx, got.ID, got.LastUsedAt, got.ExpiresAt); err != nil || n != 1 {
+		t.Fatalf("Touch: %d %v", n, err)
+	}
+	if err := repo.Revoke(ctx, got.ID, later); err != nil {
+		t.Fatalf("Revoke: %v", err)
 	}
 	got2, _, _, err := repo.GetByHash(ctx, "hash-1")
 	if err != nil {
@@ -76,6 +78,9 @@ func TestAccessTokenRepo_RoundTrip(t *testing.T) {
 	}
 	if !got2.LastUsedAt.Equal(later) || got2.RevokedAt == nil || !got2.RevokedAt.Equal(later) {
 		t.Errorf("update not persisted: %+v", got2)
+	}
+	if got2.ExpiresAt == nil || !got2.ExpiresAt.Equal(later.Add(30*24*time.Hour)) {
+		t.Errorf("touch did not slide expires_at: %+v", got2.ExpiresAt)
 	}
 
 	// ListByUser: a PAT (nil expiry, has name) + kind filtering.
@@ -243,5 +248,112 @@ func TestGetByHash_DoesNotCarryTheIDToken(t *testing.T) {
 	}
 	if byID.IDToken == nil || *byID.IDToken != idToken || byID.Provider == nil {
 		t.Fatal("GetByID must still carry provider and id_token for logout")
+	}
+}
+
+// A touch that lost the race to a reclaim must not write its stale
+// revoked_at = NULL snapshot back and hand the caller a live credential again.
+func TestTouch_DoesNotResurrectARevokedToken(t *testing.T) {
+	db := dbtest.New(t)
+	r := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	userID := fixture.New(t, db).User(fixture.User{})
+	ctx := context.Background()
+	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	exp := now.Add(time.Hour)
+	tok := &model.AccessToken{
+		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession, TokenHash: "h-touch",
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+	}
+	if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
+		t.Fatalf("insert: %d %v", n, err)
+	}
+	// The request read the row (revoked_at NULL) ...
+	loaded, _, _, err := r.GetByHash(ctx, "h-touch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// ... the reclaim revokes it ...
+	if err := r.Revoke(ctx, tok.ID, now.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	// ... and the request's touch lands afterwards with the stale snapshot.
+	later := now.Add(10 * time.Minute)
+	loaded.Touch(later, 30*24*time.Hour)
+	n, err := r.Touch(ctx, loaded.ID, loaded.LastUsedAt, loaded.ExpiresAt)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("touch wrote %d rows on a revoked token", n)
+	}
+	after, err := r.GetByID(ctx, tok.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.RevokedAt == nil {
+		t.Fatal("the touch resurrected the revoked token")
+	}
+}
+
+// RevokeAll sweeps one kind in a single statement, skipping the presenting
+// token and leaving the other kind alone.
+func TestRevokeAll_SweepsOneKindAndSkipsTheException(t *testing.T) {
+	db := dbtest.New(t)
+	r := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	userID := fixture.New(t, db).User(fixture.User{})
+	uid := vo.MustParseId(userID)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+	exp := now.Add(time.Hour)
+
+	insert := func(hash, kind string) *model.AccessToken {
+		tok := &model.AccessToken{
+			ID: vo.NewId(), UserID: uid, Kind: kind, TokenHash: hash,
+			CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		}
+		if n, err := r.InsertIfGeneration(ctx, tok, 0); err != nil || n != 1 {
+			t.Fatalf("insert %s: %d %v", hash, n, err)
+		}
+		return tok
+	}
+	current := insert("h-current", model.TokenKindSession)
+	other := insert("h-other", model.TokenKindSession)
+	pat := insert("h-pat", model.TokenKindPersonal)
+
+	if err := r.RevokeAll(ctx, uid, model.TokenKindSession, current.ID, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		tok     *model.AccessToken
+		revoked bool
+		name    string
+	}{
+		{current, false, "presenting session"},
+		{other, true, "other session"},
+		{pat, false, "personal token"},
+	} {
+		row, err := r.GetByID(ctx, tc.tok.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if (row.RevokedAt != nil) != tc.revoked {
+			t.Errorf("%s: revoked=%v, want %v", tc.name, row.RevokedAt != nil, tc.revoked)
+		}
+	}
+
+	// The zero id excepts nothing, so a second sweep takes the presenting row
+	// too; already-revoked rows keep their original stamp.
+	if err := r.RevokeAll(ctx, uid, model.TokenKindSession, vo.Id{}, now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	row, err := r.GetByID(ctx, current.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.RevokedAt == nil || !row.RevokedAt.Equal(now.Add(time.Hour)) {
+		t.Errorf("presenting session revoked_at = %v, want %v", row.RevokedAt, now.Add(time.Hour))
+	}
+	if row, err := r.GetByID(ctx, other.ID); err != nil || row.RevokedAt == nil || !row.RevokedAt.Equal(now) {
+		t.Errorf("an already-revoked row moved its stamp: %v %v", row.RevokedAt, err)
 	}
 }

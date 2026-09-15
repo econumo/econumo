@@ -114,8 +114,7 @@ func (s *Service) Logout(ctx context.Context, tokenID vo.Id) (*model.LogoutResul
 		}
 		return nil, err
 	}
-	t.Revoke(s.clock.Now())
-	if err := s.tokens.Update(ctx, t); err != nil {
+	if err := s.tokens.Revoke(ctx, t.ID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	if t.Provider != nil {

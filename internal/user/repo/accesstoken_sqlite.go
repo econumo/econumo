@@ -19,8 +19,16 @@ func (accessTokenSqliteQuerier) GetAccessTokenByID(ctx context.Context, db backe
 	return sqlitegen.New(db).GetAccessTokenByID(ctx, id)
 }
 
-func (accessTokenSqliteQuerier) UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error {
-	return sqlitegen.New(db).UpdateAccessToken(ctx, p)
+func (accessTokenSqliteQuerier) TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error) {
+	return sqlitegen.New(db).TouchAccessToken(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeAccessToken(ctx context.Context, db backend.DBTX, p revokeAccessTokenParams) error {
+	return sqlitegen.New(db).RevokeAccessToken(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeUserAccessTokens(ctx context.Context, db backend.DBTX, p revokeUserAccessTokensParams) error {
+	return sqlitegen.New(db).RevokeUserAccessTokens(ctx, p)
 }
 
 func (accessTokenSqliteQuerier) ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error) {

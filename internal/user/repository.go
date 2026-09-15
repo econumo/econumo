@@ -104,9 +104,24 @@ type AccessTokens interface {
 	// GetByID loads one row (logout / revoke-by-id paths).
 	GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error)
 
-	// Update persists the mutable lifecycle fields (last_used_at, expires_at,
-	// revoked_at) of an existing row.
-	Update(ctx context.Context, t *model.AccessToken) error
+	// Touch slides last_used_at/expires_at of a row that is still unrevoked,
+	// reporting the rows written. It never writes revoked_at: a request that
+	// read the row before a reclaim revoked it must not be able to put the
+	// stale NULL back, so the guard lives in the statement, not in Go. Zero
+	// rows means the credential was revoked or deleted between the read and
+	// this write and the caller must fail closed.
+	Touch(ctx context.Context, id vo.Id, lastUsedAt time.Time, expiresAt *time.Time) (int64, error)
+
+	// Revoke stamps revoked_at on one still-unrevoked row, so an earlier
+	// revocation keeps its original timestamp and a concurrent touch cannot
+	// undo it.
+	Revoke(ctx context.Context, id vo.Id, now time.Time) error
+
+	// RevokeAll revokes every still-unrevoked row of one kind for one user
+	// except exceptID (the presenting credential; pass the zero id to spare
+	// nothing) in a single statement, so a sweep cannot lose rows to a
+	// concurrent touch the way a read-then-write loop could.
+	RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error
 
 	// ListByUser returns ALL rows (live and dead) of one kind, ordered by
 	// (created_at, id); callers filter with IsLive/IsDead.

@@ -21,8 +21,16 @@ func (accessTokenPgsqlQuerier) GetAccessTokenByID(ctx context.Context, db backen
 	return accessTokenRow(row), err
 }
 
-func (accessTokenPgsqlQuerier) UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error {
-	return pgsqlgen.New(db).UpdateAccessToken(ctx, pgsqlgen.UpdateAccessTokenParams(p))
+func (accessTokenPgsqlQuerier) TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error) {
+	return pgsqlgen.New(db).TouchAccessToken(ctx, pgsqlgen.TouchAccessTokenParams(p))
+}
+
+func (accessTokenPgsqlQuerier) RevokeAccessToken(ctx context.Context, db backend.DBTX, p revokeAccessTokenParams) error {
+	return pgsqlgen.New(db).RevokeAccessToken(ctx, pgsqlgen.RevokeAccessTokenParams(p))
+}
+
+func (accessTokenPgsqlQuerier) RevokeUserAccessTokens(ctx context.Context, db backend.DBTX, p revokeUserAccessTokensParams) error {
+	return pgsqlgen.New(db).RevokeUserAccessTokens(ctx, pgsqlgen.RevokeUserAccessTokensParams(p))
 }
 
 func (accessTokenPgsqlQuerier) ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error) {

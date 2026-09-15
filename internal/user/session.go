@@ -94,8 +94,7 @@ func (s *Service) RevokeSession(ctx context.Context, userID vo.Id, req model.Rev
 	if !t.UserID.Equal(userID) || t.Kind != model.TokenKindSession {
 		return nil, errs.NewNotFound("Session not found")
 	}
-	t.Revoke(s.clock.Now())
-	if err := s.tokens.Update(ctx, t); err != nil {
+	if err := s.tokens.Revoke(ctx, t.ID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.RevokeSessionResult{}, nil
@@ -110,27 +109,18 @@ func (s *Service) RevokeOtherSessions(ctx context.Context, userID, currentTokenI
 	return &model.RevokeOtherSessionsResult{}, nil
 }
 
-// revokeSessions revokes every live session of the user except exceptTokenID
-// (zero id = revoke all). PATs are never touched here: integrations must
-// survive a password change; only user:deactivate kills them (revokeTokens).
+// revokeSessions revokes every unrevoked session of the user except
+// exceptTokenID (zero id = revoke all). PATs are never touched here:
+// integrations must survive a password change; only user:deactivate kills them
+// (revokeTokens).
 func (s *Service) revokeSessions(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time) error {
 	return s.revokeTokens(ctx, userID, exceptTokenID, now, model.TokenKindSession)
 }
 
 func (s *Service) revokeTokens(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time, kinds ...string) error {
 	for _, kind := range kinds {
-		rows, err := s.tokens.ListByUser(ctx, userID, kind)
-		if err != nil {
+		if err := s.tokens.RevokeAll(ctx, userID, kind, exceptTokenID, now); err != nil {
 			return err
-		}
-		for i := range rows {
-			if rows[i].ID.Equal(exceptTokenID) || !rows[i].IsLive(now) {
-				continue
-			}
-			rows[i].Revoke(now)
-			if err := s.tokens.Update(ctx, &rows[i]); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

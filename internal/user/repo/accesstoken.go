@@ -20,7 +20,9 @@ import (
 type (
 	accessTokenRow                   = sqlitegen.AccessToken
 	accessTokenWithAccessRow         = sqlitegen.GetAccessTokenByHashRow
-	updateAccessTokenParams          = sqlitegen.UpdateAccessTokenParams
+	touchAccessTokenParams           = sqlitegen.TouchAccessTokenParams
+	revokeAccessTokenParams          = sqlitegen.RevokeAccessTokenParams
+	revokeUserAccessTokensParams     = sqlitegen.RevokeUserAccessTokensParams
 	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
 	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
 	insertTokenIfGenParams           = sqlitegen.InsertAccessTokenIfGenerationParams
@@ -32,7 +34,9 @@ type accessTokenQuerier interface {
 	InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error)
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
-	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
+	TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error)
+	RevokeAccessToken(ctx context.Context, db backend.DBTX, p revokeAccessTokenParams) error
+	RevokeUserAccessTokens(ctx context.Context, db backend.DBTX, p revokeUserAccessTokensParams) error
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
 	DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error)
@@ -123,9 +127,19 @@ func (r *AccessTokenRepo) GetByID(ctx context.Context, id vo.Id) (*model.AccessT
 	return accessTokenFromRow(row)
 }
 
-func (r *AccessTokenRepo) Update(ctx context.Context, t *model.AccessToken) error {
-	return r.q.UpdateAccessToken(ctx, r.db(ctx), updateAccessTokenParams{
-		LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt, ID: t.ID.String(),
+func (r *AccessTokenRepo) Touch(ctx context.Context, id vo.Id, lastUsedAt time.Time, expiresAt *time.Time) (int64, error) {
+	return r.q.TouchAccessToken(ctx, r.db(ctx), touchAccessTokenParams{
+		LastUsedAt: lastUsedAt, ExpiresAt: expiresAt, ID: id.String(),
+	})
+}
+
+func (r *AccessTokenRepo) Revoke(ctx context.Context, id vo.Id, now time.Time) error {
+	return r.q.RevokeAccessToken(ctx, r.db(ctx), revokeAccessTokenParams{RevokedAt: &now, ID: id.String()})
+}
+
+func (r *AccessTokenRepo) RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error {
+	return r.q.RevokeUserAccessTokens(ctx, r.db(ctx), revokeUserAccessTokensParams{
+		RevokedAt: &now, UserID: userID.String(), Kind: kind, ID: exceptID.String(),
 	})
 }
 

@@ -99,8 +99,7 @@ func (s *Service) RevokePersonalToken(ctx context.Context, userID vo.Id, req mod
 	if !t.UserID.Equal(userID) || t.Kind != model.TokenKindPersonal {
 		return nil, errs.NewNotFound("Token not found")
 	}
-	t.Revoke(s.clock.Now())
-	if err := s.tokens.Update(ctx, t); err != nil {
+	if err := s.tokens.Revoke(ctx, t.ID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.RevokePersonalTokenResult{}, nil

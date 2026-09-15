@@ -40,8 +40,20 @@ SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at
 FROM access_tokens
 WHERE id = ?;
 
--- name: UpdateAccessToken :exec
-UPDATE access_tokens SET last_used_at = ?, expires_at = ?, revoked_at = ? WHERE id = ?;
+-- name: TouchAccessToken :execrows
+-- The sliding-expiry touch never writes revoked_at and never touches a row a
+-- reclaim has revoked: a request that read the row before the revoke must not
+-- be able to write a stale NULL back.
+UPDATE access_tokens SET last_used_at = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL;
+
+-- name: RevokeAccessToken :exec
+UPDATE access_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL;
+
+-- name: RevokeUserAccessTokens :exec
+-- Set-based, so a revoke sweep is one statement and cannot race a concurrent
+-- touch row by row. The excepted id is the presenting token (or an id that
+-- matches nothing when everything must go).
+UPDATE access_tokens SET revoked_at = ? WHERE user_id = ? AND kind = ? AND revoked_at IS NULL AND id <> ?;
 
 -- name: ListAccessTokensByUser :many
 SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token

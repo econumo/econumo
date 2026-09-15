@@ -255,23 +255,57 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 	return items, nil
 }
 
-const updateAccessToken = `-- name: UpdateAccessToken :exec
-UPDATE access_tokens SET last_used_at = $1, expires_at = $2, revoked_at = $3 WHERE id = $4
+const revokeAccessToken = `-- name: RevokeAccessToken :exec
+UPDATE access_tokens SET revoked_at = $1 WHERE id = $2 AND revoked_at IS NULL
 `
 
-type UpdateAccessTokenParams struct {
-	LastUsedAt time.Time
-	ExpiresAt  *time.Time
-	RevokedAt  *time.Time
-	ID         string
+type RevokeAccessTokenParams struct {
+	RevokedAt *time.Time
+	ID        string
 }
 
-func (q *Queries) UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, updateAccessToken,
-		arg.LastUsedAt,
-		arg.ExpiresAt,
+func (q *Queries) RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccessToken, arg.RevokedAt, arg.ID)
+	return err
+}
+
+const revokeUserAccessTokens = `-- name: RevokeUserAccessTokens :exec
+UPDATE access_tokens SET revoked_at = $1 WHERE user_id = $2 AND kind = $3 AND revoked_at IS NULL AND id <> $4
+`
+
+type RevokeUserAccessTokensParams struct {
+	RevokedAt *time.Time
+	UserID    string
+	Kind      string
+	ID        string
+}
+
+// See the sqlite sibling.
+func (q *Queries) RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error {
+	_, err := q.db.ExecContext(ctx, revokeUserAccessTokens,
 		arg.RevokedAt,
+		arg.UserID,
+		arg.Kind,
 		arg.ID,
 	)
 	return err
+}
+
+const touchAccessToken = `-- name: TouchAccessToken :execrows
+UPDATE access_tokens SET last_used_at = $1, expires_at = $2 WHERE id = $3 AND revoked_at IS NULL
+`
+
+type TouchAccessTokenParams struct {
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	ID         string
+}
+
+// See the sqlite sibling.
+func (q *Queries) TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, touchAccessToken, arg.LastUsedAt, arg.ExpiresAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

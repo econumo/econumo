@@ -481,11 +481,19 @@ type Querier interface {
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does
 	// not update external_id, hence this dedicated statement.
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
+	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	// Set-based, so a revoke sweep is one statement and cannot race a concurrent
+	// touch row by row. The excepted id is the presenting token (or an id that
+	// matches nothing when everything must go).
+	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
 	SoftDeleteCurrency(ctx context.Context, id string) error
-	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	// The sliding-expiry touch never writes revoked_at and never touches a row a
+	// reclaim has revoked: a request that read the row before the revoke must not
+	// be able to write a stale NULL back.
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error

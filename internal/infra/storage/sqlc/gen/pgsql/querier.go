@@ -319,11 +319,15 @@ type Querier interface {
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
+	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	// See the sqlite sibling.
+	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
 	SoftDeleteCurrency(ctx context.Context, id string) error
-	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	// See the sqlite sibling.
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
