@@ -624,6 +624,7 @@ data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
+migration:normalize-sqlite-datetimes
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -656,6 +657,15 @@ also invoked automatically at boot as migration step `20260817000001`.
 `users_options` row for every user that has none, seeded from the deprecated
 `ECONUMO_ANALYTICS` value (above); idempotent, and invoked automatically at
 boot as migration step `20260903000000`.
+
+`migration:normalize-sqlite-datetimes` rewrites SQLite DATETIME/TIMESTAMP
+values stored in Go's `time.Time.String()` form (what the driver wrote before
+every connection was opened with `_time_format=datetime`, see
+`sqlite.WithFrozenTimeFormat`) to `Y-m-d H:i:s` UTC. It discovers columns from
+the live schema, skips `schema_migrations` (the instance id's anchor), parses
+each value with the exact driver layout and leaves anything unparseable as
+stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
+migration step `20260915000001`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

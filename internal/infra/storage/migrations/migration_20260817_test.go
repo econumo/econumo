@@ -8,6 +8,7 @@ package migrations_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
@@ -56,11 +57,11 @@ func TestMigration20260817_SeedsMembershipAndDropsBlacklist(t *testing.T) {
 	})); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
-	// Both command steps registered after the membership schema version run:
-	// zero-deleted-accounts (20260817000001) and the analytics backfill
-	// (20260903000000).
-	wantCalls := []string{"migration:zero-deleted-accounts", "migration:seed-analytics-option"}
-	if len(calls) != len(wantCalls) || calls[0] != wantCalls[0] || calls[1] != wantCalls[1] {
+	// Every command step registered after the membership schema version runs,
+	// in version order: zero-deleted-accounts (20260817000001), the analytics
+	// backfill (20260903000000) and the SQLite datetime rewrite (20260915000001).
+	wantCalls := []string{"migration:zero-deleted-accounts", "migration:seed-analytics-option", "migration:normalize-sqlite-datetimes"}
+	if !slices.Equal(calls, wantCalls) {
 		t.Fatalf("command steps = %v, want %v", calls, wantCalls)
 	}
 	got := idsInKeyOrder(t, db, `SELECT account_id FROM budgets_accounts WHERE budget_id = 'b1' ORDER BY account_id`)

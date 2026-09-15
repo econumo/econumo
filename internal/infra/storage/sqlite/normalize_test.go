@@ -1,0 +1,131 @@
+package sqlite_test
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"testing"
+
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/test/dbtest"
+)
+
+// seedUser writes created_at/updated_at/access_until verbatim: CAST(? AS TEXT)
+// keeps the driver's time handling out of the stored form under test.
+func seedUser(t *testing.T, db *sql.DB, id, createdAt, updatedAt string, accessUntil any) {
+	t.Helper()
+	if _, err := db.ExecContext(context.Background(), `INSERT INTO users (id, identifier, email, name, avatar, password, salt, algorithm, created_at, updated_at, access_until, is_active)
+		VALUES (?, ?, ?, 'U', 'face:sky', 'x', 's', 'argon2id', CAST(? AS TEXT), CAST(? AS TEXT), ?, 1)`,
+		id, id, id+"@x.test", createdAt, updatedAt, accessUntil); err != nil {
+		t.Fatalf("seed user %s: %v", id, err)
+	}
+}
+
+func text(t *testing.T, db *sql.DB, query string, args ...any) sql.NullString {
+	t.Helper()
+	var s sql.NullString
+	if err := db.QueryRowContext(context.Background(), query, args...).Scan(&s); err != nil {
+		t.Fatal(err)
+	}
+	return s
+}
+
+func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
+	db := dbtest.NewSQLite(t).Raw
+	ctx := context.Background()
+
+	seedUser(t, db, "go-utc", "2026-09-14 10:00:00.123456789 +0000 UTC", "2026-09-14 10:00:00 +0000 UTC", nil)
+	seedUser(t, db, "go-offset", "2026-09-14 13:00:00 +0300 MSK", "2026-01-01 00:30:00.5 -0100 -01", "2026-10-01 00:00:00 +0000 UTC m=+0.000012345")
+	seedUser(t, db, "legacy", "2021-08-12 21:05:48", "2021-08-12 21:05:48", "2026-10-01 00:00:00")
+	seedUser(t, db, "odd", "2026-08-01T00:00:00Z", "2026-02-30 10:00:00 +0000 UTC", nil)
+	firstMigration := text(t, db, `SELECT CAST(applied_at AS TEXT) FROM schema_migrations ORDER BY version LIMIT 1`)
+
+	report, err := sqlite.NormalizeDatetimes(ctx, db)
+	if err != nil {
+		t.Fatalf("NormalizeDatetimes: %v", err)
+	}
+
+	for _, c := range []struct{ id, col, want string }{
+		{"go-utc", "created_at", "2026-09-14 10:00:00"},
+		{"go-utc", "updated_at", "2026-09-14 10:00:00"},
+		{"go-offset", "created_at", "2026-09-14 10:00:00"},
+		{"go-offset", "updated_at", "2026-01-01 01:30:00"},
+		{"go-offset", "access_until", "2026-10-01 00:00:00"},
+		{"legacy", "created_at", "2021-08-12 21:05:48"},
+		{"legacy", "access_until", "2026-10-01 00:00:00"},
+		// Not the driver's form: left exactly as stored.
+		{"odd", "created_at", "2026-08-01T00:00:00Z"},
+		{"odd", "updated_at", "2026-02-30 10:00:00 +0000 UTC"},
+	} {
+		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM users WHERE id = ?`, c.id); got.String != c.want {
+			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
+		}
+	}
+	if got := text(t, db, `SELECT access_until FROM users WHERE id = 'go-utc'`); got.Valid {
+		t.Errorf("NULL access_until became %q", got.String)
+	}
+	// The instance id hashes the first schema_migrations row; never rewrite it.
+	if got := text(t, db, `SELECT CAST(applied_at AS TEXT) FROM schema_migrations ORDER BY version LIMIT 1`); got != firstMigration {
+		t.Errorf("schema_migrations.applied_at changed: %q -> %q", firstMigration.String, got.String)
+	}
+
+	if report.Rewritten != 5 {
+		t.Errorf("Rewritten = %d, want 5", report.Rewritten)
+	}
+	if got := report.Unparseable["users.created_at"] + report.Unparseable["users.updated_at"]; got != 2 {
+		t.Errorf("Unparseable = %v, want users.created_at:1 users.updated_at:1", report.Unparseable)
+	}
+
+	again, err := sqlite.NormalizeDatetimes(ctx, db)
+	if err != nil {
+		t.Fatalf("second run: %v", err)
+	}
+	if again.Rewritten != 0 {
+		t.Errorf("second run rewrote %d value(s), want 0", again.Rewritten)
+	}
+}
+
+// Columns are discovered from the live schema, so a table this code has never
+// heard of is covered too, across more rows than one batch.
+func TestNormalizeDatetimes_DiscoversTablesAndBatches(t *testing.T) {
+	db := dbtest.NewSQLite(t).Raw
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE zz_extra (id INTEGER PRIMARY KEY, at DATETIME, note TEXT)`); err != nil {
+		t.Fatal(err)
+	}
+	const rows = 1234
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i := 0; i < rows; i++ {
+		// note is TEXT, not a datetime column: it must be left alone.
+		v := fmt.Sprintf("2026-09-14 10:%02d:%02d +0000 UTC", i/60%60, i%60)
+		if _, err := tx.ExecContext(ctx, `INSERT INTO zz_extra (at, note) VALUES (CAST(? AS TEXT), ?)`, v, v); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	report, err := sqlite.NormalizeDatetimes(ctx, db)
+	if err != nil {
+		t.Fatalf("NormalizeDatetimes: %v", err)
+	}
+	if report.Rewritten != rows {
+		t.Errorf("Rewritten = %d, want %d", report.Rewritten, rows)
+	}
+	var left, notes int
+	if err := db.QueryRowContext(ctx, `SELECT
+		(SELECT COUNT(*) FROM zz_extra WHERE length(CAST(at AS TEXT)) <> 19),
+		(SELECT COUNT(*) FROM zz_extra WHERE note LIKE '% UTC')`).Scan(&left, &notes); err != nil {
+		t.Fatal(err)
+	}
+	if left != 0 {
+		t.Errorf("%d zz_extra.at value(s) not rewritten", left)
+	}
+	if notes != rows {
+		t.Errorf("TEXT column touched: %d of %d notes keep their original form", notes, rows)
+	}
+}
