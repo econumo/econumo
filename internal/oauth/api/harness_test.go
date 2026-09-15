@@ -76,8 +76,8 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 	return u, nil
 }
 
-func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string) error {
-	return nil
+func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, _ vo.Id, _ string, _ int64) (int64, error) {
+	return 1, nil
 }
 func (f *fakeUsers) EvictLocalCredentials(_ context.Context, _ vo.Id) error { return nil }
 func (f *fakeUsers) MarkEmailVerified(_ context.Context, _ vo.Id) error     { return nil }

@@ -15,8 +15,11 @@ type Users interface {
 	// ProvisionExternal creates a passwordless, email-verified user with the
 	// registration defaults (trial, options, currency).
 	ProvisionExternal(ctx context.Context, name, email string) (*model.User, error)
-	// ReplaceVerifiedEmail mirrors an IdP-side email change onto the primary email.
-	ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string) error
+	// ReplaceVerifiedEmail mirrors an IdP-side email change onto the primary
+	// email, but only while the account is still passwordless and still at the
+	// given generation — the checks the caller made are re-decided by the
+	// database, so a reset committing in between wins. Returns the rows written.
+	ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string, generation int64) (int64, error)
 	// MintSession opens a session stamped with the provider (and the ID token
 	// for the custom slot) and returns the login-shaped result. generation is
 	// the credentials generation the flow resolved its user under; the write is

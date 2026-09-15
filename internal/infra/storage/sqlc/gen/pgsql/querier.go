@@ -330,6 +330,11 @@ type Querier interface {
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	// The oauth email-drift mirror writes the provider's new address onto the
+	// primary email only while the account is still passwordless and still at the
+	// generation the callback resolved it under: a password reset committing after
+	// those checks must keep the recovered account's own address.
+	UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
 	// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
 	// only under the generation the login verified the hash under, so a reset

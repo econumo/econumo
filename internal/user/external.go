@@ -53,19 +53,18 @@ func (s *Service) CreateExternalSession(ctx context.Context, userID vo.Id, userA
 }
 
 // ReplaceVerifiedEmail mirrors an IdP-side email change onto the primary email
-// (the oauth feature applies the eligibility rule: passwordless, one identity,
-// address unused). The new address counts as verified.
-func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string) error {
+// (the oauth feature applies the rest of the eligibility rule: one identity,
+// address unused). The new address counts as verified. The write lands ONLY
+// while the account is still passwordless and still at the generation the
+// callback resolved it under; the database decides, so a reset committing
+// after those checks leaves the recovered account's address alone. Returns the
+// rows affected.
+func (s *Service) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string, generation int64) (int64, error) {
 	encrypted, err := s.encode.Encode(strings.TrimSpace(email))
 	if err != nil {
-		return err
+		return 0, err
 	}
-	_, err = s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		u.UpdateEmail(encrypted, now)
-		u.MarkEmailVerified(now)
-		return nil
-	})
-	return err
+	return s.repo.ReplaceEmailIfPasswordless(ctx, userID, encrypted, s.clock.Now(), generation)
 }
 
 func (s *Service) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {

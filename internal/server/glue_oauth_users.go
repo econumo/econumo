@@ -26,8 +26,8 @@ func (a *OAuthUsers) FindByID(ctx context.Context, id vo.Id) (*model.User, error
 func (a *OAuthUsers) ProvisionExternal(ctx context.Context, name, email string) (*model.User, error) {
 	return a.users.ProvisionExternalUser(ctx, name, email)
 }
-func (a *OAuthUsers) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string) error {
-	return a.users.ReplaceVerifiedEmail(ctx, userID, email)
+func (a *OAuthUsers) ReplaceVerifiedEmail(ctx context.Context, userID vo.Id, email string, generation int64) (int64, error) {
+	return a.users.ReplaceVerifiedEmail(ctx, userID, email, generation)
 }
 func (a *OAuthUsers) MintSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, generation int64) (*model.LoginResult, error) {
 	return a.users.CreateExternalSession(ctx, userID, userAgent, provider, idToken, generation)

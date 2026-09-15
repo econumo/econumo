@@ -37,6 +37,14 @@ UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = 
 UPDATE users SET password = $1, salt = $2, algorithm = $3, updated_at = $4
 WHERE id = $5 AND credentials_generation = $6;
 
+-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
+-- The oauth email-drift mirror writes the provider's new address onto the
+-- primary email only while the account is still passwordless and still at the
+-- generation the callback resolved it under: a password reset committing after
+-- those checks must keep the recovered account's own address.
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none';
+
 -- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2;
 

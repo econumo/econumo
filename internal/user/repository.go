@@ -38,6 +38,13 @@ type Repository interface {
 	// while the generation still matches (see login.go rehashLegacyPassword).
 	UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error)
 
+	// ReplaceEmailIfPasswordless writes the provider's new address onto the
+	// primary email (marking it verified) only while the account is still
+	// passwordless and still at the given generation, so a password reset
+	// committing after the oauth callback's eligibility checks keeps the
+	// recovered account's own address. Returns the rows affected.
+	ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)
+
 	// UpsertOption writes a single option row without touching the user row or
 	// any other option — the narrow write the analytics-preference backfill
 	// needs (Save would rewrite the whole user aggregate per row, which does

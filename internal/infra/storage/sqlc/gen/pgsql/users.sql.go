@@ -212,6 +212,35 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none'
+`
+
+type UpdateUserEmailIfPasswordlessAndGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The oauth email-drift mirror writes the provider's new address onto the
+// primary email only while the account is still passwordless and still at the
+// generation the callback resolved it under: a password reset committing after
+// those checks must keep the recovered account's own address.
+func (q *Queries) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfPasswordlessAndGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserLanguage = `-- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2
 `

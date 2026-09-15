@@ -76,11 +76,33 @@ func TestReplaceVerifiedEmail(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.ReplaceVerifiedEmail(ctx, u.ID, "carol@new.test"); err != nil {
-		t.Fatal(err)
+	n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "carol@new.test", u.CredentialsGeneration)
+	if err != nil || n != 1 {
+		t.Fatalf("mirror wrote %d rows (%v)", n, err)
 	}
 	if _, err := repo.GetByEmail(ctx, "carol@new.test"); err != nil {
 		t.Fatalf("new email must resolve: %v", err)
+	}
+
+	// A reclaim that landed after the caller read the user bumps the generation,
+	// so the stale write must affect no row.
+	if err := repo.BumpCredentialsGeneration(ctx, u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "attacker@new.test", u.CredentialsGeneration); err != nil || n != 0 {
+		t.Fatalf("stale generation wrote %d rows (%v)", n, err)
+	}
+
+	// The same write at the CURRENT generation is still refused once the account
+	// has a password: the reset handed it back to its owner.
+	if _, err := repo.UpdatePasswordIfGeneration(ctx, u.ID, "hash", "", model.AlgorithmArgon2id, time.Now().UTC(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "attacker@new.test", 1); err != nil || n != 0 {
+		t.Fatalf("password account wrote %d rows (%v)", n, err)
+	}
+	if _, err := repo.GetByEmail(ctx, "carol@new.test"); err != nil {
+		t.Fatalf("the address must not have moved: %v", err)
 	}
 }
 

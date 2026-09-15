@@ -64,6 +64,10 @@ type fakeUsers struct {
 	// seam for landing a reclaim between two of the flow's reads.
 	beforeFindByID func()
 
+	// beforeReplaceEmail is the same seam for the drift mirror's write: it lands
+	// a reclaim after the callback decided the account is eligible.
+	beforeReplaceEmail func()
+
 	// Fault injection for coverage of the service's error-handling branches:
 	// non-nil forces the corresponding method to fail regardless of state.
 	failFindByID          error
@@ -116,9 +120,26 @@ func (f *fakeUsers) ProvisionExternal(_ context.Context, name, email string) (*m
 	u.Name = name
 	return u, nil
 }
-func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string) error {
+
+// ReplaceVerifiedEmail mirrors the repository's conditional UPDATE: the write
+// lands only while the stored row is still passwordless and still at the
+// generation the caller resolved it under.
+func (f *fakeUsers) ReplaceVerifiedEmail(_ context.Context, userID vo.Id, email string, generation int64) (int64, error) {
+	if f.beforeReplaceEmail != nil {
+		hook := f.beforeReplaceEmail
+		f.beforeReplaceEmail = nil
+		hook()
+	}
+	u, ok := f.byID[userID.String()]
+	if !ok || u.HasPassword() || u.CredentialsGeneration != generation {
+		return 0, nil
+	}
+	delete(f.byEmail, strings.ToLower(u.Email))
+	u.Email = email
+	u.EmailVerified = true
+	f.byEmail[strings.ToLower(email)] = u
 	f.replaced = append(f.replaced, email)
-	return nil
+	return 1, nil
 }
 
 // generationOf is what a real repository read hands back with the aggregate.
@@ -135,9 +156,10 @@ func (f *fakeUsers) generationOf(userID vo.Id) int64 {
 func (f *fakeUsers) reclaim(userID vo.Id) {
 	if u, ok := f.byID[userID.String()]; ok {
 		u.CredentialsGeneration++
+		u.Algorithm, u.Password = model.AlgorithmArgon2id, "$argon2id$reset"
 	}
 	for _, q := range []string{
-		`UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?`,
+		`UPDATE users SET credentials_generation = credentials_generation + 1, algorithm = 'argon2id', password = '$argon2id$reset' WHERE id = ?`,
 		`DELETE FROM users_identities WHERE user_id = ?`,
 	} {
 		if _, err := f.db.Raw.Exec(f.db.Rebind(q), userID.String()); err != nil {
@@ -999,4 +1021,30 @@ func handoffCount(t *testing.T, db *dbtest.DB) int {
 		t.Fatalf("count handoffs: %v", err)
 	}
 	return n
+}
+
+// The same gap on the drift mirror: the callback decides the account is
+// eligible (passwordless, one identity, address free) and only then writes. A
+// reset committing in between hands the account back to its owner, so the
+// provider's new address — which the attacker controls, and could recover the
+// account with — must not become the primary email.
+func TestCallback_EmailDrift_ResetBetweenChecksAndWriteIsRefused(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "victim@example.test", model.AlgorithmNone)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), h.fake.Subject, "victim@example.test", h.clock.Now()))
+	h.fake.Email, h.fake.EmailVerified = "attacker@example.test", true
+	h.users.beforeReplaceEmail = func() { h.users.reclaim(u.ID) }
+
+	h.login("google", "web")
+
+	after, err := h.users.FindByID(context.Background(), u.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Email != "victim@example.test" {
+		t.Fatalf("drift mirror crossed the reclaim: email is now %q", after.Email)
+	}
+	if len(h.users.replaced) != 0 {
+		t.Fatalf("replaced %v", h.users.replaced)
+	}
 }

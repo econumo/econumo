@@ -69,3 +69,7 @@ func (sqliteQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backe
 func (sqliteQuerier) UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error) {
 	return sqlitegen.New(db).UpdateUserPasswordIfGeneration(ctx, p)
 }
+
+func (sqliteQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error) {
+	return sqlitegen.New(db).UpdateUserEmailIfPasswordlessAndGeneration(ctx, p)
+}

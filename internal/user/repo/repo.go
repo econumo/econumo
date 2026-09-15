@@ -48,6 +48,7 @@ type (
 	languageParams      = sqlitegen.UpdateUserLanguageParams
 	timezoneParams      = sqlitegen.UpdateUserTimezoneParams
 	passwordIfGenParams = sqlitegen.UpdateUserPasswordIfGenerationParams
+	emailIfGenParams    = sqlitegen.UpdateUserEmailIfPasswordlessAndGenerationParams
 )
 
 type querier interface {
@@ -59,6 +60,7 @@ type querier interface {
 	UpsertUser(ctx context.Context, db backend.DBTX, p userParams) error
 	BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error)
 	UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error)
+	UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error)
 	GetUserOptions(ctx context.Context, db backend.DBTX, userID string) ([]optionRow, error)
 	UpsertUserOption(ctx context.Context, db backend.DBTX, p optionParams) error
 	UpdateUserLanguage(ctx context.Context, db backend.DBTX, p languageParams) error
@@ -232,6 +234,17 @@ func (r *Repo) UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, has
 		Password:              hash,
 		Salt:                  salt,
 		Algorithm:             algorithm,
+		UpdatedAt:             now,
+		ID:                    userID.String(),
+		CredentialsGeneration: generation,
+	})
+}
+
+// ReplaceEmailIfPasswordless mirrors an IdP-side address change, fenced in SQL
+// (see user.Repository.ReplaceEmailIfPasswordless).
+func (r *Repo) ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error) {
+	return r.q.UpdateUserEmailIfPasswordlessAndGeneration(ctx, r.db(ctx), emailIfGenParams{
+		Email:                 encryptedEmail,
 		UpdatedAt:             now,
 		ID:                    userID.String(),
 		CredentialsGeneration: generation,

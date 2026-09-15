@@ -323,8 +323,17 @@ func (s *Service) mirrorEmailDrift(ctx context.Context, u *model.User, email, pr
 		logWarn(ctx, "oauth email drift: address lookup failed", ferr, "user_id", u.ID.String(), "provider", provider)
 		return
 	}
-	if err := s.users.ReplaceVerifiedEmail(ctx, u.ID, email); err != nil {
-		logWarn(ctx, "oauth email drift: replace failed", err, "user_id", u.ID.String())
+	// Every check above ran against the user row read earlier in the flow. The
+	// write re-decides them in SQL under that row's generation, so a reset
+	// committing in between (bumping the generation and setting a password)
+	// keeps the recovered account's own address rather than the provider's.
+	n, rerr := s.users.ReplaceVerifiedEmail(ctx, u.ID, email, u.CredentialsGeneration)
+	switch {
+	case rerr != nil:
+		logWarn(ctx, "oauth email drift: replace failed", rerr, "user_id", u.ID.String())
+	case n == 0:
+		slog.WarnContext(ctx, "oauth email drift: skipped, account reclaimed or now has a password",
+			"user_id", u.ID.String(), "provider", provider)
 	}
 }
 
