@@ -151,7 +151,7 @@ tokens at login.
 | `kind` TEXT | `login` (redeemed for a session) / `link` (redeemed for the deferred identity write); neither is redeemable at the other's endpoint |
 | `user_id` TEXT FK → users(id) ON DELETE CASCADE | resolved user, or the account a link was started from |
 | `provider` TEXT | recorded on the session for analytics/logout |
-| `issuer`, `subject`, `email` TEXT | `kind = link` only: the identity the callback resolved but refused to persist unattended |
+| `issuer`, `subject`, `email` TEXT | the identity the callback authenticated. `kind = link`: the one it resolved but refused to persist unattended (with its `email`). `kind = login`: `issuer` + `subject` only, re-checked at redemption (§6.4) |
 | `flow_hash` TEXT | copied from the state row; the exchange must present the matching secret |
 | `id_token` TEXT NULL | the raw ID token, custom slot only (§8) |
 | `created_at`, `expires_at` DATETIME | TTL 60 seconds |
@@ -405,11 +405,21 @@ choice but the web login page — see §15.
 
 ### 6.4 Handoff exchange
 
+The whole exchange runs in ONE transaction: read the row to learn whose it is,
+take that user's row lock (`Users.LockRow`, users row first — the same lock an
+unlink takes before it deletes the identity and that provider's pending
+handoffs), then consume the code and, before minting, re-validate that the
+identity the handoff carries (`provider` + `issuer` + `subject`, stamped by the
+callback) still exists and still belongs to this user — otherwise the same 401.
+A rejected redemption still COMMITS the consume: the code must be spent even
+when the presenter is refused.
+
 Hash the code, load the row, then delete it. The DELETE's affected-row count
 decides the race: a presenter whose delete removed no row is rejected, so a
-concurrent replay cannot both pass on either engine — no explicit transaction
-is needed, since a `:execrows` delete is already atomic on both SQLite and
-PostgreSQL. Reject missing, raced (zero rows deleted), or expired with a
+concurrent replay cannot both pass on either engine — the `:execrows` delete is
+atomic on both SQLite and PostgreSQL, and the surrounding transaction is what
+serializes the redemption against an unlink, not what makes the delete atomic.
+Reject missing, raced (zero rows deleted), or expired with a
 coded 401 `oauth.handoff_invalid`. Then compare
 `sha256(request.flow)` against the row's `flow_hash` in constant time and
 reject a mismatch with the same 401 — the row is already gone, so a wrong

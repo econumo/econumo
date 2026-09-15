@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -173,6 +174,12 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	uid := userIDByEmail(t, db, "victim@example.test")
 	fixture.New(t, db).Identity(fixture.Identity{UserID: uid, Provider: "google",
 		Issuer: "https://accounts.google.com", Subject: "squatter-google-sub", Email: "squatter@example.test"})
+	// The account also carries an identity that vouches for the address the
+	// reset proves. Only the mailbox owner could have obtained one, so the
+	// reclaim deliberately keeps it — which is what makes the late-arriving
+	// handoff below a test of the fence rather than of the identity check.
+	fixture.New(t, db).Identity(fixture.Identity{UserID: uid, Provider: "oidc",
+		Issuer: "https://sso.example.test", Subject: "owner-sso-sub", Email: "victim@example.test"})
 
 	// ...leaves a pending email change to an address they control...
 	if code, body := post("/api/v1/user/request-email-change", squatterSession,
@@ -184,7 +191,7 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	// (Minted directly, because driving a real provider consent here would add
 	// an issuer to a test about what the reset takes away.)
 	handoffCode := "eco-pending-handoff-code"
-	seedLoginHandoff(t, db, uid, handoffCode, "f10wsecret")
+	seedLoginHandoff(t, db, uid, handoffCode, "f10wsecret", "google", "https://accounts.google.com", "squatter-google-sub")
 
 	// The victim reclaims through the mailbox they control.
 	if code, body := post("/api/v1/user/remind-password", "", `{"username":"victim@example.test"}`); code != 200 {
@@ -224,8 +231,9 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	// The race the sweep alone cannot win: a callback that resolved this user
 	// BEFORE the reset lands its handoff AFTER it (here, written straight to the
 	// table, which is what that in-flight request would do). Sweeping found
-	// nothing to delete — the fence is what refuses the redemption.
-	seedLoginHandoff(t, db, uid, "late-arriving-code", "lateflow")
+	// nothing to delete, and the identity it names is the one the reclaim kept,
+	// so the fence is the only thing left to refuse the redemption.
+	seedLoginHandoff(t, db, uid, "late-arriving-code", "lateflow", "oidc", "https://sso.example.test", "owner-sso-sub")
 	if code, body := post("/api/v1/oauth/exchange-handoff", "",
 		`{"code":"late-arriving-code","flow":"lateflow"}`); code == 200 {
 		t.Errorf("a handoff from a flow that predates the reclaim still bought a session: %d %s", code, body)
@@ -238,8 +246,11 @@ func TestRecovery_ReclaimsAnAccountFromASquatter(t *testing.T) {
 	}
 	defer resp.Body.Close()
 	listed, _ := io.ReadAll(resp.Body)
-	if !strings.Contains(string(listed), `"data":[]`) {
+	if strings.Contains(string(listed), `"provider":"google"`) || strings.Contains(string(listed), "squatter@example.test") {
 		t.Errorf("the squatter's sign-in method survived the reclaim: %s", listed)
+	}
+	if !strings.Contains(string(listed), `"provider":"oidc"`) {
+		t.Errorf("the identity claiming the proven address must survive the reclaim: %s", listed)
 	}
 }
 
@@ -253,14 +264,17 @@ func userIDByEmail(t *testing.T, db *dbtest.DB, email string) string {
 }
 
 // seedLoginHandoff writes the row a resolved oauth callback would have left:
-// an unredeemed sign-in code for the user, valid for the next minute.
-func seedLoginHandoff(t *testing.T, db *dbtest.DB, userID, code, flow string) {
+// an unredeemed sign-in code for the user, valid for the next minute. The
+// identity triple is the one the callback authenticated — the redemption
+// re-checks that it is still linked, so seeding it blank would make every
+// assertion below pass on that check alone.
+func seedLoginHandoff(t *testing.T, db *dbtest.DB, userID, code, flow, provider, issuer, subject string) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
 	_, err := db.Raw.Exec(db.Rebind(`INSERT INTO oauth_handoffs
 		(code_hash, kind, user_id, provider, issuer, subject, email, flow_hash, id_token, created_at, expires_at)
-		VALUES (?, ?, ?, ?, '', '', '', ?, NULL, ?, ?)`),
-		oidc.Sha256Hex(code), model.OAuthHandoffKindLogin, userID, "google", oidc.Sha256Hex(flow), now, now.Add(model.OAuthHandoffTTL))
+		VALUES (?, ?, ?, ?, ?, ?, '', ?, NULL, ?, ?)`),
+		oidc.Sha256Hex(code), model.OAuthHandoffKindLogin, userID, provider, issuer, subject, oidc.Sha256Hex(flow), now, now.Add(model.OAuthHandoffTTL))
 	if err != nil {
 		t.Fatalf("seed handoff: %v", err)
 	}
@@ -328,5 +342,84 @@ func TestBuildAPI_UsesInjectedProviders(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 	if !strings.Contains(string(body), `"name":"Injected"`) {
 		t.Fatalf("provider list did not come from the seam: %s", body)
+	}
+}
+
+// The redemption now runs in a transaction that takes the user row lock and
+// calls the REAL user service inside it (token purge, session insert, language
+// write). The oauth package's fakes cannot catch a nesting mistake there, so
+// one sign-in goes end to end through the composed handler: consent, callback,
+// exchange, and then the minted token on an authenticated route.
+func TestBuildAPI_OAuthSignInMintsAUsableSession(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	f := oidctest.New(t)
+	f.Email, f.EmailVerified = "sso-user@example.test", true
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
+		AppURL: "https://app.example.test", RateLimitWindow: 15 * time.Minute, RateLimitGlobal: 60}
+	injected := []appoauth.Provider{{Name: "SSO", Client: oidc.NewClient(f.Issuer(model.OAuthProviderOIDC, false), f.Server.Client())}}
+	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{OAuthProviders: injected}))
+	t.Cleanup(srv.Close)
+	noRedirect := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+
+	post := func(path, body string) (int, string) {
+		t.Helper()
+		resp, err := http.Post(srv.URL+path, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		raw, _ := io.ReadAll(resp.Body)
+		return resp.StatusCode, string(raw)
+	}
+
+	status, started := post("/api/v1/oauth/start-login", `{"provider":"oidc","client":"web"}`)
+	if status != 200 {
+		t.Fatalf("start-login: %d %s", status, started)
+	}
+	var env struct {
+		Data struct{ Url, Flow string } `json:"data"`
+	}
+	if err := json.Unmarshal([]byte(started), &env); err != nil {
+		t.Fatalf("start-login body %s: %v", started, err)
+	}
+	authorize, err := url.Parse(env.Data.Url)
+	if err != nil {
+		t.Fatal(err)
+	}
+	q := authorize.Query()
+	code := f.IssueCode(q.Get("nonce"), q.Get("code_challenge"))
+
+	resp, err := noRedirect.Get(srv.URL + "/api/v1/oauth/callback-oidc?code=" + url.QueryEscape(code) + "&state=" + url.QueryEscape(q.Get("state")))
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	loc := resp.Header.Get("Location")
+	if resp.StatusCode != http.StatusFound || !strings.Contains(loc, "#handoff=") {
+		t.Fatalf("callback: %d %s", resp.StatusCode, loc)
+	}
+	frag, _ := url.ParseQuery(strings.SplitN(loc, "#", 2)[1])
+
+	status, minted := post("/api/v1/oauth/exchange-handoff", `{"code":"`+frag.Get("handoff")+`","flow":"`+env.Data.Flow+`"}`)
+	if status != 200 {
+		t.Fatalf("exchange-handoff: %d %s", status, minted)
+	}
+	var session struct {
+		Token string `json:"token"`
+	}
+	if err := json.Unmarshal([]byte(minted), &session); err != nil || !strings.HasPrefix(session.Token, "eco_ses_") {
+		t.Fatalf("exchange body %s: %v", minted, err)
+	}
+
+	req, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/user/get-user-data", nil)
+	req.Header.Set("Authorization", "Bearer "+session.Token)
+	who, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer who.Body.Close()
+	body, _ := io.ReadAll(who.Body)
+	if who.StatusCode != 200 || !strings.Contains(string(body), "sso-user@example.test") {
+		t.Fatalf("the minted session must authenticate: %d %s", who.StatusCode, body)
 	}
 }

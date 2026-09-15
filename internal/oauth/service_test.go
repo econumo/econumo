@@ -179,17 +179,26 @@ func (f *fakeUsers) generationOf(userID vo.Id) int64 {
 
 // reclaim bumps the fence the way a completed password reset does — on the
 // in-memory aggregate AND in the users row the guarded writes read, so the two
-// agree — and drops the identities the reclaim removes.
+// agree — and drops the identities the reclaim removes. The proven address is
+// the account's own (that is what the reset proved), and an identity claiming
+// it SURVIVES, exactly as oauth.ReclaimAccount keeps it: a fake that deleted
+// every identity would make the fence tests pass on the identity check alone.
 func (f *fakeUsers) reclaim(userID vo.Id) {
+	proven := ""
 	if u, ok := f.byID[userID.String()]; ok {
+		proven = u.Email
 		u.CredentialsGeneration++
 		u.Algorithm, u.Password = model.AlgorithmArgon2id, "$argon2id$reset"
 	}
-	for _, q := range []string{
-		`UPDATE users SET credentials_generation = credentials_generation + 1, algorithm = 'argon2id', password = '$argon2id$reset' WHERE id = ?`,
-		`DELETE FROM users_identities WHERE user_id = ?`,
-	} {
-		if _, err := f.db.Raw.Exec(f.db.Rebind(q), userID.String()); err != nil {
+	stmts := []struct {
+		query string
+		args  []any
+	}{
+		{`UPDATE users SET credentials_generation = credentials_generation + 1, algorithm = 'argon2id', password = '$argon2id$reset' WHERE id = ?`, []any{userID.String()}},
+		{`DELETE FROM users_identities WHERE user_id = ? AND lower(email) <> lower(?)`, []any{userID.String(), proven}},
+	}
+	for _, st := range stmts {
+		if _, err := f.db.Raw.Exec(f.db.Rebind(st.query), st.args...); err != nil {
 			f.t.Fatalf("reclaim: %v", err)
 		}
 	}
@@ -1058,7 +1067,9 @@ func saveIdentity(t *testing.T, h *harness, i *model.Identity) {
 // The reported race, without the racing: a redemption that consumed its
 // handoff before the reclaim must not mint a session after it. The fence is a
 // generation stamped on the handoff and checked by the database at insert
-// time, so the outcome does not depend on when the goroutine was paused.
+// time, so the outcome does not depend on when the goroutine was paused. The
+// identity here claims the proven address, so the reclaim keeps it and the
+// redemption reaches the mint: the fence is the only thing that can refuse it.
 func TestExchangeHandoff_RefusedAfterAReclaim(t *testing.T) {
 	h := newHarness(t, false, true)
 	u := h.users.seed(t, "owner@example.test", model.AlgorithmNone)
@@ -1070,9 +1081,15 @@ func TestExchangeHandoff_RefusedAfterAReclaim(t *testing.T) {
 	}
 
 	h.users.reclaim(u.ID) // the owner completes a password reset
+	if _, err := h.ids.GetByProviderSubject(context.Background(), "google", h.fake.IssuerURL(), h.fake.Subject); err != nil {
+		t.Fatalf("the identity claiming the proven address must survive the reclaim: %v", err)
+	}
 
 	if _, err := h.svc.ExchangeHandoff(context.Background(), h.exchangeReq(t, redirect), "ua"); err == nil {
 		t.Fatal("a handoff resolved before the reclaim must not mint a session after it")
+	}
+	if len(h.users.minted) != 0 {
+		t.Fatalf("a session was minted across the reclaim: %v", h.users.minted)
 	}
 }
 
