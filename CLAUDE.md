@@ -469,6 +469,8 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   provider; there is no separate redirect-URI variable. Discovery documents are fetched lazily
   and cached for the process lifetime; the JWKS is cached and re-fetched when a token names an
   unknown key id (at most once a minute per issuer), so a signing-key rotation needs no restart.
+  Discovered endpoints must be absolute https URLs (plain http only for loopback issuers); a
+  document that violates that is rejected.
   `serve` builds the provider clients once,
   probes each configured issuer's discovery document in the background right after the listener
   is up (one 5-second timeout per provider) and logs a WARN (never fails boot) when one is

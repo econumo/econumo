@@ -49,6 +49,13 @@ type Fake struct {
 	// instead of its (per-run, port-dependent) loopback URL. Reach it through
 	// Transport().
 	PublicURL string
+	// The four *Override fields, when non-empty, replace the corresponding
+	// discovery document field verbatim (no base-URL prefixing), for testing
+	// the client's endpoint-URL validation.
+	AuthorizationEndpointOverride string
+	TokenEndpointOverride         string
+	JWKSOverride                  string
+	UserInfoOverride              string
 
 	mu       sync.Mutex
 	key      *rsa.PrivateKey
@@ -188,8 +195,20 @@ func (f *Fake) discovery(w http.ResponseWriter, r *http.Request) {
 		"issuer": issuer, "authorization_endpoint": base + "/authorize",
 		"token_endpoint": base + "/token", "jwks_uri": base + "/jwks",
 	}
+	if f.AuthorizationEndpointOverride != "" {
+		d["authorization_endpoint"] = f.AuthorizationEndpointOverride
+	}
+	if f.TokenEndpointOverride != "" {
+		d["token_endpoint"] = f.TokenEndpointOverride
+	}
+	if f.JWKSOverride != "" {
+		d["jwks_uri"] = f.JWKSOverride
+	}
 	if !f.NoUserInfo {
 		d["userinfo_endpoint"] = base + "/userinfo"
+	}
+	if f.UserInfoOverride != "" {
+		d["userinfo_endpoint"] = f.UserInfoOverride
 	}
 	if f.EndSession {
 		d["end_session_endpoint"] = base + "/end-session"

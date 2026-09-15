@@ -93,7 +93,7 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 	// loopback URL, and no normalizer has to redact one. Google and Apple stay
 	// unconfigured (no client id) so the suite never touches the network.
 	fakeIDP := oidctest.New(t)
-	fakeIDP.PublicURL = "http://idp.example.test"
+	fakeIDP.PublicURL = "https://idp.example.test"
 
 	cfg := config.Config{
 		DatabaseDriver:     db.Engine, // "sqlite" | "postgresql" — selects sqlc adapters

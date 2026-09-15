@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/oidc"
+	"github.com/econumo/econumo/internal/infra/oidc/oidctest"
 )
 
 func discoveryServer(t *testing.T, body string, status int) *httptest.Server {
@@ -202,5 +203,32 @@ func TestClient_IssuerGetter(t *testing.T) {
 	c := oidc.NewClient(issuerFor("https://issuer.example.test/"), nil)
 	if c.Issuer().IssuerURL != "https://issuer.example.test" {
 		t.Fatalf("Issuer() = %+v", c.Issuer())
+	}
+}
+
+func TestDiscover_RejectsNonHTTPSEndpoints(t *testing.T) {
+	cases := map[string]func(*oidctest.Fake){
+		"http token endpoint":      func(f *oidctest.Fake) { f.TokenEndpointOverride = "http://idp.example.test/token" },
+		"javascript authorization": func(f *oidctest.Fake) { f.AuthorizationEndpointOverride = "javascript:alert(1)" },
+		"relative jwks":            func(f *oidctest.Fake) { f.JWKSOverride = "/jwks" },
+		"http userinfo":            func(f *oidctest.Fake) { f.UserInfoOverride = "http://idp.example.test/userinfo" },
+	}
+	for name, mutate := range cases {
+		t.Run(name, func(t *testing.T) {
+			f := oidctest.New(t)
+			f.PublicURL = "https://idp.example.test"
+			mutate(f)
+			c := oidc.NewClient(f.Issuer("oidc", false), &http.Client{Transport: f.Transport()})
+			if _, err := c.Discover(context.Background()); err == nil {
+				t.Fatal("discovery accepted an insecure endpoint")
+			}
+		})
+	}
+}
+
+func TestDiscover_AllowsLoopbackHTTP(t *testing.T) {
+	f := oidctest.New(t) // PublicURL unset: http://127.0.0.1:<port>
+	if _, err := oidc.NewClient(f.Issuer("oidc", false), f.Server.Client()).Discover(context.Background()); err != nil {
+		t.Fatalf("loopback http must stay allowed for development: %v", err)
 	}
 }

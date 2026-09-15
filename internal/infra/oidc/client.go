@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"slices"
@@ -105,6 +106,24 @@ func (c *Client) Discover(ctx context.Context) (Discovery, error) {
 	if d.AuthorizationEndpoint == "" || d.TokenEndpoint == "" || d.JWKSURI == "" {
 		return Discovery{}, errors.New("oidc: discovery document lacks required endpoints")
 	}
+	for _, ep := range []struct {
+		name     string
+		value    string
+		required bool
+	}{
+		{"authorization_endpoint", d.AuthorizationEndpoint, true},
+		{"token_endpoint", d.TokenEndpoint, true},
+		{"jwks_uri", d.JWKSURI, true},
+		{"userinfo_endpoint", d.UserinfoEndpoint, false},
+		{"end_session_endpoint", d.EndSessionEndpoint, false},
+	} {
+		if ep.value == "" && !ep.required {
+			continue
+		}
+		if err := validateEndpoint(ep.name, ep.value); err != nil {
+			return Discovery{}, err
+		}
+	}
 	// A document served from the configured URL but claiming another issuer is
 	// either a misconfiguration or a redirect to a foreign IdP; its endpoints
 	// must not be trusted, and its ID tokens would pass the issuer check below.
@@ -115,6 +134,36 @@ func (c *Client) Discover(ctx context.Context) (Discovery, error) {
 	c.disc = &d
 	c.mu.Unlock()
 	return d, nil
+}
+
+// validateEndpoint enforces the OpenID Connect Discovery rule that provider
+// endpoints are absolute HTTPS URLs: an http token/JWKS/userinfo endpoint
+// would hand the client secret, the signing keys or the access token to
+// anyone on the path, and a non-http(s) authorization endpoint would be
+// handed to the browser verbatim. Plain http is allowed for loopback hosts
+// only (local development issuers).
+func validateEndpoint(name, raw string) error {
+	u, err := url.Parse(raw)
+	if err != nil || !u.IsAbs() || u.Host == "" {
+		return fmt.Errorf("oidc: discovery %s is not an absolute URL", name)
+	}
+	if u.Scheme == "https" {
+		return nil
+	}
+	if u.Scheme == "http" && isLoopbackHost(u.Hostname()) {
+		return nil
+	}
+	return fmt.Errorf("oidc: discovery %s must use https", name)
+}
+
+// isLoopbackHost mirrors internal/config.isLoopbackHost; infra must not
+// import config, so the (tiny) shape is duplicated rather than shared.
+func isLoopbackHost(host string) bool {
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (c *Client) AuthURL(ctx context.Context, state, nonce, codeChallenge, redirectURI string) (string, error) {
