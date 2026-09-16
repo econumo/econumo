@@ -4,6 +4,7 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func TestNormalizeDSN(t *testing.T) {
@@ -19,6 +20,53 @@ func TestNormalizeDSN(t *testing.T) {
 		if got := normalizeDSN(c.in); got != c.want {
 			t.Errorf("normalizeDSN(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// Times must be stored and bound as the frozen 'Y-m-d H:i:s' layout: that is
+// what legacy rows hold, what the hand-built SQL binds, and the only form
+// SQLite's date functions and text comparisons agree on. The driver default is
+// time.Time.String(), and a user-supplied _time_format must not change it.
+func TestOpen_StoresTimesInFrozenLayout(t *testing.T) {
+	// _time_integer_format takes precedence over _time_format in the driver, so
+	// it must be cleared, not just overridden.
+	for _, suffix := range []string{"", "?_time_format=sqlite", "?_txlock=immediate", "?_time_integer_format=unix"} {
+		t.Run(suffix, func(t *testing.T) {
+			ctx := context.Background()
+			dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite") + suffix
+			db, err := New().Open(ctx, dsn)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer db.Close()
+
+			if _, err := db.ExecContext(ctx, `CREATE TABLE t (at DATETIME)`); err != nil {
+				t.Fatal(err)
+			}
+			at := time.Date(2026, 9, 14, 10, 0, 0, 123456789, time.UTC)
+			if _, err := db.ExecContext(ctx, `INSERT INTO t (at) VALUES (?)`, at); err != nil {
+				t.Fatal(err)
+			}
+			var stored string
+			var matched int
+			if err := db.QueryRowContext(ctx, `SELECT CAST(at AS TEXT), at = ? FROM t`, at).Scan(&stored, &matched); err != nil {
+				t.Fatal(err)
+			}
+			if stored != "2026-09-14 10:00:00" {
+				t.Errorf("stored %q, want %q", stored, "2026-09-14 10:00:00")
+			}
+			if matched != 1 {
+				t.Errorf("a bound time.Time does not compare equal to the stored value")
+			}
+		})
+	}
+}
+
+func TestOpen_RejectsMalformedDSNQuery(t *testing.T) {
+	dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite") + "?_txlock=%zz"
+	if db, err := New().Open(context.Background(), dsn); err == nil {
+		db.Close()
+		t.Fatal("Open accepted a malformed DSN query")
 	}
 }
 
@@ -153,5 +201,50 @@ func TestMigrations_NonEmpty(t *testing.T) {
 			t.Errorf("duplicate migration version %s", m.Version)
 		}
 		seen[m.Version] = true
+	}
+}
+
+// A bound time.Time is stored as its UTC wall clock whatever location it
+// carries and whatever _timezone the DSN names: every reader treats the stored
+// text as UTC, and a caller-supplied _timezone must not shift it.
+func TestOpen_StoresTimesAsUTC(t *testing.T) {
+	berlin, err := time.LoadLocation("Europe/Berlin")
+	if err != nil {
+		t.Skipf("tzdata unavailable: %v", err)
+	}
+	for _, tc := range []struct {
+		name   string
+		suffix string
+		at     time.Time
+	}{
+		{"fixed offset", "", time.Date(2026, 5, 1, 0, 0, 0, 0, time.FixedZone("", 3*3600))},
+		{"named zone", "", time.Date(2026, 5, 1, 0, 0, 0, 0, berlin)},
+		{"dsn timezone", "?_timezone=Europe/Berlin", time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			db, err := New().Open(ctx, "sqlite://"+filepath.Join(t.TempDir(), "t.sqlite")+tc.suffix)
+			if err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer db.Close()
+			if _, err := db.ExecContext(ctx, `CREATE TABLE t (at DATETIME)`); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := db.ExecContext(ctx, `INSERT INTO t (at) VALUES (?)`, tc.at); err != nil {
+				t.Fatal(err)
+			}
+			var stored string
+			var back time.Time
+			if err := db.QueryRowContext(ctx, `SELECT CAST(at AS TEXT), at FROM t`).Scan(&stored, &back); err != nil {
+				t.Fatal(err)
+			}
+			if want := tc.at.UTC().Format("2006-01-02 15:04:05"); stored != want {
+				t.Errorf("stored %q, want %q", stored, want)
+			}
+			if !back.Equal(tc.at.Truncate(time.Second)) || back.Location() != time.UTC {
+				t.Errorf("read back %v (%s), want the same instant in UTC", back, back.Location())
+			}
+		})
 	}
 }

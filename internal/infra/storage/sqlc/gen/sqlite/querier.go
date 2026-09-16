@@ -155,8 +155,7 @@ type Querier interface {
 	// repeated positionally, so sqlc generates a two-field Params struct.
 	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
 	// Look up a non-expired invite by code. The caller passes 'now' as a
-	// 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
-	// (a time.Time bound mis-compares at the boundary; see the budget read notes).
+	// 'Y-m-d H:i:s' string, the layout the datetime TEXT is stored in.
 	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
 	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
 	// One GLOBAL currency by ISO code (full row), for the idempotency check in
@@ -207,9 +206,8 @@ type Querier interface {
 	GetLabelListView(ctx context.Context, arg GetLabelListViewParams) ([]Label, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
-	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
-	// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
-	// returned a December date, snapping the rate period to the wrong month).
+	// 'Y-m-d H:i:s' string bound, so rows AT/after the boundary stay out (else
+	// "< Dec 1" returns a December date, snapping the rate period to the wrong month).
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. The previous single-latest-date
 	// form dropped any currency whose newest rate predates the newest OXR batch,
@@ -373,10 +371,9 @@ type Querier interface {
 	// Every period this element holds a limit for. A merge transfers all of them,
 	// past and future alike, so there is deliberately no period filter.
 	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error)
-	// period is stored as a datetime TEXT whose exact form varies (RFC3339
-	// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
-	// time.Time does NOT compare equal to either via raw "=", so normalize both
-	// sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
+	// period is datetime TEXT; legacy rows held RFC3339 "...T00:00:00Z" until
+	// 20260816000000. Normalize both sides with datetime() and bind the period as a
+	// 'Y-m-d H:i:s' string.
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]BudgetsElementsLimit, error)
 	// Clone reads every limit at or after the copy's start month. period is stored
 	// as datetime TEXT in varying forms, so normalize both sides with datetime()
@@ -523,12 +520,10 @@ type Querier interface {
 	// One invite row per user (user_id PK). code/expired_at are nullable (a cleared
 	// invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
 	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
-	// Insert or update a rate for (published_at, currency, base). published_at is a
-	// DATE; the repo passes a time.Time truncated to midnight UTC. modernc stores
-	// date/datetime columns in ISO8601 (like every other date the Go repos write);
-	// the read path is format-agnostic because it compares via date()/MAX, and the
-	// midnight truncation keeps the value stable so the ON CONFLICT
-	// (identifier_uniq_currencies_rates) upsert dedupes per day.
+	// Insert or update a rate for (published_at, currency, base). published_at is
+	// bound as 'Y-m-d' TEXT, never a time.Time: the column is a DATE, and a
+	// time.Time would store a time part, splitting one day into distinct keys of
+	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
 	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error

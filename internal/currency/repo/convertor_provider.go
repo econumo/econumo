@@ -174,9 +174,8 @@ func (sqliteProviderQuerier) GetAverage(ctx context.Context, db backend.DBTX, st
 	return out, nil
 }
 func (sqliteProviderQuerier) GetLatestDate(ctx context.Context, db backend.DBTX, baseID string, before time.Time) (time.Time, error) {
-	// datetime(published_at) < datetime(?): bind the bound as a 'Y-m-d H:i:s'
-	// string so rows at/after the boundary are excluded (a time.Time bound leaks
-	// them in, snapping the rate period to the wrong month).
+	// datetime(published_at) < datetime(?): bind the bound as 'Y-m-d H:i:s'
+	// text so rows at/after the boundary are excluded.
 	return sqlitegen.New(db).GetLatestCurrencyRateDate(ctx, sqlitegen.GetLatestCurrencyRateDateParams{BaseCurrencyID: baseID, Datetime: before.Format(datetime.Layout)})
 }
 
