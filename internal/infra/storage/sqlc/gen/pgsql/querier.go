@@ -249,7 +249,7 @@ type Querier interface {
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
 	// match PHP getAccountsBalancesBeforeDate over the available account-id set.
 	// PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
-	// here yields the exact decimal — no precision-14 reformatting needed.
+	// here yields the exact decimal - no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
