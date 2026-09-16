@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -70,7 +72,11 @@ func (pgsqlQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id str
 }
 
 func (pgsqlQuerier) LockUserRow(ctx context.Context, db backend.DBTX, id string) error {
-	return pgsqlgen.New(db).LockUserRow(ctx, id)
+	_, err := pgsqlgen.New(db).LockUserRow(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
 }
 
 func (pgsqlQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {

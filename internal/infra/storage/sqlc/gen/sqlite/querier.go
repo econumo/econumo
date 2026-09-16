@@ -462,11 +462,12 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
-	// Serializes writers that must re-read a user's sign-in methods before
-	// deleting one (identity unlink): the no-op UPDATE takes the row's write lock.
-	// That lock is the load-bearing half on PostgreSQL, where it is held to commit
-	// so a check-then-delete pair cannot interleave; on SQLite the single-writer
-	// pool already serializes the two transactions regardless.
+	// The row lock behind every existing-row write and credential mint (see
+	// user.Repository.LockRow). SQLite has no SELECT ... FOR UPDATE, so this stays
+	// a no-op UPDATE to take the row's write lock; the single-writer pool already
+	// serializes concurrent transactions regardless, so the extra tuple version
+	// this writes per call is not worth chasing here (unlike PostgreSQL, which
+	// uses SELECT ... FOR UPDATE instead, see the pgsql query).
 	LockUserRow(ctx context.Context, id string) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.

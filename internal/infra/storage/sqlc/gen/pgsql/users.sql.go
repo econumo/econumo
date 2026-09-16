@@ -212,18 +212,18 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
-const lockUserRow = `-- name: LockUserRow :exec
-UPDATE users SET updated_at = updated_at WHERE id = $1
+const lockUserRow = `-- name: LockUserRow :one
+SELECT id FROM users WHERE id = $1 FOR UPDATE
 `
 
-// Serializes writers that must re-read a user's sign-in methods before
-// deleting one (identity unlink): the no-op UPDATE takes the row's write lock.
-// That lock is the load-bearing half on PostgreSQL, where it is held to commit
-// so a check-then-delete pair cannot interleave; on SQLite the single-writer
-// pool already serializes the two transactions regardless.
-func (q *Queries) LockUserRow(ctx context.Context, id string) error {
-	_, err := q.db.ExecContext(ctx, lockUserRow, id)
-	return err
+// The row lock behind every existing-row write and credential mint (see
+// user.Repository.LockRow). SELECT ... FOR UPDATE takes the same lock the
+// no-op UPDATE did without writing a tuple version per login. The adapter
+// maps no-rows to success: a missing user must keep succeeding silently.
+func (q *Queries) LockUserRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockUserRow, id)
+	err := row.Scan(&id)
+	return id, err
 }
 
 const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows

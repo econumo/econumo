@@ -27,13 +27,12 @@ ON CONFLICT (id) DO UPDATE SET
     access_until = excluded.access_until,
     email_verified = excluded.email_verified;
 
--- name: LockUserRow :exec
--- Serializes writers that must re-read a user's sign-in methods before
--- deleting one (identity unlink): the no-op UPDATE takes the row's write lock.
--- That lock is the load-bearing half on PostgreSQL, where it is held to commit
--- so a check-then-delete pair cannot interleave; on SQLite the single-writer
--- pool already serializes the two transactions regardless.
-UPDATE users SET updated_at = updated_at WHERE id = $1;
+-- name: LockUserRow :one
+-- The row lock behind every existing-row write and credential mint (see
+-- user.Repository.LockRow). SELECT ... FOR UPDATE takes the same lock the
+-- no-op UPDATE did without writing a tuple version per login. The adapter
+-- maps no-rows to success: a missing user must keep succeeding silently.
+SELECT id FROM users WHERE id = $1 FOR UPDATE;
 
 -- name: BumpUserCredentialsGeneration :execrows
 UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1;

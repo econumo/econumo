@@ -309,12 +309,11 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
-	// Serializes writers that must re-read a user's sign-in methods before
-	// deleting one (identity unlink): the no-op UPDATE takes the row's write lock.
-	// That lock is the load-bearing half on PostgreSQL, where it is held to commit
-	// so a check-then-delete pair cannot interleave; on SQLite the single-writer
-	// pool already serializes the two transactions regardless.
-	LockUserRow(ctx context.Context, id string) error
+	// The row lock behind every existing-row write and credential mint (see
+	// user.Repository.LockRow). SELECT ... FOR UPDATE takes the same lock the
+	// no-op UPDATE did without writing a tuple version per login. The adapter
+	// maps no-rows to success: a missing user must keep succeeding silently.
+	LockUserRow(ctx context.Context, id string) (string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
