@@ -43,6 +43,7 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 	seedUser(t, db, "odd", "2026-08-01T00:00:00Z", "2026-02-30 10:00:00 +0000 UTC", nil)
 	seedUser(t, db, "odd-fraction", "2026-01-01 10:00:00.5x +0000 UTC", "2026-01-01 10:00:00", nil)
 	seedUser(t, db, "odd-suffix", "2026-09-14 10:00:00 +0000 UTC-not-a-driver-value", "2026-09-14 10:00:00", nil)
+	seedUser(t, db, "odd-mono", "2026-09-14 10:00:00 +0000 UTC m=not-a-monotonic-reading", "2026-09-14 10:00:00 +0300 MSK m=+1.5", nil)
 	firstMigration := text(t, db, `SELECT CAST(applied_at AS TEXT) FROM schema_migrations ORDER BY version LIMIT 1`)
 
 	report, err := sqlite.NormalizeDatetimes(ctx, db)
@@ -65,6 +66,9 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 		{"odd", "updated_at", "2026-02-30 10:00:00 +0000 UTC"},
 		{"odd-fraction", "created_at", "2026-01-01 10:00:00.5x +0000 UTC"},
 		{"odd-suffix", "created_at", "2026-09-14 10:00:00 +0000 UTC-not-a-driver-value"},
+		// Go prints a monotonic reading as sign, seconds, '.', nine digits.
+		{"odd-mono", "created_at", "2026-09-14 10:00:00 +0000 UTC m=not-a-monotonic-reading"},
+		{"odd-mono", "updated_at", "2026-09-14 10:00:00 +0300 MSK m=+1.5"},
 	} {
 		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM users WHERE id = ?`, c.id); got.String != c.want {
 			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
@@ -81,8 +85,8 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 	if report.Rewritten != 7 {
 		t.Errorf("Rewritten = %d, want 7", report.Rewritten)
 	}
-	if report.Unparseable != 4 {
-		t.Errorf("Unparseable = %d, want 4 (odd.created_at, odd.updated_at, odd-fraction.created_at, odd-suffix.created_at)", report.Unparseable)
+	if report.Unparseable != 6 {
+		t.Errorf("Unparseable = %d, want 6 (odd x2, odd-fraction, odd-suffix, odd-mono x2)", report.Unparseable)
 	}
 
 	again, err := sqlite.NormalizeDatetimes(ctx, db)
@@ -174,6 +178,36 @@ func TestNormalizeDatetimes_WithoutRowidTable(t *testing.T) {
 	} {
 		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM zz_norowid WHERE id = ?`, c.id); got.String != c.want {
 			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
+		}
+	}
+}
+
+// A declared column named rowid shadows the implicit one, so the table cannot
+// be paged by rowid; it is rewritten by value like a WITHOUT ROWID table.
+func TestNormalizeDatetimes_DeclaredRowidColumn(t *testing.T) {
+	db := dbtest.NewSQLite(t).Raw
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE zz_shadow (rowid TEXT PRIMARY KEY, at DATETIME)`); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range []struct{ id, at string }{
+		{"x", "2026-09-14 10:00:00.5 +0000 UTC"},
+		{"y", "2026-09-14 13:00:00 +0300 MSK"},
+	} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO zz_shadow VALUES (?, CAST(? AS TEXT))`, r.id, r.at); err != nil {
+			t.Fatal(err)
+		}
+	}
+	report, err := sqlite.NormalizeDatetimes(ctx, db)
+	if err != nil {
+		t.Fatalf("NormalizeDatetimes: %v", err)
+	}
+	if report.Rewritten != 2 || report.Unparseable != 0 {
+		t.Errorf("report = %+v, want Rewritten 2, Unparseable 0", report)
+	}
+	for _, id := range []string{"x", "y"} {
+		if got := text(t, db, `SELECT CAST(at AS TEXT) FROM zz_shadow WHERE rowid = ?`, id); got.String != "2026-09-14 10:00:00" {
+			t.Errorf("%s.at = %q, want %q", id, got.String, "2026-09-14 10:00:00")
 		}
 	}
 }

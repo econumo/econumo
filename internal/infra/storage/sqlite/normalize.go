@@ -61,13 +61,18 @@ func NormalizeDatetimes(ctx context.Context, db *sql.DB) (NormalizeReport, error
 	return report, nil
 }
 
+// byValue marks a table that cannot be paged by rowid: declared WITHOUT
+// ROWID, or with a column of its own named rowid that shadows the implicit
+// one. Its values are rewritten by distinct value instead.
 type tableColumn struct {
 	table, column string
-	withoutRowid  bool
+	byValue       bool
 }
 
 func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
-	rows, err := db.QueryContext(ctx, `SELECT m.name, p.name, upper(m.sql) LIKE '%WITHOUT%ROWID%'
+	rows, err := db.QueryContext(ctx, `SELECT m.name, p.name,
+		  upper(m.sql) LIKE '%WITHOUT%ROWID%'
+		  OR EXISTS (SELECT 1 FROM pragma_table_info(m.name) q WHERE lower(q.name) = 'rowid')
 		FROM sqlite_master m, pragma_table_info(m.name) p
 		WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name <> 'schema_migrations'
 		  AND upper(p.type) IN ('DATETIME', 'TIMESTAMP')
@@ -79,7 +84,7 @@ func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
 	var out []tableColumn
 	for rows.Next() {
 		var c tableColumn
-		if err := rows.Scan(&c.table, &c.column, &c.withoutRowid); err != nil {
+		if err := rows.Scan(&c.table, &c.column, &c.byValue); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -88,7 +93,7 @@ func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
 }
 
 // storedValue is one candidate: key is the rowid, or the value itself for a
-// WITHOUT ROWID table (rewritten by value, rows at a time).
+// byValue table (rewritten by value, rows at a time).
 type storedValue struct {
 	key  any
 	raw  string
@@ -96,15 +101,14 @@ type storedValue struct {
 }
 
 // utcDriverWhere matches exactly the values parseDriverString accepts for a
-// UTC value: "Y-m-d H:i:s[.f] +0000 UTC[ m=...]" with a real calendar datetime
-// (strftime round-trips it unchanged; Feb 30 does not) and a 1-9 digit
-// fraction. For these the frozen value is the first 19 characters, so one
-// UPDATE per column rewrites them and only zoned values go through the
-// per-row parse. text is the value as TEXT.
+// UTC value with no monotonic suffix: "Y-m-d H:i:s[.f] +0000 UTC" with a real
+// calendar datetime (strftime round-trips it unchanged; Feb 30 does not) and a
+// 1-9 digit fraction. For these the frozen value is the first 19 characters,
+// so one UPDATE per column rewrites them; zoned values and any " m=" suffix go
+// through the per-row parse, which validates the suffix. text is the value as
+// TEXT.
 func utcDriverWhere(text string) string {
-	suffix := func(expr string) string {
-		return `(` + expr + ` = ' +0000 UTC' OR ` + expr + ` GLOB ' +0000 UTC m=*')`
-	}
+	suffix := func(expr string) string { return expr + ` = ' +0000 UTC'` }
 	fracLen := `instr(substr(` + text + `, 20), ' ')`
 	return `length(` + text + `) > 19
 	AND strftime('%Y-%m-%d %H:%M:%S', substr(` + text + `, 1, 19)) = substr(` + text + `, 1, 19)
@@ -127,7 +131,7 @@ func normalizeColumn(ctx context.Context, db *sql.DB, c tableColumn) (rewritten,
 	n, _ := res.RowsAffected()
 	rewritten = int(n)
 
-	if c.withoutRowid {
+	if c.byValue {
 		values, err := readValues(ctx, db, `SELECT `+text+`, COUNT(*) FROM `+t+` WHERE length(`+text+`) > 19 GROUP BY 1`)
 		if err != nil {
 			return rewritten, 0, err
@@ -234,6 +238,9 @@ func readBatch(ctx context.Context, db *sql.DB, query string, after int64) ([]st
 func parseDriverString(raw string) (string, bool) {
 	s := raw
 	if i := strings.Index(s, " m="); i >= 0 {
+		if !validMonotonic(s[i+3:]) {
+			return "", false
+		}
 		s = s[:i]
 	}
 	for _, layout := range driverStringLayouts {
@@ -242,6 +249,25 @@ func parseDriverString(raw string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+// validMonotonic reports whether s is how time.Time.String prints a monotonic
+// reading: a sign, the whole seconds, '.', and exactly nine digits.
+func validMonotonic(s string) bool {
+	if s == "" || (s[0] != '+' && s[0] != '-') {
+		return false
+	}
+	secs, frac, ok := strings.Cut(s[1:], ".")
+	return ok && secs != "" && len(frac) == 9 && digitsOnly(secs) && digitsOnly(frac)
+}
+
+func digitsOnly(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] < '0' || s[i] > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func quoteIdent(name string) string {
