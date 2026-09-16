@@ -592,7 +592,7 @@ and avatar as a registered one, plus:
   a provider-provisioned user.
 
 The current-user DTO gains `hasPassword` (bool). `update-password` is
-**unchanged** and still requires the current password; a passwordless user
+unchanged in what it requires (the current password; see §6.4b for the rotation it now performs: generation bump, grant sweep, other-session revoke); a passwordless user
 sets one through the existing remind-password → reset-password flow, which
 already writes an argon2id hash and revokes all sessions. Once set, the user
 is an ordinary password user with linked identities.

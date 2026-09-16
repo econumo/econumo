@@ -51,11 +51,15 @@ type Repository interface {
 	LockRow(ctx context.Context, userID vo.Id) error
 
 	// BumpCredentialsGeneration invalidates every flow that read its evidence
-	// before this call. Part of the reclaim, inside its transaction.
+	// before this call. Run inside the caller's locked transaction by the
+	// reclaim (reset-password, user:change-password, user:deactivate) and by
+	// the owner's own rotation (update-password).
 	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error
 
 	// UpdatePasswordIfGeneration rewrites only the credential columns, and only
-	// while the generation still matches (see login.go rehashLegacyPassword).
+	// while the generation still matches: the legacy-hash upgrade on login
+	// (unlocked, fenced) and update-password (under the row lock) both write
+	// through it rather than saving a whole aggregate.
 	UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error)
 
 	// ReplaceEmailIfPasswordless writes the provider's new address onto the
