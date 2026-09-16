@@ -792,7 +792,11 @@ In the distroless image these run via the binary directly, e.g.
   row itself and re-evaluates their WHERE against the committed version, so the fence
   is decided after the reclaim rather than before it. The reset re-reads the locked
   row's address too: a confirmed email change landing in the window makes it a
-  different account, and the reset is refused rather than written to it.
+  different account, and the reset is refused rather than written to it. Its code is
+  fenced the same way: the reset re-reads the presented code under that lock and
+  consumes it row-counted, and `remind-password` replaces a user's codes under the
+  same lock, so one code is one reset — a code a fresh remind replaced, or one a
+  concurrent reset already took, resets nothing.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).

@@ -500,7 +500,12 @@ before the reclaim committed would put the pre-reset password back, which is why
 the lock precedes the read and the row is re-read under it — and, for the reset
 itself, why the row it locks is re-checked against the address the code proved
 (an email change confirmed in the window would otherwise hand the new password
-to whoever owns that address now). SQLite's single writer excludes the window on
+to whoever owns that address now). The code itself is fenced the same way: it is
+re-read under that lock and consumed row-counted
+(`ConsumeUserPasswordRequest`), and `remind-password` replaces a user's codes
+under the same lock, so issuing a code and consuming one have a single order —
+one code is one reset, and a code a fresh remind replaced or a concurrent reset
+already took resets nothing. SQLite's single writer excludes the window on
 its own.
 
 Corollary: `users_identities.email` is no longer purely decorative. It is still

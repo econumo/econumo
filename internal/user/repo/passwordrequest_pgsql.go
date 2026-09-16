@@ -23,3 +23,7 @@ func (passwordRequestPgsqlQuerier) GetUserPasswordRequestByUserAndCode(ctx conte
 	row, err := pgsqlgen.New(db).GetUserPasswordRequestByUserAndCode(ctx, pgsqlgen.GetUserPasswordRequestByUserAndCodeParams(p))
 	return passwordRequestRow(row), err
 }
+
+func (passwordRequestPgsqlQuerier) ConsumeUserPasswordRequest(ctx context.Context, db backend.DBTX, p consumeParams) (int64, error) {
+	return pgsqlgen.New(db).ConsumeUserPasswordRequest(ctx, pgsqlgen.ConsumeUserPasswordRequestParams(p))
+}

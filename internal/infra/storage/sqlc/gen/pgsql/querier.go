@@ -17,6 +17,8 @@ type Querier interface {
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// See the sqlite sibling: the confirm path consumes its own evidence row.
 	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
+	// See the sqlite sibling: the reset consumes its evidence row-counted.
+	ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted

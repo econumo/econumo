@@ -15,3 +15,9 @@ VALUES (?, ?, ?, ?, ?, ?);
 SELECT id, user_id, code, created_at, updated_at, expired_at
 FROM users_password_requests
 WHERE user_id = ? AND code = ?;
+
+-- name: ConsumeUserPasswordRequest :execrows
+-- The reset's evidence and its consumption are the same row: taking it
+-- row-counted is how a reset learns that a replacement code (or a concurrent
+-- reset) already took the one it read.
+DELETE FROM users_password_requests WHERE id = ? AND user_id = ?;

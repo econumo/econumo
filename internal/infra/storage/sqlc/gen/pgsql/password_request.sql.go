@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+const consumeUserPasswordRequest = `-- name: ConsumeUserPasswordRequest :execrows
+DELETE FROM users_password_requests WHERE id = $1 AND user_id = $2
+`
+
+type ConsumeUserPasswordRequestParams struct {
+	ID     string
+	UserID string
+}
+
+// See the sqlite sibling: the reset consumes its evidence row-counted.
+func (q *Queries) ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeUserPasswordRequest, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteUserPasswordRequestsByUser = `-- name: DeleteUserPasswordRequestsByUser :exec
 
 DELETE FROM users_password_requests WHERE user_id = $1

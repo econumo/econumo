@@ -99,6 +99,13 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 	}
 	pr := model.NewPasswordRequest(vo.NewId(), u.ID, HashResetCode(code), s.clock.Now())
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// Issuing a code and consuming one serialize on the same row lock the
+		// reset takes, so "issue B" and "consume A" have one defined order:
+		// without it a reset could consume a code this remind has already
+		// replaced.
+		if lerr := s.repo.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
 		if derr := s.passwordRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}
@@ -133,7 +140,8 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 		return nil, err
 	}
 
-	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, HashResetCode(strings.TrimSpace(req.Code)))
+	hashedCode := HashResetCode(strings.TrimSpace(req.Code))
+	pr, err := s.passwordRequests.GetByUserAndCode(ctx, u.ID, hashedCode)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeReset, lowered)
@@ -177,6 +185,28 @@ func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequ
 			return derr
 		}
 		if strings.ToLower(strings.TrimSpace(cur)) != lowered {
+			return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
+		}
+		// The code is the evidence, so it is re-read and consumed under the
+		// same lock: the read above ran before it, and a remind that replaced
+		// the code (or a concurrent reset that already consumed it) in between
+		// leaves nothing to take. Row-counted, so two resets holding one code
+		// cannot both succeed with the later password winning.
+		held, lookupErr := s.passwordRequests.GetByUserAndCode(ctx, u.ID, hashedCode)
+		if lookupErr != nil {
+			if isNotFound(lookupErr) {
+				return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
+			}
+			return lookupErr
+		}
+		if held.IsExpired(s.clock.Now()) {
+			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserResetCodeExpired}
+		}
+		consumed, consumeErr := s.passwordRequests.Consume(ctx, held.ID, u.ID)
+		if consumeErr != nil {
+			return consumeErr
+		}
+		if consumed != 1 {
 			return &errs.ValidationError{Msg: "Reset password error", MsgCode: errs.CodeUserResetPasswordError}
 		}
 		u.UpdatePassword(newHash, model.AlgorithmArgon2id, s.clock.Now())

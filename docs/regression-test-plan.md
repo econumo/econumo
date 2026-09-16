@@ -140,6 +140,11 @@ navigation (single-pane vs sidebar).
       own address. The recovery dialog says so before the reset is submitted.
       CLI `user:change-password <email> <new>` performs the same reclaim
       (sessions, tokens, foreign identity, pending grants).
+- [ ] A reset code is single-use and only the newest one works: request
+      "Forgot password" twice and the FIRST emailed code is refused with
+      "Reset password error" (the second one still works); after a reset
+      completes, submitting that same code again is refused the same way and
+      the password stays the one the completed reset set.
 - [ ] A provider-created (passwordless) account using Settings → Profile →
       "Set a password" keeps its linked provider through that flow — it is the
       same reset endpoint, and the provider vouches for the account's address.

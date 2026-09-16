@@ -175,6 +175,12 @@ type PasswordRequests interface {
 	Save(ctx context.Context, pr *model.PasswordRequest) error
 	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
 	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error)
+
+	// Consume deletes one code by (id, user), reporting the rows deleted. The
+	// reset reads that row as its evidence and consumes it under the user's
+	// row lock, so zero rows means a replacement code (or a concurrent reset)
+	// already took it and this reset must fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
 }
 
 // EmailVerifications persists login email-verification codes

@@ -42,6 +42,28 @@ func (r *orderRepo) Save(ctx context.Context, u *model.User) error {
 	return r.Repository.Save(ctx, u)
 }
 
+// orderRequests records the reset-code store's writes, so the remind/reset
+// pair can be asserted to issue and consume a code under the same row lock.
+type orderRequests struct {
+	appuser.PasswordRequests
+	log *callLog
+}
+
+func (r *orderRequests) DeleteByUser(ctx context.Context, userID vo.Id) error {
+	r.log.add("DeleteByUser")
+	return r.PasswordRequests.DeleteByUser(ctx, userID)
+}
+
+func (r *orderRequests) Save(ctx context.Context, pr *model.PasswordRequest) error {
+	r.log.add("SaveRequest")
+	return r.PasswordRequests.Save(ctx, pr)
+}
+
+func (r *orderRequests) Consume(ctx context.Context, id, userID vo.Id) (int64, error) {
+	r.log.add("Consume")
+	return r.PasswordRequests.Consume(ctx, id, userID)
+}
+
 type orderTokens struct {
 	appuser.AccessTokens
 	log *callLog
@@ -92,16 +114,20 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 
 	// The whole-aggregate writers: the lock, then the read the write is built
 	// from. The credential mints follow below — they lock, then insert.
+	// want defaults to the whole-aggregate pair; a case that writes something
+	// else under the lock (the reset's code consumption, remind's issuance)
+	// names its own calls.
 	for _, tc := range []struct {
 		name string
 		run  func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id)
+		want []string
 	}{
-		{"update-name (mutate)", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, uid vo.Id) {
+		{name: "update-name (mutate)", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, uid vo.Id) {
 			if _, err := svc.UpdateName(context.Background(), uid, model.UpdateNameRequest{Name: "Renamed"}); err != nil {
 				t.Fatalf("UpdateName: %v", err)
 			}
 		}},
-		{"confirm-email", func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
+		{name: "confirm-email", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
 			ctx := context.Background()
 			ev := model.NewEmailVerification(vo.NewId(), uid, appuser.HashResetCode("123456"), time.Now().UTC())
 			if err := userrepo.NewEmailVerificationRepo(db.Engine, db.TX).Save(ctx, ev); err != nil {
@@ -111,7 +137,7 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 				t.Fatalf("ConfirmEmail: %v", err)
 			}
 		}},
-		{"reset-password", func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
+		{name: "reset-password", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
 			ctx := context.Background()
 			pr := model.NewPasswordRequest(vo.NewId(), uid, appuser.HashResetCode("482913"), time.Now().UTC())
 			if err := userrepo.NewPasswordRequestRepo(db.Engine, db.TX).Save(ctx, pr); err != nil {
@@ -122,38 +148,43 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 			}); err != nil {
 				t.Fatalf("ResetPassword: %v", err)
 			}
-		}},
-		{"admin change-email", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		}, want: []string{"GetByID", "Consume", "Save"}},
+		{name: "remind-password", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+			if _, err := svc.RemindPassword(context.Background(), model.RemindPasswordRequest{Username: email}); err != nil {
+				t.Fatalf("RemindPassword: %v", err)
+			}
+		}, want: []string{"DeleteByUser", "SaveRequest"}},
+		{name: "admin change-email", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminChangeEmail(context.Background(), email, "lock-order-new@econumo.test"); err != nil {
 				t.Fatalf("AdminChangeEmail: %v", err)
 			}
 		}},
-		{"admin change-password", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		{name: "admin change-password", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminChangePassword(context.Background(), email, "operator-set-pw"); err != nil {
 				t.Fatalf("AdminChangePassword: %v", err)
 			}
 		}},
-		{"admin activate", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		{name: "admin activate", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminActivate(context.Background(), email); err != nil {
 				t.Fatalf("AdminActivate: %v", err)
 			}
 		}},
-		{"admin deactivate", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		{name: "admin deactivate", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminDeactivate(context.Background(), email); err != nil {
 				t.Fatalf("AdminDeactivate: %v", err)
 			}
 		}},
-		{"admin verify-email", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		{name: "admin verify-email", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if err := svc.AdminVerifyEmail(context.Background(), email); err != nil {
 				t.Fatalf("AdminVerifyEmail: %v", err)
 			}
 		}},
-		{"admin set-access", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
+		{name: "admin set-access", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, _ vo.Id) {
 			if _, err := svc.AdminSetAccess(context.Background(), email, model.AccessLevelReadonly, nil); err != nil {
 				t.Fatalf("AdminSetAccess: %v", err)
 			}
 		}},
-		{"admin set-access by id", func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, uid vo.Id) {
+		{name: "admin set-access by id", run: func(t *testing.T, svc *appuser.Service, _ *dbtest.DB, uid vo.Id) {
 			if _, _, err := svc.AdminSetAccessByID(context.Background(), uid, model.AccessLevelReadonly, nil); err != nil {
 				t.Fatalf("AdminSetAccessByID: %v", err)
 			}
@@ -165,7 +196,11 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 			svc, uid := newOrderEnv(t, db, log, email, password)
 			log.reset()
 			tc.run(t, svc, db, uid)
-			assertLockedFirst(t, log.calls, "GetByID", "Save")
+			want := tc.want
+			if want == nil {
+				want = []string{"GetByID", "Save"}
+			}
+			assertLockedFirst(t, log.calls, want...)
 		})
 	}
 
@@ -202,6 +237,8 @@ func newOrderEnv(t *testing.T, db *dbtest.DB, log *callLog, email, password stri
 	repo := &orderRepo{Repository: userrepo.NewRepo(db.Engine, db.TX), log: log}
 	svc, _, _ := newUserSvcWithPorts(t, db, repo, func(tok appuser.AccessTokens) appuser.AccessTokens {
 		return &orderTokens{AccessTokens: tok, log: log}
+	}, func(reqs appuser.PasswordRequests) appuser.PasswordRequests {
+		return &orderRequests{PasswordRequests: reqs, log: log}
 	})
 	uid, err := svc.AdminCreateUser(context.Background(), "Lock Order", email, password)
 	if err != nil {

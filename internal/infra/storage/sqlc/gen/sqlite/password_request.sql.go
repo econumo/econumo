@@ -10,6 +10,26 @@ import (
 	"time"
 )
 
+const consumeUserPasswordRequest = `-- name: ConsumeUserPasswordRequest :execrows
+DELETE FROM users_password_requests WHERE id = ? AND user_id = ?
+`
+
+type ConsumeUserPasswordRequestParams struct {
+	ID     string
+	UserID string
+}
+
+// The reset's evidence and its consumption are the same row: taking it
+// row-counted is how a reset learns that a replacement code (or a concurrent
+// reset) already took the one it read.
+func (q *Queries) ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeUserPasswordRequest, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteUserPasswordRequestsByUser = `-- name: DeleteUserPasswordRequestsByUser :exec
 
 DELETE FROM users_password_requests WHERE user_id = ?

@@ -22,3 +22,7 @@ func (passwordRequestSqliteQuerier) InsertUserPasswordRequest(ctx context.Contex
 func (passwordRequestSqliteQuerier) GetUserPasswordRequestByUserAndCode(ctx context.Context, db backend.DBTX, p getByUserAndCodeParams) (passwordRequestRow, error) {
 	return sqlitegen.New(db).GetUserPasswordRequestByUserAndCode(ctx, p)
 }
+
+func (passwordRequestSqliteQuerier) ConsumeUserPasswordRequest(ctx context.Context, db backend.DBTX, p consumeParams) (int64, error) {
+	return sqlitegen.New(db).ConsumeUserPasswordRequest(ctx, p)
+}

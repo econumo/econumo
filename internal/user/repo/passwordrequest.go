@@ -22,12 +22,14 @@ type (
 	passwordRequestRow     = sqlitegen.UsersPasswordRequest
 	getByUserAndCodeParams = sqlitegen.GetUserPasswordRequestByUserAndCodeParams
 	insertParams           = sqlitegen.InsertUserPasswordRequestParams
+	consumeParams          = sqlitegen.ConsumeUserPasswordRequestParams
 )
 
 type passwordRequestQuerier interface {
 	DeleteUserPasswordRequestsByUser(ctx context.Context, db backend.DBTX, userID string) error
 	InsertUserPasswordRequest(ctx context.Context, db backend.DBTX, p insertParams) error
 	GetUserPasswordRequestByUserAndCode(ctx context.Context, db backend.DBTX, p getByUserAndCodeParams) (passwordRequestRow, error)
+	ConsumeUserPasswordRequest(ctx context.Context, db backend.DBTX, p consumeParams) (int64, error)
 }
 
 type PasswordRequestRepo struct {
@@ -71,6 +73,13 @@ func (r *PasswordRequestRepo) GetByUserAndCode(ctx context.Context, userID vo.Id
 		return nil, mapErr(err)
 	}
 	return reconstitute(row.ID, row.UserID, row.Code, row.CreatedAt, row.UpdatedAt, row.ExpiredAt)
+}
+
+func (r *PasswordRequestRepo) Consume(ctx context.Context, id, userID vo.Id) (int64, error) {
+	return r.q.ConsumeUserPasswordRequest(ctx, r.db(ctx), consumeParams{
+		ID:     id.String(),
+		UserID: userID.String(),
+	})
 }
 
 func reconstitute(id, userID, code string, created, updated, expired time.Time) (*model.PasswordRequest, error) {

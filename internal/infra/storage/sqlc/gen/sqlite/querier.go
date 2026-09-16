@@ -19,6 +19,10 @@ type Querier interface {
 	// row-counted is how a confirmation learns that the reclaim (or a concurrent
 	// confirm) already took the grant.
 	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
+	// The reset's evidence and its consumption are the same row: taking it
+	// row-counted is how a reset learns that a replacement code (or a concurrent
+	// reset) already took the one it read.
+	ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
