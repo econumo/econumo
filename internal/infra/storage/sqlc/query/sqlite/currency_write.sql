@@ -30,10 +30,9 @@ VALUES (?, ?, ?, ?, ?, ?);
 
 -- name: UpsertCurrencyRate :exec
 -- Insert or update a rate for (published_at, currency, base). published_at is
--- bound as 'Y-m-d' TEXT, never a time.Time: modernc stores a time.Time as
--- "2026-09-14 00:00:00 +0000 UTC", which date()/datetime() read as NULL, hiding
--- the row from the convertor. A fixed per-day value also keeps the ON CONFLICT
--- (identifier_uniq_currencies_rates) upsert deduping per day.
+-- bound as 'Y-m-d' TEXT, never a time.Time: the column is a DATE, and a
+-- time.Time would store a time part, splitting one day into distinct keys of
+-- the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 INSERT INTO currencies_rates (id, currency_id, base_currency_id, published_at, rate)
 VALUES (sqlc.arg(id), sqlc.arg(currency_id), sqlc.arg(base_currency_id), CAST(sqlc.arg(published_at) AS TEXT), sqlc.arg(rate))
 ON CONFLICT (published_at, currency_id, base_currency_id)

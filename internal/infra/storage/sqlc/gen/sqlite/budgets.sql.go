@@ -538,10 +538,9 @@ type ListBudgetLimitsForPeriodParams struct {
 	Datetime interface{}
 }
 
-// period is stored as a datetime TEXT whose exact form varies (RFC3339
-// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
-// time.Time does NOT compare equal to either via raw "=", so normalize both
-// sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
+// period is datetime TEXT; legacy rows held RFC3339 "...T00:00:00Z" until
+// 20260816000000. Normalize both sides with datetime() and bind the period as a
+// 'Y-m-d H:i:s' string.
 func (q *Queries) ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]BudgetsElementsLimit, error) {
 	rows, err := q.db.QueryContext(ctx, listBudgetLimitsForPeriod, arg.BudgetID, arg.Datetime)
 	if err != nil {

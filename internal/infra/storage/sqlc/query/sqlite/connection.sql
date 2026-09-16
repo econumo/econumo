@@ -79,8 +79,7 @@ WHERE user_id = ?;
 
 -- name: GetConnectionInviteByCode :one
 -- Look up a non-expired invite by code. The caller passes 'now' as a
--- 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
--- (a time.Time bound mis-compares at the boundary; see the budget read notes).
+-- 'Y-m-d H:i:s' string, the layout the datetime TEXT is stored in.
 SELECT user_id, code, expired_at
 FROM users_connections_invites
 WHERE code = ? AND expired_at IS NOT NULL AND datetime(expired_at) >= datetime(?);

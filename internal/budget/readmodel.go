@@ -16,8 +16,6 @@ import (
 // budget read repo implements it with hand-built dynamic-IN queries (the account
 // id / category id sets are variadic).
 type ReadModel interface {
-	// AccountsBalancesOnDate: balance per account with spent_at <= date.
-	AccountsBalancesOnDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error)
 	// AccountsBalancesBeforeDate: balance per account with spent_at < date.
 	AccountsBalancesBeforeDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error)
 	// AccountsReport: per-account flow totals in [start, end).

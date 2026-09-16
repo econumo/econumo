@@ -59,10 +59,10 @@ func idArgs(ids []vo.Id) []any {
 	return out
 }
 
-// balanceSQL builds the per-account balance report SQL. cmp is "<" (before) or
-// "<=" (on date). The date is bound once but referenced 6 times; sqlite repeats
-// the positional arg, pgsql reuses a single numbered param.
-func (r *ReadRepo) balanceSQL(cmp string, nAccounts int) (string, func(date time.Time, ids []any) []any) {
+// balanceSQL builds the per-account balance SQL over transactions strictly before
+// the date. The date is bound once but referenced 6 times; sqlite repeats the
+// positional arg, pgsql reuses a single numbered param.
+func (r *ReadRepo) balanceSQL(nAccounts int) (string, func(date time.Time, ids []any) []any) {
 	if r.driver == "postgresql" {
 		// $1 = date (reused), $2.. = account ids.
 		in := r.phFrom(2, nAccounts)
@@ -71,15 +71,15 @@ COALESCE(incomes,0)+COALESCE(transfer_incomes,0)-COALESCE(expenses,0)-COALESCE(t
 FROM accounts a LEFT JOIN (
  SELECT tmp.account_id, SUM(tmp.expenses) expenses, SUM(tmp.incomes) incomes, SUM(tmp.transfer_expenses) transfer_expenses, SUM(tmp.transfer_incomes) transfer_incomes FROM (
   SELECT tr1.account_id,
-   (SELECT SUM(t1.amount) FROM transactions t1 WHERE t1.account_id=tr1.account_id AND t1.type=0 AND t1.spent_at ` + cmp + ` $1) as expenses,
-   (SELECT SUM(t2.amount) FROM transactions t2 WHERE t2.account_id=tr1.account_id AND t2.type=1 AND t2.spent_at ` + cmp + ` $1) as incomes,
-   (SELECT SUM(t3.amount) FROM transactions t3 WHERE t3.account_id=tr1.account_id AND t3.type=2 AND t3.spent_at ` + cmp + ` $1) as transfer_expenses,
+   (SELECT SUM(t1.amount) FROM transactions t1 WHERE t1.account_id=tr1.account_id AND t1.type=0 AND t1.spent_at < $1) as expenses,
+   (SELECT SUM(t2.amount) FROM transactions t2 WHERE t2.account_id=tr1.account_id AND t2.type=1 AND t2.spent_at < $1) as incomes,
+   (SELECT SUM(t3.amount) FROM transactions t3 WHERE t3.account_id=tr1.account_id AND t3.type=2 AND t3.spent_at < $1) as transfer_expenses,
    NULL as transfer_incomes
-  FROM transactions tr1 WHERE tr1.spent_at ` + cmp + ` $1 GROUP BY tr1.account_id
+  FROM transactions tr1 WHERE tr1.spent_at < $1 GROUP BY tr1.account_id
   UNION ALL
   SELECT tr2.account_recipient_id as account_id, NULL, NULL, NULL,
-   (SELECT SUM(t4.amount_recipient) FROM transactions t4 WHERE t4.account_recipient_id=tr2.account_recipient_id AND t4.type=2 AND t4.spent_at ` + cmp + ` $1) as transfer_incomes
-  FROM transactions tr2 WHERE tr2.account_recipient_id IS NOT NULL AND tr2.spent_at ` + cmp + ` $1 GROUP BY tr2.account_recipient_id
+   (SELECT SUM(t4.amount_recipient) FROM transactions t4 WHERE t4.account_recipient_id=tr2.account_recipient_id AND t4.type=2 AND t4.spent_at < $1) as transfer_incomes
+  FROM transactions tr2 WHERE tr2.account_recipient_id IS NOT NULL AND tr2.spent_at < $1 GROUP BY tr2.account_recipient_id
  ) tmp GROUP BY tmp.account_id
 ) t ON a.id=t.account_id AND a.id IN (` + in + `)`
 		return sql, func(date time.Time, ids []any) []any {
@@ -93,21 +93,19 @@ COALESCE(incomes,0)+COALESCE(transfer_incomes,0)-COALESCE(expenses,0)-COALESCE(t
 FROM accounts a LEFT JOIN (
  SELECT tmp.account_id, SUM(tmp.expenses) expenses, SUM(tmp.incomes) incomes, SUM(tmp.transfer_expenses) transfer_expenses, SUM(tmp.transfer_incomes) transfer_incomes FROM (
   SELECT tr1.account_id,
-   (SELECT SUM(t1.amount) FROM transactions t1 WHERE t1.account_id=tr1.account_id AND t1.type=0 AND t1.spent_at ` + cmp + ` ?) as expenses,
-   (SELECT SUM(t2.amount) FROM transactions t2 WHERE t2.account_id=tr1.account_id AND t2.type=1 AND t2.spent_at ` + cmp + ` ?) as incomes,
-   (SELECT SUM(t3.amount) FROM transactions t3 WHERE t3.account_id=tr1.account_id AND t3.type=2 AND t3.spent_at ` + cmp + ` ?) as transfer_expenses,
+   (SELECT SUM(t1.amount) FROM transactions t1 WHERE t1.account_id=tr1.account_id AND t1.type=0 AND t1.spent_at < ?) as expenses,
+   (SELECT SUM(t2.amount) FROM transactions t2 WHERE t2.account_id=tr1.account_id AND t2.type=1 AND t2.spent_at < ?) as incomes,
+   (SELECT SUM(t3.amount) FROM transactions t3 WHERE t3.account_id=tr1.account_id AND t3.type=2 AND t3.spent_at < ?) as transfer_expenses,
    NULL as transfer_incomes
-  FROM transactions tr1 WHERE tr1.spent_at ` + cmp + ` ? GROUP BY tr1.account_id
+  FROM transactions tr1 WHERE tr1.spent_at < ? GROUP BY tr1.account_id
   UNION ALL
   SELECT tr2.account_recipient_id as account_id, NULL, NULL, NULL,
-   (SELECT SUM(t4.amount_recipient) FROM transactions t4 WHERE t4.account_recipient_id=tr2.account_recipient_id AND t4.type=2 AND t4.spent_at ` + cmp + ` ?) as transfer_incomes
-  FROM transactions tr2 WHERE tr2.account_recipient_id IS NOT NULL AND tr2.spent_at ` + cmp + ` ? GROUP BY tr2.account_recipient_id
+   (SELECT SUM(t4.amount_recipient) FROM transactions t4 WHERE t4.account_recipient_id=tr2.account_recipient_id AND t4.type=2 AND t4.spent_at < ?) as transfer_incomes
+  FROM transactions tr2 WHERE tr2.account_recipient_id IS NOT NULL AND tr2.spent_at < ? GROUP BY tr2.account_recipient_id
  ) tmp GROUP BY tmp.account_id
 ) t ON a.id=t.account_id AND a.id IN (` + in + `)`
 	return sql, func(date time.Time, ids []any) []any {
-		// Bind the date bound as a 'Y-m-d H:i:s' string (see sqliteDatetime): a
-		// time.Time bound mis-compares against the stored datetime TEXT at the
-		// month boundary, dropping the first-of-month transaction.
+		// See sqliteDatetime.
 		d := sqliteDatetime(date)
 		args := make([]any, 0, 6+len(ids))
 		for i := 0; i < 6; i++ {
@@ -117,21 +115,22 @@ FROM accounts a LEFT JOIN (
 	}
 }
 
-// sqliteDatetime renders a date as the 'Y-m-d H:i:s' string SQLite stores
-// datetimes in, so range comparisons against the TEXT spent_at/period columns
-// include the boundary rows (a bound time.Time is serialized differently by the
-// driver and silently drops them).
+// sqliteDatetime renders a bound as the 'Y-m-d H:i:s' text SQLite stores
+// datetimes in (see sqlite.WithFrozenTimeFormat). SQLite compares the TEXT
+// spent_at/period columns lexically, so the bound must share that exact layout
+// for boundary rows to land on the right side; binding the text keeps that true
+// regardless of how the connection formats a time.Time.
 func sqliteDatetime(t time.Time) string { return t.Format(datetime.Layout) }
 
 // phFrom is ph for pgsql numbered params starting at `start` (sqlite ignores start).
 func (r *ReadRepo) phFrom(start, n int) string { return r.ph(start, n) }
 
-func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
+func (r *ReadRepo) accountBalances(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
 	if len(accountIDs) == 0 {
 		return nil, nil
 	}
 	ids := idArgs(accountIDs)
-	sql, args := r.balanceSQL(cmp, len(ids))
+	sql, args := r.balanceSQL(len(ids))
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args(date, ids)...)
 	if err != nil {
 		return nil, err
@@ -171,14 +170,9 @@ func (r *ReadRepo) accountBalances(ctx context.Context, cmp string, accountIDs [
 	return out, rows.Err()
 }
 
-// AccountsBalancesOnDate implements ReadModel.
-func (r *ReadRepo) AccountsBalancesOnDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
-	return r.accountBalances(ctx, "<=", accountIDs, date)
-}
-
 // AccountsBalancesBeforeDate implements ReadModel.
 func (r *ReadRepo) AccountsBalancesBeforeDate(ctx context.Context, accountIDs []vo.Id, date time.Time) ([]model.AccountBalanceRow, error) {
-	return r.accountBalances(ctx, "<", accountIDs, date)
+	return r.accountBalances(ctx, accountIDs, date)
 }
 
 // AccountsReport implements ReadModel.
@@ -322,8 +316,7 @@ func (r *ReadRepo) holdingsSQL(toHoldings bool, ids []any, start, end time.Time)
 	args := make([]any, 0, 2*len(ids)+2)
 	args = append(args, ids...)
 	args = append(args, ids...)
-	// See sqliteDatetime: a time.Time bound does not compare correctly against
-	// the stored datetime TEXT and drops the first-of-month row.
+	// See sqliteDatetime.
 	args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	return sql, args
 }
@@ -363,10 +356,7 @@ func (r *ReadRepo) CountSpending(ctx context.Context, categoryIDs, accountIDs []
 		if len(catArgs) > 0 {
 			catWhere = "(t.category_id IN (" + r.ph(1, len(catArgs)) + ") OR t.category_id IS NULL)"
 		}
-		// Bind the spent_at bounds as 'Y-m-d H:i:s' strings: a time.Time bound is
-		// serialized by the driver in a form that does not compare correctly
-		// against the stored datetime TEXT at month boundaries (it drops the
-		// first-of-month row).
+		// See sqliteDatetime.
 		sql = "SELECT SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
@@ -442,9 +432,7 @@ func (r *ReadRepo) CountSpendingByLabel(ctx context.Context, accountIDs []vo.Id,
 		accIn := r.ph(1, len(accArgs))
 		sql = fmt.Sprintf(sel, accIn, "?", "?")
 		args = append(args, accArgs...)
-		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
-		// time.Time bound mis-compares against the stored datetime TEXT at month
-		// boundaries and drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
@@ -526,8 +514,7 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 		sql = "SELECT e.external_id, e.type, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = $1 AND l.period >= $2 AND l.period < $3 GROUP BY e.external_id, e.type"
 	} else {
 		sql = "SELECT e.external_id, e.type, SUM(l.amount) as amount FROM budgets_elements_limits l JOIN budgets_elements e ON e.id = l.element_id WHERE e.budget_id = ? AND l.period >= ? AND l.period < ? GROUP BY e.external_id, e.type"
-		// Bind period bounds as 'Y-m-d H:i:s' strings so the range includes the
-		// boundary month (a time.Time bound mis-compares against the period TEXT).
+		// See sqliteDatetime.
 		pStart, pEnd = sqliteDatetime(start), sqliteDatetime(end)
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, budgetID.String(), pStart, pEnd)
@@ -572,13 +559,11 @@ func (r *ReadRepo) SummarizedLimits(ctx context.Context, budgetID vo.Id, start, 
 // "YYYY-MM-01" — the same bytes on both engines, so grouped months compare
 // and serialize identically.
 //
-// SQLite: NOT strftime() — a time.Time bound raw (no explicit format, e.g.
-// transactions.spent_at written via the sqlc passthrough) is stored by
-// modernc.org/sqlite as Go's default t.String() ("2024-04-10 10:00:00 +0000
-// UTC"), which strftime() cannot parse and silently returns NULL, crashing
-// the scan. Every TEXT datetime form this column can hold (that default, the
-// 'Y-m-d H:i:s' fixture/limitPeriodArg form, and legacy RFC3339) agrees on
-// the first 7 bytes "YYYY-MM", so slicing sidesteps parsing entirely.
+// SQLite: NOT strftime() — it returns NULL for any TEXT form it cannot parse,
+// crashing the scan. Every datetime form these columns have held ('Y-m-d
+// H:i:s', legacy RFC3339, and the time.Time.String() text the driver wrote
+// before 20260915000001) agrees on the first 7 bytes "YYYY-MM", so slicing
+// sidesteps parsing entirely.
 func (r *ReadRepo) planMonthExpr(col string) string {
 	if r.driver == "postgresql" {
 		return "to_char(" + col + ", 'YYYY-MM') || '-01'"
@@ -620,7 +605,7 @@ func (r *ReadRepo) SpendingByMonth(ctx context.Context, categoryIDs, accountIDs 
 		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, t.tag_id, a.currency_id FROM transactions t LEFT JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 0 AND " + catWhere + " AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, t.tag_id, a.currency_id"
 		args = append(args, accArgs...)
 		args = append(args, catArgs...)
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
@@ -687,7 +672,7 @@ func (r *ReadRepo) IncomeByMonth(ctx context.Context, accountIDs []vo.Id, from, 
 		accIn := r.ph(1, len(accArgs))
 		sql = "SELECT " + month + " as month, SUM(t.amount) as amount, t.category_id, a.currency_id FROM transactions t JOIN accounts a ON t.account_id = a.id AND a.id IN (" + accIn + ") WHERE t.type = 1 AND t.spent_at >= ? AND t.spent_at < ? GROUP BY month, t.category_id, a.currency_id"
 		args = append(args, accArgs...)
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
@@ -826,7 +811,7 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 		args = append(args, from, to)
 	} else {
 		dStart, dEnd = "?", "?"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
 	}
 	sql := "SELECT " + month + " as month, SUM(" + amountCol + ") as amount, a.currency_id FROM transactions t JOIN accounts a ON " + joinCol + " = a.id WHERE t.type = 2 AND " + insideCol + " IN (" + r.ph(1, n) + ") AND " + outsideCol + " NOT IN (" + r.ph(1+n, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd + " GROUP BY month, a.currency_id"
@@ -931,9 +916,7 @@ func (r *ReadRepo) BudgetTransactionsByCategories(ctx context.Context, categoryI
 		accIn := r.ph(1, len(accArgs))
 		catIn := r.ph(1, len(catArgs))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.type = 0 AND t.tag_id IS NULL AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
-		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
-		// time.Time bound does not compare correctly against the stored
-		// datetime TEXT and drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
@@ -985,7 +968,7 @@ func (r *ReadRepo) BudgetTransactionsByTag(ctx context.Context, tagID vo.Id, cat
 			where += " AND t.category_id IS NULL"
 		}
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE " + where + " ORDER BY t.spent_at DESC"
 	}
@@ -1032,7 +1015,7 @@ func (r *ReadRepo) BudgetTransactionsByLabel(ctx context.Context, labelID vo.Id,
 		args = append(args, accArgs...)
 		where := "t.account_id IN (" + accIn + ") AND t.type = 0"
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols +
 			" FROM transactions t" +
@@ -1086,7 +1069,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelAndCategory(ctx context.Context, lab
 		args = append(args, categoryID.String())
 		where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND t.category_id = ?"
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols +
 			" FROM transactions t" +
@@ -1134,7 +1117,7 @@ func (r *ReadRepo) BudgetTransactionsByLabelUncategorized(ctx context.Context, l
 		args = append(args, accArgs...)
 		where := "t.account_id IN (" + accIn + ") AND t.type = 0 AND t.category_id IS NULL"
 		where += " AND t.spent_at >= ? AND t.spent_at < ?"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 		sql = "SELECT " + budgetTxCols +
 			" FROM transactions t" +
@@ -1168,9 +1151,7 @@ func (r *ReadRepo) BudgetTransactionsUncategorized(ctx context.Context, accountI
 	} else {
 		accIn := r.ph(1, len(accArgs))
 		sql = "SELECT " + budgetTxCols + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id IN (" + accIn + ") AND t.category_id IS NULL AND t.tag_id IS NULL AND t.type = 0 AND t.spent_at >= ? AND t.spent_at < ? ORDER BY t.spent_at DESC"
-		// Bind the bounds as 'Y-m-d H:i:s' strings (see sqliteDatetime): a
-		// time.Time bound does not compare correctly against the stored
-		// datetime TEXT and drops the first-of-month row.
+		// See sqliteDatetime.
 		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
 	}
 	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
@@ -1265,7 +1246,7 @@ func (r *ReadRepo) AccountsWithTransactions(ctx context.Context, accountIDs []vo
 		in := r.ph(1, len(ids))
 		sql = "SELECT account_id FROM transactions WHERE spent_at >= ? AND spent_at < ? AND account_id IN (" + in + ")" +
 			" UNION SELECT account_recipient_id FROM transactions WHERE spent_at >= ? AND spent_at < ? AND account_recipient_id IN (" + in + ")"
-		// See sqliteDatetime: a time.Time bound drops the first-of-month row.
+		// See sqliteDatetime.
 		ds, de := sqliteDatetime(start), sqliteDatetime(end)
 		args = append(append(append([]any{ds, de}, ids...), ds, de), ids...)
 	}

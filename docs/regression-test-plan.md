@@ -156,7 +156,8 @@ navigation (single-pane vs sidebar).
       write access (see sharing suite); "make recurring" pre-fills the
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
-      count toward "balance as of end of today".
+      count toward "balance as of end of today" — including one dated exactly
+      00:00 tomorrow (SQLite AND PostgreSQL).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -266,6 +267,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       account in a budget-currency category counts in the category's spent at
       the converted amount (not 1:1), in both the table and the plan sheet, and
       `get-budget` `currencyRates` lists the global rates, not only custom ones.
+- [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
+      date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
+      that month's income/expenses, not also in its starting balance; every
+      month's starting balance equals the previous month's ending balance.
+- [ ] SQLite instance upgraded from a release before this fix: after the first
+      boot, account balances and transaction lists (dates included) match the
+      pre-upgrade figures. Include transactions imported from a CSV whose date
+      column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
+      they list and export at the UTC time after the upgrade instead of
+      failing the list.
 
 ## 10. Budget lifecycle & list
 

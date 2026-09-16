@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -22,9 +21,6 @@ import (
 	domcurrency "github.com/econumo/econumo/internal/currency"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
 	"github.com/econumo/econumo/internal/infra/clock"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/port"
@@ -73,26 +69,15 @@ func newHarness(t *testing.T) *harness {
 // (e.g. around a month boundary for timezone-sensitive behaviour).
 func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	t.Helper()
-	ctx := context.Background()
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-	// Same pragmas as production (sqlite.Backend.Open) and dbtest: the schema
-	// relies on FK cascade/SET NULL semantics.
-	if _, err := db.ExecContext(ctx, "PRAGMA foreign_keys = ON;"); err != nil {
-		t.Fatalf("pragma foreign_keys: %v", err)
-	}
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	// The shared opener: production DSN settings (frozen datetime layout,
+	// foreign keys, single connection) and every migration.
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
-	txm := backend.NewTxManager(db)
+	txm := tdb.TX
 
 	// Seed via the shared fixture builder over the same DB handle.
-	f := fixture.New(t, &dbtest.DB{Raw: db, Engine: "sqlite", TX: txm}).WithCrypto(testDataSalt)
+	f := fixture.New(t, tdb).WithCrypto(testDataSalt)
 	f.User(fixture.User{ID: seedUserID, Email: seedEmail, Name: seedName, Avatar: seedAvatar, Password: "pw", Salt: seedSalt})
 	// A 'budget' users_options row so SetActiveBudget persists (real registered
 	// users have it; seed-cmd users don't).
@@ -132,14 +117,6 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
 	return &harness{srv: srv, db: db, f: f}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
-	}
-	return out
 }
 
 func (h *harness) token(t *testing.T) string {
