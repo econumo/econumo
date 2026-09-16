@@ -47,7 +47,7 @@ func NormalizeDatetimes(ctx context.Context, db *sql.DB) (NormalizeReport, error
 	}
 	report.Columns = len(columns)
 	for _, c := range columns {
-		rewritten, unparseable, err := normalizeColumn(ctx, db, c.table, c.column)
+		rewritten, unparseable, err := normalizeColumn(ctx, db, c)
 		if err != nil {
 			return report, fmt.Errorf("normalize %s.%s: %w", c.table, c.column, err)
 		}
@@ -61,10 +61,13 @@ func NormalizeDatetimes(ctx context.Context, db *sql.DB) (NormalizeReport, error
 	return report, nil
 }
 
-type tableColumn struct{ table, column string }
+type tableColumn struct {
+	table, column string
+	withoutRowid  bool
+}
 
 func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
-	rows, err := db.QueryContext(ctx, `SELECT m.name, p.name
+	rows, err := db.QueryContext(ctx, `SELECT m.name, p.name, upper(m.sql) LIKE '%WITHOUT%ROWID%'
 		FROM sqlite_master m, pragma_table_info(m.name) p
 		WHERE m.type = 'table' AND m.name NOT LIKE 'sqlite_%' AND m.name <> 'schema_migrations'
 		  AND upper(p.type) IN ('DATETIME', 'TIMESTAMP')
@@ -76,7 +79,7 @@ func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
 	var out []tableColumn
 	for rows.Next() {
 		var c tableColumn
-		if err := rows.Scan(&c.table, &c.column); err != nil {
+		if err := rows.Scan(&c.table, &c.column, &c.withoutRowid); err != nil {
 			return nil, err
 		}
 		out = append(out, c)
@@ -84,41 +87,61 @@ func datetimeColumns(ctx context.Context, db *sql.DB) ([]tableColumn, error) {
 	return out, rows.Err()
 }
 
+// storedValue is one candidate: key is the rowid, or the value itself for a
+// WITHOUT ROWID table (rewritten by value, rows at a time).
 type storedValue struct {
-	rowid int64
-	raw   string
+	key  any
+	raw  string
+	rows int
 }
 
-// utcDriverForm is the WHERE clause that matches exactly the values
-// parseDriverString accepts for a UTC value: "Y-m-d H:i:s[.f] +0000 UTC[ m=...]"
-// with a real calendar datetime (strftime round-trips it unchanged; Feb 30
-// does not) and a 1-9 digit fraction. For these the frozen value is the first
-// 19 characters, so one UPDATE per column rewrites them and only zoned values
-// go through the per-row parse. %[1]s is the value as TEXT.
-const utcDriverForm = `length(%[1]s) > 19
-	AND strftime('%%Y-%%m-%%d %%H:%%M:%%S', substr(%[1]s, 1, 19)) = substr(%[1]s, 1, 19)
-	AND (substr(%[1]s, 20) GLOB ' +0000 UTC*'
-		OR (substr(%[1]s, 20, 1) = '.'
-			AND instr(substr(%[1]s, 20), ' ') BETWEEN 3 AND 11
-			AND substr(%[1]s, 21, instr(substr(%[1]s, 20), ' ') - 2) NOT GLOB '*[^0-9]*'
-			AND substr(%[1]s, 19 + instr(substr(%[1]s, 20), ' ')) GLOB ' +0000 UTC*'))`
+// utcDriverWhere matches exactly the values parseDriverString accepts for a
+// UTC value: "Y-m-d H:i:s[.f] +0000 UTC[ m=...]" with a real calendar datetime
+// (strftime round-trips it unchanged; Feb 30 does not) and a 1-9 digit
+// fraction. For these the frozen value is the first 19 characters, so one
+// UPDATE per column rewrites them and only zoned values go through the
+// per-row parse. text is the value as TEXT.
+func utcDriverWhere(text string) string {
+	suffix := func(expr string) string {
+		return `(` + expr + ` = ' +0000 UTC' OR ` + expr + ` GLOB ' +0000 UTC m=*')`
+	}
+	fracLen := `instr(substr(` + text + `, 20), ' ')`
+	return `length(` + text + `) > 19
+	AND strftime('%Y-%m-%d %H:%M:%S', substr(` + text + `, 1, 19)) = substr(` + text + `, 1, 19)
+	AND (` + suffix(`substr(`+text+`, 20)`) + `
+		OR (substr(` + text + `, 20, 1) = '.'
+			AND ` + fracLen + ` BETWEEN 3 AND 11
+			AND substr(` + text + `, 21, ` + fracLen + ` - 2) NOT GLOB '*[^0-9]*'
+			AND ` + suffix(`substr(`+text+`, 19 + `+fracLen+`)`) + `))`
+}
 
-func normalizeColumn(ctx context.Context, db *sql.DB, table, column string) (rewritten, unparseable int, err error) {
-	t, c := quoteIdent(table), quoteIdent(column)
-	text := `CAST(` + c + ` AS TEXT)`
+func normalizeColumn(ctx context.Context, db *sql.DB, c tableColumn) (rewritten, unparseable int, err error) {
+	t, col := quoteIdent(c.table), quoteIdent(c.column)
+	text := `CAST(` + col + ` AS TEXT)`
 	// A 'Y-m-d H:i:s' value is exactly 19 characters; anything longer is a
 	// candidate.
-	res, err := db.ExecContext(ctx, `UPDATE `+t+` SET `+c+` = substr(`+text+`, 1, 19) WHERE `+fmt.Sprintf(utcDriverForm, text))
+	res, err := db.ExecContext(ctx, `UPDATE `+t+` SET `+col+` = substr(`+text+`, 1, 19) WHERE `+utcDriverWhere(text))
 	if err != nil {
 		return 0, 0, err
 	}
 	n, _ := res.RowsAffected()
 	rewritten = int(n)
 
+	if c.withoutRowid {
+		values, err := readValues(ctx, db, `SELECT `+text+`, COUNT(*) FROM `+t+` WHERE length(`+text+`) > 19 GROUP BY 1`)
+		if err != nil {
+			return rewritten, 0, err
+		}
+		n, u, err := rewriteBatch(ctx, db, `UPDATE `+t+` SET `+col+` = ? WHERE `+text+` = ?`, values,
+			func(frozen string, v storedValue) []any { return []any{frozen, v.raw} })
+		return rewritten + n, u, err
+	}
+
 	// rowid paging keeps each batch bounded and never revisits a row.
 	selectBatch := `SELECT rowid, ` + text + ` FROM ` + t +
 		` WHERE rowid > ? AND length(` + text + `) > 19 ORDER BY rowid LIMIT ?`
-	update := `UPDATE ` + t + ` SET ` + c + ` = ? WHERE rowid = ? AND ` + text + ` = ?`
+	update := `UPDATE ` + t + ` SET ` + col + ` = ? WHERE rowid = ? AND ` + text + ` = ?`
+	args := func(frozen string, v storedValue) []any { return []any{frozen, v.key, v.raw} }
 
 	after := int64(math.MinInt64)
 	for {
@@ -129,11 +152,11 @@ func normalizeColumn(ctx context.Context, db *sql.DB, table, column string) (rew
 		if len(batch) == 0 {
 			return rewritten, unparseable, nil
 		}
-		after = batch[len(batch)-1].rowid
+		after = batch[len(batch)-1].key.(int64)
 
-		n, err := rewriteBatch(ctx, db, update, batch)
+		n, u, err := rewriteBatch(ctx, db, update, batch, args)
 		rewritten += n
-		unparseable += len(batch) - n
+		unparseable += u
 		if err != nil {
 			return rewritten, unparseable, err
 		}
@@ -143,33 +166,51 @@ func normalizeColumn(ctx context.Context, db *sql.DB, table, column string) (rew
 // rewriteBatch parses each value in Go and rewrites the ones in the driver's
 // form inside one transaction, through one prepared statement. Each update is
 // guarded by the value it replaces, so a re-run, or a row written concurrently,
-// is never clobbered. Returns how many rows changed.
-func rewriteBatch(ctx context.Context, db *sql.DB, update string, batch []storedValue) (int, error) {
+// is never clobbered. Returns how many rows changed and how many rows held a
+// value that is not in the driver's form.
+func rewriteBatch(ctx context.Context, db *sql.DB, update string, batch []storedValue, args func(frozen string, v storedValue) []any) (rewritten, unparseable int, err error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer func() { _ = tx.Rollback() }()
 	stmt, err := tx.PrepareContext(ctx, update)
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	defer stmt.Close()
-	rewritten := 0
 	for _, v := range batch {
 		frozen, ok := parseDriverString(v.raw)
 		if !ok {
+			unparseable += v.rows
 			continue
 		}
-		res, err := stmt.ExecContext(ctx, frozen, v.rowid, v.raw)
+		res, err := stmt.ExecContext(ctx, args(frozen, v)...)
 		if err != nil {
-			return rewritten, err
+			return rewritten, unparseable, err
 		}
-		if n, _ := res.RowsAffected(); n > 0 {
-			rewritten++
-		}
+		n, _ := res.RowsAffected()
+		rewritten += int(n)
 	}
-	return rewritten, tx.Commit()
+	return rewritten, unparseable, tx.Commit()
+}
+
+func readValues(ctx context.Context, db *sql.DB, query string) ([]storedValue, error) {
+	rows, err := db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []storedValue
+	for rows.Next() {
+		var v storedValue
+		if err := rows.Scan(&v.raw, &v.rows); err != nil {
+			return nil, err
+		}
+		v.key = v.raw
+		out = append(out, v)
+	}
+	return out, rows.Err()
 }
 
 func readBatch(ctx context.Context, db *sql.DB, query string, after int64) ([]storedValue, error) {
@@ -180,11 +221,12 @@ func readBatch(ctx context.Context, db *sql.DB, query string, after int64) ([]st
 	defer rows.Close()
 	var out []storedValue
 	for rows.Next() {
-		var v storedValue
-		if err := rows.Scan(&v.rowid, &v.raw); err != nil {
+		var rowid int64
+		var raw string
+		if err := rows.Scan(&rowid, &raw); err != nil {
 			return nil, err
 		}
-		out = append(out, v)
+		out = append(out, storedValue{key: rowid, raw: raw, rows: 1})
 	}
 	return out, rows.Err()
 }

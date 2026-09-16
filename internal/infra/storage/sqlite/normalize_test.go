@@ -42,6 +42,7 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 	seedUser(t, db, "legacy", "2021-08-12 21:05:48", "2021-08-12 21:05:48", "2026-10-01 00:00:00")
 	seedUser(t, db, "odd", "2026-08-01T00:00:00Z", "2026-02-30 10:00:00 +0000 UTC", nil)
 	seedUser(t, db, "odd-fraction", "2026-01-01 10:00:00.5x +0000 UTC", "2026-01-01 10:00:00", nil)
+	seedUser(t, db, "odd-suffix", "2026-09-14 10:00:00 +0000 UTC-not-a-driver-value", "2026-09-14 10:00:00", nil)
 	firstMigration := text(t, db, `SELECT CAST(applied_at AS TEXT) FROM schema_migrations ORDER BY version LIMIT 1`)
 
 	report, err := sqlite.NormalizeDatetimes(ctx, db)
@@ -63,6 +64,7 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 		{"odd", "created_at", "2026-08-01T00:00:00Z"},
 		{"odd", "updated_at", "2026-02-30 10:00:00 +0000 UTC"},
 		{"odd-fraction", "created_at", "2026-01-01 10:00:00.5x +0000 UTC"},
+		{"odd-suffix", "created_at", "2026-09-14 10:00:00 +0000 UTC-not-a-driver-value"},
 	} {
 		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM users WHERE id = ?`, c.id); got.String != c.want {
 			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
@@ -79,8 +81,8 @@ func TestNormalizeDatetimes_RewritesDriverStringForm(t *testing.T) {
 	if report.Rewritten != 7 {
 		t.Errorf("Rewritten = %d, want 7", report.Rewritten)
 	}
-	if report.Unparseable != 3 {
-		t.Errorf("Unparseable = %d, want 3 (odd.created_at, odd.updated_at, odd-fraction.created_at)", report.Unparseable)
+	if report.Unparseable != 4 {
+		t.Errorf("Unparseable = %d, want 4 (odd.created_at, odd.updated_at, odd-fraction.created_at, odd-suffix.created_at)", report.Unparseable)
 	}
 
 	again, err := sqlite.NormalizeDatetimes(ctx, db)
@@ -134,5 +136,44 @@ func TestNormalizeDatetimes_DiscoversTablesAndBatches(t *testing.T) {
 	}
 	if notes != rows {
 		t.Errorf("TEXT column touched: %d of %d notes keep their original form", notes, rows)
+	}
+}
+
+// A WITHOUT ROWID table has no rowid to page by; its values are rewritten by
+// value instead, both the UTC fast path and the zoned per-value path.
+func TestNormalizeDatetimes_WithoutRowidTable(t *testing.T) {
+	db := dbtest.NewSQLite(t).Raw
+	ctx := context.Background()
+	if _, err := db.ExecContext(ctx, `CREATE TABLE zz_norowid (id TEXT PRIMARY KEY, at DATETIME, seen_at TIMESTAMP) WITHOUT ROWID`); err != nil {
+		t.Fatal(err)
+	}
+	for _, r := range []struct{ id, at, seen string }{
+		{"a", "2026-09-14 10:00:00.123456789 +0000 UTC", "2026-09-14 13:00:00 +0300 MSK"},
+		{"b", "2026-09-14 10:00:00.123456789 +0000 UTC", "2026-09-14 13:00:00 +0300 MSK"},
+		{"c", "2026-09-15 08:00:00", "2026-08-01T00:00:00Z"},
+	} {
+		if _, err := db.ExecContext(ctx, `INSERT INTO zz_norowid VALUES (?, CAST(? AS TEXT), CAST(? AS TEXT))`, r.id, r.at, r.seen); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	report, err := sqlite.NormalizeDatetimes(ctx, db)
+	if err != nil {
+		t.Fatalf("NormalizeDatetimes: %v", err)
+	}
+	if report.Rewritten != 4 || report.Unparseable != 1 {
+		t.Errorf("report = %+v, want Rewritten 4, Unparseable 1", report)
+	}
+	for _, c := range []struct{ id, col, want string }{
+		{"a", "at", "2026-09-14 10:00:00"},
+		{"b", "at", "2026-09-14 10:00:00"},
+		{"a", "seen_at", "2026-09-14 10:00:00"},
+		{"b", "seen_at", "2026-09-14 10:00:00"},
+		{"c", "at", "2026-09-15 08:00:00"},
+		{"c", "seen_at", "2026-08-01T00:00:00Z"},
+	} {
+		if got := text(t, db, `SELECT CAST(`+c.col+` AS TEXT) FROM zz_norowid WHERE id = ?`, c.id); got.String != c.want {
+			t.Errorf("%s.%s = %q, want %q", c.id, c.col, got.String, c.want)
+		}
 	}
 }

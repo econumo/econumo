@@ -83,8 +83,9 @@ func (b *Backend) Migrations() []backend.Migration {
 // by accident rather than by time. _timezone=UTC makes the driver convert a
 // zoned value before formatting (it otherwise writes the value's own wall
 // clock and drops the offset), and parse stored text back as UTC. Both keys
-// override any caller-supplied value. The dropped sub-seconds match
-// PostgreSQL's TIMESTAMP(0).
+// override any caller-supplied value, and _time_integer_format is removed: the
+// driver gives it precedence over _time_format and would store an integer.
+// The dropped sub-seconds match PostgreSQL's TIMESTAMP(0).
 func WithFrozenTimeFormat(dsn string) string {
 	path, query, _ := strings.Cut(dsn, "?")
 	q, err := url.ParseQuery(query)
@@ -92,6 +93,7 @@ func WithFrozenTimeFormat(dsn string) string {
 		// The driver parses the same query at Open and rejects it there.
 		return dsn
 	}
+	q.Del("_time_integer_format")
 	q.Set("_time_format", "datetime")
 	q.Set("_timezone", "UTC")
 	return path + "?" + q.Encode()

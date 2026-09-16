@@ -28,7 +28,9 @@ func TestNormalizeDSN(t *testing.T) {
 // SQLite's date functions and text comparisons agree on. The driver default is
 // time.Time.String(), and a user-supplied _time_format must not change it.
 func TestOpen_StoresTimesInFrozenLayout(t *testing.T) {
-	for _, suffix := range []string{"", "?_time_format=sqlite", "?_txlock=immediate"} {
+	// _time_integer_format takes precedence over _time_format in the driver, so
+	// it must be cleared, not just overridden.
+	for _, suffix := range []string{"", "?_time_format=sqlite", "?_txlock=immediate", "?_time_integer_format=unix"} {
 		t.Run(suffix, func(t *testing.T) {
 			ctx := context.Background()
 			dsn := "sqlite://" + filepath.Join(t.TempDir(), "t.sqlite") + suffix
