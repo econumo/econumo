@@ -90,6 +90,11 @@ navigation (single-pane vs sidebar).
 - [ ] With `ECONUMO_EMAIL_VERIFICATION=true` (separate boot): fresh
       registration → first login is blocked, code email is sent, verification
       dialog accepts the code, resend has a cooldown, then login proceeds.
+- [ ] A verification code is single-use and only the newest one works: wait out
+      the cooldown and resend, then the FIRST emailed code is refused with "The
+      confirmation code is not valid." while the second one confirms; after the
+      confirmation, submitting that same code again is refused the same way and
+      login still proceeds.
 - [ ] Language badge/selector on the login page switches the auth UI language
       and persists.
 - [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on

@@ -38,13 +38,13 @@ func newUserSvc(t *testing.T, db *dbtest.DB) (*appuser.Service, *auth.EncodeServ
 // can wrap it to land a concurrent write between two of a use case's reads.
 func newUserSvcWithRepo(t *testing.T, db *dbtest.DB, repo appuser.Repository) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
 	t.Helper()
-	return newUserSvcWithPorts(t, db, repo, nil, nil)
+	return newUserSvcWithPorts(t, db, repo, nil, nil, nil)
 }
 
-// newUserSvcWithPorts is newUserSvcWithRepo with the token store and the
-// reset-code store decorated too, so a test can observe both sides of a
-// credential mint and of a code's issue/consume pair.
-func newUserSvcWithPorts(t *testing.T, db *dbtest.DB, repo appuser.Repository, wrapTokens func(appuser.AccessTokens) appuser.AccessTokens, wrapRequests func(appuser.PasswordRequests) appuser.PasswordRequests) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
+// newUserSvcWithPorts is newUserSvcWithRepo with the token store and the two
+// code stores decorated too, so a test can observe both sides of a credential
+// mint and of a code's issue/consume pair.
+func newUserSvcWithPorts(t *testing.T, db *dbtest.DB, repo appuser.Repository, wrapTokens func(appuser.AccessTokens) appuser.AccessTokens, wrapRequests func(appuser.PasswordRequests) appuser.PasswordRequests, wrapVerifications func(appuser.EmailVerifications) appuser.EmailVerifications) (*appuser.Service, *auth.EncodeService, *auth.PasswordHasher) {
 	t.Helper()
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
@@ -56,11 +56,15 @@ func newUserSvcWithPorts(t *testing.T, db *dbtest.DB, repo appuser.Repository, w
 	if wrapRequests != nil {
 		requests = wrapRequests(requests)
 	}
+	var verifications appuser.EmailVerifications = userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
+	if wrapVerifications != nil {
+		verifications = wrapVerifications(verifications)
+	}
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		requests, nil,
-		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
+		verifications, nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clock.New(), nil, false, 0, false)
 	return svc, enc, hasher

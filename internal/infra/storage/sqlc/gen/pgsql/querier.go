@@ -17,6 +17,9 @@ type Querier interface {
 	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
 	// See the sqlite sibling: the confirm path consumes its own evidence row.
 	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
+	// See the sqlite sibling: the confirmation's evidence and its consumption are
+	// the same row.
+	ConsumeUserEmailVerification(ctx context.Context, arg ConsumeUserEmailVerificationParams) (int64, error)
 	// See the sqlite sibling: the reset consumes its evidence row-counted.
 	ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)

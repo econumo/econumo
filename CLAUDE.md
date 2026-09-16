@@ -796,7 +796,10 @@ In the distroless image these run via the binary directly, e.g.
   fenced the same way: the reset re-reads the presented code under that lock and
   consumes it row-counted, and `remind-password` replaces a user's codes under the
   same lock, so one code is one reset — a code a fresh remind replaced, or one a
-  concurrent reset already took, resets nothing.
+  concurrent reset already took, resets nothing. Verification codes, like reset
+  and email-change codes, are issued and consumed under the user row lock, so a
+  confirmation can only ever take the row it checked and never sweeps a code a
+  concurrent resend has just emailed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).

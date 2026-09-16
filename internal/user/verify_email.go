@@ -87,11 +87,20 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 			s.failAttempt(RateScopeConfirmEmail, lowered)
 			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 		}
-		u.MarkEmailVerified(s.clock.Now())
-		if serr := s.repo.Save(ctx, u); serr != nil {
-			return serr
+		// The code is this confirmation's authority, so consuming it is what
+		// proves the authority was still there: a resend that replaced it (or a
+		// concurrent confirmation) leaves nothing to take. Row-counted, so the
+		// sweep can only ever remove the row that was actually checked, never a
+		// code the user has just been emailed.
+		taken, cerr := s.emailVerifications.Consume(ctx, ev.ID, userID)
+		if cerr != nil {
+			return cerr
 		}
-		return s.emailVerifications.DeleteByUser(ctx, userID)
+		if taken != 1 {
+			return invalid
+		}
+		u.MarkEmailVerified(s.clock.Now())
+		return s.repo.Save(ctx, u)
 	}); err != nil {
 		return nil, err
 	}
@@ -271,6 +280,12 @@ func (s *Service) issueVerificationCode(ctx context.Context, u *model.User, emai
 	}
 	ev := model.NewEmailVerification(vo.NewId(), u.ID, HashResetCode(code), now)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The user row first, then its code row: the same order a confirmation
+		// takes, so the two serialize instead of a confirmation's sweep landing
+		// on the code this call is about to email.
+		if lerr := s.repo.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
 		if derr := s.emailVerifications.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}

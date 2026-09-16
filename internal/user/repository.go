@@ -191,6 +191,12 @@ type EmailVerifications interface {
 	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailVerification, error)
 	Save(ctx context.Context, v *model.EmailVerification) error
 	DeleteByUser(ctx context.Context, userID vo.Id) error
+
+	// Consume deletes one code by (id, user), reporting the rows deleted. The
+	// confirmation reads that row as its evidence and consumes it under the
+	// user's row lock, so zero rows means a resend replaced it (or a concurrent
+	// confirmation already took it) and this confirmation must fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
 }
 
 // EmailChangeRequests persists pending self-service email changes

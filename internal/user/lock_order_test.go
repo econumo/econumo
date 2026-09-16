@@ -64,6 +64,29 @@ func (r *orderRequests) Consume(ctx context.Context, id, userID vo.Id) (int64, e
 	return r.PasswordRequests.Consume(ctx, id, userID)
 }
 
+// orderVerifications records the verification-code store's writes, so the
+// issue/confirm pair can be asserted to replace and consume a code under the
+// same row lock.
+type orderVerifications struct {
+	appuser.EmailVerifications
+	log *callLog
+}
+
+func (v *orderVerifications) DeleteByUser(ctx context.Context, userID vo.Id) error {
+	v.log.add("DeleteByUser")
+	return v.EmailVerifications.DeleteByUser(ctx, userID)
+}
+
+func (v *orderVerifications) Save(ctx context.Context, ev *model.EmailVerification) error {
+	v.log.add("SaveVerification")
+	return v.EmailVerifications.Save(ctx, ev)
+}
+
+func (v *orderVerifications) Consume(ctx context.Context, id, userID vo.Id) (int64, error) {
+	v.log.add("Consume")
+	return v.EmailVerifications.Consume(ctx, id, userID)
+}
+
 type orderTokens struct {
 	appuser.AccessTokens
 	log *callLog
@@ -136,7 +159,24 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 			if _, err := svc.ConfirmEmail(ctx, model.ConfirmEmailRequest{Username: email, Code: "123456"}); err != nil {
 				t.Fatalf("ConfirmEmail: %v", err)
 			}
-		}},
+		}, want: []string{"GetByID", "Consume", "Save"}},
+		{name: "resend-verification-code", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
+			ctx := context.Background()
+			// Admin-created users are verified, and a verified user is a silent
+			// no-op on this route, so the seed has to un-verify the row first.
+			plain := userrepo.NewRepo(db.Engine, db.TX)
+			u, err := plain.GetByID(ctx, uid)
+			if err != nil {
+				t.Fatalf("GetByID: %v", err)
+			}
+			u.RequireEmailVerification()
+			if err := plain.Save(ctx, u); err != nil {
+				t.Fatalf("seed unverified: %v", err)
+			}
+			if _, _, err := svc.ResendVerificationCode(ctx, model.ResendVerificationCodeRequest{Username: email}); err != nil {
+				t.Fatalf("ResendVerificationCode: %v", err)
+			}
+		}, want: []string{"DeleteByUser", "SaveVerification"}},
 		{name: "reset-password", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
 			ctx := context.Background()
 			pr := model.NewPasswordRequest(vo.NewId(), uid, appuser.HashResetCode("482913"), time.Now().UTC())
@@ -239,6 +279,8 @@ func newOrderEnv(t *testing.T, db *dbtest.DB, log *callLog, email, password stri
 		return &orderTokens{AccessTokens: tok, log: log}
 	}, func(reqs appuser.PasswordRequests) appuser.PasswordRequests {
 		return &orderRequests{PasswordRequests: reqs, log: log}
+	}, func(evs appuser.EmailVerifications) appuser.EmailVerifications {
+		return &orderVerifications{EmailVerifications: evs, log: log}
 	})
 	uid, err := svc.AdminCreateUser(context.Background(), "Lock Order", email, password)
 	if err != nil {

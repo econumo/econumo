@@ -11,3 +11,8 @@ VALUES ($1, $2, $3, $4, $5, $6);
 SELECT id, user_id, code, created_at, updated_at, expired_at
 FROM users_email_verifications
 WHERE user_id = $1;
+
+-- name: ConsumeUserEmailVerification :execrows
+-- See the sqlite sibling: the confirmation's evidence and its consumption are
+-- the same row.
+DELETE FROM users_email_verifications WHERE id = $1 AND user_id = $2;
