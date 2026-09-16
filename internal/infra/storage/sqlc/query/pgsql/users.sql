@@ -29,10 +29,15 @@ ON CONFLICT (id) DO UPDATE SET
 
 -- name: LockUserRow :one
 -- The row lock behind every existing-row write and credential mint (see
--- user.Repository.LockRow). SELECT ... FOR UPDATE takes the same lock the
--- no-op UPDATE did without writing a tuple version per login. The adapter
--- maps no-rows to success: a missing user must keep succeeding silently.
-SELECT id FROM users WHERE id = $1 FOR UPDATE;
+-- user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
+-- no-op UPDATE took (it touched no key column), without writing a tuple
+-- version per login: self-conflicting, so the two-pool test and the reclaim
+-- ordering are unchanged. Plain FOR UPDATE would be strictly stronger and
+-- also conflict with FOR KEY SHARE, the lock every FK check against this row
+-- takes from ~24 child tables, so it would block concurrent inserts of any
+-- row belonging to this user. The adapter maps no-rows to success: a missing
+-- user must keep succeeding silently.
+SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE;
 
 -- name: BumpUserCredentialsGeneration :execrows
 UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1;

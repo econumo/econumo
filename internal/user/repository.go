@@ -40,11 +40,14 @@ type Repository interface {
 	// count two identities and both delete, stranding a passwordless account
 	// with none.
 	//
-	// A MISSING user succeeds silently (the no-op UPDATE matches zero rows and
-	// returns no error), and two error shapes depend on that: ConfirmEmail's
-	// anti-enumeration generic invalid-code, raised by the GetByID that follows,
-	// and the mints' fence, which then writes zero rows and yields a 401 rather
-	// than a 500. Never "fix" it to error on a missing row.
+	// A MISSING user succeeds silently: no row matches, and both engines'
+	// adapters return no error (sqlite's no-op UPDATE matches zero rows;
+	// pgsql's SELECT ... FOR NO KEY UPDATE maps sql.ErrNoRows to nil, see
+	// internal/user/repo/pgsql.go). Two error shapes depend on that:
+	// ConfirmEmail's anti-enumeration generic invalid-code, raised by the
+	// GetByID that follows, and the mints' fence, which then writes zero rows
+	// and yields a 401 rather than a 500. Never "fix" it to error on a missing
+	// row.
 	LockRow(ctx context.Context, userID vo.Id) error
 
 	// BumpCredentialsGeneration invalidates every flow that read its evidence
