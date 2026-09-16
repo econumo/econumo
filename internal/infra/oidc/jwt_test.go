@@ -45,11 +45,21 @@ func TestVerifyIDToken_HappyAndRejections(t *testing.T) {
 	if _, err := c.VerifyIDToken(context.Background(), f.SignIDToken(m), "n1", now); err != nil {
 		t.Fatalf("30s skew must pass: %v", err)
 	}
-	// aud as an array containing the client id is accepted.
+	// aud as an array containing the client id is accepted only when azp
+	// names this client (OIDC Core 3.1.3.7 rule 4).
 	m = base()
 	m["aud"] = []string{"x", f.ClientID}
+	m["azp"] = f.ClientID
 	if _, err := c.VerifyIDToken(context.Background(), f.SignIDToken(m), "n1", now); err != nil {
-		t.Fatalf("aud array must pass: %v", err)
+		t.Fatalf("aud array with matching azp must pass: %v", err)
+	}
+	// The same multi-audience aud without azp must be rejected: a token
+	// minted for several clients that does not say which one is authorized
+	// could be replayed here.
+	m = base()
+	m["aud"] = []string{"x", f.ClientID}
+	if _, err := c.VerifyIDToken(context.Background(), f.SignIDToken(m), "n1", now); err == nil {
+		t.Fatal("aud array without azp must be rejected")
 	}
 	// email_verified as the string "true" (Apple) is accepted.
 	m = base()
@@ -82,5 +92,52 @@ func TestVerifyIDToken_SignatureAndKeyRotation(t *testing.T) {
 	// An unsupported alg is rejected even if a key matches.
 	if _, err := c.VerifyIDToken(context.Background(), f.SignWithAlg("none", claims), "n", now); err == nil {
 		t.Fatal("alg none must fail")
+	}
+}
+
+// TestVerifyIDToken_AudienceAzpRules covers OIDC Core 3.1.3.7 rules 3-5: the
+// client id must be an audience, a multi-audience token must carry azp, and
+// any azp present must equal the client id.
+func TestVerifyIDToken_AudienceAzpRules(t *testing.T) {
+	f := oidctest.New(t)
+	now := time.Now()
+	c := oidc.NewClient(f.Issuer("oidc", false), nil)
+	base := func() map[string]any {
+		return map[string]any{
+			"iss": f.IssuerURL(), "sub": "user-1", "nonce": "n1",
+			"iat": now.Unix(), "exp": now.Add(5 * time.Minute).Unix(),
+		}
+	}
+
+	cases := []struct {
+		name    string
+		aud     any
+		azp     string
+		wantErr bool
+	}{
+		{"single aud == client", f.ClientID, "", false},
+		{"single aud, no azp", f.ClientID, "", false},
+		{"single aud, azp == client", f.ClientID, f.ClientID, false},
+		{"single aud, azp == other", f.ClientID, "other-client", true},
+		{"multi aud containing client, no azp", []string{"x", f.ClientID}, "", true},
+		{"multi aud containing client, azp == client", []string{"x", f.ClientID}, f.ClientID, false},
+		{"multi aud containing client, azp == other", []string{"x", f.ClientID}, "other-client", true},
+		{"aud not containing client", []string{"x", "y"}, "", true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			m := base()
+			m["aud"] = tc.aud
+			if tc.azp != "" {
+				m["azp"] = tc.azp
+			}
+			_, err := c.VerifyIDToken(context.Background(), f.SignIDToken(m), "n1", now)
+			if tc.wantErr && err == nil {
+				t.Fatal("expected rejection, got nil error")
+			}
+			if !tc.wantErr && err != nil {
+				t.Fatalf("expected acceptance, got %v", err)
+			}
+		})
 	}
 }

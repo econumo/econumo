@@ -52,8 +52,8 @@ func TestVerifySignatureBranches(t *testing.T) {
 	}
 }
 
-func TestAudienceContainsInvalidJSON(t *testing.T) {
-	if audienceContains(json.RawMessage(`123`), "client") {
+func TestAudienceMatchesInvalidJSON(t *testing.T) {
+	if audienceMatches(json.RawMessage(`123`), "", "client") == nil {
 		t.Fatal("a bare number must not match")
 	}
 }

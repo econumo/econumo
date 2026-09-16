@@ -265,8 +265,8 @@ func (c *Client) VerifyIDToken(ctx context.Context, raw, nonce string, now time.
 	if iss != strings.TrimSuffix(d.Issuer, "/") && iss != c.issuer.IssuerURL && !slices.Contains(c.issuer.IssuerAliases, iss) {
 		return Claims{}, fmt.Errorf("%w: issuer %q", ErrInvalidToken, cl.Iss)
 	}
-	if !audienceContains(cl.Aud, c.issuer.ClientID) {
-		return Claims{}, fmt.Errorf("%w: audience", ErrInvalidToken)
+	if err := audienceMatches(cl.Aud, cl.Azp, c.issuer.ClientID); err != nil {
+		return Claims{}, err
 	}
 	if cl.Exp == 0 || now.After(time.Unix(cl.Exp, 0).Add(clockSkew)) {
 		return Claims{}, fmt.Errorf("%w: expired", ErrInvalidToken)

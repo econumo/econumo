@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"strings"
 	"time"
 )
@@ -27,6 +28,7 @@ type idTokenClaims struct {
 	Iss           string          `json:"iss"`
 	Sub           string          `json:"sub"`
 	Aud           json.RawMessage `json:"aud"`
+	Azp           string          `json:"azp"`
 	Exp           int64           `json:"exp"`
 	Iat           int64           `json:"iat"`
 	Nonce         string          `json:"nonce"`
@@ -93,21 +95,36 @@ func verifySignature(alg string, key crypto.PublicKey, signingInput, sig []byte)
 	}
 }
 
-// audienceContains accepts both the string and the array form of aud.
-func audienceContains(raw json.RawMessage, clientID string) bool {
+// audiences accepts both the string and the array form of aud.
+func audiences(raw json.RawMessage) []string {
 	var single string
 	if json.Unmarshal(raw, &single) == nil {
-		return single == clientID
+		return []string{single}
 	}
 	var many []string
 	if json.Unmarshal(raw, &many) == nil {
-		for _, a := range many {
-			if a == clientID {
-				return true
-			}
-		}
+		return many
 	}
-	return false
+	return nil
+}
+
+// audienceMatches applies OpenID Connect Core 3.1.3.7 rules 3-5: the client id
+// must be an audience; a token minted for several audiences must name this
+// client as the authorized party, and any azp present must be this client.
+// Otherwise a token issued for another client of the same issuer could be
+// replayed here.
+func audienceMatches(raw json.RawMessage, azp, clientID string) error {
+	auds := audiences(raw)
+	if !slices.Contains(auds, clientID) {
+		return fmt.Errorf("%w: audience", ErrInvalidToken)
+	}
+	if len(auds) > 1 && azp == "" {
+		return fmt.Errorf("%w: multi-audience token without azp", ErrInvalidToken)
+	}
+	if azp != "" && azp != clientID {
+		return fmt.Errorf("%w: azp", ErrInvalidToken)
+	}
+	return nil
 }
 
 // parseEmailVerified accepts a JSON bool or the strings "true"/"false" (Apple).

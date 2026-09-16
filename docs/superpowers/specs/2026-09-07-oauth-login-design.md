@@ -212,10 +212,14 @@ userinfo fallback below, and is never stored.
 `VerifyIDToken(ctx, disc, raw, nonce, now) (Claims, error)` checks, in order:
 compact JWS structure; `alg` ∈ {RS256, ES256}; signature against the cached
 JWKS key with the matching `kid` (one refresh on miss); `iss` equals the
-issuer; `aud` contains the client id; `exp` and `iat` within a 60 s skew;
-`nonce` equals the expected value. Returns `Subject`, `Email`,
-`EmailVerified`, `Name`. `email_verified` is accepted as a JSON bool or the
-strings `"true"/"false"` (Apple sends a string).
+issuer; `aud`/`azp` (below); `exp` and `iat` within a 60 s skew; `nonce`
+equals the expected value. Returns `Subject`, `Email`, `EmailVerified`,
+`Name`. `email_verified` is accepted as a JSON bool or the strings
+`"true"/"false"` (Apple sends a string).
+
+Audience: the client id must be in `aud`; a multi-audience token must carry
+`azp` equal to the client id, and any `azp` present must equal it (Core
+§3.1.3.7).
 
 **Userinfo fallback.** When the verified ID token carries no `email` claim and
 the discovery document publishes `userinfo_endpoint`, `UserInfo(ctx, disc,
