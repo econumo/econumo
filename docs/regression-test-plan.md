@@ -420,9 +420,11 @@ User C sees none of it.
 - [ ] Name inline edit with validation (length limits).
 - [ ] Default currency picker and language dialog persist (language also
       server-side — a relogin/other device keeps it).
-- [ ] **Change password**: wrong old password rejected; success revokes all
-      *other* sessions (verify: second browser session is logged out, current
-      one stays).
+- [ ] **Change password**: wrong old password rejected. Changing the password
+      from Settings signs out the other sessions, keeps this one and personal
+      tokens, cancels a pending email change and any outstanding reset code,
+      and a login with the old password that was already in flight gets
+      "Invalid credentials."
 - [ ] **Change email**: request (new email + password) → code sent to the new
       address → confirm; resend with cooldown; wrong code rejected; login works
       with the new email only.

@@ -739,10 +739,12 @@ In the distroless image these run via the binary directly, e.g.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
-- Revocation cascades: `update-password` (the user changing their own password) revokes
-  only the OTHER sessions and keeps PATs and identities — integrations must outlive a
-  password change; `user:deactivate` revokes sessions AND
-  PATs and bumps the credentials generation, all in the deactivating transaction
+- Revocation cascades: `update-password` (the user changing their own password) rotates
+  the credential in one locked transaction: bumps the generation (an in-flight login with
+  the old password mints nothing), sweeps pending reset codes and email-change requests,
+  and revokes the OTHER sessions; it keeps the presenting session, PATs and linked
+  identities — integrations must outlive a password change. `user:deactivate` revokes
+  sessions AND PATs and bumps the credentials generation, all in the deactivating transaction
   (which is why per-request auth needs no `is_active` join, and why a login racing the
   deactivation cannot mint a session that outlives it). **`reset-password` and
   CLI `user:change-password` are the account RECLAIM** (one primitive,

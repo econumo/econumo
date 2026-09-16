@@ -508,6 +508,16 @@ one code is one reset, and a code a fresh remind replaced or a concurrent reset
 already took resets nothing. SQLite's single writer excludes the window on
 its own.
 
+`update-password` is not a reclaim — the owner is acting, not recovering — but it
+is a credential rotation, and it runs to the same rule: `update-password` (the user
+changing their own password) rotates the credential in one locked transaction: bumps
+the generation (an in-flight login with the old password mints nothing), sweeps
+pending reset codes and email-change requests, and revokes the OTHER sessions; it
+keeps the presenting session, PATs and linked identities. The old hash is verified
+and the new one computed BEFORE the lock (argon2 never runs under it), and the write
+itself is the narrow fenced `UPDATE` on the generation the old hash was read under,
+so a reclaim landing in between leaves the rotation writing nothing.
+
 Corollary: `users_identities.email` is no longer purely decorative. It is still
 never a lookup key, but it records which address a provider vouches for, and
 the reclaim reads it. A user who changes their primary email keeps identities

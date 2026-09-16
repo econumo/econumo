@@ -42,6 +42,16 @@ func (r *orderRepo) Save(ctx context.Context, u *model.User) error {
 	return r.Repository.Save(ctx, u)
 }
 
+func (r *orderRepo) UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error) {
+	r.log.add("UpdatePasswordIfGeneration")
+	return r.Repository.UpdatePasswordIfGeneration(ctx, userID, hash, salt, algorithm, now, generation)
+}
+
+func (r *orderRepo) BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error {
+	r.log.add("BumpCredentialsGeneration")
+	return r.Repository.BumpCredentialsGeneration(ctx, userID)
+}
+
 // orderRequests records the reset-code store's writes, so the remind/reset
 // pair can be asserted to issue and consume a code under the same row lock.
 type orderRequests struct {
@@ -102,6 +112,11 @@ func (t *orderTokens) InsertIfPresenterLive(ctx context.Context, tok *model.Acce
 	return t.AccessTokens.InsertIfPresenterLive(ctx, tok, presentingTokenID)
 }
 
+func (t *orderTokens) RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error {
+	t.log.add("RevokeAll")
+	return t.AccessTokens.RevokeAll(ctx, userID, kind, exceptID, now)
+}
+
 // assertLockedFirst checks that want occurs, in order, after the first LockRow.
 func assertLockedFirst(t *testing.T, got []string, want ...string) {
 	t.Helper()
@@ -150,6 +165,17 @@ func TestEveryExistingUserWriteTakesTheRowLockFirst(t *testing.T) {
 				t.Fatalf("UpdateName: %v", err)
 			}
 		}},
+		{name: "update-password", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
+			ctx := context.Background()
+			exp := time.Now().Add(24 * time.Hour)
+			presenting := seedToken(t, userrepo.NewAccessTokenRepo(db.Engine, db.TX), uid,
+				model.TokenKindSession, "eco_ses_lock-order-rotate", &exp)
+			if _, err := svc.UpdatePassword(ctx, uid, presenting, model.UpdatePasswordRequest{
+				OldPassword: password, NewPassword: "rotated-secret",
+			}); err != nil {
+				t.Fatalf("UpdatePassword: %v", err)
+			}
+		}, want: []string{"UpdatePasswordIfGeneration", "BumpCredentialsGeneration", "RevokeAll"}},
 		{name: "confirm-email", run: func(t *testing.T, svc *appuser.Service, db *dbtest.DB, uid vo.Id) {
 			ctx := context.Background()
 			ev := model.NewEmailVerification(vo.NewId(), uid, appuser.HashResetCode("123456"), time.Now().UTC())

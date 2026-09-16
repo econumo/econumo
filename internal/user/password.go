@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math/big"
 	"strings"
-	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
@@ -50,26 +49,56 @@ func isNotFound(err error) bool {
 	return errors.As(err, &nf)
 }
 
-// UpdatePassword verifies the old password then stores the new hash. A wrong
-// old password yields a ValidationError -> 400 ("Password is not correct").
-// On success every OTHER session is revoked (the presenting one —
-// currentTokenID — survives); PATs are untouched.
+// UpdatePassword is a credential rotation: it verifies the old password, then
+// in ONE locked transaction writes the new hash (fenced on the generation the
+// old hash was read under), bumps the generation, drops the grants issued under
+// the old password and revokes every OTHER session. A wrong old password yields
+// a ValidationError -> 400 ("Password is not correct"). The presenting session
+// (currentTokenID), PATs and linked identities survive — the owner is acting,
+// not recovering.
 func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentTokenID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
-	_, err := s.mutate(ctx, userID, func(u *model.User, now time.Time) error {
-		if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
-			return &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
-		}
-		newHash, herr := s.hasher.Hash(req.NewPassword)
-		if herr != nil {
-			return herr
-		}
-		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
-		return nil
-	})
+	incorrect := &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
+	u, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
-	if err := s.revokeSessions(ctx, userID, currentTokenID, s.clock.Now()); err != nil {
+	// Verify and hash before the lock: argon2 must never run under the row lock.
+	if !s.hasher.Verify(u.Algorithm, u.Password, req.OldPassword, u.Salt) {
+		return nil, incorrect
+	}
+	newHash, herr := s.hasher.Hash(req.NewPassword)
+	if herr != nil {
+		return nil, herr
+	}
+	now := s.clock.Now()
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if err := s.repo.LockRow(ctx, userID); err != nil {
+			return err
+		}
+		// The fence: the hash we verified belongs to the generation we read it
+		// under; if a reclaim or another rotation moved it, this rotation
+		// proved nothing and writes nothing.
+		n, err := s.repo.UpdatePasswordIfGeneration(ctx, userID, newHash, u.Salt, model.AlgorithmArgon2id, now, u.CredentialsGeneration)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			return incorrect
+		}
+		// A rotation invalidates every flow that read the old credential:
+		// in-flight logins (the bump), pending reset codes and email changes
+		// (grants issued under the old password), and the other sessions.
+		if err := s.repo.BumpCredentialsGeneration(ctx, userID); err != nil {
+			return err
+		}
+		if err := s.passwordRequests.DeleteByUser(ctx, userID); err != nil {
+			return err
+		}
+		if err := s.emailChangeRequests.DeleteByUser(ctx, userID); err != nil {
+			return err
+		}
+		return s.revokeTokens(ctx, userID, currentTokenID, now, model.TokenKindSession)
+	}); err != nil {
 		return nil, err
 	}
 	return &model.UpdatePasswordResult{}, nil

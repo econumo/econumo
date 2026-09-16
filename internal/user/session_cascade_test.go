@@ -75,6 +75,156 @@ func TestUpdatePassword_RevokesOtherSessionsKeepsCurrentAndPATs(t *testing.T) {
 	}
 }
 
+// A rotation is a credential change, so everything issued under the old
+// password goes with it: the pending grants that let a holder sign in or move
+// the login key without knowing the new one, and every other session. What the
+// owner is still holding stays — this session and the personal tokens.
+func TestUpdatePassword_SweepsPendingGrantsAndBumpsTheGeneration(t *testing.T) {
+	db := dbtest.New(t)
+	svc, tokens, _, uid, pwreqs := newAuthEnvFullOn(t, db)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	changes := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
+	ctx := context.Background()
+
+	exp := authT0.Add(appuser.SessionTTL)
+	patExp := authT0.Add(90 * 24 * time.Hour)
+	current := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_rotate-current", &exp)
+	other := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_rotate-other", &exp)
+	pat := seedToken(t, tokens, uid, model.TokenKindPersonal, "eco_pat_rotate", &patExp)
+
+	resetCode := appuser.HashResetCode("482913")
+	if err := pwreqs.Save(ctx, model.NewPasswordRequest(vo.NewId(), uid, resetCode, authT0)); err != nil {
+		t.Fatalf("seed password request: %v", err)
+	}
+	cr := model.NewEmailChangeRequest(vo.NewId(), uid, "rotated-new@econumo.test", appuser.HashResetCode("135790"), authT0)
+	if n, err := changes.Save(ctx, cr, 0); err != nil || n != 1 {
+		t.Fatalf("seed email change request: %d %v", n, err)
+	}
+
+	before, err := users.GetByID(ctx, uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if _, err := svc.UpdatePassword(ctx, uid, current, model.UpdatePasswordRequest{
+		OldPassword: "secretpass", NewPassword: "next-secret",
+	}); err != nil {
+		t.Fatalf("UpdatePassword: %v", err)
+	}
+
+	after, err := users.GetByID(ctx, uid)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if after.CredentialsGeneration != before.CredentialsGeneration+1 {
+		t.Errorf("credentials generation %d -> %d, want +1", before.CredentialsGeneration, after.CredentialsGeneration)
+	}
+	if _, err := pwreqs.GetByUserAndCode(ctx, uid, resetCode); err == nil {
+		t.Error("an outstanding reset code must not outlive a password change")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("GetByUserAndCode: %v", err)
+	}
+	if _, err := changes.GetByUser(ctx, uid); err == nil {
+		t.Error("a pending email change must not outlive a password change")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("GetByUser: %v", err)
+	}
+
+	now := authT0.Add(time.Minute)
+	for _, tc := range []struct {
+		id       vo.Id
+		name     string
+		wantLive bool
+	}{
+		{current, "the presenting session", true},
+		{other, "the other session", false},
+		{pat, "the personal token", true},
+	} {
+		tok, gerr := tokens.GetByID(ctx, tc.id)
+		if gerr != nil {
+			t.Fatalf("GetByID(%s): %v", tc.name, gerr)
+		}
+		if tok.IsLive(now) != tc.wantLive {
+			t.Errorf("%s live = %v, want %v", tc.name, !tc.wantLive, tc.wantLive)
+		}
+	}
+}
+
+const (
+	rotationOldPassword = "secretpass"
+	rotationNewPassword = "rotated-secret"
+)
+
+// rotatingRepo lands a completed update-password in the window between Login's
+// evidence read and its session insert, the same race resettingRepo exercises
+// for a reset. Armed once, like a single rotation committing.
+type rotatingRepo struct {
+	appuser.Repository
+	svc   *appuser.Service
+	armed bool
+}
+
+func (r *rotatingRepo) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	u, err := r.Repository.GetByEmail(ctx, email)
+	if err != nil || !r.armed {
+		return u, err
+	}
+	r.armed = false
+	_, uerr := r.svc.UpdatePassword(ctx, u.ID, vo.Id{}, model.UpdatePasswordRequest{
+		OldPassword: rotationOldPassword, NewPassword: rotationNewPassword,
+	})
+	return u, uerr
+}
+
+// Both orders of the same pair end the same way: a sign-in presenting the OLD
+// password never becomes a live session. The sequential order is settled by the
+// stored hash; the interleaved one — the login read its row before the rotation
+// committed — is why the rotation bumps the generation inside its transaction.
+func TestLogin_WithThePasswordAnUpdateReplacesMintsNothing(t *testing.T) {
+	const email = "rotated-login@econumo.test"
+	for _, tc := range []struct {
+		name        string
+		interleaved bool
+	}{
+		{name: "the rotation commits after the login's evidence read", interleaved: true},
+		{name: "the rotation commits before the login starts", interleaved: false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := dbtest.New(t)
+			repo := &rotatingRepo{Repository: userrepo.NewRepo(db.Engine, db.TX)}
+			svc, _, _ := newUserSvcWithRepo(t, db, repo)
+			repo.svc = svc
+			ctx := context.Background()
+
+			id, err := svc.AdminCreateUser(ctx, "Rotated", email, rotationOldPassword)
+			if err != nil {
+				t.Fatalf("AdminCreateUser: %v", err)
+			}
+			if tc.interleaved {
+				repo.armed = true
+			} else if _, err := svc.UpdatePassword(ctx, id, vo.Id{}, model.UpdatePasswordRequest{
+				OldPassword: rotationOldPassword, NewPassword: rotationNewPassword,
+			}); err != nil {
+				t.Fatalf("UpdatePassword: %v", err)
+			}
+
+			_, err = svc.Login(ctx, model.LoginRequest{Username: email, Password: rotationOldPassword}, "test-agent", time.Now())
+			var unauthorized *errs.UnauthorizedError
+			if !errors.As(err, &unauthorized) || unauthorized.Msg != "Invalid credentials." {
+				t.Fatalf("Login err = %v, want *errs.UnauthorizedError %q", err, "Invalid credentials.")
+			}
+			var n int
+			if err := db.Raw.QueryRowContext(ctx, db.Rebind(
+				"SELECT COUNT(*) FROM access_tokens WHERE user_id = ? AND kind = ? AND revoked_at IS NULL"),
+				id.String(), model.TokenKindSession).Scan(&n); err != nil {
+				t.Fatalf("count live sessions: %v", err)
+			}
+			if n != 0 {
+				t.Fatalf("the rotation was outrun: %d live session rows", n)
+			}
+		})
+	}
+}
+
 // The operator's user:change-password is the account reclaim too: it is what an
 // admin runs to evict whoever holds the account, so nothing that never proved
 // the mailbox may outlive it — not a personal token, not an in-flight sign-in,
