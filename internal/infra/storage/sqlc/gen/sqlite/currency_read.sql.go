@@ -126,9 +126,8 @@ type GetLatestCurrencyRateDateParams struct {
 
 // Most-recent published_at for a base currency strictly before a date (matches
 // CurrencyRateRepository::getLatestDate). Compare via datetime() with a
-// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
-// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
-// returned a December date, snapping the rate period to the wrong month).
+// 'Y-m-d H:i:s' string bound, so rows AT/after the boundary stay out (else
+// "< Dec 1" returns a December date, snapping the rate period to the wrong month).
 func (q *Queries) GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error) {
 	row := q.db.QueryRowContext(ctx, getLatestCurrencyRateDate, arg.BaseCurrencyID, arg.Datetime)
 	var published_at time.Time

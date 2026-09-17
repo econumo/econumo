@@ -1,4 +1,4 @@
-import { getVersion } from './config'
+import { getVersionLabel } from './config'
 
 export interface EconumoPackage {
   label: string
@@ -10,7 +10,7 @@ export interface EconumoPackage {
 // (and any future config reload) mutate it at runtime.
 export function econumoPackage(): EconumoPackage {
   return {
-    label: getVersion(),
+    label: getVersionLabel(),
     includesConnections: true,
     includesSharedAccess: true,
   }

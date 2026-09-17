@@ -2,7 +2,6 @@ package api_test
 
 import (
 	"bytes"
-	"context"
 	"database/sql"
 	"encoding/json"
 	"io"
@@ -18,9 +17,6 @@ import (
 	categoryrepo "github.com/econumo/econumo/internal/category/repo"
 	"github.com/econumo/econumo/internal/config"
 	connectionrepo "github.com/econumo/econumo/internal/connection/repo"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	"github.com/econumo/econumo/internal/test/authstub"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -57,23 +53,15 @@ type harness struct {
 // DB with one seeded user (and a second user, to test ownership boundaries).
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	ctx := context.Background()
 
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	// The shared opener: production DSN settings (frozen datetime layout,
+	// foreign keys, single connection) and every migration.
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
-	txm := backend.NewTxManager(db)
-	tdb := &dbtest.DB{Raw: db, TX: txm, Engine: "sqlite"}
+	txm := tdb.TX
 
 	seedUsers(t, tdb)
 
@@ -116,14 +104,6 @@ func seedUsers(t *testing.T, tdb *dbtest.DB) {
 			Salt:     seedSalt,
 		})
 	}
-}
-
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
-	}
-	return out
 }
 
 // seedCategory inserts a category row directly (bypassing the API) for the given

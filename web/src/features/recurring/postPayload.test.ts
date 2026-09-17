@@ -14,12 +14,18 @@ const template = (overrides: Partial<RecurringDto> = {}): RecurringDto => ({
 })
 
 it('posts an expense with the template amount, date and classifications', () => {
-  const payload = recurringPostPayload(template(), accounts, exchangeFn)
-  expect(payload).toMatchObject({
-    recurringId: 'r1', type: 'expense', accountId: 'a1', amount: '50.5',
-    categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', description: 'rent',
-    date: '2026-08-02 00:00:00', accountRecipientId: null, amountRecipient: null,
-  })
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 2, 14, 30, 45))
+  try {
+    const payload = recurringPostPayload(template(), accounts, exchangeFn)
+    expect(payload).toMatchObject({
+      recurringId: 'r1', type: 'expense', accountId: 'a1', amount: '50.5',
+      categoryId: 'cat-food', payeeId: 'p1', tagId: 'tg1', description: 'rent',
+      date: '2026-08-02 14:30:45', accountRecipientId: null, amountRecipient: null,
+    })
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('omits labelIds so the server inherits the template\'s labels', () => {
@@ -41,12 +47,23 @@ it('posts a future-dated template as now instead of its scheduled date', () => {
   }
 })
 
-it('keeps the scheduled date when the template is due today', () => {
+it('posts a template due today as now rather than at midnight', () => {
   vi.useFakeTimers()
   vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
   try {
     const payload = recurringPostPayload(template({ nextPaymentAt: '2026-08-20 00:00:00' }), accounts, exchangeFn)
-    expect(payload.date).toBe('2026-08-20 00:00:00')
+    expect(payload.date).toBe('2026-08-20 14:30:45')
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('posts an overdue template with today\'s date, not its missed scheduled date', () => {
+  vi.useFakeTimers()
+  vi.setSystemTime(new Date(2026, 7, 20, 14, 30, 45))
+  try {
+    const payload = recurringPostPayload(template({ nextPaymentAt: '2026-06-15 00:00:00' }), accounts, exchangeFn)
+    expect(payload.date).toBe('2026-08-20 14:30:45')
   } finally {
     vi.useRealTimers()
   }

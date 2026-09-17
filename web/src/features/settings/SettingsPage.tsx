@@ -5,7 +5,7 @@ import { Link } from 'react-router'
 import { ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/UserAvatar'
-import { getVersion, backendHost, getWebsiteUrl } from '@/lib/config'
+import { getVersionLabel, backendHost, getWebsiteUrl } from '@/lib/config'
 import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useNavigate } from 'react-router'
@@ -75,7 +75,7 @@ export function SettingsPage() {
   const [exportOpen, setExportOpen] = useState(false)
   const [importOpen, setImportOpen] = useState(false)
   const [importResult, setImportResult] = useState<AggregatedImportResult | null>(null)
-  const version = getVersion()
+  const version = getVersionLabel()
   const update = useAvailableUpdate()
   const access = useAccessState()
   const portal = useOpenBillingPortal()

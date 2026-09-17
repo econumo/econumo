@@ -22,7 +22,10 @@ func (s *Service) buildFinancialSummary(ctx context.Context, budgetCurrencyID vo
 	var err error
 
 	if periodStarted {
-		if startBalances, err = s.read.AccountsBalancesOnDate(ctx, f.includedAccountIDs, f.periodStart); err != nil {
+		// Strictly before the start, like the end balance: a transaction dated
+		// exactly at the start belongs to this period's flows, so counting it here
+		// too would double it and break start == previous period's end.
+		if startBalances, err = s.read.AccountsBalancesBeforeDate(ctx, f.includedAccountIDs, f.periodStart); err != nil {
 			return nil, nil, err
 		}
 	}

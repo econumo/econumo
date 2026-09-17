@@ -39,7 +39,7 @@ jobs:
             CGO_ENABLED: "0"
             # Lock the go driver and its tools to the single SDK setup-go installs
             # (from go.mod). With 'auto', the runner's newer default Go can leak in
-            # via toolchain re-exec, mixing a 1.25 driver with 1.26-compiled objects
+            # via toolchain re-exec, mixing an older driver with objects compiled by the go.mod version
             # ("compile: version ... does not match go tool version ...").
             GOTOOLCHAIN: local
         steps:

@@ -337,7 +337,14 @@ it('posts a due template straight from the preview, without the transaction form
   await user.click(await screen.findByRole('button', { name: 'Post' }))
 
   await waitFor(() => expect(posted).not.toBeNull())
-  expect(posted).toMatchObject({ recurringId: 'r1', amount: '9.99', accountId: 'a1', date: template.nextPaymentAt })
+  expect(posted).toMatchObject({ recurringId: 'r1', amount: '9.99', accountId: 'a1' })
+  // catching up on a missed schedule moves the money TODAY, so the posted row
+  // is dated now rather than at the date it was originally due
+  expect(posted!.date).not.toBe(template.nextPaymentAt)
+  // local, not UTC: the payload is built with the browser's local clock
+  const now = new Date()
+  const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  expect(posted!.date).toMatch(new RegExp(`^${localToday} `))
   // the prefilled form is what this flow replaced: posting must not open it
   expect(useUiStore.getState().transactionModal).toBeNull()
   expect(screen.queryByRole('dialog')).toBeNull()

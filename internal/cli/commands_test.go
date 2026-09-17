@@ -15,7 +15,7 @@ import (
 	// backend.Get, the same way cmd/econumo does. Without this, newContainer's
 	// backend.Get(cfg.DatabaseDriver) fails even though the migrated file DB
 	// this package's tests build is fine.
-	_ "github.com/econumo/econumo/internal/infra/storage/sqlite"
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -34,12 +34,11 @@ func cliEnvDB(t *testing.T) string {
 	dir := t.TempDir()
 	dbPath := filepath.Join(dir, "db.sqlite")
 
-	raw, err := sql.Open("sqlite", dbPath)
+	// The production opener, so the migrated file holds exactly what serve
+	// would write (frozen datetime layout, foreign keys on).
+	raw, err := sqlite.New().Open(context.Background(), "sqlite://"+dbPath)
 	if err != nil {
 		t.Fatalf("cliEnv: open sqlite: %v", err)
-	}
-	if _, err := raw.ExecContext(context.Background(), "PRAGMA foreign_keys = ON;"); err != nil {
-		t.Fatalf("cliEnv: pragma foreign_keys: %v", err)
 	}
 	migs := migrations.SQLite()
 	runnerMigs := make([]migrate.Migration, len(migs))
@@ -444,5 +443,48 @@ func TestUserChangePasswordUnlinksAForeignIdentity(t *testing.T) {
 	}
 	if n != 0 {
 		t.Fatalf("%d foreign identity row(s) survived user:change-password", n)
+	}
+}
+
+// TestMigrationNormalizeSQLiteDatetimes_CommandAndRunner drives the command
+// end to end: a value in the driver's old time.Time.String() form is rewritten
+// to the frozen layout, a second run is a no-op, and the boot runner reaches
+// the command by name. The rewrite rules themselves are covered in
+// internal/infra/storage/sqlite.
+func TestMigrationNormalizeSQLiteDatetimes_CommandAndRunner(t *testing.T) {
+	cliEnv(t)
+	ctx := context.Background()
+	c, err := newContainer(ctx)
+	if err != nil {
+		t.Fatalf("container: %v", err)
+	}
+	defer c.Close()
+
+	userID := vo.NewId().String()
+	if _, err := c.db.ExecContext(ctx, `INSERT INTO users (id, identifier, email, name, avatar, password, salt, created_at, updated_at)
+		VALUES (?,?,?,'U','','x','',CAST(? AS TEXT),'2026-01-01 00:00:00')`,
+		userID, userID, userID+"@e.test", "2026-09-14 13:00:00.5 +0300 MSK"); err != nil {
+		t.Fatal(err)
+	}
+	createdAt := func() string {
+		t.Helper()
+		var s string
+		if err := c.db.QueryRowContext(ctx, `SELECT CAST(created_at AS TEXT) FROM users WHERE id = ?`, userID).Scan(&s); err != nil {
+			t.Fatal(err)
+		}
+		return s
+	}
+
+	for run := 1; run <= 2; run++ {
+		if code := Run([]string{"migration:normalize-sqlite-datetimes"}); code != 0 {
+			t.Fatalf("run %d: exit code %d", run, code)
+		}
+		if got := createdAt(); got != "2026-09-14 10:00:00" {
+			t.Fatalf("run %d: created_at = %q, want 2026-09-14 10:00:00", run, got)
+		}
+	}
+
+	if err := MigrationCommandRunner(c.cfg, c.db)(ctx, "migration:normalize-sqlite-datetimes"); err != nil {
+		t.Fatalf("runner: %v", err)
 	}
 }

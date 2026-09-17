@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"net/url"
 	"strings"
 
 	_ "modernc.org/sqlite"
@@ -38,7 +39,7 @@ func (b *Backend) SetBusyTimeout(ms int) { b.busyTimeoutMS = ms }
 // a path modernc.org/sqlite accepts. SQLite allows a single writer, so the pool
 // is capped at one open connection to avoid "database is locked".
 func (b *Backend) Open(ctx context.Context, dsn string) (*sql.DB, error) {
-	path := normalizeDSN(dsn)
+	path := WithFrozenTimeFormat(normalizeDSN(dsn))
 	db, err := sql.Open("sqlite", path)
 	if err != nil {
 		return nil, fmt.Errorf("sqlite open: %w", err)
@@ -73,6 +74,29 @@ func (b *Backend) Migrations() []backend.Migration {
 		out[i] = backend.Migration{Version: f.Version, Up: f.SQL, Command: f.Command}
 	}
 	return out
+}
+
+// WithFrozenTimeFormat forces the driver to store and bind a time.Time as its
+// UTC wall clock in 'Y-m-d H:i:s'. The driver default, time.Time.String(),
+// yields "2026-09-14 10:00:00.123456789 +0000 UTC": SQLite's date functions
+// read that as NULL, and it sorts against legacy rows and 'Y-m-d H:i:s' bounds
+// by accident rather than by time. _timezone=UTC makes the driver convert a
+// zoned value before formatting (it otherwise writes the value's own wall
+// clock and drops the offset), and parse stored text back as UTC. Both keys
+// override any caller-supplied value, and _time_integer_format is removed: the
+// driver gives it precedence over _time_format and would store an integer.
+// The dropped sub-seconds match PostgreSQL's TIMESTAMP(0).
+func WithFrozenTimeFormat(dsn string) string {
+	path, query, _ := strings.Cut(dsn, "?")
+	q, err := url.ParseQuery(query)
+	if err != nil {
+		// The driver parses the same query at Open and rejects it there.
+		return dsn
+	}
+	q.Del("_time_integer_format")
+	q.Set("_time_format", "datetime")
+	q.Set("_timezone", "UTC")
+	return path + "?" + q.Encode()
 }
 
 // normalizeDSN converts a sqlite:// DSN to a filesystem path.

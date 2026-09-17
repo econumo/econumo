@@ -260,10 +260,16 @@ router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used
 when there is no Go server in front of the SPA (the mobile app's bundled
-WebView, `pnpm dev` without a backend). The UI version label is
-`ECONUMO_VERSION`, inlined by Vite at build time (the Docker build arg of the
-same name sets it per image build, default `dev`). Lint is oxlint, tests are
-vitest (`pnpm test`).
+WebView, `pnpm dev` without a backend). Versions are two separate keys:
+`VERSION` is the real running version (`getVersion()` — every comparison:
+analytics `$app_version`, the update check, the query-cache buster, the mobile
+compatibility floors), `VERSION_LABEL` is the text the UI DISPLAYS
+(`getVersionLabel()` — the sidebar footer and the settings row, nothing else),
+set by the runtime `ECONUMO_VERSION` and falling back to `VERSION`. Vite also
+inlines a build-time `ECONUMO_VERSION` as the bundle's own version (the Docker
+build arg of the same name sets it per image build, default `dev`) — that one
+IS a real version, used by the mobile app where no server config is present.
+Lint is oxlint, tests are vitest (`pnpm test`).
 
 **Product analytics rule:** every new user-facing feature/action MUST fire an
 analytics event — add a key to `METRICS` (`web/src/lib/metrics.ts`, frozen
@@ -344,7 +350,12 @@ the `internal/test/i18ntest` guards derive their language list from
 
 Tests live alongside the Go code:
 - `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
-  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+  `dbtest.NewSQLite` opens through the production opener `sqlite.Backend.Open`,
+  so tests get the same connection settings as `serve`: the frozen datetime
+  layout DSN parameters, `foreign_keys = ON`, one connection). Feature API
+  harnesses and the CLI test env go through the same opener — never open a
+  test SQLite with a raw `sql.Open`, or rows land in the driver's default
+  `time.Time.String()` form that production no longer writes.
 - `internal/test/apiparity/` — the shared API scenario catalogue: every registered
   route is replayed against the REAL production handler (`server.BuildAPI`).
   Two consumers: the untagged **smoke suite** (every `make go-test`) diffs each
@@ -563,9 +574,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_LILTAG_CONFIG_URL` (default `/liltag-config.json`; load liltag
   config from a URL instead of the bundled `liltag-config.json`),
   `ECONUMO_LILTAG_CACHE_TTL` (default the JS number `0`), and `ECONUMO_VERSION`
-  (UI version label; default `null`, resolved to the binary's
-  `internal/version.Version` before reaching the router, overridable for
-  demo/staging). `ANALYTICS` no longer exists as a config key — analytics is a
+  (`VERSION_LABEL`, the version text the UI DISPLAYS — set it to relabel a
+  demo/staging box; unset falls back to `VERSION`). `VERSION` itself has NO env
+  override: it always carries the binary's `internal/version.Version`, because
+  the SPA compares it as a real version (analytics `$app_version`, the update
+  check, the mobile app's compatibility floors), and a display label must never
+  reach those. `ANALYTICS` no longer exists as a config key — analytics is a
   per-user preference now, not instance-wide (see `ECONUMO_ANALYTICS` above).
   `INSTANCE_ID` is the one key with no matching env var: it carries the
   per-deployment digest (`internal/infra/instance`, resolved against the
@@ -576,7 +590,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS
-  (`web.DistFS`), version, and instance id once in `server.BuildAPI`.
+  (`web.DistFS`), both versions, and instance id once in `server.BuildAPI`.
   `web/public/econumo-config.js` itself is a fallback baseline, not a source
   of defaults for a served instance — it only matters for the mobile app's
   bundled WebView and `pnpm dev` without a backend running (see that file's
@@ -633,6 +647,22 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - **SQLite** (default): pure-Go `modernc.org/sqlite` driver (CGO off).
 - **PostgreSQL**: `jackc/pgx/v5` (stdlib), simple protocol (PgBouncer-safe).
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
+- **SQLite datetime storage contract.** DATETIME/TIMESTAMP columns hold bare
+  `Y-m-d H:i:s` UTC TEXT (19 characters; PostgreSQL's `TIMESTAMP(0)` is the
+  same wall clock). Every SQLite connection is opened with
+  `_time_format=datetime&_timezone=UTC` (`sqlite.WithFrozenTimeFormat`, applied
+  by `Backend.Open` and therefore by `dbtest`), so a bound `time.Time` is
+  converted to UTC and stored in that layout, and stored text parses back as
+  UTC. Rows written before this setting held `time.Time.String()` text; the
+  command migration `migration:normalize-sqlite-datetimes` (boot step
+  `20260915000001`) rewrites them. `currencies_rates.published_at` is the one
+  DATE column and is `Y-m-d`: its write query binds that text explicitly
+  because the driver would store a time part and split one day into two keys
+  of the textual unique index. The hand-built budget/account SQL still binds
+  its range bounds as `datetime.Layout` strings (`sqliteDatetime`,
+  `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
+  that is deliberate belt-and-braces so those comparisons never depend on a
+  DSN parameter, not a sign that the driver still needs it.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
 - Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
@@ -665,6 +695,7 @@ data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
+migration:normalize-sqlite-datetimes
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -697,6 +728,15 @@ also invoked automatically at boot as migration step `20260817000001`.
 `users_options` row for every user that has none, seeded from the deprecated
 `ECONUMO_ANALYTICS` value (above); idempotent, and invoked automatically at
 boot as migration step `20260903000000`.
+
+`migration:normalize-sqlite-datetimes` rewrites SQLite DATETIME/TIMESTAMP
+values stored in Go's `time.Time.String()` form (what the driver wrote before
+every connection was opened with `_time_format=datetime`, see
+`sqlite.WithFrozenTimeFormat`) to `Y-m-d H:i:s` UTC. It discovers columns from
+the live schema, skips `schema_migrations` (the instance id's anchor), parses
+each value with the exact driver layout and leaves anything unparseable as
+stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
+migration step `20260915000001`.
 
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.

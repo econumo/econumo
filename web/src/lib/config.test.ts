@@ -1,4 +1,4 @@
-import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getBillingUrl } from './config'
+import { getInstanceId, backendHost, selfHosted, locale, isCustomApiAllowed, isRegistrationAllowed, getVersion, getVersionLabel, getBillingUrl } from './config'
 
 beforeEach(() => {
   localStorage.clear()
@@ -45,8 +45,18 @@ describe('locale and version', () => {
     expect(locale()).toBe('en')
   })
 
-  it('prefers econumoConfig.VERSION for the version label', () => {
+  it('prefers econumoConfig.VERSION for the running version', () => {
     window.econumoConfig = { VERSION: 'v9.9.9' }
+    expect(getVersion()).toBe('v9.9.9')
+  })
+
+  it('reads the displayed label from VERSION_LABEL, falling back to VERSION', () => {
+    window.econumoConfig = { VERSION: 'v9.9.9' }
+    expect(getVersionLabel()).toBe('v9.9.9')
+    window.econumoConfig = { VERSION: 'v9.9.9', VERSION_LABEL: 'demo-42' }
+    expect(getVersionLabel()).toBe('demo-42')
+    // The label never leaks back into the real version: analytics, the update
+    // check and the app's compatibility floors all read getVersion().
     expect(getVersion()).toBe('v9.9.9')
   })
 

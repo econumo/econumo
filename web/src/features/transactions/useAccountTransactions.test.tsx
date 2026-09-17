@@ -142,21 +142,56 @@ it('virtual transfer rows appear only on the source account', async () => {
   expect(resultA2.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r2')).toBe(false)
 })
 
-it('overdue templates surface at their past date', async () => {
+it('pins due and overdue templates to the head of today\'s group', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date(2026, 6, 2, 12, 0, 0))
+  const overdue = {
+    id: 'r-overdue', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: 12, categoryId: 'cat-food', payeeId: null, tagId: null, description: 'overdue rent',
+    schedule: 'monthly', nextPaymentAt: '2026-06-15 00:00:00',
+  }
+  const dueToday = { ...overdue, id: 'r-today', description: 'due today', nextPaymentAt: '2026-07-02 00:00:00' }
+  server.use(...coreHandlers({ recurring: [overdue, dueToday] }))
+  const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
+  await waitFor(() => expect(result.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r-overdue')).toBe(true))
+
+  const kinds = result.current.map((e) => (e.kind === 'separator' ? `sep:${e.label}` : e.transaction.id))
+  // both unposted rows lead today's group, ahead of today's real transaction
+  expect(kinds).toEqual(['sep:today', 'r-today', 'r-overdue', 't1', 'sep:yesterday', 't2'])
+})
+
+it('keeps a pinned row\'s own date so posting still knows when it was due', async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   vi.setSystemTime(new Date(2026, 6, 2, 12, 0, 0))
   const rt = {
-    id: 'r3', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    id: 'r-overdue', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
     amount: 12, categoryId: 'cat-food', payeeId: null, tagId: null, description: 'overdue rent',
     schedule: 'monthly', nextPaymentAt: '2026-06-15 00:00:00',
   }
   server.use(...coreHandlers({ recurring: [rt] }))
   const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
-  await waitFor(() => expect(result.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r3')).toBe(true))
+  await waitFor(() => expect(result.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r-overdue')).toBe(true))
 
-  const entries = result.current
-  const idx = entries.findIndex((e) => e.kind === 'transaction' && e.transaction.id === 'r3')
-  expect(entries[idx - 1]).toEqual({ kind: 'separator', day: '2026-06-15', label: 'date' })
+  const row = result.current.find((e) => e.kind === 'transaction' && e.transaction.id === 'r-overdue')
+  expect(row?.kind === 'transaction' && row.transaction.date).toBe('2026-06-15 00:00:00')
+})
+
+it('opens today\'s group for a pinned row even when today has no transactions', async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  // 07-03: every fixture transaction is now in the past
+  vi.setSystemTime(new Date(2026, 6, 3, 12, 0, 0))
+  const rt = {
+    id: 'r-overdue', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: 12, categoryId: 'cat-food', payeeId: null, tagId: null, description: 'overdue rent',
+    schedule: 'monthly', nextPaymentAt: '2026-06-15 00:00:00',
+  }
+  server.use(...coreHandlers({ recurring: [rt] }))
+  const { result } = renderHook(() => useAccountTransactions('a1', ''), { wrapper })
+  await waitFor(() => expect(result.current.some((e) => e.kind === 'transaction' && e.transaction.id === 'r-overdue')).toBe(true))
+
+  expect(result.current[0]).toEqual({ kind: 'separator', day: '2026-07-03', label: 'today' })
+  expect(result.current[1]).toMatchObject({ kind: 'transaction' })
+  expect(result.current[1].kind === 'transaction' && result.current[1].transaction.id).toBe('r-overdue')
 })
 
 it('title logic: no category, no description, no tag, no payee falls back to Uncategorized', () => {

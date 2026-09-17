@@ -8,6 +8,7 @@ import (
 
 	"github.com/econumo/econumo/internal/config"
 	"github.com/econumo/econumo/internal/infra/storage/migrate"
+	"github.com/econumo/econumo/internal/infra/storage/sqlite"
 )
 
 // migrationCommands are data migrations the boot runner invokes as command
@@ -37,6 +38,23 @@ func migrationCommands() []command {
 					return err
 				}
 				fmt.Printf("seeded %d analytics preference(s)\n", n)
+				return nil
+			},
+		},
+		{
+			name:    "migration:normalize-sqlite-datetimes",
+			summary: "rewrite SQLite datetimes stored as Go time.Time.String() text to 'Y-m-d H:i:s' UTC (idempotent; no-op on PostgreSQL)",
+			run: func(ctx context.Context, c *container, args []string) error {
+				if c.cfg.DatabaseDriver != sqlite.Name {
+					fmt.Printf("nothing to normalize on %s\n", c.cfg.DatabaseDriver)
+					return nil
+				}
+				report, err := sqlite.NormalizeDatetimes(ctx, c.db)
+				if err != nil {
+					return err
+				}
+				fmt.Printf("normalized %d datetime value(s) across %d column(s); left %d unparseable value(s) unchanged\n",
+					report.Rewritten, report.Columns, report.Unparseable)
 				return nil
 			},
 		},

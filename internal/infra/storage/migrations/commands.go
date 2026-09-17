@@ -31,4 +31,9 @@ func init() {
 	// No SQL file: the value comes from the deprecated ECONUMO_ANALYTICS, which
 	// SQL cannot read, and each row needs a UUIDv7 id SQLite cannot mint.
 	RegisterCommand("20260903000000", "migration:seed-analytics-option")
+	// A command, not SQL: each value is parsed in Go with the exact layout the
+	// driver wrote (time.Time.String()) rather than sliced with string
+	// functions, columns are discovered from the live schema, and anything that
+	// does not parse is left as stored.
+	RegisterCommand("20260915000001", "migration:normalize-sqlite-datetimes")
 }

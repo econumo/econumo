@@ -227,6 +227,12 @@ navigation (single-pane vs sidebar).
       search filters the list; virtualized scroll stays smooth with 100+ rows
       (seed them via CSV import — a generated 100+-row file doubles as the
       import-at-scale test).
+- [ ] Not-posted recurring entries due today or overdue lead the "today" group,
+      above today's real transactions, however far in the past they were due —
+      so opening the account puts them first on screen. They stay dimmed with
+      the red "not posted" note; templates due in the FUTURE keep their own day
+      group above the fold. With no transactions today at all, the pinned rows
+      still open a "today" group of their own.
 - [ ] Mobile: FAB adds a transaction; row tap opens the preview bottom sheet.
 
 ## 5. Transactions
@@ -245,7 +251,8 @@ navigation (single-pane vs sidebar).
       write access (see sharing suite); "make recurring" pre-fills the
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
-      count toward "balance as of end of today".
+      count toward "balance as of end of today" — including one dated exactly
+      00:00 tomorrow (SQLite AND PostgreSQL).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -262,9 +269,13 @@ navigation (single-pane vs sidebar).
       from Settings → Recurring): type, amount, schedule, accounts, category.
 - [ ] Due occurrence appears on the account page as "not posted". Post from the
       account-page row preview posts immediately (dated today); Post from
-      Settings → Recurring opens a pre-filled review dialog (scheduled date)
-      that you confirm. Both advance the schedule. Skip (advances without
-      posting) is offered ONLY on the account-page row preview.
+      Settings → Recurring opens a pre-filled review dialog that you confirm.
+      Both advance the schedule. Skip (advances without posting) is offered
+      ONLY on the account-page row preview.
+- [ ] Post an OVERDUE occurrence (schedule date in the past) both ways: the
+      created transaction is dated TODAY, not at the missed date, and lands in
+      today's group. The review dialog's date chip likewise pre-fills today —
+      a template still ahead of schedule keeps pre-filling its scheduled date.
 - [ ] Month-end clamping (31st → Feb 28 → Mar 31) is long-horizon — covered by
       unit tests; in a manual run just note the next-date math looks right.
 - [ ] Edit and delete a rule; delete asks for confirmation; posted transactions
@@ -346,6 +357,21 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       tooltips.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
+- [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
+      applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
+      account in a budget-currency category counts in the category's spent at
+      the converted amount (not 1:1), in both the table and the plan sheet, and
+      `get-budget` `currencyRates` lists the global rates, not only custom ones.
+- [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
+      date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
+      that month's income/expenses, not also in its starting balance; every
+      month's starting balance equals the previous month's ending balance.
+- [ ] SQLite instance upgraded from a release before this fix: after the first
+      boot, account balances and transaction lists (dates included) match the
+      pre-upgrade figures. Include transactions imported from a CSV whose date
+      column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
+      they list and export at the UTC time after the upgrade instead of
+      failing the list.
 
 ## 10. Budget lifecycle & list
 
@@ -482,7 +508,13 @@ User C sees none of it.
 - [ ] Update notices (environment-dependent — needs `ECONUMO_CHECK_UPDATES`
       and reachability of econumo.com): with a newer release available, the
       dismissible sidebar notice and the settings "update available" row
-      appear (simulate by pointing `ECONUMO_VERSION` at an old value).
+      appear (simulate with a binary built at an older version — Docker
+      `--build-arg ECONUMO_VERSION=v0.0.1`; the runtime variable no longer
+      moves this, it only relabels the UI).
+- [ ] Version label: with `ECONUMO_VERSION=demo-42` set at RUNTIME, the
+      sidebar footer and the settings version row both read `demo-42`, while
+      the update notice above still compares the real binary version (so a
+      current build shows no update prompt).
 - [ ] Readonly/trial gating (cloud only, `ECONUMO_TRIAL` set): expired user
       gets 402 toasts on writes, subscription banner shows; security actions
       (logout, password, sessions) still work.
