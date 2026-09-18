@@ -438,13 +438,17 @@ func buildState(
 		SpentAt: spentAt, CreatedAt: now, UpdatedAt: now,
 	}
 	if typ.IsTransfer() {
-		if accountRecipientID != nil && *accountRecipientID != "" {
-			rid, err := vo.ParseId(*accountRecipientID)
-			if err != nil {
-				return st, err
-			}
-			st.AccountRecipID = &rid
+		// A recipient-less transfer would debit the source and credit nothing
+		// (#261), so it is refused here, before any access or reference check.
+		if accountRecipientID == nil || *accountRecipientID == "" {
+			return st, errs.NewValidation("Validation failed",
+				errs.FieldError{Key: "accountRecipientId", Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
+		rid, err := vo.ParseId(*accountRecipientID)
+		if err != nil {
+			return st, err
+		}
+		st.AccountRecipID = &rid
 		if amountRecipient != nil && *amountRecipient != "" {
 			ar := vo.NewDecimal(*amountRecipient).String()
 			st.AmountRecipient = &ar

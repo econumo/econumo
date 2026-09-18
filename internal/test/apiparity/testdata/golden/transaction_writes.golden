@@ -6,3 +6,6 @@ transaction_id,account_name,account_currency,category,description,tag,labels,pay
 d0000000-0000-0000-0000-000000000001,Cash,USD,Food,lunch updated,,,Shop,-15,<datetime>
 d0000000-0000-0000-0000-000000000002,Cash,USD,Salary,pay,,,,1000,<datetime>
 
+== err:create-transfer-without-recipient POST /api/v1/transaction/create-transaction [owner] -> 400
+{"success":false,"message":"Form validation error","code":400,"errors":{"accountRecipientId":["This value should not be blank."]}}
+

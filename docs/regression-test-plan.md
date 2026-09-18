@@ -244,6 +244,12 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
+- [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
+      the To select and sends nothing; the API rejects the same body with a
+      400 on `accountRecipientId` (create AND update).
+- [ ] A legacy transfer row whose recipient is NULL (renders "[Hidden
+      account]") still offers Delete from the row menu and the preview
+      dialog, and deleting it restores the source balance.
 - [ ] Edit a transaction (amount, category, date, account) → balances and
       budget figures update everywhere (sidebar, account header, budget table).
 - [ ] Delete from row menu and from preview dialog → confirm → balance updates.
@@ -465,6 +471,11 @@ User C sees none of it.
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
       flip it, unlike other writes on that account.
+- [ ] Analytics reach the collector for signed-in sessions only (DevTools →
+      Network, filter `t.econumo.com`): the login/register pages send no
+      request; after login every request body carries `$user_id`; a reload of
+      a signed-in page sends its page view once the user data has loaded; log
+      out — the logout event goes out, nothing after it.
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"

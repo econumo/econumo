@@ -450,3 +450,29 @@ it('compact viewport: row click opens the preview dialog with details', async ()
   await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
+
+// Issue #261: rows written before the server required a transfer recipient
+// hold a NULL accountRecipientId. They are broken, not hidden — the user must
+// still be able to delete them.
+it('a transfer with no recipient account still offers delete', async () => {
+  mockViewport(false)
+  server.use(
+    http.get('*/api/v1/transaction/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: {
+          items: [{
+            id: 't-broken', author: fixtureOwner, type: 'transfer', accountId: 'a1', accountRecipientId: null,
+            amount: '300', amountRecipient: '300', categoryId: null, description: '', payeeId: null, tagId: null,
+            labelIds: [], date: '2026-07-02 09:30:00',
+          }],
+        },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await screen.findByTestId('tx-t-broken')
+  await user.click(screen.getByRole('button', { name: 'actions t-broken' }))
+  expect(await screen.findByRole('menuitem', { name: 'Delete' })).toBeInTheDocument()
+})
