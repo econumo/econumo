@@ -132,6 +132,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const setRecipientAccount = (id: string | null) => {
+    clearError('accountRecipientId')
     const recipient = accounts.find((a) => a.id === id)
     patch({
       accountRecipientId: id,
@@ -179,6 +180,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     const amountError = amountErrors(form.amount, true)
     if (amountError) {
       next.amount = amountError
+    }
+    if (isTransfer && !form.accountRecipientId) {
+      next.accountRecipientId = t('common.validation.required_field')
     }
     if (crossCurrency) {
       const recipientError = amountErrors(form.amountRecipient, false)
@@ -381,7 +385,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 <ArrowUpDown className="size-4" />
               </Button>
             </div>
-            <SelectCard label={t('transactions.modal.form.to.label')}>
+            <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
                 value={form.accountRecipientId}
