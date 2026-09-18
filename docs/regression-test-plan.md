@@ -374,6 +374,11 @@ User C sees none of it.
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
       flip it, unlike other writes on that account.
+- [ ] Analytics reach the collector for signed-in sessions only (DevTools →
+      Network, filter `t.econumo.com`): the login/register pages send no
+      request; after login every request body carries `$user_id`; a reload of
+      a signed-in page sends its page view once the user data has loaded; log
+      out — the logout event goes out, nothing after it.
 
 ## 13. Cross-cutting & platform
 
