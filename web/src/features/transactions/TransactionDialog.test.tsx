@@ -782,3 +782,25 @@ it('re-saving an already corrected import does not prompt again, but a further c
   await waitFor(() => expect(useUiStore.getState().rulePrompt).not.toBeNull())
   expect(useUiStore.getState().rulePrompt).toEqual({ link: importLink, diff: { labelIds: ['label1'] } })
 })
+
+// Issue #261: a transfer saved with no "to" account was persisted with a NULL
+// recipient and rendered as "[Hidden account]". The form must refuse it.
+it('refuses to submit a transfer without a recipient account', async () => {
+  let called = false
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () => {
+      called = true
+      return HttpResponse.json({ success: true, message: '', data: { item: wireTxEcho(), accounts: fixtureAccounts } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openTransactionModal({ type: 'transfer', accountId: 'a1' })
+  await screen.findByRole('heading', { name: 'Add transaction' })
+  await user.type(await screen.findByLabelText('Amount'), '300')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  expect(await screen.findByText('Required field')).toBeInTheDocument()
+  expect(called).toBe(false)
+  // the dialog stays open for the user to pick the account
+  expect(screen.getByRole('heading', { name: 'Add transaction' })).toBeInTheDocument()
+})

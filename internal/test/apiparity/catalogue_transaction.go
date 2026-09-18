@@ -19,6 +19,12 @@ func init() {
 					"description": "lunch updated", "payeeId": PayeeShop,
 				}},
 			{Label: "export-transaction-list", Method: "GET", Path: "/api/v1/transaction/export-transaction-list?accountId=" + OwnerAccount, Auth: "owner"},
+			// issue #261: a transfer that names no recipient must never be stored
+			{Label: "err:create-transfer-without-recipient", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
+				Body: map[string]any{
+					"id": "d0000000-0000-0000-0000-0000000000e4", "type": "transfer", "amount": "300",
+					"accountId": OwnerAccount, "date": ClockTime.Format("2006-01-02 15:04:05"),
+				}},
 		}
 	}})
 

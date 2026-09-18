@@ -168,7 +168,9 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
       return false
     }
     if (tx.type === 'transfer') {
-      return !!tx.account && !!tx.accountRecipient
+      // same rule as AccountPage.canTouchRow: a missing recipient (#261) is
+      // broken, not hidden, so the row stays deletable
+      return !!tx.account && (tx.accountRecipientId === null || !!tx.accountRecipient)
     }
     return true
   }

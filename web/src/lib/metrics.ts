@@ -3,6 +3,7 @@ import { analyticsAllowed } from './analyticsPreference'
 import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
+import { hasToken } from './storage'
 
 declare global {
   interface Window {
@@ -265,8 +266,12 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     eventTimestamp: Date.now(),
   })
   // Per-field/modal micro-interactions stay dataLayer-only: they dominate
-  // event volume without informing any product decision.
-  if (!metric.startsWith('appUIModal')) {
+  // event volume without informing any product decision. So does everything
+  // outside an authenticated session (login/register page views, the
+  // pre-login auth events): the collector project is identified-only, and a
+  // visitor who never signs in would otherwise show up as a one-day person
+  // who can never return, dragging retention down for no product signal.
+  if (!metric.startsWith('appUIModal') && hasToken()) {
     const host = analyticsHost()
     capture(analyticsEventName(metric), {
       host,

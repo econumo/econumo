@@ -149,6 +149,12 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
+- [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
+      the To select and sends nothing; the API rejects the same body with a
+      400 on `accountRecipientId` (create AND update).
+- [ ] A legacy transfer row whose recipient is NULL (renders "[Hidden
+      account]") still offers Delete from the row menu and the preview
+      dialog, and deleting it restores the source balance.
 - [ ] Edit a transaction (amount, category, date, account) → balances and
       budget figures update everywhere (sidebar, account header, budget table).
 - [ ] Delete from row menu and from preview dialog → confirm → balance updates.
@@ -603,6 +609,11 @@ User C sees none of it.
       "ingest" token (created via "Configure on this iPhone" or the API) is
       rejected with 401 on every non-import route and accepted on
       `import/ingest-apple-wallet-event`.
+- [ ] Analytics reach the collector for signed-in sessions only (DevTools →
+      Network, filter `t.econumo.com`): the login/register pages send no
+      request; after login every request body carries `$user_id`; a reload of
+      a signed-in page sends its page view once the user data has loaded; log
+      out — the logout event goes out, nothing after it.
 
 ## 13. Cross-cutting & platform
 
