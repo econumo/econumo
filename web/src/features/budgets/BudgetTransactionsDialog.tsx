@@ -155,6 +155,7 @@ export function BudgetTransactionsDialog({ budget, element, onClose, periodStart
       // the budget wire carries no provenance; this synthesized shape is
       // read-only anyway, so no recurring action is offered on it
       recurringId: null,
+      isImported: 0,
     }
   }
 

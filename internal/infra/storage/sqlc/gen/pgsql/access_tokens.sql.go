@@ -39,7 +39,7 @@ func (q *Queries) DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAcce
 }
 
 const getAccessTokenByHash = `-- name: GetAccessTokenByHash :one
-SELECT t.id, t.user_id, t.kind, t.token_hash, t.name, t.user_agent,
+SELECT t.id, t.user_id, t.kind, t.token_hash, t.scope, t.name, t.user_agent,
        t.created_at, t.last_used_at, t.expires_at, t.revoked_at,
        u.access_level, u.access_until
 FROM access_tokens t
@@ -52,6 +52,7 @@ type GetAccessTokenByHashRow struct {
 	UserID      string
 	Kind        string
 	TokenHash   string
+	Scope       string
 	Name        *string
 	UserAgent   *string
 	CreatedAt   time.Time
@@ -71,6 +72,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 		&i.UserID,
 		&i.Kind,
 		&i.TokenHash,
+		&i.Scope,
 		&i.Name,
 		&i.UserAgent,
 		&i.CreatedAt,
@@ -84,19 +86,34 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
 WHERE id = $1
 `
 
-func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error) {
+type GetAccessTokenByIDRow struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Scope      string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+}
+
+func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (GetAccessTokenByIDRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccessTokenByID, id)
-	var i AccessToken
+	var i GetAccessTokenByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
 		&i.Kind,
 		&i.TokenHash,
+		&i.Scope,
 		&i.Name,
 		&i.UserAgent,
 		&i.CreatedAt,
@@ -109,8 +126,8 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 
 const insertAccessToken = `-- name: InsertAccessToken :exec
 
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 type InsertAccessTokenParams struct {
@@ -118,6 +135,7 @@ type InsertAccessTokenParams struct {
 	UserID     string
 	Kind       string
 	TokenHash  string
+	Scope      string
 	Name       *string
 	UserAgent  *string
 	CreatedAt  time.Time
@@ -134,6 +152,7 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 		arg.UserID,
 		arg.Kind,
 		arg.TokenHash,
+		arg.Scope,
 		arg.Name,
 		arg.UserAgent,
 		arg.CreatedAt,
@@ -145,7 +164,7 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at
 FROM access_tokens
 WHERE user_id = $1 AND kind = $2
 ORDER BY created_at, id
@@ -156,20 +175,35 @@ type ListAccessTokensByUserParams struct {
 	Kind   string
 }
 
-func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]AccessToken, error) {
+type ListAccessTokensByUserRow struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Scope      string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+}
+
+func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessTokensByUserParams) ([]ListAccessTokensByUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccessTokensByUser, arg.UserID, arg.Kind)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AccessToken{}
+	items := []ListAccessTokensByUserRow{}
 	for rows.Next() {
-		var i AccessToken
+		var i ListAccessTokensByUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
 			&i.Kind,
 			&i.TokenHash,
+			&i.Scope,
 			&i.Name,
 			&i.UserAgent,
 			&i.CreatedAt,

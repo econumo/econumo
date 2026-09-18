@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/config"
+	appimports "github.com/econumo/econumo/internal/imports"
 	"github.com/econumo/econumo/internal/infra/mailer"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
@@ -93,12 +94,21 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 		// under them (1 bad login / 1 remind / 1 bad reset per fresh-DB scenario),
 		// and the auth_rate_limit scenario deliberately exceeds them to freeze the
 		// 429 envelope.
-		RateLimitLogin:    5,
-		RateLimitReset:    5,
-		RateLimitRemind:   3,
-		RateLimitRegister: 5,
-		RateLimitWindow:   15 * time.Minute,
-		RateLimitGlobal:   60,
+		RateLimitLogin:           5,
+		RateLimitReset:           5,
+		RateLimitRemind:          3,
+		RateLimitRegister:        5,
+		RateLimitWindow:          15 * time.Minute,
+		RateLimitGlobal:          60,
+		RateLimitIngest:          60,
+		RateLimitClaimSetupToken: 5,
+		RateLimitSync:            10,
+		// Production matcher defaults so the seeded queued tap adopts Txn1 by
+		// the same rules a real instance applies.
+		ImportMatchDays:       3,
+		ImportTipDays:         5,
+		ImportTipTolerancePct: 20,
+		ImportTokenMinLength:  3,
 		// Billing configured so create-billing-link pins its SUCCESS shape. The
 		// admin token is the handoff signing key; the assertion it produces is
 		// redacted by handoffRe (its exp is clock-derived).
@@ -110,9 +120,10 @@ func NewHarness(t *testing.T, db *dbtest.DB) *Harness {
 
 	rec := &recordingMailer{}
 	handler := server.BuildAPI(cfg, db.Raw, server.Seams{
-		Clock:   clk,
-		Avatars: appuser.FixedAvatarPicker(appuser.DefaultAvatar),
-		Mailer:  rec,
+		Clock:           clk,
+		Avatars:         appuser.FixedAvatarPicker(appuser.DefaultAvatar),
+		Mailer:          rec,
+		ImportProviders: map[string]appimports.Provider{model.ImportProviderSimpleFIN: stubProvider{}},
 	})
 	srv := httptest.NewServer(handler)
 	t.Cleanup(srv.Close)
@@ -233,6 +244,8 @@ func (h *Harness) Replay(t *testing.T, calls []Call) ([]int, [][]byte) {
 			tok = guestTok
 		case "readonly":
 			tok = readonlyTok
+		case "ingest":
+			tok = IngestToken
 		case "":
 			tok = ""
 		default:

@@ -14,7 +14,9 @@ window.econumoConfig = {
   ALLOW_REGISTRATION: true,
   INSTANCE_ID: '',
   BILLING_URL: '',
+  AI_ENABLED: false,
   ALLOW_CUSTOM_API: true,
   VERSION: null,
   VERSION_LABEL: null,
+  IMPORT_MATCHER: { matchDays: 3, tipDays: 5, tipTolerancePct: 20, tokenMinLength: 3 },
 };

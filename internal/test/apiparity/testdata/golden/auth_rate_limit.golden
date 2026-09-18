@@ -64,3 +64,21 @@
 == err:register-limited POST /api/v1/user/register-user [] -> 429
 {"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
 
+== claim-setup-token-1 POST /api/v1/import/claim-setup-token [guest] -> 200
+{"success":true,"message":"","data":{"accessUrl":"https://u:p@bridge.example/simplefin"}}
+
+== claim-setup-token-2 POST /api/v1/import/claim-setup-token [guest] -> 200
+{"success":true,"message":"","data":{"accessUrl":"https://u:p@bridge.example/simplefin"}}
+
+== claim-setup-token-3 POST /api/v1/import/claim-setup-token [guest] -> 200
+{"success":true,"message":"","data":{"accessUrl":"https://u:p@bridge.example/simplefin"}}
+
+== claim-setup-token-4 POST /api/v1/import/claim-setup-token [guest] -> 200
+{"success":true,"message":"","data":{"accessUrl":"https://u:p@bridge.example/simplefin"}}
+
+== claim-setup-token-5 POST /api/v1/import/claim-setup-token [guest] -> 200
+{"success":true,"message":"","data":{"accessUrl":"https://u:p@bridge.example/simplefin"}}
+
+== err:claim-setup-token-limited POST /api/v1/import/claim-setup-token [guest] -> 429
+{"success":false,"message":"Too many attempts. Try again later.","code":429,"errors":{}}
+

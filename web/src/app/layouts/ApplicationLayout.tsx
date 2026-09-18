@@ -23,12 +23,14 @@ import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
+import { ImportQueueBanner } from '@/features/imports/ImportQueueBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { usePendingInvites } from '@/features/connections/pendingInvites'
 import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
+import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -141,6 +143,7 @@ export function ApplicationLayout() {
     <div className="flex h-svh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
+      <ImportQueueBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
@@ -282,6 +285,7 @@ export function ApplicationLayout() {
 
       <AccountDialog />
       <TransactionDialog />
+      <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />
       <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />
