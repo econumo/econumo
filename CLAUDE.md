@@ -280,9 +280,15 @@ short-circuit, e.g. the classification creates). Prefer the shared hook/store
 choke point over per-page call sites so every surface (pages, dialogs, inline
 creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
 suite if a `METRICS` key is never fired; a catalogue key may only be excused
-via its documented `NOT_WIRED` list. Analytics are identified, not anonymous:
-every batch carries a hashed user id (`$user_id`, a truncated SHA-256 over the
-user's id, computed client-side in `web/src/lib/analyticsId.ts`) and a
+via its documented `NOT_WIRED` list. Analytics are identified, never anonymous:
+the collector receives authenticated sessions only — `trackEvent` skips
+`capture` without a session token (login/register page views and the
+pre-login auth events reach the `dataLayer` only), and the transport holds a
+batch until the user id is set (the boot page view fires before
+`get-user-data` resolves), discarding anything still unattributed on
+logout/401 — so every batch carries a hashed user id (`$user_id`, a truncated
+SHA-256 over the user's id, computed client-side in
+`web/src/lib/analyticsId.ts`) and a
 per-instance group (`$group_id`, the bare per-deployment digest from
 `internal/infra/instance`; `$group_name`, the same `host` value every event
 carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as

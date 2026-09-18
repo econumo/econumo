@@ -14,6 +14,7 @@ import { capture } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
 import { backendHost, selfHosted } from './config'
+import { setToken } from './storage'
 
 vi.mock('./analytics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./analytics')>()
@@ -23,6 +24,8 @@ vi.mock('./analytics', async (importOriginal) => {
 beforeEach(() => {
   vi.clearAllMocks()
   localStorage.clear()
+  // The collector receives authenticated sessions only.
+  setToken('eco_ses_test')
   window.econumoConfig = {}
   window.dataLayer = []
   window.history.replaceState({}, '', '/')
@@ -49,6 +52,14 @@ it('pushes the event with context to the dataLayer', () => {
 })
 
 describe('collector capture', () => {
+  it('sends nothing to the collector without a session token, but still feeds the dataLayer', () => {
+    localStorage.clear()
+    trackEvent(METRICS.PAGE_VIEW)
+    trackEvent(METRICS.USER_REGISTRATION)
+    expect(capture).not.toHaveBeenCalled()
+    expect(window.dataLayer).toHaveLength(2)
+  })
+
   it('captures with the whitelisted properties only', () => {
     window.history.replaceState({}, '', '/budgets/01980e2c-1111-7000-8000-123456789abc/details')
     trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
