@@ -53,7 +53,7 @@ func (r *ReadRepo) UserView(ctx context.Context, id string) (model.UserViewRow, 
 	return model.UserViewRow{
 		ID: row.ID, Email: row.Email, Name: row.Name, Avatar: row.Avatar,
 		AccessLevel: model.AccessLevel(row.AccessLevel), AccessUntil: row.AccessUntil,
-		CreatedAt: row.CreatedAt,
+		CreatedAt: row.CreatedAt, Algorithm: row.Algorithm,
 	}, nil
 }
 

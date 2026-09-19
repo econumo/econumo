@@ -632,7 +632,8 @@
             "revoke_others": "Sign out other devices",
             "confirm_sign_out": "Sign out of this device?",
             "confirm_revoke": "Revoke this session? The device will be signed out.",
-            "confirm_revoke_others": "Sign out of all other devices? Only this session will stay active."
+            "confirm_revoke_others": "Sign out of all other devices? Only this session will stay active.",
+            "via": "via {provider}"
           },
           "tokens": {
             "menu_item": "API tokens",
@@ -681,6 +682,22 @@
             "revoke": "Revoke",
             "confirm_revoke": "Revoke this token? Integrations using it will stop working immediately."
           },
+          "linked_accounts": {
+            "menu_item": "Linked accounts",
+            "header": "Linked accounts",
+            "description": "External accounts you can sign in with. Link one to sign in without a password.",
+            "empty": "No linked accounts yet.",
+            "linked_on": "Linked",
+            "link": "Link",
+            "unlink": "Unlink",
+            "confirm_unlink": "Unlink this account? You will no longer be able to sign in with it.",
+            "last_identity_hint": "Set a password before unlinking your only sign-in method.",
+            "linked_toast": "{provider} account linked.",
+            "set_password": {
+              "menu_item": "Set a password",
+              "description": "You signed up with an external account. We'll email you a code to set a password."
+            }
+          },
           "analytics": {
             "label": "Share usage statistics",
             "description": "Helps us improve Econumo. Financial data and personal information — name, email — are never sent."
@@ -700,7 +717,8 @@
       "instruction": "We've sent a security code to your email. Enter it below and choose a new password.",
       "new_password": "New password",
       "send_failed": "Couldn't send the code. Check the email address and try again.",
-      "reset_failed": "The password wasn't reset. Check the code and try again."
+      "reset_failed": "The password wasn't reset. Check the code and try again.",
+      "reclaim_notice": "Resetting the password signs out every session, revokes API tokens, and removes linked sign-in methods that use a different email address."
     },
     "verify_email": {
       "header": "Verify your email",
@@ -758,6 +776,39 @@
         "privacy": {
           "text": "By registering, you agree to our <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacy Policy</a> and <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Terms of Service</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "or continue with",
+      "button": {
+        "google": "Continue with Google",
+        "apple": "Continue with Apple",
+        "oidc": "Continue with {name}"
+      },
+      "callback": {
+        "signing_in": "Signing you in…"
+      },
+      "app_return": {
+        "title": "Sign-in finished — return to the Econumo app.",
+        "open_app": "Open the app"
+      },
+      "logout_notice": "You're signed out of Econumo. Your {provider} session may still be active; sign out there to end it.",
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Sign-in was cancelled.",
+        "invalid_state": "The sign-in attempt expired or was already used. Please try again.",
+        "provider_error": "The sign-in provider returned an error. Please try again.",
+        "email_required": "The sign-in provider did not share an email address, which Econumo requires.",
+        "email_unverified": "The sign-in provider has not verified this email address.",
+        "registration_disabled": "Registration is disabled on this server. Sign in with an existing account first.",
+        "identity_taken": "This external account is already linked to another Econumo account.",
+        "provider_already_linked": "Your account already has a different account linked for this provider.",
+        "account_inactive": "This account has been deactivated.",
+        "account_exists_password": "An account with this email address already exists. Sign in with your password (or reset it), then link this provider from Settings."
       }
     }
   },
@@ -1497,6 +1548,15 @@
       "cannot_be_merged": "The selected tags cannot be merged",
       "list_empty": "Tags list is empty"
     },
+    "oauth": {
+      "provider_not_configured": "Sign-in provider is not configured",
+      "handoff_invalid": "Sign-in link is invalid or has expired",
+      "last_identity": "Set a password before unlinking your only sign-in method",
+      "identity_not_found": "Linked account not found",
+      "link_invalid": "Linking session is invalid or has expired",
+      "identity_taken": "This external account is already linked to another Econumo account",
+      "provider_already_linked": "Your account already has a different account linked for this provider"
+    },
     "payee": {
       "name_length": "Payee name must be {min}-{max} characters",
       "already_exists": "Payee already exists.",
@@ -1552,6 +1612,10 @@
     "change_email_notice": {
       "subject": "Email change requested",
       "body": "Hi {name},\n\nSomeone requested to change the email on your account to {email}. If this was not you, please change your password immediately."
+    },
+    "identity_linked": {
+      "subject": "A new sign-in method was linked to your account",
+      "body": "Hi {name},\n\nYour {provider} account was just linked to your Econumo account and can now be used to sign in. {provider} confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

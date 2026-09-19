@@ -1,0 +1,265 @@
+# OAuth Login Review Round 9 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Close the round-9 findings on PR #238 (head 83c8eeb): an in-flight email-change confirmation can land after a password reset (account recovery defeated), and an unlinked provider's pending sign-in handoff stays redeemable.
+
+**Architecture:** Both fixes reuse the round-8 shape: take the user row lock first, consume the grant row-counted in the same transaction, and make the write conditional in SQL. Email-change confirmation becomes lock → consume request (`:execrows`) → fenced narrow email UPDATE; request creation is a fenced INSERT. Unlink deletes the provider's pending handoffs, login handoffs carry the identity (issuer + subject), and redemption runs under the user row lock and re-validates the identity before minting.
+
+**Tech Stack:** Go 1.27 (`/usr/local/go/bin/go`, `GOTOOLCHAIN=go1.27.1`), sqlc v1.30 (`~/go/bin/sqlc`).
+
+**Spec:** `docs/superpowers/specs/2026-09-07-oauth-login-design.md` §11 (fence) — Task 2 adds one sentence on unlink.
+
+## Global Constraints
+
+- Branch `feature/oauth-login-fixes` (worktree `.claude/worktrees/bridge-cse_01Qx2CadepXjbi8Cte53yHaC`, HEAD 83c8eeb, already pushed as `feature/oauth-login`). One commit per task, conventional prefix, message ends with `Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>`; stage explicit paths; never commit `.remember/`.
+- Go: `PATH=/usr/local/go/bin:$HOME/go/bin:$PATH GOTOOLCHAIN=go1.27.1 CGO_ENABLED=0 go …` from the worktree root. After editing any `internal/infra/storage/sqlc/query/{sqlite,pgsql}/*.sql`: `cd internal/infra/storage/sqlc && ~/go/bin/sqlc generate && cd -`; commit `gen/`; never hand-edit; same `-- name:` and column list on both engines (`?` vs `$N`); the `;` on the last statement line; `.sql` ASCII-only including comments.
+- Lock ordering rule (from round 8): every transaction that touches `users` and a grant table takes the `users` row FIRST (`Users.LockRow` / `Repository.LockRow`), then the grant rows. Never the reverse (PostgreSQL deadlock).
+- Frozen wire contract: error texts stay exactly as today (`"The confirmation code is not valid."` code `user.verification_code_invalid`; `"Sign-in link is invalid or has expired"` 401 code `oauth.handoff_invalid`; `"Invalid access token"` 401); no route/shape/golden changes.
+- TDD with race reproducers: each fix has a test that FAILS on the old code (decorator hooks in the existing style: `resettingRepo`, `deactivatingRepo`, `beforeFindByID`), proven RED and recorded. PostgreSQL is available at `postgres://econumo:econumo@127.0.0.1:55433/econumo_test?sslmode=disable` (`DBTEST_ENGINE=pgsql … go test -count=1 -tags enginecompare …`) — run the touched packages on it.
+- Never log emails/tokens/hashes. Comments only for the non-obvious why. Docs: `docs/regression-test-plan.md` for the user-observable outcomes, CLAUDE.md Authentication section for the unlink rule.
+
+---
+
+### Task 1: Email-change confirmation consumes its grant under the user lock; request creation is fenced
+
+**Files:**
+- Modify: `internal/infra/storage/sqlc/query/{sqlite,pgsql}/email_change*.sql` (find the file: `ls internal/infra/storage/sqlc/query/sqlite | grep -i email`) — add `ConsumeUserEmailChangeRequest :execrows` (`DELETE FROM users_email_change_requests WHERE id = ? AND user_id = ?`) and change `InsertUserEmailChangeRequest` into `InsertUserEmailChangeRequestIfGeneration :execrows` (`INSERT … SELECT … WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)`)
+- Modify: `internal/infra/storage/sqlc/query/{sqlite,pgsql}/users.sql` — add `UpdateUserEmailIfGeneration :execrows` (`UPDATE users SET email = ?, email_verified = 1/TRUE, updated_at = ? WHERE id = ? AND credentials_generation = ?`)
+- Regenerate: `gen/`
+- Modify: `internal/user/repository.go` (`EmailChangeRequests`: `Save(ctx, r, generation) (int64, error)` replaces `Save`; add `Consume(ctx, id, userID) (int64, error)`; `Repository.ReplaceEmailIfGeneration(ctx, userID, encryptedEmail, now, generation) (int64, error)`), the repo implementations + adapters
+- Modify: `internal/user/change_email.go` (`RequestEmailChange`, `issueEmailChangeCode`, `ConfirmEmailChange`)
+- Test: `internal/user/change_email_integration_test.go` (+ any test double of `EmailChangeRequests`)
+
+**Interfaces:**
+- Produces: `EmailChangeRequests.Consume(ctx, id, userID vo.Id) (int64, error)`; `EmailChangeRequests.Save(ctx, r *model.EmailChangeRequest, generation int64) (int64, error)`; `Repository.ReplaceEmailIfGeneration(ctx, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)`.
+- Consumes: `Repository.LockRow` (round 8), `Repository.BumpCredentialsGeneration`, `model.User.CredentialsGeneration`.
+
+- [ ] **Step 1: Failing race test — a reset between the request read and the confirm write leaves the email alone**
+
+In `internal/user/change_email_integration_test.go` (reuse its service builder; add an `EmailChangeRequests` decorator whose `GetByUser` runs a hook once after returning the row):
+
+```go
+func TestConfirmEmailChange_ResetBetweenRequestReadAndWriteIsRefused(t *testing.T) {
+	env := newChangeEmailEnv(t) // the file's existing builder; wrap emailChangeRequests with the hook decorator
+	u, code := env.requestChange(t, "attacker@x.test") // issues the pending request and returns the plain code
+	sessionID := env.sessionFor(t, u)
+	env.reqs.afterGetByUser = func() { env.resetPassword(t, u, "new-owner-password") } // real ResetPassword: bump + sweep
+	_, err := env.svc.ConfirmEmailChange(ctx, u.ID, sessionID, model.ConfirmEmailChangeRequest{Code: code})
+	var verr *errs.ValidationError
+	if !errors.As(err, &verr) || verr.MsgCode != errs.CodeUserVerificationCodeInvalid {
+		t.Fatalf("want the invalid-code error, got %v", err)
+	}
+	after, _ := env.repo.GetByID(ctx, u.ID)
+	if got, _ := env.encode.Decode(after.Email); got != u.plainEmail {
+		t.Fatalf("confirmation crossed the reclaim: email is now %q", got)
+	}
+}
+```
+
+Adapt helper names to the file. Run: FAIL (the email is changed).
+
+- [ ] **Step 2: Implement**
+
+SQL (both engines; the request table's column list as in the existing insert):
+
+```sql
+-- name: InsertUserEmailChangeRequestIfGeneration :execrows
+-- A pending change is a grant to rewrite the login key; it must not be created
+-- by a session a reclaim has already invalidated.
+INSERT INTO users_email_change_requests (…same columns…)
+SELECT …same placeholders…
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
+
+-- name: ConsumeUserEmailChangeRequest :execrows
+DELETE FROM users_email_change_requests WHERE id = ? AND user_id = ?;
+```
+
+`users.sql`: `UpdateUserEmailIfGeneration` as above (comment: the confirm path writes only the email columns, under the generation it read after taking the row lock, so a stale aggregate can never be saved over a reclaimed account).
+
+`ConfirmEmailChange`: keep the rate-limit + code/expiry checks on the pre-read `cr`; then
+
+```go
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// users first, then the grant row: the same order reclaimCredentials
+		// takes, so the two can only serialize, never deadlock.
+		if err := s.repo.LockRow(ctx, userID); err != nil {
+			return err
+		}
+		n, err := s.emailChangeRequests.Consume(ctx, cr.ID, userID)
+		if err != nil {
+			return err
+		}
+		if n != 1 {
+			// The reclaim (or a concurrent confirm) already took the grant.
+			return invalid
+		}
+		u, err := s.repo.GetByID(ctx, userID) // after the lock: the generation is current
+		if err != nil {
+			return err
+		}
+		exists, err := s.repo.ExistsByEmail(ctx, cr.NewEmail) // inside the tx now
+		…
+		rows, err := s.repo.ReplaceEmailIfGeneration(ctx, userID, encrypted, now, u.CredentialsGeneration)
+		if err != nil { return err }
+		if rows != 1 { return invalid }
+		updated = u; updated.UpdateEmail(encrypted, now); updated.MarkEmailVerified(now)
+		return nil
+	})
+```
+
+`RequestEmailChange` → `issueEmailChangeCode(ctx, u, newEmail, now)` passes `u.CredentialsGeneration` (from the row whose password was just verified) into `Save`; 0 rows → `errs.NewUnauthorized("Invalid access token")`. Update every `EmailChangeRequests` implementer/double and the `verify_email`/`admin` callers if any (`grep -rn "emailChangeRequests\.\|EmailChangeRequests" internal --include='*.go'`).
+
+- [ ] **Step 3: Second failing test — request creation after a reclaim is refused**
+
+```go
+func TestRequestEmailChange_ResetBetweenPasswordCheckAndInsertIsRefused(t *testing.T) {
+	// decorate Repository.GetByID to run ResetPassword once after returning the row
+	_, err := env.svc.RequestEmailChange(ctx, u.ID, model.RequestEmailChangeRequest{Password: "old", NewEmail: "attacker@x.test"})
+	var unauthorized *errs.UnauthorizedError
+	if !errors.As(err, &unauthorized) { t.Fatalf("want 401, got %v", err) }
+	if _, err := env.reqs.GetByUser(ctx, u.ID); err == nil { t.Fatal("a pending request was created after the reclaim") }
+}
+```
+
+Run RED (before the fenced insert) then GREEN.
+
+- [ ] **Step 4: Both engines, docs, commit**
+
+`go test ./internal/user/... ./internal/test/apiparity/ ./internal/test/mcpparity/` and the pgsql run of `./internal/user/...`. Regression plan: in the "Password reset is a full reclaim" item add "an email change that was pending (code sent but not yet confirmed) can no longer be confirmed after the reset, even if the confirmation was already in flight".
+
+```bash
+git commit -m "fix(user): consume the email-change grant under the user lock and fence the email write
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 2: Unlink invalidates the provider's pending handoffs; redemption re-validates the identity under the user lock
+
+**Files:**
+- Modify: `internal/infra/storage/sqlc/query/{sqlite,pgsql}/oauth.sql` — add `DeleteOAuthHandoffsByUserProvider :execrows` (`DELETE FROM oauth_handoffs WHERE user_id = ? AND provider = ?`)
+- Regenerate: `gen/`
+- Modify: `internal/oauth/repository.go` (`Handoffs.DeleteByUserProvider`), `internal/oauth/repo/handoff*.go`
+- Modify: `internal/oauth/callback.go` (`mintHandoff` gains `issuer, subject string`; login handoffs carry them), `internal/oauth/handoff.go` (`ExchangeHandoff` in a transaction: read handoff → `LockRow` → consume → identity check → mint), `internal/oauth/identities.go` (`UnlinkIdentity` also `DeleteByUserProvider` on handoffs, inside the existing transaction after the identity delete)
+- Modify: `internal/oauth/repo/handoff.go` (Insert/Get already map issuer/subject/email — confirm)
+- Test: `internal/oauth/service_test.go`, `internal/oauth/repo/repo_integration_test.go`, the `api/harness_test.go` fakes
+
+**Interfaces:**
+- Produces: `Handoffs.DeleteByUserProvider(ctx, userID vo.Id, provider string) (int64, error)`.
+- Consumes: `Users.LockRow` (round 8), `Identities.GetByProviderSubject`, `s.tx`.
+
+- [ ] **Step 1: Failing test — a handoff minted before the unlink cannot be redeemed after it**
+
+```go
+func TestExchangeHandoff_RefusedAfterTheProviderWasUnlinked(t *testing.T) {
+	h := newHarness(t)
+	u := h.users.seed(t, "p@x.test", model.AlgorithmArgon2id) // password account, so unlink is allowed
+	saveIdentity(t, h, u.ID, "oidc", h.fake.IssuerURL(), h.fake.Subject, "p@x.test")
+	code, flow := h.loginHandoff(t) // start-login → consent → Callback; returns the handoff code + flow secret (the file has this shape)
+	if _, err := h.svc.UnlinkIdentity(ctx, u.ID, model.UnlinkIdentityRequest{Provider: "oidc"}); err != nil {
+		t.Fatal(err)
+	}
+	_, err := h.svc.ExchangeHandoff(ctx, model.ExchangeHandoffRequest{Code: code, Flow: flow}, "ua")
+	var unauthorized *errs.UnauthorizedError
+	if !errors.As(err, &unauthorized) || unauthorized.Code != errs.CodeOAuthHandoffInvalid {
+		t.Fatalf("handoff redeemed after unlink: %v", err)
+	}
+}
+```
+
+Run: FAIL (session minted).
+
+- [ ] **Step 2: Implement**
+
+`identities.go` `UnlinkIdentity`: after `DeleteByUserProvider` on identities, `if _, err := s.handoffs.DeleteByUserProvider(ctx, userID, req.Provider); err != nil { return err }` (comment: a handoff is a session in waiting; the unlinked provider's must go with it).
+
+`callback.go`: `mintHandoff(ctx, st, userID, provider, issuer, subject, idToken, generation)`; set `Issuer: issuer, Subject: subject` on the login handoff (all three `mintHandoff` call sites in `login()` have `issuer` and `claims.Subject` in scope).
+
+`handoff.go` `ExchangeHandoff`:
+
+```go
+	var res *model.LoginResult
+	err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		hash := oidc.Sha256Hex(req.Code)
+		peek, err := s.handoffs.Get(ctx, hash) // to learn the user before locking
+		if err != nil { return err }
+		if err := s.users.LockRow(ctx, peek.UserID); err != nil { return err }
+		h, err := s.consumeHandoff(ctx, hash, model.OAuthHandoffKindLogin, req.Flow)
+		if err != nil { return err }
+		if h == nil { return invalid }
+		// The identity the callback authenticated must still be linked to this
+		// user: an unlink that committed after the callback (its lock serializes
+		// with ours) has already deleted the handoff, and the row check covers
+		// a handoff minted before this rule existed.
+		id, err := s.identities.GetByProviderSubject(ctx, h.Provider, h.Issuer, h.Subject)
+		if err != nil {
+			if _, ok := errs.AsNotFound(err); ok { return invalid }
+			return err
+		}
+		if !id.UserID.Equal(h.UserID) { return invalid }
+		res, err = s.users.MintSession(ctx, h.UserID, userAgent, h.Provider, h.IDToken, h.Generation)
+		return err
+	})
+```
+
+Map NotFound from the peek to `invalid`. `consumeHandoff`'s own Get becomes redundant — refactor it to take the already-read row (or keep the double read; prefer the refactor). Update the fakes in `service_test.go`/`api/harness_test.go` (the `Handoffs` interface gained a method; `MintSession` inside a tx — the fake's `LockRow` already goes through the real repo).
+
+- [ ] **Step 3: Repo test + docs + both engines + commit**
+
+`repo_integration_test.go`: `DeleteByUserProvider` deletes only that provider's handoffs for that user (seed two providers, two users). Spec §11: one sentence "unlinking a provider deletes its unredeemed handoffs, and redemption re-checks the identity under the user row lock". CLAUDE.md Authentication cascade sentence: add "unlinking a provider also drops its pending sign-in handoffs". Regression plan: "Unlink a provider while a sign-in through it is mid-flight (callback done, handoff not yet exchanged): the exchange fails with the sign-in-link-invalid error." Run `go test ./internal/oauth/... ./internal/server/... ./internal/test/apiparity/ ./internal/test/mcpparity/` and the pgsql run of `./internal/oauth/...`.
+
+```bash
+git commit -m "fix(oauth): unlink drops the provider's pending handoffs; redemption re-validates the identity under the user lock
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```
+
+---
+
+## Final gate
+
+`make go-test`; `cd web && pnpm test && pnpm lint && npx tsc -b` (no web changes expected — confirm with `git diff --stat`); PostgreSQL: enginecompare + `DBTEST_ENGINE=pgsql` for `./internal/user/... ./internal/oauth/... ./internal/server/... ./internal/cli/...`.
+
+---
+
+### Task 3: Every remaining whole-aggregate save on an existing user runs under the user row lock; session and PAT mints too
+
+**Why (found by the Task 1 review):** `Service.mutate` (`internal/user/usecase.go:140-160`) reloads the user INSIDE its transaction but takes no row lock, then `Save`s the whole aggregate. On PostgreSQL READ COMMITTED a reset committing between that read and the `Save` is overwritten — `update-name`/avatar/locale/options/`update-password` can write the pre-reset `password`/`algorithm`/`email` back and undo a reclaim (an attacker with a live session can loop `update-name` while the owner resets). `ConfirmEmail` (`internal/user/verify_email.go:47,74`, a PUBLIC route) loads `u` OUTSIDE its transaction and `Save`s it inside. The CLI admin writers (`internal/user/admin.go` `Save` sites) do the same from a pre-transaction read. And the session/PAT mints (`InsertAccessTokenIfGeneration` / `InsertAccessTokenIfPresenterLive`) are fence-only: a mint whose fenced INSERT runs while the reclaim's `users` UPDATE (or its `RevokeAll`) is still uncommitted passes the `EXISTS` and survives the sweep.
+
+**Rule (round 8, now applied everywhere):** any transaction that writes an EXISTING user's row, or mints a credential for one, takes `Repository.LockRow(userID)` FIRST, then reads, then writes. `reclaimCredentials` already bumps `users` first, so all of these serialize with it and none can deadlock.
+
+**Files:**
+- Modify: `internal/user/usecase.go` (`mutate`: `LockRow` before `GetByID`), `internal/user/verify_email.go` (`ConfirmEmail`: move the `GetByEmail`/code checks inside the tx after `LockRow` — lock by the id the pre-tx lookup returned, then re-read), `internal/user/admin.go` (every `WithTx` that `Save`s an existing user: `LockRow` first and re-read inside; `AdminChangePassword`/`AdminDeactivate` keep their reclaim/revoke order after the save), `internal/user/session.go` (`createSession`: `WithTx{ LockRow; InsertIfGeneration }`), `internal/user/pat.go` (`CreatePersonalToken`: `WithTx{ LockRow; InsertIfPresenterLive }`)
+- Test: `internal/user/login_test.go` / `session_cascade_test.go` / `verify_email_test.go` / `admin_integration_test.go`
+
+**Interfaces:** consumes `Repository.LockRow`, `TxManager.WithTx` (savepoint-reentrant — `CreateExternalSession` is already called inside the oauth redemption transaction that holds the same lock; a nested `LockRow` on the same connection is a no-op re-lock).
+
+- [ ] **Step 1: Failing race test — `update-name` racing a reset must not restore the old password**
+
+In `internal/user/session_cascade_test.go` (reuse the `deactivatingRepo`/`resettingRepo` decorator style; here decorate `Repository.GetByID` to run the REAL `ResetPassword` once after returning the row, i.e. inside `mutate`'s transaction after its read):
+
+```go
+func TestUpdateName_ResetBetweenTheReadAndTheSaveDoesNotRestoreTheOldPassword(t *testing.T) {
+	svc, repo, u := … // sqlite-backed service with a password user; capture the pre-reset hash
+	repo.afterGetByID = func() { resetPassword(t, svc, u, "owner-new-password") } // real ResetPassword: new hash + bump + revoke
+	_, _ = svc.UpdateName(ctx, u.ID, model.UpdateNameRequest{Name: "Mallory"}) // any mutate caller
+	after, _ := repo.GetByID(ctx, u.ID)
+	if after.Password == oldHash || after.Algorithm != model.AlgorithmArgon2id {
+		t.Fatal("a stale aggregate save restored the pre-reset password")
+	}
+}
+```
+
+On SQLite the decorator hook runs inside the same connection's transaction, so the reset's own transaction is nested (savepoint) — that models "the reset committed while we held a stale aggregate" only if the hook runs BEFORE `mutate` opens its tx. Place the hook on the pre-tx path if `mutate` has none (it reads inside the tx) — in that case make the hook fire on the FIRST `GetByID` call inside the tx and let the reset run nested: the assertion still discriminates because without `LockRow` the outer `Save` overwrites the nested reset's hash (both on one connection), and with `LockRow`… the nested reset cannot block on a lock its own connection holds. If the SQLite modelling cannot discriminate, write the discriminating test as a PostgreSQL two-connection test in `internal/user/repo/` style (`lockrow_pgsql_test.go` shows the second-pool recipe) that runs `mutate` on pool 1 with a hook that performs the reset on pool 2 between read and save, and assert the reset's hash survives. Record which modelling you used and why; RED must be demonstrated on the old code on at least one engine.
+
+- [ ] **Step 2: Implement** — `mutate`: `if err := s.repo.LockRow(ctx, userID); err != nil { return err }` as the first statement inside `WithTx`, with a two-line comment (why: a stale aggregate over a reclaimed account; ordering rule). `ConfirmEmail`: resolve the user id before the tx (existing `GetByEmail`), then inside `WithTx`: `LockRow(id)` → `GetByID` → the code/expiry checks → `Save` → `emailVerifications.DeleteByUser`. `admin.go`: same shape for each existing-row writer (helper `mutateByEmail` if it removes duplication). `createSession`: wrap the fenced insert in `s.tx.WithTx(ctx, func(ctx) error { LockRow; InsertIfGeneration })`; `CreatePersonalToken` likewise with `InsertIfPresenterLive`. Keep every error text.
+
+- [ ] **Step 3: Verify both engines, docs, commit** — `go test ./internal/user/... ./internal/oauth/... ./internal/server/... ./internal/cli/... ./internal/test/apiparity/ ./internal/test/mcpparity/` and the pgsql run of `./internal/user/... ./internal/oauth/...`; no golden changes. CLAUDE.md Authentication section: one sentence stating the rule ("every write to an existing user's row and every credential mint runs under the user row lock, taken before the row is read; reclaim takes it first too"). Spec §11: same sentence.
+
+```bash
+git commit -m "fix(user): take the user row lock before every existing-row save and every credential mint
+
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>"
+```

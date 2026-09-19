@@ -25,6 +25,7 @@ type UserViewRow struct {
 	AccessLevel AccessLevel
 	AccessUntil *time.Time
 	CreatedAt   time.Time
+	Algorithm   string
 }
 
 type OptionViewRow struct {

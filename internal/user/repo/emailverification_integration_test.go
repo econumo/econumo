@@ -63,3 +63,41 @@ func TestEmailVerificationRepoLifecycle(t *testing.T) {
 		t.Errorf("Code = %q, want hash-two", got.Code)
 	}
 }
+
+// Consume is row-counted and scoped to (id, user): it is how a confirmation
+// learns that the code it checked was replaced by a resend, or already taken
+// by a concurrent confirmation.
+func TestEmailVerificationRepoConsumeIsRowCounted(t *testing.T) {
+	db := dbtest.New(t)
+	users := repo.NewRepo(db.Engine, db.TX)
+	r := repo.NewEmailVerificationRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	now := time.Now().UTC().Truncate(time.Second)
+
+	u := model.NewUser(users.NextIdentity(), "cipher", "EV", "face:blue", "hash", "salt", now)
+	if err := users.Save(ctx, u); err != nil {
+		t.Fatalf("save user: %v", err)
+	}
+	ev := model.NewEmailVerification(vo.NewId(), u.ID, "hash-one", now)
+	if err := r.Save(ctx, ev); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	// Another user's id must never take this row.
+	other := model.NewUser(users.NextIdentity(), "cipher2", "EV2", "face:red", "hash", "salt", now)
+	if err := users.Save(ctx, other); err != nil {
+		t.Fatalf("save other user: %v", err)
+	}
+	if taken, cerr := r.Consume(ctx, ev.ID, other.ID); cerr != nil || taken != 0 {
+		t.Fatalf("Consume with a foreign user = %d, %v; want 0, nil", taken, cerr)
+	}
+	if taken, cerr := r.Consume(ctx, ev.ID, u.ID); cerr != nil || taken != 1 {
+		t.Fatalf("Consume = %d, %v; want 1, nil", taken, cerr)
+	}
+	if taken, cerr := r.Consume(ctx, ev.ID, u.ID); cerr != nil || taken != 0 {
+		t.Fatalf("second Consume = %d, %v; want 0, nil", taken, cerr)
+	}
+	if _, err := r.GetByUser(ctx, u.ID); err == nil {
+		t.Fatal("the consumed row must be gone")
+	}
+}

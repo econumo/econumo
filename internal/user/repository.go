@@ -30,6 +30,52 @@ type Repository interface {
 	// Save upserts the user row and its options.
 	Save(ctx context.Context, u *model.User) error
 
+	// LockRow takes the user row's write lock for the rest of the caller's
+	// transaction without changing anything. It is the primitive behind every
+	// write to an existing user's row and every credential mint (sessions, PATs,
+	// oauth identities): taken FIRST, it orders them against an account reclaim,
+	// which holds the same lock while it bumps the generation and sweeps. It is
+	// also how a read-then-write over a user's sign-in methods (the oauth
+	// identity unlink) serializes: two concurrent unlinks would otherwise both
+	// count two identities and both delete, stranding a passwordless account
+	// with none.
+	//
+	// A MISSING user succeeds silently: no row matches, and both engines'
+	// adapters return no error (sqlite's no-op UPDATE matches zero rows;
+	// pgsql's SELECT ... FOR NO KEY UPDATE maps sql.ErrNoRows to nil, see
+	// internal/user/repo/pgsql.go). Two error shapes depend on that:
+	// ConfirmEmail's anti-enumeration generic invalid-code, raised by the
+	// GetByID that follows, and the mints' fence, which then writes zero rows
+	// and yields a 401 rather than a 500. Never "fix" it to error on a missing
+	// row.
+	LockRow(ctx context.Context, userID vo.Id) error
+
+	// BumpCredentialsGeneration invalidates every flow that read its evidence
+	// before this call. Run inside the caller's locked transaction by the
+	// reclaim (reset-password, user:change-password, user:deactivate) and by
+	// the owner's own rotation (update-password).
+	BumpCredentialsGeneration(ctx context.Context, userID vo.Id) error
+
+	// UpdatePasswordIfGeneration rewrites only the credential columns, and only
+	// while the generation still matches: the legacy-hash upgrade on login
+	// (unlocked, fenced) and update-password (under the row lock) both write
+	// through it rather than saving a whole aggregate.
+	UpdatePasswordIfGeneration(ctx context.Context, userID vo.Id, hash, salt, algorithm string, now time.Time, generation int64) (int64, error)
+
+	// ReplaceEmailIfPasswordless writes the provider's new address onto the
+	// primary email (marking it verified) only while the account is still
+	// passwordless and still at the given generation, so a password reset
+	// committing after the oauth callback's eligibility checks keeps the
+	// recovered account's own address. Returns the rows affected.
+	ReplaceEmailIfPasswordless(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)
+
+	// ReplaceEmailIfGeneration writes the confirmed new address onto the
+	// primary email (marking it verified) only while the account is still at
+	// the given generation — read after LockRow, so the confirm path can never
+	// save a stale aggregate over an account a reset has just reclaimed.
+	// Returns the rows affected.
+	ReplaceEmailIfGeneration(ctx context.Context, userID vo.Id, encryptedEmail string, now time.Time, generation int64) (int64, error)
+
 	// UpsertOption writes a single option row without touching the user row or
 	// any other option — the narrow write the analytics-preference backfill
 	// needs (Save would rewrite the whole user aggregate per row, which does
@@ -68,7 +114,21 @@ type Repository interface {
 // is evaluated in the domain (AccessToken.IsLive), not in SQL. Lookups on a
 // missing row return *errs.NotFoundError.
 type AccessTokens interface {
-	Insert(ctx context.Context, t *model.AccessToken) error
+	// InsertIfGeneration writes a session row only while the user's credentials
+	// generation still matches the one the caller's evidence was read under,
+	// reporting the rows written. Zero means an account reclaim landed in
+	// between and this session must not exist: the check happens at write time,
+	// inside the database, because a Go-side read would be exactly the race it
+	// is meant to close.
+	InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error)
+
+	// InsertIfPresenterLive writes a personal token only while presentingTokenID
+	// — the request's authenticated credential — is still unrevoked, reporting
+	// the rows written. Used for PATs: unlike a session (evidence is a password
+	// check), a PAT is minted mid-session, so the fence is "is the credential
+	// that got me here still good", checked at write time inside the database
+	// for the same race-closing reason as InsertIfGeneration.
+	InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error)
 
 	// GetByHash resolves the sha256 hex of a presented bearer token — the hot
 	// path behind every authenticated request — joining the owning user's
@@ -82,9 +142,24 @@ type AccessTokens interface {
 	// GetByID loads one row (logout / revoke-by-id paths).
 	GetByID(ctx context.Context, id vo.Id) (*model.AccessToken, error)
 
-	// Update persists the mutable lifecycle fields (last_used_at, expires_at,
-	// revoked_at) of an existing row.
-	Update(ctx context.Context, t *model.AccessToken) error
+	// Touch slides last_used_at/expires_at of a row that is still unrevoked,
+	// reporting the rows written. It never writes revoked_at: a request that
+	// read the row before a reclaim revoked it must not be able to put the
+	// stale NULL back, so the guard lives in the statement, not in Go. Zero
+	// rows means the credential was revoked or deleted between the read and
+	// this write and the caller must fail closed.
+	Touch(ctx context.Context, id vo.Id, lastUsedAt time.Time, expiresAt *time.Time) (int64, error)
+
+	// Revoke stamps revoked_at on one still-unrevoked row, so an earlier
+	// revocation keeps its original timestamp and a concurrent touch cannot
+	// undo it.
+	Revoke(ctx context.Context, id vo.Id, now time.Time) error
+
+	// RevokeAll revokes every still-unrevoked row of one kind for one user
+	// except exceptID (the presenting credential; pass the zero id to spare
+	// nothing) in a single statement, so a sweep cannot lose rows to a
+	// concurrent touch the way a read-then-write loop could.
+	RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error
 
 	// ListByUser returns ALL rows (live and dead) of one kind, ordered by
 	// (created_at, id); callers filter with IsLive/IsDead.
@@ -107,8 +182,12 @@ type PasswordRequests interface {
 	Save(ctx context.Context, pr *model.PasswordRequest) error
 	// GetByUserAndCode loads a user's request matching code (NotFound if absent).
 	GetByUserAndCode(ctx context.Context, userID vo.Id, code string) (*model.PasswordRequest, error)
-	// Delete removes a request by id.
-	Delete(ctx context.Context, id vo.Id) error
+
+	// Consume deletes one code by (id, user), reporting the rows deleted. The
+	// reset reads that row as its evidence and consumes it under the user's
+	// row lock, so zero rows means a replacement code (or a concurrent reset)
+	// already took it and this reset must fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
 }
 
 // EmailVerifications persists login email-verification codes
@@ -119,6 +198,12 @@ type EmailVerifications interface {
 	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailVerification, error)
 	Save(ctx context.Context, v *model.EmailVerification) error
 	DeleteByUser(ctx context.Context, userID vo.Id) error
+
+	// Consume deletes one code by (id, user), reporting the rows deleted. The
+	// confirmation reads that row as its evidence and consumes it under the
+	// user's row lock, so zero rows means a resend replaced it (or a concurrent
+	// confirmation already took it) and this confirmation must fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
 }
 
 // EmailChangeRequests persists pending self-service email changes
@@ -126,6 +211,21 @@ type EmailVerifications interface {
 // missing row returns *errs.NotFoundError.
 type EmailChangeRequests interface {
 	GetByUser(ctx context.Context, userID vo.Id) (*model.EmailChangeRequest, error)
-	Save(ctx context.Context, r *model.EmailChangeRequest) error
+
+	// Save inserts a pending change only while the user's credentials
+	// generation still matches the one the password check was read under,
+	// reporting the rows written. A pending change is a grant to rewrite the
+	// login key, so zero rows means a reclaim landed in between and the grant
+	// must not exist (same fence, and the same reason, as
+	// AccessTokens.InsertIfGeneration).
+	Save(ctx context.Context, r *model.EmailChangeRequest, generation int64) (int64, error)
+
+	// Consume deletes one pending row by (id, user), reporting the rows
+	// deleted. The confirm path reads that row as its evidence and consumes it
+	// under the user's row lock, so zero rows means the reclaim (or a
+	// concurrent confirm) already took the grant and this confirmation must
+	// fail closed.
+	Consume(ctx context.Context, id, userID vo.Id) (int64, error)
+
 	DeleteByUser(ctx context.Context, userID vo.Id) error
 }

@@ -11,7 +11,8 @@ import (
 // asserts each exists in every language.
 var EmailKeys = []string{"emails.reset.subject", "emails.reset.body", "emails.verify.subject", "emails.verify.body",
 	"emails.change_email.subject", "emails.change_email.body",
-	"emails.change_email_notice.subject", "emails.change_email_notice.body"}
+	"emails.change_email_notice.subject", "emails.change_email_notice.body",
+	"emails.identity_linked.subject", "emails.identity_linked.body"}
 
 // ResetSender builds and sends the password-reset confirmation-code email. It
 // satisfies the user service's reset-mailer port (structurally) so the app layer

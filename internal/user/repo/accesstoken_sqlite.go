@@ -11,10 +11,6 @@ type accessTokenSqliteQuerier struct{}
 
 var _ accessTokenQuerier = accessTokenSqliteQuerier{}
 
-func (accessTokenSqliteQuerier) InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error {
-	return sqlitegen.New(db).InsertAccessToken(ctx, p)
-}
-
 func (accessTokenSqliteQuerier) GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error) {
 	return sqlitegen.New(db).GetAccessTokenByHash(ctx, hash)
 }
@@ -23,8 +19,16 @@ func (accessTokenSqliteQuerier) GetAccessTokenByID(ctx context.Context, db backe
 	return sqlitegen.New(db).GetAccessTokenByID(ctx, id)
 }
 
-func (accessTokenSqliteQuerier) UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error {
-	return sqlitegen.New(db).UpdateAccessToken(ctx, p)
+func (accessTokenSqliteQuerier) TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error) {
+	return sqlitegen.New(db).TouchAccessToken(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeAccessToken(ctx context.Context, db backend.DBTX, p revokeAccessTokenParams) error {
+	return sqlitegen.New(db).RevokeAccessToken(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeUserAccessTokens(ctx context.Context, db backend.DBTX, p revokeUserAccessTokensParams) error {
+	return sqlitegen.New(db).RevokeUserAccessTokens(ctx, p)
 }
 
 func (accessTokenSqliteQuerier) ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error) {
@@ -37,4 +41,12 @@ func (accessTokenSqliteQuerier) DeleteAccessToken(ctx context.Context, db backen
 
 func (accessTokenSqliteQuerier) DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error) {
 	return sqlitegen.New(db).DeleteDeadAccessTokens(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error) {
+	return sqlitegen.New(db).InsertAccessTokenIfGeneration(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {
+	return sqlitegen.New(db).InsertAccessTokenIfPresenterLive(ctx, p)
 }

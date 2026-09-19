@@ -4,9 +4,11 @@ package user
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
 )
 
 // Register creates a new user (no token returned; see CLAUDE.md). It is
@@ -37,17 +39,37 @@ func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*mod
 
 // createUser is the shared, UNGATED account-creation core used by Register
 // (which adds the registration gate) and AdminCreateUser (the CLI, which does
-// not). It generates a salt, hashes the password, encrypts the email, seeds the
-// four default options, and persists. It returns the saved aggregate. A
-// duplicate email -> a validation error ("User already exists"). New users are
-// never auto-connected to existing users; connections are created only by
-// accepting an invite. Self-service registration grants a trial AND is subject
-// to the verification gate; operator-provisioned accounts (the CLI) get
-// neither — an admin explicitly provisioning a user is trusted access, not a
-// lead to be time-boxed or a mailbox to confirm.
+// not). It generates a salt, hashes the password, and delegates the rest of
+// the assembly to persistNewUser. Self-service registration grants a trial
+// AND is subject to the verification gate; operator-provisioned accounts (the
+// CLI) get neither — an admin explicitly provisioning a user is trusted
+// access, not a lead to be time-boxed or a mailbox to confirm.
 func (s *Service) createUser(ctx context.Context, name, email, password string, selfService bool) (*model.User, error) {
-	loweredEmail := strings.ToLower(strings.TrimSpace(email))
+	salt, serr := newSalt()
+	if serr != nil {
+		return nil, serr
+	}
+	passwordHash, herr := s.hasher.Hash(password)
+	if herr != nil {
+		return nil, herr
+	}
+	return s.persistNewUser(ctx, name, email, func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User {
+		return model.NewUser(id, encryptedEmail, name, avatar, passwordHash, salt, now)
+	}, selfService, selfService && s.emailVerification)
+}
 
+// persistNewUser is the assembly shared by password registration and external
+// provisioning: uniqueness, email encoding, default options, analytics
+// default, resolved default currency, the self-service trial, and the
+// verification gate. build constructs the bare aggregate for the caller's
+// scheme. A duplicate email -> a validation error ("User already exists").
+// New users are never auto-connected to existing users; connections are
+// created only by accepting an invite.
+func (s *Service) persistNewUser(ctx context.Context, name, email string,
+	build func(id vo.Id, encryptedEmail, avatar string, now time.Time) *model.User,
+	selfService, requireVerification bool,
+) (*model.User, error) {
+	loweredEmail := strings.ToLower(strings.TrimSpace(email))
 	exists, err := s.repo.ExistsByEmail(ctx, loweredEmail)
 	if err != nil {
 		return nil, err
@@ -55,23 +77,12 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 	if exists {
 		return nil, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
 	}
-
 	encryptedEmail, eerr := s.encode.Encode(strings.TrimSpace(email))
 	if eerr != nil {
 		return nil, eerr
 	}
-	salt, serr := newSalt()
-	if serr != nil {
-		return nil, serr
-	}
 	now := s.clock.Now()
-	passwordHash, herr := s.hasher.Hash(password)
-	if herr != nil {
-		return nil, herr
-	}
-	avatar := s.avatars.Pick()
-
-	u := model.NewUser(s.repo.NextIdentity(), encryptedEmail, name, avatar, passwordHash, salt, now)
+	u := build(s.repo.NextIdentity(), encryptedEmail, s.avatars.Pick(), now)
 	u.SeedDefaultOptions(s.repo.NextIdentity, now)
 	// Analytics default to on for every new user; the deprecated ECONUMO_ANALYTICS
 	// variable governs only the one-time migration:seed-analytics-option backfill
@@ -89,15 +100,11 @@ func (s *Service) createUser(ctx context.Context, name, email, password string, 
 		until := model.TrialEnd(now, s.trialDays)
 		u.SetAccess(model.AccessLevelFull, &until, now)
 	}
-	if selfService && s.emailVerification {
+	if requireVerification {
 		u.RequireEmailVerification()
 	}
-
-	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		return s.repo.Save(ctx, u)
-	}); err != nil {
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error { return s.repo.Save(ctx, u) }); err != nil {
 		return nil, err
 	}
-
 	return u, nil
 }

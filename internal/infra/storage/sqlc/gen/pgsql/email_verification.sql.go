@@ -10,6 +10,25 @@ import (
 	"time"
 )
 
+const consumeUserEmailVerification = `-- name: ConsumeUserEmailVerification :execrows
+DELETE FROM users_email_verifications WHERE id = $1 AND user_id = $2
+`
+
+type ConsumeUserEmailVerificationParams struct {
+	ID     string
+	UserID string
+}
+
+// See the sqlite sibling: the confirmation's evidence and its consumption are
+// the same row.
+func (q *Queries) ConsumeUserEmailVerification(ctx context.Context, arg ConsumeUserEmailVerificationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeUserEmailVerification, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteUserEmailVerificationsByUser = `-- name: DeleteUserEmailVerificationsByUser :exec
 
 DELETE FROM users_email_verifications WHERE user_id = $1

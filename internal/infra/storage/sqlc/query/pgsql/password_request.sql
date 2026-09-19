@@ -13,5 +13,6 @@ SELECT id, user_id, code, created_at, updated_at, expired_at
 FROM users_password_requests
 WHERE user_id = $1 AND code = $2;
 
--- name: DeleteUserPasswordRequest :exec
-DELETE FROM users_password_requests WHERE id = $1;
+-- name: ConsumeUserPasswordRequest :execrows
+-- See the sqlite sibling: the reset consumes its evidence row-counted.
+DELETE FROM users_password_requests WHERE id = $1 AND user_id = $2;

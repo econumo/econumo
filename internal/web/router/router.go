@@ -6,6 +6,9 @@
 // Route layout:
 //
 //	/health           (GET)  -> health check, wrapped in the global chain
+//	/.well-known/...  (GET)  -> the mobile app's Universal / App Link
+//	                            association documents, only when app links are
+//	                            configured (internal/web/applinks)
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
@@ -26,6 +29,7 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/web/applinks"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
 	"github.com/econumo/econumo/web"
@@ -141,6 +145,18 @@ func New(deps Deps) http.Handler {
 	// specific than the SPA "/" catch-all, so ServeMux routes it here. Wrapped in
 	// the global chain (recover + requestid + cors apply here too).
 	root.Handle("GET /health", global(healthCheckHandler(deps.DB)))
+
+	// Mobile-app association documents, on the root mux beside /health (their
+	// paths are fixed by Apple and Google, and being outside /api keeps them
+	// away from the REST parity scanner). Wrapped in the same global chain, so a
+	// platform's fetch is observable in the access log like any other request.
+	// Unmounted when no app is associated, so the spa handler's reserved-path
+	// rule answers an honest 404 there.
+	if deps.Cfg.AppLinksEnabled() {
+		assoc := global(applinks.Handler(deps.Cfg))
+		root.Handle("GET "+applinks.AASAPath, assoc)
+		root.Handle("GET "+applinks.AssetLinksPath, assoc)
+	}
 
 	// API subtree. Modules register their concrete routes via RegisterAPI; the
 	// router wraps the whole subtree in the global chain. Public vs

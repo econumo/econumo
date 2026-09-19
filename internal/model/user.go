@@ -36,6 +36,10 @@ const (
 const (
 	AlgorithmSHA512   = "sha512"
 	AlgorithmArgon2id = "argon2id"
+	// AlgorithmNone marks a user provisioned through an external identity who has
+	// never set a password: the hasher fails closed on it, so password login
+	// yields the ordinary "Invalid credentials." until the reset flow writes a hash.
+	AlgorithmNone = "none"
 )
 
 // persistedOptions are the option names that exist as users_options rows, in
@@ -110,9 +114,15 @@ type User struct {
 	EmailVerified bool
 	AccessLevel   AccessLevel
 	AccessUntil   *time.Time
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Options       []UserOption
+	// CredentialsGeneration is the account-reclaim fence as of the row read
+	// that produced this aggregate. A flow that authenticates with this row
+	// (password hash, linked identity, provisioned user) presents the value at
+	// write time; the reclaim bumps it, so a write built on a pre-reclaim read
+	// affects zero rows. Zero for an aggregate that has never been persisted.
+	CredentialsGeneration int64
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	Options               []UserOption
 }
 
 // NewUser constructs a freshly-registered user. The caller (the service) has
@@ -134,6 +144,21 @@ func NewUser(id vo.Id, encryptedEmail, name, avatar, passwordHash, salt string, 
 		UpdatedAt:     now,
 	}
 }
+
+// NewPasswordlessUser constructs a user provisioned from a verified external
+// identity (OAuth/OIDC). No hash, no salt, algorithm "none"; the email counts as
+// verified because the callback rejected unverified claims before reaching here.
+func NewPasswordlessUser(id vo.Id, encryptedEmail, name, avatar string, now time.Time) *User {
+	u := NewUser(id, encryptedEmail, name, avatar, "", "", now)
+	u.Algorithm = AlgorithmNone
+	return u
+}
+
+func (u *User) HasPassword() bool { return HasPasswordAlgorithm(u.Algorithm) }
+
+// HasPasswordAlgorithm answers the same question for callers that hold only the
+// algorithm column (read-model rows), so the rule lives in exactly one place.
+func HasPasswordAlgorithm(alg string) bool { return alg != AlgorithmNone }
 
 // Option returns the option with the given name, or nil if absent.
 func (u *User) Option(name string) *UserOption {

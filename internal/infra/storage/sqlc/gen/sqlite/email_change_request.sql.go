@@ -10,6 +10,26 @@ import (
 	"time"
 )
 
+const consumeUserEmailChangeRequest = `-- name: ConsumeUserEmailChangeRequest :execrows
+DELETE FROM users_email_change_requests WHERE id = ? AND user_id = ?
+`
+
+type ConsumeUserEmailChangeRequestParams struct {
+	ID     string
+	UserID string
+}
+
+// The confirm path's evidence and its consumption are the same row: taking it
+// row-counted is how a confirmation learns that the reclaim (or a concurrent
+// confirm) already took the grant.
+func (q *Queries) ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeUserEmailChangeRequest, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteUserEmailChangeRequestsByUser = `-- name: DeleteUserEmailChangeRequestsByUser :exec
 
 DELETE FROM users_email_change_requests WHERE user_id = ?
@@ -44,23 +64,30 @@ func (q *Queries) GetUserEmailChangeRequestByUser(ctx context.Context, userID st
 	return i, err
 }
 
-const insertUserEmailChangeRequest = `-- name: InsertUserEmailChangeRequest :exec
+const insertUserEmailChangeRequestIfGeneration = `-- name: InsertUserEmailChangeRequestIfGeneration :execrows
 INSERT INTO users_email_change_requests (id, user_id, new_email, code, created_at, updated_at, expired_at)
-VALUES (?, ?, ?, ?, ?, ?, ?)
+SELECT ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
 `
 
-type InsertUserEmailChangeRequestParams struct {
-	ID        string
-	UserID    string
-	NewEmail  string
-	Code      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	ExpiredAt time.Time
+type InsertUserEmailChangeRequestIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	NewEmail              string
+	Code                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ExpiredAt             time.Time
+	ID_2                  string
+	CredentialsGeneration int64
 }
 
-func (q *Queries) InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error {
-	_, err := q.db.ExecContext(ctx, insertUserEmailChangeRequest,
+// A pending change is a grant to rewrite the login key, so it must not be
+// created by a session an account reclaim has already invalidated: the reclaim
+// bumps the generation, and the insert only lands under the one the password
+// check read.
+func (q *Queries) InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertUserEmailChangeRequestIfGeneration,
 		arg.ID,
 		arg.UserID,
 		arg.NewEmail,
@@ -68,6 +95,11 @@ func (q *Queries) InsertUserEmailChangeRequest(ctx context.Context, arg InsertUs
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.ExpiredAt,
+		arg.ID_2,
+		arg.CredentialsGeneration,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

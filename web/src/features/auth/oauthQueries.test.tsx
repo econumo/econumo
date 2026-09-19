@@ -1,0 +1,134 @@
+import { renderHook, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { http, HttpResponse } from 'msw'
+import type { ReactNode } from 'react'
+import { server } from '@/test/msw'
+import { isFreshAccount, oauthClient, openAuthorizationUrl, rememberOAuthFlow, takeOAuthFlow, useExchangeHandoff, useOAuthInFlight, useStartOAuth } from './oauthQueries'
+
+function wrapper({ children }: { children: ReactNode }) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>
+}
+
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+  window.econumoConfig = {}
+  delete (window as { Capacitor?: unknown }).Capacitor
+})
+
+afterEach(() => {
+  useOAuthInFlight.setState({ inFlight: false })
+})
+
+it('oauthClient reports web outside the app and app inside it', () => {
+  expect(oauthClient()).toBe('web')
+  window.Capacitor = { isNativePlatform: () => true }
+  expect(oauthClient()).toBe('app')
+})
+
+it('openAuthorizationUrl assigns location on the web and opens the Browser plugin in the app', () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  openAuthorizationUrl('https://idp/a')
+  expect(assign).toHaveBeenCalledWith('https://idp/a')
+  const open = vi.fn().mockResolvedValue(undefined)
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: { open } } }
+  openAuthorizationUrl('https://idp/b')
+  expect(open).toHaveBeenCalledWith({ url: 'https://idp/b' })
+})
+
+it('useStartOAuth posts to start-login for login and start-link for link, then navigates', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...window.location, assign }, writable: true })
+  const hits: string[] = []
+  server.use(
+    http.post('*/api/v1/oauth/start-login', () => { hits.push('login'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1', flow: 'f1' } }) }),
+    http.post('*/api/v1/oauth/start-link', () => { hits.push('link'); return HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/2', flow: 'f2' } }) }),
+  )
+  const { result } = renderHook(() => useStartOAuth(), { wrapper })
+  await result.current.mutateAsync({ provider: 'google', intent: 'login' })
+  expect(sessionStorage.getItem('oauthFlow')).toBe('f1')
+  await result.current.mutateAsync({ provider: 'google', intent: 'link' })
+  await waitFor(() => expect(hits).toEqual(['login', 'link']))
+  expect(assign).toHaveBeenNthCalledWith(1, 'https://idp/1')
+  expect(assign).toHaveBeenNthCalledWith(2, 'https://idp/2')
+  expect(takeOAuthFlow()).toBe('f2')
+  expect(takeOAuthFlow()).toBe('') // single use
+})
+
+it('stores the flow secret in localStorage inside the app, where the browser sheet ends the session', async () => {
+  window.Capacitor = { isNativePlatform: () => true }
+  server.use(http.post('*/api/v1/oauth/start-login', () =>
+    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/1', flow: 'appflow' } })))
+  const { result } = renderHook(() => useStartOAuth(), { wrapper })
+  await result.current.mutateAsync({ provider: 'google', intent: 'login' })
+  expect(localStorage.getItem('oauthFlow')).toBe('appflow')
+  expect(sessionStorage.getItem('oauthFlow')).toBeNull()
+})
+
+it('in the app, a flow stays in flight until the browser sheet finishes or the flow secret is taken', async () => {
+  const listeners: Record<string, () => void> = {}
+  window.Capacitor = { isNativePlatform: () => true, Plugins: { Browser: {
+    open: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    addListener: vi.fn((ev: string, cb: () => void) => { listeners[ev] = cb }),
+  } } }
+  openAuthorizationUrl('https://idp/x')
+  expect(useOAuthInFlight.getState().inFlight).toBe(true)
+  listeners.browserFinished()
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
+  openAuthorizationUrl('https://idp/y')
+  rememberOAuthFlow('f')
+  takeOAuthFlow()
+  expect(useOAuthInFlight.getState().inFlight).toBe(false)
+})
+
+it('useExchangeHandoff stores the token and clears the persisted cache', async () => {
+  localStorage.setItem('econumo.query-cache', '{"stale":true}')
+  let body: unknown
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', async ({ request }) => {
+    body = await request.json()
+    return HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '' } })
+  }))
+  const { result } = renderHook(() => useExchangeHandoff(), { wrapper })
+  await result.current.mutateAsync({ code: 'code', flow: 'f1' })
+  expect(body).toEqual({ code: 'code', flow: 'f1' })
+  expect(localStorage.getItem('token')).toBe('eco_ses_new')
+  expect(localStorage.getItem('econumo.query-cache')).toBeNull()
+})
+
+// The app returns from the browser sheet into the SAME SPA instance, so the
+// previous user's queries are still in memory and still inside their
+// staleTime; dropping only the persisted snapshot would show them to whoever
+// signed in next.
+it('useExchangeHandoff empties the in-memory cache of the previous session', async () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  qc.setQueryData(['user', 'data'], { id: 'previous-user' })
+  qc.setQueryData(['accounts'], [{ id: 'a1', name: 'Previous account' }])
+  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
+    HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u2', options: [], accessLevel: 'full', accessUntil: '' } })))
+  const { result } = renderHook(() => useExchangeHandoff(), {
+    wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={qc}>{children}</QueryClientProvider>,
+  })
+  await result.current.mutateAsync({ code: 'code', flow: 'f1' })
+  expect(qc.getQueryData(['user', 'data'])).toBeUndefined()
+  expect(qc.getQueryData(['accounts'])).toBeUndefined()
+  expect(qc.getQueryCache().getAll()).toHaveLength(0)
+})
+
+describe('isFreshAccount', () => {
+  const now = new Date('2026-09-07T12:00:00Z')
+
+  it('is fresh when createdAt is within the last two minutes', () => {
+    expect(isFreshAccount('2026-09-07 11:59:00', now)).toBe(true)
+  })
+
+  it('is not fresh when createdAt is older than two minutes', () => {
+    expect(isFreshAccount('2026-09-07 11:00:00', now)).toBe(false)
+  })
+
+  it('is not fresh when createdAt is malformed', () => {
+    expect(isFreshAccount('not-a-date', now)).toBe(false)
+  })
+})

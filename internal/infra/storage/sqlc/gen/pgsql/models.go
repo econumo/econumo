@@ -19,6 +19,8 @@ type AccessToken struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time
 	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
 }
 
 type Account struct {
@@ -190,6 +192,34 @@ type MessengerMessage struct {
 	DeliveredAt *time.Time
 }
 
+type OauthHandoff struct {
+	CodeHash              string
+	Kind                  string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	FlowHash              string
+	IDToken               *string
+	CreatedAt             time.Time
+	ExpiresAt             time.Time
+	CredentialsGeneration int64
+}
+
+type OauthState struct {
+	StateHash    string
+	Provider     string
+	Nonce        string
+	CodeVerifier string
+	FlowHash     string
+	Client       string
+	Intent       string
+	LinkUserID   *string
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
+}
+
 type OperationRequestsID struct {
 	ID        string
 	IsHandled bool
@@ -265,22 +295,23 @@ type TransactionsLabel struct {
 }
 
 type User struct {
-	ID            string
-	Identifier    string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	Timezone      string
-	Language      string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	EmailVerified bool
+	ID                    string
+	Identifier            string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	Timezone              string
+	Language              string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 type UsersConnection struct {
@@ -317,6 +348,17 @@ type UsersHiddenCurrency struct {
 	UserID     string
 	CurrencyID string
 	CreatedAt  time.Time
+}
+
+type UsersIdentity struct {
+	ID        string
+	UserID    string
+	Provider  string
+	Issuer    string
+	Subject   string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type UsersOption struct {

@@ -126,10 +126,17 @@ func setCacheControl(w http.ResponseWriter, cleaned string) {
 }
 
 // isReservedPath reports whether the path belongs to a server-side route group
-// (API or internal) that must never be served the SPA shell.
+// (API, internal, or the RFC 8615 /.well-known/ namespace) that must never be
+// served the SPA shell. The well-known documents (the mobile app's link
+// association files, ACME challenges, …) are fetched by operating systems and
+// robots that parse them as JSON or text: handing them index.html with a 200
+// turns "not configured" into a parse error. The extensionless
+// apple-app-site-association needs this rule in particular — the
+// missing-asset rule only catches paths that carry a file extension.
 func isReservedPath(p string) bool {
 	return p == "/api" || strings.HasPrefix(p, "/api/") ||
-		p == "/_" || strings.HasPrefix(p, "/_/")
+		p == "/_" || strings.HasPrefix(p, "/_/") ||
+		p == "/.well-known" || strings.HasPrefix(p, "/.well-known/")
 }
 
 // fileExists reports whether name is an existing regular file (not a
