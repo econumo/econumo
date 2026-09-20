@@ -683,10 +683,10 @@
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
           },
           "linked_accounts": {
-            "menu_item": "Gekoppelde accounts",
-            "header": "Gekoppelde accounts",
+            "menu_item": "Aanmeldmethoden",
+            "header": "Aanmeldmethoden",
             "description": "Externe accounts waarmee u kunt inloggen bij Econumo.",
-            "empty": "Nog geen gekoppelde accounts.",
+            "empty": "Geen aanmeldmethoden beschikbaar om te koppelen.",
             "linked_on": "Gekoppeld",
             "link": "Koppelen",
             "unlink": "Ontkoppelen",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Gebruiksstatistieken delen",
-            "description": "Helpt ons Econumo te verbeteren. Financiële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
+            "description": "Helpt ons Econumo te verbeteren.\nFinanciële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
           }
         }
       }

@@ -683,10 +683,10 @@
             "confirm_revoke": "Revogar este token? As integrações que o utilizam deixarão de funcionar imediatamente."
           },
           "linked_accounts": {
-            "menu_item": "Contas vinculadas",
-            "header": "Contas vinculadas",
+            "menu_item": "Métodos de início de sessão",
+            "header": "Métodos de início de sessão",
             "description": "Contas externas que pode usar para iniciar sessão no Econumo.",
-            "empty": "Ainda não há contas vinculadas.",
+            "empty": "Não há métodos de início de sessão disponíveis para associar.",
             "linked_on": "Vinculada",
             "link": "Vincular",
             "unlink": "Desvincular",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Partilhar estatísticas de utilização",
-            "description": "Ajuda-nos a melhorar o Econumo. Os dados financeiros e as informações pessoais — nome, email — nunca são enviados."
+            "description": "Ajuda-nos a melhorar o Econumo.\nOs dados financeiros e as informações pessoais — nome, email — nunca são enviados."
           }
         }
       }

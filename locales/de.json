@@ -683,10 +683,10 @@
             "confirm_revoke": "Diesen Token widerrufen? Integrationen, die ihn verwenden, funktionieren sofort nicht mehr."
           },
           "linked_accounts": {
-            "menu_item": "Verknüpfte Konten",
-            "header": "Verknüpfte Konten",
+            "menu_item": "Anmeldemethoden",
+            "header": "Anmeldemethoden",
             "description": "Externe Konten, mit denen Sie sich bei Econumo anmelden können.",
-            "empty": "Noch keine verknüpften Konten.",
+            "empty": "Keine Anmeldemethoden zum Verknüpfen verfügbar.",
             "linked_on": "Verknüpft",
             "link": "Verknüpfen",
             "unlink": "Trennen",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Nutzungsstatistiken teilen",
-            "description": "Hilft uns, Econumo zu verbessern. Finanzdaten und persönliche Angaben – Name, E-Mail – werden nie gesendet."
+            "description": "Hilft uns, Econumo zu verbessern.\nFinanzdaten und persönliche Angaben – Name, E-Mail – werden nie gesendet."
           }
         }
       }

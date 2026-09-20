@@ -683,10 +683,10 @@
             "confirm_revoke": "Revocare questo token? Le integrazioni che lo usano smetteranno subito di funzionare."
           },
           "linked_accounts": {
-            "menu_item": "Account collegati",
-            "header": "Account collegati",
+            "menu_item": "Metodi di accesso",
+            "header": "Metodi di accesso",
             "description": "Account esterni che puoi usare per accedere a Econumo.",
-            "empty": "Nessun account collegato.",
+            "empty": "Nessun metodo di accesso disponibile da collegare.",
             "linked_on": "Collegato",
             "link": "Collega",
             "unlink": "Scollega",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Condividi le statistiche di utilizzo",
-            "description": "Ci aiuta a migliorare Econumo. I dati finanziari e le informazioni personali — nome, email — non vengono mai inviati."
+            "description": "Ci aiuta a migliorare Econumo.\nI dati finanziari e le informazioni personali — nome, email — non vengono mai inviati."
           }
         }
       }

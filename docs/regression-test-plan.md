@@ -124,7 +124,7 @@ navigation (single-pane vs sidebar).
 - [ ] Sign-in through a provider whose verified email matches an existing
       PASSWORDLESS account (one created through another provider) auto-links
       with no confirmation dialog, signs into that account, shows the new
-      provider under Settings → Profile → Linked accounts, and delivers the
+      provider under Settings → Profile → Sign-in methods, and delivers the
       owner's notice email (console transport prints it to server stdout in
       dev) naming the provider.
 - [ ] Starting a provider sign-in in one browser and opening the returned
@@ -168,7 +168,7 @@ navigation (single-pane vs sidebar).
 - [ ] Linking from Settings completes only in the browser that started it:
       start the link in one browser, then open the returned Econumo callback
       URL in a DIFFERENT browser signed in as another user — that user's
-      Linked accounts page shows an error and gains NO identity, and the
+      Sign-in methods page shows an error and gains NO identity, and the
       provider account stays unlinked everywhere.
 - [ ] A FAILED link from Settings (e.g. linking a provider account already
       linked to another Econumo user) returns to Settings → Profile → Linked
@@ -198,7 +198,7 @@ navigation (single-pane vs sidebar).
 - [ ] Web: with a custom backend selected (different origin than the page),
       no provider buttons are shown.
 - [ ] Web: with a custom backend selected (different origin than the page),
-      Settings → Profile → Linked accounts shows the linked list but offers no
+      Settings → Profile → Sign-in methods shows the linked list but offers no
       Link buttons.
 
 ## 3. Onboarding (fresh user)
@@ -483,7 +483,9 @@ User C sees none of it.
 - [ ] Analytics toggle (Settings → Profile → Privacy, the last group on the
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
-      flip it, unlike other writes on that account.
+      flip it, unlike other writes on that account. Its description renders on
+      TWO lines (the reassurance about financial and personal data starts a new
+      line), in every UI language.
 - [ ] Analytics reach the collector for signed-in sessions only (DevTools →
       Network, filter `t.econumo.com`): the login/register pages send no
       request; after login every request body carries `$user_id`; a reload of
@@ -506,7 +508,7 @@ User C sees none of it.
       back to `off`. The custom OIDC provider reports as
       `auth_sso`. Log out and sign in as someone else → the flags describe the
       new user, never the previous one's.
-- [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
+- [ ] 📱 Sign-in methods (Settings → Profile → Sign-in methods): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"
       toast AND the newly linked provider already in the list (no manual

@@ -683,10 +683,10 @@
             "confirm_revoke": "Revoke this token? Integrations using it will stop working immediately."
           },
           "linked_accounts": {
-            "menu_item": "Linked accounts",
-            "header": "Linked accounts",
+            "menu_item": "Sign-in methods",
+            "header": "Sign-in methods",
             "description": "External accounts you can use to sign in to Econumo.",
-            "empty": "No linked accounts yet.",
+            "empty": "No sign-in methods available to connect.",
             "linked_on": "Linked",
             "link": "Link",
             "unlink": "Unlink",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Share usage statistics",
-            "description": "Helps us improve Econumo. Financial data and personal information — name, email — are never sent."
+            "description": "Helps us improve Econumo.\nFinancial data and personal information — name, email — are never sent."
           }
         }
       }
