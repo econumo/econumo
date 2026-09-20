@@ -37,7 +37,7 @@ export function AppReturnPage() {
     return null
   }
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-4 p-6 text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 p-6 text-center">
       <h1 className="text-lg font-medium">{t('auth.oauth.app_return.title')}</h1>
       <Button asChild>
         <a href={schemeURL(search, hash)}>{t('auth.oauth.app_return.open_app')}</a>
