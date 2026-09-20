@@ -67,23 +67,27 @@ never lets you download it again, so save it somewhere safe immediately.
    associated with the App ID from step 2. Download the `.p8` file — this is
    a one-time download. Note the **Key ID** shown on the key's page —
    this becomes `ECONUMO_OAUTH_APPLE_KEY_ID`.
-6. The `.p8` file is a PEM-encoded private key with real newlines, but a
-   `.env` file is single-line per variable. Replace every newline in the
-   file's contents with the two characters `\n` (backslash, n) before
-   pasting it in — Econumo unescapes literal `\n` back into real newlines
-   when it reads the variable. For example, a key that looks like:
+6. Put the `.p8` file somewhere the server can read it and point
+   `ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE` at that path. Keep the file exactly
+   as Apple produced it — real newlines, no reformatting. It holds a signing
+   credential, so restrict it to the account the server runs as:
 
    ```
-   -----BEGIN PRIVATE KEY-----
-   MIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkw...
-   -----END PRIVATE KEY-----
+   install -o econumo -g econumo -m 600 AuthKey_ABC1234567.p8 /etc/econumo/apple.p8
    ```
 
-   becomes one line:
+   In Docker, mount it into the container (for example
+   `./secrets/apple.p8:/etc/econumo/apple.p8:ro`) and set the variable to the
+   path *inside* the container.
 
-   ```
-   ECONUMO_OAUTH_APPLE_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\nMIGTAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBHkw...\n-----END PRIVATE KEY-----\n
-   ```
+   > The key is passed as a file rather than inline because a PEM is
+   > multi-line. The earlier `ECONUMO_OAUTH_APPLE_PRIVATE_KEY` variable took
+   > the key on one line with newlines written as `\n`, which worked under
+   > Docker but not under systemd: `EnvironmentFile=` consumes the backslash
+   > of an unquoted `\n`, so the key reached the process as one unbroken line
+   > and the server refused to start with `apple private key is not PEM`.
+   > That variable is no longer accepted — a server still configured with it
+   > fails at boot with a message pointing here.
 
 7. Put it all together:
 
@@ -91,7 +95,7 @@ never lets you download it again, so save it somewhere safe immediately.
    ECONUMO_OAUTH_APPLE_CLIENT_ID=com.example.econumo.signin
    ECONUMO_OAUTH_APPLE_TEAM_ID=<team id>
    ECONUMO_OAUTH_APPLE_KEY_ID=<key id>
-   ECONUMO_OAUTH_APPLE_PRIVATE_KEY=<the one-line key from step 6>
+   ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE=/etc/econumo/apple.p8
    ```
 
 Apple is a fixed issuer (`https://appleid.apple.com`) and its email claim

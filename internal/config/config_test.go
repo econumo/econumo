@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -593,19 +594,69 @@ func TestLoad_OAuthGoogleEnabled(t *testing.T) {
 	}
 }
 
-func TestLoad_OAuthApplePrivateKeyUnescapesNewlines(t *testing.T) {
+// applePEM is a multi-line stand-in for a real .p8 file.
+const applePEM = "-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----\n"
+
+func appleEnv(t *testing.T) {
+	t.Helper()
 	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
 	t.Setenv("ECONUMO_URL", "https://money.example.test")
 	t.Setenv("ECONUMO_OAUTH_APPLE_CLIENT_ID", "com.example.web")
 	t.Setenv("ECONUMO_OAUTH_APPLE_TEAM_ID", "TEAM123456")
 	t.Setenv("ECONUMO_OAUTH_APPLE_KEY_ID", "KEY1234567")
-	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY", `-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----`)
+}
+
+func TestLoad_OAuthApplePrivateKeyFileReadsVerbatim(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "AuthKey.p8")
+	if err := os.WriteFile(path, []byte(applePEM), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(c.OAuthApplePrivateKey, "\nMIGH\n") {
-		t.Fatalf("literal \\n must be unescaped, got %q", c.OAuthApplePrivateKey)
+	// Read byte-for-byte: no unescaping, so a real PEM survives intact.
+	if c.OAuthApplePrivateKey != applePEM {
+		t.Fatalf("key must be read verbatim, got %q", c.OAuthApplePrivateKey)
+	}
+	if !c.OAuthAppleEnabled() {
+		t.Fatal("apple slot should be enabled")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileMissingFails(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", filepath.Join(t.TempDir(), "absent.p8"))
+	if _, err := Load(); err == nil {
+		t.Fatal("a missing key file must fail at boot")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileEmptyFails(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "empty.p8")
+	if err := os.WriteFile(path, []byte("  \n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
+	if _, err := Load(); err == nil {
+		t.Fatal("an empty key file must fail at boot")
+	}
+}
+
+// The inline variable silently corrupted the key under systemd, so it is
+// rejected outright rather than ignored.
+func TestLoad_OAuthApplePrivateKeyInlineRejected(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY", applePEM)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("the removed inline variable must fail at boot")
+	}
+	if !strings.Contains(err.Error(), "ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE") {
+		t.Fatalf("error must name the replacement, got %v", err)
 	}
 }
 
