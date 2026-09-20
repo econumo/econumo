@@ -477,6 +477,16 @@ User C sees none of it.
       request; after login every request body carries `$user_id`; a reload of
       a signed-in page sends its page view once the user data has loaded; log
       out — the logout event goes out, nothing after it.
+- [ ] Page views are counted as web analytics: every page view arrives at the
+      collector named `$page_view` (with the `$`), not `page_view`; the
+      `dataLayer` entry for the same navigation still reads `appPageView`.
+- [ ] `auth_provider` names how the session was opened (same Network filter,
+      batch-level `attributes`, NOT the per-event ones): sign in with a
+      password → `password`; sign in through Google/Apple/the custom OIDC
+      provider → that provider's id; reload the page — the value survives and
+      the boot page view still carries it; log out and sign in the other way
+      → the new value replaces it, never the previous session's; linking a
+      provider in Settings does NOT change it (linking opens no session).
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"

@@ -13,6 +13,7 @@ import {
 import { capture } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
+import { authProvider, forgetAuthProvider, rememberAuthProvider } from './analyticsProvider'
 import { backendHost, selfHosted } from './config'
 import { setToken } from './storage'
 
@@ -112,7 +113,8 @@ describe('host attributes', () => {
 
 describe('analyticsEventName', () => {
   it.each([
-    ['appPageView', 'page_view'],
+    // the collector's reserved web-analytics pageview name, not a product event
+    ['appPageView', '$page_view'],
     ['appTransactionCreate', 'transaction_create'],
     ['appUIModalTransactionOpen', 'ui_modal_transaction_open'],
     ['appApiAccountOrderList', 'api_account_order_list'],
@@ -212,5 +214,49 @@ describe('access_state property', () => {
     trackEvent(METRICS.USER_LOGIN)
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
     expect(props).not.toHaveProperty('access_state')
+  })
+})
+
+describe('auth_provider attribute', () => {
+  afterEach(() => forgetAuthProvider())
+
+  it('rides the batch context, not the per-event properties', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    rememberAuthProvider('google')
+
+    trackEvent(METRICS.TRANSACTION_CREATE)
+
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ auth_provider: 'google' }))
+    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
+    expect(props).not.toHaveProperty('auth_provider')
+  })
+
+  it("reports a password login as 'password' rather than an empty string", () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    // the wire sends '' for a password session
+    rememberAuthProvider('')
+
+    trackEvent(METRICS.USER_LOGIN)
+
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ auth_provider: 'password' }))
+  })
+
+  it('is omitted entirely while the provider is unknown', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+
+    trackEvent(METRICS.USER_LOGIN)
+
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ auth_provider: expect.anything() }))
+  })
+
+  it('survives a reload, so a boot page view is still attributed', () => {
+    rememberAuthProvider('apple')
+    expect(authProvider()).toBe('apple')
+  })
+
+  it('does not outlive the session it describes', () => {
+    rememberAuthProvider('oidc')
+    forgetAuthProvider()
+    expect(authProvider()).toBeNull()
   })
 })

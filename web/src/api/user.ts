@@ -5,6 +5,7 @@ import { UserOptions } from './dto/user'
 import { deriveAccessState } from '@/lib/access'
 import { analyticsUserId } from '@/lib/analyticsId'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
+import { PASSWORD_PROVIDER, rememberAuthProvider } from '@/lib/analyticsProvider'
 import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
 
@@ -15,6 +16,7 @@ export async function login(username: string, password: string): Promise<UserLog
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberAuthProvider(PASSWORD_PROVIDER)
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }
