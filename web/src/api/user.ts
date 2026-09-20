@@ -7,6 +7,8 @@ import { analyticsUserId } from '@/lib/analyticsId'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
+import { rememberHasPassword } from '@/lib/analyticsAuthMethods'
+import { refreshAuthMethodFlags } from './oauth'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
@@ -15,6 +17,8 @@ export async function login(username: string, password: string): Promise<UserLog
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberHasPassword(user.hasPassword !== false)
+  refreshAuthMethodFlags()
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }
@@ -94,6 +98,8 @@ export async function getUserData(): Promise<CurrentUserDto> {
   const user = response.data.data.user
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberHasPassword(user.hasPassword !== false)
+  refreshAuthMethodFlags()
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return user
 }

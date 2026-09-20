@@ -1,5 +1,6 @@
 import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
+import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
@@ -239,9 +240,21 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // Batch-level (session-wide) attributes: recomputed on every call rather
   // than fixed at module load, since the profile counts change as the query
   // cache fills in behind the boot loader.
+  //
+  // Everything here describes the SESSION, not the action — where the user is
+  // signed in, how they signed in, what their data looks like — so it is sent
+  // once per batch instead of being repeated on every event. Only facts that
+  // vary between two events in the same batch stay per-event (current_url).
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
+    host: analyticsHost(),
+    deployment: deploymentKind(),
+    locale: locale(),
+    mode: viewMode(),
+    // Omitted while unknown, so neither reads as a measured "none".
+    ...(currentAccessState ? { access_state: currentAccessState } : {}),
+    ...(authMethods() ?? {}),
     ...profileAttributes(),
   })
   window.dataLayer = window.dataLayer || []
@@ -263,14 +276,11 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // visitor who never signs in would otherwise show up as a one-day person
   // who can never return, dragging retention down for no product signal.
   if (!metric.startsWith('appUIModal') && hasToken()) {
-    const host = analyticsHost()
+    // The one genuinely per-event fact: which page the event happened on.
+    // Built from the same synthetic host as the batch attribute, so a
+    // self-hosted deployment's real hostname still never appears.
     capture(analyticsEventName(metric), {
-      host,
-      deployment: deploymentKind(),
-      locale: locale(),
-      mode: viewMode(),
-      current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
-      ...(currentAccessState ? { access_state: currentAccessState } : {}),
+      current_url: `https://${analyticsHost()}/${scrubbedPage(window.location.pathname)}`,
     })
   }
 }

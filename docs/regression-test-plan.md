@@ -477,6 +477,23 @@ User C sees none of it.
       request; after login every request body carries `$user_id`; a reload of
       a signed-in page sends its page view once the user data has loaded; log
       out — the logout event goes out, nothing after it.
+- [ ] Session facts ride the BATCH, not each event (same Network filter): the
+      request body's top-level `attributes` carries `access_state`,
+      `deployment`, `host`, `locale` and `mode` once; each entry in `events`
+      carries only `current_url` (the page that event happened on), which
+      differs between events in one batch when you navigate mid-flush.
+- [ ] Auth-method flags say which sign-in methods the user HAS (same Network
+      filter, batch-level `attributes`, NOT the per-event ones):
+      `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
+      or `off`. A password account with Google linked sends
+      `auth_password: on`, `auth_google: on`, `auth_apple: off`,
+      `auth_sso: off`; an OAuth-only account (never set a password) sends
+      `auth_password: off`. They are present from the FIRST batch after
+      sign-in without opening Settings, and survive a reload. Link a provider
+      in Settings → its flag flips to `on` on the next event; unlink it →
+      back to `off`. The custom OIDC provider reports as
+      `auth_sso`. Log out and sign in as someone else → the flags describe the
+      new user, never the previous one's.
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"

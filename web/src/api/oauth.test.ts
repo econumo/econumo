@@ -1,6 +1,7 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { exchangeHandoff, getProviderList, startLogin, unlinkIdentity } from './oauth'
+import { exchangeHandoff, getIdentityList, getProviderList, startLogin, unlinkIdentity } from './oauth'
+import { authMethods, rememberLinkedProviders } from '@/lib/analyticsAuthMethods'
 
 beforeEach(() => {
   localStorage.clear()
@@ -47,4 +48,32 @@ it('unlink posts the provider', async () => {
   }))
   await unlinkIdentity('apple')
   expect(body).toEqual({ provider: 'apple' })
+})
+
+it('records the linked providers as analytics flags', async () => {
+  server.use(http.get('*/api/v1/oauth/get-identity-list', () =>
+    HttpResponse.json({
+      success: true,
+      message: '',
+      data: [
+        { provider: 'google', email: 'me@gmail.test', createdAt: '2026-09-01 10:00:00' },
+        { provider: 'oidc', email: 'me@work.test', createdAt: '2026-09-02 10:00:00' },
+      ],
+    })))
+
+  await getIdentityList()
+
+  expect(authMethods()).toMatchObject({ auth_google: 'on', auth_sso: 'on', auth_apple: 'off' })
+})
+
+// An unlink refetches the list; the flag must drop back to 0 rather than
+// keeping the stale 1.
+it('clears the flag for a provider that is no longer linked', async () => {
+  rememberLinkedProviders(['google', 'apple'])
+  server.use(http.get('*/api/v1/oauth/get-identity-list', () =>
+    HttpResponse.json({ success: true, message: '', data: [{ provider: 'google', email: 'me@gmail.test', createdAt: '2026-09-01 10:00:00' }] })))
+
+  await getIdentityList()
+
+  expect(authMethods()).toMatchObject({ auth_google: 'on', auth_apple: 'off' })
 })
