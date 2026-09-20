@@ -14,3 +14,9 @@ VALUES (?, ?, ?, ?, ?, ?);
 SELECT id, user_id, code, created_at, updated_at, expired_at
 FROM users_email_verifications
 WHERE user_id = ?;
+
+-- name: ConsumeUserEmailVerification :execrows
+-- The confirmation's evidence and its consumption are the same row: taking it
+-- row-counted is how a confirm learns that a resend replaced the code it
+-- checked (or that a concurrent confirm already took it).
+DELETE FROM users_email_verifications WHERE id = ? AND user_id = ?;

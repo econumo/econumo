@@ -131,8 +131,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the thirteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -372,7 +372,9 @@ Tests live alongside the Go code:
   Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
   then INSPECT the diff — a golden change means observable behavior changed;
   never hand-edit a golden. If route-registration files move, update
-  `handlerGlobs` in `guard_test.go`.
+  `handlerGlobs` in `guard_test.go`. For a 3xx response (the oauth callback error
+  redirects) the harness records the response as `Location: <value>` instead of a
+  body, so the golden captures the redirect target rather than an empty page.
 - `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
   under `-tags enginecompare` → Postgres, each test in its own schema). `make
   test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
@@ -393,6 +395,9 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+- `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
+  token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
+  `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
 
 ### Manual regression test plan
 
@@ -467,6 +472,48 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
+- `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
+  "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
+  of a slot set without the rest fails at boot naming the missing variable. Google needs
+  `ECONUMO_OAUTH_GOOGLE_CLIENT_ID` + `_CLIENT_SECRET`; Apple needs `ECONUMO_OAUTH_APPLE_CLIENT_ID`
+  (the Services ID) + `_TEAM_ID` + `_KEY_ID` + `_PRIVATE_KEY` (the `.p8` PEM; a literal `\n` in the
+  env value is unescaped to a real newline before parsing); the custom OIDC slot needs
+  `ECONUMO_OIDC_ISSUER_URL` (absolute `https://`, plain `http` only for loopback hosts) +
+  `_CLIENT_ID` + `_CLIENT_SECRET`, plus optional `_NAME` (button label, default `SSO`) and
+  `_SCOPES` (comma-separated, default `openid,profile,email`; must contain `openid` or boot
+  fails). Any enabled slot requires `ECONUMO_URL` — every callback URI derives from it as
+  `<ECONUMO_URL>/api/v1/oauth/callback-<google|apple|oidc>`, the one URL to register with the
+  provider; there is no separate redirect-URI variable. Discovery documents are fetched lazily
+  and cached for the process lifetime; the JWKS is cached and re-fetched when a token names an
+  unknown key id (at most once a minute per issuer), so a signing-key rotation needs no restart.
+  Discovered endpoints must be absolute https URLs (plain http only for loopback issuers); a
+  document that violates that is rejected.
+  `serve` builds the provider clients once,
+  probes each configured issuer's discovery document in the background right after the listener
+  is up (one 5-second timeout per provider) and logs a WARN (never fails boot) when one is
+  unreachable, so sign-in through it fails until the issuer answers.
+  `ECONUMO_OIDC_TRUST_EMAIL` (strict bool, default `false`) treats the custom issuer's email
+  claim as verified; `false` rejects any token without `email_verified=true` with
+  `email_unverified`, for every intent (login, auto-link,
+  and linking from Settings) — an issuer that never sends that claim needs the flag set or no
+  sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes; Apple is
+  always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
+  claim is honoured, not trusted blindly — Google always sends it and documents `false` for
+  unverified addresses. See `docs/oidc-setup.md`.
+- `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
+  `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
+  OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
+  `<Team ID>.<bundle id>` (`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`). Android: comma-separated
+  `<package>=<SHA-256 signing fingerprint>` (32 colon-separated hex bytes, upper-cased on load;
+  repeating a package adds a second certificate, as Play App Signing requires). Either one set
+  enables app links and makes the server publish `/.well-known/apple-app-site-association` and
+  `/.well-known/assetlinks.json` (`internal/web/applinks`, mounted on the root mux next to
+  `/health`; the platform with no entries 404s). A malformed entry fails boot, as does an
+  `ECONUMO_URL` that is not `https://` — neither OS verifies a plain-http link. They only make
+  sense on the domain the store app is actually associated with (`app.econumo.com`): a
+  self-hosted backend used from the store app must leave them unset and keeps the private
+  `com.econumo.app://oauth` scheme, whose residual risk is that any app on the device may
+  register it.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -624,6 +671,9 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
   DSN parameter, not a sign that the driver still needs it.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
+- Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
+  a curly quote) in a comment silently truncates the generated SQL constant, and the failure
+  surfaces at runtime as `SQL logic error: incomplete input`, not at `sqlc generate`.
 - Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command
@@ -715,13 +765,16 @@ In the distroless image these run via the binary directly, e.g.
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
   reset-password, confirm-email, resend-verification-code, `/api/doc`,
-  `/api/doc.json`) need no header; everything else does.
+  `/api/doc.json`, and the six public `oauth` routes — `get-provider-list`,
+  `start-login`, `callback-google`, `callback-oidc`, `callback-apple`,
+  `exchange-handoff`) need no header; everything else does.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update, email change — plus `update-analytics`: withdrawing
-  from product analytics is a privacy right, not a paid feature, so it must work
-  regardless of access level); `GET` reads are never restricted.
+  revocation, password update, email change, `oauth/start-link`,
+  `oauth/complete-link`, `oauth/unlink-identity` —
+  plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
+  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
 
 ## Authentication
 
@@ -732,10 +785,69 @@ In the distroless image these run via the binary directly, e.g.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
-- Revocation cascades: `update-password` revokes all sessions EXCEPT the presenting
-  one; `reset-password` and CLI `user:change-password` revoke ALL sessions;
-  `user:deactivate` revokes sessions AND PATs (which is why per-request auth needs no
-  `is_active` join). PATs survive password changes.
+- Revocation cascades: `update-password` (the user changing their own password) rotates
+  the credential in one locked transaction: bumps the generation (an in-flight login with
+  the old password mints nothing), sweeps pending reset codes and email-change requests,
+  and revokes the OTHER sessions; it keeps the presenting session, PATs and linked
+  identities — integrations must outlive a password change. `user:deactivate` revokes
+  sessions AND PATs and bumps the credentials generation, all in the deactivating transaction
+  (which is why per-request auth needs no `is_active` join, and why a login racing the
+  deactivation cannot mint a session that outlives it). **`reset-password` and
+  CLI `user:change-password` are the account RECLAIM** (one primitive,
+  `user.reclaimCredentials`): a completed reset is the account's proof of mailbox
+  ownership and an operator setting a password is evicting whoever holds the account, so
+  both revoke every session AND every PAT, drop every pending grant (outstanding reset
+  codes, a pending email change, and on the oauth side every unredeemed handoff — a
+  60-second sign-in code is a session in waiting — plus in-flight link states naming
+  the account), and unlink every external identity whose provider vouches for a
+  DIFFERENT address (`user.OAuthReclaimer` → `oauth.ReclaimAccount`, wired in
+  `internal/server` for the API and by the CLI container over the same
+  `server.NewOAuthReclaimer`; the proven address is the presented one on the reset path
+  and the account's own on the CLI path, where the operator is authoritative). What the
+  reclaim deliberately does NOT touch is data sharing: connections and budget grants
+  survive, because a routine reset must not dissolve a family's shared budget.
+  Registration does not always verify email, so a squatter could have linked their own
+  provider account to an address they never owned; revoking passwords and tokens alone would leave that link
+  as a way back in. An identity claiming the proven address survives — obtaining one
+  needs that mailbox — which is also why the passwordless "Set a password" flow (the
+  same reset endpoint) keeps its provider. All of it shares the password write's
+  transaction. `unlink-identity` carries a small cascade of its own: it drops that
+  provider's pending sign-in handoffs along with the identity row, and a redemption
+  re-checks its identity under the same user row lock, so a code the unlinked provider
+  authorized can no longer be claimed.
+- **The credentials fence** (`users.credentials_generation`): sweeping what exists is
+  not enough on its own, because a request that read its evidence BEFORE the reclaim
+  can still write after it — redeeming a handoff it consumed a moment earlier, landing
+  an identity from a callback already in flight, or minting a PAT under a session the
+  reclaim just revoked. Every such flow captures the user's generation when it reads
+  its evidence (the verified password hash, the resolved oauth user — carried on the
+  handoff row as `oauth_handoffs.credentials_generation`) and presents it again at
+  write time. Session inserts (`InsertAccessTokenIfGeneration`) and identity writes
+  (`InsertIdentityIfGeneration` / `UpdateIdentityIfGeneration`) are conditional on it
+  inside the SQL, so the DATABASE
+  decides the race: the reclaim bumps the generation, and anything in flight writes
+  zero rows and fails closed. Checking in Go would be the race it is meant to close.
+  The fence only sees COMMITTED rows, so it is paired with a lock: every write to an
+  existing user's row and every credential mint — session and PAT inserts, and the
+  identity INSERTs of complete-link, auto-link and provisioning — runs under the user
+  row lock (`Repository.LockRow`), taken before the row is read and held in the same
+  transaction as the write, and the reclaim takes it first
+  too (it bumps `users` before it sweeps) — so on PostgreSQL a write racing the
+  reclaim's still-open transaction blocks instead of slipping past, and a
+  whole-aggregate `Save` can never put back a row read before the reclaim landed.
+  The narrow fenced `users` UPDATEs (`rehashLegacyPassword`, `mirrorEmailDrift`) are
+  the one exception, and need no lock: PostgreSQL serializes concurrent UPDATEs on the
+  row itself and re-evaluates their WHERE against the committed version, so the fence
+  is decided after the reclaim rather than before it. The reset re-reads the locked
+  row's address too: a confirmed email change landing in the window makes it a
+  different account, and the reset is refused rather than written to it. Its code is
+  fenced the same way: the reset re-reads the presented code under that lock and
+  consumes it row-counted, and `remind-password` replaces a user's codes under the
+  same lock, so one code is one reset — a code a fresh remind replaced, or one a
+  concurrent reset already took, resets nothing. Verification codes, like reset
+  and email-change codes, are issued and consumed under the user row lock, so a
+  confirmation can only ever take the row it checked and never sweeps a code a
+  concurrent resend has just emailed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).
@@ -745,6 +857,39 @@ In the distroless image these run via the binary directly, e.g.
 - Login lives under `internal/user/api` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (sessions slide instead; clients re-authenticate
   after 30 days of inactivity).
+- **Provider sign-in** (`internal/oauth`): a state-carrying redirect to the provider, a
+  callback that verifies the ID token and resolves to an existing
+  `(provider, issuer, subject)` identity, an auto-link by verified email, or (when
+  `ECONUMO_ALLOW_REGISTRATION` is on) a
+  new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
+  handoff code the client exchanges for a normal session — never a token in a redirect URL
+  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
+  on the web, `localStorage` in the app) that the client must present alongside the handoff:
+  the flow is bound to the client that began it, so a forged callback cannot log a victim
+  into an attacker's account. **Auto-link happens only into a PASSWORDLESS account**
+  (one a provider created, whose owner therefore already proved the address); a verified
+  email matching an account that has a password is refused with `account_exists_password`,
+  because whoever set that password never had to prove they own the address. No eviction
+  is thorough enough there — a squatter's other linked identities, shares and invites
+  would be inherited by whoever the provider vouched for — so the owner signs in with
+  their password (or resets it through the mailbox the provider just proved they hold)
+  and links the provider from Settings instead. That reset is itself the reclaim: see
+  the revocation cascade above for what it takes away, and the credentials fence below
+  for what stops an in-flight sign-in from outrunning it. **A link started from Settings writes nothing on
+  the callback**: the provider redirects whichever browser followed the authorization URL,
+  so the callback parks the resolved identity in a one-shot *link* handoff and the
+  authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating
+  client presents both its flow secret and a session for the account the link started
+  from — without that, an attacker's own start-link URL opened by a victim would bind the
+  victim's identity to the attacker's account. Identities live in `users_identities`,
+  keyed by `(provider, issuer, subject)`; the issuer is in the key because the custom
+  slot's provider id is always `oidc`, so repointing `ECONUMO_OIDC_ISSUER_URL` must not
+  let a subject collision at the new issuer resolve to the old issuer's user (a returning
+  user matched by verified email has their one row per slot repointed instead).
+  Every oauth-originated session stamps `provider` on the row (Google, Apple, and the custom
+  OIDC slot alike); only the custom OIDC slot also stores `id_token`, since Google and Apple
+  publish no end-session endpoint. `logout-user` returns a non-empty `logoutUrl` only for a
+  session that carries an `id_token` — i.e. an OIDC session — built from that stored value.
 
 ## Wire & data contract (frozen)
 
@@ -789,7 +934,7 @@ data unreadable. Most are also asserted by the test suite.
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
 - Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`, and the six public `oauth` routes (`get-provider-list`, `start-login`, `callback-google`, `callback-oidc`, `callback-apple`, `exchange-handoff`); everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in
@@ -841,6 +986,36 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
+  `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
+  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  the account's address and the new claim were proven by providers. A match on an account
+  that has a password is refused (`account_exists_password`), never merged. An unverified
+  email is rejected (`email_unverified`) for every intent, including an already-linked
+  identity signing in again and a link started from Settings — there is no path around the
+  trust flag. Every auto-link emails the account owner a best-effort notice
+  (`emails.identity_linked.*`) naming the provider's display name in the account's stored
+  language — gaining a sign-in method unasked must be noticeable; a failure to send never
+  affects the redirect.
+- **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
+  app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
+  `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
+  fragment (`#handoff=` / `#linkHandoff=`) and failures in the query (`?error=` /
+  `?linkError=`), so a handoff never reaches a server log or a `Referer` header on the https
+  variant. The https form matters because only the associated app can receive it (RFC 8252
+  §7): a counterfeit app that registers the private scheme can otherwise start its own flow,
+  hold the flow secret, and catch the victim's handoff.
+- **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
+  stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
+  one linked identity, and no other user already holds the new address — in that narrow case
+  (the IdP is the account's sole authority) the primary email is replaced immediately after,
+  in its own transaction. The rule stops applying the moment the user sets a password or
+  links a second identity.
+- **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
+  session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
+  and Apple publish none); the web client navigates there, landing back at
+  `<ECONUMO_URL>/login`, while the app always logs out locally and shows the "your {provider}
+  session may still be active" notice instead.
 
 ## Deployment
 

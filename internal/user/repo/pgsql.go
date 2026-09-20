@@ -2,6 +2,8 @@ package repo
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
 	pgsqlgen "github.com/econumo/econumo/internal/infra/storage/sqlc/gen/pgsql"
@@ -67,4 +69,28 @@ func (pgsqlQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p t
 
 func (pgsqlQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return pgsqlgen.New(db).GetUserLanguage(ctx, id)
+}
+
+func (pgsqlQuerier) LockUserRow(ctx context.Context, db backend.DBTX, id string) error {
+	_, err := pgsqlgen.New(db).LockUserRow(ctx, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil
+	}
+	return err
+}
+
+func (pgsqlQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return pgsqlgen.New(db).BumpUserCredentialsGeneration(ctx, userID)
+}
+
+func (pgsqlQuerier) UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateUserPasswordIfGeneration(ctx, pgsqlgen.UpdateUserPasswordIfGenerationParams(p))
+}
+
+func (pgsqlQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateUserEmailIfPasswordlessAndGeneration(ctx, pgsqlgen.UpdateUserEmailIfPasswordlessAndGenerationParams(p))
+}
+
+func (pgsqlQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
+	return pgsqlgen.New(db).UpdateUserEmailIfGeneration(ctx, pgsqlgen.UpdateUserEmailIfGenerationParams(p))
 }

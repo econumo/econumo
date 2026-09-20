@@ -88,6 +88,23 @@ it('does NOT redirect on 401 from login-user (invalid credentials case)', async 
   expect(assign).not.toHaveBeenCalled()
 })
 
+it('does NOT intercept a 401 from logout-user — LogoutPage owns its own cleanup and exit', async () => {
+  const assign = vi.fn()
+  Object.defineProperty(window, 'location', {
+    value: { ...window.location, assign },
+    writable: true,
+  })
+  server.use(
+    http.post('*/api/v1/user/logout-user', () =>
+      HttpResponse.json({ success: false, message: 'Invalid access token', code: 0, errors: {} }, { status: 401 }),
+    ),
+  )
+  setToken('expired-tok')
+  await expect(api.post(apiUrl('/api/v1/user/logout-user'), {})).rejects.toThrow()
+  expect(assign).not.toHaveBeenCalled()
+  expect(getToken()).toBe('expired-tok')
+})
+
 it('on 402 fires the metric, toasts once by id, and invalidates the user query', async () => {
   window.dataLayer = []
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()

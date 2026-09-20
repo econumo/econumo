@@ -10,6 +10,24 @@ import (
 	"time"
 )
 
+const consumeUserEmailChangeRequest = `-- name: ConsumeUserEmailChangeRequest :execrows
+DELETE FROM users_email_change_requests WHERE id = $1 AND user_id = $2
+`
+
+type ConsumeUserEmailChangeRequestParams struct {
+	ID     string
+	UserID string
+}
+
+// See the sqlite sibling: the confirm path consumes its own evidence row.
+func (q *Queries) ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeUserEmailChangeRequest, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteUserEmailChangeRequestsByUser = `-- name: DeleteUserEmailChangeRequestsByUser :exec
 
 DELETE FROM users_email_change_requests WHERE user_id = $1
@@ -42,23 +60,28 @@ func (q *Queries) GetUserEmailChangeRequestByUser(ctx context.Context, userID st
 	return i, err
 }
 
-const insertUserEmailChangeRequest = `-- name: InsertUserEmailChangeRequest :exec
+const insertUserEmailChangeRequestIfGeneration = `-- name: InsertUserEmailChangeRequestIfGeneration :execrows
 INSERT INTO users_email_change_requests (id, user_id, new_email, code, created_at, updated_at, expired_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+SELECT $1, $2, $3, $4, $5, $6, $7
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $8 AND u.credentials_generation = $9)
 `
 
-type InsertUserEmailChangeRequestParams struct {
-	ID        string
-	UserID    string
-	NewEmail  string
-	Code      string
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	ExpiredAt time.Time
+type InsertUserEmailChangeRequestIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	NewEmail              string
+	Code                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	ExpiredAt             time.Time
+	ID_2                  string
+	CredentialsGeneration int64
 }
 
-func (q *Queries) InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error {
-	_, err := q.db.ExecContext(ctx, insertUserEmailChangeRequest,
+// See the sqlite sibling: the pending grant is fenced on the generation the
+// password check read.
+func (q *Queries) InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertUserEmailChangeRequestIfGeneration,
 		arg.ID,
 		arg.UserID,
 		arg.NewEmail,
@@ -66,6 +89,11 @@ func (q *Queries) InsertUserEmailChangeRequest(ctx context.Context, arg InsertUs
 		arg.CreatedAt,
 		arg.UpdatedAt,
 		arg.ExpiredAt,
+		arg.ID_2,
+		arg.CredentialsGeneration,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

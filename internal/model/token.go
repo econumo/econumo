@@ -26,6 +26,11 @@ type AccessToken struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time // nil = never expires (PAT); sessions always have one
 	RevokedAt  *time.Time
+	// Provider is the OAuth provider id a session was minted through ("" or nil
+	// for password logins); IDToken is kept only for the custom OIDC slot so
+	// logout can send id_token_hint. Both nil for PATs.
+	Provider *string
+	IDToken  *string
 }
 
 func (t *AccessToken) IsLive(now time.Time) bool {
@@ -48,12 +53,6 @@ func (t *AccessToken) Touch(now time.Time, sessionTTL time.Duration) {
 	if t.Kind == TokenKindSession {
 		exp := now.Add(sessionTTL)
 		t.ExpiresAt = &exp
-	}
-}
-
-func (t *AccessToken) Revoke(now time.Time) {
-	if t.RevokedAt == nil {
-		t.RevokedAt = &now
 	}
 }
 

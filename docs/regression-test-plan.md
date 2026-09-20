@@ -90,8 +90,104 @@ navigation (single-pane vs sidebar).
 - [ ] With `ECONUMO_EMAIL_VERIFICATION=true` (separate boot): fresh
       registration → first login is blocked, code email is sent, verification
       dialog accepts the code, resend has a cooldown, then login proceeds.
+- [ ] A verification code is single-use and only the newest one works: wait out
+      the cooldown and resend, then the FIRST emailed code is refused with "The
+      confirmation code is not valid." while the second one confirms; after the
+      confirmation, submitting that same code again is refused the same way and
+      login still proceeds.
 - [ ] Language badge/selector on the login page switches the auth UI language
       and persists.
+- [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on
+      both `/login` and `/register`, on desktop and mobile; sign-in through
+      each provider completes and lands the user in the app.
+- [ ] First sign-in through a provider (no matching Econumo account, email
+      verified) creates a new account and lands on onboarding.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      account that HAS a password is refused with "An account with this email
+      address already exists. Sign in with your password (or reset it), then
+      link this provider from Settings." — no session, no linked identity, and
+      the account is otherwise untouched (its password, sessions and personal
+      access tokens all keep working). Signing in with the password and
+      linking from Settings then works.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      PASSWORDLESS account (one created through another provider) auto-links
+      with no confirmation dialog, signs into that account, shows the new
+      provider under Settings → Profile → Linked accounts, and delivers the
+      owner's notice email (console transport prints it to server stdout in
+      dev) naming the provider.
+- [ ] Starting a provider sign-in in one browser and opening the returned
+      Econumo callback URL in a DIFFERENT browser (or a private window) fails
+      with "The sign-in attempt expired or was already used." — only the
+      browser that started the flow can complete it.
+- [ ] Sign-in with a provider that reports an unverified email is rejected
+      with "The sign-in provider has not verified this email address."; no
+      account created or linked (this includes a Google account whose
+      sign-in address Google reports as unverified).
+- [ ] With `ECONUMO_ALLOW_REGISTRATION=false` (separate boot) and no matching
+      account: sign-in via a provider shows "Registration is disabled on this
+      server. Sign in with an existing account first."
+- [ ] Cancelling at the provider (deny consent / close the flow) returns to
+      Econumo showing "Sign-in was cancelled."
+- [ ] Password reset is a full reclaim: on an account with an open session, a
+      personal access token and two linked providers (one whose provider email
+      matches the account's, one whose does not), completing "Forgot password"
+      signs the session out, makes the token stop authenticating, removes the
+      provider with the different email from Settings → Profile → Linked
+      accounts, and keeps the matching one. A provider sign-in started just
+      before the reset can no longer be completed afterwards (the returning
+      browser lands on the login page with an error instead of a session), and
+      a pending email change is cancelled. A provider sign-in that was already
+      mid-flight when the reset landed cannot be completed either — finishing
+      it returns the sign-in error rather than a session. An email change that
+      was pending (code sent but not yet confirmed) can no longer be confirmed
+      after the reset, even if the confirmation was already in flight — it
+      reports "The confirmation code is not valid." and the account keeps its
+      own address. The recovery dialog says so before the reset is submitted.
+      CLI `user:change-password <email> <new>` performs the same reclaim
+      (sessions, tokens, foreign identity, pending grants).
+- [ ] A reset code is single-use and only the newest one works: request
+      "Forgot password" twice and the FIRST emailed code is refused with
+      "Reset password error" (the second one still works); after a reset
+      completes, submitting that same code again is refused the same way and
+      the password stays the one the completed reset set.
+- [ ] A provider-created (passwordless) account using Settings → Profile →
+      "Set a password" keeps its linked provider through that flow — it is the
+      same reset endpoint, and the provider vouches for the account's address.
+- [ ] Linking from Settings completes only in the browser that started it:
+      start the link in one browser, then open the returned Econumo callback
+      URL in a DIFFERENT browser signed in as another user — that user's
+      Linked accounts page shows an error and gains NO identity, and the
+      provider account stays unlinked everywhere.
+- [ ] A FAILED link from Settings (e.g. linking a provider account already
+      linked to another Econumo user) returns to Settings → Profile → Linked
+      accounts with the error banner there ("This external account is already
+      linked to another Econumo account."), not to the login page; the banner
+      does not survive a reload. 📱 The app does the same via the deep link.
+- [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
+      logging out redirects through the provider and back to `/login`.
+- [ ] Logging out of a Google/Apple session (or any provider in the app) ends
+      the Econumo session and lands on `/login` with no interstitial notice —
+      those providers publish no end-session endpoint, so there is no IdP
+      redirect and nothing to confirm.
+- [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
+      embedded web view; completing sign-in returns to the app (the verified
+      `https://<backend>/oauth/app-return` link, or the
+      `com.econumo.app://oauth` scheme on a backend without app links) and the
+      sheet closes automatically. An expired or already-used attempt returns to
+      the app's login page with "The sign-in attempt expired or was already
+      used." (not a web page inside the sheet).
+- [ ] 📱 With app links configured, the return from the provider opens the app
+      directly; opening the return URL in a browser with the app not installed
+      shows the "return to the app" page with a single "Open the app" link (and
+      no handoff code visible in the page text).
+- [ ] 📱 App: tapping a provider button twice while the browser sheet is
+      opening starts ONE flow; the buttons stay disabled until the sheet
+      closes or the sign-in returns.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      no provider buttons are shown.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      Settings → Profile → Linked accounts shows the linked list but offers no
+      Link buttons.
 
 ## 3. Onboarding (fresh user)
 
@@ -357,9 +453,11 @@ User C sees none of it.
 - [ ] Name inline edit with validation (length limits).
 - [ ] Default currency picker and language dialog persist (language also
       server-side — a relogin/other device keeps it).
-- [ ] **Change password**: wrong old password rejected; success revokes all
-      *other* sessions (verify: second browser session is logged out, current
-      one stays).
+- [ ] **Change password**: wrong old password rejected. Changing the password
+      from Settings signs out the other sessions, keeps this one and personal
+      tokens, cancels a pending email change and any outstanding reset code,
+      and a login with the old password that was already in flight gets
+      "Invalid credentials."
 - [ ] **Change email**: request (new email + password) → code sent to the new
       address → confirm; resend with cooldown; wrong code rejected; login works
       with the new email only.
@@ -379,6 +477,37 @@ User C sees none of it.
       request; after login every request body carries `$user_id`; a reload of
       a signed-in page sends its page view once the user data has loaded; log
       out — the logout event goes out, nothing after it.
+- [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
+      linked provider with its email and linked date; linking an unlinked
+      provider goes through the provider flow and returns with a "linked"
+      toast AND the newly linked provider already in the list (no manual
+      reload — the return trip is what writes the link); linking a SECOND
+      provider straight afterwards, without leaving the page, works the same
+      way (📱 especially in the app, where the deep link returns to the same
+      screen); unlinking a provider (with confirm dialog) removes it from the
+      list.
+- [ ] Unlink a provider while a sign-in through it is mid-flight (callback
+      done, handoff not yet exchanged): the exchange fails with the
+      sign-in-link-invalid error and no session is opened.
+- [ ] Unlink is refused for a passwordless user's last remaining identity
+      (button disabled, hint text shown: "Set a password before unlinking
+      your only sign-in method."), including two unlink requests sent at the
+      same time — one succeeds, the other is refused.
+- [ ] For a passwordless user, Settings → Profile shows a "Set a password"
+      row in place of "Change password"; it sends a reset code to the
+      account's email (the email field pre-filled/locked) and, after
+      entering the code and a new password the app signs the user out (the
+      reset ends every session, including this one) and lands on the login
+      page; signing in with the new password works and Settings → Profile
+      now shows "Change password" instead of "Set a password".
+- [ ] Sessions list (Settings → Profile → Sessions) shows "via Google" (or
+      Apple/SSO) under a session opened through a provider; a password
+      session shows nothing extra.
+- [ ] On an SSO-only (passwordless, single-identity) account, signing in
+      again after the provider reports a changed email updates the account's
+      stored email to match; the same drift on an account that has a
+      password, a second linked provider, or where the new email already
+      belongs to another user leaves the stored email unchanged.
 
 ## 13. Cross-cutting & platform
 

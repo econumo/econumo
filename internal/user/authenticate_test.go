@@ -44,7 +44,19 @@ func newAuthEnvOn(t *testing.T, db *dbtest.DB) (*appuser.Service, *userrepo.Acce
 	return svc, tokens, clk, uid
 }
 
+func newAuthEnvOnWrapped(t *testing.T, db *dbtest.DB, wrap func(appuser.AccessTokens) appuser.AccessTokens) (*appuser.Service, *userrepo.AccessTokenRepo, *testClock, vo.Id) {
+	svc, tokens, clk, uid, _ := newAuthEnvWrapped(t, db, wrap)
+	return svc, tokens, clk, uid
+}
+
 func newAuthEnvFullOn(t *testing.T, db *dbtest.DB) (*appuser.Service, *userrepo.AccessTokenRepo, *testClock, vo.Id, *userrepo.PasswordRequestRepo) {
+	return newAuthEnvWrapped(t, db, nil)
+}
+
+// newAuthEnvWrapped builds the same env but hands the Service a decorated view
+// of the token repo, so a test can land a concurrent write inside one of its
+// calls; the returned repo handle stays the undecorated one for seeding.
+func newAuthEnvWrapped(t *testing.T, db *dbtest.DB, wrap func(appuser.AccessTokens) appuser.AccessTokens) (*appuser.Service, *userrepo.AccessTokenRepo, *testClock, vo.Id, *userrepo.PasswordRequestRepo) {
 	t.Helper()
 	clk := &testClock{now: authT0}
 	enc := auth.NewEncodeService("")
@@ -54,7 +66,11 @@ func newAuthEnvFullOn(t *testing.T, db *dbtest.DB) (*appuser.Service, *userrepo.
 	pwreqs := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
-	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, pwreqs, nil,
+	var svcTokens appuser.AccessTokens = tokens
+	if wrap != nil {
+		svcTokens = wrap(tokens)
+	}
+	svc := appuser.NewService(repo, db.TX, enc, hasher, svcTokens, server.NewUserCurrencyLookup(lookup), budgets, pwreqs, nil,
 		userrepo.NewEmailVerificationRepo(db.Engine, db.TX), nil,
 		userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX), nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, false, 0, false)
@@ -72,8 +88,8 @@ func seedToken(t *testing.T, tokens *userrepo.AccessTokenRepo, userID vo.Id, kin
 		ID: vo.NewId(), UserID: userID, Kind: kind, TokenHash: appuser.HashAccessToken(raw),
 		CreatedAt: authT0, LastUsedAt: authT0, ExpiresAt: exp,
 	}
-	if err := tokens.Insert(context.Background(), tok); err != nil {
-		t.Fatalf("seed token: %v", err)
+	if n, err := tokens.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
+		t.Fatalf("seed token: %d %v", n, err)
 	}
 	return tok.ID
 }
@@ -123,13 +139,8 @@ func TestAuthenticate_RevokedToken401(t *testing.T) {
 	exp := authT0.Add(appuser.SessionTTL)
 	tokID := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_revoked", &exp)
 	ctx := context.Background()
-	tok, err := tokens.GetByID(ctx, tokID)
-	if err != nil {
-		t.Fatalf("GetByID: %v", err)
-	}
-	tok.Revoke(authT0)
-	if err := tokens.Update(ctx, tok); err != nil {
-		t.Fatalf("Update: %v", err)
+	if err := tokens.Revoke(ctx, tokID, authT0); err != nil {
+		t.Fatalf("Revoke: %v", err)
 	}
 
 	if _, _, _, err := svc.Authenticate(ctx, "eco_ses_revoked"); !isUnauthorized(err) {
@@ -244,5 +255,52 @@ func TestAuthenticate_ReturnsFullForUnexpiredAccess(t *testing.T) {
 	}
 	if level != model.AccessLevelFull {
 		t.Fatalf("level: got %q want full", level)
+	}
+}
+
+// reclaimingTokens lands a credential reclaim in the window between
+// Authenticate's row read and its sliding-expiry touch — the race in which the
+// touch used to write the row's stale revoked_at = NULL back. Armed once, like
+// a single reclaim committing.
+type reclaimingTokens struct {
+	appuser.AccessTokens
+	armed bool
+}
+
+func (r *reclaimingTokens) GetByHash(ctx context.Context, hash string) (*model.AccessToken, model.AccessLevel, *time.Time, error) {
+	t, level, until, err := r.AccessTokens.GetByHash(ctx, hash)
+	if err != nil || !r.armed {
+		return t, level, until, err
+	}
+	r.armed = false
+	return t, level, until, r.AccessTokens.RevokeAll(ctx, t.UserID, t.Kind, vo.Id{}, authT0)
+}
+
+func TestAuthenticate_RevokeBetweenReadAndTouchFailsClosed(t *testing.T) {
+	reclaim := &reclaimingTokens{}
+	svc, tokens, clk, uid := newAuthEnvOnWrapped(t, dbtest.New(t), func(a appuser.AccessTokens) appuser.AccessTokens {
+		reclaim.AccessTokens = a
+		return reclaim
+	})
+	exp := authT0.Add(appuser.SessionTTL)
+	tokID := seedToken(t, tokens, uid, model.TokenKindSession, "eco_ses_raced", &exp)
+	ctx := context.Background()
+	clk.now = authT0.Add(10 * time.Minute) // past touchInterval, so a touch is due
+	reclaim.armed = true
+
+	_, _, _, err := svc.Authenticate(ctx, "eco_ses_raced")
+	var unauthorized *errs.UnauthorizedError
+	if !errors.As(err, &unauthorized) || unauthorized.Msg != "Invalid access token" {
+		t.Fatalf("want 401 Invalid access token, got %v", err)
+	}
+	row, err := tokens.GetByID(ctx, tokID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.RevokedAt == nil {
+		t.Fatal("the touch resurrected the revoked token")
+	}
+	if _, _, _, err := svc.Authenticate(ctx, "eco_ses_raced"); !isUnauthorized(err) {
+		t.Fatalf("the token authenticates again: %v", err)
 	}
 }

@@ -24,8 +24,15 @@ func (s *Service) Authenticate(ctx context.Context, raw string) (vo.Id, vo.Id, m
 	}
 	if t.NeedsTouch(now, touchInterval) {
 		t.Touch(now, SessionTTL)
-		if err := s.tokens.Update(ctx, t); err != nil {
+		n, err := s.tokens.Touch(ctx, t.ID, t.LastUsedAt, t.ExpiresAt)
+		if err != nil {
 			return vo.Id{}, vo.Id{}, "", err
+		}
+		// The touch only matches an unrevoked row, so zero rows means a reclaim
+		// revoked (or purged) this credential between the read above and the
+		// write: the request is holding a token that no longer authenticates.
+		if n == 0 {
+			return vo.Id{}, vo.Id{}, "", errs.NewUnauthorized("Invalid access token")
 		}
 	}
 	u := model.User{AccessLevel: level, AccessUntil: until}

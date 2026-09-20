@@ -219,3 +219,16 @@ func TestValidPathGate(t *testing.T) {
 		}
 	}
 }
+
+// RFC 8615 reserves /.well-known/ for server-side documents (the app-link
+// association files, ACME challenges, …). None of them is a client route, so
+// the SPA shell must never answer there — an OS parsing index.html as JSON gets
+// a confusing failure instead of an honest 404.
+func TestSPA_WellKnownIsNeverTheShell(t *testing.T) {
+	h := Handler(newSPAFS(t), nil)
+	for _, p := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json", "/.well-known"} {
+		if code, _ := get(t, h, p); code != http.StatusNotFound {
+			t.Fatalf("%s: status=%d want 404", p, code)
+		}
+	}
+}

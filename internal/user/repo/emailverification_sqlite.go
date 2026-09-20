@@ -19,6 +19,10 @@ func (emailVerificationSqliteQuerier) InsertUserEmailVerification(ctx context.Co
 	return sqlitegen.New(db).InsertUserEmailVerification(ctx, p)
 }
 
+func (emailVerificationSqliteQuerier) ConsumeUserEmailVerification(ctx context.Context, db backend.DBTX, p emailVerificationConsumeParams) (int64, error) {
+	return sqlitegen.New(db).ConsumeUserEmailVerification(ctx, p)
+}
+
 func (emailVerificationSqliteQuerier) GetUserEmailVerificationByUser(ctx context.Context, db backend.DBTX, userID string) (emailVerificationRow, error) {
 	return sqlitegen.New(db).GetUserEmailVerificationByUser(ctx, userID)
 }

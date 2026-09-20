@@ -86,3 +86,26 @@ const (
 	// resend cooldown. It carries no configured limit.
 	RateScopeEmailChangeSent = "email-change-sent"
 )
+
+// OAuthReclaimer is the oauth feature's side of an account reclaim. Completing
+// a password reset proves control of the mailbox, so it must also take away
+// every way in that never proved it: otherwise someone who registered the
+// address before its owner keeps their own linked provider account — or simply
+// holds an unredeemed sign-in code minted moments earlier — and walks back in
+// after the reclaim. The operator's user:change-password reclaims the same way.
+// nil disables the step (tests).
+type OAuthReclaimer interface {
+	// ReclaimAccount removes the identities whose provider does NOT vouch for
+	// provenEmail plus every pending grant of the user (unredeemed handoffs and
+	// in-flight link requests), reporting the two counts. An identity claiming
+	// that same address survives: only the mailbox owner could have obtained one.
+	ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail string) (identities, grants int64, err error)
+}
+
+// LogoutURLBuilder is the oauth feature's end-session capability, consumed by
+// Logout for sessions minted through the custom OIDC slot. nil disables it.
+type LogoutURLBuilder interface {
+	// EndSessionURL returns the IdP end-session URL for a session minted through
+	// provider with the given ID token, or "" when the provider supports none.
+	EndSessionURL(ctx context.Context, provider, idToken string) (string, error)
+}

@@ -65,7 +65,9 @@ type GetAccessTokenByHashRow struct {
 // Joins users for access_level/access_until so per-request auth can report
 // the caller's effective access level in the same round trip. This does NOT
 // reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
-// lapsed user must still authenticate, just read-only.
+// lapsed user must still authenticate, just read-only. Deliberately omits
+// provider/id_token: nothing on the per-request hot path reads them (logout
+// uses GetByID, the sessions list uses ListByUser), so they stay off it.
 func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error) {
 	row := q.db.QueryRowContext(ctx, getAccessTokenByHash, tokenHash)
 	var i GetAccessTokenByHashRow
@@ -87,7 +89,7 @@ func (q *Queries) GetAccessTokenByHash(ctx context.Context, tokenHash string) (G
 }
 
 const getAccessTokenByID = `-- name: GetAccessTokenByID :one
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE id = ?
 `
@@ -106,35 +108,45 @@ func (q *Queries) GetAccessTokenByID(ctx context.Context, id string) (AccessToke
 		&i.LastUsedAt,
 		&i.ExpiresAt,
 		&i.RevokedAt,
+		&i.Provider,
+		&i.IDToken,
 	)
 	return i, err
 }
 
-const insertAccessToken = `-- name: InsertAccessToken :exec
+const insertAccessTokenIfGeneration = `-- name: InsertAccessTokenIfGeneration :execrows
 
-INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
 `
 
-type InsertAccessTokenParams struct {
-	ID         string
-	UserID     string
-	Kind       string
-	TokenHash  string
-	Name       *string
-	UserAgent  *string
-	CreatedAt  time.Time
-	LastUsedAt time.Time
-	ExpiresAt  *time.Time
-	RevokedAt  *time.Time
+type InsertAccessTokenIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Kind                  string
+	TokenHash             string
+	Name                  *string
+	UserAgent             *string
+	CreatedAt             time.Time
+	LastUsedAt            time.Time
+	ExpiresAt             *time.Time
+	RevokedAt             *time.Time
+	Provider              *string
+	IDToken               *string
+	ID_2                  string
+	CredentialsGeneration int64
 }
 
 // Access-token queries (access_tokens): login sessions + personal access
 // tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 // time.Time), not in SQL, to avoid engine date-format differences; the
 // list/get queries return raw rows.
-func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, insertAccessToken,
+// Mints a token only while the user's credentials generation is still the one
+// the caller's evidence was read under: an account reclaim bumps it, so a
+// session built on evidence from before the reclaim inserts nothing.
+func (q *Queries) InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfGeneration,
 		arg.ID,
 		arg.UserID,
 		arg.Kind,
@@ -145,12 +157,70 @@ func (q *Queries) InsertAccessToken(ctx context.Context, arg InsertAccessTokenPa
 		arg.LastUsedAt,
 		arg.ExpiresAt,
 		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.CredentialsGeneration,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const insertAccessTokenIfPresenterLive = `-- name: InsertAccessTokenIfPresenterLive :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token)
+SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+WHERE EXISTS (SELECT 1 FROM access_tokens p WHERE p.id = ? AND p.user_id = ? AND p.revoked_at IS NULL)
+`
+
+type InsertAccessTokenIfPresenterLiveParams struct {
+	ID         string
+	UserID     string
+	Kind       string
+	TokenHash  string
+	Name       *string
+	UserAgent  *string
+	CreatedAt  time.Time
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	RevokedAt  *time.Time
+	Provider   *string
+	IDToken    *string
+	ID_2       string
+	UserID_2   string
+}
+
+// Mints a personal token only while the credential that authenticated the
+// request (the presenting token) is still unrevoked: the reclaim revokes
+// every token in the same transaction that bumps the generation, so a
+// request that passed the auth middleware before the reclaim inserts
+// nothing after it.
+func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertAccessTokenIfPresenterLive,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Name,
+		arg.UserAgent,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.RevokedAt,
+		arg.Provider,
+		arg.IDToken,
+		arg.ID_2,
+		arg.UserID_2,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
-SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at
+SELECT id, user_id, kind, token_hash, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token
 FROM access_tokens
 WHERE user_id = ? AND kind = ?
 ORDER BY created_at, id
@@ -181,6 +251,8 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 			&i.LastUsedAt,
 			&i.ExpiresAt,
 			&i.RevokedAt,
+			&i.Provider,
+			&i.IDToken,
 		); err != nil {
 			return nil, err
 		}
@@ -195,23 +267,61 @@ func (q *Queries) ListAccessTokensByUser(ctx context.Context, arg ListAccessToke
 	return items, nil
 }
 
-const updateAccessToken = `-- name: UpdateAccessToken :exec
-UPDATE access_tokens SET last_used_at = ?, expires_at = ?, revoked_at = ? WHERE id = ?
+const revokeAccessToken = `-- name: RevokeAccessToken :exec
+UPDATE access_tokens SET revoked_at = ? WHERE id = ? AND revoked_at IS NULL
 `
 
-type UpdateAccessTokenParams struct {
-	LastUsedAt time.Time
-	ExpiresAt  *time.Time
-	RevokedAt  *time.Time
-	ID         string
+type RevokeAccessTokenParams struct {
+	RevokedAt *time.Time
+	ID        string
 }
 
-func (q *Queries) UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error {
-	_, err := q.db.ExecContext(ctx, updateAccessToken,
-		arg.LastUsedAt,
-		arg.ExpiresAt,
+func (q *Queries) RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccessToken, arg.RevokedAt, arg.ID)
+	return err
+}
+
+const revokeUserAccessTokens = `-- name: RevokeUserAccessTokens :exec
+UPDATE access_tokens SET revoked_at = ? WHERE user_id = ? AND kind = ? AND revoked_at IS NULL AND id <> ?
+`
+
+type RevokeUserAccessTokensParams struct {
+	RevokedAt *time.Time
+	UserID    string
+	Kind      string
+	ID        string
+}
+
+// Set-based, so a revoke sweep is one statement and cannot race a concurrent
+// touch row by row. The excepted id is the presenting token (or an id that
+// matches nothing when everything must go).
+func (q *Queries) RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error {
+	_, err := q.db.ExecContext(ctx, revokeUserAccessTokens,
 		arg.RevokedAt,
+		arg.UserID,
+		arg.Kind,
 		arg.ID,
 	)
 	return err
+}
+
+const touchAccessToken = `-- name: TouchAccessToken :execrows
+UPDATE access_tokens SET last_used_at = ?, expires_at = ? WHERE id = ? AND revoked_at IS NULL
+`
+
+type TouchAccessTokenParams struct {
+	LastUsedAt time.Time
+	ExpiresAt  *time.Time
+	ID         string
+}
+
+// The sliding-expiry touch never writes revoked_at and never touches a row a
+// reclaim has revoked: a request that read the row before the revoke must not
+// be able to write a stale NULL back.
+func (q *Queries) TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, touchAccessToken, arg.LastUsedAt, arg.ExpiresAt, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }

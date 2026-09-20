@@ -14,6 +14,14 @@ type Querier interface {
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
+	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	// See the sqlite sibling: the confirm path consumes its own evidence row.
+	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
+	// See the sqlite sibling: the confirmation's evidence and its consumption are
+	// the same row.
+	ConsumeUserEmailVerification(ctx context.Context, arg ConsumeUserEmailVerificationParams) (int64, error)
+	// See the sqlite sibling: the reset consumes its evidence row-counted.
+	ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, userID string) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
@@ -21,6 +29,7 @@ type Querier interface {
 	// $1 is reused everywhere, so the generated param is a single field.
 	CountCurrencyUsage(ctx context.Context, currencyID string) (int32, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountIdentitiesByUser(ctx context.Context, userID string) (int64, error)
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
@@ -37,9 +46,17 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
+	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
+	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
+	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	DeletePayee(ctx context.Context, id string) error
 	// Link rows between a recurring template and its reporting labels. See the
 	// sqlite variant for documentation.
@@ -54,12 +71,12 @@ type Querier interface {
 	DeleteUserEmailChangeRequestsByUser(ctx context.Context, userID string) error
 	// See the sqlite sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
-	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). See the sqlite
 	// sibling for the flow; expiry is compared in the app layer, not SQL.
 	DeleteUserPasswordRequestsByUser(ctx context.Context, userID string) error
 	ExistsUserByEmail(ctx context.Context, lower string) (bool, error)
-	// Joins users for access_level/access_until; see the sqlite sibling for why.
+	// Joins users for access_level/access_until; see the sqlite sibling for why
+	// provider/id_token are deliberately omitted here.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (PostgreSQL). accounts_access holds per-account
@@ -114,6 +131,9 @@ type Querier interface {
 	// placeholders). See the sqlite variant for documentation.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
+	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
+	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
 	// Write-side queries for the label module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation. Unlike tags, a label's icon IS
 	// persisted from the start.
@@ -133,6 +153,8 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
+	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module (PostgreSQL variant: $N placeholders).
 	// See the sqlite variant for documentation; the SQL is identical apart from the
@@ -189,7 +211,10 @@ type Querier interface {
 	HideGlobalCurrencies(ctx context.Context, arg HideGlobalCurrenciesParams) error
 	// Access-token queries (access_tokens). See the sqlite sibling for the flow;
 	// liveness is evaluated in the app layer, not SQL.
-	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	// See the sqlite sibling.
+	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
+	// See the sqlite sibling.
+	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
@@ -197,6 +222,10 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// See the sqlite sibling.
+	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
+	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids (PostgreSQL variant: $N
 	// placeholders). Shared by every module whose create endpoint takes a
 	// client-supplied operation id. See the sqlite variant for documentation.
@@ -205,7 +234,9 @@ type Querier interface {
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
-	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
+	// See the sqlite sibling: the pending grant is fenced on the generation the
+	// password check read.
+	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
@@ -218,7 +249,7 @@ type Querier interface {
 	// Balances for every AVAILABLE account (own + shared via accounts_access), to
 	// match PHP getAccountsBalancesBeforeDate over the available account-id set.
 	// PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
-	// here yields the exact decimal — no precision-14 reformatting needed.
+	// here yields the exact decimal - no precision-14 reformatting needed.
 	ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error)
 	ListAccountOptionsByUser(ctx context.Context, userID string) ([]AccountsOption, error)
 	// Available accounts: own OR ACCEPTED shared via accounts_access, not deleted
@@ -258,6 +289,7 @@ type Querier interface {
 	ListFolderAccountIDs(ctx context.Context, folderID string) ([]string, error)
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -277,6 +309,16 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// The row lock behind every existing-row write and credential mint (see
+	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
+	// no-op UPDATE took (it touched no key column), without writing a tuple
+	// version per login: self-conflicting, so the two-pool test and the reclaim
+	// ordering are unchanged. Plain FOR UPDATE would be strictly stronger and
+	// also conflict with FOR KEY SHARE, the lock every FK check against this row
+	// takes from ~24 child tables, so it would block concurrent inserts of any
+	// row belonging to this user. The adapter maps no-rows to success: a missing
+	// user must keep succeeding silently.
+	LockUserRow(ctx context.Context, id string) (string, error)
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
@@ -297,13 +339,30 @@ type Querier interface {
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
+	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	// See the sqlite sibling.
+	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
 	SoftDeleteCurrency(ctx context.Context, id string) error
-	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	// See the sqlite sibling.
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	// See the sqlite sibling: the confirm-email-change path writes only the email
+	// columns, under the generation read after the row lock.
+	UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error)
+	// The oauth email-drift mirror writes the provider's new address onto the
+	// primary email only while the account is still passwordless and still at the
+	// generation the callback resolved it under: a password reset committing after
+	// those checks must keep the recovered account's own address.
+	UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+	// only under the generation the login verified the hash under, so a reset
+	// committing mid-login is never overwritten by a stale aggregate save.
+	UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error)
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error

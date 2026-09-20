@@ -18,6 +18,8 @@ import (
 	"github.com/econumo/econumo/internal/infra/mailer"
 	operationrepo "github.com/econumo/econumo/internal/infra/operation"
 	"github.com/econumo/econumo/internal/infra/storage/backend"
+	appoauth "github.com/econumo/econumo/internal/oauth"
+	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
 	"github.com/econumo/econumo/internal/server"
 	appuser "github.com/econumo/econumo/internal/user"
 	userrepo "github.com/econumo/econumo/internal/user/repo"
@@ -100,6 +102,15 @@ func newContainerFor(cfg config.Config, db *sql.DB) *container {
 		emailChangeRepo, nil,
 		appuser.NewRandomAvatarPicker(), clk, nil, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
+
+	// The oauth side of an account reclaim: user:change-password evicts whoever
+	// holds the account, which includes their linked identities and pending
+	// grants. No providers are needed to sweep those — the CLI never starts a
+	// sign-in flow — so the slot is empty and the rate limiter nil.
+	oauthSvc := appoauth.NewService(nil, server.NewOAuthUsers(userSvc),
+		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, nil, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+	userSvc.SetOAuthReclaimer(server.NewOAuthReclaimer(oauthSvc))
 
 	currencyWriteRepo := currencyrepo.NewWriteRepo(cfg.DatabaseDriver, txm)
 	currencySvc := appcurrency.NewWriteService(currencyWriteRepo, txm, clk)

@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { SessionDto } from '@/api/dto/user'
+import { providerDisplayName, useProviders } from '@/features/auth/oauthQueries'
 import { useRevokeOtherSessions, useRevokeSession, useSessions } from './security'
 import { describeUserAgent, relativeTime } from './securityFormat'
 import { SettingsShell } from './SettingsShell'
@@ -15,6 +16,7 @@ export function SessionsPage() {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { data: sessions } = useSessions()
+  const providers = useProviders()
   const revokeSession = useRevokeSession()
   const revokeOthers = useRevokeOtherSessions()
 
@@ -62,6 +64,11 @@ export function SessionsPage() {
               <span className="text-xs text-muted-foreground">
                 {t('user.page.settings.profile.sessions.last_active')}{' '}
                 {relativeTime(session.lastUsedAt, { lang: i18n.language, justNow: t('common.date.just_now') })}
+                {session.provider ? (
+                  <span className="ml-2">
+                    {t('user.page.settings.profile.sessions.via', { provider: providerDisplayName(session.provider, providers.data, t) })}
+                  </span>
+                ) : null}
               </span>
             </div>
             <Button
