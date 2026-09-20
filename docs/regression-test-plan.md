@@ -84,6 +84,11 @@ navigation (single-pane vs sidebar).
 - [ ] Expired/invalid token: clear the token (or revoke the session elsewhere)
       → next API call redirects to `/login?reason=expired` with the
       session-expired notice.
+- [ ] Password login lands in the app and STAYS there: sign in, confirm the
+      dashboard loads and a reload keeps you signed in (the token survives).
+      A 401 from the background `get-identity-list` probe must never bounce a
+      just-signed-in user back to `/login`. Same check after an OAuth
+      "Continue with..." sign-in.
 - [ ] With `ECONUMO_ALLOW_REGISTRATION=false`: Sign-up tab is disabled on the
       login screen, opening `/register` directly redirects to the login page,
       and registering via API returns an error.
