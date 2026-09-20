@@ -138,7 +138,13 @@ export function ApplicationLayout() {
     // The PWA viewport is edge-to-edge (viewport-fit=cover), so the shell keeps
     // itself clear of the status bar / rounded corners; the bottom inset is
     // handled per bottom bar so their backgrounds still reach the screen edge.
-    <div className="flex h-svh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+    // dvh, never svh: the document does not scroll, so no browser chrome ever
+    // retracts and the two are the same number everywhere — except that iOS
+    // caches svh PER WINDOW, and a standalone PWA returning from Apple's
+    // cross-site POST callback gets one 130px short for the window's whole
+    // lifetime (a reload and a rotation both keep it; only a relaunch clears
+    // it). dvh tracked the real viewport in both states.
+    <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
       <div className="flex min-h-0 flex-1 overflow-hidden">
