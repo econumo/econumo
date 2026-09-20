@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Account collegati",
             "header": "Account collegati",
-            "description": "Account esterni con cui puoi accedere. Collegane uno per accedere senza password.",
+            "description": "Account esterni che puoi usare per accedere a Econumo.",
             "empty": "Nessun account collegato.",
             "linked_on": "Collegato",
             "link": "Collega",

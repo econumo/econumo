@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Cuentas vinculadas",
             "header": "Cuentas vinculadas",
-            "description": "Cuentas externas con las que puedes iniciar sesión. Vincula una para iniciar sesión sin contraseña.",
+            "description": "Cuentas externas que puedes usar para iniciar sesión en Econumo.",
             "empty": "Aún no tienes cuentas vinculadas.",
             "linked_on": "Vinculada",
             "link": "Vincular",

@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Verknüpfte Konten",
             "header": "Verknüpfte Konten",
-            "description": "Externe Konten, mit denen Sie sich anmelden können. Verknüpfen Sie eines, um sich ohne Passwort anzumelden.",
+            "description": "Externe Konten, mit denen Sie sich bei Econumo anmelden können.",
             "empty": "Noch keine verknüpften Konten.",
             "linked_on": "Verknüpft",
             "link": "Verknüpfen",

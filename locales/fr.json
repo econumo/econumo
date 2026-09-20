@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Comptes liés",
             "header": "Comptes liés",
-            "description": "Comptes externes avec lesquels vous pouvez vous connecter. Liez-en un pour vous connecter sans mot de passe.",
+            "description": "Comptes externes que vous pouvez utiliser pour vous connecter à Econumo.",
             "empty": "Aucun compte lié pour le moment.",
             "linked_on": "Lié le",
             "link": "Lier",

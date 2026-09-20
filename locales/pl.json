@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Powiązane konta",
             "header": "Powiązane konta",
-            "description": "Zewnętrzne konta, za pomocą których możesz się zalogować. Powiąż jedno, aby logować się bez hasła.",
+            "description": "Zewnętrzne konta, których możesz użyć do logowania się w Econumo.",
             "empty": "Nie masz jeszcze powiązanych kont.",
             "linked_on": "Powiązano",
             "link": "Powiąż",

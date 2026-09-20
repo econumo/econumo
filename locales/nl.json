@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Gekoppelde accounts",
             "header": "Gekoppelde accounts",
-            "description": "Externe accounts waarmee u kunt inloggen. Koppel er een om zonder wachtwoord in te loggen.",
+            "description": "Externe accounts waarmee u kunt inloggen bij Econumo.",
             "empty": "Nog geen gekoppelde accounts.",
             "linked_on": "Gekoppeld",
             "link": "Koppelen",

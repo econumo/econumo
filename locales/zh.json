@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "已关联账户",
             "header": "已关联账户",
-            "description": "可用于登录的外部账户。关联一个账户即可免密码登录。",
+            "description": "可用于登录 Econumo 的外部账户。",
             "empty": "暂无已关联账户。",
             "linked_on": "关联时间",
             "link": "关联",
