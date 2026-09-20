@@ -919,6 +919,71 @@ func TestCallback_AutoLinkNotifierFailureDoesNotBreakTheRedirect(t *testing.T) {
 	}
 }
 
+// A link the owner started is still worth an email: the notice is how they
+// detect one they did NOT start, and a stolen session is what the link flow's
+// checks exist to stop.
+func TestCompleteLink_NotifiesTheAccountOwner(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	if _, err := h.completeLink(u.ID, r); err != nil {
+		t.Fatalf("completeLink: %v", err)
+	}
+	if len(h.notifier.calls) != 1 {
+		t.Fatalf("want exactly one notification, got %+v", h.notifier.calls)
+	}
+	if got := h.notifier.calls[0]; got.userID != u.ID.String() || got.providerName != "Google" {
+		t.Fatalf("notification = %+v, want user %s provider Google", got, u.ID.String())
+	}
+}
+
+// Relinking the same subject only refreshes the stored email, granting no new
+// sign-in method — so it must stay silent.
+func TestCompleteLink_RelinkingTheSameIdentityDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	if _, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web")); err != nil {
+		t.Fatalf("completeLink: %v", err)
+	}
+	h.notifier.calls = nil
+	if _, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web")); err != nil {
+		t.Fatalf("relink: %v", err)
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("a relink grants nothing new: %+v", h.notifier.calls)
+	}
+}
+
+// The identity is already committed when the notice is attempted, so a dead
+// mailer must not fail the link.
+func TestCompleteLink_NotifierFailureDoesNotFailTheLink(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	h.notifier.fail = errBoom
+	res, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web"))
+	if err != nil || res.Provider != "google" {
+		t.Fatalf("a failing notifier must not fail the link: %+v %v", res, err)
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err != nil {
+		t.Fatalf("identity not written: %v", err)
+	}
+}
+
+// A refused link writes no identity, so there is nothing to announce.
+func TestCompleteLink_RejectedAttemptDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	other, _ := oidc.RandomToken()
+	if _, err := h.svc.CompleteLink(context.Background(), u.ID,
+		model.CompleteLinkRequest{Code: linkHandoffOf(t, r), Flow: other}); err == nil {
+		t.Fatal("a foreign flow secret must be refused")
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("nothing was linked: %+v", h.notifier.calls)
+	}
+}
+
 func TestCallback_ProvisioningDoesNotNotify(t *testing.T) {
 	h := newHarness(t, false, true)
 	h.fake.Email, h.fake.EmailVerified = "brandnew@example.test", true

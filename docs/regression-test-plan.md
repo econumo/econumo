@@ -510,11 +510,17 @@ User C sees none of it.
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"
       toast AND the newly linked provider already in the list (no manual
-      reload — the return trip is what writes the link); linking a SECOND
+      reload — the return trip is what writes the link) AND the owner's notice
+      email naming the provider (console transport prints it to server stdout
+      in dev); linking a SECOND
       provider straight afterwards, without leaving the page, works the same
       way (📱 especially in the app, where the deep link returns to the same
       screen); unlinking a provider (with confirm dialog) removes it from the
       list.
+- [ ] Linking a provider account that is ALREADY linked to this same Econumo
+      account again (unlink then relink is a fresh link, so use a second pass
+      through the flow while it is still linked) succeeds without sending a
+      second notice email — only a newly gained sign-in method is announced.
 - [ ] Unlink a provider while a sign-in through it is mid-flight (callback
       done, handoff not yet exchanged): the exchange fails with the
       sign-in-link-invalid error and no session is opened.

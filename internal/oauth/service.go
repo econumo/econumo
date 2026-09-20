@@ -91,6 +91,16 @@ func (s *Service) provider(id string) (Provider, error) {
 	return p, nil
 }
 
+// providerName is the display name for an email or a message. A handoff can
+// outlive its slot being removed from the configuration, so an unknown id
+// falls back to the id itself rather than to an empty name.
+func (s *Service) providerName(id string) string {
+	if p, ok := s.byID[id]; ok {
+		return p.Name
+	}
+	return id
+}
+
 // RedirectURI is the one URL an operator registers per provider.
 func (s *Service) RedirectURI(provider string) string {
 	return s.appURL + "/api/v1/oauth/callback-" + provider

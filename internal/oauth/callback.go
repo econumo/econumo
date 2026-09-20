@@ -259,7 +259,7 @@ func (s *Service) autoLink(ctx context.Context, u *model.User, provider, issuer,
 		return err
 	}
 	if s.notifier != nil {
-		if nerr := s.notifier.IdentityLinked(ctx, u.ID, s.byID[provider].Name); nerr != nil {
+		if nerr := s.notifier.IdentityLinked(ctx, u.ID, s.providerName(provider)); nerr != nil {
 			logWarn(ctx, "oauth callback: identity-linked notice", nerr, "user_id", u.ID.String(), "provider", provider)
 		}
 	}
