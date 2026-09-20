@@ -249,4 +249,9 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.ImportEvent(fixture.ImportEvent{ID: ImportEventFailed, SourceID: ImportSourcePhone,
 		Payload: `{"account":"wallet","payee":"Broken","amount":"lots","currency":"USD"}`,
 		Status:  model.ImportEventStatusFailed, ParseError: "amount must be a positive number", ReceivedAt: ClockTime})
+	// One linked identity for the guest, so get-identity-list/unlink-identity
+	// have a real row to read/remove. The guest has a password (SeedPassword
+	// above), so unlinking their only identity succeeds.
+	f.Identity(fixture.Identity{ID: "1d000000-0000-0000-0000-000000000001", UserID: GuestID,
+		Provider: "google", Issuer: "https://accounts.google.com", Subject: "guest-google-sub", Email: GuestEmail})
 }

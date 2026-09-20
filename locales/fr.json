@@ -902,7 +902,8 @@
             "revoke_others": "Déconnecter les autres appareils",
             "confirm_sign_out": "Se déconnecter de cet appareil ?",
             "confirm_revoke": "Révoquer cette session ? L’appareil sera déconnecté.",
-            "confirm_revoke_others": "Se déconnecter de tous les autres appareils ? Seule cette session restera active."
+            "confirm_revoke_others": "Se déconnecter de tous les autres appareils ? Seule cette session restera active.",
+            "via": "via {provider}"
           },
           "tokens": {
             "menu_item": "Jetons API",
@@ -951,9 +952,25 @@
             "revoke": "Révoquer",
             "confirm_revoke": "Révoquer ce jeton ? Les intégrations qui l’utilisent cesseront de fonctionner immédiatement."
           },
+          "linked_accounts": {
+            "menu_item": "Méthodes de connexion",
+            "header": "Méthodes de connexion",
+            "description": "Comptes externes que vous pouvez utiliser pour vous connecter à Econumo.",
+            "empty": "Aucune méthode de connexion disponible à associer.",
+            "linked_on": "Lié le",
+            "link": "Lier",
+            "unlink": "Dissocier",
+            "confirm_unlink": "Dissocier ce compte ? Vous ne pourrez plus l'utiliser pour vous connecter.",
+            "last_identity_hint": "Définissez un mot de passe avant de dissocier votre seule méthode de connexion.",
+            "linked_toast": "Compte {provider} lié.",
+            "set_password": {
+              "menu_item": "Définir un mot de passe",
+              "description": "Vous vous êtes inscrit avec un compte externe. Nous vous enverrons un code par e-mail pour définir un mot de passe."
+            }
+          },
           "analytics": {
             "label": "Partager les statistiques d'utilisation",
-            "description": "Nous aide à améliorer Econumo. Les données financières et les informations personnelles — nom, e-mail — ne sont jamais envoyées."
+            "description": "Nous aide à améliorer Econumo.\nLes données financières et les informations personnelles — nom, e-mail — ne sont jamais envoyées."
           }
         }
       }
@@ -970,7 +987,8 @@
       "instruction": "Nous avons envoyé un code de sécurité à votre adresse e-mail. Saisissez-le ci-dessous et choisissez un nouveau mot de passe.",
       "new_password": "Nouveau mot de passe",
       "send_failed": "Impossible d’envoyer le code. Vérifiez l’adresse e-mail et réessayez.",
-      "reset_failed": "Le mot de passe n’a pas été réinitialisé. Vérifiez le code et réessayez."
+      "reset_failed": "Le mot de passe n’a pas été réinitialisé. Vérifiez le code et réessayez.",
+      "reclaim_notice": "La réinitialisation du mot de passe déconnecte toutes les sessions, révoque les jetons d’API et supprime les méthodes de connexion associées qui utilisent une autre adresse e-mail."
     },
     "verify_email": {
       "header": "Confirmez votre adresse e-mail",
@@ -1028,6 +1046,38 @@
         "privacy": {
           "text": "En vous inscrivant, vous acceptez notre <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Politique de confidentialité</a> et nos <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Conditions d’utilisation</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "ou continuer avec",
+      "button": {
+        "google": "Continuer avec Google",
+        "apple": "Continuer avec Apple",
+        "oidc": "Continuer avec {name}"
+      },
+      "callback": {
+        "signing_in": "Connexion en cours…"
+      },
+      "app_return": {
+        "title": "Connexion terminée — revenez à l’application Econumo.",
+        "open_app": "Ouvrir l’application"
+      },
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "La connexion a été annulée.",
+        "invalid_state": "La tentative de connexion a expiré ou a déjà été utilisée. Veuillez réessayer.",
+        "provider_error": "Le fournisseur de connexion a renvoyé une erreur. Veuillez réessayer.",
+        "email_required": "Le fournisseur de connexion n'a pas communiqué d'adresse e-mail, pourtant requise par Econumo.",
+        "email_unverified": "Le fournisseur de connexion n'a pas vérifié cette adresse e-mail.",
+        "registration_disabled": "L'inscription est désactivée sur ce serveur. Connectez-vous d'abord avec un compte existant.",
+        "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo.",
+        "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur.",
+        "account_inactive": "Ce compte a été désactivé.",
+        "account_exists_password": "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe (ou réinitialisez-le), puis associez ce fournisseur depuis les Paramètres."
       }
     }
   },
@@ -1783,6 +1833,15 @@
       "cannot_be_merged": "Les tags sélectionnés ne peuvent pas être fusionnés.",
       "list_empty": "La liste des tags est vide."
     },
+    "oauth": {
+      "provider_not_configured": "Le fournisseur de connexion n'est pas configuré",
+      "handoff_invalid": "Le lien de connexion n'est pas valide ou a expiré",
+      "last_identity": "Définissez un mot de passe avant de dissocier votre seule méthode de connexion",
+      "identity_not_found": "Compte lié introuvable",
+      "link_invalid": "La session de liaison est invalide ou a expiré",
+      "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo",
+      "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur"
+    },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
       "already_exists": "Ce bénéficiaire existe déjà.",
@@ -1838,6 +1897,14 @@
     "change_email_notice": {
       "subject": "Demande de changement d’e-mail",
       "body": "Bonjour {name},\n\nQuelqu’un a demandé à changer l’e-mail de votre compte en {email}. Si ce n’était pas vous, changez immédiatement votre mot de passe."
+    },
+    "identity_linked": {
+      "subject": "Nouvelle méthode de connexion ajoutée",
+      "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être associé à votre compte Econumo et peut désormais servir à vous connecter.\n\nSi ce n’était pas vous, dissociez le compte depuis les Paramètres et changez votre mot de passe.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Méthode de connexion supprimée",
+      "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être dissocié de votre compte Econumo et ne peut plus servir à vous connecter.\n\nSi ce n’était pas vous, changez votre mot de passe et vérifiez les comptes associés dans les Paramètres.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
   }
 }

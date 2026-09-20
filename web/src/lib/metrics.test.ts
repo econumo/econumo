@@ -13,6 +13,7 @@ import {
 import { capture } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
+import { authMethods, forgetAuthMethods, rememberHasPassword, rememberLinkedProviders } from './analyticsAuthMethods'
 import { backendHost, selfHosted } from './config'
 import { setToken } from './storage'
 
@@ -60,21 +61,33 @@ describe('collector capture', () => {
     expect(window.dataLayer).toHaveLength(2)
   })
 
-  it('captures with the whitelisted properties only', () => {
+  // Only the page the event happened on is per-event; everything else
+  // describes the session and rides the batch instead.
+  it('captures the per-event url only', () => {
     window.history.replaceState({}, '', '/budgets/01980e2c-1111-7000-8000-123456789abc/details')
     trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
     expect(capture).toHaveBeenCalledTimes(1)
     const [event, props] = vi.mocked(capture).mock.calls[0]
     expect(event).toBe('transaction_create')
-    expect(props).toEqual({
-      host: 'selfhosted_unknown', // jsdom runs on localhost with no INSTANCE_ID configured
-      deployment: 'self-hosted',
-      locale: 'en',
-      mode: 'desktop', // jsdom default viewport is 1024px wide
-      current_url: 'https://selfhosted_unknown/budgets/:id/details',
-    })
-    expect(props).not.toHaveProperty('version')
-    expect(props).not.toHaveProperty('self_hosted')
+    // jsdom runs on localhost with no INSTANCE_ID configured
+    expect(props).toEqual({ current_url: 'https://selfhosted_unknown/budgets/:id/details' })
+  })
+
+  it('sends the session-wide facts on the batch, not on each event', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    trackEvent(METRICS.TRANSACTION_CREATE)
+    expect(contextSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        host: 'selfhosted_unknown',
+        deployment: 'self-hosted',
+        locale: 'en',
+        mode: 'desktop', // jsdom default viewport is 1024px wide
+      }),
+    )
+    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
+    for (const key of ['host', 'deployment', 'locale', 'mode', 'version', 'self_hosted']) {
+      expect(props).not.toHaveProperty(key)
+    }
   })
 
   it('keeps ui_modal micro-interactions dataLayer-only', () => {
@@ -201,16 +214,91 @@ describe('native app host resolution', () => {
 describe('access_state property', () => {
   afterEach(() => setAnalyticsAccessState(null))
 
-  it('is attached to captures once set', () => {
+  it('is attached to the batch once set', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
     setAnalyticsAccessState('trial')
     trackEvent(METRICS.USER_LOGIN)
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ access_state: 'trial' }))
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    expect(props).toMatchObject({ access_state: 'trial' })
+    expect(props).not.toHaveProperty('access_state')
   })
 
   it('is absent before any state is known', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
     trackEvent(METRICS.USER_LOGIN)
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ access_state: expect.anything() }))
+  })
+})
+
+describe('auth method flags', () => {
+  afterEach(() => forgetAuthMethods())
+
+  it('rides the batch context, not the per-event properties', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
+
+    trackEvent(METRICS.TRANSACTION_CREATE)
+
+    expect(contextSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ auth_password: 'on', auth_google: 'on', auth_apple: 'off', auth_sso: 'off' }),
+    )
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    expect(props).not.toHaveProperty('access_state')
+    expect(props).not.toHaveProperty('auth_password')
+  })
+
+  it('maps the custom OIDC slot to auth_sso', () => {
+    rememberLinkedProviders(['oidc'])
+    expect(authMethods()).toMatchObject({ auth_sso: 'on', auth_google: 'off', auth_apple: 'off' })
+  })
+
+  it("reports an OAuth-only account as auth_password 'off'", () => {
+    rememberHasPassword(false)
+    rememberLinkedProviders(['apple'])
+    expect(authMethods()).toEqual({ auth_password: 'off', auth_google: 'off', auth_apple: 'on', auth_sso: 'off' })
+  })
+
+  // The two halves arrive from different endpoints; whichever lands second
+  // must not erase the other's answer.
+  it('merges the two writers rather than overwriting', () => {
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google', 'apple'])
+    expect(authMethods()).toEqual({ auth_password: 'on', auth_google: 'on', auth_apple: 'on', auth_sso: 'off' })
+
+    // the identity list refetches after an unlink; the password flag survives
+    rememberLinkedProviders(['google'])
+    expect(authMethods()).toEqual({ auth_password: 'on', auth_google: 'on', auth_apple: 'off', auth_sso: 'off' })
+  })
+
+  it('omits a flag whose source has not answered yet', () => {
+    rememberHasPassword(true)
+    // no identity list yet — the OAuth flags are unknown, not "off"
+    expect(authMethods()).toEqual({ auth_password: 'on' })
+  })
+
+  it('is absent entirely before anything is known', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    trackEvent(METRICS.USER_LOGIN)
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ auth_password: expect.anything() }))
+  })
+
+  it('survives a reload, so the boot page view still carries it', () => {
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
+    expect(authMethods()).toMatchObject({ auth_password: 'on', auth_google: 'on' })
+  })
+
+  // A build shipped 0/1 before these became words; a value left in storage by
+  // it must be ignored rather than sent on as a stray numeric label.
+  it('drops a stale numeric value from an earlier build', () => {
+    localStorage.setItem('authMethods', JSON.stringify({ auth_password: 1, auth_google: 0 }))
+    expect(authMethods()).toBeNull()
+  })
+
+  it('does not outlive the session it describes', () => {
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
+    forgetAuthMethods()
+    expect(authMethods()).toBeNull()
   })
 })

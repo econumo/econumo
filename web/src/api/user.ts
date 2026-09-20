@@ -1,12 +1,14 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
+import type { CreatedPersonalTokenDto, CurrentUserDto, CurrentUserResponseDto, LogoutResultDto, PersonalTokenDto, SessionDto, UserLoginItemDto } from './dto/user'
 import { UserOptions } from './dto/user'
 import { deriveAccessState } from '@/lib/access'
 import { analyticsUserId } from '@/lib/analyticsId'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
+import { rememberHasPassword } from '@/lib/analyticsAuthMethods'
+import { refreshAuthMethodFlags } from './oauth'
 
 // login-user is the one endpoint that responds with a bare {token, user}
 // body instead of the standard {success, message, data} envelope.
@@ -15,6 +17,7 @@ export async function login(username: string, password: string): Promise<UserLog
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberHasPassword(user.hasPassword !== false)
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }
@@ -33,8 +36,9 @@ export async function resendVerificationCode(username: string): Promise<number> 
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 0
 }
 
-export async function logout(): Promise<void> {
-  await api.post(apiUrl('/api/v1/user/logout-user'))
+export async function logout(): Promise<LogoutResultDto> {
+  const response = await api.post<Envelope<LogoutResultDto>>(apiUrl('/api/v1/user/logout-user'))
+  return response.data.data
 }
 
 export async function register(email: string, password: string, name: string): Promise<void> {
@@ -93,6 +97,8 @@ export async function getUserData(): Promise<CurrentUserDto> {
   const user = response.data.data.user
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberHasPassword(user.hasPassword !== false)
+  refreshAuthMethodFlags()
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return user
 }

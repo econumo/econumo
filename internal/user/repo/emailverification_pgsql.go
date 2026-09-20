@@ -19,6 +19,10 @@ func (emailVerificationPgsqlQuerier) InsertUserEmailVerification(ctx context.Con
 	return pgsqlgen.New(db).InsertUserEmailVerification(ctx, pgsqlgen.InsertUserEmailVerificationParams(p))
 }
 
+func (emailVerificationPgsqlQuerier) ConsumeUserEmailVerification(ctx context.Context, db backend.DBTX, p emailVerificationConsumeParams) (int64, error) {
+	return pgsqlgen.New(db).ConsumeUserEmailVerification(ctx, pgsqlgen.ConsumeUserEmailVerificationParams(p))
+}
+
 func (emailVerificationPgsqlQuerier) GetUserEmailVerificationByUser(ctx context.Context, db backend.DBTX, userID string) (emailVerificationRow, error) {
 	row, err := pgsqlgen.New(db).GetUserEmailVerificationByUser(ctx, userID)
 	return emailVerificationRow(row), err

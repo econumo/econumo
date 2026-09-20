@@ -61,3 +61,23 @@ func (sqliteQuerier) UpdateUserTimezone(ctx context.Context, db backend.DBTX, p 
 func (sqliteQuerier) GetUserLanguage(ctx context.Context, db backend.DBTX, id string) (string, error) {
 	return sqlitegen.New(db).GetUserLanguage(ctx, id)
 }
+
+func (sqliteQuerier) LockUserRow(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).LockUserRow(ctx, id)
+}
+
+func (sqliteQuerier) BumpUserCredentialsGeneration(ctx context.Context, db backend.DBTX, userID string) (int64, error) {
+	return sqlitegen.New(db).BumpUserCredentialsGeneration(ctx, userID)
+}
+
+func (sqliteQuerier) UpdateUserPasswordIfGeneration(ctx context.Context, db backend.DBTX, p passwordIfGenParams) (int64, error) {
+	return sqlitegen.New(db).UpdateUserPasswordIfGeneration(ctx, p)
+}
+
+func (sqliteQuerier) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, db backend.DBTX, p emailIfGenParams) (int64, error) {
+	return sqlitegen.New(db).UpdateUserEmailIfPasswordlessAndGeneration(ctx, p)
+}
+
+func (sqliteQuerier) UpdateUserEmailIfGeneration(ctx context.Context, db backend.DBTX, p emailGenParams) (int64, error) {
+	return sqlitegen.New(db).UpdateUserEmailIfGeneration(ctx, p)
+}

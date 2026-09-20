@@ -344,6 +344,51 @@ func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
 	}
 }
 
+// The two platform association documents live on the ROOT mux (outside /api,
+// like /health), because Apple and Google fetch them from fixed paths.
+func TestAppLinks_ServedWhenConfigured(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>spa</title>"), 0o644); err != nil {
+		t.Fatalf("write index.html: %v", err)
+	}
+	cfg := config.Config{
+		AppLinksIOSAppIDs: []string{"ABCDE12345.com.econumo.app"},
+		AppLinksAndroid:   []config.AndroidAppLink{{Package: "com.econumo.app", Fingerprints: []string{"AA:BB"}}},
+	}
+	srv := httptest.NewServer(router.New(router.Deps{Cfg: cfg, SPA: os.DirFS(dir)}))
+	t.Cleanup(srv.Close)
+
+	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
+		resp := get(t, srv, http.MethodGet, path)
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/json" {
+			t.Fatalf("%s: status=%d ct=%q", path, resp.StatusCode, resp.Header.Get("Content-Type"))
+		}
+		if !strings.Contains(string(body), "com.econumo.app") {
+			t.Fatalf("%s: body = %s", path, body)
+		}
+		// They run through the global chain, so a platform's fetch carries a
+		// request id and lands in the access log like any other request.
+		if resp.Header.Get("X-Request-Id") == "" {
+			t.Fatalf("%s: no X-Request-Id — not wrapped in the global middleware chain", path)
+		}
+	}
+}
+
+// With no app associated the paths must 404 rather than fall through to the SPA
+// shell: an OS fetching an association document has to see "no app here".
+func TestAppLinks_NotServedWhenUnconfigured(t *testing.T) {
+	srv := newServer(t, nil)
+	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
+		resp := get(t, srv, http.MethodGet, path)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s: status=%d want 404", path, resp.StatusCode)
+		}
+	}
+}
+
 // VERSION_LABEL is display-only and independent of VERSION: ECONUMO_VERSION
 // relabels the UI for a demo/staging box, while VERSION keeps reporting the
 // real binary so analytics, the update check and the mobile app's

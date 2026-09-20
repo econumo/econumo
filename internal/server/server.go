@@ -57,6 +57,9 @@ import (
 	labelmcp "github.com/econumo/econumo/internal/label/mcp"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
+	appoauth "github.com/econumo/econumo/internal/oauth"
+	handleroauth "github.com/econumo/econumo/internal/oauth/api"
+	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
@@ -105,6 +108,14 @@ type Seams struct {
 	// model.ImportProvider* name. nil registers the real SimpleFIN client;
 	// tests inject a stub so no scenario reaches the network.
 	ImportProviders map[string]appimports.Provider
+	// OAuthProviders, when non-nil, are the provider clients to mount; serve
+	// builds them once (so the boot probe warms the same discovery cache the
+	// server uses) and tests inject fakes. nil builds them from cfg.
+	OAuthProviders []appoauth.Provider
+	// OAuthHTTPClient is the HTTP client for provider discovery/token/JWKS
+	// calls when providers are built from cfg (nil = the default 10s client);
+	// the apiparity harness maps a fixed literal issuer onto its fake.
+	OAuthHTTPClient *http.Client
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -174,6 +185,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,
@@ -190,6 +202,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appimports.RateScopeSync:            cfg.RateLimitSync,
 			appimports.RateScopeSuggestRules:    cfg.RateLimitSuggestRules,
 			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+			// No per-key cap: the caller of start-login/start-link is anonymous
+			// until the provider answers. The global per-minute cap applies.
+			appoauth.RateScopeOAuthStart: 0,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -203,6 +218,21 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
+
+	oauthProviders := seams.OAuthProviders
+	if oauthProviders == nil {
+		oauthProviders, err = appoauth.ProvidersFromConfig(cfg, seams.OAuthHTTPClient)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
+		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
+	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
+	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer))
+	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -384,6 +414,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
+		handleroauth.RegisterAPI(oauthHandlers, authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
 		handlerlabel.RegisterAPI(labelHandlers, authn),

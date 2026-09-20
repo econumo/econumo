@@ -65,7 +65,7 @@ type ListAccountBalancesForUserRow struct {
 // Balances for every AVAILABLE account (own + shared via accounts_access), to
 // match PHP getAccountsBalancesBeforeDate over the available account-id set.
 // PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
-// here yields the exact decimal — no precision-14 reformatting needed.
+// here yields the exact decimal - no precision-14 reformatting needed.
 func (q *Queries) ListAccountBalancesForUser(ctx context.Context, arg ListAccountBalancesForUserParams) ([]ListAccountBalancesForUserRow, error) {
 	rows, err := q.db.QueryContext(ctx, listAccountBalancesForUser, arg.Before, arg.UserID)
 	if err != nil {

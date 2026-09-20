@@ -24,6 +24,6 @@ func (passwordRequestPgsqlQuerier) GetUserPasswordRequestByUserAndCode(ctx conte
 	return passwordRequestRow(row), err
 }
 
-func (passwordRequestPgsqlQuerier) DeleteUserPasswordRequest(ctx context.Context, db backend.DBTX, id string) error {
-	return pgsqlgen.New(db).DeleteUserPasswordRequest(ctx, id)
+func (passwordRequestPgsqlQuerier) ConsumeUserPasswordRequest(ctx context.Context, db backend.DBTX, p consumeParams) (int64, error) {
+	return pgsqlgen.New(db).ConsumeUserPasswordRequest(ctx, pgsqlgen.ConsumeUserPasswordRequestParams(p))
 }

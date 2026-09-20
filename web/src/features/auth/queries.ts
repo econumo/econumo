@@ -1,5 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
 import * as userApi from '@/api/user'
+import { refreshAuthMethodFlags } from '@/api/oauth'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
@@ -12,6 +13,10 @@ export function useLogin() {
       // previous user's persisted finances
       clearPersistedQueryCache()
       setToken(data.token)
+      // After the token is stored, never before: the probe is fired without
+      // awaiting, so an unauthenticated 401 would reach the response
+      // interceptor and be read as an expired session.
+      refreshAuthMethodFlags()
       trackEvent(METRICS.USER_LOGIN)
     },
   })

@@ -120,6 +120,13 @@ const (
 	CodeImportRuleSkipNotApplicable = "import.rule_skip_not_applicable"
 	CodeImportAiDisabled            = "import.ai_disabled"
 	CodeImportAiUnavailable         = "import.ai_unavailable"
+	CodeOAuthProviderNotConfigured  = "oauth.provider_not_configured"
+	CodeOAuthHandoffInvalid         = "oauth.handoff_invalid"
+	CodeOAuthLastIdentity           = "oauth.last_identity"
+	CodeOAuthIdentityNotFound       = "oauth.identity_not_found"
+	CodeOAuthLinkInvalid            = "oauth.link_invalid"
+	CodeOAuthIdentityTaken          = "oauth.identity_taken"
+	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
 )
 
 var AllCodes = []string{
@@ -234,4 +241,11 @@ var AllCodes = []string{
 	CodeImportRuleSkipNotApplicable,
 	CodeImportAiDisabled,
 	CodeImportAiUnavailable,
+	CodeOAuthProviderNotConfigured,
+	CodeOAuthHandoffInvalid,
+	CodeOAuthLastIdentity,
+	CodeOAuthIdentityNotFound,
+	CodeOAuthLinkInvalid,
+	CodeOAuthIdentityTaken,
+	CodeOAuthProviderAlreadyLinked,
 }

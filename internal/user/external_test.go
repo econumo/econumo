@@ -1,0 +1,158 @@
+package user_test
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/dbtest"
+)
+
+func TestProvisionExternalUser_PasswordlessVerifiedWithDefaults(t *testing.T) {
+	db := dbtest.New(t)
+	s, _, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	u, err := s.ProvisionExternalUser(ctx, "Alice", "Alice@Example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if u.Algorithm != model.AlgorithmNone || u.HasPassword() || !u.EmailVerified {
+		t.Fatalf("want passwordless verified user, got %+v", u)
+	}
+	if u.Option(model.OptionCurrency) == nil || u.Option(model.OptionAnalytics) == nil {
+		t.Fatal("default options must be seeded like registration")
+	}
+	if _, err := s.ProvisionExternalUser(ctx, "Alice", "alice@example.test"); err == nil {
+		t.Fatal("duplicate email must fail")
+	}
+	// Password login on a passwordless user is the frozen 401.
+	_, lerr := s.Login(ctx, model.LoginRequest{Username: "alice@example.test", Password: "anything"}, "ua", time.Now())
+	if _, ok := errs.AsUnauthorized(lerr); !ok {
+		t.Fatalf("want 401, got %v", lerr)
+	}
+}
+
+func TestCreateExternalSession_StampsProviderAndReturnsLogin(t *testing.T) {
+	db := dbtest.New(t)
+	s, repo, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	u, err := s.ProvisionExternalUser(ctx, "Bob", "bob@example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idTok := "raw.id.token"
+	res, err := s.CreateExternalSession(ctx, u.ID, "Mozilla/5.0", model.OAuthProviderOIDC, &idTok, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.Token == "" || res.User.Id != u.ID.String() || res.User.HasPassword {
+		t.Fatalf("unexpected login result %+v", res)
+	}
+	sessions, err := s.ListSessions(ctx, u.ID, vo.Id{})
+	if err != nil || len(sessions) != 1 || sessions[0].Provider != "oidc" {
+		t.Fatalf("session must carry provider: %+v %v", sessions, err)
+	}
+
+	u.Deactivate(time.Now())
+	if err := db.TX.WithTx(ctx, func(ctx context.Context) error { return repo.Save(ctx, u) }); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.CreateExternalSession(ctx, u.ID, "ua", model.OAuthProviderOIDC, nil, 0); err == nil {
+		t.Fatal("inactive user must not get a session")
+	}
+}
+
+func TestReplaceVerifiedEmail(t *testing.T) {
+	db := dbtest.New(t)
+	s, repo, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	u, err := s.ProvisionExternalUser(ctx, "Carol", "carol@old.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "carol@new.test", u.CredentialsGeneration)
+	if err != nil || n != 1 {
+		t.Fatalf("mirror wrote %d rows (%v)", n, err)
+	}
+	if _, err := repo.GetByEmail(ctx, "carol@new.test"); err != nil {
+		t.Fatalf("new email must resolve: %v", err)
+	}
+
+	// A reclaim that landed after the caller read the user bumps the generation,
+	// so the stale write must affect no row.
+	if err := repo.BumpCredentialsGeneration(ctx, u.ID); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "attacker@new.test", u.CredentialsGeneration); err != nil || n != 0 {
+		t.Fatalf("stale generation wrote %d rows (%v)", n, err)
+	}
+
+	// The same write at the CURRENT generation is still refused once the account
+	// has a password: the reset handed it back to its owner.
+	if _, err := repo.UpdatePasswordIfGeneration(ctx, u.ID, "hash", "", model.AlgorithmArgon2id, time.Now().UTC(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.ReplaceVerifiedEmail(ctx, u.ID, "attacker@new.test", 1); err != nil || n != 0 {
+		t.Fatalf("password account wrote %d rows (%v)", n, err)
+	}
+	if _, err := repo.GetByEmail(ctx, "carol@new.test"); err != nil {
+		t.Fatalf("the address must not have moved: %v", err)
+	}
+}
+
+type fakeLogoutURLs struct{ url string }
+
+func (f fakeLogoutURLs) EndSessionURL(_ context.Context, provider, idToken string) (string, error) {
+	if provider == "oidc" && idToken != "" {
+		return f.url, nil
+	}
+	return "", nil
+}
+
+func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
+	db := dbtest.New(t)
+	s, _, _ := newTrialSvc(t, db, 0)
+	ctx := context.Background()
+
+	s.SetLogoutURLBuilder(fakeLogoutURLs{url: "https://idp.example.test/end?x=1"})
+	u, err := s.ProvisionExternalUser(ctx, "Dan", "dan@example.test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	idTok := "t"
+	res, err := s.CreateExternalSession(ctx, u.ID, "ua", "oidc", &idTok, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := s.Authenticate(ctx, res.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := s.Logout(ctx, p.TokenID)
+	if err != nil || out.LogoutUrl != "https://idp.example.test/end?x=1" || out.Provider != "oidc" || out.Result != "test" {
+		t.Fatalf("logout result %+v %v", out, err)
+	}
+
+	// A Google session (no id token) logs out locally but still names the provider.
+	res2, err := s.CreateExternalSession(ctx, u.ID, "ua", "google", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p2, err := s.Authenticate(ctx, res2.Token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out2, err := s.Logout(ctx, p2.TokenID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out2.LogoutUrl != "" || out2.Provider != "google" {
+		t.Fatalf("google logout %+v", out2)
+	}
+}

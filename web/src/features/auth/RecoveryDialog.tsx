@@ -14,12 +14,12 @@ interface RecoveryForm {
   password: string
 }
 
-export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function RecoveryDialog({ open, onClose, onSuccess, email }: { open: boolean; onClose: () => void; onSuccess?: () => void; email?: string }) {
   const { t } = useTranslation()
   const [isCodeSent, setIsCodeSent] = useState(false)
   const remind = useRemindPassword()
   const reset = useResetPassword()
-  const form = useForm<RecoveryForm>({ mode: 'onTouched', defaultValues: { email: '', code: '', password: '' } })
+  const form = useForm<RecoveryForm>({ mode: 'onTouched', defaultValues: { email: email ?? '', code: '', password: '' } })
   const { register, handleSubmit, formState: { errors } } = form
 
   const sendCode = handleSubmit(async ({ email }) => {
@@ -34,7 +34,11 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
   const changePassword = handleSubmit(async ({ email, code, password }) => {
     try {
       await reset.mutateAsync({ username: email, code, password })
-      onClose()
+      if (onSuccess) {
+        onSuccess()
+      } else {
+        onClose()
+      }
     } catch {
       // stay on the step — the inline error below explains
     }
@@ -54,8 +58,8 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
             className="h-11"
             id="recovery-email"
             type="email"
-            disabled={isCodeSent}
-            autoFocus={!isCodeSent}
+            disabled={isCodeSent || email !== undefined}
+            autoFocus={!isCodeSent && email === undefined}
             {...register('email', {
               validate: {
                 required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
@@ -102,6 +106,7 @@ export function RecoveryDialog({ open, onClose }: { open: boolean; onClose: () =
               />
               {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
             </div>
+            <p className="text-sm text-muted-foreground">{t('auth.access_recovery_modal.reclaim_notice')}</p>
             {reset.isError ? (
               <p className="text-sm text-destructive">{t('auth.access_recovery_modal.reset_failed')}</p>
             ) : null}

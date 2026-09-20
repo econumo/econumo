@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -698,5 +699,228 @@ func TestLoad_AIDSN(t *testing.T) {
 	t.Setenv("ECONUMO_AI_DSN", "smtp://x")
 	if _, err := Load(); err == nil {
 		t.Fatal("bad scheme must fail boot")
+	}
+}
+
+func TestLoad_OAuthGoogleRequiresBoth(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc.apps.googleusercontent.com")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET") {
+		t.Fatalf("half-configured google slot must name the missing variable, got %v", err)
+	}
+}
+
+func TestLoad_OAuthRequiresAppURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_URL") {
+		t.Fatalf("a provider without ECONUMO_URL must fail naming ECONUMO_URL, got %v", err)
+	}
+}
+
+func TestLoad_OAuthGoogleEnabled(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.OAuthGoogleEnabled() || c.OAuthAppleEnabled() || c.OIDCEnabled() || !c.OAuthEnabled() {
+		t.Fatalf("google=%v apple=%v oidc=%v any=%v", c.OAuthGoogleEnabled(), c.OAuthAppleEnabled(), c.OIDCEnabled(), c.OAuthEnabled())
+	}
+}
+
+// applePEM is a multi-line stand-in for a real .p8 file.
+const applePEM = "-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----\n"
+
+func appleEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_APPLE_CLIENT_ID", "com.example.web")
+	t.Setenv("ECONUMO_OAUTH_APPLE_TEAM_ID", "TEAM123456")
+	t.Setenv("ECONUMO_OAUTH_APPLE_KEY_ID", "KEY1234567")
+}
+
+func TestLoad_OAuthApplePrivateKeyFileReadsVerbatim(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "AuthKey.p8")
+	if err := os.WriteFile(path, []byte(applePEM), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Read byte-for-byte: no unescaping, so a real PEM survives intact.
+	if c.OAuthApplePrivateKey != applePEM {
+		t.Fatalf("key must be read verbatim, got %q", c.OAuthApplePrivateKey)
+	}
+	if !c.OAuthAppleEnabled() {
+		t.Fatal("apple slot should be enabled")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileMissingFails(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", filepath.Join(t.TempDir(), "absent.p8"))
+	if _, err := Load(); err == nil {
+		t.Fatal("a missing key file must fail at boot")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileEmptyFails(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "empty.p8")
+	if err := os.WriteFile(path, []byte("  \n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
+	if _, err := Load(); err == nil {
+		t.Fatal("an empty key file must fail at boot")
+	}
+}
+
+// The inline variable silently corrupted the key under systemd, so it is
+// rejected outright rather than ignored.
+func TestLoad_OAuthApplePrivateKeyInlineRejected(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY", applePEM)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("the removed inline variable must fail at boot")
+	}
+	if !strings.Contains(err.Error(), "ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE") {
+		t.Fatalf("error must name the replacement, got %v", err)
+	}
+}
+
+func TestLoad_OIDCDefaultsAndValidation(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "https://auth.example.test/application/o/econumo/")
+	t.Setenv("ECONUMO_OIDC_CLIENT_ID", "cid")
+	t.Setenv("ECONUMO_OIDC_CLIENT_SECRET", "sec")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.OIDCName != "SSO" || strings.Join(c.OIDCScopes, " ") != "openid profile email" || c.OIDCTrustEmail {
+		t.Fatalf("defaults: name=%q scopes=%v trust=%v", c.OIDCName, c.OIDCScopes, c.OIDCTrustEmail)
+	}
+
+	t.Setenv("ECONUMO_OIDC_SCOPES", "profile,email")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "openid") {
+		t.Fatalf("scopes without openid must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_SCOPES", "openid,email")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://auth.example.test")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "https") {
+		t.Fatalf("plain http issuer on a non-loopback host must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://127.0.0.1:9000")
+	if _, err := Load(); err != nil {
+		t.Fatalf("loopback http issuer must be accepted: %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_TRUST_EMAIL", "maybe")
+	if _, err := Load(); err == nil {
+		t.Fatal("malformed ECONUMO_OIDC_TRUST_EMAIL must fail")
+	}
+}
+
+func TestLoad_AppLinks(t *testing.T) {
+	t.Run("parses both platforms", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+		t.Setenv("ECONUMO_APP_LINKS_IOS", "ABCDE12345.com.econumo.app, ZZZZZ99999.com.econumo.app.dev")
+		t.Setenv("ECONUMO_APP_LINKS_ANDROID", "com.econumo.app="+strings.Repeat("aa:", 31)+"aa")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !c.AppLinksEnabled() {
+			t.Fatal("AppLinksEnabled() = false")
+		}
+		if len(c.AppLinksIOSAppIDs) != 2 || c.AppLinksIOSAppIDs[0] != "ABCDE12345.com.econumo.app" ||
+			c.AppLinksIOSAppIDs[1] != "ZZZZZ99999.com.econumo.app.dev" {
+			t.Fatalf("iOS app ids = %q", c.AppLinksIOSAppIDs)
+		}
+		want := strings.Repeat("AA:", 31) + "AA" // fingerprints are upper-cased on load
+		if len(c.AppLinksAndroid) != 1 || c.AppLinksAndroid[0].Package != "com.econumo.app" ||
+			len(c.AppLinksAndroid[0].Fingerprints) != 1 || c.AppLinksAndroid[0].Fingerprints[0] != want {
+			t.Fatalf("android = %+v", c.AppLinksAndroid)
+		}
+	})
+
+	// Play App Signing gives one package two certificates (upload + app signing).
+	t.Run("repeated package accumulates fingerprints", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+		t.Setenv("ECONUMO_APP_LINKS_ANDROID",
+			"com.econumo.app="+strings.Repeat("AA:", 31)+"AA,com.econumo.app="+strings.Repeat("BB:", 31)+"BB")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(c.AppLinksAndroid) != 1 || len(c.AppLinksAndroid[0].Fingerprints) != 2 {
+			t.Fatalf("android = %+v", c.AppLinksAndroid)
+		}
+	})
+
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.AppLinksEnabled() || c.AppLinksIOSAppIDs != nil || c.AppLinksAndroid != nil {
+			t.Fatalf("enabled=%v ios=%q android=%+v", c.AppLinksEnabled(), c.AppLinksIOSAppIDs, c.AppLinksAndroid)
+		}
+	})
+
+	for _, v := range []string{"com.econumo.app", "abcde12345.com.econumo.app", "ABCDE1234.com.econumo.app", "ABCDE12345."} {
+		t.Run("reject ios "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+			t.Setenv("ECONUMO_APP_LINKS_IOS", v)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_APP_LINKS_IOS") {
+				t.Fatalf("ECONUMO_APP_LINKS_IOS=%q must fail at boot, got %v", v, err)
+			}
+		})
+	}
+
+	for _, v := range []string{
+		"com.econumo.app",                                     // no fingerprint
+		"com.econumo.app=AA:BB",                               // too short
+		"=" + strings.Repeat("AA:", 31) + "AA",                // no package
+		"com.econumo.app=" + strings.Repeat("ZZ:", 31) + "ZZ", // not hex
+		"com.econumo.app=" + strings.Repeat("AA", 32),         // no separators
+	} {
+		t.Run("reject android "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+			t.Setenv("ECONUMO_APP_LINKS_ANDROID", v)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_APP_LINKS_ANDROID") {
+				t.Fatalf("ECONUMO_APP_LINKS_ANDROID=%q must fail at boot, got %v", v, err)
+			}
+		})
+	}
+
+	// A verified app link is an https URL; the OS will not fetch an association
+	// document over plain http, and neither platform claims an http link.
+	for _, appURL := range []string{"http://192.168.1.10:8181", ""} {
+		t.Run("reject app url "+appURL, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", appURL)
+			t.Setenv("ECONUMO_APP_LINKS_IOS", "ABCDE12345.com.econumo.app")
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_URL") {
+				t.Fatalf("app links with ECONUMO_URL=%q must fail at boot naming ECONUMO_URL, got %v", appURL, err)
+			}
+		})
 	}
 }

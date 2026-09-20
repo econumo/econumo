@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const bumpUserCredentialsGeneration = `-- name: BumpUserCredentialsGeneration :execrows
+UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = $1
+`
+
+func (q *Queries) BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, bumpUserCredentialsGeneration, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const existsUserByEmail = `-- name: ExistsUserByEmail :one
 SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1))
 `
@@ -22,26 +34,27 @@ func (q *Queries) ExistsUserByEmail(ctx context.Context, lower string) (bool, er
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE lower(email) = lower($1)
 `
 
 type GetUserByEmailRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
@@ -62,31 +75,33 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE id = $1
 `
 
 type GetUserByIDRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -107,6 +122,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
@@ -196,6 +212,81 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const lockUserRow = `-- name: LockUserRow :one
+SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE
+`
+
+// The row lock behind every existing-row write and credential mint (see
+// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
+// no-op UPDATE took (it touched no key column), without writing a tuple
+// version per login: self-conflicting, so the two-pool test and the reclaim
+// ordering are unchanged. Plain FOR UPDATE would be strictly stronger and
+// also conflict with FOR KEY SHARE, the lock every FK check against this row
+// takes from ~24 child tables, so it would block concurrent inserts of any
+// row belonging to this user. The adapter maps no-rows to success: a missing
+// user must keep succeeding silently.
+func (q *Queries) LockUserRow(ctx context.Context, id string) (string, error) {
+	row := q.db.QueryRowContext(ctx, lockUserRow, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4
+`
+
+type UpdateUserEmailIfGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// See the sqlite sibling: the confirm-email-change path writes only the email
+// columns, under the generation read after the row lock.
+func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
+UPDATE users SET email = $1, email_verified = TRUE, updated_at = $2
+WHERE id = $3 AND credentials_generation = $4 AND algorithm = 'none'
+`
+
+type UpdateUserEmailIfPasswordlessAndGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The oauth email-drift mirror writes the provider's new address onto the
+// primary email only while the account is still passwordless and still at the
+// generation the callback resolved it under: a password reset committing after
+// those checks must keep the recovered account's own address.
+func (q *Queries) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfPasswordlessAndGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserLanguage = `-- name: UpdateUserLanguage :exec
 UPDATE users SET language = $1 WHERE id = $2
 `
@@ -208,6 +299,38 @@ type UpdateUserLanguageParams struct {
 func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserLanguage, arg.Language, arg.ID)
 	return err
+}
+
+const updateUserPasswordIfGeneration = `-- name: UpdateUserPasswordIfGeneration :execrows
+UPDATE users SET password = $1, salt = $2, algorithm = $3, updated_at = $4
+WHERE id = $5 AND credentials_generation = $6
+`
+
+type UpdateUserPasswordIfGenerationParams struct {
+	Password              string
+	Salt                  string
+	Algorithm             string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+// only under the generation the login verified the hash under, so a reset
+// committing mid-login is never overwritten by a stale aggregate save.
+func (q *Queries) UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserPasswordIfGeneration,
+		arg.Password,
+		arg.Salt,
+		arg.Algorithm,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateUserTimezone = `-- name: UpdateUserTimezone :exec

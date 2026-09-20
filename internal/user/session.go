@@ -12,9 +12,12 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// createSession mints a session row for a fresh login and returns the raw
-// bearer token (the only moment it exists server-side).
-func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent string, now time.Time) (string, error) {
+// createSession mints a session under the credentials generation the caller
+// read its evidence at (the password hash it verified, or the oauth flow it
+// resolved). The insert is conditional on that generation still being current,
+// so a reclaim committing anywhere between the read and this write leaves the
+// session unwritten instead of racing it — checking in Go would be the race.
+func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent, provider string, idToken *string, now time.Time, generation int64) (string, error) {
 	raw, hash, err := generateAccessToken(model.TokenKindSession)
 	if err != nil {
 		return "", err
@@ -23,13 +26,33 @@ func (s *Service) createSession(ctx context.Context, userID vo.Id, userAgent str
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindSession, TokenHash: hash,
 		Scope:     model.TokenScopeFull,
-		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp, IDToken: idToken,
 	}
 	if userAgent != "" {
 		t.UserAgent = &userAgent
 	}
-	if err := s.tokens.Insert(ctx, t); err != nil {
+	if provider != "" {
+		t.Provider = &provider
+	}
+	// Under the user's row lock, because the generation fence alone is evaluated
+	// against what is COMMITTED: on PostgreSQL a mint running while the
+	// reclaim's users UPDATE is still open would read the old generation, pass,
+	// and outlive the sweep. The lock is taken first here too (the reclaim's
+	// order), so the two serialize; inside the oauth redemption's transaction,
+	// which already holds it, this re-lock is a no-op.
+	var n int64
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		var ierr error
+		n, ierr = s.tokens.InsertIfGeneration(ctx, t, generation)
+		return ierr
+	}); err != nil {
 		return "", err
+	}
+	if n != 1 {
+		return "", &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
 	return raw, nil
 }
@@ -51,11 +74,16 @@ func (s *Service) ListSessions(ctx context.Context, userID, currentTokenID vo.Id
 		if rows[i].UserAgent != nil {
 			ua = *rows[i].UserAgent
 		}
+		provider := ""
+		if rows[i].Provider != nil {
+			provider = *rows[i].Provider
+		}
 		out = append(out, model.SessionItem{
 			Id:         rows[i].ID.String(),
 			UserAgent:  ua,
 			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
 			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
+			Provider:   provider,
 			IsCurrent:  rows[i].ID.Equal(currentTokenID),
 		})
 	}
@@ -80,8 +108,7 @@ func (s *Service) RevokeSession(ctx context.Context, userID vo.Id, req model.Rev
 	if !t.UserID.Equal(userID) || t.Kind != model.TokenKindSession {
 		return nil, errs.NewNotFound("Session not found")
 	}
-	t.Revoke(s.clock.Now())
-	if err := s.tokens.Update(ctx, t); err != nil {
+	if err := s.tokens.Revoke(ctx, t.ID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.RevokeSessionResult{}, nil
@@ -96,27 +123,18 @@ func (s *Service) RevokeOtherSessions(ctx context.Context, userID, currentTokenI
 	return &model.RevokeOtherSessionsResult{}, nil
 }
 
-// revokeSessions revokes every live session of the user except exceptTokenID
-// (zero id = revoke all). PATs are never touched here: integrations must
-// survive a password change; only user:deactivate kills them (revokeTokens).
+// revokeSessions revokes every unrevoked session of the user except
+// exceptTokenID (zero id = revoke all). PATs are never touched here:
+// integrations must survive a password change; only user:deactivate kills them
+// (revokeTokens).
 func (s *Service) revokeSessions(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time) error {
 	return s.revokeTokens(ctx, userID, exceptTokenID, now, model.TokenKindSession)
 }
 
 func (s *Service) revokeTokens(ctx context.Context, userID vo.Id, exceptTokenID vo.Id, now time.Time, kinds ...string) error {
 	for _, kind := range kinds {
-		rows, err := s.tokens.ListByUser(ctx, userID, kind)
-		if err != nil {
+		if err := s.tokens.RevokeAll(ctx, userID, kind, exceptTokenID, now); err != nil {
 			return err
-		}
-		for i := range rows {
-			if rows[i].ID.Equal(exceptTokenID) || !rows[i].IsLive(now) {
-				continue
-			}
-			rows[i].Revoke(now)
-			if err := s.tokens.Update(ctx, &rows[i]); err != nil {
-				return err
-			}
 		}
 	}
 	return nil

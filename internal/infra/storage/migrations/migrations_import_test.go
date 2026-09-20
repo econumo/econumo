@@ -53,7 +53,7 @@ func TestMigration20260901_ImportTablesAndTokenScope(t *testing.T) {
 	}
 }
 
-func TestMigration20260907_ImportRunDefaults(t *testing.T) {
+func TestMigration20260916_ImportRunDefaults(t *testing.T) {
 	db := dbtest.New(t)
 	ctx := context.Background()
 	f := fixture.New(t, db)

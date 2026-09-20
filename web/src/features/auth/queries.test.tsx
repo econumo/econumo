@@ -80,3 +80,30 @@ it('resend falls back to 0 when the server sends no Retry-After', async () => {
   const { result } = renderHook(() => useResendVerification(), { wrapper })
   await expect(result.current.mutateAsync({ username: 'a@b.test' })).resolves.toBe(0)
 })
+
+// The production failure this guards: login fired the identity-list probe
+// before the token was stored, the unauthenticated 401 came back, and the
+// response interceptor treated it as an expired session and deleted the token
+// the login had just written — leaving a 200 login stranded on /login.
+it('keeps the token when the identity-list probe 401s during login', async () => {
+  server.use(
+    http.post('*/api/v1/user/login-user', () =>
+      HttpResponse.json({
+        user: { id: 'u1', name: 'Ada', email: 'a@b', avatar: '', options: [], currency: 'USD', reportPeriod: 'month' },
+        token: 'fresh-jwt',
+      }),
+    ),
+    http.get('*/api/v1/oauth/get-identity-list', ({ request }) =>
+      request.headers.get('Authorization')
+        ? HttpResponse.json({ success: true, message: '', data: [] })
+        : HttpResponse.json({ success: false, message: 'Access token not found', code: 401, errors: {} }, { status: 401 }),
+    ),
+  )
+  const { result } = renderHook(() => useLogin(), { wrapper })
+  result.current.mutate({ username: 'a@b', password: 'pw' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  // Let the floating probe settle before asserting the token survived it.
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(getToken()).toBe('fresh-jwt')
+})

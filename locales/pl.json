@@ -902,7 +902,8 @@
             "revoke_others": "Wyloguj inne urządzenia",
             "confirm_sign_out": "Wylogować to urządzenie?",
             "confirm_revoke": "Odwołać tę sesję? Urządzenie zostanie wylogowane.",
-            "confirm_revoke_others": "Wylogować wszystkie pozostałe urządzenia? Aktywna pozostanie tylko ta sesja."
+            "confirm_revoke_others": "Wylogować wszystkie pozostałe urządzenia? Aktywna pozostanie tylko ta sesja.",
+            "via": "przez {provider}"
           },
           "tokens": {
             "menu_item": "Tokeny API",
@@ -951,9 +952,25 @@
             "revoke": "Odwołaj",
             "confirm_revoke": "Odwołać ten token? Integracje, które go używają, natychmiast przestaną działać."
           },
+          "linked_accounts": {
+            "menu_item": "Metody logowania",
+            "header": "Metody logowania",
+            "description": "Zewnętrzne konta, których możesz użyć do logowania się w Econumo.",
+            "empty": "Brak dostępnych metod logowania do połączenia.",
+            "linked_on": "Powiązano",
+            "link": "Powiąż",
+            "unlink": "Odłącz",
+            "confirm_unlink": "Odłączyć to konto? Nie będzie już można się nim zalogować.",
+            "last_identity_hint": "Ustaw hasło przed odłączeniem jedynej metody logowania.",
+            "linked_toast": "Konto {provider} powiązane.",
+            "set_password": {
+              "menu_item": "Ustaw hasło",
+              "description": "Zarejestrowałeś się przy użyciu konta zewnętrznego. Wyślemy Ci kod e-mailem, aby ustawić hasło."
+            }
+          },
           "analytics": {
             "label": "Udostępniaj statystyki użytkowania",
-            "description": "Pomaga nam ulepszać Econumo. Dane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
+            "description": "Pomaga nam ulepszać Econumo.\nDane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
           }
         }
       }
@@ -970,7 +987,8 @@
       "instruction": "Wysłaliśmy kod potwierdzający na Twój adres e-mail. Wpisz go poniżej i ustaw nowe hasło.",
       "new_password": "Nowe hasło",
       "send_failed": "Nie udało się wysłać kodu. Sprawdź adres e-mail i spróbuj ponownie.",
-      "reset_failed": "Hasło nie zostało zresetowane. Sprawdź kod i spróbuj ponownie."
+      "reset_failed": "Hasło nie zostało zresetowane. Sprawdź kod i spróbuj ponownie.",
+      "reclaim_notice": "Zresetowanie hasła wylogowuje wszystkie sesje, unieważnia tokeny API i usuwa powiązane metody logowania, które używają innego adresu e-mail."
     },
     "verify_email": {
       "header": "Potwierdź swój adres e-mail",
@@ -1028,6 +1046,38 @@
         "privacy": {
           "text": "Rejestrując się, akceptujesz naszą <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Politykę prywatności</a> oraz <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Regulamin</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "lub kontynuuj z",
+      "button": {
+        "google": "Kontynuuj z Google",
+        "apple": "Kontynuuj z Apple",
+        "oidc": "Kontynuuj z {name}"
+      },
+      "callback": {
+        "signing_in": "Logowanie…"
+      },
+      "app_return": {
+        "title": "Logowanie zakończone — wróć do aplikacji Econumo.",
+        "open_app": "Otwórz aplikację"
+      },
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Logowanie zostało anulowane.",
+        "invalid_state": "Próba logowania wygasła lub została już wykorzystana. Spróbuj ponownie.",
+        "provider_error": "Dostawca logowania zwrócił błąd. Spróbuj ponownie.",
+        "email_required": "Dostawca logowania nie udostępnił adresu e-mail, który jest wymagany przez Econumo.",
+        "email_unverified": "Dostawca logowania nie zweryfikował tego adresu e-mail.",
+        "registration_disabled": "Rejestracja jest wyłączona na tym serwerze. Najpierw zaloguj się na istniejące konto.",
+        "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo.",
+        "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy.",
+        "account_inactive": "To konto zostało dezaktywowane.",
+        "account_exists_password": "Konto z tym adresem e-mail już istnieje. Zaloguj się hasłem (lub zresetuj je), a następnie powiąż tego dostawcę w Ustawieniach."
       }
     }
   },
@@ -1783,6 +1833,15 @@
       "cannot_be_merged": "Nie można scalić wybranych tagów.",
       "list_empty": "Lista tagów jest pusta."
     },
+    "oauth": {
+      "provider_not_configured": "Dostawca logowania nie jest skonfigurowany",
+      "handoff_invalid": "Link logowania jest nieprawidłowy lub wygasł",
+      "last_identity": "Ustaw hasło przed odłączeniem jedynej metody logowania",
+      "identity_not_found": "Nie znaleziono powiązanego konta",
+      "link_invalid": "Sesja powiązania jest nieprawidłowa lub wygasła",
+      "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo",
+      "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy"
+    },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
       "already_exists": "Taki odbiorca już istnieje.",
@@ -1838,6 +1897,14 @@
     "change_email_notice": {
       "subject": "Prośba o zmianę adresu e-mail",
       "body": "Witaj, {name}!\n\nKtoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}. Jeśli to nie Ty, natychmiast zmień hasło."
+    },
+    "identity_linked": {
+      "subject": "Dodano nową metodę logowania",
+      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.\n\nJeśli to nie Ty, odłącz to konto w Ustawieniach i zmień hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Usunięto metodę logowania",
+      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

@@ -51,6 +51,14 @@ func newVerifySvcFlag(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled b
 // can step past the resend gap instead of sleeping through it.
 func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled bool) (*appuser.Service, *testClock) {
 	t.Helper()
+	return newVerifySvcStore(t, db, cap, userrepo.NewEmailVerificationRepo(db.Engine, db.TX), enabled)
+}
+
+// newVerifySvcStore is newVerifySvcClock with the verification-code store
+// swapped, so a race test can land a competing write in the middle of a
+// confirmation.
+func newVerifySvcStore(t *testing.T, db *dbtest.DB, cap *captureMailer, evs appuser.EmailVerifications, enabled bool) (*appuser.Service, *testClock) {
+	t.Helper()
 	clk := &testClock{now: authT0}
 	enc := auth.NewEncodeService("")
 	hasher := auth.NewPasswordHasher()
@@ -59,11 +67,10 @@ func newVerifySvcClock(t *testing.T, db *dbtest.DB, cap *captureMailer, enabled 
 	lookup := currencyrepo.New(db.Engine, db.TX)
 	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
 	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
-	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
 	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
 	return appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
 		prRepo, mailer.NewResetSender(cap, "noreply@econumo.test", ""),
-		evRepo, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
+		evs, mailer.NewVerifySender(cap, "noreply@econumo.test", ""),
 		ecRepo, nil,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, nil, true, 0, enabled), clk
 }
