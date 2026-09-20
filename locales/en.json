@@ -685,7 +685,7 @@
           "linked_accounts": {
             "menu_item": "Linked accounts",
             "header": "Linked accounts",
-            "description": "External accounts you can sign in with. Link one to sign in without a password.",
+            "description": "External accounts you can use to sign in to Econumo.",
             "empty": "No linked accounts yet.",
             "linked_on": "Linked",
             "link": "Link",
