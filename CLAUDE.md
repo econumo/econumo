@@ -1007,6 +1007,17 @@ data unreadable. Most are also asserted by the test suite.
   the callback redirect). The reclaim's identity sweep (`ReclaimAccount`) is the one
   deliberate exception: it runs inside a password reset the owner just completed, which
   announces itself.
+- **Notice emails reach every linked address**: the three NOTICES — identity linked,
+  identity unlinked, and the change-email heads-up to the old address — are CC'd to the
+  addresses the owner's linked providers reported (`users_identities.email`, via
+  `oauth.Service.ListIdentityEmails`; the user feature reads it through its
+  `IdentityEmailLister` port, wired in `internal/server` like `OAuthReclaimer`). The three
+  CODE emails are not: a reset, verification or change-email code exists to prove control
+  of one specific mailbox, so copying it elsewhere would defeat the check it exists for.
+  `mailer.ccAddresses` drops the To address and dedupes case-insensitively, so the primary
+  address never appears twice. Resolving the list is best-effort — a lookup failure sends
+  the notice to the primary address alone rather than failing it — and the unlink notice
+  copies the addresses that REMAIN, the removed row being gone by the time it sends.
 - **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
   app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
   `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the

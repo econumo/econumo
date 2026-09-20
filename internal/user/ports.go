@@ -102,6 +102,16 @@ type OAuthReclaimer interface {
 	ReclaimAccount(ctx context.Context, userID vo.Id, provenEmail string) (identities, grants int64, err error)
 }
 
+// IdentityEmailLister is the oauth feature's list of addresses the user's
+// linked providers vouched for. The change-email NOTICE is copied to them so a
+// change requested without the owner's knowledge is noticeable even when their
+// primary mailbox is not the one they read; the change-email CODE is not, since
+// it exists to prove control of the proposed new address. nil disables the copy
+// (CLI, tests).
+type IdentityEmailLister interface {
+	ListEmails(ctx context.Context, userID vo.Id) ([]string, error)
+}
+
 // LogoutURLBuilder is the oauth feature's end-session capability, consumed by
 // Logout for sessions minted through the custom OIDC slot. nil disables it.
 type LogoutURLBuilder interface {
