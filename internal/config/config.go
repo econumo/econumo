@@ -3,6 +3,8 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -57,7 +59,7 @@ type Config struct {
 	OAuthAppleClientID      string   // ECONUMO_OAUTH_APPLE_CLIENT_ID (the Services ID)
 	OAuthAppleTeamID        string   // ECONUMO_OAUTH_APPLE_TEAM_ID
 	OAuthAppleKeyID         string   // ECONUMO_OAUTH_APPLE_KEY_ID
-	OAuthApplePrivateKey    string   // ECONUMO_OAUTH_APPLE_PRIVATE_KEY: the .p8 PEM; literal "\n" escapes unescaped
+	OAuthApplePrivateKey    string   // contents of the .p8 file named by ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE
 	OIDCIssuerURL           string   // ECONUMO_OIDC_ISSUER_URL
 	OIDCClientID            string   // ECONUMO_OIDC_CLIENT_ID
 	OIDCClientSecret        string   // ECONUMO_OIDC_CLIENT_SECRET
@@ -387,7 +389,10 @@ func loadOAuth(c *Config) error {
 		c.OAuthGoogleClientSecret = os.Getenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET")
 	}
 
-	apple, err := requireAll("ECONUMO_OAUTH_APPLE", "ECONUMO_OAUTH_APPLE_CLIENT_ID", "ECONUMO_OAUTH_APPLE_TEAM_ID", "ECONUMO_OAUTH_APPLE_KEY_ID", "ECONUMO_OAUTH_APPLE_PRIVATE_KEY")
+	if os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY") != "" {
+		return errors.New("ECONUMO_OAUTH_APPLE_PRIVATE_KEY is no longer supported: write the .p8 to a file and set ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE to its path")
+	}
+	apple, err := requireAll("ECONUMO_OAUTH_APPLE", "ECONUMO_OAUTH_APPLE_CLIENT_ID", "ECONUMO_OAUTH_APPLE_TEAM_ID", "ECONUMO_OAUTH_APPLE_KEY_ID", "ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE")
 	if err != nil {
 		return err
 	}
@@ -395,8 +400,18 @@ func loadOAuth(c *Config) error {
 		c.OAuthAppleClientID = os.Getenv("ECONUMO_OAUTH_APPLE_CLIENT_ID")
 		c.OAuthAppleTeamID = os.Getenv("ECONUMO_OAUTH_APPLE_TEAM_ID")
 		c.OAuthAppleKeyID = os.Getenv("ECONUMO_OAUTH_APPLE_KEY_ID")
-		// Env files are single-line; the PEM's newlines arrive as literal "\n".
-		c.OAuthApplePrivateKey = strings.ReplaceAll(os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY"), `\n`, "\n")
+		// Read from a file rather than an env value: the PEM is multi-line, and
+		// systemd's EnvironmentFile parser eats the backslash of a "\n" escape,
+		// silently corrupting a one-line key into an unparseable blob.
+		path := os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE")
+		key, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE: %w", err)
+		}
+		if len(bytes.TrimSpace(key)) == 0 {
+			return fmt.Errorf("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE: %s is empty", path)
+		}
+		c.OAuthApplePrivateKey = string(key)
 	}
 
 	oidc, err := requireAll("ECONUMO_OIDC", "ECONUMO_OIDC_ISSUER_URL", "ECONUMO_OIDC_CLIENT_ID", "ECONUMO_OIDC_CLIENT_SECRET")

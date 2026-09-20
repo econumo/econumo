@@ -476,8 +476,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
   of a slot set without the rest fails at boot naming the missing variable. Google needs
   `ECONUMO_OAUTH_GOOGLE_CLIENT_ID` + `_CLIENT_SECRET`; Apple needs `ECONUMO_OAUTH_APPLE_CLIENT_ID`
-  (the Services ID) + `_TEAM_ID` + `_KEY_ID` + `_PRIVATE_KEY` (the `.p8` PEM; a literal `\n` in the
-  env value is unescaped to a real newline before parsing); the custom OIDC slot needs
+  (the Services ID) + `_TEAM_ID` + `_KEY_ID` + `_PRIVATE_KEY_FILE` (a path to the `.p8` file,
+  read verbatim at boot; a missing or empty file fails at boot). The key is a file rather than
+  an env value because systemd's `EnvironmentFile=` eats the backslash of an unquoted `\n`,
+  which silently corrupted the one-line form the removed `_PRIVATE_KEY` variable took; that
+  variable is now rejected at boot with a message naming its replacement. The custom OIDC slot needs
   `ECONUMO_OIDC_ISSUER_URL` (absolute `https://`, plain `http` only for loopback hosts) +
   `_CLIENT_ID` + `_CLIENT_SECRET`, plus optional `_NAME` (button label, default `SSO`) and
   `_SCOPES` (comma-separated, default `openid,profile,email`; must contain `openid` or boot

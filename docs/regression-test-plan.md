@@ -105,6 +105,13 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on
       both `/login` and `/register`, on desktop and mobile; sign-in through
       each provider completes and lands the user in the app.
+- [ ] Apple key is loaded from a FILE: with
+      `ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE` pointing at the unmodified `.p8`,
+      the server boots and Apple sign-in completes — under systemd as well as
+      Docker. A path that does not exist, or an empty file, fails at boot with
+      a message naming the variable; the removed inline
+      `ECONUMO_OAUTH_APPLE_PRIVATE_KEY` also fails at boot and points to the
+      file variable.
 - [ ] First sign-in through a provider (no matching Econumo account, email
       verified) creates a new account and lands on onboarding.
 - [ ] Sign-in through a provider whose verified email matches an existing
