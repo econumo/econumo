@@ -1613,8 +1613,8 @@
       "body": "Witaj, {name}!\n\nKtoś poprosił o zmianę adresu e-mail na Twoim koncie na {email}. Jeśli to nie Ty, natychmiast zmień hasło."
     },
     "identity_linked": {
-      "subject": "Do Twojego konta powiązano nową metodę logowania",
-      "body": "Witaj, {name}!\n\nKonto {provider} zostało właśnie powiązane z Twoim kontem Econumo i można go teraz używać do logowania. {provider} potwierdził, że adres e-mail Twojego konta należy do niego, więc powiązanie nastąpiło automatycznie.\n\nJeśli to nie Ty, natychmiast odłącz to konto w Ustawieniach i ustaw hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+      "subject": "Dodano nową metodę logowania",
+      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.\n\nJeśli to nie Ty, odłącz to konto w Ustawieniach i zmień hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

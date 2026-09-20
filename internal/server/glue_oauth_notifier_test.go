@@ -96,7 +96,7 @@ func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
 		t.Fatalf("IdentityLinked: %v", err)
 	}
-	if c.msg.Subject != "A new sign-in method was linked to your account" {
+	if c.msg.Subject != "A new sign-in method was added" {
 		t.Errorf("subject = %q, want the English default (users.language defaults to en)", c.msg.Subject)
 	}
 	if c.msg.To != "owner2@example.test" {

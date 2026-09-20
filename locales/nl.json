@@ -1613,8 +1613,8 @@
       "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
     },
     "identity_linked": {
-      "subject": "Er is een nieuwe aanmeldmethode aan uw account gekoppeld",
-      "body": "Hallo {name},\n\nEr is zojuist een {provider}-account aan uw Econumo-account gekoppeld en dit kan nu worden gebruikt om in te loggen. {provider} heeft bevestigd dat het e-mailadres van uw account daar geregistreerd staat, dus de koppeling is automatisch gemaakt.\n\nAls u dit niet was, ontkoppel het account dan direct in Instellingen en stel een wachtwoord in.\n\n--\nEconumo — Beheer geld. Samen.\n"
+      "subject": "Nieuwe aanmeldmethode toegevoegd",
+      "body": "Hallo {name},\n\nUw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.\n\nAls u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
   }
 }

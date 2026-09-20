@@ -1613,8 +1613,8 @@
       "body": "Olá, {name},\n\nAlguém pediu a alteração do email da sua conta para {email}. Se não fez este pedido, altere a sua palavra-passe imediatamente."
     },
     "identity_linked": {
-      "subject": "Foi associado um novo método de início de sessão à sua conta",
-      "body": "Olá, {name},\n\nUma conta {provider} acabou de ser associada à sua conta Econumo e já pode ser utilizada para iniciar sessão. O {provider} confirmou que o endereço de e-mail da sua conta lhe pertence, por isso a associação foi feita automaticamente.\n\nSe não foi você, desassocie a conta nas Definições de imediato e defina uma palavra-passe.\n\n--\nEconumo — Gerir o dinheiro. Em conjunto.\n"
+      "subject": "Novo método de início de sessão adicionado",
+      "body": "Olá {name},\n\nA sua conta {provider} acabou de ser associada à sua conta Econumo e já pode ser usada para iniciar sessão.\n\nSe não foi você, desassocie a conta nas Definições e altere a sua palavra-passe.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
   }
 }

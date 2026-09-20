@@ -133,7 +133,7 @@ func TestIdentityLinkedSender(t *testing.T) {
 		t.Fatal("expected the mailer to be called")
 	}
 	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" ||
-		c.msg.Subject != "A new sign-in method was linked to your account" {
+		c.msg.Subject != "A new sign-in method was added" {
 		t.Errorf("message envelope = %+v", c.msg)
 	}
 	if !strings.Contains(c.msg.Text, "Alice") || !strings.Contains(c.msg.Text, "Google") {
@@ -162,7 +162,7 @@ func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
-	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in. Apple confirmed it owns the email address on your account, so the link was made automatically.\n\nIf this wasn't you, unlink the account from Settings right away and set a password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
+	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
 	if c.msg.Text != want {
 		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
 	}

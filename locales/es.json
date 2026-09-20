@@ -1613,8 +1613,8 @@
       "body": "Hola, {name}:\n\nAlguien solicitó cambiar el correo electrónico de tu cuenta a {email}. Si no fuiste tú, cambia tu contraseña de inmediato."
     },
     "identity_linked": {
-      "subject": "Se vinculó un nuevo método de inicio de sesión a tu cuenta",
-      "body": "Hola, {name}:\n\nSe acaba de vincular una cuenta de {provider} a tu cuenta de Econumo, que ya puede usarse para iniciar sesión. {provider} confirmó que la dirección de correo de tu cuenta le pertenece, así que el enlace se hizo automáticamente.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración de inmediato y establece una contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+      "subject": "Se añadió un nuevo método de inicio de sesión",
+      "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de vincularse a tu cuenta de Econumo y ya puede usarse para iniciar sesión.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración y cambia tu contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

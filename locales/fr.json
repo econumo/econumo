@@ -1613,8 +1613,8 @@
       "body": "Bonjour {name},\n\nQuelqu’un a demandé à changer l’e-mail de votre compte en {email}. Si ce n’était pas vous, changez immédiatement votre mot de passe."
     },
     "identity_linked": {
-      "subject": "Une nouvelle méthode de connexion a été associée à votre compte",
-      "body": "Bonjour {name},\n\nUn compte {provider} vient d’être associé à votre compte Econumo et peut désormais être utilisé pour vous connecter. {provider} a confirmé détenir l’adresse e-mail de votre compte : l’association a donc été faite automatiquement.\n\nSi ce n’était pas vous, dissociez le compte depuis les Paramètres sans attendre et définissez un mot de passe.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
+      "subject": "Nouvelle méthode de connexion ajoutée",
+      "body": "Bonjour {name},\n\nVotre compte {provider} vient d’être associé à votre compte Econumo et peut désormais servir à vous connecter.\n\nSi ce n’était pas vous, dissociez le compte depuis les Paramètres et changez votre mot de passe.\n\n--\nEconumo — Gérez votre argent. Ensemble.\n"
     }
   }
 }
