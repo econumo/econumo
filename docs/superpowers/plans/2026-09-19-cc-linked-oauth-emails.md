@@ -4,7 +4,9 @@
 
 **Goal:** The *notice* emails (a provider was linked to your account; a provider was unlinked; your email change was requested) are CC'd to every address the user has attached through Google / Apple / the custom OIDC slot, so a notice reaches the user even when their primary mailbox is not the one they read.
 
-> **Amended 2026-09-20.** Written against `0a4f591`; `669e69a` ("email the owner when a provider is linked or unlinked", #267) landed on main first and was merged in. That commit renamed `IdentityLinkedSender` -> `IdentitySender` (`identity_linked.go` -> `identity.go`), routed both identity emails through a shared unexported `send`, gave `Notifier` a second method `IdentityUnlinked`, and collapsed the notifier glue onto a shared `notify` helper. It also added a SIXTH transactional email, `identity_unlinked` — a notice, so the agreed "notices only" rule covers it. The rule is unchanged; it now has three instances instead of two. Every task below is written against the merged state.
+> **Amended 2026-09-20.** Written against `0a4f591`; `669e69a` ("email the owner when a provider is linked or unlinked", #267) landed on main first and was merged in. That commit renamed `IdentityLinkedSender` -> `IdentitySender` (`identity_linked.go` -> `identity.go`), routed both identity emails through a shared unexported `send`, gave `Notifier` a second method `IdentityUnlinked`, and collapsed the notifier glue onto a shared `notify` helper. It also added a SIXTH transactional email, `identity_unlinked` — a notice, so the agreed "notices only" rule covers it. The rule is unchanged; it now has three instances instead of two.
+
+> **Executed 2026-09-20.** All five tasks are done and committed. The task bodies below are the plan AS WRITTEN against `0a4f591`; where #267 moved the ground under them, the code that actually landed differs in the ways listed under "As built" at the foot of this document. Read that section alongside any task body you are checking.
 
 **Architecture:** `mailer.Message` gains a `Cc []string` field that both transports honour. Only the notice senders accept a CC list; the three *code* senders (reset, verify, change-email) keep their single-recipient signatures. The addresses come from `users_identities.email`, which `oauth.Identities.ListByUser` already reads. The `identity_linked` notice is sent from `internal/server/glue_oauth_notifier.go`, which is already in the composition root and can call the oauth service directly; the `change_email_notice` is sent from `internal/user`, which may not import `oauth`, so it gets a small consumer-side port wired by a new glue adapter — the same shape as the existing `OAuthReclaimer`.
 
@@ -95,7 +97,7 @@ Self-contained in `internal/infra/mailer`. No caller changes yet, so the tree st
   - `mailer.Message` gains exported field `Cc []string`.
   - unexported `func ccAddresses(to string, candidates []string) []string` — used by Tasks 2's senders.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `internal/infra/mailer/mailer_test.go`:
 
@@ -155,7 +157,7 @@ func TestConsole_RendersCc(t *testing.T) {
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -163,7 +165,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — `undefined: ccAddresses` and `unknown field Cc in struct literal of type Message`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `internal/infra/mailer/mailer.go`, add `Cc` to `Message`:
 
@@ -235,7 +237,7 @@ In `resendMailer.Send`, add `Cc` to the request (the field is `json:"cc,omitempt
 	}
 ```
 
-- [ ] **Step 4: Run the tests to verify they pass**
+- [x] **Step 4: Run the tests to verify they pass**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -243,7 +245,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS, including the pre-existing `TestConsole_RendersMessage`, `TestResetEmailEnglishUnchanged` and `TestIdentityLinkedEmailEnglishUnchanged`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add internal/infra/mailer/mailer.go internal/infra/mailer/mailer_test.go
@@ -270,7 +272,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `func (s *ChangeEmailSender) SendEmailChangeNotice(ctx context.Context, to, name, newEmail string, cc []string) error`
   - Unchanged: `SendEmailChangeCode(ctx, to, name, code string) error`, `SendVerificationCode(ctx, to, name, code string) error`, `SendResetPasswordCode(ctx, to, name, code string) error`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `internal/infra/mailer/mailer_test.go`:
 
@@ -314,7 +316,7 @@ func TestChangeEmailSender_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.
 }
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -322,7 +324,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — "too many arguments in call to s.SendIdentityLinked" and the same for `SendEmailChangeNotice`.
 
-- [ ] **Step 3: Implement the two signatures**
+- [x] **Step 3: Implement the two signatures**
 
 In `internal/infra/mailer/identity_linked.go`, replace the `SendIdentityLinked` doc comment's last paragraph and signature:
 
@@ -363,7 +365,7 @@ func (s *ChangeEmailSender) SendEmailChangeNotice(ctx context.Context, to, name,
 
 Leave `SendEmailChangeCode` exactly as it is.
 
-- [ ] **Step 4: Update the three existing call sites to pass `nil`**
+- [x] **Step 4: Update the three existing call sites to pass `nil`**
 
 Tasks 3 and 4 replace these `nil`s with real lists; passing `nil` here keeps the build and the whole suite green between commits.
 
@@ -381,7 +383,7 @@ Tasks 3 and 4 replace these `nil`s with real lists; passing `nil` here keeps the
 
 `internal/server/glue_oauth_notifier_test.go` — there are no direct `SendIdentityLinked` calls in that file (it drives the notifier), so nothing to change. Then update the three direct sender calls in `internal/infra/mailer/mailer_test.go`'s existing tests (`TestIdentityLinkedSender`, `TestIdentityLinkedSender_LangFallsBackToRequestLanguage`, `TestIdentityLinkedEmailEnglishUnchanged`) by appending `, nil` to each.
 
-- [ ] **Step 5: Run the affected packages to verify they pass**
+- [x] **Step 5: Run the affected packages to verify they pass**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -389,7 +391,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS everywhere.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add internal/infra/mailer internal/server/glue_oauth_notifier.go internal/user/change_email.go
@@ -412,7 +414,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Consumes: `SendIdentityLinked(ctx, to, name, provider, lang string, cc []string) error` from Task 2.
 - Produces: `func (s *Service) ListIdentityEmails(ctx context.Context, userID vo.Id) ([]string, error)` on `*oauth.Service` — also consumed by Task 4.
 
-- [ ] **Step 1: Write the failing test for `ListIdentityEmails`**
+- [x] **Step 1: Write the failing test for `ListIdentityEmails`**
 
 Create `internal/oauth/identities_test.go` (or append if it already exists). Match the package clause of any existing test file in `internal/oauth`; if the package has no test file yet, use `package oauth_test` and import the service as `appoauth "github.com/econumo/econumo/internal/oauth"`. Build the service the same way the nearest existing oauth test does. The behaviour to pin:
 
@@ -432,7 +434,7 @@ func TestListIdentityEmails(t *testing.T) {
 
 Fill the arrange/act/assert in with the seeding helpers the neighbouring oauth tests use (`dbtest.NewSQLite` + `fixture.New` + `oauthrepo.NewIdentityRepo`), following whichever pattern that file already establishes.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -440,7 +442,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — `svc.ListIdentityEmails undefined`.
 
-- [ ] **Step 3: Implement `ListIdentityEmails`**
+- [x] **Step 3: Implement `ListIdentityEmails`**
 
 In `internal/oauth/identities.go`, directly below `ListIdentities`:
 
@@ -467,7 +469,7 @@ func (s *Service) ListIdentityEmails(ctx context.Context, userID vo.Id) ([]strin
 
 `strings` is already imported in that file.
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -475,7 +477,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS.
 
-- [ ] **Step 5: Write the failing notifier test**
+- [x] **Step 5: Write the failing notifier test**
 
 Append to `internal/server/glue_oauth_notifier_test.go`. `NewOAuthNotifier` grows a third parameter in Step 6, so this test also pins the new constructor shape:
 
@@ -540,7 +542,7 @@ Add `"errors"` to that file's imports.
 
 The two pre-existing tests in the file (`..._RendersInTheStoredLanguage`, `..._DefaultsToEnglish`) call `NewOAuthNotifier(userSvc, sender)` — update both to `NewOAuthNotifier(userSvc, sender, identityEmailsStub{})`.
 
-- [ ] **Step 6: Run it to verify it fails**
+- [x] **Step 6: Run it to verify it fails**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -548,7 +550,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — "too many arguments in call to NewOAuthNotifier".
 
-- [ ] **Step 7: Implement the notifier change**
+- [x] **Step 7: Implement the notifier change**
 
 Replace the body of `internal/server/glue_oauth_notifier.go` below the imports:
 
@@ -602,7 +604,7 @@ In `internal/server/server.go:219`, pass the oauth service as the third argument
 	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityLinkedMailer, oauthSvc))
 ```
 
-- [ ] **Step 8: Run the tests to verify they pass**
+- [x] **Step 8: Run the tests to verify they pass**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -610,7 +612,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add internal/oauth internal/server/glue_oauth_notifier.go internal/server/glue_oauth_notifier_test.go internal/server/server.go
@@ -639,7 +641,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
   - `func (s *user.Service) SetIdentityEmailLister(l IdentityEmailLister)`
   - `func server.NewIdentityEmailLister(svc *appoauth.Service) appuser.IdentityEmailLister`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `internal/user/change_email_integration_test.go`. Use `newChangeEmailEnv(t)` exactly as the existing tests in that file do, then install a stub lister before requesting the change:
 
@@ -685,7 +687,7 @@ func TestRequestEmailChange_SendsTheNoticeWhenTheListerFails(t *testing.T) {
 
 Fill in the seeding and the request call by copying the arrange block of the nearest existing `RequestEmailChange` test in the same file (it already has a user, a password, and a `model.RequestEmailChangeRequest`). The capture helper in that file records only the *last* message, so for `..._CodeToNewAddressIsNeverCcd` either read the captured message between the two sends or extend the local capture type to keep a slice — whichever the file's existing style makes cleaner.
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -693,7 +695,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — `svc.SetIdentityEmailLister undefined`.
 
-- [ ] **Step 3: Add the port**
+- [x] **Step 3: Add the port**
 
 Append to `internal/user/ports.go`, directly after the `OAuthReclaimer` block:
 
@@ -709,7 +711,7 @@ type IdentityEmailLister interface {
 }
 ```
 
-- [ ] **Step 4: Add the field and setter**
+- [x] **Step 4: Add the field and setter**
 
 In `internal/user/usecase.go`, add to the `Service` struct after `oauthGrants`:
 
@@ -727,7 +729,7 @@ func (s *Service) SetIdentityEmailLister(l IdentityEmailLister) { s.identityEmai
 
 Leave `NewService`'s parameter list alone.
 
-- [ ] **Step 5: Use it in the notice**
+- [x] **Step 5: Use it in the notice**
 
 In `internal/user/change_email.go`, replace the notice block at line 56-60:
 
@@ -758,7 +760,7 @@ func (s *Service) linkedEmails(ctx context.Context, userID vo.Id) []string {
 }
 ```
 
-- [ ] **Step 6: Run the user tests to verify they pass**
+- [x] **Step 6: Run the user tests to verify they pass**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -766,7 +768,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS.
 
-- [ ] **Step 7: Write the failing glue test**
+- [x] **Step 7: Write the failing glue test**
 
 Create `internal/server/glue_user_identityemails_test.go`:
 
@@ -795,7 +797,7 @@ func TestIdentityEmailLister_NilServiceIsNotConstructed(t *testing.T) {
 }
 ```
 
-- [ ] **Step 8: Run it to verify it fails**
+- [x] **Step 8: Run it to verify it fails**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -803,7 +805,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: FAIL to compile — `undefined: oauthIdentityEmails`, `undefined: NewIdentityEmailLister`.
 
-- [ ] **Step 9: Create the glue adapter**
+- [x] **Step 9: Create the glue adapter**
 
 Create `internal/server/glue_user_identityemails.go`:
 
@@ -837,7 +839,7 @@ func NewIdentityEmailLister(svc *appoauth.Service) appuser.IdentityEmailLister {
 }
 ```
 
-- [ ] **Step 10: Wire it**
+- [x] **Step 10: Wire it**
 
 In `internal/server/server.go`, beside the existing setters at line 217-219:
 
@@ -850,7 +852,7 @@ In `internal/server/server.go`, beside the existing setters at line 217-219:
 
 The CLI container (`internal/cli/container.go`) is deliberately left alone: it wires no `ChangeEmailSender`, so it sends no notice and needs no lister.
 
-- [ ] **Step 11: Run the tests to verify they pass**
+- [x] **Step 11: Run the tests to verify they pass**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
@@ -858,7 +860,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 \
 ```
 Expected: PASS.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add internal/user internal/server
@@ -875,7 +877,7 @@ Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>"
 - Modify: `docs/regression-test-plan.md`
 - Modify: `CLAUDE.md`
 
-- [ ] **Step 1: Update the regression test plan**
+- [x] **Step 1: Update the regression test plan**
 
 CLAUDE.md requires this for any user-observable change. In `docs/regression-test-plan.md`, extend the existing auto-link item (around line 124-129, "Sign-in through a provider whose verified email matches an existing PASSWORDLESS account …") so its last clause reads:
 
@@ -896,7 +898,7 @@ And extend the **Change email** item (around line 473-475) to:
       is sent to that address alone, with no Cc.
 ```
 
-- [ ] **Step 2: Update CLAUDE.md**
+- [x] **Step 2: Update CLAUDE.md**
 
 In the "Notable behaviours" section, directly after the **OAuth email drift** bullet, add:
 
@@ -912,14 +914,14 @@ In the "Notable behaviours" section, directly after the **OAuth email drift** bu
   to the primary address alone rather than failing it.
 ```
 
-- [ ] **Step 3: Run the smoke gate**
+- [x] **Step 3: Run the smoke gate**
 
 ```bash
 export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 make go-test
 ```
 Expected: PASS — build, vet, gofmt, OpenAPI-docs-fresh, the sqlite unit/integration suite (including `apiparity` and `mcpparity` goldens, which must need no regeneration), and the `GO_COVER_MIN=80` coverage gate.
 
-- [ ] **Step 4: Run the engine-comparison tier**
+- [x] **Step 4: Run the engine-comparison tier**
 
 No SQL changed, so this is a regression check rather than new coverage, but the plan is not done without it:
 
@@ -928,7 +930,7 @@ export PATH=/usr/local/go/bin:$PATH && GOTOOLCHAIN=go1.27.1 make test
 ```
 Expected: PASS, including `test-repo-pgsql` and the `enginecompare` suite. If no PostgreSQL is reachable, say so explicitly in the completion report rather than reporting the tier as passed.
 
-- [ ] **Step 5: Commit and push**
+- [x] **Step 5: Commit and push**
 
 ```bash
 git add docs/regression-test-plan.md CLAUDE.md
@@ -950,3 +952,20 @@ git push -u origin feature/cc-linked-oauth-emails
 - oauth's own method: `ListIdentityEmails(ctx, userID) ([]string, error)` — Task 3.
 - the user feature's port method: `ListEmails(ctx, userID) ([]string, error)` — Task 4; the glue adapter in Task 4 Step 9 bridges the two names.
 - the server-internal notifier interface: `identityEmailLister` with `ListIdentityEmails`, satisfied by `*oauth.Service` directly — Task 3 Step 7.
+
+
+---
+
+## As built (2026-09-20)
+
+Every task landed; the smoke gate and both engine tiers are green. Where the executed code diverges from the task bodies above, it is because #267 renamed or reshaped the thing the step described:
+
+**Task 2 — notice senders.** `identity_linked.go` is now `identity.go` and the sender is `IdentitySender`, with `SendIdentityLinked` and `SendIdentityUnlinked` both delegating to one unexported `send`. So the `cc []string` parameter was added to all three: both exported methods and the shared `send`, which is the single place `Cc: ccAddresses(to, cc)` is set. The plan predicted one method on `IdentityLinkedSender`; three signatures changed instead of one.
+
+**Task 3 — the notifier.** #267 collapsed the glue onto a shared `notify(ctx, userID, providerName, send)` helper behind both `IdentityLinked` and `IdentityUnlinked`. The CC lookup therefore went into `notify` — resolved once, used by both notices — rather than into a single `IdentityLinked` body. The `send` parameter's function type grew the `cc []string` argument to match. `NewOAuthNotifier` took the third parameter as planned, and all four pre-existing tests in the file were updated to pass `identityEmailsStub{}`.
+
+**Task 3 — tests.** The new CC assertions are one table-driven test (`TestOAuthNotifier_IdentityNotices_CcTheLinkedAddresses`) covering the linked and unlinked notices as subtests, since both now run the same code path. `internal/oauth/identities_test.go` was created against the existing `newHarness` / `saveIdentity` / `users.seed` helpers in `service_test.go` rather than hand-rolled seeding.
+
+**Task 4 — unchanged.** The port, the setter, the `linkedEmails` helper, the glue adapter and the wiring all landed exactly as written. The change-email tests assert on `captureMailer.msgs` (the user package's capture keeps every message, not just the last), so one request checks both the un-CC'd code and the CC'd notice.
+
+**Verification.** `make go-test`: PASS, total coverage 84.3% (min 80), no golden regeneration needed. `make test`: the Go tiers (including `test-repo-pgsql` and `enginecompare`) PASS against a throwaway `postgres:17-alpine`; the frontend suite reports 1244/1245, its one failure being the pre-existing `web/src/api/transaction.test.ts` jsdom Blob-identity assertion on a file this branch does not touch.
