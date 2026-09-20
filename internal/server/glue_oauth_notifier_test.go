@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -60,7 +61,7 @@ func TestOAuthNotifier_IdentityLinked_RendersInTheStoredLanguage(t *testing.T) {
 
 	c := &captureMailer{}
 	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
-	notifier := NewOAuthNotifier(userSvc, sender)
+	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{})
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
 		t.Fatalf("IdentityLinked: %v", err)
@@ -94,7 +95,7 @@ func TestOAuthNotifier_IdentityUnlinked_RendersInTheStoredLanguage(t *testing.T)
 	}
 
 	c := &captureMailer{}
-	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"))
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"), identityEmailsStub{})
 
 	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
 		t.Fatalf("IdentityUnlinked: %v", err)
@@ -117,7 +118,7 @@ func TestOAuthNotifier_IdentityUnlinked_DefaultsToEnglish(t *testing.T) {
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"))
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"), identityEmailsStub{})
 
 	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
 		t.Fatalf("IdentityUnlinked: %v", err)
@@ -138,7 +139,7 @@ func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
 	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
-	notifier := NewOAuthNotifier(userSvc, sender)
+	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{})
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
 		t.Fatalf("IdentityLinked: %v", err)
@@ -148,5 +149,74 @@ func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 	}
 	if c.msg.To != "owner2@example.test" {
 		t.Errorf("To = %q", c.msg.To)
+	}
+}
+
+// identityEmailsStub stands in for the oauth service's ListIdentityEmails: the
+// notifier only needs the addresses, and wiring a whole oauth service here
+// would exercise the oauth repo rather than this glue.
+type identityEmailsStub struct {
+	emails []string
+	err    error
+}
+
+func (s identityEmailsStub) ListIdentityEmails(_ context.Context, _ vo.Id) ([]string, error) {
+	return s.emails, s.err
+}
+
+func TestOAuthNotifier_IdentityNotices_CcTheLinkedAddresses(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	fx := fixture.New(t, db)
+	userID := fx.User(fixture.User{Email: "owner5@example.test", Name: "Eve", Algorithm: "argon2id"})
+
+	userSvc, _ := newTestUserSvc(db)
+	c := &captureMailer{}
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	// The account email is among the linked addresses, as it is whenever the
+	// account was created through a provider; it must not be duplicated.
+	emails := identityEmailsStub{emails: []string{"owner5@example.test", "eve@gmail.test"}}
+	notifier := NewOAuthNotifier(userSvc, sender, emails)
+
+	for _, tc := range []struct {
+		name string
+		call func() error
+	}{
+		{"linked", func() error {
+			return notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Google")
+		}},
+		{"unlinked", func() error {
+			return notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Google")
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := tc.call(); err != nil {
+				t.Fatalf("notify: %v", err)
+			}
+			if c.msg.To != "owner5@example.test" {
+				t.Errorf("To = %q", c.msg.To)
+			}
+			if len(c.msg.Cc) != 1 || c.msg.Cc[0] != "eve@gmail.test" {
+				t.Errorf("Cc = %v, want the other linked address only", c.msg.Cc)
+			}
+		})
+	}
+}
+
+func TestOAuthNotifier_IdentityLinked_StillSendsWhenTheLookupFails(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	fx := fixture.New(t, db)
+	userID := fx.User(fixture.User{Email: "owner6@example.test", Name: "Fay", Algorithm: "argon2id"})
+
+	userSvc, _ := newTestUserSvc(db)
+	c := &captureMailer{}
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	notifier := NewOAuthNotifier(userSvc, sender, identityEmailsStub{err: errors.New("boom")})
+
+	// The copy list is a nicety; losing it must not cost the owner the notice.
+	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
+		t.Fatalf("IdentityLinked: %v", err)
+	}
+	if !c.called || c.msg.To != "owner6@example.test" || len(c.msg.Cc) != 0 {
+		t.Errorf("message = To %q Cc %v called=%v", c.msg.To, c.msg.Cc, c.called)
 	}
 }

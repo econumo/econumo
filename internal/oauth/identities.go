@@ -22,6 +22,25 @@ func (s *Service) ListIdentities(ctx context.Context, userID vo.Id) ([]model.Ide
 	return out, nil
 }
 
+// ListIdentityEmails returns the address each linked provider vouched for, for
+// CC'ing the account's notice emails. Rows whose provider reported no address
+// are skipped (the column defaults to ""). Unlike ListIdentities this is not a
+// wire DTO: the caller is the mail path, not an HTTP handler.
+func (s *Service) ListIdentityEmails(ctx context.Context, userID vo.Id) ([]string, error) {
+	rows, err := s.identities.ListByUser(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		if strings.TrimSpace(r.Email) == "" {
+			continue
+		}
+		out = append(out, r.Email)
+	}
+	return out, nil
+}
+
 // UnlinkIdentity refuses to remove the last identity of a passwordless user:
 // it would lock them out. The whole check-then-delete runs in one transaction
 // that opens by taking the user row's lock, so two unlinks arriving together

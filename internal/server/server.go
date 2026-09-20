@@ -216,7 +216,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
 	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
-	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer))
+	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer, oauthSvc))
 	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
