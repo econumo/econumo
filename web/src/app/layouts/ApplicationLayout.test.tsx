@@ -40,7 +40,7 @@ function renderShell(path: string) {
     { initialEntries: [path] },
   )
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  render(
+  return render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
@@ -74,6 +74,17 @@ beforeEach(() => {
   // the sidebar-collapsed flag lives in a module-level zustand store, so it
   // survives across tests in this file independent of localStorage.clear()
   useSidebarStore.setState({ collapsed: false })
+})
+
+it('sizes the shell with dvh, never svh', async () => {
+  mockViewport(false)
+  const { container } = renderShell('/')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  // iOS caches svh per window and hands a standalone PWA a stale, too-short
+  // one after Apple's cross-site POST callback; dvh stays the real viewport.
+  const shell = container.firstElementChild as HTMLElement
+  expect(shell.className).toContain('h-dvh')
+  expect(shell.className).not.toContain('h-svh')
 })
 
 it('shows the loading gate, then the sidebar tree with folder totals', async () => {

@@ -15,7 +15,7 @@ export function LoginLayout() {
   return (
     // the form lives on a white card over the brand gray so it reads as one
     // object instead of loose fields on a bare page
-    <div className="flex min-h-svh flex-col items-center justify-center gap-6 bg-econumo-card p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-econumo-card p-4 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
       {/* the badge hangs off the logo's right edge (absolute) so the logo
           itself stays exactly page-centered */}
       <div className="relative">

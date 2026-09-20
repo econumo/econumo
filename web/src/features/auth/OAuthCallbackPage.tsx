@@ -43,7 +43,7 @@ export function OAuthCallbackPage() {
   }, [exchange, hash, navigate])
 
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center gap-4">
+    <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
       <CoinLoader label={t('auth.oauth.callback.signing_in')} />
       <p className="text-sm text-muted-foreground">{t('auth.oauth.callback.signing_in')}</p>
     </div>
