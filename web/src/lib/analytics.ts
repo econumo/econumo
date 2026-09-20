@@ -10,7 +10,7 @@
 // Wire format: POST /ingest/events, one batch per flush.
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
-import { forgetAuthProvider } from './analyticsProvider'
+import { forgetAuthMethods } from './analyticsAuthMethods'
 
 const COLLECTOR_URL = 'https://t.econumo.com/ingest/events'
 // An ingest key is public by design (it can only ingest events). It belongs
@@ -77,9 +77,9 @@ export function resetAnalyticsIdentity(): void {
   userId = null
   queue = []
   installId = uuidv4()
-  // The provider describes the session that just ended, so it goes with it —
+  // Describes the person whose session just ended, so it goes with it —
   // unlike the analytics opt-out, which is a device-level fail-safe and stays.
-  forgetAuthProvider()
+  forgetAuthMethods()
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {

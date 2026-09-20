@@ -13,7 +13,7 @@ import {
 import { capture } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
-import { authProvider, forgetAuthProvider, rememberAuthProvider } from './analyticsProvider'
+import { authMethods, forgetAuthMethods, rememberHasPassword, rememberLinkedProviders } from './analyticsAuthMethods'
 import { backendHost, selfHosted } from './config'
 import { setToken } from './storage'
 
@@ -113,8 +113,7 @@ describe('host attributes', () => {
 
 describe('analyticsEventName', () => {
   it.each([
-    // the collector's reserved web-analytics pageview name, not a product event
-    ['appPageView', '$page_view'],
+    ['appPageView', 'page_view'],
     ['appTransactionCreate', 'transaction_create'],
     ['appUIModalTransactionOpen', 'ui_modal_transaction_open'],
     ['appApiAccountOrderList', 'api_account_order_list'],
@@ -217,46 +216,68 @@ describe('access_state property', () => {
   })
 })
 
-describe('auth_provider attribute', () => {
-  afterEach(() => forgetAuthProvider())
+describe('auth method flags', () => {
+  afterEach(() => forgetAuthMethods())
 
   it('rides the batch context, not the per-event properties', () => {
     const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
-    rememberAuthProvider('google')
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
 
     trackEvent(METRICS.TRANSACTION_CREATE)
 
-    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ auth_provider: 'google' }))
+    expect(contextSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({ auth_password: 1, auth_google: 1, auth_apple: 0, auth_sso: 0 }),
+    )
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    expect(props).not.toHaveProperty('auth_provider')
+    expect(props).not.toHaveProperty('auth_password')
   })
 
-  it("reports a password login as 'password' rather than an empty string", () => {
+  it('maps the custom OIDC slot to auth_sso', () => {
+    rememberLinkedProviders(['oidc'])
+    expect(authMethods()).toMatchObject({ auth_sso: 1, auth_google: 0, auth_apple: 0 })
+  })
+
+  it('reports an OAuth-only account as auth_password 0', () => {
+    rememberHasPassword(false)
+    rememberLinkedProviders(['apple'])
+    expect(authMethods()).toEqual({ auth_password: 0, auth_google: 0, auth_apple: 1, auth_sso: 0 })
+  })
+
+  // The two halves arrive from different endpoints; whichever lands second
+  // must not erase the other's answer.
+  it('merges the two writers rather than overwriting', () => {
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google', 'apple'])
+    expect(authMethods()).toEqual({ auth_password: 1, auth_google: 1, auth_apple: 1, auth_sso: 0 })
+
+    // the identity list refetches after an unlink; the password flag survives
+    rememberLinkedProviders(['google'])
+    expect(authMethods()).toEqual({ auth_password: 1, auth_google: 1, auth_apple: 0, auth_sso: 0 })
+  })
+
+  it('omits a flag whose source has not answered yet', () => {
+    rememberHasPassword(true)
+    // no identity list yet — the OAuth flags are unknown, not zero
+    expect(authMethods()).toEqual({ auth_password: 1 })
+  })
+
+  it('is absent entirely before anything is known', () => {
     const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
-    // the wire sends '' for a password session
-    rememberAuthProvider('')
-
     trackEvent(METRICS.USER_LOGIN)
-
-    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ auth_provider: 'password' }))
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ auth_password: expect.anything() }))
   })
 
-  it('is omitted entirely while the provider is unknown', () => {
-    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
-
-    trackEvent(METRICS.USER_LOGIN)
-
-    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ auth_provider: expect.anything() }))
-  })
-
-  it('survives a reload, so a boot page view is still attributed', () => {
-    rememberAuthProvider('apple')
-    expect(authProvider()).toBe('apple')
+  it('survives a reload, so the boot page view still carries it', () => {
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
+    expect(authMethods()).toMatchObject({ auth_password: 1, auth_google: 1 })
   })
 
   it('does not outlive the session it describes', () => {
-    rememberAuthProvider('oidc')
-    forgetAuthProvider()
-    expect(authProvider()).toBeNull()
+    rememberHasPassword(true)
+    rememberLinkedProviders(['google'])
+    forgetAuthMethods()
+    expect(authMethods()).toBeNull()
   })
 })

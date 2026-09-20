@@ -7,6 +7,7 @@ import { analyticsUserId } from '@/lib/analyticsId'
 import { rememberAnalyticsPreference } from '@/lib/analyticsPreference'
 import { setAnalyticsUser } from '@/lib/analytics'
 import { setAnalyticsAccessState } from '@/lib/metrics'
+import { rememberHasPassword, rememberLinkedProviders } from '@/lib/analyticsAuthMethods'
 
 interface Envelope<T> {
   data: T
@@ -43,6 +44,8 @@ export async function exchangeHandoff(code: string, flow: string): Promise<UserL
   const { user } = response.data
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
+  rememberHasPassword(user.hasPassword !== false)
+  refreshAuthMethodFlags()
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }
@@ -57,7 +60,21 @@ export async function completeLink(code: string, flow: string): Promise<{ provid
 
 export async function getIdentityList(): Promise<IdentityDto[]> {
   const response = await api.get<Envelope<IdentityDto[]>>(apiUrl('/api/v1/oauth/get-identity-list'))
-  return response.data.data
+  const identities = response.data.data
+  // The one place the linked set is known for certain; every caller (the
+  // Settings page and the post-link/unlink refetches) funnels through here,
+  // so the analytics flags refresh without each call site remembering to.
+  rememberLinkedProviders(identities.map((identity) => identity.provider))
+  return identities
+}
+
+// Refreshes the analytics auth-method flags for a user who may never open
+// Settings. Deliberately NOT a react-query query: nothing on screen consumes
+// it, and a query in the cache would drag the shell's sync indicator amber on
+// failure. Failure is silent for the same reason — the flags simply stay as
+// they were rather than the app reporting a problem the user cannot act on.
+export function refreshAuthMethodFlags(): void {
+  void getIdentityList().catch(() => {})
 }
 
 export async function unlinkIdentity(provider: OAuthProviderId): Promise<void> {

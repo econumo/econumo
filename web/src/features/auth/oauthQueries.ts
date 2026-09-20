@@ -8,16 +8,10 @@ import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
-import { PASSWORD_PROVIDER, rememberAuthProvider } from '@/lib/analyticsProvider'
 
 export const providersQueryKey = ['oauth', 'providers'] as const
 
 const FLOW_KEY = 'oauthFlow'
-// The provider that started the flow, parked beside the secret. The exchange
-// answers with the frozen bare {token, user} body, which names no provider, so
-// this is the only place the login path can learn it without widening that
-// contract.
-const FLOW_PROVIDER_KEY = 'oauthFlowProvider'
 
 // The flow secret must outlive a full-page navigation to the provider and back.
 // On the web sessionStorage scopes it to the tab that started the flow; the app
@@ -27,27 +21,11 @@ function flowStore(): Storage {
   return isNativeApp() ? localStorage : sessionStorage
 }
 
-export function rememberOAuthFlow(flow: string, provider?: OAuthProviderId): void {
+export function rememberOAuthFlow(flow: string): void {
   try {
     flowStore().setItem(FLOW_KEY, flow)
-    if (provider) {
-      flowStore().setItem(FLOW_PROVIDER_KEY, provider)
-    }
   } catch {
     // a storage-less browser fails the exchange instead, with the same error
-  }
-}
-
-// Read-and-clear, like takeOAuthFlow: a stale provider outliving its flow
-// would misattribute the next sign-in on this device.
-export function takeOAuthFlowProvider(): string {
-  try {
-    const store = flowStore()
-    const provider = store.getItem(FLOW_PROVIDER_KEY) ?? ''
-    store.removeItem(FLOW_PROVIDER_KEY)
-    return provider
-  } catch {
-    return ''
   }
 }
 
@@ -146,9 +124,7 @@ export function useStartOAuth() {
       const { url, flow } = intent === 'link'
         ? await oauthApi.startLink(provider, oauthClient())
         : await oauthApi.startLogin(provider, oauthClient())
-      // Only a login flow mints a session, so only that one records the
-      // provider; a link flow leaves the current session's provider alone.
-      rememberOAuthFlow(flow, intent === 'login' ? provider : undefined)
+      rememberOAuthFlow(flow)
       openAuthorizationUrl(url)
     },
   })
@@ -157,13 +133,8 @@ export function useStartOAuth() {
 export function useExchangeHandoff() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async ({ code, flow }: { code: string; flow: string }) => {
-      // Taken before the await: the exchange clears the flow, and this must be
-      // read whether or not the exchange succeeds.
-      const provider = takeOAuthFlowProvider()
-      return { data: await oauthApi.exchangeHandoff(code, flow), provider }
-    },
-    onSuccess: async ({ data, provider }) => {
+    mutationFn: ({ code, flow }: { code: string; flow: string }) => oauthApi.exchangeHandoff(code, flow),
+    onSuccess: async (data) => {
       // The new session may belong to a different user, and the app can reach
       // this without a page reload (the browser sheet returns to the same SPA
       // instance). Dropping only the persisted snapshot would leave the
@@ -173,10 +144,7 @@ export function useExchangeHandoff() {
       clearPersistedQueryCache()
       queryClient.clear()
       setToken(data.token)
-      // Before the first event of the new session fires, so the very first
-      // batch already carries the right provider.
-      rememberAuthProvider(provider || PASSWORD_PROVIDER)
-      trackEvent(METRICS.OAUTH_LOGIN_COMPLETED, { provider })
+      trackEvent(METRICS.OAUTH_LOGIN_COMPLETED)
       if (isFreshAccount(data.user.createdAt)) {
         trackEvent(METRICS.OAUTH_ACCOUNT_CREATED)
       }

@@ -3,8 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
-import { isFreshAccount, oauthClient, openAuthorizationUrl, rememberOAuthFlow, takeOAuthFlow, takeOAuthFlowProvider, useExchangeHandoff, useOAuthInFlight, useStartOAuth } from './oauthQueries'
-import { authProvider, rememberAuthProvider } from '@/lib/analyticsProvider'
+import { isFreshAccount, oauthClient, openAuthorizationUrl, rememberOAuthFlow, takeOAuthFlow, useExchangeHandoff, useOAuthInFlight, useStartOAuth } from './oauthQueries'
 
 function wrapper({ children }: { children: ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -132,35 +131,4 @@ describe('isFreshAccount', () => {
   it('is not fresh when createdAt is malformed', () => {
     expect(isFreshAccount('not-a-date', now)).toBe(false)
   })
-})
-
-// The exchange answers with the frozen bare {token, user} body, which names no
-// provider, so the login path can only learn it from the flow it started.
-it('carries the provider across the flow so the new session reports it', async () => {
-  server.use(http.post('*/api/v1/oauth/start-login', () =>
-    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/auth', flow: 'f1' } })))
-  server.use(http.post('*/api/v1/oauth/exchange-handoff', () =>
-    HttpResponse.json({ token: 'eco_ses_new', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '' } })))
-
-  const start = renderHook(() => useStartOAuth(), { wrapper })
-  await start.result.current.mutateAsync({ provider: 'google', intent: 'login' })
-
-  const exchange = renderHook(() => useExchangeHandoff(), { wrapper })
-  await exchange.result.current.mutateAsync({ code: 'code', flow: 'f1' })
-
-  expect(authProvider()).toBe('google')
-})
-
-// Linking a provider to an existing account does not mint a session, so it
-// must not overwrite the provider that opened the current one.
-it('leaves the current provider alone when linking rather than signing in', async () => {
-  rememberAuthProvider('password')
-  server.use(http.post('*/api/v1/oauth/start-link', () =>
-    HttpResponse.json({ success: true, message: '', data: { url: 'https://idp/auth', flow: 'f2' } })))
-
-  const start = renderHook(() => useStartOAuth(), { wrapper })
-  await start.result.current.mutateAsync({ provider: 'apple', intent: 'link' })
-
-  expect(takeOAuthFlowProvider()).toBe('')
-  expect(authProvider()).toBe('password')
 })

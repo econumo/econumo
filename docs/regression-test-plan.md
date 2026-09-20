@@ -477,16 +477,17 @@ User C sees none of it.
       request; after login every request body carries `$user_id`; a reload of
       a signed-in page sends its page view once the user data has loaded; log
       out — the logout event goes out, nothing after it.
-- [ ] Page views are counted as web analytics: every page view arrives at the
-      collector named `$page_view` (with the `$`), not `page_view`; the
-      `dataLayer` entry for the same navigation still reads `appPageView`.
-- [ ] `auth_provider` names how the session was opened (same Network filter,
-      batch-level `attributes`, NOT the per-event ones): sign in with a
-      password → `password`; sign in through Google/Apple/the custom OIDC
-      provider → that provider's id; reload the page — the value survives and
-      the boot page view still carries it; log out and sign in the other way
-      → the new value replaces it, never the previous session's; linking a
-      provider in Settings does NOT change it (linking opens no session).
+- [ ] Auth-method flags say which sign-in methods the user HAS (same Network
+      filter, batch-level `attributes`, NOT the per-event ones):
+      `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each 0 or 1.
+      A password account with Google linked sends `auth_password: 1`,
+      `auth_google: 1`, `auth_apple: 0`, `auth_sso: 0`; an OAuth-only account
+      (never set a password) sends `auth_password: 0`. They are present from
+      the FIRST batch after sign-in without opening Settings, and survive a
+      reload. Link a provider in Settings → its flag flips to 1 on the next
+      event; unlink it → back to 0. The custom OIDC provider reports as
+      `auth_sso`. Log out and sign in as someone else → the flags describe the
+      new user, never the previous one's.
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
       linked provider with its email and linked date; linking an unlinked
       provider goes through the provider flow and returns with a "linked"

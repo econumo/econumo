@@ -1,6 +1,6 @@
 import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
-import { authProvider } from './analyticsProvider'
+import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
@@ -162,15 +162,7 @@ export function viewMode(width: number = window.innerWidth): 'mobile' | 'tablet'
 
 // Collector names: the frozen dataLayer prefix+camelCase becomes snake_case,
 // e.g. appUIModalTransactionOpen -> ui_modal_transaction_open.
-//
-// The page view is the one exception: the collector counts "$page_view" as web
-// analytics (its reserved name for a pageview) rather than as a product event,
-// so it keeps the "$" the derivation would otherwise strip. The dataLayer name
-// stays appPageView — that one is frozen for GTM/liltag.
 export function analyticsEventName(metric: string): string {
-  if (metric === METRICS.PAGE_VIEW) {
-    return '$page_view'
-  }
   return metric
     .replace(/^app/, '')
     .replace(/([A-Z]+)(?=[A-Z][a-z])/g, '$1_')
@@ -248,14 +240,13 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // Batch-level (session-wide) attributes: recomputed on every call rather
   // than fixed at module load, since the profile counts change as the query
   // cache fills in behind the boot loader.
-  const provider = authProvider()
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
-    // A user-level fact (which provider opened this session), so it belongs
-    // on the batch beside $user_id rather than on each event. Omitted while
-    // unknown, so it never reads as a measured "none".
-    ...(provider ? { auth_provider: provider } : {}),
+    // A user-level fact (which sign-in methods this user has), so it belongs
+    // on the batch beside $user_id rather than on each event. Omitted
+    // wholesale while unknown, so it never reads as a measured "none".
+    ...(authMethods() ?? {}),
     ...profileAttributes(),
   })
   window.dataLayer = window.dataLayer || []
