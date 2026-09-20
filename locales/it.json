@@ -792,7 +792,6 @@
         "title": "Accesso completato: torna all'app Econumo.",
         "open_app": "Apri l'app"
       },
-      "logout_notice": "Hai effettuato il logout da Econumo. La tua sessione {provider} potrebbe essere ancora attiva; esci anche da lì per terminarla.",
       "provider_name": {
         "google": "Google",
         "apple": "Apple",

@@ -792,7 +792,6 @@
         "title": "Sign-in finished — return to the Econumo app.",
         "open_app": "Open the app"
       },
-      "logout_notice": "You're signed out of Econumo. Your {provider} session may still be active; sign out there to end it.",
       "provider_name": {
         "google": "Google",
         "apple": "Apple",

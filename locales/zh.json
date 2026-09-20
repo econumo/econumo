@@ -792,7 +792,6 @@
         "title": "登录完成，请返回 Econumo 应用。",
         "open_app": "打开应用"
       },
-      "logout_notice": "您已退出 Econumo 登录。您的 {provider} 会话可能仍处于活动状态；请前往该服务退出登录以结束会话。",
       "provider_name": {
         "google": "Google",
         "apple": "Apple",

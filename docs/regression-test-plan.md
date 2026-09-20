@@ -165,9 +165,10 @@ navigation (single-pane vs sidebar).
       does not survive a reload. 📱 The app does the same via the deep link.
 - [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
       logging out redirects through the provider and back to `/login`.
-- [ ] Logging out of a Google/Apple session (or any provider in the app)
-      shows the local-logout notice ("Your {provider} session may still be
-      active; sign out there to end it.") instead of an IdP redirect.
+- [ ] Logging out of a Google/Apple session (or any provider in the app) ends
+      the Econumo session and lands on `/login` with no interstitial notice —
+      those providers publish no end-session endpoint, so there is no IdP
+      redirect and nothing to confirm.
 - [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
       embedded web view; completing sign-in returns to the app (the verified
       `https://<backend>/oauth/app-return` link, or the

@@ -792,7 +792,6 @@
         "title": "Вхід виконано — поверніться до застосунку Econumo.",
         "open_app": "Відкрити застосунок"
       },
-      "logout_notice": "Ви вийшли з Econumo. Сесія {provider} може бути ще активною; вийдіть там теж, щоб завершити її.",
       "provider_name": {
         "google": "Google",
         "apple": "Apple",

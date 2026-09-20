@@ -792,7 +792,6 @@
         "title": "Connexion terminée — revenez à l’application Econumo.",
         "open_app": "Ouvrir l’application"
       },
-      "logout_notice": "Vous êtes déconnecté d'Econumo. Votre session {provider} est peut-être encore active ; déconnectez-vous là-bas pour la terminer.",
       "provider_name": {
         "google": "Google",
         "apple": "Apple",
