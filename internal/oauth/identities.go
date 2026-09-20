@@ -63,6 +63,18 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.Un
 	if err != nil {
 		return nil, err
 	}
+	// Same reason the link is announced, in reverse: losing a sign-in method is
+	// worth detecting too, and on a passwordless account an unlink someone else
+	// performed is a step towards locking the owner out. Best-effort and outside
+	// the transaction — the identity is already gone, so a dead mailer must not
+	// fail the unlink. The reclaim's identity sweep (ReclaimAccount) stays
+	// silent: it runs inside a password reset the owner just completed, which
+	// announces itself.
+	if s.notifier != nil {
+		if nerr := s.notifier.IdentityUnlinked(ctx, userID, s.providerName(req.Provider)); nerr != nil {
+			logWarn(ctx, "oauth unlink-identity: identity-unlinked notice", nerr, "user_id", userID.String(), "provider", req.Provider)
+		}
+	}
 	return &model.UnlinkIdentityResult{}, nil
 }
 

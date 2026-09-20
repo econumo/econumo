@@ -683,10 +683,10 @@
             "confirm_revoke": "¿Revocar este token? Las integraciones que lo usen dejarán de funcionar de inmediato."
           },
           "linked_accounts": {
-            "menu_item": "Cuentas vinculadas",
-            "header": "Cuentas vinculadas",
+            "menu_item": "Métodos de inicio de sesión",
+            "header": "Métodos de inicio de sesión",
             "description": "Cuentas externas que puedes usar para iniciar sesión en Econumo.",
-            "empty": "Aún no tienes cuentas vinculadas.",
+            "empty": "No hay métodos de inicio de sesión disponibles para conectar.",
             "linked_on": "Vinculada",
             "link": "Vincular",
             "unlink": "Desvincular",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Compartir estadísticas de uso",
-            "description": "Nos ayuda a mejorar Econumo. Los datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
+            "description": "Nos ayuda a mejorar Econumo.\nLos datos financieros y la información personal —nombre, correo electrónico— nunca se envían."
           }
         }
       }
@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Se añadió un nuevo método de inicio de sesión",
       "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de vincularse a tu cuenta de Econumo y ya puede usarse para iniciar sesión.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración y cambia tu contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Se eliminó un método de inicio de sesión",
+      "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de desvincularse de tu cuenta de Econumo y ya no puede usarse para iniciar sesión.\n\nSi no fuiste tú, cambia tu contraseña y revisa las cuentas vinculadas en Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }

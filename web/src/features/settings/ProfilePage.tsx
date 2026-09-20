@@ -226,7 +226,7 @@ export function ProfilePage() {
       <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
         <label htmlFor="profile-analytics" className="text-sm">
           {t('user.page.settings.profile.analytics.label')}
-          <span className="mt-0.5 block text-xs text-muted-foreground">
+          <span className="mt-0.5 block whitespace-pre-line text-xs text-muted-foreground">
             {t('user.page.settings.profile.analytics.description')}
           </span>
         </label>

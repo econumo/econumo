@@ -683,10 +683,10 @@
             "confirm_revoke": "Odwołać ten token? Integracje, które go używają, natychmiast przestaną działać."
           },
           "linked_accounts": {
-            "menu_item": "Powiązane konta",
-            "header": "Powiązane konta",
+            "menu_item": "Metody logowania",
+            "header": "Metody logowania",
             "description": "Zewnętrzne konta, których możesz użyć do logowania się w Econumo.",
-            "empty": "Nie masz jeszcze powiązanych kont.",
+            "empty": "Brak dostępnych metod logowania do połączenia.",
             "linked_on": "Powiązano",
             "link": "Powiąż",
             "unlink": "Odłącz",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Udostępniaj statystyki użytkowania",
-            "description": "Pomaga nam ulepszać Econumo. Dane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
+            "description": "Pomaga nam ulepszać Econumo.\nDane finansowe i informacje osobiste — imię, e-mail — nigdy nie są wysyłane."
           }
         }
       }
@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Dodano nową metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.\n\nJeśli to nie Ty, odłącz to konto w Ustawieniach i zmień hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Usunięto metodę logowania",
+      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

@@ -683,10 +683,10 @@
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
           },
           "linked_accounts": {
-            "menu_item": "Gekoppelde accounts",
-            "header": "Gekoppelde accounts",
+            "menu_item": "Aanmeldmethoden",
+            "header": "Aanmeldmethoden",
             "description": "Externe accounts waarmee u kunt inloggen bij Econumo.",
-            "empty": "Nog geen gekoppelde accounts.",
+            "empty": "Geen aanmeldmethoden beschikbaar om te koppelen.",
             "linked_on": "Gekoppeld",
             "link": "Koppelen",
             "unlink": "Ontkoppelen",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Gebruiksstatistieken delen",
-            "description": "Helpt ons Econumo te verbeteren. Financiële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
+            "description": "Helpt ons Econumo te verbeteren.\nFinanciële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
           }
         }
       }
@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Nieuwe aanmeldmethode toegevoegd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.\n\nAls u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord.\n\n--\nEconumo — Geld beheren. Samen.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Aanmeldmethode verwijderd",
+      "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
   }
 }

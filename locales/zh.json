@@ -683,10 +683,10 @@
             "confirm_revoke": "确定要撤销此令牌吗？使用该令牌的集成将立即停止工作。"
           },
           "linked_accounts": {
-            "menu_item": "已关联账户",
-            "header": "已关联账户",
+            "menu_item": "登录方式",
+            "header": "登录方式",
             "description": "可用于登录 Econumo 的外部账户。",
-            "empty": "暂无已关联账户。",
+            "empty": "没有可连接的登录方式。",
             "linked_on": "关联时间",
             "link": "关联",
             "unlink": "取消关联",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "分享使用统计",
-            "description": "帮助我们改进 Econumo。财务数据和个人信息（姓名、邮箱）绝不会被发送。"
+            "description": "帮助我们改进 Econumo。\n财务数据和个人信息（姓名、邮箱）绝不会被发送。"
           }
         }
       }
@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "已添加新的登录方式",
       "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已关联到您的 Econumo 账户，现在可以用于登录。\n\n如果这不是您本人的操作，请在设置中解除关联并修改密码。\n\n--\nEconumo — 一起管理财务。\n"
+    },
+    "identity_unlinked": {
+      "subject": "已移除登录方式",
+      "body": "您好，{name}：\n\n您的 {provider} 账户刚刚已与您的 Econumo 账户解除关联，现在无法再用于登录。\n\n如果这不是您本人的操作，请修改密码并在设置中检查已关联的账户。\n\n--\nEconumo — 一起管理财务。\n"
     }
   }
 }

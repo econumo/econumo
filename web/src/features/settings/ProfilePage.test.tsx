@@ -230,9 +230,9 @@ it('logout confirm has the exact copy and navigates', async () => {
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })
 
-it('shows a Linked accounts row in the Security group', async () => {
+it('shows a Sign-in methods row in the Security group', async () => {
   renderPage()
-  expect(await screen.findByText('Linked accounts')).toBeInTheDocument()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
   expect(screen.getByText('Change password')).toBeInTheDocument()
 })
 
@@ -240,7 +240,7 @@ it('replaces "Change password" with "Set a password" when the user has no passwo
   server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
   renderPage()
   expect(await screen.findByText('Set a password')).toBeInTheDocument()
-  expect(screen.getByText('Linked accounts')).toBeInTheDocument()
+  expect(screen.getByText('Sign-in methods')).toBeInTheDocument()
   expect(screen.queryByText('Change password')).not.toBeInTheDocument()
 })
 
