@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Neue Anmeldemethode hinzugefügt",
       "body": "Hallo {name},\n\nEin {provider}-Konto wurde soeben mit Ihrem Econumo-Konto verknüpft und kann jetzt zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, trennen Sie das Konto in den Einstellungen und ändern Sie Ihr Passwort.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Anmeldemethode entfernt",
+      "body": "Hallo {name},\n\nDie Verknüpfung Ihres {provider}-Kontos mit Ihrem Econumo-Konto wurde soeben aufgehoben und kann nicht mehr zur Anmeldung verwendet werden.\n\nFalls Sie das nicht waren, ändern Sie Ihr Passwort und prüfen Sie die verknüpften Konten in den Einstellungen.\n\n--\nEconumo — Geld verwalten. Gemeinsam.\n"
     }
   }
 }

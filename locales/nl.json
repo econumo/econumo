@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Nieuwe aanmeldmethode toegevoegd",
       "body": "Hallo {name},\n\nUw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.\n\nAls u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord.\n\n--\nEconumo — Geld beheren. Samen.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Aanmeldmethode verwijderd",
+      "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
   }
 }

@@ -125,7 +125,7 @@ func TestWithAppLink(t *testing.T) {
 
 func TestIdentityLinkedSender(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
@@ -143,7 +143,7 @@ func TestIdentityLinkedSender(t *testing.T) {
 
 func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
 	if err := s.SendIdentityLinked(ctx, "user@x.test", "Алиса", "Google", ""); err != nil {
 		t.Fatalf("send: %v", err)
@@ -158,13 +158,44 @@ func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 
 func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 	c := &captureMailer{}
-	s := NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en"); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
 	if c.msg.Text != want {
 		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
+	}
+}
+
+func TestIdentityUnlinkedSender(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	if err := s.SendIdentityUnlinked(context.Background(), "user@x.test", "Alice", "Google", "en"); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" ||
+		c.msg.Subject != "A sign-in method was removed" {
+		t.Errorf("message envelope = %+v", c.msg)
+	}
+	want := "Hi Alice,\n\nYour Google account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo \u2014 Manage money. Together.\n"
+	if c.msg.Text != want {
+		t.Fatalf("en body drifted:\n%q\nwant:\n%q", c.msg.Text, want)
+	}
+}
+
+func TestIdentityUnlinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	ctx := reqctx.WithLanguage(context.Background(), "ru")
+	if err := s.SendIdentityUnlinked(ctx, "user@x.test", "Алиса", "Google", ""); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if strings.Contains(c.msg.Text, "unlinked from your Econumo account") {
+		t.Fatalf("empty lang should fall back to reqctx.Language, got English body: %q", c.msg.Text)
+	}
+	if !strings.Contains(c.msg.Text, "Алиса") || !strings.Contains(c.msg.Text, "Google") {
+		t.Errorf("ru body missing name/provider: %q", c.msg.Text)
 	}
 }
 

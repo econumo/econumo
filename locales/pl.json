@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Dodano nową metodę logowania",
       "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie powiązane z kontem Econumo i może już służyć do logowania.\n\nJeśli to nie Ty, odłącz to konto w Ustawieniach i zmień hasło.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Usunięto metodę logowania",
+      "body": "Cześć {name},\n\nTwoje konto {provider} zostało właśnie odłączone od konta Econumo i nie może już służyć do logowania.\n\nJeśli to nie Ty, zmień hasło i sprawdź powiązane konta w Ustawieniach.\n\n--\nEconumo — Zarządzaj pieniędzmi. Razem.\n"
     }
   }
 }

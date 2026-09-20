@@ -59,7 +59,7 @@ func TestOAuthNotifier_IdentityLinked_RendersInTheStoredLanguage(t *testing.T) {
 	}
 
 	c := &captureMailer{}
-	sender := mailer.NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	notifier := NewOAuthNotifier(userSvc, sender)
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
@@ -83,6 +83,53 @@ func TestOAuthNotifier_IdentityLinked_RendersInTheStoredLanguage(t *testing.T) {
 	}
 }
 
+func TestOAuthNotifier_IdentityUnlinked_RendersInTheStoredLanguage(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	fx := fixture.New(t, db)
+	userID := fx.User(fixture.User{Email: "owner3@example.test", Name: "Cleo", Algorithm: "argon2id"})
+
+	userSvc, userRepo := newTestUserSvc(db)
+	if err := userRepo.UpdateLanguage(context.Background(), vo.MustParseId(userID), "ru"); err != nil {
+		t.Fatalf("seed language: %v", err)
+	}
+
+	c := &captureMailer{}
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"))
+
+	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Google"); err != nil {
+		t.Fatalf("IdentityUnlinked: %v", err)
+	}
+	if c.msg.To != "owner3@example.test" {
+		t.Errorf("To = %q, want the decrypted account email", c.msg.To)
+	}
+	if !strings.Contains(c.msg.Text, "Cleo") || !strings.Contains(c.msg.Text, "Google") {
+		t.Errorf("body should contain the name and provider: %q", c.msg.Text)
+	}
+	if strings.Contains(c.msg.Subject, "removed") {
+		t.Errorf("subject rendered in English despite a stored ru language: %q", c.msg.Subject)
+	}
+}
+
+func TestOAuthNotifier_IdentityUnlinked_DefaultsToEnglish(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	fx := fixture.New(t, db)
+	userID := fx.User(fixture.User{Email: "owner4@example.test", Name: "Dan", Algorithm: "argon2id"})
+
+	userSvc, _ := newTestUserSvc(db)
+	c := &captureMailer{}
+	notifier := NewOAuthNotifier(userSvc, mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test"))
+
+	if err := notifier.IdentityUnlinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {
+		t.Fatalf("IdentityUnlinked: %v", err)
+	}
+	if c.msg.Subject != "A sign-in method was removed" {
+		t.Errorf("subject = %q, want the English default (users.language defaults to en)", c.msg.Subject)
+	}
+	if c.msg.To != "owner4@example.test" {
+		t.Errorf("To = %q", c.msg.To)
+	}
+}
+
 func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 	db := dbtest.NewSQLite(t)
 	fx := fixture.New(t, db)
@@ -90,7 +137,7 @@ func TestOAuthNotifier_IdentityLinked_DefaultsToEnglish(t *testing.T) {
 
 	userSvc, _ := newTestUserSvc(db)
 	c := &captureMailer{}
-	sender := mailer.NewIdentityLinkedSender(c, "from@econumo.test", "reply@econumo.test")
+	sender := mailer.NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	notifier := NewOAuthNotifier(userSvc, sender)
 
 	if err := notifier.IdentityLinked(context.Background(), vo.MustParseId(userID), "Apple"); err != nil {

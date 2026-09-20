@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Nuovo metodo di accesso aggiunto",
       "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena collegato al tuo account Econumo e ora può essere usato per accedere.\n\nSe non sei stato tu, scollega l'account dalle Impostazioni e cambia la tua password.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Metodo di accesso rimosso",
+      "body": "Ciao {name},\n\nIl tuo account {provider} è stato appena scollegato dal tuo account Econumo e non può più essere usato per accedere.\n\nSe non sei stato tu, cambia la tua password e controlla gli account collegati nelle Impostazioni.\n\n--\nEconumo — Gestisci il denaro. Insieme.\n"
     }
   }
 }

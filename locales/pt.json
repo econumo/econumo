@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Novo método de início de sessão adicionado",
       "body": "Olá {name},\n\nA sua conta {provider} acabou de ser associada à sua conta Econumo e já pode ser usada para iniciar sessão.\n\nSe não foi você, desassocie a conta nas Definições e altere a sua palavra-passe.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Método de início de sessão removido",
+      "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
   }
 }

@@ -516,7 +516,7 @@ User C sees none of it.
       provider straight afterwards, without leaving the page, works the same
       way (📱 especially in the app, where the deep link returns to the same
       screen); unlinking a provider (with confirm dialog) removes it from the
-      list.
+      list AND emails the owner a notice naming the unlinked provider.
 - [ ] Linking a provider account that is ALREADY linked to this same Econumo
       account again (unlink then relink is a fresh link, so use a second pass
       through the flow while it is still linked) succeeds without sending a
@@ -527,7 +527,15 @@ User C sees none of it.
 - [ ] Unlink is refused for a passwordless user's last remaining identity
       (button disabled, hint text shown: "Set a password before unlinking
       your only sign-in method."), including two unlink requests sent at the
-      same time — one succeeds, the other is refused.
+      same time — one succeeds, the other is refused. A refused unlink sends
+      no notice email; the concurrent pair sends exactly one.
+- [ ] Both identity notices (linked and unlinked) arrive in the ACCOUNT's
+      stored language, not the language of whoever triggered the flow: set
+      the UI language to e.g. Russian, link and unlink a provider, and check
+      both emails are Russian.
+- [ ] A password reset on an account with a provider linked under a DIFFERENT
+      email unlinks that identity (the reclaim) and sends NO unlink notice —
+      the reset itself is the announcement.
 - [ ] For a passwordless user, Settings → Profile shows a "Set a password"
       row in place of "Change password"; it sends a reset code to the
       account's email (the email field pre-filled/locked) and, after

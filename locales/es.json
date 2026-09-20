@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "Se añadió un nuevo método de inicio de sesión",
       "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de vincularse a tu cuenta de Econumo y ya puede usarse para iniciar sesión.\n\nSi no fuiste tú, desvincula la cuenta desde Configuración y cambia tu contraseña.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Se eliminó un método de inicio de sesión",
+      "body": "Hola {name}:\n\nTu cuenta de {provider} acaba de desvincularse de tu cuenta de Econumo y ya no puede usarse para iniciar sesión.\n\nSi no fuiste tú, cambia tu contraseña y revisa las cuentas vinculadas en Configuración.\n\n--\nEconumo — Gestiona tu dinero. Juntos.\n"
     }
   }
 }
