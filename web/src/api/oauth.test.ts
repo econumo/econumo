@@ -63,7 +63,7 @@ it('records the linked providers as analytics flags', async () => {
 
   await getIdentityList()
 
-  expect(authMethods()).toMatchObject({ auth_google: 1, auth_sso: 1, auth_apple: 0 })
+  expect(authMethods()).toMatchObject({ auth_google: 'on', auth_sso: 'on', auth_apple: 'off' })
 })
 
 // An unlink refetches the list; the flag must drop back to 0 rather than
@@ -75,5 +75,5 @@ it('clears the flag for a provider that is no longer linked', async () => {
 
   await getIdentityList()
 
-  expect(authMethods()).toMatchObject({ auth_google: 1, auth_apple: 0 })
+  expect(authMethods()).toMatchObject({ auth_google: 'on', auth_apple: 'off' })
 })

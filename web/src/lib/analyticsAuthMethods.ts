@@ -1,6 +1,10 @@
 // Which sign-in methods the user HAS (auth_password / auth_google /
-// auth_apple / auth_sso, 0 or 1 each) — a user-level fact, so it rides the
-// batch context alongside $user_id rather than being stamped per event.
+// auth_apple / auth_sso, "on" or "off" each) — a user-level fact, so it rides
+// the batch context alongside $user_id rather than being stamped per event.
+//
+// Values are the strings "on"/"off", not 0/1: the collector groups attr_value
+// as a categorical label (there is no numeric aggregation over it), and every
+// other attribute this project sends is a word — full_access, cloud, desktop.
 
 import { getItem, removeItem, setItem } from './storage'
 
@@ -17,6 +21,12 @@ const PROVIDER_ATTRIBUTE: Record<string, string> = {
 
 export const AUTH_METHOD_ATTRIBUTES = ['auth_password', 'auth_google', 'auth_apple', 'auth_sso'] as const
 
+export type AuthMethodFlag = 'on' | 'off'
+
+function flag(present: boolean): AuthMethodFlag {
+  return present ? 'on' : 'off'
+}
+
 // Persisted rather than derived from the query cache: the identity list is a
 // Settings-only query that never loads on boot, so a cache-derived value would
 // be absent for every user who does not open Linked accounts. Written whenever
@@ -26,21 +36,21 @@ export const AUTH_METHOD_ATTRIBUTES = ['auth_password', 'auth_google', 'auth_app
 // (get-user-data on boot; get-identity-list only once something asks for it),
 // so each writer merges into the stored object instead of replacing it —
 // otherwise whichever landed second would erase the other's answer.
-function merge(patch: Record<string, 0 | 1>): void {
+function merge(patch: Record<string, AuthMethodFlag>): void {
   const stored = getItem(METHODS_KEY)
   const base = stored && typeof stored === 'object' && !Array.isArray(stored) ? (stored as Record<string, unknown>) : {}
   setItem(METHODS_KEY, { ...base, ...patch })
 }
 
 export function rememberHasPassword(hasPassword: boolean): void {
-  merge({ auth_password: hasPassword ? 1 : 0 })
+  merge({ auth_password: flag(hasPassword) })
 }
 
 export function rememberLinkedProviders(providers: readonly string[]): void {
   const linked = new Set(providers)
-  const patch: Record<string, 0 | 1> = {}
+  const patch: Record<string, AuthMethodFlag> = {}
   for (const [provider, attribute] of Object.entries(PROVIDER_ATTRIBUTE)) {
-    patch[attribute] = linked.has(provider) ? 1 : 0
+    patch[attribute] = flag(linked.has(provider))
   }
   merge(patch)
 }
@@ -50,17 +60,17 @@ export function forgetAuthMethods(): void {
 }
 
 // Only the keys actually written are reported: a flag stays absent until its
-// source has answered, so an unanswered one never reads as a measured 0.
-export function authMethods(): Record<string, 0 | 1> | null {
+// source has answered, so an unanswered one never reads as a measured "off".
+export function authMethods(): Record<string, AuthMethodFlag> | null {
   const stored = getItem(METHODS_KEY)
   if (!stored || typeof stored !== 'object' || Array.isArray(stored)) {
     return null
   }
   const values = stored as Record<string, unknown>
-  const out: Record<string, 0 | 1> = {}
+  const out: Record<string, AuthMethodFlag> = {}
   for (const key of AUTH_METHOD_ATTRIBUTES) {
-    if (values[key] === 0 || values[key] === 1) {
-      out[key] = values[key] as 0 | 1
+    if (values[key] === 'on' || values[key] === 'off') {
+      out[key] = values[key]
     }
   }
   return Object.keys(out).length > 0 ? out : null

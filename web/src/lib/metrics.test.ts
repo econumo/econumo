@@ -227,7 +227,7 @@ describe('auth method flags', () => {
     trackEvent(METRICS.TRANSACTION_CREATE)
 
     expect(contextSpy).toHaveBeenLastCalledWith(
-      expect.objectContaining({ auth_password: 1, auth_google: 1, auth_apple: 0, auth_sso: 0 }),
+      expect.objectContaining({ auth_password: 'on', auth_google: 'on', auth_apple: 'off', auth_sso: 'off' }),
     )
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
     expect(props).not.toHaveProperty('auth_password')
@@ -235,13 +235,13 @@ describe('auth method flags', () => {
 
   it('maps the custom OIDC slot to auth_sso', () => {
     rememberLinkedProviders(['oidc'])
-    expect(authMethods()).toMatchObject({ auth_sso: 1, auth_google: 0, auth_apple: 0 })
+    expect(authMethods()).toMatchObject({ auth_sso: 'on', auth_google: 'off', auth_apple: 'off' })
   })
 
-  it('reports an OAuth-only account as auth_password 0', () => {
+  it("reports an OAuth-only account as auth_password 'off'", () => {
     rememberHasPassword(false)
     rememberLinkedProviders(['apple'])
-    expect(authMethods()).toEqual({ auth_password: 0, auth_google: 0, auth_apple: 1, auth_sso: 0 })
+    expect(authMethods()).toEqual({ auth_password: 'off', auth_google: 'off', auth_apple: 'on', auth_sso: 'off' })
   })
 
   // The two halves arrive from different endpoints; whichever lands second
@@ -249,17 +249,17 @@ describe('auth method flags', () => {
   it('merges the two writers rather than overwriting', () => {
     rememberHasPassword(true)
     rememberLinkedProviders(['google', 'apple'])
-    expect(authMethods()).toEqual({ auth_password: 1, auth_google: 1, auth_apple: 1, auth_sso: 0 })
+    expect(authMethods()).toEqual({ auth_password: 'on', auth_google: 'on', auth_apple: 'on', auth_sso: 'off' })
 
     // the identity list refetches after an unlink; the password flag survives
     rememberLinkedProviders(['google'])
-    expect(authMethods()).toEqual({ auth_password: 1, auth_google: 1, auth_apple: 0, auth_sso: 0 })
+    expect(authMethods()).toEqual({ auth_password: 'on', auth_google: 'on', auth_apple: 'off', auth_sso: 'off' })
   })
 
   it('omits a flag whose source has not answered yet', () => {
     rememberHasPassword(true)
-    // no identity list yet — the OAuth flags are unknown, not zero
-    expect(authMethods()).toEqual({ auth_password: 1 })
+    // no identity list yet — the OAuth flags are unknown, not "off"
+    expect(authMethods()).toEqual({ auth_password: 'on' })
   })
 
   it('is absent entirely before anything is known', () => {
@@ -271,7 +271,14 @@ describe('auth method flags', () => {
   it('survives a reload, so the boot page view still carries it', () => {
     rememberHasPassword(true)
     rememberLinkedProviders(['google'])
-    expect(authMethods()).toMatchObject({ auth_password: 1, auth_google: 1 })
+    expect(authMethods()).toMatchObject({ auth_password: 'on', auth_google: 'on' })
+  })
+
+  // A build shipped 0/1 before these became words; a value left in storage by
+  // it must be ignored rather than sent on as a stray numeric label.
+  it('drops a stale numeric value from an earlier build', () => {
+    localStorage.setItem('authMethods', JSON.stringify({ auth_password: 1, auth_google: 0 }))
+    expect(authMethods()).toBeNull()
   })
 
   it('does not outlive the session it describes', () => {

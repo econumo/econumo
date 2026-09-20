@@ -479,13 +479,14 @@ User C sees none of it.
       out — the logout event goes out, nothing after it.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, batch-level `attributes`, NOT the per-event ones):
-      `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each 0 or 1.
-      A password account with Google linked sends `auth_password: 1`,
-      `auth_google: 1`, `auth_apple: 0`, `auth_sso: 0`; an OAuth-only account
-      (never set a password) sends `auth_password: 0`. They are present from
-      the FIRST batch after sign-in without opening Settings, and survive a
-      reload. Link a provider in Settings → its flag flips to 1 on the next
-      event; unlink it → back to 0. The custom OIDC provider reports as
+      `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
+      or `off`. A password account with Google linked sends
+      `auth_password: on`, `auth_google: on`, `auth_apple: off`,
+      `auth_sso: off`; an OAuth-only account (never set a password) sends
+      `auth_password: off`. They are present from the FIRST batch after
+      sign-in without opening Settings, and survive a reload. Link a provider
+      in Settings → its flag flips to `on` on the next event; unlink it →
+      back to `off`. The custom OIDC provider reports as
       `auth_sso`. Log out and sign in as someone else → the flags describe the
       new user, never the previous one's.
 - [ ] 📱 Linked accounts (Settings → Profile → Linked accounts): lists every
