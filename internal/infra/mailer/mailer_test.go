@@ -209,3 +209,57 @@ func TestResetEmailRussian(t *testing.T) {
 		t.Fatalf("ru body still English: %q", msg.Text)
 	}
 }
+
+func TestCcAddresses(t *testing.T) {
+	cases := []struct {
+		name       string
+		to         string
+		candidates []string
+		want       []string
+	}{
+		{"nil candidates", "to@x.test", nil, nil},
+		{"drops the To address, case-insensitively", "To@X.test", []string{"to@x.TEST"}, nil},
+		{"keeps a distinct address", "to@x.test", []string{"other@x.test"}, []string{"other@x.test"}},
+		{"trims and drops empties", "to@x.test", []string{"  ", "", "  other@x.test  "}, []string{"other@x.test"}},
+		{"dedupes case-insensitively, first spelling wins", "to@x.test",
+			[]string{"Other@X.test", "other@x.test"}, []string{"Other@X.test"}},
+		{"preserves order", "to@x.test",
+			[]string{"b@x.test", "a@x.test"}, []string{"b@x.test", "a@x.test"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := ccAddresses(tc.to, tc.candidates)
+			if len(got) != len(tc.want) {
+				t.Fatalf("ccAddresses(%q, %v) = %v, want %v", tc.to, tc.candidates, got, tc.want)
+			}
+			for i := range got {
+				if got[i] != tc.want[i] {
+					t.Fatalf("ccAddresses(%q, %v) = %v, want %v", tc.to, tc.candidates, got, tc.want)
+				}
+			}
+		})
+	}
+}
+
+func TestConsole_RendersCc(t *testing.T) {
+	var buf bytes.Buffer
+	c := console{out: &buf}
+	msg := Message{From: "from@x.test", To: "to@x.test", Cc: []string{"a@x.test", "b@x.test"},
+		Subject: "Hi", Text: "body"}
+	if err := c.Send(context.Background(), msg); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if got := buf.String(); !strings.Contains(got, "Cc: a@x.test, b@x.test") {
+		t.Errorf("console output missing the Cc line\ngot:\n%s", got)
+	}
+
+	// No CCs: the line is omitted entirely, so the dev output of every code
+	// email is unchanged.
+	buf.Reset()
+	if err := c.Send(context.Background(), Message{To: "to@x.test", Text: "body"}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	if strings.Contains(buf.String(), "Cc:") {
+		t.Errorf("empty Cc should print no Cc line\ngot:\n%s", buf.String())
+	}
+}
