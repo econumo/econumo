@@ -48,6 +48,7 @@ type Service struct {
 	emailVerification   bool
 	logoutURLs          LogoutURLBuilder
 	oauthGrants         OAuthReclaimer
+	identityEmails      IdentityEmailLister
 }
 
 func NewService(
@@ -101,6 +102,10 @@ func (s *Service) SetLogoutURLBuilder(b LogoutURLBuilder) { s.logoutURLs = b }
 // SetOAuthReclaimer installs the oauth feature's reclaim adapter for the
 // password-reset cascade, wired the same way and for the same reason.
 func (s *Service) SetOAuthReclaimer(r OAuthReclaimer) { s.oauthGrants = r }
+
+// SetIdentityEmailLister installs the oauth feature's linked-address lookup for
+// the change-email notice, wired after construction like the two above.
+func (s *Service) SetIdentityEmailLister(l IdentityEmailLister) { s.identityEmails = l }
 
 // Logout revokes the presenting session. The "test" literal is a frozen wire
 // constant clients depend on (see LogoutResult).

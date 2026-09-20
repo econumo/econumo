@@ -564,3 +564,66 @@ func TestResetPassword_EmailChangeConfirmedBeforeTheLockIsRefused(t *testing.T) 
 		t.Fatal("the reset wrote its password onto a row whose address it never proved")
 	}
 }
+
+// stubIdentityEmails is the oauth feature's linked-address lookup as the user
+// service sees it.
+type stubIdentityEmails struct {
+	emails []string
+	err    error
+}
+
+func (s stubIdentityEmails) ListEmails(_ context.Context, _ vo.Id) ([]string, error) {
+	return s.emails, s.err
+}
+
+func TestRequestEmailChange_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.T) {
+	svc, _, _, _, _, cap, _ := newChangeEmailEnv(t)
+	ctx := context.Background()
+	uid := createChangeEmailUser(t, svc, "Cc Me", "old@econumo.test", "secretpass1")
+	// The account's own address is among the linked ones, as it is whenever a
+	// provider created or auto-linked the account; it must not be duplicated.
+	svc.SetIdentityEmailLister(stubIdentityEmails{emails: []string{"old@econumo.test", "alice@gmail.test"}})
+
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "new@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	if len(cap.msgs) != 2 {
+		t.Fatalf("want 2 emails (code + notice), got %d", len(cap.msgs))
+	}
+
+	// The CODE proves control of the proposed new mailbox, so it goes there and
+	// nowhere else -- copying it to a linked address would defeat that check.
+	code := cap.msgs[0]
+	if code.To != "new@econumo.test" || len(code.Cc) != 0 {
+		t.Errorf("code message = To %q Cc %v, want the new address alone", code.To, code.Cc)
+	}
+
+	notice := cap.msgs[1]
+	if notice.To != "old@econumo.test" {
+		t.Errorf("notice To = %q, want the OLD address", notice.To)
+	}
+	if len(notice.Cc) != 1 || notice.Cc[0] != "alice@gmail.test" {
+		t.Errorf("notice Cc = %v, want the other linked address only", notice.Cc)
+	}
+}
+
+func TestRequestEmailChange_SendsTheNoticeWhenTheListerFails(t *testing.T) {
+	svc, _, _, _, _, cap, _ := newChangeEmailEnv(t)
+	ctx := context.Background()
+	uid := createChangeEmailUser(t, svc, "Cc Me", "old@econumo.test", "secretpass1")
+	svc.SetIdentityEmailLister(stubIdentityEmails{err: errors.New("boom")})
+
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "new@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	if len(cap.msgs) != 2 {
+		t.Fatalf("want 2 emails even with no copy list, got %d", len(cap.msgs))
+	}
+	if notice := cap.msgs[1]; notice.To != "old@econumo.test" || len(notice.Cc) != 0 {
+		t.Errorf("notice = To %q Cc %v, want the old address alone", notice.To, notice.Cc)
+	}
+}
