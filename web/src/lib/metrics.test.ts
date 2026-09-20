@@ -61,21 +61,33 @@ describe('collector capture', () => {
     expect(window.dataLayer).toHaveLength(2)
   })
 
-  it('captures with the whitelisted properties only', () => {
+  // Only the page the event happened on is per-event; everything else
+  // describes the session and rides the batch instead.
+  it('captures the per-event url only', () => {
     window.history.replaceState({}, '', '/budgets/01980e2c-1111-7000-8000-123456789abc/details')
     trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
     expect(capture).toHaveBeenCalledTimes(1)
     const [event, props] = vi.mocked(capture).mock.calls[0]
     expect(event).toBe('transaction_create')
-    expect(props).toEqual({
-      host: 'selfhosted_unknown', // jsdom runs on localhost with no INSTANCE_ID configured
-      deployment: 'self-hosted',
-      locale: 'en',
-      mode: 'desktop', // jsdom default viewport is 1024px wide
-      current_url: 'https://selfhosted_unknown/budgets/:id/details',
-    })
-    expect(props).not.toHaveProperty('version')
-    expect(props).not.toHaveProperty('self_hosted')
+    // jsdom runs on localhost with no INSTANCE_ID configured
+    expect(props).toEqual({ current_url: 'https://selfhosted_unknown/budgets/:id/details' })
+  })
+
+  it('sends the session-wide facts on the batch, not on each event', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
+    trackEvent(METRICS.TRANSACTION_CREATE)
+    expect(contextSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        host: 'selfhosted_unknown',
+        deployment: 'self-hosted',
+        locale: 'en',
+        mode: 'desktop', // jsdom default viewport is 1024px wide
+      }),
+    )
+    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
+    for (const key of ['host', 'deployment', 'locale', 'mode', 'version', 'self_hosted']) {
+      expect(props).not.toHaveProperty(key)
+    }
   })
 
   it('keeps ui_modal micro-interactions dataLayer-only', () => {
@@ -202,17 +214,19 @@ describe('native app host resolution', () => {
 describe('access_state property', () => {
   afterEach(() => setAnalyticsAccessState(null))
 
-  it('is attached to captures once set', () => {
+  it('is attached to the batch once set', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
     setAnalyticsAccessState('trial')
     trackEvent(METRICS.USER_LOGIN)
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.objectContaining({ access_state: 'trial' }))
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    expect(props).toMatchObject({ access_state: 'trial' })
+    expect(props).not.toHaveProperty('access_state')
   })
 
   it('is absent before any state is known', () => {
+    const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
     trackEvent(METRICS.USER_LOGIN)
-    const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    expect(props).not.toHaveProperty('access_state')
+    expect(contextSpy).toHaveBeenLastCalledWith(expect.not.objectContaining({ access_state: expect.anything() }))
   })
 })
 

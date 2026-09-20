@@ -477,6 +477,11 @@ User C sees none of it.
       request; after login every request body carries `$user_id`; a reload of
       a signed-in page sends its page view once the user data has loaded; log
       out — the logout event goes out, nothing after it.
+- [ ] Session facts ride the BATCH, not each event (same Network filter): the
+      request body's top-level `attributes` carries `access_state`,
+      `deployment`, `host`, `locale` and `mode` once; each entry in `events`
+      carries only `current_url` (the page that event happened on), which
+      differs between events in one batch when you navigate mid-flush.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, batch-level `attributes`, NOT the per-event ones):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
