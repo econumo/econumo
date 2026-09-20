@@ -45,7 +45,6 @@ export async function exchangeHandoff(code: string, flow: string): Promise<UserL
   setAnalyticsAccessState(deriveAccessState(user.accessLevel, user.accessUntil))
   setAnalyticsUser(analyticsUserId(user.id))
   rememberHasPassword(user.hasPassword !== false)
-  refreshAuthMethodFlags()
   rememberAnalyticsPreference(user.options.find((o) => o.name === UserOptions.ANALYTICS)?.value !== '0')
   return response.data
 }

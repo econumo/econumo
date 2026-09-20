@@ -77,3 +77,17 @@ it('clears the flag for a provider that is no longer linked', async () => {
 
   expect(authMethods()).toMatchObject({ auth_google: 'on', auth_apple: 'off' })
 })
+
+// A best-effort analytics probe must never be able to log the user out. It is
+// fired without awaiting right after login, so it can reach the server before
+// the token is stored and come back 401; treating that as "session expired"
+// deleted the token the login had just written.
+it('a 401 from the identity list leaves the stored token alone', async () => {
+  server.use(http.get('*/api/v1/oauth/get-identity-list', () =>
+    HttpResponse.json({ success: false, message: 'Access token not found', code: 401, errors: {} }, { status: 401 })))
+  localStorage.setItem('token', 'keep-me')
+
+  await expect(getIdentityList()).rejects.toBeTruthy()
+
+  expect(localStorage.getItem('token')).toBe('keep-me')
+})

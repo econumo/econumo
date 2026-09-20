@@ -144,6 +144,9 @@ export function useExchangeHandoff() {
       clearPersistedQueryCache()
       queryClient.clear()
       setToken(data.token)
+      // After the token is stored, for the same reason as the password login
+      // (see useLogin): an unawaited probe must not 401 its way into a logout.
+      oauthApi.refreshAuthMethodFlags()
       trackEvent(METRICS.OAUTH_LOGIN_COMPLETED)
       if (isFreshAccount(data.user.createdAt)) {
         trackEvent(METRICS.OAUTH_ACCOUNT_CREATED)
