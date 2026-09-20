@@ -105,6 +105,12 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on
       both `/login` and `/register`, on desktop and mobile; sign-in through
       each provider completes and lands the user in the app.
+- [ ] 📱 Signing in through a provider enters the app in a FRESH document (the
+      page reloads into `/`), not a client-side route change. Check it on an
+      iOS home-screen PWA with Sign in with Apple specifically — Apple is the
+      only provider whose return trip is a cross-site POST, and the app shell
+      must fill the whole screen afterwards, with no white band below the
+      sidebar footer.
 - [ ] Apple key is loaded from a FILE: with
       `ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE` pointing at the unmodified `.p8`,
       the server boots and Apple sign-in completes — under systemd as well as

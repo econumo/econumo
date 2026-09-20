@@ -32,7 +32,14 @@ export function OAuthCallbackPage() {
     }
     exchange
       .mutateAsync({ code, flow })
-      .then(() => navigate(RouterPage.HOME, { replace: true }))
+      // A fresh document, like every other way into the app (password login,
+      // registration, email verification) — not a router navigation. Apple is
+      // the only provider that returns by cross-site POST (response_mode=
+      // form_post), and an iOS home-screen PWA leaves the document that POST
+      // landed in with a layout viewport short by the browser chrome, which no
+      // resize recovers. Nothing is lost: the exchange has just emptied both
+      // the in-memory and the persisted cache anyway.
+      .then(() => window.location.replace(RouterPage.HOME))
       .catch((err: unknown) => {
         // 401 is the handoff itself (expired, replayed, or a foreign flow);
         // anything else went wrong on the way, which reads differently.

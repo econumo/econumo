@@ -19,22 +19,34 @@ function renderAt(entry: string) {
   return router
 }
 
+const realLocation = window.location
+let replace: ReturnType<typeof vi.fn>
+
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
   window.econumoConfig = {}
   sessionStorage.setItem('oauthFlow', 'f1')
+  replace = vi.fn()
+  Object.defineProperty(window, 'location', { value: { ...realLocation, replace }, writable: true })
 })
 
-it('exchanges the handoff from the fragment, stores the token and goes home', async () => {
+afterEach(() => {
+  Object.defineProperty(window, 'location', { value: realLocation, writable: true })
+})
+
+it('exchanges the handoff from the fragment, stores the token and enters the app in a fresh document', async () => {
   let posted: unknown
   server.use(http.post('*/api/v1/oauth/exchange-handoff', async ({ request }) => {
     posted = await request.json()
     return HttpResponse.json({ token: 'eco_ses_ok', user: { id: 'u1', options: [], accessLevel: 'full', accessUntil: '', hasPassword: false } })
   }))
-  renderAt('/oauth/callback#handoff=abc')
+  const router = renderAt('/oauth/callback#handoff=abc')
   expect(screen.getByText('Signing you in…')).toBeInTheDocument()
-  await waitFor(() => expect(screen.getByTestId('home')).toBeInTheDocument())
+  // A router navigation would keep the document Apple's cross-site POST landed
+  // in; only a new document clears its viewport in an iOS standalone PWA.
+  await waitFor(() => expect(replace).toHaveBeenCalledWith('/'))
+  expect(router.state.location.pathname).toBe('/oauth/callback')
   expect(posted).toEqual({ code: 'abc', flow: 'f1' })
   expect(localStorage.getItem('token')).toBe('eco_ses_ok')
   expect(sessionStorage.getItem('oauthFlow')).toBeNull()
