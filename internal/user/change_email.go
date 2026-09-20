@@ -54,7 +54,8 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 	}
 	s.markEmailChangeSent(key)
 	if s.changeMailer != nil {
-		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail, nil); nerr != nil {
+		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail,
+			s.linkedEmails(ctx, userID)); nerr != nil {
 			return nil, nerr
 		}
 	}
@@ -252,4 +253,18 @@ func (s *Service) emailChangeSentCooldown(key string, now time.Time) time.Durati
 		remaining += time.Second - rem
 	}
 	return remaining
+}
+
+// linkedEmails resolves the addresses the user's providers vouched for. The
+// copy list is a nicety, so a lookup failure yields none rather than failing
+// the notice the user is waiting on.
+func (s *Service) linkedEmails(ctx context.Context, userID vo.Id) []string {
+	if s.identityEmails == nil {
+		return nil
+	}
+	addrs, err := s.identityEmails.ListEmails(ctx, userID)
+	if err != nil {
+		return nil
+	}
+	return addrs
 }
