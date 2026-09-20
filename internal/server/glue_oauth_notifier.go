@@ -36,7 +36,7 @@ func (a *OAuthNotifier) IdentityUnlinked(ctx context.Context, userID vo.Id, prov
 }
 
 func (a *OAuthNotifier) notify(ctx context.Context, userID vo.Id, providerName string,
-	send func(ctx context.Context, to, name, provider, lang string) error) error {
+	send func(ctx context.Context, to, name, provider, lang string, cc []string) error) error {
 	u, email, err := a.users.AdminUserByID(ctx, userID)
 	if err != nil {
 		return err
@@ -45,5 +45,5 @@ func (a *OAuthNotifier) notify(ctx context.Context, userID vo.Id, providerName s
 	if err != nil {
 		lang = ""
 	}
-	return send(ctx, email, u.Name, providerName, lang)
+	return send(ctx, email, u.Name, providerName, lang, nil)
 }

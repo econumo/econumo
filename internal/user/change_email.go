@@ -54,7 +54,7 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 	}
 	s.markEmailChangeSent(key)
 	if s.changeMailer != nil {
-		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail); nerr != nil {
+		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail, nil); nerr != nil {
 			return nil, nerr
 		}
 	}

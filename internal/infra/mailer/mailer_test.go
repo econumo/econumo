@@ -126,7 +126,7 @@ func TestWithAppLink(t *testing.T) {
 func TestIdentityLinkedSender(t *testing.T) {
 	c := &captureMailer{}
 	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
-	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en"); err != nil {
+	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	if !c.called {
@@ -145,7 +145,7 @@ func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	c := &captureMailer{}
 	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
-	if err := s.SendIdentityLinked(ctx, "user@x.test", "Алиса", "Google", ""); err != nil {
+	if err := s.SendIdentityLinked(ctx, "user@x.test", "Алиса", "Google", "", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	if strings.Contains(c.msg.Text, "linked to your Econumo account") {
@@ -159,7 +159,7 @@ func TestIdentityLinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 	c := &captureMailer{}
 	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
-	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en"); err != nil {
+	if err := s.SendIdentityLinked(context.Background(), "u@example.test", "Alice", "Apple", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	want := "Hi Alice,\n\nYour Apple account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo \u2014 Manage money. Together.\n"
@@ -171,7 +171,7 @@ func TestIdentityLinkedEmailEnglishUnchanged(t *testing.T) {
 func TestIdentityUnlinkedSender(t *testing.T) {
 	c := &captureMailer{}
 	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
-	if err := s.SendIdentityUnlinked(context.Background(), "user@x.test", "Alice", "Google", "en"); err != nil {
+	if err := s.SendIdentityUnlinked(context.Background(), "user@x.test", "Alice", "Google", "en", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	if c.msg.From != "from@econumo.test" || c.msg.To != "user@x.test" || c.msg.ReplyTo != "reply@econumo.test" ||
@@ -188,7 +188,7 @@ func TestIdentityUnlinkedSender_LangFallsBackToRequestLanguage(t *testing.T) {
 	c := &captureMailer{}
 	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
 	ctx := reqctx.WithLanguage(context.Background(), "ru")
-	if err := s.SendIdentityUnlinked(ctx, "user@x.test", "Алиса", "Google", ""); err != nil {
+	if err := s.SendIdentityUnlinked(ctx, "user@x.test", "Алиса", "Google", "", nil); err != nil {
 		t.Fatalf("send: %v", err)
 	}
 	if strings.Contains(c.msg.Text, "unlinked from your Econumo account") {
@@ -261,5 +261,51 @@ func TestConsole_RendersCc(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), "Cc:") {
 		t.Errorf("empty Cc should print no Cc line\ngot:\n%s", buf.String())
+	}
+}
+
+func TestIdentitySender_CarriesNormalizedCc(t *testing.T) {
+	c := &captureMailer{}
+	s := NewIdentitySender(c, "from@econumo.test", "reply@econumo.test")
+	// The primary address is among the candidates (it is, whenever the account
+	// was created through a provider) and must not be duplicated.
+	cc := []string{"user@x.test", "google@x.test", "apple@x.test"}
+	if err := s.SendIdentityLinked(context.Background(), "user@x.test", "Alice", "Google", "en", cc); err != nil {
+		t.Fatalf("linked: %v", err)
+	}
+	if len(c.msg.Cc) != 2 || c.msg.Cc[0] != "google@x.test" || c.msg.Cc[1] != "apple@x.test" {
+		t.Errorf("linked Cc = %v, want the linked addresses minus the To address", c.msg.Cc)
+	}
+
+	if err := s.SendIdentityUnlinked(context.Background(), "user@x.test", "Alice", "Google", "en",
+		[]string{"apple@x.test"}); err != nil {
+		t.Fatalf("unlinked: %v", err)
+	}
+	if len(c.msg.Cc) != 1 || c.msg.Cc[0] != "apple@x.test" {
+		t.Errorf("unlinked Cc = %v, want the addresses still attached", c.msg.Cc)
+	}
+}
+
+func TestChangeEmailSender_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.T) {
+	c := &captureMailer{}
+	s := NewChangeEmailSender(c, "from@econumo.test", "reply@econumo.test")
+
+	if err := s.SendEmailChangeNotice(context.Background(), "old@x.test", "Alice", "new@x.test",
+		[]string{"google@x.test"}); err != nil {
+		t.Fatalf("notice: %v", err)
+	}
+	if c.msg.To != "old@x.test" {
+		t.Errorf("notice To = %q, want the OLD address", c.msg.To)
+	}
+	if len(c.msg.Cc) != 1 || c.msg.Cc[0] != "google@x.test" {
+		t.Errorf("notice Cc = %v, want the linked address", c.msg.Cc)
+	}
+
+	// The code proves control of the NEW mailbox, so it is never copied anywhere.
+	if err := s.SendEmailChangeCode(context.Background(), "new@x.test", "Alice", "123456"); err != nil {
+		t.Fatalf("code: %v", err)
+	}
+	if c.msg.To != "new@x.test" || len(c.msg.Cc) != 0 {
+		t.Errorf("code message = To %q Cc %v, want the new address only", c.msg.To, c.msg.Cc)
 	}
 }
