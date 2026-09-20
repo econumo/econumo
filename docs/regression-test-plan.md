@@ -126,7 +126,9 @@ navigation (single-pane vs sidebar).
       with no confirmation dialog, signs into that account, shows the new
       provider under Settings → Profile → Sign-in methods, and delivers the
       owner's notice email (console transport prints it to server stdout in
-      dev) naming the provider.
+      dev) naming the provider, addressed to the account email and CC'd to
+      every OTHER address the account's providers reported (the account email
+      itself is never duplicated into the Cc).
 - [ ] Starting a provider sign-in in one browser and opening the returned
       Econumo callback URL in a DIFFERENT browser (or a private window) fails
       with "The sign-in attempt expired or was already used." — only the
@@ -472,7 +474,9 @@ User C sees none of it.
       "Invalid credentials."
 - [ ] **Change email**: request (new email + password) → code sent to the new
       address → confirm; resend with cooldown; wrong code rejected; login works
-      with the new email only.
+      with the new email only. The heads-up notice to the OLD address is CC'd
+      to the account's linked-provider addresses; the CODE to the new address
+      goes to that address alone, with no Cc.
 - [ ] **Sessions** 📱: list shows device descriptions, current badge, relative
       last-active; revoke one (other) session logs that device out; revoke-all-
       others keeps only the current; revoking the current session logs out.
@@ -535,6 +539,11 @@ User C sees none of it.
       stored language, not the language of whoever triggered the flow: set
       the UI language to e.g. Russian, link and unlink a provider, and check
       both emails are Russian.
+- [ ] Both identity notices are CC'd to the account's linked-provider
+      addresses. With two providers linked under different addresses, unlink
+      one: the notice goes To the account email and Cc's the address of the
+      provider that is STILL linked — the just-unlinked address is not copied,
+      and no address ever appears twice.
 - [ ] A password reset on an account with a provider linked under a DIFFERENT
       email unlinks that identity (the reclaim) and sends NO unlink notice —
       the reset itself is the announcement.
