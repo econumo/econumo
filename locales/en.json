@@ -683,10 +683,10 @@
             "confirm_revoke": "Revoke this token? Integrations using it will stop working immediately."
           },
           "linked_accounts": {
-            "menu_item": "Linked accounts",
-            "header": "Linked accounts",
+            "menu_item": "Sign-in methods",
+            "header": "Sign-in methods",
             "description": "External accounts you can use to sign in to Econumo.",
-            "empty": "No linked accounts yet.",
+            "empty": "No sign-in methods available to connect.",
             "linked_on": "Linked",
             "link": "Link",
             "unlink": "Unlink",
@@ -700,7 +700,7 @@
           },
           "analytics": {
             "label": "Share usage statistics",
-            "description": "Helps us improve Econumo. Financial data and personal information — name, email — are never sent."
+            "description": "Helps us improve Econumo.\nFinancial data and personal information — name, email — are never sent."
           }
         }
       }
@@ -1615,6 +1615,10 @@
     "identity_linked": {
       "subject": "A new sign-in method was added",
       "body": "Hi {name},\n\nYour {provider} account was just linked to your Econumo account and can now be used to sign in.\n\nIf this wasn't you, unlink the account from Settings and change your password.\n\n--\nEconumo — Manage money. Together.\n"
+    },
+    "identity_unlinked": {
+      "subject": "A sign-in method was removed",
+      "body": "Hi {name},\n\nYour {provider} account was just unlinked from your Econumo account and can no longer be used to sign in.\n\nIf this wasn't you, change your password and review the linked accounts in Settings.\n\n--\nEconumo — Manage money. Together.\n"
     }
   }
 }

@@ -49,10 +49,12 @@ type AttemptLimiter interface {
 // (ECONUMO_RATE_LIMIT_GLOBAL) applies.
 const RateScopeOAuthStart = "oauth-start"
 
-// Notifier tells the account owner a provider was auto-linked to their
-// existing (passwordless) account (step 6 of Callback). A nil Notifier on
-// Service disables the notification (tests, and any composition root that
-// opts out).
+// Notifier tells the account owner their account's set of sign-in methods
+// changed: a provider was linked (auto-linked to an existing passwordless
+// account in step 6 of Callback, or linked from Settings in CompleteLink), or
+// unlinked (UnlinkIdentity). A nil Notifier on Service disables the
+// notifications (tests, and any composition root that opts out).
 type Notifier interface {
 	IdentityLinked(ctx context.Context, userID vo.Id, providerName string) error
+	IdentityUnlinked(ctx context.Context, userID vo.Id, providerName string) error
 }

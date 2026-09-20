@@ -254,14 +254,20 @@ func (f *fakeUsers) MintSession(_ context.Context, userID vo.Id, _ string, provi
 	return &model.LoginResult{Token: "eco_ses_test", User: model.CurrentUserResult{Id: userID.String()}}, nil
 }
 
-// fakeNotifier records every IdentityLinked call the auto-link path makes.
+// fakeNotifier records every notification the link and unlink paths make.
 type fakeNotifier struct {
-	calls []struct{ userID, providerName string }
-	fail  error
+	calls   []struct{ userID, providerName string }
+	unlinks []struct{ userID, providerName string }
+	fail    error
 }
 
 func (f *fakeNotifier) IdentityLinked(_ context.Context, userID vo.Id, providerName string) error {
 	f.calls = append(f.calls, struct{ userID, providerName string }{userID.String(), providerName})
+	return f.fail
+}
+
+func (f *fakeNotifier) IdentityUnlinked(_ context.Context, userID vo.Id, providerName string) error {
+	f.unlinks = append(f.unlinks, struct{ userID, providerName string }{userID.String(), providerName})
 	return f.fail
 }
 
@@ -916,6 +922,142 @@ func TestCallback_AutoLinkNotifierFailureDoesNotBreakTheRedirect(t *testing.T) {
 	}
 	if len(h.notifier.calls) != 1 {
 		t.Fatalf("notifier should still have been called once: %+v", h.notifier.calls)
+	}
+}
+
+// A link the owner started is still worth an email: the notice is how they
+// detect one they did NOT start, and a stolen session is what the link flow's
+// checks exist to stop.
+func TestCompleteLink_NotifiesTheAccountOwner(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	if _, err := h.completeLink(u.ID, r); err != nil {
+		t.Fatalf("completeLink: %v", err)
+	}
+	if len(h.notifier.calls) != 1 {
+		t.Fatalf("want exactly one notification, got %+v", h.notifier.calls)
+	}
+	if got := h.notifier.calls[0]; got.userID != u.ID.String() || got.providerName != "Google" {
+		t.Fatalf("notification = %+v, want user %s provider Google", got, u.ID.String())
+	}
+}
+
+// Relinking the same subject only refreshes the stored email, granting no new
+// sign-in method — so it must stay silent.
+func TestCompleteLink_RelinkingTheSameIdentityDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	if _, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web")); err != nil {
+		t.Fatalf("completeLink: %v", err)
+	}
+	h.notifier.calls = nil
+	if _, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web")); err != nil {
+		t.Fatalf("relink: %v", err)
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("a relink grants nothing new: %+v", h.notifier.calls)
+	}
+}
+
+// The identity is already committed when the notice is attempted, so a dead
+// mailer must not fail the link.
+func TestCompleteLink_NotifierFailureDoesNotFailTheLink(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	h.notifier.fail = errBoom
+	res, err := h.completeLink(u.ID, h.startLink(u.ID, "google", "web"))
+	if err != nil || res.Provider != "google" {
+		t.Fatalf("a failing notifier must not fail the link: %+v %v", res, err)
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err != nil {
+		t.Fatalf("identity not written: %v", err)
+	}
+}
+
+// A refused link writes no identity, so there is nothing to announce.
+func TestCompleteLink_RejectedAttemptDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	r := h.startLink(u.ID, "google", "web")
+	other, _ := oidc.RandomToken()
+	if _, err := h.svc.CompleteLink(context.Background(), u.ID,
+		model.CompleteLinkRequest{Code: linkHandoffOf(t, r), Flow: other}); err == nil {
+		t.Fatal("a foreign flow secret must be refused")
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("nothing was linked: %+v", h.notifier.calls)
+	}
+}
+
+// Losing a sign-in method is as worth detecting as gaining one: an unlink the
+// owner did not perform is how a session-borne attacker (or a lockout on a
+// passwordless account) first becomes visible.
+func TestUnlinkIdentity_NotifiesTheAccountOwner(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
+	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
+		t.Fatalf("unlink: %v", err)
+	}
+	if len(h.notifier.unlinks) != 1 {
+		t.Fatalf("want exactly one notification, got %+v", h.notifier.unlinks)
+	}
+	if got := h.notifier.unlinks[0]; got.userID != u.ID.String() || got.providerName != "Google" {
+		t.Fatalf("notification = %+v, want user %s provider Google", got, u.ID.String())
+	}
+	if len(h.notifier.calls) != 0 {
+		t.Fatalf("an unlink is not a link: %+v", h.notifier.calls)
+	}
+}
+
+// A refused unlink removes nothing — the last sign-in method of a passwordless
+// account stays put — so there is nothing to announce.
+func TestUnlinkIdentity_RefusedAttemptDoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmNone)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
+	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); err == nil {
+		t.Fatal("unlinking the only sign-in method of a passwordless account must be refused")
+	}
+	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "oidc"}); err == nil {
+		t.Fatal("unlinking a provider that is not linked must be refused")
+	}
+	if len(h.notifier.unlinks) != 0 {
+		t.Fatalf("nothing was unlinked: %+v", h.notifier.unlinks)
+	}
+}
+
+// The identity is already gone when the notice is attempted, so a dead mailer
+// must not fail the unlink.
+func TestUnlinkIdentity_NotifierFailureDoesNotFailTheUnlink(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "me@example.test", h.clock.Now()))
+	h.notifier.fail = errBoom
+	if _, err := h.svc.UnlinkIdentity(context.Background(), u.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
+		t.Fatalf("a failing notifier must not fail the unlink: %v", err)
+	}
+	if _, err := h.ids.GetByUserProvider(context.Background(), u.ID, "google"); err == nil {
+		t.Fatal("identity should have been deleted")
+	}
+	if len(h.notifier.unlinks) != 1 {
+		t.Fatalf("notifier should still have been called once: %+v", h.notifier.unlinks)
+	}
+}
+
+// A reclaim runs inside a password reset the owner just completed, which
+// announces itself — sweeping its identities must not mail one notice per
+// provider on top of that.
+func TestReclaimAccount_DoesNotNotify(t *testing.T) {
+	h := newHarness(t, false, true)
+	u := h.users.seed(t, "me@example.test", model.AlgorithmArgon2id)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), u.ID, "google", h.fake.IssuerURL(), "g1", "other@example.test", h.clock.Now()))
+	if _, _, err := h.svc.ReclaimAccount(context.Background(), u.ID, "me@example.test"); err != nil {
+		t.Fatalf("reclaim: %v", err)
+	}
+	if len(h.notifier.unlinks) != 0 {
+		t.Fatalf("a reclaim announces itself through the reset: %+v", h.notifier.unlinks)
 	}
 }
 

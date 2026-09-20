@@ -117,6 +117,9 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 		return nil, invalid
 	}
 	now := s.clock.Now()
+	// Only a new identity row is a new sign-in method; refreshing the email of
+	// one the account already holds grants nothing and must not notify.
+	linked := false
 	// The fence value was captured when the callback resolved the account
 	// (h.Generation); the write is refused if a reclaim bumped it since,
 	// whatever this request's session looked like at the middleware. The row
@@ -153,10 +156,21 @@ func (s *Service) CompleteLink(ctx context.Context, userID vo.Id, req model.Comp
 			} else if n != 1 {
 				return invalid
 			}
+			linked = true
 		}
 		return nil
 	}); err != nil {
 		return nil, err
+	}
+	// Told even though the user asked for this: the notice is how an owner
+	// detects a link they did NOT ask for, and a stolen session is exactly what
+	// the checks above are guarding against. Best-effort and outside the
+	// transaction — the identity is already committed, so a dead mailer must
+	// not fail the link.
+	if linked && s.notifier != nil {
+		if nerr := s.notifier.IdentityLinked(ctx, userID, s.providerName(h.Provider)); nerr != nil {
+			logWarn(ctx, "oauth complete-link: identity-linked notice", nerr, "user_id", userID.String(), "provider", h.Provider)
+		}
 	}
 	reqctx.AddLogAttr(ctx, "provider", h.Provider)
 	return &model.CompleteLinkResult{Provider: h.Provider}, nil

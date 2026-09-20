@@ -996,10 +996,17 @@ data unreadable. Most are also asserted by the test suite.
   that has a password is refused (`account_exists_password`), never merged. An unverified
   email is rejected (`email_unverified`) for every intent, including an already-linked
   identity signing in again and a link started from Settings — there is no path around the
-  trust flag. Every auto-link emails the account owner a best-effort notice
-  (`emails.identity_linked.*`) naming the provider's display name in the account's stored
-  language — gaining a sign-in method unasked must be noticeable; a failure to send never
-  affects the redirect.
+  trust flag. **Every change to the set of sign-in methods emails the account owner** a
+  best-effort notice naming the provider's display name in the account's stored language:
+  `emails.identity_linked.*` when a provider is auto-linked or linked from Settings
+  (`complete-link`, on the INSERT branch only — a relink that just refreshes a stored
+  email grants nothing and stays silent), `emails.identity_unlinked.*` on
+  `unlink-identity`. The notice is about DETECTION, not surprise — mail is the one channel
+  a caller holding a stolen session cannot suppress — which is why the flows the owner
+  started notify too. Each send sits outside the write's transaction and never fails it (or
+  the callback redirect). The reclaim's identity sweep (`ReclaimAccount`) is the one
+  deliberate exception: it runs inside a password reset the owner just completed, which
+  announces itself.
 - **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
   app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
   `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
