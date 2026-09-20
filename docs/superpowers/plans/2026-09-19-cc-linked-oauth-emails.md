@@ -2,9 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** The two *notice* emails (a provider was linked to your account; your email change was requested) are CC'd to every address the user has attached through Google / Apple / the custom OIDC slot, so a notice reaches the user even when their primary mailbox is not the one they read.
+**Goal:** The *notice* emails (a provider was linked to your account; a provider was unlinked; your email change was requested) are CC'd to every address the user has attached through Google / Apple / the custom OIDC slot, so a notice reaches the user even when their primary mailbox is not the one they read.
 
-**Architecture:** `mailer.Message` gains a `Cc []string` field that both transports honour. Only the two notice senders accept a CC list; the three *code* senders (reset, verify, change-email) keep their single-recipient signatures. The addresses come from `users_identities.email`, which `oauth.Identities.ListByUser` already reads. The `identity_linked` notice is sent from `internal/server/glue_oauth_notifier.go`, which is already in the composition root and can call the oauth service directly; the `change_email_notice` is sent from `internal/user`, which may not import `oauth`, so it gets a small consumer-side port wired by a new glue adapter — the same shape as the existing `OAuthReclaimer`.
+> **Amended 2026-09-20.** Written against `0a4f591`; `669e69a` ("email the owner when a provider is linked or unlinked", #267) landed on main first and was merged in. That commit renamed `IdentityLinkedSender` -> `IdentitySender` (`identity_linked.go` -> `identity.go`), routed both identity emails through a shared unexported `send`, gave `Notifier` a second method `IdentityUnlinked`, and collapsed the notifier glue onto a shared `notify` helper. It also added a SIXTH transactional email, `identity_unlinked` — a notice, so the agreed "notices only" rule covers it. The rule is unchanged; it now has three instances instead of two. Every task below is written against the merged state.
+
+**Architecture:** `mailer.Message` gains a `Cc []string` field that both transports honour. Only the notice senders accept a CC list; the three *code* senders (reset, verify, change-email) keep their single-recipient signatures. The addresses come from `users_identities.email`, which `oauth.Identities.ListByUser` already reads. The `identity_linked` notice is sent from `internal/server/glue_oauth_notifier.go`, which is already in the composition root and can call the oauth service directly; the `change_email_notice` is sent from `internal/user`, which may not import `oauth`, so it gets a small consumer-side port wired by a new glue adapter — the same shape as the existing `OAuthReclaimer`.
 
 **Tech Stack:** Go (stdlib + `github.com/resend/resend-go/v3`), sqlc-generated repos, `internal/test/dbtest` + `internal/test/fixture` for integration tests.
 
@@ -14,6 +16,7 @@
 
 - Branch: `feature/cc-linked-oauth-emails` (not a bug fix, so `feature/` per CLAUDE.md "Branch naming").
 - **Code emails are never CC'd.** `SendResetPasswordCode`, `SendVerificationCode` and `SendEmailChangeCode` keep their exact current signatures and behaviour. The change-email code in particular exists solely to prove control of the proposed new mailbox; CC'ing it would defeat that check.
+- **The unlink notice CCs the addresses still attached**, not the one just removed. `UnlinkIdentity` deletes the row inside its transaction and notifies after, so `ListIdentityEmails` no longer returns the removed address — which is the intended reading of "every address attached to the profile". Copying the just-removed address too would need a new parameter on the `Notifier` port; it is deliberately left out of this plan.
 - No database migration: `users_identities.email` already exists (`internal/infra/storage/migrations/{sqlite,pgsql}/20260907000000.sql`).
 - No new i18n catalogue keys; `mailer.EmailKeys` is unchanged. The rendered `Subject`/`Text` of every email must stay byte-identical — the existing `TestResetEmailEnglishUnchanged` / `TestIdentityLinkedEmailEnglishUnchanged` guards must keep passing untouched.
 - No API/wire change, no OpenAPI regeneration, no golden regeneration. `internal/test/apiparity`'s `recordingMailer` records the whole `mailer.Message`, so the new field costs it nothing.
@@ -25,7 +28,7 @@
 
 ## Design (agreed)
 
-The five transactional emails today:
+The six transactional emails today:
 
 | Sender method | Recipient | Nature | CC'd? |
 |---|---|---|---|
@@ -33,7 +36,8 @@ The five transactional emails today:
 | `VerifySender.SendVerificationCode` | account email | secret code | **no** |
 | `ChangeEmailSender.SendEmailChangeCode` | the proposed **new** address | proof of new mailbox | **no** |
 | `ChangeEmailSender.SendEmailChangeNotice` | the **old** address | notice | **yes** |
-| `IdentityLinkedSender.SendIdentityLinked` | account email | notice | **yes** |
+| `IdentitySender.SendIdentityLinked` | account email | notice | **yes** |
+| `IdentitySender.SendIdentityUnlinked` | account email | notice | **yes** |
 
 Accepted consequences, agreed with the user:
 
@@ -42,7 +46,9 @@ Accepted consequences, agreed with the user:
 
 For `change_email_notice`, the proposed **new** address is deliberately *not* CC'd: it is not a linked address, and the notice names the new address, so CC'ing it would tell the new-address holder before they have confirmed anything.
 
-For `identity_linked`, the just-linked provider's own address **is** included. `Service.autoLink` calls the notifier *after* `saveLinkedIdentity` has committed (`internal/oauth/callback.go:257-265`), so `ListByUser` already returns the new row. The provider vouched for that address moments earlier, so it leaks nothing new; dedupe removes it when it equals the primary address.
+For `identity_linked`, the just-linked provider's own address **is** included. `Service.autoLink` calls the notifier *after* `saveLinkedIdentity` has committed (`internal/oauth/callback.go`), so `ListByUser` already returns the new row. The provider vouched for that address moments earlier, so it leaks nothing new; dedupe removes it when it equals the primary address.
+
+For `identity_unlinked`, the mirror image: `UnlinkIdentity` notifies after the delete has committed, so the CC list is the addresses that remain. See the Global Constraints note on why the removed address is not added back.
 
 Resolving the CC list is best-effort. A lookup failure degrades to the primary address alone and is logged — it never blocks or fails the email, matching the existing best-effort notice policy.
 
@@ -58,7 +64,7 @@ Resolving the CC list is best-effort. A lookup failure degrades to the primary a
 **Modified**
 
 - `internal/infra/mailer/mailer.go` — `Message.Cc`; `console.Send` renders it; `resendMailer.Send` forwards it; new unexported `ccAddresses` helper.
-- `internal/infra/mailer/identity_linked.go` — `SendIdentityLinked` takes `cc []string`.
+- `internal/infra/mailer/identity.go` — the shared `send` and both `SendIdentityLinked` / `SendIdentityUnlinked` take `cc []string`.
 - `internal/infra/mailer/change_email.go` — `SendEmailChangeNotice` takes `cc []string`. `SendEmailChangeCode` untouched.
 - `internal/infra/mailer/mailer_test.go` — `ccAddresses` table test, console/Resend CC coverage, updated notice-sender calls.
 - `internal/oauth/identities.go` — new `Service.ListIdentityEmails`.
