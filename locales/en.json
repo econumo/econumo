@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "Comments",
+          "disclosure": "Comments ({count})",
           "comment_label": "Comment",
           "marker_aria": "{count} comment | {count} comments",
           "composer_placeholder": "Add a note for this month",

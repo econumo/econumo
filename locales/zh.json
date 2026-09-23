@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "评论",
+          "disclosure": "评论（{count}）",
           "comment_label": "评论",
           "marker_aria": "{count} 条评论",
           "composer_placeholder": "为本月添加备注",
