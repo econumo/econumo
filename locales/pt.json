@@ -1114,7 +1114,7 @@
           "delete_confirm": "Eliminar este comentário?",
           "edited": "(editado)",
           "counter": "{count}/500",
-          "read_only": "Este orçamento está arquivado — os comentários podem ser lidos mas não alterados.",
+          "read_only": "Os comentários aqui podem ser lidos, mas não alterados.",
           "empty": "Ainda não há comentários.",
           "truncated": "A mostrar os primeiros 2000 comentários."
         }

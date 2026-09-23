@@ -392,6 +392,14 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
 - [ ] A cell with comments shows the corner marker; a cell without shows none;
       the uncategorized row never shows one.
+- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
+      thread opens (expanded in the amount popover, or the standalone dialog
+      on a non-editable/compact cell); plain Enter on the same cell instead
+      opens the amount editor, unaffected.
+- [ ] On desktop, a non-editable cell (guest role, an archived element, or a
+      month outside the budget's range) shows its own "comments" link in
+      place of the amount, so a thread can be started even where there is no
+      amount popover to hang the disclosure off of.
 - [ ] Archive the budget: comment threads are readable, the composer is gone.
 - [ ] Reset the budget (REST route only — there is no UI for reset): planned
       amounts AND comments are cleared.

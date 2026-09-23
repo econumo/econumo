@@ -40,6 +40,7 @@ function renderThread(overrides: Partial<CommentThreadProps> = {}) {
     currentUserId: 'u1',
     canModerate: false,
     readOnly: false,
+    truncated: false,
     ...overrides,
   }
   const view = render(
@@ -163,7 +164,39 @@ it('readOnly hides the composer and every menu, and shows the read-only hint', (
   expect(screen.queryByRole('button', { name: 'Post' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
-  expect(screen.getByText("This budget is archived — comments can be read but not changed.")).toBeInTheDocument()
+  expect(screen.getByText('Comments here can be read but not changed.')).toBeInTheDocument()
+})
+
+it('shows the truncated notice only when the fetch behind comments hit the server cap', () => {
+  renderThread({ comments: [commentByAda], truncated: true })
+  expect(screen.getByText('Showing the first 2000 comments.')).toBeInTheDocument()
+})
+
+it('shows no truncated notice when the fetch was not capped', () => {
+  renderThread({ comments: [commentByAda], truncated: false })
+  expect(screen.queryByText('Showing the first 2000 comments.')).toBeNull()
+})
+
+it('a failed post leaves the typed comment in the composer instead of silently dropping it', async () => {
+  let postCount = 0
+  server.use(
+    http.post('*/api/v1/budget/create-comment', () => {
+      postCount += 1
+      return HttpResponse.json({ success: false, message: 'Invalid data.', code: 400, errors: {} }, { status: 400 })
+    }),
+  )
+  const user = userEvent.setup()
+  renderThread({ comments: [] })
+  const composer = screen.getByPlaceholderText('Add a note for this month')
+
+  await user.type(composer, 'Do not lose this')
+  await user.click(screen.getByRole('button', { name: 'Post' }))
+
+  await waitFor(() => expect(postCount).toBe(1))
+  // the failed create's optimistic row is rolled back, so the only surviving
+  // trace of the note must be the still-populated composer, not an emptied one
+  expect(screen.getByText('No comments yet.')).toBeInTheDocument()
+  expect(composer).toHaveValue('Do not lose this')
 })
 
 it('drops an in-flight edit box and delete confirm when readOnly turns on mid-mount', async () => {

@@ -211,12 +211,14 @@ function CommentsFooter({
   period,
   comments,
   userId,
+  truncated,
 }: {
   budget: BudgetDto
   element: BudgetElementDto
   period: string
   comments: BudgetCommentDto[]
   userId: Id | undefined
+  truncated: boolean
 }) {
   const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
@@ -240,6 +242,7 @@ function CommentsFooter({
             currentUserId={userId}
             canModerate={canConfigureBudget(budget.meta, userId)}
             readOnly={commentsReadOnly(budget.meta, period)}
+            truncated={truncated}
           />
         </div>
       ) : null}
@@ -270,8 +273,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // user's stored default budget id, not `budget.meta.id`: waiting on the budget
   // fetch to resolve first would chain the comments fetch behind it instead of
   // firing both together.
+  // Latent coupling: every comment writer and CommentThread key off `budget.meta.id`
+  // (and budgetCommentsFilter matches the query cache on that same id), not this
+  // option-derived value. The two cannot diverge today only because useBudget() reads
+  // this identical option internally — if it ever gains a non-option budget source,
+  // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
   const [commentsTarget, setCommentsTarget] = useState<BudgetElementDto | null>(null)
 
   const setLimit = useSetLimit()
@@ -808,6 +816,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                                   period={selectedDate}
                                   comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
                                   userId={user?.id}
+                                  truncated={commentsTruncated}
                                 />
                               }
                             />
@@ -825,6 +834,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               currentUserId={user?.id}
                               canModerate={canConfigureBudget(budget.meta, user?.id)}
                               readOnly={commentsReadOnly(budget.meta, selectedDate)}
+                              truncated={commentsTruncated}
                             />
                           )
                         : undefined
@@ -835,16 +845,22 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         return null
                       }
                       return (
+                        // the visible triangle is drawn on an inner span so the button
+                        // carries a real hit area (a touch tap on the 6x6px border-only
+                        // box used to land on the row behind it instead) without taking
+                        // any layout space or changing column width
                         <button
                           type="button"
                           data-testid="comment-marker"
                           aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), cellComments.length, i18n.language)}
-                          className="absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary"
+                          className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
                           onClick={(e) => {
                             e.stopPropagation()
                             setCommentsTarget(element)
                           }}
-                        />
+                        >
+                          <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
+                        </button>
                       )
                     }}
                     renderRowWrapper={
@@ -1044,6 +1060,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               currentUserId={user?.id}
               canModerate={canConfigureBudget(budget.meta, user?.id)}
               readOnly={commentsReadOnly(budget.meta, selectedDate)}
+              truncated={commentsTruncated}
             />
           ) : undefined
         }
@@ -1060,6 +1077,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         currentUserId={user?.id}
         canModerate={canConfigureBudget(budget.meta, user?.id)}
         readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}
+        truncated={commentsTruncated}
       />
 
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />

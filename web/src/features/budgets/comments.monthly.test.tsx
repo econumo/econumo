@@ -150,6 +150,23 @@ it('lets a guest reach the thread from the Available cell on compact viewports',
   expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
+it('shows the truncated notice when get-comment-list reports its cap was hit', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    http.get('*/api/v1/budget/get-comment-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [comment], truncated: true } }),
+    ),
+  )
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-cat-food')
+  await user.click(within(row).getByTestId('comment-marker'))
+  expect(await screen.findByText('Showing the first 2000 comments.')).toBeInTheDocument()
+})
+
 it('shows no marker on a cell without comments', async () => {
   registerMonthlyHandlers()
   mockViewport()

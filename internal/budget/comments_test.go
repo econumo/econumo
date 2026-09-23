@@ -512,6 +512,36 @@ func TestCreateComment_ArchivedAndUncategorized(t *testing.T) {
 	}
 }
 
+// The design spec calls out at length that archiving blocks deletion too — a
+// thread on an archived budget can never be cleaned up, deliberately, so an
+// owner/admin "tidy up" convenience must not be added to DeleteComment without
+// removing this guard on purpose. Create the comment before archiving: the
+// create path is already blocked once archived (asserted above), so seeding
+// it archived would never reach the code this test exists to cover.
+func TestUpdateComment_Archived(t *testing.T) {
+	h := newCommentHarness(t)
+	own := h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "mine")
+
+	h.archive(t)
+	_, err := h.update(h.owner, own.Item.Id, "edited after archive")
+	ae, ok := errs.AsAccessDenied(err)
+	if !ok || ae.Code != errs.CodeBudgetArchived {
+		t.Fatalf("err=%v want budget.archived", err)
+	}
+}
+
+func TestDeleteComment_Archived(t *testing.T) {
+	h := newCommentHarness(t)
+	own := h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "mine")
+
+	h.archive(t)
+	_, err := h.remove(h.owner, own.Item.Id)
+	ae, ok := errs.AsAccessDenied(err)
+	if !ok || ae.Code != errs.CodeBudgetArchived {
+		t.Fatalf("err=%v want budget.archived", err)
+	}
+}
+
 // MINOR 5: the create side owns the "who may post" permission model
 // (canRead — any accepted participant, guest included); a pending invitee and
 // a stranger must be refused just like the read side already asserts.

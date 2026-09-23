@@ -1114,7 +1114,7 @@
           "delete_confirm": "Deze opmerking verwijderen?",
           "edited": "(bewerkt)",
           "counter": "{count}/500",
-          "read_only": "Dit budget is gearchiveerd — opmerkingen kunnen worden gelezen maar niet gewijzigd.",
+          "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
           "empty": "Nog geen opmerkingen.",
           "truncated": "De eerste 2000 opmerkingen worden weergegeven."
         }

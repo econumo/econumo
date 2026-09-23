@@ -21,6 +21,8 @@ export interface CommentThreadProps {
   canModerate: boolean
   /** archived budget or a month outside the budget's range: read the thread, write nothing */
   readOnly: boolean
+  /** the fetch behind `comments` hit the 2000-item server cap and dropped its tail */
+  truncated: boolean
 }
 
 const MAX_COMMENT_RUNES = 500
@@ -39,7 +41,7 @@ function parseServerDateTime(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
 }
 
-export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly }: CommentThreadProps) {
+export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
   const createComment = useCreateComment(budgetId)
   const updateComment = useUpdateComment(budgetId)
@@ -70,8 +72,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
     if (!value || runeLength(value) > MAX_COMMENT_RUNES) {
       return
     }
-    createComment.mutate({ elementId, period, comment: value })
-    setDraft('')
+    createComment.mutate({ elementId, period, comment: value }, { onSuccess: () => setDraft('') })
   }
 
   function startEdit(c: BudgetCommentDto) {
@@ -93,6 +94,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
   return (
     <div className="flex flex-col gap-2.5">
       <p className="text-sm font-medium">{t('budgets.page.plan.comments.title')}</p>
+      {truncated ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.truncated')}</p> : null}
       <ul
         className="flex max-h-64 flex-col gap-3 overflow-y-auto"
         aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), sorted.length, i18n.language)}

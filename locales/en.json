@@ -1114,7 +1114,7 @@
           "delete_confirm": "Delete this comment?",
           "edited": "(edited)",
           "counter": "{count}/500",
-          "read_only": "This budget is archived — comments can be read but not changed.",
+          "read_only": "Comments here can be read but not changed.",
           "empty": "No comments yet.",
           "truncated": "Showing the first 2000 comments."
         }

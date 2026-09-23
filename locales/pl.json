@@ -1114,7 +1114,7 @@
           "delete_confirm": "Usunąć ten komentarz?",
           "edited": "(edytowano)",
           "counter": "{count}/500",
-          "read_only": "Ten budżet jest zarchiwizowany — komentarze można odczytywać, ale nie można ich zmieniać.",
+          "read_only": "Komentarze tutaj można odczytywać, ale nie można ich zmieniać.",
           "empty": "Brak komentarzy.",
           "truncated": "Wyświetlono pierwsze 2000 komentarzy."
         }

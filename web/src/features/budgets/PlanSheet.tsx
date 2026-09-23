@@ -228,6 +228,8 @@ interface GridCtx {
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
+  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped its tail */
+  commentsTruncated: boolean
   /** `fromGrid` marks a keyboard-originated open (Shift+Enter): only the branch that
    *  actually sets one of the four `editorOpen` states (the standalone dialog) should
    *  arm `editorFromGrid` — the popover branch below must not, or the flag is left
@@ -515,6 +517,7 @@ function CommentsFooter({ ctx, el, month, comments }: { ctx: GridCtx; el: PlanEl
             currentUserId={ctx.userId}
             canModerate={canConfigureBudget(ctx.meta, ctx.userId)}
             readOnly={commentsReadOnly(ctx.meta, month)}
+            truncated={ctx.commentsTruncated}
           />
         </div>
       ) : null}
@@ -666,16 +669,22 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 )}
               </span>
               {commentCount > 0 && !isUncategorized ? (
+                // the visible triangle is drawn on an inner span so the button itself
+                // can carry a real hit area (a touch tap on the 6x6px border-only box
+                // used to land on the cell behind it and start editing the amount instead)
+                // without the marker taking any layout space or changing column width
                 <button
                   type="button"
                   data-testid="comment-marker"
                   aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), commentCount, i18n.language)}
-                  className="absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary"
+                  className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
                   onClick={(e) => {
                     e.stopPropagation()
                     ctx.openComments({ el, month: m, monthIndex: idx })
                   }}
-                />
+                >
+                  <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
+                </button>
               ) : null}
               {showFillHandle ? (
                 <span
@@ -1274,7 +1283,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const setLimit = usePlanSetLimit(planKey)
   const fillCells = useFillPlannedCells(planKey)
   // the plan's OWN window, so both caches cover exactly the same months
-  const { byCell: commentsByCell } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(budget.meta.id, fetchFrom, planFetchWindow(firstMonth, visible).months)
 
   // The optimistic drop order is released only when genuinely fresh plan data arrives:
   // a refetch yields a new object, so keying on identity hands over in one frame with
@@ -1505,6 +1514,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       commit,
       openDialog: setPlanLimitTarget,
       commentsByCell,
+      commentsTruncated,
       openComments,
       commentsAutoExpandKey,
       consumeCommentsAutoExpand,
@@ -1541,6 +1551,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     monthLabel,
     commit,
     commentsByCell,
+    commentsTruncated,
     openComments,
     commentsAutoExpandKey,
     consumeCommentsAutoExpand,
@@ -2295,6 +2306,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               currentUserId={userId}
               canModerate={canConfigureBudget(budget.meta, userId)}
               readOnly={commentsReadOnly(budget.meta, planLimitTarget.month)}
+              truncated={commentsTruncated}
             />
           ) : undefined
         }
@@ -2311,6 +2323,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         currentUserId={userId}
         canModerate={canConfigureBudget(budget.meta, userId)}
         readOnly={commentsDialogTarget ? commentsReadOnly(budget.meta, commentsDialogTarget.month) : true}
+        truncated={commentsTruncated}
       />
 
       <MoveToFolderDialog

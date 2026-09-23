@@ -1114,7 +1114,7 @@
           "delete_confirm": "Supprimer ce commentaire ?",
           "edited": "(modifié)",
           "counter": "{count}/500",
-          "read_only": "Ce budget est archivé — les commentaires peuvent être lus mais pas modifiés.",
+          "read_only": "Les commentaires ici peuvent être lus, mais pas modifiés.",
           "empty": "Aucun commentaire pour le moment.",
           "truncated": "Affichage des 2000 premiers commentaires."
         }

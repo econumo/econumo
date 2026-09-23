@@ -96,8 +96,17 @@ paging design.
    validation error.
 5. In the transaction: shared `OperationGuard` claim on the client `id` (the
    category/tag create pattern) — a retry of an already-handled id returns the
-   existing comment instead of inserting a duplicate; `getElementSelfHeal` for the
-   element (rejects `uncategorized`/non-UUID like `set-limit`); insert; mark handled.
+   existing comment only when the claimed row belongs to the SAME budget and the
+   SAME author as the retry; any other claimed id (including one from a different
+   budget or a different author) answers `errors.common.operation_locked` instead of
+   the row. That narrowing is deliberate: the operation-guard table is shared and
+   keyed on the id alone, so a bare claim hit only proves some create landed under
+   that id, not that it was this caller's, in this budget — the broader "always
+   return the row" version let anyone holding a comment id (e.g. one seen in a
+   `get-comment-list` response before their access was revoked) read that comment
+   back by "retrying" a create with it, in a budget they may no longer belong to.
+   `getElementSelfHeal` for the element (rejects `uncategorized`/non-UUID like
+   `set-limit`); insert; mark handled.
 6. Return the `CommentResult`.
 
 **Update** — `UpdateComment`: load comment → element → budget; caller must have
@@ -188,8 +197,9 @@ Swag annotations on each; `make swagger` regenerates committed docs.
 ### MCP (`internal/budget/mcp`)
 
 - `list_budget_comments{budget_id, month "YYYY-MM", months?}`
-- `create_budget_comment{budget_id, element_id, month, comment, id?}` — server mints
-  a UUIDv7 when `id` is omitted.
+- `create_budget_comment{budget_id, element_id, month, comment}` — takes no `id`;
+  the server always mints a UUIDv7 server-side, same as every other MCP create in
+  this file (there is no retry-by-client-id path over MCP).
 - `update_budget_comment{comment_id, comment}`
 - `delete_budget_comment{comment_id}`
 
