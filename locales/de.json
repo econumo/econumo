@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "Kommentare",
+          "comment_label": "Kommentar",
           "marker_aria": "{count} Kommentar | {count} Kommentare",
           "composer_placeholder": "Notiz für diesen Monat hinzufügen",
           "post": "Veröffentlichen",

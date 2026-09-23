@@ -42,12 +42,20 @@ function renderThread(overrides: Partial<CommentThreadProps> = {}) {
     readOnly: false,
     ...overrides,
   }
-  render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <CommentThread {...props} />
     </QueryClientProvider>,
   )
-  return props
+  const rerenderWith = (next: Partial<CommentThreadProps>) => {
+    const merged = { ...props, ...next }
+    view.rerender(
+      <QueryClientProvider client={queryClient}>
+        <CommentThread {...merged} />
+      </QueryClientProvider>,
+    )
+  }
+  return { props, rerender: rerenderWith }
 }
 
 beforeEach(() => {
@@ -134,9 +142,17 @@ it('the counter shows n/500 and the post button disables past 500 characters', a
   expect(screen.getByText('5/500')).toBeInTheDocument()
   expect(post).not.toBeDisabled()
 
-  const tooLong = 'x'.repeat(501)
+  // '😀' is 2 UTF-16 code units but 1 rune: .length and [...value].length
+  // disagree here, so this pair is what actually pins rune counting — a
+  // regression to .length would still pass with an ASCII fixture.
+  const emoji = '😀'
   await user.clear(composer)
-  await user.paste(tooLong)
+  await user.paste(emoji.repeat(500))
+  expect(screen.getByText('500/500')).toBeInTheDocument()
+  expect(post).not.toBeDisabled()
+
+  await user.clear(composer)
+  await user.paste(emoji.repeat(501))
   expect(screen.getByText('501/500')).toBeInTheDocument()
   expect(post).toBeDisabled()
 })
@@ -148,4 +164,22 @@ it('readOnly hides the composer and every menu, and shows the read-only hint', (
   expect(screen.queryByRole('button', { name: 'Edit' })).toBeNull()
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
   expect(screen.getByText("This budget is archived — comments can be read but not changed.")).toBeInTheDocument()
+})
+
+it('drops an in-flight edit box and delete confirm when readOnly turns on mid-mount', async () => {
+  const user = userEvent.setup()
+  const { rerender } = renderThread({ comments: [commentByAda, commentByBob], currentUserId: 'u1', canModerate: true, readOnly: false })
+  const items = screen.getAllByRole('listitem')
+
+  await user.click(within(items[0]).getByRole('button', { name: 'Edit' }))
+  expect(within(items[0]).getByRole('textbox', { name: 'Comment' })).toBeInTheDocument()
+
+  await user.click(within(items[1]).getByRole('button', { name: 'Delete' }))
+  expect(screen.getByText('Delete this comment?')).toBeInTheDocument()
+
+  rerender({ readOnly: true })
+
+  expect(within(items[0]).queryByRole('textbox', { name: 'Comment' })).toBeNull()
+  expect(within(items[0]).queryByRole('button', { name: 'Save' })).toBeNull()
+  expect(screen.queryByText('Delete this comment?')).toBeNull()
 })

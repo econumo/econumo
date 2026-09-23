@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "Opmerkingen",
+          "comment_label": "Opmerking",
           "marker_aria": "{count} opmerking | {count} opmerkingen",
           "composer_placeholder": "Voeg een notitie toe voor deze maand",
           "post": "Plaatsen",

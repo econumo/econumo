@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "Комментарии",
+          "comment_label": "Комментарий",
           "marker_aria": "{count} комментарий | {count} комментария | {count} комментариев",
           "composer_placeholder": "Добавьте заметку к этому месяцу",
           "post": "Опубликовать",

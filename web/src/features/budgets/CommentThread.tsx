@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { BudgetCommentDto } from '@/api/dto/budget'
@@ -49,7 +50,20 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
   const [editDraft, setEditDraft] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Id | null>(null)
 
-  const sorted = [...comments].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+  // A budget can turn archived, or a fetched range can shrink, while this
+  // popover/dialog stays mounted with an edit box or a delete confirm already
+  // open from before the transition — drop both so a stale write affordance
+  // never survives becoming read-only.
+  useEffect(() => {
+    if (readOnly) {
+      setEditingId(null)
+      setDeleteTarget(null)
+    }
+  }, [readOnly])
+
+  // createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
+  // ordinal comparison, not locale-aware collation, is what sorts it correctly.
+  const sorted = [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
 
   function post() {
     const value = draft.trim()
@@ -88,7 +102,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
         ) : (
           sorted.map((c) => {
             const isAuthor = currentUserId !== undefined && c.author.id === currentUserId
-            const isEditing = editingId === c.id
+            const isEditing = !readOnly && editingId === c.id
             return (
               <li key={c.id} className="flex items-start gap-2">
                 <UserAvatar avatar={c.author.avatar} size="xs" />
@@ -102,7 +116,15 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                   </div>
                   {isEditing ? (
                     <div className="flex flex-col gap-1.5">
-                      <Textarea value={editDraft} onChange={(e) => setEditDraft(e.target.value)} autoFocus />
+                      <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor={`ct-edit-${c.id}`}>
+                        <Textarea
+                          id={`ct-edit-${c.id}`}
+                          className={`${cardFieldControlClass} resize-none`}
+                          value={editDraft}
+                          onChange={(e) => setEditDraft(e.target.value)}
+                          autoFocus
+                        />
+                      </CardField>
                       <div className="flex items-center justify-between">
                         <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: editRunes })}</span>
                         <div className="flex gap-2">
@@ -151,17 +173,21 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
         <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
       ) : (
         <div className="flex flex-col gap-1.5">
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            placeholder={t('budgets.page.plan.comments.composer_placeholder')}
-            onKeyDown={(e) => {
-              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                e.preventDefault()
-                post()
-              }
-            }}
-          />
+          <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
+            <Textarea
+              id="ct-composer"
+              className={`${cardFieldControlClass} resize-none`}
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={t('budgets.page.plan.comments.composer_placeholder')}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                  e.preventDefault()
+                  post()
+                }
+              }}
+            />
+          </CardField>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
             <Button type="button" size="sm" disabled={!draft.trim() || draftRunes > MAX_COMMENT_RUNES} onClick={post}>
@@ -171,7 +197,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
         </div>
       )}
       <ConfirmDialog
-        open={deleteTarget !== null}
+        open={!readOnly && deleteTarget !== null}
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => {
           if (deleteTarget) {

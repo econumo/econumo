@@ -1103,6 +1103,7 @@
         },
         "comments": {
           "title": "Коментарі",
+          "comment_label": "Коментар",
           "marker_aria": "{count} коментар | {count} коментарі | {count} коментарів",
           "composer_placeholder": "Додайте примітку до цього місяця",
           "post": "Опублікувати",
