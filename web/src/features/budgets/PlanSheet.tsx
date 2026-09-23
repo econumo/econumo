@@ -226,14 +226,18 @@ interface GridCtx {
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
-  openComments: (target: PlanLimitTarget) => void
-  /** one-shot signal read by a LimitEditor footer at mount: the cell key
-   *  (commentCellKey) whose thread should start expanded, set right before the
-   *  popover is opened programmatically (marker click, Shift+Enter) and cleared
-   *  by the footer once consumed. A plain ref, not state: it must be visible to
-   *  the footer the instant Radix mounts it in the SAME commit that flips the
-   *  popover open, with no PlanSheet re-render of its own to carry it. */
-  commentsAutoExpandRef: { current: string | null }
+  /** `fromGrid` marks a keyboard-originated open (Shift+Enter): only the branch that
+   *  actually sets one of the four `editorOpen` states (the standalone dialog) should
+   *  arm `editorFromGrid` — the popover branch below must not, or the flag is left
+   *  stuck true (that branch never flips `editorOpen`) and steals focus back from
+   *  whatever unrelated, mouse-opened dialog closes next. */
+  openComments: (target: PlanLimitTarget, fromGrid?: boolean) => void
+  /** the cell key (commentCellKey) whose LimitEditor footer should be/become expanded —
+   *  reactive state, not a ref, so a footer that is ALREADY mounted (its popover already
+   *  open) picks up the change and expands in place, rather than needing to be
+   *  re-clicked (which would toggle the popover shut and drop an in-progress edit). */
+  commentsAutoExpandKey: string | null
+  consumeCommentsAutoExpand: (key: string) => void
   canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
@@ -473,21 +477,22 @@ const ChildRow = memo(function ChildRow({
 
 // The amount popover's own comments entry point: a disclosure so the popover
 // stays compact for the common case (adjusting the limit, not reading notes).
-// `expanded`'s lazy initializer is the one-shot consumer of `commentsAutoExpandRef`
-// (see GridCtx): it reads true exactly once, at this footer's first mount inside
-// the just-opened popover, then clears the ref so a later, ordinary reopen of the
-// same cell starts collapsed again.
+// Syncing off `ctx.commentsAutoExpandKey` via an effect (not a mount-only lazy
+// init) matters when this footer is ALREADY mounted (its popover already open)
+// and the marker/Shift+Enter fires again for the SAME cell: openComments must not
+// re-click an open trigger (that would toggle the popover shut and drop an
+// in-progress edit), so it only sets the key — this effect is what turns that
+// into a visible, expanded thread without any DOM click.
 function CommentsFooter({ ctx, el, month, comments }: { ctx: GridCtx; el: PlanElementDto; month: string; comments: BudgetCommentDto[] }) {
   const { t } = useTranslation()
   const key = commentCellKey(el.id, month)
-  const [expanded, setExpanded] = useState(() => ctx.commentsAutoExpandRef.current === key)
+  const [expanded, setExpanded] = useState(false)
   useEffect(() => {
-    if (ctx.commentsAutoExpandRef.current === key) {
-      ctx.commentsAutoExpandRef.current = null
+    if (ctx.commentsAutoExpandKey === key) {
+      setExpanded(true)
+      ctx.consumeCommentsAutoExpand(key)
     }
-    // one-shot consume on mount only
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [ctx, key])
   return (
     <div className="mt-2 border-t pt-2">
       <button
@@ -1134,7 +1139,12 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // (a guest, or a role without limit rights) that has no LimitEditor popover to
   // hang the inline disclosure off of
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<PlanLimitTarget | null>(null)
-  const commentsAutoExpandRef = useRef<string | null>(null)
+  const [commentsAutoExpandKey, setCommentsAutoExpandKey] = useState<string | null>(null)
+  // guards against a stale `key` clearing a DIFFERENT cell's key that armed after it
+  const consumeCommentsAutoExpand = useCallback(
+    (key: string) => setCommentsAutoExpandKey((cur) => (cur === key ? null : cur)),
+    [],
+  )
   // A modal opened from the keyboard (Enter on the name cell) has no trigger for
   // Radix to hand focus back to, so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
@@ -1288,27 +1298,44 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // Shift+Enter reaches this through the keyboard, bypassing the marker's own
   // visual gate (isUncategorized in ElementRow).
   //
-  // Desktop + editable: expand the amount popover's own footer in place (there is
-  // a LimitEditor to hang it on) — programmatically open it the same way handleEnter
-  // does, after arming the one-shot auto-expand ref the footer consumes at mount.
-  // Everything else (compact, or no edit rights on this cell/month) has no popover
-  // to embed into, so it gets the standalone dialog instead.
+  // Desktop + editable: expand the amount popover's own footer in place (there is a
+  // LimitEditor to hang it on). `fromGrid` is set ONLY for the dialog branch below —
+  // that's the one that actually changes an `editorOpen` state, so it's the one whose
+  // close must reclaim grid focus; this branch must never set it (see the comment on
+  // GridCtx.openComments for why that would leave the flag stuck true).
+  // Everything else (compact, or no edit rights on this cell/month) has no popover to
+  // embed into, so it gets the standalone dialog instead.
   const openComments = useCallback(
-    (target: PlanLimitTarget) => {
+    (target: PlanLimitTarget, fromGrid = false) => {
       if (target.el.id === UNCATEGORIZED_ID) {
         return
       }
       if (isCompact || !isEditableCell(target.el, target.month, target.monthIndex, budget.meta, userId)) {
+        if (fromGrid) {
+          editorFromGrid.current = true
+        }
         setCommentsDialogTarget(target)
         return
       }
-      commentsAutoExpandRef.current = commentCellKey(target.el.id, target.month)
       const col = visibleMonths.indexOf(target.month)
       const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
         `[data-testid="plan-cell-${target.el.id}:${col}"] [aria-label^="limit "]`,
       )
-      trigger?.focus()
-      trigger?.click()
+      if (!trigger) {
+        return
+      }
+      // Arm the auto-expand key only once we know we can actually reach the cell — an
+      // unresolved trigger must leave no lingering signal for some later, unrelated
+      // open of the same cell to pick up.
+      setCommentsAutoExpandKey(commentCellKey(target.el.id, target.month))
+      trigger.focus()
+      // Radix marks its own open state via data-state; re-clicking an ALREADY-open
+      // trigger would toggle the popover shut and drop whatever amount the user was
+      // mid-typing — the CommentsFooter effect above (keyed on commentsAutoExpandKey)
+      // is what expands an already-mounted footer, so nothing more to do here.
+      if (trigger.getAttribute('data-state') !== 'open') {
+        trigger.click()
+      }
     },
     [isCompact, budget.meta, userId, visibleMonths],
   )
@@ -1459,7 +1486,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       openDialog: setPlanLimitTarget,
       commentsByCell,
       openComments,
-      commentsAutoExpandRef,
+      commentsAutoExpandKey,
+      consumeCommentsAutoExpand,
       canEdit,
       selection,
       select,
@@ -1494,6 +1522,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     commit,
     commentsByCell,
     openComments,
+    commentsAutoExpandKey,
+    consumeCommentsAutoExpand,
     canEdit,
     selection,
     select,
@@ -1706,12 +1736,14 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return { entry, col: selection.col, month, idx: monthIndex(month) }
   }
 
-  // Shift+Enter's keyboard route into the same thread the marker opens. Like
-  // openElementEditor, a keyboard-opened surface has no trigger of its own for
-  // Radix to hand focus back to, so the grid reclaims it once the thread closes.
+  // Shift+Enter's keyboard route into the same thread the marker opens. `fromGrid`
+  // (not a blanket editorFromGrid.current = true here) lets openComments decide: only
+  // its standalone-dialog branch has no trigger of its own for Radix to hand focus
+  // back to, so only that branch's close should reclaim grid focus — same as
+  // openElementEditor, and same reasoning as handleEnter's desktop popover branch,
+  // which never sets this ref either (Radix already returns focus to the trigger).
   function openCommentsFromGrid(cell: NonNullable<ReturnType<typeof selectedMonthCell>>) {
-    editorFromGrid.current = true
-    openComments({ el: cell.entry.el, month: cell.month, monthIndex: cell.idx })
+    openComments({ el: cell.entry.el, month: cell.month, monthIndex: cell.idx }, true)
   }
 
   // Cmd/Ctrl+C on the focused grid: the browser fires `copy` on the grid even with no

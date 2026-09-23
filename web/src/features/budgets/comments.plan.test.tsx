@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -155,4 +155,49 @@ it('opens the thread in a dialog on compact viewports', async () => {
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(within(cell).getByTestId('comment-marker'))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+})
+
+it('clicking the marker while the popover is already open expands the thread in place, without closing the popover or losing the draft amount', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByLabelText(/^limit /))
+  const input = await screen.findByLabelText('Budget')
+  await user.clear(input)
+  await user.type(input, '999')
+
+  await user.click(within(cell).getByTestId('comment-marker'))
+
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.getByLabelText('Budget')).toHaveValue('999')
+})
+
+it('does not steal focus from a later mouse-opened dialog after a keyboard-opened thread closes', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(cell)
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{Shift>}{Enter}{/Shift}')
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  // a later, unrelated mouse-opened dialog (the row menu's own Edit) must close
+  // without the grid stealing focus back — the bug this guards against left
+  // editorFromGrid stuck true from the Shift+Enter above
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await user.click(await screen.findByRole('button', { name: 'element actions Living' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Edit envelope' })
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit envelope' })).not.toBeInTheDocument())
+
+  expect(screen.getByTestId('plan-sheet')).not.toHaveFocus()
 })
