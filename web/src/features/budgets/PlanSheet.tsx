@@ -643,6 +643,24 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   >
                     {moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false })}
                   </button>
+                ) : !isUncategorized ? (
+                  // non-editable (guest role, an archived element, a month outside the
+                  // budget's range) still needs an entry point to the thread — otherwise
+                  // a guest can never START one, only reopen a cell someone else already
+                  // commented on (the marker below). `openComments` already routes a
+                  // non-editable target straight to the standalone dialog on every
+                  // viewport, so this is the one path for both desktop and compact.
+                  <button
+                    type="button"
+                    className="w-full text-right underline-offset-2 hover:underline"
+                    aria-label={`comments ${displayName}`}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      ctx.openComments({ el, month: m, monthIndex: idx })
+                    }}
+                  >
+                    {plannedText}
+                  </button>
                 ) : (
                   plannedText
                 )}

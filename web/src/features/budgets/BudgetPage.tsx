@@ -814,6 +814,21 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                           )
                         : undefined
                     }
+                    renderBudgetCellComments={
+                      !limitsEditable && !editMode && !isCompact
+                        ? (element) => (
+                            <CommentThread
+                              budgetId={budget.meta.id}
+                              elementId={element.id}
+                              period={selectedDate}
+                              comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
+                              currentUserId={user?.id}
+                              canModerate={canConfigureBudget(budget.meta, user?.id)}
+                              readOnly={commentsReadOnly(budget.meta, selectedDate)}
+                            />
+                          )
+                        : undefined
+                    }
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
                       if (cellComments.length === 0) {
@@ -839,9 +854,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               {row}
                             </DraggableElement>
                           )
-                        : isCompact && limitsEditable
+                        : isCompact
+                          // a non-editable cell (guest role, readonly access, archived
+                          // budget, out-of-range month) still gets the long-press — it
+                          // opens the comments dialog instead of the limit editor, so a
+                          // guest on a real phone has a way to reach the thread at all
                           ? (element, _bucket, row) => (
-                              <ElementLongPress key={element.id} element={element} onLongPress={setLimitTarget}>
+                              <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : setCommentsTarget}>
                                 {row}
                               </ElementLongPress>
                             )
@@ -866,6 +885,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     }
                     onSpentClick={editMode ? undefined : setTransactionsTarget}
                     onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
+                    onAvailableCommentsClick={isCompact && !limitsEditable && !editMode ? setCommentsTarget : undefined}
                   />
                   </SortableContext>
                 </DndContext>
