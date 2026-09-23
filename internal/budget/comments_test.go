@@ -18,6 +18,7 @@ import (
 	payeerepo "github.com/econumo/econumo/internal/payee/repo"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -35,9 +36,11 @@ import (
 type commentHarness struct {
 	ctx      context.Context
 	svc      *appbudget.Service
-	comments appbudget.CommentStore
+	f        *fixture.Builder
 	budgetID vo.Id
-	elements map[string]vo.Id
+	// catFood is the "cat-food" element's EXTERNAL id (what the wire and
+	// CreateComment's ElementId call it), not the internal budgets_elements.id.
+	catFood string
 
 	owner, guest, member, pending, stranger vo.Id
 }
@@ -65,9 +68,10 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	started := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
 	budgetID := vo.MustParseId(f.Budget(fixture.Budget{UserID: owner.String(), StartedAt: &started}))
 
-	catFoodID := vo.MustParseId(f.BudgetElement(fixture.BudgetElement{
-		BudgetID: budgetID.String(), ExternalID: vo.NewId().String(), Type: int(model.ElementCategory),
-	}))
+	catFood := vo.NewId().String()
+	f.BudgetElement(fixture.BudgetElement{
+		BudgetID: budgetID.String(), ExternalID: catFood, Type: int(model.ElementCategory),
+	})
 
 	f.BudgetAccess(budgetID.String(), guest.String(), int(model.BudgetRoleGuest), true)
 	f.BudgetAccess(budgetID.String(), member.String(), int(model.BudgetRoleUser), true)
@@ -97,31 +101,95 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	)
 
 	return &commentHarness{
-		ctx: context.Background(), svc: svc, comments: budgetRepo, budgetID: budgetID,
-		elements: map[string]vo.Id{"cat-food": catFoodID},
-		owner:    owner, guest: guest, member: member, pending: pending, stranger: stranger,
+		ctx: context.Background(), svc: svc, f: f, budgetID: budgetID, catFood: catFood,
+		owner: owner, guest: guest, member: member, pending: pending, stranger: stranger,
 	}
 }
 
-// postComment seeds a comment directly through the CommentStore (not through
-// CreateComment, which does not exist until Task 4).
+// newID mints a fresh id, used both as a comment's own id and, for a slug
+// that names no seeded element (e.g. "uncategorized"), as a stand-in external
+// element id that resolves to nothing.
+func (h *commentHarness) newID() vo.Id { return vo.NewId() }
+
+// elementExternalID resolves a test slug to the EXTERNAL element id
+// CreateCommentRequest.ElementId expects. Only "cat-food" is seeded; any other
+// slug yields a fresh id that matches no budget element.
+func (h *commentHarness) elementExternalID(slug string) string {
+	if slug == "cat-food" {
+		return h.catFood
+	}
+	return vo.NewId().String()
+}
+
+// create posts a comment through the CreateComment use case.
+func (h *commentHarness) create(userID, id vo.Id, slug, period, text string) (*model.CreateCommentResult, error) {
+	return h.svc.CreateComment(h.ctx, userID, model.CreateCommentRequest{
+		Id: id.String(), BudgetId: h.budgetID.String(), ElementId: h.elementExternalID(slug), Period: period, Comment: text,
+	})
+}
+
+// mustCreate posts a comment (with a fresh id) and fails the test on error.
+func (h *commentHarness) mustCreate(t *testing.T, userID vo.Id, slug, period, text string) *model.CreateCommentResult {
+	t.Helper()
+	res, err := h.create(userID, h.newID(), slug, period, text)
+	if err != nil {
+		t.Fatalf("CreateComment: %v", err)
+	}
+	return res
+}
+
+// postComment seeds a comment through CreateComment (the use case Task 4
+// adds); Task 3 seeded through CommentStore.InsertComment directly only
+// because CreateComment did not exist yet.
 func (h *commentHarness) postComment(t *testing.T, userID vo.Id, slug, period, text string) {
 	t.Helper()
-	elementID, ok := h.elements[slug]
-	if !ok {
-		t.Fatalf("unknown element slug %q", slug)
+	if _, err := h.create(userID, h.newID(), slug, period, text); err != nil {
+		t.Fatalf("CreateComment: %v", err)
 	}
-	p, err := time.Parse(datetime.DateLayout, period)
+}
+
+// update edits a comment through the UpdateComment use case.
+func (h *commentHarness) update(userID vo.Id, id, text string) (*model.UpdateCommentResult, error) {
+	return h.svc.UpdateComment(h.ctx, userID, model.UpdateCommentRequest{Id: id, Comment: text})
+}
+
+// remove deletes a comment through the DeleteComment use case.
+func (h *commentHarness) remove(userID vo.Id, id string) (*model.DeleteCommentResult, error) {
+	return h.svc.DeleteComment(h.ctx, userID, model.DeleteCommentRequest{Id: id})
+}
+
+// setEndMonth sets the budget's end month as its owner, through UpdateBudget
+// (there is no dedicated set-end-month use case).
+func (h *commentHarness) setEndMonth(t *testing.T, period string) {
+	t.Helper()
+	if _, err := h.svc.UpdateBudget(h.ctx, h.owner, model.UpdateBudgetRequest{
+		Id: h.budgetID.String(), Name: "Budget", CurrencyId: fixture.USD, EndDate: &period,
+	}); err != nil {
+		t.Fatalf("UpdateBudget (setEndMonth): %v", err)
+	}
+}
+
+// commentInAnotherBudget seeds a second budget - a different owner, a
+// different element - with one comment, and returns the comment's id: a
+// target this harness's own users have no access to at all.
+func (h *commentHarness) commentInAnotherBudget(t *testing.T) string {
+	t.Helper()
+	foreignOwner := vo.MustParseId(h.f.User(fixture.User{Name: "Foreign Owner", Email: "foreign-owner@comments.test"}))
+	foreignStart := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	foreignBudgetID := vo.MustParseId(h.f.Budget(fixture.Budget{UserID: foreignOwner.String(), StartedAt: &foreignStart}))
+	externalID := vo.NewId().String()
+	h.f.BudgetElement(fixture.BudgetElement{
+		BudgetID: foreignBudgetID.String(), ExternalID: externalID, Type: int(model.ElementCategory),
+	})
+
+	res, err := h.svc.CreateComment(h.ctx, foreignOwner, model.CreateCommentRequest{
+		Id: h.newID().String(), BudgetId: foreignBudgetID.String(), ElementId: externalID,
+		Period: "2026-05-01", Comment: "foreign budget comment",
+	})
 	if err != nil {
-		t.Fatalf("parse period %q: %v", period, err)
+		t.Fatalf("CreateComment (foreign budget): %v", err)
 	}
-	c, err := model.NewBudgetElementComment(h.comments.NextIdentity(), elementID, userID, text, p, p)
-	if err != nil {
-		t.Fatalf("NewBudgetElementComment: %v", err)
-	}
-	if err := h.comments.InsertComment(h.ctx, c); err != nil {
-		t.Fatalf("InsertComment: %v", err)
-	}
+	return res.Item.Id
 }
 
 // list calls GetCommentList and fails the test on error.
@@ -249,5 +317,150 @@ func TestGetCommentList_ArchivedBudgetStillReadable(t *testing.T) {
 	res := h.list(t, h.owner, "2026-05-01", "1")
 	if len(res.Items) != 1 {
 		t.Fatalf("items=%d want the thread on an archived budget", len(res.Items))
+	}
+}
+
+// Carried finding from Task 3's review: nothing exercised the read defaults.
+func TestGetCommentList_DefaultsMonthsAndFrom(t *testing.T) {
+	h := newCommentHarness(t)
+	currentMonth := model.FirstOfMonth(time.Now().UTC()).Format(datetime.DateLayout)
+	h.postComment(t, h.owner, "cat-food", currentMonth, "this month, no window params")
+
+	res := h.list(t, h.owner, "", "")
+	if len(res.Items) != 1 || res.Items[0].Period != currentMonth {
+		t.Fatalf("items=%+v want the caller's current month via an empty from/months", res.Items)
+	}
+}
+
+func TestGetCommentList_EmptyMonthsDefaultsToOne(t *testing.T) {
+	h := newCommentHarness(t)
+	h.postComment(t, h.owner, "cat-food", "2026-05-01", "May note")
+	h.postComment(t, h.owner, "cat-food", "2026-06-01", "June note (next month, excluded)")
+
+	res := h.list(t, h.owner, "2026-05-01", "")
+	if len(res.Items) != 1 || res.Items[0].Comment != "May note" {
+		t.Fatalf("items=%+v want only May via an empty months (defaults to 1)", res.Items)
+	}
+}
+
+func TestCreateComment_GuestMayPost(t *testing.T) {
+	h := newCommentHarness(t)
+
+	res, err := h.create(h.guest, h.newID(), "cat-food", "2026-05-01", "  Trip to Lisbon  ")
+	if err != nil {
+		t.Fatalf("guest post: %v", err)
+	}
+	if res.Item.Comment != "Trip to Lisbon" {
+		t.Fatalf("comment=%q want trimmed", res.Item.Comment)
+	}
+	if res.Item.Author.Id != h.guest.String() {
+		t.Fatalf("author=%q want the guest", res.Item.Author.Id)
+	}
+	if res.Item.ElementId != h.catFood {
+		t.Fatalf("elementId=%q want the external id", res.Item.ElementId)
+	}
+}
+
+// Review Focus 4: the same client id posted twice leaves one row.
+func TestCreateComment_IdempotentOnClientId(t *testing.T) {
+	h := newCommentHarness(t)
+	id := h.newID()
+
+	first, err := h.create(h.owner, id, "cat-food", "2026-05-01", "double tap")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := h.create(h.owner, id, "cat-food", "2026-05-01", "double tap")
+	if err != nil {
+		t.Fatalf("retry rejected: %v", err)
+	}
+	if first.Item.Id != second.Item.Id {
+		t.Fatalf("ids differ: %q vs %q", first.Item.Id, second.Item.Id)
+	}
+	list := h.list(t, h.owner, "2026-05-01", "1")
+	if len(list.Items) != 1 {
+		t.Fatalf("items=%d want exactly one row", len(list.Items))
+	}
+}
+
+func TestCreateComment_PeriodBounds(t *testing.T) {
+	h := newCommentHarness(t) // started 2026-04-01
+
+	if _, err := h.create(h.owner, h.newID(), "cat-food", "2026-03-01", "too early"); err == nil {
+		t.Fatal("a period before the budget start was accepted")
+	}
+	h.setEndMonth(t, "2026-07-01")
+	if _, err := h.create(h.owner, h.newID(), "cat-food", "2026-08-01", "too late"); err == nil {
+		t.Fatal("a period past the end month was accepted")
+	}
+}
+
+func TestCreateComment_ArchivedAndUncategorized(t *testing.T) {
+	h := newCommentHarness(t)
+
+	if _, err := h.create(h.owner, h.newID(), "uncategorized", "2026-05-01", "nope"); err == nil {
+		t.Fatal("uncategorized accepted a comment")
+	}
+	h.archive(t)
+	_, err := h.create(h.owner, h.newID(), "cat-food", "2026-05-01", "nope")
+	ae, ok := errs.AsAccessDenied(err)
+	if !ok || ae.Code != errs.CodeBudgetArchived {
+		t.Fatalf("err=%v want budget.archived", err)
+	}
+}
+
+func TestUpdateComment_AuthorOnly(t *testing.T) {
+	h := newCommentHarness(t)
+	own := h.mustCreate(t, h.member, "cat-food", "2026-05-01", "mine")
+
+	if _, err := h.update(h.member, own.Item.Id, "mine, edited"); err != nil {
+		t.Fatalf("author edit rejected: %v", err)
+	}
+	_, err := h.update(h.owner, own.Item.Id, "not yours")
+	ae, ok := errs.AsAccessDenied(err)
+	if !ok || ae.Code != errs.CodeBudgetCommentForbidden {
+		t.Fatalf("err=%v want comment_forbidden for the budget owner", err)
+	}
+}
+
+func TestDeleteComment_AuthorOrModerator(t *testing.T) {
+	h := newCommentHarness(t)
+
+	mine := h.mustCreate(t, h.member, "cat-food", "2026-05-01", "mine")
+	if _, err := h.remove(h.member, mine.Item.Id); err != nil {
+		t.Fatalf("author delete rejected: %v", err)
+	}
+
+	theirs := h.mustCreate(t, h.member, "cat-food", "2026-05-01", "moderated")
+	if _, err := h.remove(h.owner, theirs.Item.Id); err != nil {
+		t.Fatalf("owner moderation rejected: %v", err)
+	}
+
+	guests := h.mustCreate(t, h.guest, "cat-food", "2026-05-01", "guest note")
+	_, err := h.remove(h.member, guests.Item.Id)
+	ae, ok := errs.AsAccessDenied(err)
+	if !ok || ae.Code != errs.CodeBudgetCommentForbidden {
+		t.Fatalf("err=%v want comment_forbidden for a non-author non-admin", err)
+	}
+}
+
+// Review Focus 2: a comment id from another budget must look absent, not
+// forbidden — existence is not disclosed to an outsider.
+func TestUpdateDeleteComment_ForeignBudgetLooksAbsent(t *testing.T) {
+	h := newCommentHarness(t)
+	foreign := h.commentInAnotherBudget(t)
+
+	for _, tc := range []struct {
+		name string
+		run  func() error
+	}{
+		{"update", func() error { _, err := h.update(h.owner, foreign, "peek"); return err }},
+		{"delete", func() error { _, err := h.remove(h.owner, foreign); return err }},
+		{"unknown-id", func() error { _, err := h.update(h.owner, h.newID().String(), "peek"); return err }},
+	} {
+		ve, ok := errs.AsValidation(tc.run())
+		if !ok || ve.MsgCode != errs.CodeBudgetCommentNotFound {
+			t.Fatalf("%s: want a coded comment_not_found validation error, got %+v", tc.name, ve)
+		}
 	}
 }

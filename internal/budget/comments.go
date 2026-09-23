@@ -97,3 +97,164 @@ func parseCommentMonths(raw string) (int, error) {
 	}
 	return n, nil
 }
+
+func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.CreateCommentRequest) (*model.CreateCommentResult, error) {
+	commentID, err := vo.ParseId(req.Id)
+	if err != nil {
+		return nil, model.ValidateBlank(map[string]string{"id": ""})
+	}
+	budgetID, err := vo.ParseId(req.BudgetId)
+	if err != nil {
+		return nil, model.ValidateBlank(map[string]string{"budgetId": ""})
+	}
+	externalID, err := vo.ParseId(req.ElementId)
+	if err != nil {
+		return nil, model.ValidateBlank(map[string]string{"elementId": ""})
+	}
+	period, err := time.Parse(datetime.DateLayout, req.Period)
+	if err != nil {
+		return nil, model.ValidateBlank(map[string]string{"period": ""})
+	}
+	period = model.FirstOfMonth(period)
+
+	b, err := s.loadAggregate(ctx, budgetID)
+	if err != nil {
+		return nil, err
+	}
+	// Guests may comment: a read-only role in the budget still has something to
+	// say about the plan.
+	if !s.canRead(b, userID) {
+		return nil, accessDenied()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
+	if period.Before(model.FirstOfMonth(b.budget.StartedAt)) {
+		return nil, model.ValidateBlank(map[string]string{"period": ""})
+	}
+	if end := b.endMonth(); end != nil && period.After(*end) {
+		return nil, model.ValidateBlank(map[string]string{"period": ""})
+	}
+
+	now := s.clock.Now()
+	var stored *model.BudgetCommentRow
+	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		// The comment id doubles as the idempotency key: a retried post finds
+		// its own row and returns it rather than writing a second comment.
+		already, cerr := s.ops.Claim(txCtx, commentID, now)
+		if cerr != nil {
+			return cerr
+		}
+		if already {
+			row, gerr := s.comments.GetCommentRow(txCtx, commentID)
+			if gerr != nil {
+				return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
+			}
+			stored = row
+			return nil
+		}
+		element, gerr := s.getElementSelfHeal(txCtx, budgetID, externalID, now)
+		if gerr != nil {
+			return gerr
+		}
+		c, verr := model.NewBudgetElementComment(commentID, element.ID, userID, req.Comment, period, now)
+		if verr != nil {
+			return verr
+		}
+		if ierr := s.comments.InsertComment(txCtx, c); ierr != nil {
+			return ierr
+		}
+		row, gerr := s.comments.GetCommentRow(txCtx, commentID)
+		if gerr != nil {
+			return gerr
+		}
+		stored = row
+		return s.ops.MarkHandled(txCtx, commentID, now)
+	})
+	if err != nil {
+		return nil, err
+	}
+	reqctx.AddLogAttr(ctx, "budget_id", req.BudgetId)
+	reqctx.AddLogAttr(ctx, "comment_id", req.Id)
+	return &model.CreateCommentResult{Item: commentResult(*stored)}, nil
+}
+
+func (s *Service) UpdateComment(ctx context.Context, userID vo.Id, req model.UpdateCommentRequest) (*model.UpdateCommentResult, error) {
+	commentID, err := vo.ParseId(req.Id)
+	if err != nil {
+		return nil, commentNotFound()
+	}
+	row, b, err := s.reachableComment(ctx, userID, commentID)
+	if err != nil {
+		return nil, err
+	}
+	if !row.Comment.UserID.Equal(userID) {
+		return nil, commentForbidden()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
+
+	now := s.clock.Now()
+	edited := row.Comment
+	if verr := edited.Edit(req.Comment, now); verr != nil {
+		return nil, verr
+	}
+	if err := s.comments.UpdateCommentText(ctx, &edited); err != nil {
+		return nil, err
+	}
+	row.Comment = edited
+	reqctx.AddLogAttr(ctx, "budget_id", row.BudgetID.String())
+	reqctx.AddLogAttr(ctx, "comment_id", req.Id)
+	return &model.UpdateCommentResult{Item: commentResult(*row)}, nil
+}
+
+func (s *Service) DeleteComment(ctx context.Context, userID vo.Id, req model.DeleteCommentRequest) (*model.DeleteCommentResult, error) {
+	commentID, err := vo.ParseId(req.Id)
+	if err != nil {
+		return nil, commentNotFound()
+	}
+	row, b, err := s.reachableComment(ctx, userID, commentID)
+	if err != nil {
+		return nil, err
+	}
+	// The author cleans up after themselves; owner and admin moderate.
+	if !row.Comment.UserID.Equal(userID) && !s.canDelete(b, userID) {
+		return nil, commentForbidden()
+	}
+	if aerr := s.requireNotArchived(b); aerr != nil {
+		return nil, aerr
+	}
+	if err := s.comments.DeleteComment(ctx, commentID); err != nil {
+		return nil, err
+	}
+	reqctx.AddLogAttr(ctx, "budget_id", row.BudgetID.String())
+	reqctx.AddLogAttr(ctx, "comment_id", req.Id)
+	return &model.DeleteCommentResult{}, nil
+}
+
+// reachableComment loads a comment and its budget, answering "not found" for
+// anything the caller cannot read — an id in someone else's budget must not be
+// distinguishable from an id that never existed.
+func (s *Service) reachableComment(ctx context.Context, userID, commentID vo.Id) (*model.BudgetCommentRow, *budgetAggregate, error) {
+	row, err := s.comments.GetCommentRow(ctx, commentID)
+	if err != nil {
+		return nil, nil, commentNotFound()
+	}
+	b, err := s.loadAggregate(ctx, row.BudgetID)
+	if err != nil {
+		return nil, nil, commentNotFound()
+	}
+	if !s.canRead(b, userID) {
+		return nil, nil, commentNotFound()
+	}
+	return row, b, nil
+}
+
+func commentNotFound() error {
+	return &errs.ValidationError{Msg: "Comment not found", MsgCode: errs.CodeBudgetCommentNotFound}
+}
+
+func commentForbidden() error {
+	return &errs.AccessDeniedError{Msg: "You can't change this comment", Code: errs.CodeBudgetCommentForbidden}
+}
