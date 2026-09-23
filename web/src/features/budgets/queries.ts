@@ -1,10 +1,14 @@
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { v7 as uuidv7 } from 'uuid'
+import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
-import type { BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
+import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
@@ -535,6 +539,110 @@ export function useCloneBudget() {
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgets })
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
       trackEvent(METRICS.BUDGET_CLONE)
+    },
+  })
+}
+
+type CommentListData = { items: BudgetCommentDto[]; truncated: boolean }
+
+/** Cache key for one cell's thread: element external id + first-of-month period. */
+export function commentCellKey(elementId: Id, period: string): string {
+  return `${elementId}|${period}`
+}
+
+export function useBudgetComments(budgetId: Id | null, from: string, months: number) {
+  const key = [...queryKeys.budgetComments, budgetId ?? 'none', from, months] as const
+  const query = useQuery({
+    queryKey: key,
+    queryFn: () => budgetApi.getCommentList({ budgetId: budgetId as Id, from, months }),
+    enabled: budgetId !== null,
+    staleTime: TEN_MINUTES,
+  })
+  const byCell = useMemo(() => {
+    const map = new Map<string, BudgetCommentDto[]>()
+    for (const item of query.data?.items ?? []) {
+      const cell = commentCellKey(item.elementId, item.period)
+      const bucket = map.get(cell)
+      if (bucket) {
+        bucket.push(item)
+      } else {
+        map.set(cell, [item])
+      }
+    }
+    return map
+  }, [query.data])
+  return { ...query, items: query.data?.items ?? [], truncated: query.data?.truncated ?? false, byCell, commentsKey: key }
+}
+
+// this budget's cached comment lists, across every fetched window
+function budgetCommentsFilter(budgetId: Id) {
+  return { queryKey: queryKeys.budgetComments, predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[1] === budgetId }
+}
+
+export function useCreateComment(budgetId: Id) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { elementId: Id; period: string; comment: string }) =>
+      budgetApi.createComment({ id: uuidv7(), budgetId, ...form }),
+    onMutate: async (form) => {
+      const filter = budgetCommentsFilter(budgetId)
+      await queryClient.cancelQueries(filter)
+      const previous = queryClient.getQueriesData<CommentListData>(filter)
+      // a cache peek, never a fetch: subscribing via useUserData() here would pull in
+      // getUserData's side effect of probing get-identity-list on every comment created
+      const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
+      const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
+      const optimistic: BudgetCommentDto = {
+        id: uuidv7(),
+        elementId: form.elementId,
+        period: form.period,
+        comment: form.comment,
+        author: user ? { id: user.id, avatar: user.avatar, name: user.name } : { id: '', avatar: '', name: '' },
+        createdAt: now,
+        updatedAt: now,
+      }
+      queryClient.setQueriesData<CommentListData>(filter, (data) =>
+        data ? { ...data, items: [...data.items, optimistic] } : data,
+      )
+      return { previous }
+    },
+    onError: (err, _form, context) => {
+      for (const [key, data] of context?.previous ?? []) {
+        queryClient.setQueryData(key, data)
+      }
+      toast.error(apiErrorMessage(err), { id: 'budget-comment-error' })
+    },
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_CREATE_COMMENT)
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetComments })
+    },
+  })
+}
+
+export function useUpdateComment(budgetId: Id) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { id: Id; comment: string }) => budgetApi.updateComment(form),
+    onError: (err) => {
+      toast.error(apiErrorMessage(err), { id: 'budget-comment-error' })
+    },
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_UPDATE_COMMENT)
+      void queryClient.invalidateQueries(budgetCommentsFilter(budgetId))
+    },
+  })
+}
+
+export function useDeleteComment(budgetId: Id) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (form: { id: Id }) => budgetApi.deleteComment(form),
+    onError: (err) => {
+      toast.error(apiErrorMessage(err), { id: 'budget-comment-error' })
+    },
+    onSuccess: () => {
+      trackEvent(METRICS.BUDGET_DELETE_COMMENT)
+      void queryClient.invalidateQueries(budgetCommentsFilter(budgetId))
     },
   })
 }
