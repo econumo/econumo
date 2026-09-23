@@ -901,7 +901,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     }
                     onSpentClick={editMode ? undefined : setTransactionsTarget}
                     onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
-                    onAvailableCommentsClick={isCompact && !limitsEditable && !editMode ? setCommentsTarget : undefined}
+                    // a fallback behind onAvailableClick, so passed even when limits are
+                    // editable: the Archive section keeps only this one of the two
+                    onAvailableCommentsClick={isCompact && !editMode ? setCommentsTarget : undefined}
                   />
                   </SortableContext>
                 </DndContext>

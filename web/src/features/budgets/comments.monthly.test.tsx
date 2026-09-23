@@ -205,3 +205,34 @@ it('keeps the marker reachable on an individually-archived element', async () =>
   await user.click(within(row).getByTestId('comment-marker'))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
 })
+
+// The Archive section's read-only extras dropped every compact entry point: the
+// tap and long-press were stripped and the marker lives in the phone-hidden
+// budgeted column, so on a phone an archived element's thread was unreachable
+// even for the owner of an otherwise editable budget.
+it('lets a phone user open the thread of an individually-archived element from the Available cell', async () => {
+  const archivedElementBudget = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      elements: fixtureWireBudget.structure.elements.map((el) =>
+        el.id === 'tag-old' ? { ...el, budgeted: '50', available: '50' } : el,
+      ),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: archivedElementBudget } })),
+    http.get('*/api/v1/budget/get-comment-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [{ ...comment, elementId: 'tag-old' }], truncated: false } }),
+    ),
+  )
+  mockCompactViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-tag-old')
+  await user.click(within(row).getByTestId('cell-available'))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
+})

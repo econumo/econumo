@@ -33,8 +33,8 @@ export interface ElementRowExtras {
   onSpentClick?: (target: BudgetTransactionsTarget) => void
   /** compact screens hide the budget column — tapping Available opens the set-limit dialog instead */
   onAvailableClick?: (element: BudgetElementDto) => void
-  /** compact, non-editable cells: tapping Available opens the comments dialog
-   *  instead — mutually exclusive with `onAvailableClick` */
+  /** compact screens: tapping Available opens the comments dialog on a cell
+   *  without `onAvailableClick` (non-editable, or an archived element's row) */
   onAvailableCommentsClick?: (element: BudgetElementDto) => void
 }
 
@@ -614,6 +614,9 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                           // earlier, above, with its own fixed extras)
                           renderBudgetCellMarker: extras.renderBudgetCellMarker,
                           renderBudgetCellComments: extras.renderBudgetCellComments,
+                          // the marker and popover sit in the phone-hidden budgeted
+                          // column, so this tap is the thread's only way in on a phone
+                          onAvailableCommentsClick: extras.onAvailableCommentsClick,
                         }
                       : extras
                   }
