@@ -391,3 +391,70 @@ otherwise independent; these are the agreed terms.
    writes only.
 6. **Seam with #246** recorded: savings cells carry comment threads, this branch
    owns the savings-section UI and the rebase.
+
+## Status and next steps (2026-09-23)
+
+**SPEC ONLY — nothing is implemented.** PR #245 carries this document and no code.
+The spec was revised on 2026-09-22 after a design review (see Revisions above); that
+revision is head `e1c8527` on `feature/budget-savings`.
+
+**This feature is deliberately sequenced SECOND, after budget cell comments (#246).**
+#246 is implemented and ready for review; see "Seam with budget cell comments (#246)"
+above for the agreed terms. This branch rebases onto #246, never the reverse.
+
+### Next steps, in order
+
+1. **Wait for #246 to merge**, then `git fetch origin main` and rebase this branch
+   onto it. The branch currently holds two doc commits off an older `main`.
+2. **Write the implementation plan** with the `superpowers:writing-plans` skill, to
+   `docs/superpowers/plans/YYYY-MM-DD-budget-savings.md`. Use
+   `docs/superpowers/plans/2026-09-22-budget-cell-comments.md` as the model — that
+   plan's shape (Global Constraints, a Review Focus list, then bite-sized TDD tasks
+   with real code in every step) worked well through 11 tasks, and its backend tasks
+   map almost one-to-one onto this feature's: model/migration, persistence with the
+   engine-adapter split, read use case, write use cases, lifecycle, REST + apiparity,
+   MCP + mcpparity, then the SPA layers.
+3. **Implement** with `superpowers:subagent-driven-development`.
+
+### Decisions already settled — carry them into the plan
+
+- `accounts.type = 3` (`TypeSavings`). `Valid()` gates WRITES only; a stored value
+  outside {1,2,3} must survive a repo round trip (`data:import-sqlite` copies the
+  column verbatim from a foreign database).
+- `ElementSavings ElementType = 5`, alias `"savings"`. 3 and 4 are already taken by
+  `ElementIncomeCategory`/`ElementIncomeEnvelope`, so 5 is correct and frozen once
+  written.
+- Savings amounts go through the SAME single `bulkConvert` pass every other element
+  uses — the actual-savings query returns the savings ACCOUNT's currency, which is
+  not necessarily the element's.
+- `isArchived` on the wire is derived from the account's `is_deleted` at build time;
+  the element row's own flag is never written.
+- Turning the savings switch OFF is confirmed in the SPA when planned amounts would
+  be destroyed. The backend keeps its existing silent, lazy sync deletion.
+- `savingsFlows` deliberately exceeds the Savings row (interest is not "saved"); this
+  needs the tooltip and the regression item, or it reads as a bug.
+- Savings cells carry comment threads. Backend-free — a savings element is a real
+  `budgets_elements` row and `budgets_elements_comments.element_id` is an element FK.
+  THIS branch owns the marker and entry point inside the new Savings section,
+  reusing #246's `CommentThread` and marker components as they are.
+
+### Rebase surfaces to expect (all additive, all on this side)
+
+`internal/model/budget_dto.go`, `internal/shared/errs/codes.go` + `AllCodes`, all 11
+`locales/<lang>.json`, `web/src/lib/metrics.ts`, `PlanSheet.tsx` (`buildFlatRows` +
+cell rendering), `BudgetPage.tsx`, the apiparity/mcpparity goldens, and
+`docs/regression-test-plan.md`. Regenerate goldens AFTER the rebase, never before,
+and inspect the diff.
+
+### Environment notes for a new session
+
+- Go is **not on `PATH`**: `export PATH=/usr/local/go/bin:$PATH` first.
+- `pnpm test -- <pattern>` does NOT filter by filename in this repo — it silently
+  runs all ~1280 tests. Use `pnpm exec vitest run <path>`.
+- There is one pre-existing unrelated vitest failure on `main`,
+  `web/src/api/transaction.test.ts`'s Blob test. It is not yours.
+- Guard floors move: read the CURRENT `minRoutes` in
+  `internal/test/apiparity/guard_test.go` and `min` in `catalogue_test.go` from the
+  files and add to them; never trust a literal quoted in a plan.
+- A `;` on its own line in a sqlc query file silently truncates the generated SQL
+  constant, and a multibyte character in a `.sql` comment does the same.
