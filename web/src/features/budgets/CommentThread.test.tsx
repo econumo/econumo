@@ -199,6 +199,63 @@ it('a failed post leaves the typed comment in the composer instead of silently d
   expect(composer).toHaveValue('Do not lose this')
 })
 
+it('a second post while the first is in flight sends nothing', async () => {
+  const bodies: Record<string, unknown>[] = []
+  let release: () => void = () => {}
+  server.use(
+    http.post('*/api/v1/budget/create-comment', async ({ request }) => {
+      bodies.push((await request.json()) as Record<string, unknown>)
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...commentByAda, comment: 'Once' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderThread({ comments: [] })
+  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const post = screen.getByRole('button', { name: 'Post' })
+
+  await user.type(composer, 'Once')
+  await user.dblClick(post)
+  await user.keyboard('{Control>}{Enter}{/Control}')
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(post).toBeDisabled()
+
+  release()
+  await waitFor(() => expect(composer).toHaveValue(''))
+  expect(bodies).toHaveLength(1)
+})
+
+it('retrying a failed post of the same text reuses its id, so the server can dedupe it', async () => {
+  const ids: unknown[] = []
+  server.use(
+    http.post('*/api/v1/budget/create-comment', async ({ request }) => {
+      ids.push(((await request.json()) as Record<string, unknown>).id)
+      return HttpResponse.json({ success: false, message: 'Invalid data.', code: 400, errors: {} }, { status: 400 })
+    }),
+  )
+  const user = userEvent.setup()
+  renderThread({ comments: [] })
+  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const post = screen.getByRole('button', { name: 'Post' })
+
+  await user.type(composer, 'Retry me')
+  await user.click(post)
+  await waitFor(() => expect(ids).toHaveLength(1))
+  await waitFor(() => expect(post).not.toBeDisabled())
+  await user.click(post)
+  await waitFor(() => expect(ids).toHaveLength(2))
+  expect(ids[1]).toBe(ids[0])
+
+  // editing the draft makes it a different comment, with a fresh id
+  await waitFor(() => expect(post).not.toBeDisabled())
+  await user.type(composer, '!')
+  await user.click(post)
+  await waitFor(() => expect(ids).toHaveLength(3))
+  expect(ids[2]).not.toBe(ids[0])
+})
+
 it('drops an in-flight edit box and delete confirm when readOnly turns on mid-mount', async () => {
   const user = userEvent.setup()
   const { rerender } = renderThread({ comments: [commentByAda, commentByBob], currentUserId: 'u1', canModerate: true, readOnly: false })

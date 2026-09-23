@@ -582,8 +582,10 @@ function budgetCommentsFilter(budgetId: Id) {
 export function useCreateComment(budgetId: Id) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (form: { elementId: Id; period: string; comment: string }) =>
-      budgetApi.createComment({ id: uuidv7(), budgetId, ...form }),
+    // `id` is the server's idempotency key: a caller that may resend the same
+    // comment passes one id for every attempt so the server can dedupe it
+    mutationFn: ({ id, ...form }: { id?: Id; elementId: Id; period: string; comment: string }) =>
+      budgetApi.createComment({ id: id ?? uuidv7(), budgetId, ...form }),
     onMutate: async (form) => {
       const filter = budgetCommentsFilter(budgetId)
       await queryClient.cancelQueries(filter)
@@ -593,7 +595,7 @@ export function useCreateComment(budgetId: Id) {
       const user = queryClient.getQueryData<CurrentUserDto>(queryKeys.user)
       const now = new Date().toISOString().slice(0, 19).replace('T', ' ')
       const optimistic: BudgetCommentDto = {
-        id: uuidv7(),
+        id: form.id ?? uuidv7(),
         elementId: form.elementId,
         period: form.period,
         comment: form.comment,

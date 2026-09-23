@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -7,6 +7,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { UserAvatar } from '@/components/UserAvatar'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
+import { v7 as uuidv7 } from 'uuid'
 import { pluralPick } from '@/lib/plural'
 import { useCreateComment, useDeleteComment, useUpdateComment } from './queries'
 
@@ -51,6 +52,12 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
   const [editingId, setEditingId] = useState<Id | null>(null)
   const [editDraft, setEditDraft] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Id | null>(null)
+  // One id per draft text: a retry after a failure the client could not tell
+  // from a lost response resends the same id, so the server's idempotency
+  // guard answers it instead of storing a second copy.
+  const pendingPost = useRef<{ text: string; id: Id } | null>(null)
+  // isPending lands a render later; two clicks in one task would both pass it
+  const posting = useRef(false)
 
   // A budget can turn archived, or a fetched range can shrink, while this
   // popover/dialog stays mounted with an edit box or a delete confirm already
@@ -69,10 +76,25 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
 
   function post() {
     const value = draft.trim()
-    if (!value || runeLength(value) > MAX_COMMENT_RUNES) {
+    if (posting.current || !value || runeLength(value) > MAX_COMMENT_RUNES) {
       return
     }
-    createComment.mutate({ elementId, period, comment: value }, { onSuccess: () => setDraft('') })
+    if (pendingPost.current?.text !== value) {
+      pendingPost.current = { text: value, id: uuidv7() }
+    }
+    posting.current = true
+    createComment.mutate(
+      { id: pendingPost.current.id, elementId, period, comment: value },
+      {
+        onSuccess: () => {
+          pendingPost.current = null
+          setDraft('')
+        },
+        onSettled: () => {
+          posting.current = false
+        },
+      },
+    )
   }
 
   function startEdit(c: BudgetCommentDto) {
@@ -192,7 +214,12 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
           </CardField>
           <div className="flex items-center justify-between">
             <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.counter', { count: draftRunes })}</span>
-            <Button type="button" size="sm" disabled={!draft.trim() || draftRunes > MAX_COMMENT_RUNES} onClick={post}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={createComment.isPending || !draft.trim() || draftRunes > MAX_COMMENT_RUNES}
+              onClick={post}
+            >
               {t('budgets.page.plan.comments.post')}
             </Button>
           </div>
