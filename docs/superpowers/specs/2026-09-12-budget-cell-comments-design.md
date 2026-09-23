@@ -337,3 +337,71 @@ search, comments on uncategorized rows, carrying comments via fill-right/paste.
 4. **Archived budgets block deletion too** — confirmed intended, with the reason.
 5. **Seam with #245** recorded: savings cells carry threads, the savings PR owns the
    savings-section UI.
+
+## Status and next steps (2026-09-23)
+
+**IMPLEMENTED.** PR #246 is ready for review — branch `feature/budget-cell-comments`,
+head `5a8dbc5`, 21 commits, 76 files, +8847/-44. Everything in this spec shipped
+except where the Revisions section above says otherwise.
+
+Implementation plan: `docs/superpowers/plans/2026-09-22-budget-cell-comments.md`
+(11 tasks; each was implemented and reviewed separately, with the review findings
+fixed before the next task started).
+
+### Verified on the final tree
+
+- `make go-test` — 0 failures, coverage 84.3% (gate 80)
+- `make test-repo-pgsql` against `postgres:17-alpine` — 0 failures
+- vitest 1278/1279, tsc clean, oxlint clean. The one failure is
+  `web/src/api/transaction.test.ts`'s Blob test, which is pre-existing on `main`;
+  this branch changes neither that test nor `transaction.ts`.
+- New apiparity (`budget_comments`) and mcpparity (`budget_comments`) scenarios and
+  goldens. No existing golden changed; `lifecycle.golden` grew by exactly the four
+  new tools.
+
+### What the reviews caught that the tests did not
+
+Worth knowing before changing any of it, because each was green under the whole
+suite at the time:
+
+1. The idempotent-retry path returned the stored comment without checking it
+   belonged to the caller's budget and authorship, so anyone holding a comment id —
+   including a participant whose access had since been revoked — could read it back
+   through their own budget. Now narrowed to same-budget-and-same-author, else
+   `Operation is locked`. **Do not widen it back.**
+2. The composer cleared the textarea before the write landed, so a failed post
+   destroyed what the user typed. The draft now clears in `onSuccess` only.
+3. On a compact viewport the marker lives in a `hidden sm:block` cell and both
+   compact entry points were gated on EDIT rights, so a guest on a phone had no way
+   to reach a thread at all — and in the plan view a non-editable cell rendered bare
+   text, so a guest could not start one on any viewport. Both views now give a
+   non-editable cell an entry point everywhere.
+
+### Next steps
+
+1. **Review feedback on PR #246.** The worktree is preserved at
+   `.claude/worktrees/bridge-cse_01GaG7Epv3E3x7oNrRWi9idW`; its branch content is the
+   PR head, pushed to `feature/budget-cell-comments`.
+2. **Known follow-ups, none blocking merge:**
+   - The comment marker's hit area is 16x16px, short of the ~44px touch guideline —
+     the plan grid is too dense for a larger box. The cell itself stays tappable on
+     compact viewports.
+   - In the monthly view an individually-archived row's thread is reachable on
+     desktop but not on a compact viewport; the plan view covers both.
+   - `internal/test/fixture`'s default user email derives from the id's first 8 hex
+     characters, which COLLIDE for UUIDv7s minted within ~65 seconds. Any multi-user
+     fixture test must pass explicit emails. Pre-existing; documented at the top of
+     `internal/budget/comments_test.go`.
+   - `PlanSheet`'s `isEditableCell` never checks `meta.isArchived`, unlike
+     `BudgetPage`'s `limitsEditable`. Pre-existing and unrelated to comments (the
+     comments read-only gate checks it independently), but worth its own look.
+3. **After this merges, budget savings (#245) rebases onto it** — see "Seam with
+   budget savings (#245)" above. Never the other way round.
+
+### Environment notes for a new session
+
+- Go is **not on `PATH`**: `export PATH=/usr/local/go/bin:$PATH` first.
+- `pnpm test -- <pattern>` does NOT filter by filename in this repo — it silently
+  runs all ~1280 tests. Use `pnpm exec vitest run <path>`.
+- `make test-repo-pgsql` needs a PostgreSQL; a throwaway `postgres:17-alpine`
+  container works, or set `DATABASE_TEST_PGSQL_URL`.
