@@ -1100,6 +1100,21 @@
           "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
           "no_access_category": "Não pode editar esta categoria — pertence a outro utilizador.",
           "no_access_tag": "Não pode editar esta etiqueta — pertence a outro utilizador."
+        },
+        "comments": {
+          "title": "Comentários",
+          "marker_aria": "{count} comentário | {count} comentários",
+          "composer_placeholder": "Adicione uma nota para este mês",
+          "post": "Publicar",
+          "edit": "Editar",
+          "delete": "Eliminar",
+          "cancel": "Cancelar",
+          "delete_confirm": "Eliminar este comentário?",
+          "edited": "(editado)",
+          "counter": "{count}/500",
+          "read_only": "Este orçamento está arquivado — os comentários podem ser lidos mas não alterados.",
+          "empty": "Ainda não há comentários.",
+          "truncated": "A mostrar os primeiros 2000 comentários."
         }
       },
       "settings": {

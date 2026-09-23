@@ -1100,6 +1100,21 @@
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
           "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
           "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
+        },
+        "comments": {
+          "title": "Opmerkingen",
+          "marker_aria": "{count} opmerking | {count} opmerkingen",
+          "composer_placeholder": "Voeg een notitie toe voor deze maand",
+          "post": "Plaatsen",
+          "edit": "Bewerken",
+          "delete": "Verwijderen",
+          "cancel": "Annuleren",
+          "delete_confirm": "Deze opmerking verwijderen?",
+          "edited": "(bewerkt)",
+          "counter": "{count}/500",
+          "read_only": "Dit budget is gearchiveerd — opmerkingen kunnen worden gelezen maar niet gewijzigd.",
+          "empty": "Nog geen opmerkingen.",
+          "truncated": "De eerste 2000 opmerkingen worden weergegeven."
         }
       },
       "settings": {

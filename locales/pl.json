@@ -1100,6 +1100,21 @@
           "no_access_envelope": "Nie możesz edytować tej koperty — Twoja rola w tym budżecie jest tylko do odczytu.",
           "no_access_category": "Nie możesz edytować tej kategorii — należy do innego użytkownika.",
           "no_access_tag": "Nie możesz edytować tego tagu — należy do innego użytkownika."
+        },
+        "comments": {
+          "title": "Komentarze",
+          "marker_aria": "{count} komentarz | {count} komentarze | {count} komentarzy",
+          "composer_placeholder": "Dodaj notatkę dla tego miesiąca",
+          "post": "Opublikuj",
+          "edit": "Edytuj",
+          "delete": "Usuń",
+          "cancel": "Anuluj",
+          "delete_confirm": "Usunąć ten komentarz?",
+          "edited": "(edytowano)",
+          "counter": "{count}/500",
+          "read_only": "Ten budżet jest zarchiwizowany — komentarze można odczytywać, ale nie można ich zmieniać.",
+          "empty": "Brak komentarzy.",
+          "truncated": "Wyświetlono pierwsze 2000 komentarzy."
         }
       },
       "settings": {

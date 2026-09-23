@@ -1100,6 +1100,21 @@
           "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
           "no_access_category": "No puedes editar esta categoría: pertenece a otro usuario.",
           "no_access_tag": "No puedes editar esta etiqueta: pertenece a otro usuario."
+        },
+        "comments": {
+          "title": "Comentarios",
+          "marker_aria": "{count} comentario | {count} comentarios",
+          "composer_placeholder": "Añade una nota para este mes",
+          "post": "Publicar",
+          "edit": "Editar",
+          "delete": "Eliminar",
+          "cancel": "Cancelar",
+          "delete_confirm": "¿Eliminar este comentario?",
+          "edited": "(editado)",
+          "counter": "{count}/500",
+          "read_only": "Este presupuesto está archivado: los comentarios se pueden leer pero no modificar.",
+          "empty": "Aún no hay comentarios.",
+          "truncated": "Mostrando los primeros 2000 comentarios."
         }
       },
       "settings": {

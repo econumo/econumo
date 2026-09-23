@@ -1100,6 +1100,21 @@
           "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
           "no_access_category": "无法编辑此分类——它属于其他用户。",
           "no_access_tag": "无法编辑此标签——它属于其他用户。"
+        },
+        "comments": {
+          "title": "评论",
+          "marker_aria": "{count} 条评论",
+          "composer_placeholder": "为本月添加备注",
+          "post": "发布",
+          "edit": "编辑",
+          "delete": "删除",
+          "cancel": "取消",
+          "delete_confirm": "删除此评论？",
+          "edited": "（已编辑）",
+          "counter": "{count}/500",
+          "read_only": "此预算已归档——评论可以查看但无法更改。",
+          "empty": "暂无评论。",
+          "truncated": "仅显示前 2000 条评论。"
         }
       },
       "settings": {

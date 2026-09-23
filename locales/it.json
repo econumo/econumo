@@ -1100,6 +1100,21 @@
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
           "no_access_category": "Non puoi modificare questa categoria: appartiene a un altro utente.",
           "no_access_tag": "Non puoi modificare questo tag: appartiene a un altro utente."
+        },
+        "comments": {
+          "title": "Commenti",
+          "marker_aria": "{count} commento | {count} commenti",
+          "composer_placeholder": "Aggiungi una nota per questo mese",
+          "post": "Pubblica",
+          "edit": "Modifica",
+          "delete": "Elimina",
+          "cancel": "Annulla",
+          "delete_confirm": "Eliminare questo commento?",
+          "edited": "(modificato)",
+          "counter": "{count}/500",
+          "read_only": "Questo budget è archiviato: i commenti possono essere letti ma non modificati.",
+          "empty": "Nessun commento ancora.",
+          "truncated": "Vengono mostrati i primi 2000 commenti."
         }
       },
       "settings": {

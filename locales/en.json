@@ -1100,6 +1100,21 @@
           "no_access_envelope": "You can't edit this envelope — your role in this budget is read-only.",
           "no_access_category": "You can't edit this category — it belongs to another user.",
           "no_access_tag": "You can't edit this tag — it belongs to another user."
+        },
+        "comments": {
+          "title": "Comments",
+          "marker_aria": "{count} comment | {count} comments",
+          "composer_placeholder": "Add a note for this month",
+          "post": "Post",
+          "edit": "Edit",
+          "delete": "Delete",
+          "cancel": "Cancel",
+          "delete_confirm": "Delete this comment?",
+          "edited": "(edited)",
+          "counter": "{count}/500",
+          "read_only": "This budget is archived — comments can be read but not changed.",
+          "empty": "No comments yet.",
+          "truncated": "Showing the first 2000 comments."
         }
       },
       "settings": {
