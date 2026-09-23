@@ -1,6 +1,11 @@
 package budget_test
 
-import "testing"
+import (
+	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/shared/datetime"
+)
 
 func TestResetBudget_DeletesComments(t *testing.T) {
 	h := newCommentHarness(t)
@@ -17,7 +22,13 @@ func TestResetBudget_DeletesComments(t *testing.T) {
 func TestCloneBudget_CopiesCommentsWithLimitsOnly(t *testing.T) {
 	h := newCommentHarness(t)
 	h.mustCreate(t, h.owner, "cat-food", "2026-04-01", "before the clone start")
-	h.mustCreate(t, h.owner, "cat-food", "2026-06-01", "after the clone start")
+	after := h.mustCreate(t, h.owner, "cat-food", "2026-06-01", "after the clone start")
+	// Backdated well outside the test's real wall-clock run: a regression that
+	// stamps the copy with the clone's own `now` instead of preserving the
+	// source's timestamps must fail, not pass by coincidence.
+	wantTime := time.Date(2020, 3, 4, 5, 6, 7, 0, time.UTC)
+	h.backdateComment(t, after.Item.Id, wantTime)
+	wantStamp := wantTime.Format(datetime.Layout)
 
 	bare := h.clone(t, "Bare copy", "2026-05-01", false)
 	if got := h.listIn(t, bare, h.owner, "2026-04-01", "12"); len(got.Items) != 0 {
@@ -34,6 +45,10 @@ func TestCloneBudget_CopiesCommentsWithLimitsOnly(t *testing.T) {
 	}
 	if got.Items[0].Id == "" {
 		t.Fatal("copied comment kept an empty id")
+	}
+	if got.Items[0].CreatedAt != wantStamp || got.Items[0].UpdatedAt != wantStamp {
+		t.Fatalf("createdAt=%q updatedAt=%q want both %q (the source's, not the clone's now)",
+			got.Items[0].CreatedAt, got.Items[0].UpdatedAt, wantStamp)
 	}
 }
 

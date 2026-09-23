@@ -38,6 +38,7 @@ type commentHarness struct {
 	ctx      context.Context
 	svc      *appbudget.Service
 	f        *fixture.Builder
+	tdb      *dbtest.DB
 	budgetID vo.Id
 	// catFood and catTransport are two elements' EXTERNAL ids (what the wire and
 	// CreateComment's ElementId call it), not the internal budgets_elements.id -
@@ -115,7 +116,7 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	)
 
 	return &commentHarness{
-		ctx: context.Background(), svc: svc, f: f, budgetID: budgetID, catFood: catFood, catTransport: catTransport,
+		ctx: context.Background(), svc: svc, f: f, tdb: tdb, budgetID: budgetID, catFood: catFood, catTransport: catTransport,
 		budgetRepo: budgetRepo, clk: clk,
 		owner: owner, admin: admin, guest: guest, member: member, pending: pending, stranger: stranger,
 	}
@@ -276,6 +277,19 @@ func (h *commentHarness) listIn(t *testing.T, budgetID, userID vo.Id, from, mont
 		t.Fatalf("GetCommentList: %v", err)
 	}
 	return res
+}
+
+// backdateComment overwrites a comment's stored created_at/updated_at
+// directly, bypassing CreateComment's real-clock stamp. A clone test asserting
+// timestamp preservation needs the source comment's timestamps to be
+// unambiguously distinct from the clone's own `now`, or a regression that
+// re-stamps the copy could pass by wall-clock coincidence.
+func (h *commentHarness) backdateComment(t *testing.T, id string, at time.Time) {
+	t.Helper()
+	query := h.tdb.Rebind("UPDATE budgets_elements_comments SET created_at = ?, updated_at = ? WHERE id = ?")
+	if _, err := h.tdb.Raw.ExecContext(h.ctx, query, at, at, id); err != nil {
+		t.Fatalf("backdateComment: %v", err)
+	}
 }
 
 // mergeCategory drives MergeService the way merge_test.go does, but over the

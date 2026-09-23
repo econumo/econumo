@@ -192,7 +192,7 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 	return &model.DeleteBudgetResult{}, nil
 }
 
-// ResetBudget clears all element limits and resets the start month (owner|admin).
+// ResetBudget clears all element limits and comments and resets the start month (owner|admin).
 func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.ResetBudgetRequest) (*model.ResetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
