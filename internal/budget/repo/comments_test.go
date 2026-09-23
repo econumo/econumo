@@ -2,6 +2,7 @@ package repo_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -67,7 +68,7 @@ func TestComments_InsertListUpdateDelete(t *testing.T) {
 		t.Fatalf("InsertComment: %v", err)
 	}
 
-	rows, err := r.ListCommentsForWindow(ctx, fx.budgetID, period, period.AddDate(0, 1, 0))
+	rows, err := r.ListCommentsForWindow(ctx, fx.budgetID, period, period.AddDate(0, 1, 0), 100)
 	if err != nil {
 		t.Fatalf("ListCommentsForWindow: %v", err)
 	}
@@ -92,7 +93,7 @@ func TestComments_InsertListUpdateDelete(t *testing.T) {
 	}
 
 	// A window that ends before the comment's month returns nothing.
-	empty, err := r.ListCommentsForWindow(ctx, fx.budgetID, period.AddDate(0, -2, 0), period.AddDate(0, -1, 0))
+	empty, err := r.ListCommentsForWindow(ctx, fx.budgetID, period.AddDate(0, -2, 0), period.AddDate(0, -1, 0), 100)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,6 +120,32 @@ func TestComments_InsertListUpdateDelete(t *testing.T) {
 	}
 	if _, err := r.GetCommentRow(ctx, c.ID); err == nil {
 		t.Fatal("GetCommentRow found a deleted comment")
+	}
+}
+
+func TestComments_ListWindowAppliesLimitInOrder(t *testing.T) {
+	ctx, r, fx := newCommentFixture(t)
+	period := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+
+	var want []string
+	for i := range 3 {
+		at := period.Add(time.Duration(i) * time.Hour)
+		c, err := model.NewBudgetElementComment(r.NextIdentity(), fx.elementID, fx.userID, fmt.Sprintf("note %d", i), period, at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := r.InsertComment(ctx, c); err != nil {
+			t.Fatal(err)
+		}
+		want = append(want, c.Comment)
+	}
+
+	rows, err := r.ListCommentsForWindow(ctx, fx.budgetID, period, period.AddDate(0, 1, 0), 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 || rows[0].Comment.Comment != want[0] || rows[1].Comment.Comment != want[1] {
+		t.Fatalf("rows=%+v want the first two of %v", rows, want)
 	}
 }
 
@@ -167,7 +194,7 @@ func TestComments_RepointAndDeleteByBudget(t *testing.T) {
 	if err := r.DeleteCommentsByBudget(ctx, fx.budgetID); err != nil {
 		t.Fatalf("DeleteCommentsByBudget: %v", err)
 	}
-	rows, err := r.ListCommentsForWindow(ctx, fx.budgetID, period, period.AddDate(0, 1, 0))
+	rows, err := r.ListCommentsForWindow(ctx, fx.budgetID, period, period.AddDate(0, 1, 0), 100)
 	if err != nil {
 		t.Fatal(err)
 	}

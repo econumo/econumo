@@ -203,7 +203,8 @@ FROM budgets_elements_comments c
 JOIN budgets_elements e ON e.id = c.element_id
 JOIN users u ON u.id = c.user_id
 WHERE e.budget_id = ? AND datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?)
-ORDER BY c.period, e.external_id, c.created_at, c.id;
+ORDER BY c.period, e.external_id, c.created_at, c.id
+LIMIT ?;
 
 -- name: GetBudgetComment :one
 SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,

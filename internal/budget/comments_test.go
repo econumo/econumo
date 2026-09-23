@@ -354,6 +354,34 @@ func TestGetCommentList_WindowAndOrder(t *testing.T) {
 	}
 }
 
+// The cap is applied in SQL: the list returns exactly 2000 rows and flags the
+// overflow from the one extra row it asked for, never reading the rest.
+func TestGetCommentList_CapSetsTruncated(t *testing.T) {
+	h := newCommentHarness(t)
+	seed := h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "seed")
+
+	tx, err := h.tdb.Raw.BeginTx(h.ctx, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	query := h.tdb.Rebind(`INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+		SELECT ?, element_id, period, user_id, comment, created_at, updated_at FROM budgets_elements_comments WHERE id = ?`)
+	for range 2000 {
+		if _, err := tx.ExecContext(h.ctx, query, vo.NewId().String(), seed.Item.Id); err != nil {
+			_ = tx.Rollback()
+			t.Fatalf("seed copy: %v", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		t.Fatal(err)
+	}
+
+	res := h.list(t, h.owner, "2026-05-01", "1")
+	if len(res.Items) != 2000 || !res.Truncated {
+		t.Fatalf("items=%d truncated=%v want 2000 and true over 2001 rows", len(res.Items), res.Truncated)
+	}
+}
+
 // Review Focus 3: malformed window parameters must never widen the window.
 func TestGetCommentList_BadWindowParams(t *testing.T) {
 	h := newCommentHarness(t)

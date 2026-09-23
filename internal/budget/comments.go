@@ -45,7 +45,9 @@ func (s *Service) GetCommentList(ctx context.Context, userID vo.Id, req model.Ge
 		return nil, accessDenied()
 	}
 
-	rows, err := s.comments.ListCommentsForWindow(ctx, budgetID, from, from.AddDate(0, months, 0))
+	// One row past the cap is enough to know the window overflowed without
+	// reading the rest of it.
+	rows, err := s.comments.ListCommentsForWindow(ctx, budgetID, from, from.AddDate(0, months, 0), commentListCap+1)
 	if err != nil {
 		return nil, err
 	}

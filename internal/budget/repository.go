@@ -121,7 +121,7 @@ type LimitStore interface {
 type CommentStore interface {
 	NextIdentity() vo.Id
 
-	ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.BudgetCommentRow, error)
+	ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time, limit int) ([]model.BudgetCommentRow, error)
 	GetCommentRow(ctx context.Context, id vo.Id) (*model.BudgetCommentRow, error)
 	InsertComment(ctx context.Context, c *model.BudgetElementComment) error
 	UpdateCommentText(ctx context.Context, c *model.BudgetElementComment) error

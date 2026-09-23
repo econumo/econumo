@@ -59,7 +59,7 @@ type querier interface {
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 
-	ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time) ([]commentJoined, error)
+	ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error)
 	GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error)
 	ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error)
 	InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error
@@ -204,12 +204,12 @@ func (sqliteQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend
 	return sqlitegen.New(db).RemoveBudgetAccountsOwnedBy(ctx, sqlitegen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
 }
 
-func (sqliteQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time) ([]commentJoined, error) {
+func (sqliteQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
 	// datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?): bind
 	// both bounds as 'Y-m-d H:i:s' strings, the same belt-and-braces as the limit
 	// queries (limitPeriodArg).
 	return sqlitegen.New(db).ListBudgetCommentsForWindow(ctx, sqlitegen.ListBudgetCommentsForWindowParams{
-		BudgetID: budgetID, Datetime: limitPeriodArg(from), Datetime_2: limitPeriodArg(to),
+		BudgetID: budgetID, Datetime: limitPeriodArg(from), Datetime_2: limitPeriodArg(to), Limit: int64(limit),
 	})
 }
 func (sqliteQuerier) GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error) {
@@ -458,9 +458,9 @@ func (pgsqlQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.
 	return pgsqlgen.New(db).RemoveBudgetAccountsOwnedBy(ctx, pgsqlgen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
 }
 
-func (pgsqlQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time) ([]commentJoined, error) {
+func (pgsqlQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
 	rows, err := pgsqlgen.New(db).ListBudgetCommentsForWindow(ctx, pgsqlgen.ListBudgetCommentsForWindowParams{
-		BudgetID: budgetID, Period: from, Period_2: to,
+		BudgetID: budgetID, Period: from, Period_2: to, Limit: int32(limit),
 	})
 	if err != nil {
 		return nil, err

@@ -370,8 +370,8 @@ func (r *Repo) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error {
 	return r.q.DeleteBudgetLimitsByBudget(ctx, r.db(ctx), budgetID.String())
 }
 
-func (r *Repo) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.BudgetCommentRow, error) {
-	rows, err := r.q.ListBudgetCommentsForWindow(ctx, r.db(ctx), budgetID.String(), from, to)
+func (r *Repo) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time, limit int) ([]model.BudgetCommentRow, error) {
+	rows, err := r.q.ListBudgetCommentsForWindow(ctx, r.db(ctx), budgetID.String(), from, to, limit)
 	if err != nil {
 		return nil, err
 	}

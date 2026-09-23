@@ -437,12 +437,14 @@ JOIN budgets_elements e ON e.id = c.element_id
 JOIN users u ON u.id = c.user_id
 WHERE e.budget_id = ? AND datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?)
 ORDER BY c.period, e.external_id, c.created_at, c.id
+LIMIT ?
 `
 
 type ListBudgetCommentsForWindowParams struct {
 	BudgetID   string
 	Datetime   interface{}
 	Datetime_2 interface{}
+	Limit      int64
 }
 
 type ListBudgetCommentsForWindowRow struct {
@@ -463,7 +465,12 @@ type ListBudgetCommentsForWindowRow struct {
 // period is datetime TEXT, so normalize both sides with datetime() and bind the
 // bounds as 'Y-m-d H:i:s' strings, exactly like the limit queries.
 func (q *Queries) ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error) {
-	rows, err := q.db.QueryContext(ctx, listBudgetCommentsForWindow, arg.BudgetID, arg.Datetime, arg.Datetime_2)
+	rows, err := q.db.QueryContext(ctx, listBudgetCommentsForWindow,
+		arg.BudgetID,
+		arg.Datetime,
+		arg.Datetime_2,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}

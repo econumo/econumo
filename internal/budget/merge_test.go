@@ -144,7 +144,7 @@ type fakeComments struct {
 
 func (f *fakeComments) NextIdentity() vo.Id { return vo.NewId() }
 
-func (f *fakeComments) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.BudgetCommentRow, error) {
+func (f *fakeComments) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time, limit int) ([]model.BudgetCommentRow, error) {
 	return nil, nil
 }
 

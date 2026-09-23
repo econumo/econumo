@@ -444,12 +444,14 @@ JOIN budgets_elements e ON e.id = c.element_id
 JOIN users u ON u.id = c.user_id
 WHERE e.budget_id = $1 AND c.period >= $2 AND c.period < $3
 ORDER BY c.period, e.external_id, c.created_at, c.id
+LIMIT $4
 `
 
 type ListBudgetCommentsForWindowParams struct {
 	BudgetID string
 	Period   time.Time
 	Period_2 time.Time
+	Limit    int32
 }
 
 type ListBudgetCommentsForWindowRow struct {
@@ -467,7 +469,12 @@ type ListBudgetCommentsForWindowRow struct {
 }
 
 func (q *Queries) ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error) {
-	rows, err := q.db.QueryContext(ctx, listBudgetCommentsForWindow, arg.BudgetID, arg.Period, arg.Period_2)
+	rows, err := q.db.QueryContext(ctx, listBudgetCommentsForWindow,
+		arg.BudgetID,
+		arg.Period,
+		arg.Period_2,
+		arg.Limit,
+	)
 	if err != nil {
 		return nil, err
 	}
