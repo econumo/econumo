@@ -20,6 +20,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
   renderBudgetCell?: (element: BudgetElementDto) => ReactNode
+  /** the comment-marker overlay for the budgeted cell — absolutely positioned by
+   *  the caller; returns null/undefined for a cell with no comments */
+  renderBudgetCellMarker?: (element: BudgetElementDto) => ReactNode
   /** trailing actions (edit-mode menus, drag handle) */
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
@@ -210,7 +213,7 @@ function ElementRow({
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
-        <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block" data-testid="cell-budgeted">
+        <span className="relative hidden w-24 text-right text-[15px] tabular-nums sm:block" data-testid="cell-budgeted">
           {isUncategorized ? (
             EMPTY_CELL
           ) : extras.renderBudgetCell ? (
@@ -218,6 +221,7 @@ function ElementRow({
           ) : (
             moneyFormat(element.budgeted, currency, opts)
           )}
+          {!isUncategorized ? extras.renderBudgetCellMarker?.(element) : null}
         </span>
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(

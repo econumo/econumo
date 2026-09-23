@@ -33,19 +33,22 @@ import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetElementDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
+import { pluralPick } from '@/lib/plural'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useCurrencies } from '@/features/currencies/queries'
-import { useUserData } from '@/features/user/queries'
+import { useUserData, userOption } from '@/features/user/queries'
+import { UserOptions } from '@/api/dto/user'
 import { useAccounts } from '@/features/accounts/queries'
 import { useCategories } from '@/features/classifications/queries'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import {
   useBudget,
   useBudgets,
+  useBudgetComments,
   useSetLimit,
   useCreateEnvelope,
   useUpdateEnvelope,
@@ -60,16 +63,19 @@ import {
   canEditBudget,
   canUpdateLimits,
   canDeleteEnvelope,
+  commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { bucketElements, makeBudgetExchange } from './budgetMath'
+import { bucketElements, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { BudgetTable } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
-import { PlanSheet } from './PlanSheet'
+import { PlanSheet, commentsReadOnly } from './PlanSheet'
 import { ExpenseWidget } from './ExpenseWidget'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
+import { CommentThread } from './CommentThread'
+import { CommentsDialog } from './CommentsDialog'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
@@ -195,6 +201,52 @@ function ElementLongPress({ element, onLongPress, children }: { element: BudgetE
   return <div {...handlers}>{children}</div>
 }
 
+// The desktop LimitEditor popover's own comments entry point, mirroring PlanSheet's
+// disclosure (same collapsed-by-default footer): the monthly view has no keyboard
+// grid to sync an auto-expand key against, so unlike PlanSheet's version this one
+// only tracks its own toggle state.
+function CommentsFooter({
+  budget,
+  element,
+  period,
+  comments,
+  userId,
+}: {
+  budget: BudgetDto
+  element: BudgetElementDto
+  period: string
+  comments: BudgetCommentDto[]
+  userId: Id | undefined
+}) {
+  const { t } = useTranslation()
+  const [expanded, setExpanded] = useState(false)
+  return (
+    <div className="mt-2 border-t pt-2">
+      <button
+        type="button"
+        className="text-xs font-medium text-muted-foreground hover:underline"
+        aria-expanded={expanded}
+        onClick={() => setExpanded((e) => !e)}
+      >
+        {t('budgets.page.plan.comments.disclosure', { count: comments.length })}
+      </button>
+      {expanded ? (
+        <div className="mt-2">
+          <CommentThread
+            budgetId={budget.meta.id}
+            elementId={element.id}
+            period={period}
+            comments={comments}
+            currentUserId={userId}
+            canModerate={canConfigureBudget(budget.meta, userId)}
+            readOnly={commentsReadOnly(budget.meta, period)}
+          />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -213,6 +265,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
+  // the monthly view's own one-month window; PlanSheet fetches its own — passing
+  // null on that route skips the fetch instead of duplicating it. Keyed off the
+  // user's stored default budget id, not `budget.meta.id`: waiting on the budget
+  // fetch to resolve first would chain the comments fetch behind it instead of
+  // firing both together.
+  const budgetId = userOption(user, UserOptions.BUDGET)
+  const { byCell: commentsByCell } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
+  const [commentsTarget, setCommentsTarget] = useState<BudgetElementDto | null>(null)
 
   const setLimit = useSetLimit()
   const createEnvelope = useCreateEnvelope()
@@ -741,10 +801,37 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               value={element.budgeted}
                               currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
                               onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
+                              footer={
+                                <CommentsFooter
+                                  budget={budget}
+                                  element={element}
+                                  period={selectedDate}
+                                  comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
+                                  userId={user?.id}
+                                />
+                              }
                             />
                           )
                         : undefined
                     }
+                    renderBudgetCellMarker={(element) => {
+                      const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
+                      if (cellComments.length === 0) {
+                        return null
+                      }
+                      return (
+                        <button
+                          type="button"
+                          data-testid="comment-marker"
+                          aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), cellComments.length, i18n.language)}
+                          className="absolute right-0 top-0 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setCommentsTarget(element)
+                          }}
+                        />
+                      )
+                    }}
                     renderRowWrapper={
                       editMode
                         ? (element, _bucket, row) => (
@@ -927,6 +1014,32 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
+        comments={
+          limitTarget ? (
+            <CommentThread
+              budgetId={budget.meta.id}
+              elementId={limitTarget.id}
+              period={selectedDate}
+              comments={commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []}
+              currentUserId={user?.id}
+              canModerate={canConfigureBudget(budget.meta, user?.id)}
+              readOnly={commentsReadOnly(budget.meta, selectedDate)}
+            />
+          ) : undefined
+        }
+      />
+
+      <CommentsDialog
+        open={commentsTarget !== null}
+        onClose={() => setCommentsTarget(null)}
+        title={commentsTarget ? elementDisplayName(commentsTarget.id, commentsTarget.name, t) : ''}
+        budgetId={budget.meta.id}
+        elementId={commentsTarget?.id ?? ''}
+        period={selectedDate}
+        comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.id, selectedDate)) ?? [] : []}
+        currentUserId={user?.id}
+        canModerate={canConfigureBudget(budget.meta, user?.id)}
+        readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}
       />
 
       <BudgetUpdateDialog open={updateBudgetOpen} budget={budget} onClose={() => setUpdateBudgetOpen(false)} />

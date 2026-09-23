@@ -382,6 +382,25 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
+      immediately and survives a reload.
+- [ ] 📱 Open the same cell in the monthly view for that month: the comment is
+      there (cross-view sync).
+- [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Another participant cannot edit your comment; the budget owner can
+      delete it.
+- [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
+- [ ] A cell with comments shows the corner marker; a cell without shows none;
+      the uncategorized row never shows one.
+- [ ] Archive the budget: comment threads are readable, the composer is gone.
+- [ ] Reset the budget (REST route only — there is no UI for reset): planned
+      amounts AND comments are cleared.
+- [ ] Clone a budget with plans: comments at or after the start month come
+      across with their original authors; cloning without plans copies none.
+- [ ] Merge two categories: the source cell's comment thread appears on the
+      target cell.
+- [ ] Revoke a participant: their comments on surviving cells still render
+      their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are

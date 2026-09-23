@@ -203,7 +203,9 @@ function isEditableCell(el: PlanElementDto, month: string, monthIndex: number, m
 // A comment thread's read/write gate is independent of the role-based `isEditableCell`
 // above: a guest may still post, but nobody may write once the budget is archived or
 // the month falls outside its start/end range — the thread stays readable either way.
-function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
+// Exported: the monthly view (BudgetPage) shares this exact rule rather than
+// reimplementing it, so both views agree on when a thread is read-only.
+export function commentsReadOnly(meta: BudgetMetaDto, month: string): boolean {
   if (meta.isArchived === 1) {
     return true
   }
@@ -2265,6 +2267,19 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
+        comments={
+          planLimitTarget ? (
+            <CommentThread
+              budgetId={budget.meta.id}
+              elementId={planLimitTarget.el.id}
+              period={planLimitTarget.month}
+              comments={commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []}
+              currentUserId={userId}
+              canModerate={canConfigureBudget(budget.meta, userId)}
+              readOnly={commentsReadOnly(budget.meta, planLimitTarget.month)}
+            />
+          ) : undefined
+        }
       />
 
       <CommentsDialog
