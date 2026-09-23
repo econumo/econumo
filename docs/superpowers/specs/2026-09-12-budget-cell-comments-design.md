@@ -1,7 +1,8 @@
 # Budget Cell Comments — Design
 
-Date: 2026-09-12
+Date: 2026-09-12 · Revised: 2026-09-22 (design review — see "Revisions")
 Status: Approved design, pending implementation plan
+Ships **before** the budget savings feature (#245); see "Seam with budget savings".
 
 ## Overview
 
@@ -29,6 +30,8 @@ no limit, clearing a limit never touches its comments, and the existing
 | Storage | New table, not a column on `budgets_elements_limits` |
 | Reads | One dedicated window endpoint `get-comment-list`; budget reads untouched |
 | UI | Implement the design below; opening/reading UX will be refined after implementation |
+| Reset budget | *(2026-09-22)* Clears planned amounts only — comments survive |
+| Savings rows (#245) | *(2026-09-22)* Savings cells carry threads like any other cell |
 
 ## Backend
 
@@ -68,8 +71,10 @@ DTOs in `internal/model/budget_dto.go`:
   — `ElementId` is the element's **external id** (unique within a budget, same
   identifier `set-limit` takes); `Period` is `Y-m-d`; datetimes use the frozen
   `2006-01-02 15:04:05` layout; `Author` is the shared `{id, avatar, name}` embed.
-- `GetCommentListResult{Items []CommentResult}` → `{"items": [...]}` (`[]`, never
-  `null`, when empty), matching `GetBudgetListResult`.
+- `GetCommentListResult{Items []CommentResult, Truncated bool}` →
+  `{"items": [...], "truncated": false}` (`items` is `[]`, never `null`, when empty,
+  matching `GetBudgetListResult`; `truncated` is always present and true only when
+  the 2000-item cap cut the tail).
 
 ### Use cases (`internal/budget/comments.go`)
 
@@ -77,6 +82,11 @@ DTOs in `internal/model/budget_dto.go`:
 pending invite denied). Window `[from, from + months)`. Returns every comment on
 every element of the budget in that window, ordered `period, external_id,
 created_at, id`. Archived budgets and months outside start/end are still readable.
+The response is unpaginated, so it is capped: `months` ≤ 24 (already validated) and
+at most 2000 comments, oldest first; hitting the cap truncates the tail and sets
+`truncated: true` on the result so the SPA can say so rather than silently showing a
+partial thread. A budget that large is pathological — the cap is a guard, not a
+paging design.
 
 **Create** — `CreateComment`:
 1. Validate request; parse and snap `period`.
@@ -97,6 +107,11 @@ disclosed); caller must be the author (else 403 `budget.comment_forbidden`);
 
 **Delete** — `DeleteComment`: same lookup/not-found rule; allowed for the author or a
 budget owner/admin (else `budget.comment_forbidden`); `requireNotArchived`; delete.
+`requireNotArchived` on delete means threads can never be cleaned up once a budget
+is archived. Deliberate, and consistent with the lifecycle spec's allowlist (only
+unarchive/delete/revoke/decline/accept escape the archived guard): archiving freezes
+the budget's record, comments included. Unarchive, edit, re-archive is the escape
+hatch.
 
 The account-level `readonly` access state (402 middleware) applies unchanged — none
 of the new POST routes are allowlisted.
@@ -121,7 +136,6 @@ engine-adapter pattern (no hand-built SQL needed):
   `UpdateBudgetCommentText`, `DeleteBudgetComment`.
 - `ListBudgetCommentsFrom(element_id, from)` — for clone.
 - `RepointBudgetComments(src_element_id, dst_element_id)` — for merge.
-- `DeleteBudgetCommentsByBudget(budget_id)` — for reset.
 
 Watch the sqlc semicolon-placement landmine (a `;` on its own line truncates the
 generated SQL).
@@ -134,10 +148,17 @@ generated SQL).
 | Member revoked / leaves | their category/tag elements cascade (threads go with them); their comments on surviving elements stay and keep rendering their author |
 | Archive category/tag | element stays → threads stay |
 | Type (side) change of an element | updated in place → threads stay |
-| Reset budget | deleted together with limits (`DeleteCommentsByBudget` next to `DeleteLimitsByBudget`) |
+| Reset budget | **kept** — reset clears planned amounts only. A limit is a number you can retype; "Trip to Lisbon" is not. Reset touches `budgets_elements_limits` alone |
 | Clone budget with `withLimits` | comments with `period >= startDate` copied to the new elements (envelope ids remapped as for limits), **original authors and timestamps kept**, new ids; not copied without `withLimits` |
 | Merge category/tag — no target element in that budget | element repointed in place → threads come along |
 | Merge category/tag — target element exists | source comments repointed onto the target element before the source element is deleted; threads interleave by `created_at` |
+
+A cloned thread keeps its original author, so the clone's participants see the name
+and avatar of someone who may not be a member of the new budget (and the clone can
+be shared with new people later). Accepted: the alternative — restamping every
+comment with the cloner — misattributes plain statements of fact, which is worse.
+Clone is owner/admin-only, and those authors were participants of the source budget
+the cloner already belonged to.
 
 ### REST routes (`internal/budget/api`)
 
@@ -248,9 +269,44 @@ point, and `metrics-coverage` passing.
 
 `docs/regression-test-plan.md`: add items for posting/editing/deleting (own vs
 owner/admin moderation), guest posting, archived read-only threads, markers in both
-views (📱 compact dialog), cross-view sync, and the reset/clone/merge/revoke effects.
+views (📱 compact dialog), cross-view sync, and the clone/merge/revoke effects —
+including an item asserting that **reset clears the numbers and leaves the threads
+standing**.
+
+## Seam with budget savings (#245)
+
+The two features are independent and ship separately, comments first. They meet in
+exactly three places; these are the agreed terms, so neither branch has to guess.
+
+- **Savings cells carry threads.** A savings row is a real `budgets_elements` row of
+  type `ElementSavings = 5` whose external id is the account id, so `create-comment`,
+  `get-comment-list` and the whole permission/lifecycle story work on it with **no
+  backend change** — `element_id` is an element FK, not a category FK. Nothing in
+  this spec needs to name savings.
+- **The marker and entry point inside the Savings section are #245's work**, not this
+  branch's: the section does not exist yet. That PR reuses `CommentThread` and the
+  corner-triangle marker as they are, so the components here must stay row-type
+  agnostic — keyed by `elementId|period`, never by category/tag/envelope.
+- **Conflict surfaces when #245 rebases onto this:** `internal/model/budget_dto.go`,
+  `internal/shared/errs/codes.go` + `AllCodes`, all 11 `locales/<lang>.json`,
+  `web/src/lib/metrics.ts`, `PlanSheet.tsx` (`buildFlatRows` + cell rendering), the
+  apiparity/mcpparity goldens, and `docs/regression-test-plan.md`. All additive;
+  #245 rebases, this branch does not wait.
 
 ## Out of scope
 
 Replies/nesting, mentions, notifications/email, reactions, rich text, comment
 search, comments on uncategorized rows, carrying comments via fill-right/paste.
+
+## Revisions
+
+**2026-09-22 — design review (#245 and #246 reviewed together).**
+
+1. **Reset keeps comments** (was: deleted alongside limits);
+   `DeleteBudgetCommentsByBudget` dropped from the repository interface.
+2. **`get-comment-list` is capped** at 2000 items with a `truncated` flag — it was
+   unbounded over 24 months × every element of the budget.
+3. **Clone author disclosure** written down and accepted rather than inherited.
+4. **Archived budgets block deletion too** — confirmed intended, with the reason.
+5. **Seam with #245** recorded: savings cells carry threads, the savings PR owns the
+   savings-section UI.
