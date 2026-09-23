@@ -1514,7 +1514,9 @@
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
-      "end_before_start": "De eindmaand ligt vóór de start van het budget"
+      "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "comment_not_found": "Opmerking niet gevonden",
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

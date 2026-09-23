@@ -716,6 +716,85 @@ type GetBudgetTransactionListResult struct {
 	Items []BudgetTransactionResult `json:"items"`
 }
 
+// GetCommentListRequest selects a budget and a month window for the comment
+// read. From and Months arrive as raw query strings; the service parses them.
+type GetCommentListRequest struct {
+	BudgetId string `json:"budgetId"`
+	From     string `json:"from"`
+	Months   string `json:"months"`
+}
+
+func (r GetCommentListRequest) Validate() error {
+	return ValidateBlank(map[string]string{"budgetId": r.BudgetId})
+}
+
+// CommentResult is one comment on the wire. ElementId is the element's EXTERNAL
+// id (the identifier set-limit takes); Period is Y-m-d; the timestamps use the
+// frozen datetime layout.
+type CommentResult struct {
+	Id        string     `json:"id"`
+	ElementId string     `json:"elementId"`
+	Period    string     `json:"period"`
+	Comment   string     `json:"comment"`
+	Author    UserResult `json:"author"`
+	CreatedAt string     `json:"createdAt"`
+	UpdatedAt string     `json:"updatedAt"`
+}
+
+// GetCommentListResult is {items: [...], truncated: bool}. Truncated is true
+// only when the server-side cap cut the tail, so the SPA can say so instead of
+// silently showing a partial thread.
+type GetCommentListResult struct {
+	Items     []CommentResult `json:"items"`
+	Truncated bool            `json:"truncated"`
+}
+
+// CreateCommentRequest posts a comment. Id is the comment's id AND the
+// idempotency key: a retried post with the same id returns the stored comment.
+type CreateCommentRequest struct {
+	Id        string `json:"id"`
+	BudgetId  string `json:"budgetId"`
+	ElementId string `json:"elementId"`
+	Period    string `json:"period"`
+	Comment   string `json:"comment"`
+}
+
+func (r CreateCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{
+		"id": r.Id, "budgetId": r.BudgetId, "elementId": r.ElementId,
+		"period": r.Period, "comment": r.Comment,
+	})
+}
+
+type UpdateCommentRequest struct {
+	Id      string `json:"id"`
+	Comment string `json:"comment"`
+}
+
+func (r UpdateCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id, "comment": r.Comment})
+}
+
+type DeleteCommentRequest struct {
+	Id string `json:"id"`
+}
+
+func (r DeleteCommentRequest) Validate() error {
+	return ValidateBlank(map[string]string{"id": r.Id})
+}
+
+// CreateCommentResult and UpdateCommentResult are {item: CommentResult}.
+type CreateCommentResult struct {
+	Item CommentResult `json:"item"`
+}
+
+type UpdateCommentResult struct {
+	Item CommentResult `json:"item"`
+}
+
+// DeleteCommentResult is empty.
+type DeleteCommentResult struct{}
+
 // ValidateBlank returns a ValidationError listing every blank field with the
 // frozen "This value should not be blank." message.
 func ValidateBlank(fields map[string]string) error {

@@ -45,6 +45,8 @@ const (
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
+	CodeBudgetCommentNotFound           = "budget.comment_not_found"
+	CodeBudgetCommentForbidden          = "budget.comment_forbidden"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -152,6 +154,8 @@ var AllCodes = []string{
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,
 	CodeBudgetEndBeforeStart,
+	CodeBudgetCommentNotFound,
+	CodeBudgetCommentForbidden,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,

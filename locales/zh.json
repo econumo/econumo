@@ -1514,7 +1514,9 @@
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "accounts_required": "请至少选择一个账户",
       "archived": "此预算已归档",
-      "end_before_start": "结束月份早于预算开始时间"
+      "end_before_start": "结束月份早于预算开始时间",
+      "comment_not_found": "未找到评论",
+      "comment_forbidden": "您无法修改此评论"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",

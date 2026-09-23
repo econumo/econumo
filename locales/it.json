@@ -1514,7 +1514,9 @@
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
-      "end_before_start": "Il mese finale precede l'inizio del budget"
+      "end_before_start": "Il mese finale precede l'inizio del budget",
+      "comment_not_found": "Commento non trovato",
+      "comment_forbidden": "Non puoi modificare questo commento"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

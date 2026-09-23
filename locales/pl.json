@@ -1514,7 +1514,9 @@
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
       "accounts_required": "Wybierz co najmniej jedno konto",
       "archived": "Ten budżet jest zarchiwizowany",
-      "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu"
+      "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu",
+      "comment_not_found": "Nie znaleziono komentarza",
+      "comment_forbidden": "Nie możesz zmienić tego komentarza"
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
