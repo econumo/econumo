@@ -1,7 +1,8 @@
 # Sign in with Google / Apple / SSO
 
 Econumo can offer "Sign in with…" buttons on the login and registration
-pages, in addition to (never instead of) email + password. Each provider is
+pages, in addition to email + password — or instead of it, see
+[Provider-only sign-in](#provider-only-sign-in). Each provider is
 an independent, optional slot configured entirely through environment
 variables — there is no admin UI for this. All three slots can be enabled at
 once; a self-hosted instance typically enables one.
@@ -238,6 +239,40 @@ registers the same scheme can receive the return. The window is narrow (the
 handoff code is one-shot, short-lived and must be presented together with the
 flow secret the app kept), but if you run the app against your own backend and
 control the domain, configure app links.
+
+## Provider-only sign-in
+
+Set `ECONUMO_PASSWORD_LOGIN=false` to switch email + password off entirely.
+The login page then shows only the provider buttons, and the server refuses
+password sign-in, password registration, "Forgot password" / "Set a password",
+and password changes. Personal access tokens and existing sessions keep
+working. The server refuses to start with this setting unless at least one
+provider slot is configured.
+
+`ECONUMO_ALLOW_REGISTRATION` keeps its meaning, now for providers alone:
+`true` lets anyone who can sign in at your provider create an account on
+first sign-in, `false` admits only accounts that already exist. So
+`ECONUMO_PASSWORD_LOGIN=false` + `ECONUMO_ALLOW_REGISTRATION=true` is
+"sign-up through my SSO only": user management stays at the identity provider.
+
+**Switching over an instance that already has password accounts.** A provider
+is never linked automatically to an account that has a password (see below),
+and with passwords off that account can no longer sign in to link one. So,
+before you set `ECONUMO_PASSWORD_LOGIN=false`:
+
+1. have every existing user sign in with their password and link a provider
+   under Settings → Profile → Sign-in methods;
+2. then switch passwords off.
+
+A user who missed step 1 sees "An account with this email address already
+exists and can't be linked automatically. Contact your administrator." —
+switch `ECONUMO_PASSWORD_LOGIN` back on for a moment so they can link, then
+off again. Users created with `user:create` always have a password, so they
+are in the same position: create accounts by letting people sign up through
+the provider instead.
+
+While passwords are off, a stored password no longer counts as a way in, so
+Settings refuses to unlink an account's last provider even if it has one.
 
 ## How accounts are matched
 

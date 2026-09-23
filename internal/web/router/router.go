@@ -215,6 +215,7 @@ func New(deps Deps) http.Handler {
 	}
 	overrides := map[string]any{
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+		"PASSWORD_LOGIN":     !deps.Cfg.PasswordLoginDisabled,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.

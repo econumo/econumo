@@ -696,7 +696,8 @@
             "set_password": {
               "menu_item": "Establecer una contraseña",
               "description": "Te registraste con una cuenta externa. Te enviaremos un código por correo electrónico para establecer una contraseña."
-            }
+            },
+            "last_sign_in_method_hint": "Este es tu único método de inicio de sesión, por lo que no se puede desvincular."
           },
           "analytics": {
             "label": "Compartir estadísticas de uso",
@@ -807,7 +808,8 @@
         "identity_taken": "Esta cuenta externa ya está vinculada a otra cuenta de Econumo.",
         "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor.",
         "account_inactive": "Esta cuenta ha sido desactivada.",
-        "account_exists_password": "Ya existe una cuenta con esta dirección de correo. Inicia sesión con tu contraseña (o restablécela) y luego vincula este proveedor desde Configuración."
+        "account_exists_password": "Ya existe una cuenta con esta dirección de correo. Inicia sesión con tu contraseña (o restablécela) y luego vincula este proveedor desde Configuración.",
+        "account_exists_contact_admin": "Ya existe una cuenta con esta dirección de correo electrónico y no se puede vincular automáticamente. Ponte en contacto con tu administrador."
       }
     }
   },
@@ -1554,7 +1556,8 @@
       "identity_not_found": "Cuenta vinculada no encontrada",
       "link_invalid": "La sesión de vinculación no es válida o ha caducado",
       "identity_taken": "Esta cuenta externa ya está vinculada a otra cuenta de Econumo",
-      "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor"
+      "provider_already_linked": "Tu cuenta ya tiene otra cuenta vinculada para este proveedor",
+      "last_sign_in_method": "No puedes desvincular tu único método de inicio de sesión"
     },
     "payee": {
       "name_length": "El nombre del beneficiario debe tener entre {min} y {max} caracteres.",
@@ -1592,7 +1595,8 @@
       "email_verification_required": "Verifica tu dirección de correo electrónico.",
       "verification_code_invalid": "El código de confirmación no es válido.",
       "verification_code_expired": "El código ha expirado.",
-      "email_unchanged": "El nuevo correo electrónico es el mismo que el actual."
+      "email_unchanged": "El nuevo correo electrónico es el mismo que el actual.",
+      "password_login_disabled": "El inicio de sesión con contraseña está desactivado"
     }
   },
   "emails": {

@@ -146,3 +146,17 @@ it('redirects to login when registration is disabled', async () => {
   renderPage()
   expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
 })
+
+it('signs up through the providers only when password sign-in is disabled', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_REGISTRATION: true, ALLOW_CUSTOM_API: 'false' }
+  server.use(
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+  expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
+})

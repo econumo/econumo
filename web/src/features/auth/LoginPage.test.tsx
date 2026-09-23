@@ -233,3 +233,42 @@ it('shows the oauth error from the query string', async () => {
   renderLogin('/login?oauthError=email_unverified')
   expect(await screen.findByText('The sign-in provider has not verified this email address.')).toBeInTheDocument()
 })
+
+describe('with password sign-in disabled', () => {
+  beforeEach(() => {
+    window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_CUSTOM_API: 'false' }
+    server.use(
+      http.get('*/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] }),
+      ),
+    )
+  })
+
+  it('offers only the provider buttons', async () => {
+    renderLogin()
+    expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /forgot/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('or continue with')).not.toBeInTheDocument()
+  })
+
+  it('points a password account at the administrator instead of the password form', async () => {
+    renderLogin('/login?oauthError=account_exists_password')
+    expect(await screen.findByText(/contact your administrator/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sign in with your password/i)).not.toBeInTheDocument()
+  })
+
+  // PASSWORD_LOGIN describes the instance serving this page; a custom backend
+  // on another origin cannot take the provider round trip back here, so the
+  // password form stays and that backend decides.
+  it('keeps the password form for a custom backend on another origin', async () => {
+    window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_CUSTOM_API: 'true' }
+    localStorage.setItem('selfHosted', 'true')
+    localStorage.setItem('backendHost', JSON.stringify('https://other.example.test'))
+    renderLogin()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+  })
+})

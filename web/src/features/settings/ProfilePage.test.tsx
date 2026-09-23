@@ -244,6 +244,15 @@ it('replaces "Change password" with "Set a password" when the user has no passwo
   expect(screen.queryByText('Change password')).not.toBeInTheDocument()
 })
 
+it('offers neither password entry when password sign-in is disabled', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: false }
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  renderPage()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.queryByText('Change password')).not.toBeInTheDocument()
+  expect(screen.queryByText('Set a password')).not.toBeInTheDocument()
+})
+
 it('"Set a password" opens the recovery dialog with the email locked', async () => {
   server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
   const user = userEvent.setup()

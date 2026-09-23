@@ -61,7 +61,7 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
 instance in product analytics, not none. App and server version-check each
@@ -431,7 +431,24 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
   `serve` logs a WARN at boot while it is set.
-- `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `ECONUMO_ALLOW_REGISTRATION` — enable/disable self-service sign-up: the register endpoint
+  and first-sign-in provisioning through a provider.
+- `ECONUMO_PASSWORD_LOGIN` — email + password sign-in (default `true`; strict boolean). `false`
+  refuses, with the coded 400 `user.password_login_disabled`, every password flow:
+  `login-user`, `register-user`, `remind-password`, `reset-password` (so also the passwordless
+  "Set a password"), `update-password`, and the login-time `confirm-email` /
+  `resend-verification-code`. The check runs before rate-limit accounting and any lookup.
+  Sessions, PATs, provider sign-in and the CLI are unaffected. It requires at least one
+  provider slot (boot fails otherwise), and `ECONUMO_ALLOW_REGISTRATION` then governs provider
+  sign-up only — together they give provider-only sign-up. The `account_exists_password`
+  refusal is unchanged, so accounts with a password must link a provider BEFORE the switch
+  (`docs/oidc-setup.md`). While it is off, a stored password no longer counts as a sign-in
+  method: `unlink-identity` refuses the last identity with `oauth.last_sign_in_method`. The
+  config field is inverted (`PasswordLoginDisabled`) so a zero `config.Config` in tests keeps
+  passwords on, and the served config carries it as `PASSWORD_LOGIN`. The SPA hides the
+  password forms and Settings' password entries through `passwordLoginAvailable()`
+  (`web/src/features/auth/oauthQueries.ts`), which keeps the form whenever the page's backend
+  is a custom one on another origin, since `PASSWORD_LOGIN` describes the serving instance.
 - `ECONUMO_TRIAL` — trial length in DAYS for a newly self-registered user. `0`
   (default; also `none`/empty) grants no trial, so the user keeps permanent full
   access — the self-hosted default. A positive integer `N` grants full access
@@ -595,7 +612,7 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `BILLING_URL` are always present (server truth).
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS

@@ -46,9 +46,12 @@ type Service struct {
 	allowRegistration   bool
 	trialDays           int
 	emailVerification   bool
-	logoutURLs          LogoutURLBuilder
-	oauthGrants         OAuthReclaimer
-	identityEmails      IdentityEmailLister
+	// Zero value = enabled, so every construction site that never opts out keeps
+	// today's behavior.
+	passwordLoginDisabled bool
+	logoutURLs            LogoutURLBuilder
+	oauthGrants           OAuthReclaimer
+	identityEmails        IdentityEmailLister
 }
 
 func NewService(
@@ -93,6 +96,21 @@ func NewService(
 		trialDays:           trialDays,
 		emailVerification:   emailVerification,
 	}
+}
+
+// DisablePasswordLogin switches off every email+password flow
+// (ECONUMO_PASSWORD_LOGIN=false): sign-in, registration, recovery, password
+// change, and the login-time email verification that only a password login
+// reaches. Provider sign-in, sessions and PATs are unaffected.
+func (s *Service) DisablePasswordLogin() { s.passwordLoginDisabled = true }
+
+// requirePasswordLogin runs before any rate-limit accounting or lookup, so a
+// disabled flow neither consumes attempts nor reveals whether an account exists.
+func (s *Service) requirePasswordLogin() error {
+	if s.passwordLoginDisabled {
+		return &errs.ValidationError{Msg: "Password sign-in is disabled", MsgCode: errs.CodeUserPasswordLoginDisabled}
+	}
+	return nil
 }
 
 // SetLogoutURLBuilder installs the oauth feature's end-session adapter after

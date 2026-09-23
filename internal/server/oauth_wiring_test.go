@@ -58,6 +58,29 @@ func TestBuildAPI_NoProvidersIsEmptyList(t *testing.T) {
 	}
 }
 
+func TestBuildAPI_PasswordLoginDisabledRefusesPasswordRoutes(t *testing.T) {
+	db := dbtest.NewSQLite(t)
+	cfg := config.Config{DatabaseDriver: db.Engine, CurrencyBase: "USD", AllowRegistration: true,
+		AppURL: "https://app.example.test", OAuthGoogleClientID: "g", OAuthGoogleClientSecret: "s",
+		PasswordLoginDisabled: true, RateLimitWindow: 15 * time.Minute}
+	srv := httptest.NewServer(BuildAPI(cfg, db.Raw, Seams{}))
+	t.Cleanup(srv.Close)
+	for path, body := range map[string]string{
+		"/api/v1/user/login-user":    `{"username":"a@example.test","password":"secretpass"}`,
+		"/api/v1/user/register-user": `{"name":"Someone","email":"a@example.test","password":"secretpass"}`,
+	} {
+		resp, err := http.Post(srv.URL+path, "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatal(err)
+		}
+		got, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusBadRequest || !strings.Contains(string(got), `"message":"Password sign-in is disabled"`) {
+			t.Fatalf("%s: %d %s", path, resp.StatusCode, got)
+		}
+	}
+}
+
 // TestOAuthUsers_FullyHydratesFromRealUserService is a deferred finding from
 // Task 8: the last-identity-unlink guard depends on OAuthUsers.FindByID/
 // FindByEmail returning the SAME hydration as the rest of the user feature

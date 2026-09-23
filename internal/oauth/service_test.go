@@ -710,6 +710,21 @@ func TestListAndUnlinkIdentities(t *testing.T) {
 	}
 }
 
+func TestUnlinkIdentity_PasswordDoesNotCountWhenPasswordLoginIsDisabled(t *testing.T) {
+	h := newHarness(t, false, true)
+	h.svc.DisablePasswordLogin()
+	pw := h.users.seed(t, "pw@example.test", model.AlgorithmArgon2id)
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), pw.ID, "google", h.fake.IssuerURL(), "g1", "pw@example.test", h.clock.Now()))
+	_, err := h.svc.UnlinkIdentity(context.Background(), pw.ID, model.UnlinkIdentityRequest{Provider: "google"})
+	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeOAuthLastSignInMethod {
+		t.Fatalf("a password nobody can sign in with must not unlock the last identity: %v", err)
+	}
+	saveIdentity(t, h, model.NewIdentity(vo.NewId(), pw.ID, "oidc", h.fake.IssuerURL(), "o1", "pw@example.test", h.clock.Now()))
+	if _, err := h.svc.UnlinkIdentity(context.Background(), pw.ID, model.UnlinkIdentityRequest{Provider: "google"}); err != nil {
+		t.Fatalf("a second identity still allows unlinking: %v", err)
+	}
+}
+
 // Two unlinks racing on a passwordless account with exactly two identities:
 // both read a count of 2, so a check-then-delete outside a transaction lets
 // both deletes land and leaves the account with no way to sign in. The gate

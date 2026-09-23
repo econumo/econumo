@@ -6,7 +6,8 @@ import { backendHost } from './config'
 // instance truth. Only these keys may cross over — everything else keeps its
 // bundled default by design. INSTANCE_ID is server truth too: an app pointed
 // at a self-hosted backend must report that backend's instance, not none.
-const MERGED_KEYS = ['ALLOW_REGISTRATION', 'INSTANCE_ID'] as const
+// PASSWORD_LOGIN decides whether the login screen offers a password form at all.
+const MERGED_KEYS = ['ALLOW_REGISTRATION', 'PASSWORD_LOGIN', 'INSTANCE_ID'] as const
 
 // Minimum server version the bundled app is compatible with; an older server
 // hard-blocks the app. The server's own floor arrives as MIN_APP_VERSION in

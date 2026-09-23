@@ -30,6 +30,8 @@ type Service struct {
 	allowRegistration bool
 	appLinks          bool
 	notifier          Notifier
+	// Zero value = password sign-in enabled, matching ECONUMO_PASSWORD_LOGIN's default.
+	passwordLoginDisabled bool
 
 	lastSweep atomic.Int64 // unix seconds of the last expired-row sweep
 }
@@ -44,6 +46,11 @@ func NewService(providers []Provider, users Users, identities Identities, states
 		handoffs: handoffs, tx: tx, clock: clock, limiter: limiter, appURL: strings.TrimSuffix(appURL, "/"),
 		allowRegistration: allowRegistration, appLinks: appLinks}
 }
+
+// DisablePasswordLogin mirrors ECONUMO_PASSWORD_LOGIN=false: a stored password
+// is then no way back into the account, so it stops counting as a sign-in
+// method when an unlink would remove the last identity.
+func (s *Service) DisablePasswordLogin() { s.passwordLoginDisabled = true }
 
 // SetNotifier installs the account-owner notification adapter after
 // construction (the composition root wires it over the user + mailer

@@ -3,7 +3,7 @@ import { create } from 'zustand'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
-import { backendHost } from '@/lib/config'
+import { backendHost, isPasswordLoginAllowed } from '@/lib/config'
 import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
@@ -63,6 +63,13 @@ export function oauthFlowCanReturnHere(): boolean {
   } catch {
     return false
   }
+}
+
+// PASSWORD_LOGIN describes the instance serving this page. A custom backend on
+// another origin cannot take the provider round trip back here, so there the
+// password form stays and that backend decides whether it accepts passwords.
+export function passwordLoginAvailable(): boolean {
+  return isPasswordLoginAllowed() || !oauthFlowCanReturnHere()
 }
 
 // The app leaves the WebView for the browser sheet and the start mutation

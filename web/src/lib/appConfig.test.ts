@@ -13,7 +13,7 @@ afterEach(() => {
 // The current server (internal/web/router builds the complete map,
 // internal/web/spa writes it verbatim) emits the whole document as a single
 // assignment.
-const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x"};
+const SERVED = `window.econumoConfig = {"ALLOW_REGISTRATION":false,"PASSWORD_LOGIN":false,"INSTANCE_ID":"a3f19c02b7d4","VERSION":"v1.4.2","MIN_APP_VERSION":"v1.1.0","BILLING_URL":"https://x"};
 `
 
 // The app can be pointed at any user-chosen backend, including one running an
@@ -51,6 +51,7 @@ it('merges only the allowlist and stores the version handshake separately', asyn
   vi.stubGlobal('fetch', vi.fn(async () => new Response(SERVED, { status: 200 })))
   await fetchServerConfig()
   expect(window.econumoConfig.ALLOW_REGISTRATION).toBe(false)
+  expect(window.econumoConfig.PASSWORD_LOGIN).toBe(false)
   expect(window.econumoConfig.INSTANCE_ID).toBe('a3f19c02b7d4')
   expect(window.econumoConfig.BILLING_URL).toBe('') // not on the allowlist
   expect(window.econumoConfig.VERSION).toBeUndefined() // never merged
