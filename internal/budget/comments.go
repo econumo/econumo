@@ -146,8 +146,15 @@ func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.Cre
 			return cerr
 		}
 		if already {
+			// The operation guard's claimed-id table is shared by every feature and
+			// keyed on the id alone, so a claim hit here only proves SOME create
+			// landed under this id — not that it was this caller's, in this budget.
+			// Re-check both before echoing the row back, or a caller who merely
+			// knows another author's comment id (e.g. from a get-comment-list
+			// response before their access was revoked) could retrieve it by
+			// "retrying" a create with that id.
 			row, gerr := s.comments.GetCommentRow(txCtx, commentID)
-			if gerr != nil {
+			if gerr != nil || !row.BudgetID.Equal(budgetID) || !row.Comment.UserID.Equal(userID) {
 				return &errs.ValidationError{Msg: "Operation is locked", MsgCode: errs.CodeOperationLocked}
 			}
 			stored = row
@@ -174,8 +181,11 @@ func (s *Service) CreateComment(ctx context.Context, userID vo.Id, req model.Cre
 	if err != nil {
 		return nil, err
 	}
-	reqctx.AddLogAttr(ctx, "budget_id", req.BudgetId)
-	reqctx.AddLogAttr(ctx, "comment_id", req.Id)
+	// Logged from stored, not req: on the retry path both are now verified to
+	// match the caller's own budget/comment, but req.BudgetId is still the raw,
+	// unverified request value.
+	reqctx.AddLogAttr(ctx, "budget_id", stored.BudgetID.String())
+	reqctx.AddLogAttr(ctx, "comment_id", stored.Comment.ID.String())
 	return &model.CreateCommentResult{Item: commentResult(*stored)}, nil
 }
 

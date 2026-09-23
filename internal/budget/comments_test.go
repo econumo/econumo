@@ -42,13 +42,14 @@ type commentHarness struct {
 	// CreateComment's ElementId call it), not the internal budgets_elements.id.
 	catFood string
 
-	owner, guest, member, pending, stranger vo.Id
+	owner, admin, guest, member, pending, stranger vo.Id
 }
 
 // newCommentHarness seeds a budget started 2026-04-01, owned by owner, with one
-// category element ("cat-food") and four other users: guest (accepted,
-// read-only), member (accepted, full edit), pending (invited but not
-// accepted) and stranger (no access row at all).
+// category element ("cat-food") and five other users: admin (accepted,
+// owner-equivalent moderation), guest (accepted, read-only), member (accepted,
+// full edit), pending (invited but not accepted) and stranger (no access row
+// at all).
 func newCommentHarness(t *testing.T) *commentHarness {
 	t.Helper()
 	tdb := dbtest.NewSQLite(t)
@@ -58,8 +59,9 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	// Explicit emails: the fixture's default email derives from the id's first
 	// 8 hex characters, which is the slow-moving high part of a UUIDv7
 	// timestamp and collides across ids minted within the same ~65s window —
-	// exactly what five back-to-back calls here would do.
+	// exactly what six back-to-back calls here would do.
 	owner := vo.MustParseId(f.User(fixture.User{Name: "Owner", Email: "owner@comments.test"}))
+	admin := vo.MustParseId(f.User(fixture.User{Name: "Admin", Email: "admin@comments.test"}))
 	guest := vo.MustParseId(f.User(fixture.User{Name: "Guest", Email: "guest@comments.test"}))
 	member := vo.MustParseId(f.User(fixture.User{Name: "Member", Email: "member@comments.test"}))
 	pending := vo.MustParseId(f.User(fixture.User{Name: "Pending", Email: "pending@comments.test"}))
@@ -73,6 +75,7 @@ func newCommentHarness(t *testing.T) *commentHarness {
 		BudgetID: budgetID.String(), ExternalID: catFood, Type: int(model.ElementCategory),
 	})
 
+	f.BudgetAccess(budgetID.String(), admin.String(), int(model.BudgetRoleAdmin), true)
 	f.BudgetAccess(budgetID.String(), guest.String(), int(model.BudgetRoleGuest), true)
 	f.BudgetAccess(budgetID.String(), member.String(), int(model.BudgetRoleUser), true)
 	f.BudgetAccess(budgetID.String(), pending.String(), int(model.BudgetRoleUser), false)
@@ -102,36 +105,51 @@ func newCommentHarness(t *testing.T) *commentHarness {
 
 	return &commentHarness{
 		ctx: context.Background(), svc: svc, f: f, budgetID: budgetID, catFood: catFood,
-		owner: owner, guest: guest, member: member, pending: pending, stranger: stranger,
+		owner: owner, admin: admin, guest: guest, member: member, pending: pending, stranger: stranger,
 	}
 }
 
-// newID mints a fresh id, used both as a comment's own id and, for a slug
-// that names no seeded element (e.g. "uncategorized"), as a stand-in external
-// element id that resolves to nothing.
+// newID mints a fresh id, used as a comment's own client-supplied id.
 func (h *commentHarness) newID() vo.Id { return vo.NewId() }
 
+// unknownElement returns a fresh, well-formed external id matching no seeded
+// budget element — for a test that explicitly wants "an id naming nothing",
+// as opposed to mistyping a slug in elementExternalID.
+func (h *commentHarness) unknownElement() string { return vo.NewId().String() }
+
 // elementExternalID resolves a test slug to the EXTERNAL element id
-// CreateCommentRequest.ElementId expects. Only "cat-food" is seeded; any other
-// slug yields a fresh id that matches no budget element.
-func (h *commentHarness) elementExternalID(slug string) string {
-	if slug == "cat-food" {
+// CreateCommentRequest.ElementId expects. "cat-food" is the one seeded
+// element; model.UncategorizedID ("uncategorized") is the presentation-only
+// pseudo-element's own literal wire value (deliberately not a UUID, per its
+// doc comment), so using it here exercises the real elementId-parse refusal
+// rather than a random id that merely resolves to "element not found". Any
+// other slug is almost certainly a typo, so it fails loudly rather than
+// silently becoming a fresh unknown-element id.
+func (h *commentHarness) elementExternalID(t *testing.T, slug string) string {
+	t.Helper()
+	switch slug {
+	case "cat-food":
 		return h.catFood
+	case model.UncategorizedID:
+		return model.UncategorizedID
+	default:
+		t.Fatalf("unknown element slug %q (use h.unknownElement() for an id naming nothing)", slug)
+		return ""
 	}
-	return vo.NewId().String()
 }
 
 // create posts a comment through the CreateComment use case.
-func (h *commentHarness) create(userID, id vo.Id, slug, period, text string) (*model.CreateCommentResult, error) {
+func (h *commentHarness) create(t *testing.T, userID, id vo.Id, slug, period, text string) (*model.CreateCommentResult, error) {
+	t.Helper()
 	return h.svc.CreateComment(h.ctx, userID, model.CreateCommentRequest{
-		Id: id.String(), BudgetId: h.budgetID.String(), ElementId: h.elementExternalID(slug), Period: period, Comment: text,
+		Id: id.String(), BudgetId: h.budgetID.String(), ElementId: h.elementExternalID(t, slug), Period: period, Comment: text,
 	})
 }
 
 // mustCreate posts a comment (with a fresh id) and fails the test on error.
 func (h *commentHarness) mustCreate(t *testing.T, userID vo.Id, slug, period, text string) *model.CreateCommentResult {
 	t.Helper()
-	res, err := h.create(userID, h.newID(), slug, period, text)
+	res, err := h.create(t, userID, h.newID(), slug, period, text)
 	if err != nil {
 		t.Fatalf("CreateComment: %v", err)
 	}
@@ -143,7 +161,7 @@ func (h *commentHarness) mustCreate(t *testing.T, userID vo.Id, slug, period, te
 // because CreateComment did not exist yet.
 func (h *commentHarness) postComment(t *testing.T, userID vo.Id, slug, period, text string) {
 	t.Helper()
-	if _, err := h.create(userID, h.newID(), slug, period, text); err != nil {
+	if _, err := h.create(t, userID, h.newID(), slug, period, text); err != nil {
 		t.Fatalf("CreateComment: %v", err)
 	}
 }
@@ -346,7 +364,7 @@ func TestGetCommentList_EmptyMonthsDefaultsToOne(t *testing.T) {
 func TestCreateComment_GuestMayPost(t *testing.T) {
 	h := newCommentHarness(t)
 
-	res, err := h.create(h.guest, h.newID(), "cat-food", "2026-05-01", "  Trip to Lisbon  ")
+	res, err := h.create(t, h.guest, h.newID(), "cat-food", "2026-05-01", "  Trip to Lisbon  ")
 	if err != nil {
 		t.Fatalf("guest post: %v", err)
 	}
@@ -366,11 +384,11 @@ func TestCreateComment_IdempotentOnClientId(t *testing.T) {
 	h := newCommentHarness(t)
 	id := h.newID()
 
-	first, err := h.create(h.owner, id, "cat-food", "2026-05-01", "double tap")
+	first, err := h.create(t, h.owner, id, "cat-food", "2026-05-01", "double tap")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := h.create(h.owner, id, "cat-food", "2026-05-01", "double tap")
+	second, err := h.create(t, h.owner, id, "cat-food", "2026-05-01", "double tap")
 	if err != nil {
 		t.Fatalf("retry rejected: %v", err)
 	}
@@ -386,26 +404,47 @@ func TestCreateComment_IdempotentOnClientId(t *testing.T) {
 func TestCreateComment_PeriodBounds(t *testing.T) {
 	h := newCommentHarness(t) // started 2026-04-01
 
-	if _, err := h.create(h.owner, h.newID(), "cat-food", "2026-03-01", "too early"); err == nil {
-		t.Fatal("a period before the budget start was accepted")
+	// Asserting the field, not just err != nil: an unrelated failure (e.g. a
+	// broken element lookup) must not masquerade as a period-bounds rejection.
+	_, err := h.create(t, h.owner, h.newID(), "cat-food", "2026-03-01", "too early")
+	ve, ok := errs.AsValidation(err)
+	if !ok || len(ve.Fields) != 1 || ve.Fields[0].Key != "period" {
+		t.Fatalf("err=%+v want a validation error on field period", ve)
 	}
+
 	h.setEndMonth(t, "2026-07-01")
-	if _, err := h.create(h.owner, h.newID(), "cat-food", "2026-08-01", "too late"); err == nil {
-		t.Fatal("a period past the end month was accepted")
+	_, err = h.create(t, h.owner, h.newID(), "cat-food", "2026-08-01", "too late")
+	ve, ok = errs.AsValidation(err)
+	if !ok || len(ve.Fields) != 1 || ve.Fields[0].Key != "period" {
+		t.Fatalf("err=%+v want a validation error on field period", ve)
 	}
 }
 
 func TestCreateComment_ArchivedAndUncategorized(t *testing.T) {
 	h := newCommentHarness(t)
 
-	if _, err := h.create(h.owner, h.newID(), "uncategorized", "2026-05-01", "nope"); err == nil {
+	if _, err := h.create(t, h.owner, h.newID(), model.UncategorizedID, "2026-05-01", "nope"); err == nil {
 		t.Fatal("uncategorized accepted a comment")
 	}
 	h.archive(t)
-	_, err := h.create(h.owner, h.newID(), "cat-food", "2026-05-01", "nope")
+	_, err := h.create(t, h.owner, h.newID(), "cat-food", "2026-05-01", "nope")
 	ae, ok := errs.AsAccessDenied(err)
 	if !ok || ae.Code != errs.CodeBudgetArchived {
 		t.Fatalf("err=%v want budget.archived", err)
+	}
+}
+
+// MINOR 5: the create side owns the "who may post" permission model
+// (canRead — any accepted participant, guest included); a pending invitee and
+// a stranger must be refused just like the read side already asserts.
+func TestCreateComment_PermissionDenied(t *testing.T) {
+	h := newCommentHarness(t)
+
+	if _, err := h.create(t, h.pending, h.newID(), "cat-food", "2026-05-01", "nope"); err == nil {
+		t.Fatal("a pending invitee posted a comment")
+	}
+	if _, err := h.create(t, h.stranger, h.newID(), "cat-food", "2026-05-01", "nope"); err == nil {
+		t.Fatal("a stranger posted a comment")
 	}
 }
 
@@ -436,6 +475,13 @@ func TestDeleteComment_AuthorOrModerator(t *testing.T) {
 		t.Fatalf("owner moderation rejected: %v", err)
 	}
 
+	// MINOR 6: canDelete also allows an admin (not just the owner); a
+	// separate harness user with the admin role exercises that half.
+	byAdmin := h.mustCreate(t, h.member, "cat-food", "2026-05-01", "moderated by admin")
+	if _, err := h.remove(h.admin, byAdmin.Item.Id); err != nil {
+		t.Fatalf("admin moderation rejected: %v", err)
+	}
+
 	guests := h.mustCreate(t, h.guest, "cat-food", "2026-05-01", "guest note")
 	_, err := h.remove(h.member, guests.Item.Id)
 	ae, ok := errs.AsAccessDenied(err)
@@ -451,16 +497,27 @@ func TestUpdateDeleteComment_ForeignBudgetLooksAbsent(t *testing.T) {
 	foreign := h.commentInAnotherBudget(t)
 
 	for _, tc := range []struct {
-		name string
-		run  func() error
+		name     string
+		wantCode string
+		run      func() error
 	}{
-		{"update", func() error { _, err := h.update(h.owner, foreign, "peek"); return err }},
-		{"delete", func() error { _, err := h.remove(h.owner, foreign); return err }},
-		{"unknown-id", func() error { _, err := h.update(h.owner, h.newID().String(), "peek"); return err }},
+		{"update", errs.CodeBudgetCommentNotFound, func() error { _, err := h.update(h.owner, foreign, "peek"); return err }},
+		{"delete", errs.CodeBudgetCommentNotFound, func() error { _, err := h.remove(h.owner, foreign); return err }},
+		{"unknown-id", errs.CodeBudgetCommentNotFound, func() error { _, err := h.update(h.owner, h.newID().String(), "peek"); return err }},
+		// CRITICAL 1: the operation guard's claimed-id table is global and
+		// keyed on id alone, so "retrying" a create with someone else's
+		// comment id (seen, say, in a get-comment-list response before access
+		// was revoked) must not echo their row back just because the caller
+		// now names their own budget/element/period. It must fail closed as a
+		// locked operation, disclosing nothing about the foreign row.
+		{"create-retry", errs.CodeOperationLocked, func() error {
+			_, err := h.create(t, h.owner, vo.MustParseId(foreign), "cat-food", "2026-05-01", "peek")
+			return err
+		}},
 	} {
 		ve, ok := errs.AsValidation(tc.run())
-		if !ok || ve.MsgCode != errs.CodeBudgetCommentNotFound {
-			t.Fatalf("%s: want a coded comment_not_found validation error, got %+v", tc.name, ve)
+		if !ok || ve.MsgCode != tc.wantCode {
+			t.Fatalf("%s: want code %s, got %+v", tc.name, tc.wantCode, ve)
 		}
 	}
 }
