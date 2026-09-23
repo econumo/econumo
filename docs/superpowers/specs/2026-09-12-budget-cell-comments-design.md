@@ -30,7 +30,7 @@ no limit, clearing a limit never touches its comments, and the existing
 | Storage | New table, not a column on `budgets_elements_limits` |
 | Reads | One dedicated window endpoint `get-comment-list`; budget reads untouched |
 | UI | Implement the design below; opening/reading UX will be refined after implementation |
-| Reset budget | *(2026-09-22)* Clears planned amounts only — comments survive |
+| Reset budget | *(2026-09-22)* Deleted with the limits — reset re-anchors the start month, so survivors would be orphans |
 | Savings rows (#245) | *(2026-09-22)* Savings cells carry threads like any other cell |
 
 ## Backend
@@ -136,6 +136,7 @@ engine-adapter pattern (no hand-built SQL needed):
   `UpdateBudgetCommentText`, `DeleteBudgetComment`.
 - `ListBudgetCommentsFrom(element_id, from)` — for clone.
 - `RepointBudgetComments(src_element_id, dst_element_id)` — for merge.
+- `DeleteBudgetCommentsByBudget(budget_id)` — for reset.
 
 Watch the sqlc semicolon-placement landmine (a `;` on its own line truncates the
 generated SQL).
@@ -148,10 +149,23 @@ generated SQL).
 | Member revoked / leaves | their category/tag elements cascade (threads go with them); their comments on surviving elements stay and keep rendering their author |
 | Archive category/tag | element stays → threads stay |
 | Type (side) change of an element | updated in place → threads stay |
-| Reset budget | **kept** — reset clears planned amounts only. A limit is a number you can retype; "Trip to Lisbon" is not. Reset touches `budgets_elements_limits` alone |
+| Reset budget | deleted together with limits (`DeleteBudgetCommentsByBudget` next to `DeleteLimitsByBudget`, same transaction) — see below |
 | Clone budget with `withLimits` | comments with `period >= startDate` copied to the new elements (envelope ids remapped as for limits), **original authors and timestamps kept**, new ids; not copied without `withLimits` |
 | Merge category/tag — no target element in that budget | element repointed in place → threads come along |
 | Merge category/tag — target element exists | source comments repointed onto the target element before the source element is deleted; threads interleave by `created_at` |
+
+`reset-budget` (`internal/budget/crud.go:195-235`, owner/admin, blocked on archived)
+is not "clear the numbers": alongside `DeleteLimitsByBudget` it calls
+`StartFrom(startedAt)` and **re-anchors the budget's start month**. Surviving
+comments on periods before the new start would be unreachable — the plan and
+monthly readers clamp to the start month, and `create-comment`'s period bounds
+refuse a sibling — while `get-comment-list` would still return them for an early
+window. Invisible rows the API keeps serving is worse than losing the notes, and
+deleting every comment (not just the ones below the new start) keeps the rule
+symmetric with limits, which die regardless of period. Note that reset has **no
+client surface today** — no SPA call, no MCP tool, no CLI, only the REST route —
+so there is no confirmation dialog to design here; whoever surfaces it owes the
+user one that names both effects.
 
 A cloned thread keeps its original author, so the clone's participants see the name
 and avatar of someone who may not be a member of the new budget (and the clone can
@@ -269,9 +283,8 @@ point, and `metrics-coverage` passing.
 
 `docs/regression-test-plan.md`: add items for posting/editing/deleting (own vs
 owner/admin moderation), guest posting, archived read-only threads, markers in both
-views (📱 compact dialog), cross-view sync, and the clone/merge/revoke effects —
-including an item asserting that **reset clears the numbers and leaves the threads
-standing**.
+views (📱 compact dialog), cross-view sync, and the reset/clone/merge/revoke
+effects — reset via the REST route, since it has no client entry point.
 
 ## Seam with budget savings (#245)
 
@@ -302,8 +315,12 @@ search, comments on uncategorized rows, carrying comments via fill-right/paste.
 
 **2026-09-22 — design review (#245 and #246 reviewed together).**
 
-1. **Reset keeps comments** (was: deleted alongside limits);
-   `DeleteBudgetCommentsByBudget` dropped from the repository interface.
+1. **Reset still deletes comments** — revisited and confirmed. The first pass of
+   this review reversed it on "a limit is a number you can retype, a note is not",
+   which missed that reset also re-anchors the start month: kept comments below the
+   new start would be orphans that no view renders but `get-comment-list` still
+   returns. `DeleteBudgetCommentsByBudget` stays, and the reasoning is written down
+   in the lifecycle section so it does not get reversed again.
 2. **`get-comment-list` is capped** at 2000 items with a `truncated` flag — it was
    unbounded over 24 months × every element of the budget.
 3. **Clone author disclosure** written down and accepted rather than inherited.
