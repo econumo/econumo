@@ -192,3 +192,48 @@ FROM budgets_elements_limits l
 JOIN budgets_elements e ON e.id = l.element_id
 WHERE e.budget_id = ? AND datetime(l.period) >= datetime(?)
 ORDER BY l.period, l.id;
+
+-- name: ListBudgetCommentsForWindow :many
+-- Every comment on every element of a budget inside a half-open month window.
+-- period is datetime TEXT, so normalize both sides with datetime() and bind the
+-- bounds as 'Y-m-d H:i:s' strings, exactly like the limit queries.
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE e.budget_id = ? AND datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?)
+ORDER BY c.period, e.external_id, c.created_at, c.id;
+
+-- name: GetBudgetComment :one
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE c.id = ?;
+
+-- name: ListBudgetCommentsFrom :many
+-- Clone reads every comment at or after the copy's start month.
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+WHERE e.budget_id = ? AND datetime(c.period) >= datetime(?)
+ORDER BY c.period, c.created_at, c.id;
+
+-- name: InsertBudgetComment :exec
+INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+-- name: UpdateBudgetCommentText :exec
+UPDATE budgets_elements_comments SET comment = ?, updated_at = ? WHERE id = ?;
+
+-- name: DeleteBudgetComment :exec
+DELETE FROM budgets_elements_comments WHERE id = ?;
+
+-- name: RepointBudgetComments :exec
+UPDATE budgets_elements_comments SET element_id = ? WHERE element_id = ?;
+
+-- name: DeleteBudgetCommentsByBudget :exec
+DELETE FROM budgets_elements_comments
+WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = ?);

@@ -320,6 +320,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		accountAccessResolver,
+		opGuard,
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)

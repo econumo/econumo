@@ -113,10 +113,31 @@ type LimitStore interface {
 	DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error
 }
 
+// CommentStore is a budget cell's comment-thread persistence surface. Consumed
+// by the comment use cases (comments.go), ResetBudget's clear-all (crud.go),
+// CloneBudget (clone.go) and MergeService (merge.go). Insert and Update are
+// separate statements on purpose: an upsert would let a create with a colliding
+// client id overwrite another author's text.
+type CommentStore interface {
+	NextIdentity() vo.Id
+
+	ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.BudgetCommentRow, error)
+	GetCommentRow(ctx context.Context, id vo.Id) (*model.BudgetCommentRow, error)
+	InsertComment(ctx context.Context, c *model.BudgetElementComment) error
+	UpdateCommentText(ctx context.Context, c *model.BudgetElementComment) error
+	DeleteComment(ctx context.Context, id vo.Id) error
+	// ListCommentsFrom returns the comments at or after a month (clone).
+	ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementComment, error)
+	// RepointComments moves every comment from one element to another (merge).
+	RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error
+	// DeleteCommentsByBudget removes every comment of every element of a budget (reset).
+	DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error
+}
+
 // Repository is the budget aggregate's full persistence port — the composite
-// of BudgetStore, AccessStore, FolderStore, EnvelopeStore, ElementStore and
-// LimitStore. It exists for wiring (one constructor param in server.go);
-// consumers depend on the narrowest role they actually use.
+// of BudgetStore, AccessStore, FolderStore, EnvelopeStore, ElementStore,
+// LimitStore and CommentStore. It exists for wiring (one constructor param in
+// server.go); consumers depend on the narrowest role they actually use.
 type Repository interface {
 	BudgetStore
 	AccessStore
@@ -124,4 +145,5 @@ type Repository interface {
 	EnvelopeStore
 	ElementStore
 	LimitStore
+	CommentStore
 }
