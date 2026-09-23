@@ -136,20 +136,59 @@ func (f *fakeLimits) DeleteLimit(ctx context.Context, id vo.Id) error { return n
 
 func (f *fakeLimits) DeleteLimitsByBudget(ctx context.Context, budgetID vo.Id) error { return nil }
 
+// fakeComments is an in-memory CommentStore half; only RepointComments is
+// real, since that is the only method MergeElements calls.
+type fakeComments struct {
+	repointed []vo.Id
+}
+
+func (f *fakeComments) NextIdentity() vo.Id { return vo.NewId() }
+
+func (f *fakeComments) ListCommentsForWindow(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.BudgetCommentRow, error) {
+	return nil, nil
+}
+
+func (f *fakeComments) GetCommentRow(ctx context.Context, id vo.Id) (*model.BudgetCommentRow, error) {
+	return nil, errs.NewNotFound("BudgetElementComment not found")
+}
+
+func (f *fakeComments) InsertComment(ctx context.Context, c *model.BudgetElementComment) error {
+	return nil
+}
+
+func (f *fakeComments) UpdateCommentText(ctx context.Context, c *model.BudgetElementComment) error {
+	return nil
+}
+
+func (f *fakeComments) DeleteComment(ctx context.Context, id vo.Id) error { return nil }
+
+func (f *fakeComments) ListCommentsFrom(ctx context.Context, budgetID vo.Id, from time.Time) ([]*model.BudgetElementComment, error) {
+	return nil, nil
+}
+
+func (f *fakeComments) RepointComments(ctx context.Context, srcElementID, dstElementID vo.Id) error {
+	f.repointed = append(f.repointed, srcElementID, dstElementID)
+	return nil
+}
+
+func (f *fakeComments) DeleteCommentsByBudget(ctx context.Context, budgetID vo.Id) error { return nil }
+
 type mergeEnv struct {
 	svc      *MergeService
 	elements *fakeElements
 	limits   *fakeLimits
+	comments *fakeComments
 	now      time.Time
 }
 
 func newMergeEnv() *mergeEnv {
 	now := time.Date(2026, 8, 11, 12, 0, 0, 0, time.UTC)
-	els, lims := newFakeElements(), &fakeLimits{}
+	els, lims, coms := newFakeElements(), &fakeLimits{}, &fakeComments{}
 	return &mergeEnv{
-		svc:      NewMergeService(els, lims, mergeClock{t: now}),
+		svc:      NewMergeService(els, lims, coms, mergeClock{t: now}),
 		elements: els,
 		limits:   lims,
+		comments: coms,
 		now:      now,
 	}
 }
@@ -257,6 +296,9 @@ func TestMergeElements_BothElements_SumsEveryPeriod(t *testing.T) {
 	}
 	if _, ok := env.elements.byID[src.ID]; ok {
 		t.Error("source element survived the merge")
+	}
+	if len(env.comments.repointed) != 2 || !env.comments.repointed[0].Equal(src.ID) || !env.comments.repointed[1].Equal(dst.ID) {
+		t.Errorf("repointed = %v, want [src=%s dst=%s]", env.comments.repointed, src.ID, dst.ID)
 	}
 	if env.elements.repoints != 0 {
 		t.Errorf("repoints = %d, want 0 (the target already had an element)", env.elements.repoints)

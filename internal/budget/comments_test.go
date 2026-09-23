@@ -19,6 +19,7 @@ import (
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/datetime"
 	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/port"
 	"github.com/econumo/econumo/internal/shared/vo"
 	tagrepo "github.com/econumo/econumo/internal/tag/repo"
 	"github.com/econumo/econumo/internal/test/dbtest"
@@ -38,9 +39,15 @@ type commentHarness struct {
 	svc      *appbudget.Service
 	f        *fixture.Builder
 	budgetID vo.Id
-	// catFood is the "cat-food" element's EXTERNAL id (what the wire and
-	// CreateComment's ElementId call it), not the internal budgets_elements.id.
-	catFood string
+	// catFood and catTransport are two elements' EXTERNAL ids (what the wire and
+	// CreateComment's ElementId call it), not the internal budgets_elements.id -
+	// the second element exists so a merge test has a real target to repoint onto.
+	catFood, catTransport string
+
+	// budgetRepo and clk back mergeCategory, which drives a real MergeService
+	// over the same database the harness's own Service reads and writes.
+	budgetRepo *budgetrepo.Repo
+	clk        port.Clock
 
 	owner, admin, guest, member, pending, stranger vo.Id
 }
@@ -74,6 +81,10 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	f.BudgetElement(fixture.BudgetElement{
 		BudgetID: budgetID.String(), ExternalID: catFood, Type: int(model.ElementCategory),
 	})
+	catTransport := vo.NewId().String()
+	f.BudgetElement(fixture.BudgetElement{
+		BudgetID: budgetID.String(), ExternalID: catTransport, Type: int(model.ElementCategory),
+	})
 
 	f.BudgetAccess(budgetID.String(), admin.String(), int(model.BudgetRoleAdmin), true)
 	f.BudgetAccess(budgetID.String(), guest.String(), int(model.BudgetRoleGuest), true)
@@ -104,7 +115,8 @@ func newCommentHarness(t *testing.T) *commentHarness {
 	)
 
 	return &commentHarness{
-		ctx: context.Background(), svc: svc, f: f, budgetID: budgetID, catFood: catFood,
+		ctx: context.Background(), svc: svc, f: f, budgetID: budgetID, catFood: catFood, catTransport: catTransport,
+		budgetRepo: budgetRepo, clk: clk,
 		owner: owner, admin: admin, guest: guest, member: member, pending: pending, stranger: stranger,
 	}
 }
@@ -130,6 +142,8 @@ func (h *commentHarness) elementExternalID(t *testing.T, slug string) string {
 	switch slug {
 	case "cat-food":
 		return h.catFood
+	case "cat-transport":
+		return h.catTransport
 	case model.UncategorizedID:
 		return model.UncategorizedID
 	default:
@@ -225,6 +239,56 @@ func (h *commentHarness) rawList(userID vo.Id, from, months string) (*model.GetC
 	return h.svc.GetCommentList(h.ctx, userID, model.GetCommentListRequest{
 		BudgetId: h.budgetID.String(), From: from, Months: months,
 	})
+}
+
+// reset resets the budget's start month as its owner. startedAt is a bare
+// Y-m-d date (the brief's test cases pass "2026-05-01"); ResetBudgetRequest
+// wants the full datetime.Layout, so it is expanded to midnight here.
+func (h *commentHarness) reset(t *testing.T, startedAt string) {
+	t.Helper()
+	if _, err := h.svc.ResetBudget(h.ctx, h.owner, model.ResetBudgetRequest{
+		Id: h.budgetID.String(), StartedAt: startedAt + " 00:00:00",
+	}); err != nil {
+		t.Fatalf("ResetBudget: %v", err)
+	}
+}
+
+// clone clones h.budgetID as its owner and returns the copy's id.
+func (h *commentHarness) clone(t *testing.T, name, startDate string, withLimits bool) vo.Id {
+	t.Helper()
+	res, err := h.svc.CloneBudget(h.ctx, h.owner, model.CloneBudgetRequest{
+		Id: h.budgetID.String(), NewId: h.newID().String(), Name: name, StartDate: startDate, WithLimits: withLimits,
+	})
+	if err != nil {
+		t.Fatalf("CloneBudget: %v", err)
+	}
+	return vo.MustParseId(res.Item.Meta.Id)
+}
+
+// listIn calls GetCommentList against an arbitrary budget (the clone target),
+// as opposed to list, which is always h.budgetID.
+func (h *commentHarness) listIn(t *testing.T, budgetID, userID vo.Id, from, months string) *model.GetCommentListResult {
+	t.Helper()
+	res, err := h.svc.GetCommentList(h.ctx, userID, model.GetCommentListRequest{
+		BudgetId: budgetID.String(), From: from, Months: months,
+	})
+	if err != nil {
+		t.Fatalf("GetCommentList: %v", err)
+	}
+	return res
+}
+
+// mergeCategory drives MergeService the way merge_test.go does, but over the
+// same repo and clock backing the harness's own Service, so the repointed
+// rows land in the database list/listIn read back from.
+func (h *commentHarness) mergeCategory(t *testing.T, srcSlug, dstSlug string) {
+	t.Helper()
+	merger := appbudget.NewMergeService(h.budgetRepo, h.budgetRepo, h.budgetRepo, h.clk)
+	src := vo.MustParseId(h.elementExternalID(t, srcSlug))
+	dst := vo.MustParseId(h.elementExternalID(t, dstSlug))
+	if err := merger.MergeElements(h.ctx, src, dst); err != nil {
+		t.Fatalf("MergeElements: %v", err)
+	}
 }
 
 // archive archives the budget as its owner.

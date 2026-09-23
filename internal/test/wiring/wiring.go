@@ -16,5 +16,5 @@ import (
 // merge exercises the limit arithmetic and element re-pointing for real.
 func BudgetMerger(engine string, txm *backend.TxManager, clk port.Clock) *appbudget.MergeService {
 	repo := budgetrepo.NewRepo(engine, txm)
-	return appbudget.NewMergeService(repo, repo, clk)
+	return appbudget.NewMergeService(repo, repo, repo, clk)
 }
