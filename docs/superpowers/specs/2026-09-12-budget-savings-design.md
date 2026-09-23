@@ -1,6 +1,8 @@
 # Budget savings: savings accounts and planned savings
 
-**Date:** 2026-09-12 · **Branch:** `feature/budget-savings`
+**Date:** 2026-09-12 · **Revised:** 2026-09-22 (design review — see "Revisions")
+**Branch:** `feature/budget-savings` · **Order:** ships **after** budget cell
+comments (#246); see "Seam with budget cell comments".
 
 ## Problem
 
@@ -28,7 +30,8 @@ reads.
 | Plan storage | New budget element type `ElementSavings = 5` (`external_id` = account id); planned amounts in `budgets_elements_limits` via the existing `set-limit`. |
 | Layout | Savings rows live in their **own collapsible section at the bottom**; they **cannot be put into folders**, only reordered. |
 | Carry-over | None: monthly Remaining = this month's planned − this month's saved. |
-| Removal | A savings row whose account leaves the budget or stops being savings is removed, with its plans, on the next element sync (same as categories). |
+| Removal | A savings row whose account leaves the budget or stops being savings is removed, with its plans, on the next element sync (same as categories). *(2026-09-22)* The SPA confirms before turning the flag off when plans would be lost. |
+| Comments (#246) | *(2026-09-22)* Savings cells carry comment threads like any other cell; this PR adds the marker and entry point in the Savings section. |
 | Out of scope (v1) | Drill-down from a savings row into its transactions. |
 
 ## Definitions
@@ -54,7 +57,13 @@ reads.
 
 ### Accounts (`internal/model/account.go`, `internal/account`)
 
-- Add `TypeSavings AccountType = 3`; `Valid()` accepts 1, 2, 3.
+- Add `TypeSavings AccountType = 3`; `Valid()` accepts 1, 2, 3. `Valid()` gates
+  *writes* only — reads must keep tolerating whatever is already in the column.
+  `NewAccount` has always written 2 and nothing has ever written anything else, but
+  `data:import-sqlite` copies the column verbatim from a foreign database, so a
+  hydrating repo read must never reject an unknown type: it maps through unchanged
+  and the UI treats "not 3" as everyday. Add a repo test that loads an account row
+  with `type = 0` and gets it back intact.
 - `CreateAccountRequest` and `UpdateAccountRequest`
   (`internal/model/account_dto.go`) gain optional `type *int`. `Validate()`
   rejects values outside {1,2,3} with a coded field error on `type`
@@ -77,7 +86,12 @@ reads.
   envelope/category/tag (drill-down stays out of scope). `IsIncomeSide()` is
   false.
 - Element currency defaults to the account's currency;
-  `change-element-currency` works unchanged.
+  `change-element-currency` works unchanged. The actual-savings query returns
+  amounts in the **savings account's** currency, which is not necessarily the
+  element's: savings amounts therefore go through the same single `bulkConvert`
+  pass every other element uses (`builder_structure_build.go:76-224`,
+  `addSpendingConvert`) — account currency → element currency for the row, element
+  currency → budget currency for the section total. No second conversion path.
 
 ### Element sync (`internal/budget/move.go` `syncElements`)
 
@@ -86,6 +100,17 @@ After tags, for every savings account among the budget's member accounts
 marked live (not archived, `folder_id` NULL). Any `ElementSavings` row whose
 account is no longer a member or no longer `type = 3` is not seen and is
 deleted by the existing unseen-row deletion (cascading its limits).
+
+The element row's own archived flag is therefore always false and is **not** the
+source of the wire's `isArchived`: readers derive that from the account's
+`is_deleted` at build time (see the wire section). One source of truth — nothing
+ever writes `is_archived = 1` on a savings element.
+
+Deletion here is the same rule categories live under, but the trigger is different:
+a category leaves a budget through a deliberate multi-step action, whereas savings
+is a switch in the account dialog, and the deletion lands later, lazily, on whatever
+budget write happens next. The backend rule stands (consistency, no dead rows), and
+the SPA carries the warning — see "Account dialog" below.
 
 The account type and currency needed here come through the budget feature's
 existing account lookup port (the one `builder.go` uses for member accounts);
@@ -172,10 +197,10 @@ into their expense totals. No `minAppVersion` bump needed.
 {
   "id": "<account id>", "type": 5, "name": "<account name>", "icon": "<account icon>",
   "currencyId": "<element currency>", "ownerUserId": "<account owner>",
-  "isArchived": 0,               // 1 when the account is deleted
+  "isArchived": 0,               // derived: 1 when the account is deleted
   "position": 0,                 // dense within the savings section
   "budgeted": "500.00",          // this month's planned (0 when none)
-  "spent": "300.00",             // actual savings this month, element currency
+  "spent": "300.00",             // actual savings this month, converted to element currency
   "available": "200.00"          // budgeted − spent (no carry-over)
 }
 ```
@@ -197,6 +222,15 @@ decimals. `buildFinancialSummary` is unchanged.
   savings accounts' actual net change (savings transfers + income/expense +
   boundary transfers booked on them); shape mirrors `transfers`.
 
+**`savingsFlows` deliberately exceeds the Savings row.** The Savings row counts only
+what the user *moved in* (everyday↔savings transfers); the balance moves with
+everything that happens to the account, interest included. So "Saved 500" this month
+alongside a savings balance that rose 512 is correct, not a rounding bug — and it
+will be read as a bug unless the UI says otherwise. The Savings balance row gets an
+info tooltip ("Includes interest and other activity on savings accounts, which is
+not counted as saved"), and the regression plan gets an item asserting the
+divergence is intended.
+
 ### MCP (`internal/budget/mcp`)
 
 `get_budget` / `get_budget_plan` return the new fields automatically.
@@ -217,6 +251,15 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
 - `AccountDialog.tsx`: "Savings account" switch. Create sends `type: 3` when on,
   `2` when off. Update sends `3` when on; when off, the account's previous type
   if it was 1 or 2, else `2`.
+- **Turning the switch off is confirmed** when it would destroy plans: on save, if
+  the account was savings and is not any more, the dialog asks
+  ("Planned savings for this account will be removed from {n} budget(s). Saved
+  amounts and transactions are not affected."). The check uses data the SPA already
+  holds — the budgets the user can see, their `structure.savings` rows, and whether
+  any carries a plan — so it needs no new endpoint; when no visible budget plans
+  savings for the account, there is no dialog. A participant's plans in a budget the
+  actor cannot see are not counted; that is acceptable (the actor owns the account)
+  and is why the confirmation text says "will be removed" without a precise total.
 - Small "Savings" marker on savings accounts in `SidebarAccountTree.tsx` and
   `AccountsSettingsPage.tsx`.
 
@@ -229,6 +272,11 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
   affordance. Own `DndContext` band: drag reorders within the section via
   `useMoveElement` with `folderId: null`. Planned cells edit via the existing
   `set-limit` cell editor. Section total row in budget currency.
+- Savings cells carry **comment threads** like every other cell (#246, already
+  shipped): the same corner-triangle marker, the same `CommentThread` in the
+  `LimitEditor` popover footer, the same Shift+Enter. No backend work — a savings
+  element is an element and its external id is the account id. See "Seam with budget
+  cell comments".
 - Totals (`planMath.ts`), per month, all in budget currency:
   - **Savings** row (below Transfers): actual for past months;
     max(actual, planned) for current and future months ("effective").
@@ -238,7 +286,8 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
     past months → `savingsFlows`; current month → `savingsFlows` +
     max(0, planned savings − actual savings); future months → planned savings.
   - **Balance** (everyday) = today's combined balance (unchanged computation)
-    − Savings balance, so the two rows always sum to the former total.
+    − Savings balance, so the two rows always sum to the former total. The Savings
+    balance row carries the "includes interest and other activity" tooltip above.
 
 ### Monthly Budget view (`BudgetPage.tsx`, `budgetMath.ts`)
 
@@ -246,6 +295,8 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
   Saved / Remaining; Remaining < 0 uses the over-plan style. Planned edits
   inline the way limits are. Drag reorders within the block only (separate
   `DndContext`, so no drop onto folders).
+- Planned cells in the block carry the #246 comment marker and entry point, exactly
+  as budgeted cells do in the table above.
 - `budgetTotals` / `bucketElements` untouched (savings are not in `elements`).
 - `ExpenseWidget` secondary line "Saved X of Y planned" (budget currency),
   shown only when `structure.savings` is non-empty.
@@ -281,13 +332,62 @@ labels (Planned / Saved / Remaining, "Saved {saved} of {planned} planned"),
   - Monthly builder: budgeted/spent/available, deleted-account visibility.
   - Plan builder: cells, `savingsOpeningBalances`, `savingsFlows`.
   - Clone keeps savings rows and (with limits) plans.
+  - Currency: a savings account in a currency other than the element's converts
+    through the shared `bulkConvert` pass — one conversion, element currency on the
+    row, budget currency in the section total.
+  - Account read tolerance: a stored `accounts.type` outside {1,2,3} round-trips
+    through the repo unchanged and reads as everyday.
 - **Parity**: new apiparity scenario `budget_savings` (mark savings, add to
   budget, set-limit, transfers, get-budget, get-budget-plan, move-element
   errors); regenerate and inspect budget/account goldens; mcpparity goldens;
   `make test-repo-pgsql` and `enginecompare` pass.
 - **SPA (vitest)**: `planMath` savings row, net, balance split; PlanSheet
   savings section render/fold/reorder; BudgetPage savings block; AccountDialog
-  switch payloads; metrics coverage.
-- **Docs**: `docs/regression-test-plan.md` — savings toggle, plan section and
-  totals, monthly block and widget line, reorder/no-folder, transfer shows as
-  saved, clone keeps plans (with 📱 markers where applicable).
+  switch payloads; metrics coverage. Plus: the switch-off confirmation appears when
+  a visible budget plans savings for the account and is skipped when none does
+  (both branches), and a savings cell renders the comment marker and opens the
+  thread.
+- **Docs**: `docs/regression-test-plan.md` — savings toggle (including the
+  switch-off confirmation and the plans it removes), plan section and totals,
+  monthly block and widget line, reorder/no-folder, transfer shows as saved, clone
+  keeps plans, a comment thread on a savings cell, and an item asserting that a
+  Savings balance moving by more than the Saved figure (interest) is expected
+  behavior (with 📱 markers where applicable).
+
+## Seam with budget cell comments (#246)
+
+Comments ship first and this branch rebases onto them. The two features are
+otherwise independent; these are the agreed terms.
+
+- **Savings cells carry threads.** `budgets_elements_comments.element_id` is an
+  element FK, so a savings element takes comments with **no backend change** —
+  no new route, no permission work, no lifecycle work (the cascade from
+  `budgets_elements` already covers a savings row removed by `syncElements`).
+- **This branch owns the savings-section UI**: marker, popover footer entry point,
+  and the compact-dialog section inside the new Savings section, reusing #246's
+  `CommentThread` and marker components as they are.
+- **Rebase surfaces** (all additive, all on this side): `internal/model/
+  budget_dto.go`, `internal/shared/errs/codes.go` + `AllCodes`, all 11
+  `locales/<lang>.json`, `web/src/lib/metrics.ts`, `PlanSheet.tsx`
+  (`buildFlatRows` + cell rendering), `BudgetPage.tsx`, the apiparity/mcpparity
+  goldens, and `docs/regression-test-plan.md`. Regenerate goldens after the rebase,
+  never before, and inspect the diff.
+
+## Revisions
+
+**2026-09-22 — design review (#245 and #246 reviewed together).**
+
+1. **Savings amounts convert through the existing `bulkConvert` pass.** The spec
+   computed actuals in the account's currency and reported them as element currency
+   with no conversion step named.
+2. **`isArchived` has one source of truth** — derived from the account's
+   `is_deleted`; the element's own flag is never written.
+3. **Turning the savings switch off is confirmed in the SPA** when planned amounts
+   would be destroyed. The backend keeps the existing (silent, lazy) sync deletion.
+4. **`savingsFlows` vs the Savings row**: the intended divergence (interest is not
+   "saved") is now stated, with a tooltip and a regression item, instead of looking
+   like a bug.
+5. **Legacy `accounts.type` values** must survive a repo round trip; `Valid()` gates
+   writes only.
+6. **Seam with #246** recorded: savings cells carry comment threads, this branch
+   owns the savings-section UI and the rebase.
