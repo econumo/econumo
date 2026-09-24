@@ -20,9 +20,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
   renderBudgetCell?: (element: BudgetElementDto) => ReactNode
-  /** a non-editable cell's own entry point: wraps the plain budgeted value in a
-   *  popover trigger, content supplied by the caller (the comments thread) —
-   *  only consulted when `renderBudgetCell` is absent, so a cell is never both */
+  /** the entry point of a cell without `renderBudgetCell` (non-editable, or an
+   *  archived element's row): wraps the plain budgeted value in a popover
+   *  trigger, content supplied by the caller (the comments thread) */
   renderBudgetCellComments?: (element: BudgetElementDto) => ReactNode
   /** the comment-marker overlay for the budgeted cell — absolutely positioned by
    *  the caller; returns null/undefined for a cell with no comments */

@@ -88,7 +88,8 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       {
         onSuccess: () => {
           pendingPost.current = null
-          setDraft('')
+          // the composer stays editable in flight: keep a note typed meanwhile
+          setDraft((current) => (current.trim() === value ? '' : current))
         },
         onSettled: () => {
           posting.current = false

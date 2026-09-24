@@ -236,3 +236,33 @@ it('lets a phone user open the thread of an individually-archived element from t
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
+
+// An editable budget gives its live rows the limit editor (which hosts the
+// thread), but the Archive section strips that editor: without a popover of its
+// own, an archived row with no comments yet had no desktop entry point at all.
+it('lets a desktop user start a thread on an archived element with no comments, in an editable budget', async () => {
+  const archivedElementBudget = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      elements: fixtureWireBudget.structure.elements.map((el) =>
+        el.id === 'tag-old' ? { ...el, budgeted: '50', available: '50' } : el,
+      ),
+    },
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: archivedElementBudget } })),
+    http.get('*/api/v1/budget/get-comment-list', () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } }),
+    ),
+  )
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-tag-old')
+  expect(within(row).queryByTestId('comment-marker')).toBeNull()
+  await user.click(within(row).getByLabelText(/^comments /))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})

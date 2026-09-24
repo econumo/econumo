@@ -227,6 +227,32 @@ it('a second post while the first is in flight sends nothing', async () => {
   expect(bodies).toHaveLength(1)
 })
 
+it('a post landing after the composer was edited keeps the newer text', async () => {
+  let release: () => void = () => {}
+  server.use(
+    http.post('*/api/v1/budget/create-comment', async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
+      return HttpResponse.json({ success: true, message: '', data: { item: { ...commentByAda, comment: 'First' } } })
+    }),
+  )
+  const user = userEvent.setup()
+  renderThread({ comments: [] })
+  const composer = screen.getByPlaceholderText('Add a note for this month')
+  const post = screen.getByRole('button', { name: 'Post' })
+
+  await user.type(composer, 'First')
+  await user.click(post)
+  await waitFor(() => expect(post).toBeDisabled())
+  await user.clear(composer)
+  await user.type(composer, 'Second')
+
+  release()
+  await waitFor(() => expect(post).not.toBeDisabled())
+  expect(composer).toHaveValue('Second')
+})
+
 it('retrying a failed post of the same text reuses its id, so the server can dedupe it', async () => {
   const ids: unknown[] = []
   server.use(

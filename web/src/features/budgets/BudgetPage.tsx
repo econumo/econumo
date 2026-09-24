@@ -823,8 +823,10 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                           )
                         : undefined
                     }
+                    // a fallback behind renderBudgetCell, so passed even when limits are
+                    // editable: the Archive section keeps only this one of the two
                     renderBudgetCellComments={
-                      !limitsEditable && !editMode && !isCompact
+                      !editMode && !isCompact
                         ? (element) => (
                             <CommentThread
                               budgetId={budget.meta.id}
