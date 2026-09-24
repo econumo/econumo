@@ -7,8 +7,11 @@ package model
 
 import (
 	"errors"
+	"strings"
 	"time"
+	"unicode/utf8"
 
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -321,4 +324,69 @@ func (e *BudgetElement) UpdateSortKey(k sortkey.Key, now time.Time) {
 		e.SortKey = k
 		e.UpdatedAt = now
 	}
+}
+
+// commentMaxRunes caps a cell comment. Runes, not bytes: the limit is about how
+// much a person can type, and an emoji is one character to them.
+const commentMaxRunes = 500
+
+// BudgetElementComment is one message in a budget cell's thread: an element in
+// one month, written by one participant.
+type BudgetElementComment struct {
+	ID        vo.Id
+	ElementID vo.Id
+	Period    time.Time
+	UserID    vo.Id
+	Comment   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+func NewBudgetElementComment(id, elementID, userID vo.Id, comment string, period, now time.Time) (*BudgetElementComment, error) {
+	text, err := validateCommentText(comment)
+	if err != nil {
+		return nil, err
+	}
+	return &BudgetElementComment{
+		ID: id, ElementID: elementID, Period: FirstOfMonth(period), UserID: userID,
+		Comment: text, CreatedAt: now, UpdatedAt: now,
+	}, nil
+}
+
+func (c *BudgetElementComment) Edit(comment string, now time.Time) error {
+	text, err := validateCommentText(comment)
+	if err != nil {
+		return err
+	}
+	if text != c.Comment {
+		c.Comment = text
+		c.UpdatedAt = now
+	}
+	return nil
+}
+
+func validateCommentText(raw string) (string, error) {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return "", errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "comment", Message: "This value should not be blank.", Code: errs.CodeIsBlank,
+		})
+	}
+	if utf8.RuneCountInString(text) > commentMaxRunes {
+		return "", errs.NewValidation("Validation failed", errs.FieldError{
+			Key: "comment", Message: "This value is too long.", Code: errs.CodeTooLong,
+		})
+	}
+	return text, nil
+}
+
+// BudgetCommentRow is a comment joined with the identity a reader needs: the
+// budget it belongs to (for the access check), the element's EXTERNAL id (what
+// the wire calls elementId) and the author's display fields.
+type BudgetCommentRow struct {
+	Comment      BudgetElementComment
+	BudgetID     vo.Id
+	ExternalID   vo.Id
+	AuthorName   string
+	AuthorAvatar string
 }

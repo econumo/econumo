@@ -1102,6 +1102,23 @@
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
           "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
           "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
+        },
+        "comments": {
+          "title": "Opmerkingen",
+          "disclosure": "Opmerkingen ({count})",
+          "comment_label": "Opmerking",
+          "marker_aria": "{count} opmerking | {count} opmerkingen",
+          "composer_placeholder": "Voeg een notitie toe voor deze maand",
+          "post": "Plaatsen",
+          "edit": "Bewerken",
+          "delete": "Verwijderen",
+          "cancel": "Annuleren",
+          "delete_confirm": "Deze opmerking verwijderen?",
+          "edited": "(bewerkt)",
+          "counter": "{count}/500",
+          "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
+          "empty": "Nog geen opmerkingen.",
+          "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
       },
       "settings": {
@@ -1516,7 +1533,9 @@
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
-      "end_before_start": "De eindmaand ligt vóór de start van het budget"
+      "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "comment_not_found": "Opmerking niet gevonden",
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",

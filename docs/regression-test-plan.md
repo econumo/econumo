@@ -417,6 +417,41 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
+      immediately and survives a reload.
+- [ ] 📱 Open the same cell in the monthly view for that month: the comment is
+      there (cross-view sync).
+- [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Another participant cannot edit your comment; the budget owner can
+      delete it.
+- [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
+- [ ] A cell with comments shows the corner marker; a cell without shows none;
+      the uncategorized row never shows one.
+- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
+      thread opens (expanded in the amount popover, or the standalone dialog
+      on a non-editable/compact cell); plain Enter on the same cell instead
+      opens the amount editor, unaffected.
+- [ ] On desktop, a non-editable cell (guest role, an archived element —
+      even on a budget you can edit — or a month outside the budget's range)
+      shows its own "comments" link in
+      place of the amount, so a thread can be started even where there is no
+      amount popover to hang the disclosure off of.
+- [ ] 📱 On a phone, tap the Available pill of an individually-archived
+      element (in the Archive section, on a budget you can edit): its comment
+      thread opens and accepts a new comment.
+- [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
+      one comment is created, and Post stays disabled until it lands.
+- [ ] Post a comment, then start typing the next one before the first lands:
+      the new text stays in the composer.
+- [ ] Archive the budget: comment threads are readable, the composer is gone.
+- [ ] Reset the budget (REST route only — there is no UI for reset): planned
+      amounts AND comments are cleared.
+- [ ] Clone a budget with plans: comments at or after the start month come
+      across with their original authors; cloning without plans copies none.
+- [ ] Merge two categories: the source cell's comment thread appears on the
+      target cell.
+- [ ] Revoke a participant: their comments on surviving cells still render
+      their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are

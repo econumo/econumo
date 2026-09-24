@@ -96,6 +96,16 @@ type BudgetsElement struct {
 	SortKey    string
 }
 
+type BudgetsElementsComment struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	UserID    string
+	Comment   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type BudgetsElementsLimit struct {
 	ID        string
 	ElementID string

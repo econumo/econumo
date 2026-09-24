@@ -234,7 +234,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// classification services take a merger over it; budgetSvc itself still needs
 	// the later dependencies.
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, clk)}
+	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, budgetRepo, clk)}
 
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
@@ -326,6 +326,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		accountAccessResolver,
+		opGuard,
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
