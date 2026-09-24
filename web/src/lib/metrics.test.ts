@@ -7,7 +7,6 @@ import {
   isCloudHost,
   scrubbedPage,
   trackEvent,
-  viewMode,
   setAnalyticsAccessState,
 } from './metrics'
 import { capture, capturePageView } from './analytics'
@@ -82,16 +81,16 @@ describe('collector capture', () => {
         // jsdom runs on localhost with no INSTANCE_ID configured
         $host: 'selfhosted_unknown',
         $app_locale: 'en',
-        $device: 'desktop', // jsdom default viewport is 1024px wide
         deployment: 'self-hosted',
       }),
     )
     const context = contextSpy.mock.calls.at(-1)![0]
-    for (const key of ['host', 'locale', 'mode', 'current_url']) {
+    // $device is the SDK's own detection; the context must not override it.
+    for (const key of ['host', 'locale', 'mode', 'current_url', '$device']) {
       expect(context).not.toHaveProperty(key)
     }
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    for (const key of ['$host', 'deployment', '$app_locale', '$device']) {
+    for (const key of ['$host', 'deployment', '$app_locale']) {
       expect(props).not.toHaveProperty(key)
     }
   })
@@ -144,19 +143,6 @@ describe('analyticsEventName', () => {
     ['appBudgetTransferEnvelopeBudget', 'budget_transfer_envelope_budget'],
   ])('%s -> %s', (metric, expected) => {
     expect(analyticsEventName(metric)).toBe(expected)
-  })
-})
-
-describe('viewMode', () => {
-  it.each([
-    [320, 'mobile'],
-    [767, 'mobile'],
-    [768, 'tablet'],
-    [1023, 'tablet'],
-    [1024, 'desktop'],
-    [1920, 'desktop'],
-  ])('%dpx -> %s', (width, expected) => {
-    expect(viewMode(width)).toBe(expected)
   })
 })
 

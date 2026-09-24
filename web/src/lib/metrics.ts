@@ -135,19 +135,6 @@ export function scrubbedPage(pathname: string): string {
   return pathname.substring(1).replace(UUID_RE, ':id')
 }
 
-// Same cutoffs as the layout hooks: useIsMobile switches the shell below 768px
-// and useIsCompact goes single-pane below 1024px, so the reported mode matches
-// the layout the user actually saw.
-export function viewMode(width: number = window.innerWidth): 'mobile' | 'tablet' | 'desktop' {
-  if (width < 768) {
-    return 'mobile'
-  }
-  if (width < 1024) {
-    return 'tablet'
-  }
-  return 'desktop'
-}
-
 // Collector names: the app-prefixed camelCase becomes snake_case,
 // e.g. appBudgetPlanFillRight -> budget_plan_fill_right.
 export function analyticsEventName(metric: string): string {
@@ -238,14 +225,12 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // signed in, how they signed in, what their data looks like. Only $path
   // describes the event itself. The system keys go on views and product
   // events alike. $host is the synthetic host, so a self-hosted deployment's
-  // real hostname never appears; $device is the layout the user actually saw,
-  // which wins over the form factor the SDK detects.
+  // real hostname never appears. The SDK detects $os, $browser and $device.
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
     $host: analyticsHost(),
     $app_locale: locale(),
-    $device: viewMode(),
     deployment: deploymentKind(),
     // Omitted while unknown, so neither reads as a measured "none".
     ...(currentAccessState ? { access_state: currentAccessState } : {}),

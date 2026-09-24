@@ -535,7 +535,8 @@ User C sees none of it.
       Network, filter `t.econumo.com`): the login/register pages load neither
       `twillingate.js` nor send any request; after login the SDK script loads
       once and every `ingest/events` body carries `$user_id`, `$consent: 0`,
-      a detected `$os`, and no `$install_id`; a reload of a signed-in page
+      a detected `$os` and `$device` (`mobile` on a phone, `desktop` on a
+      laptop, whatever the window width), and no `$install_id`; a reload of a signed-in page
       sends its page view once the user data has loaded; log out — the logout
       event goes out, nothing after it. With analytics switched off in
       Settings, a reload loads no `twillingate.js` at all. DevTools →
@@ -549,9 +550,7 @@ User C sees none of it.
 - [ ] System and session keys ride every event, view or product (same
       Network filter): each entry in `events` carries `$host` (as above),
       `$path` (the page that event happened on, UUIDs as `:id` — it differs
-      between events in one batch when you navigate mid-flush), `$device`
-      (`desktop` in a wide window; narrow the window below 768px and the next
-      event says `mobile`, 768–1023px `tablet`), `$app_locale` (switch the UI
+      between events in one batch when you navigate mid-flush), `$app_locale` (switch the UI
       language and the next event carries the new code), `access_state` and
       `deployment`; none carries `host`, `locale`, `mode` or `current_url`.
       A product event also carries its own data where it has any (merging a

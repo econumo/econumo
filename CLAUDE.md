@@ -302,9 +302,8 @@ token (login/register page views and the pre-login auth events go nowhere);
 `PAGE_VIEW` goes out as a real `$page_view` (no `$referrer`) and every other
 metric as a product event carrying its `eventData`. Both kinds carry the
 system keys `$host` (synthetic, below), `$path` (the route with every UUID
-templated to `:id`), `$device` (the layout mode — `mobile`/`tablet`/`desktop`
-by viewport width, overriding the SDK's detected form factor) and
-`$app_locale` (the UI language). The wrapper holds calls until the SDK
+templated to `:id`) and `$app_locale` (the UI language); `$device` is left to
+the SDK's detection. The wrapper holds calls until the SDK
 has loaded AND the user id is set (the boot page view fires before
 `get-user-data` resolves), discarding anything still unattributed on
 logout/401, and flushes the SDK before every identity change, because the SDK
