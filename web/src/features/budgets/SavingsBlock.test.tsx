@@ -246,6 +246,12 @@ describe('ExpenseWidget savings line', () => {
     expect(await screen.findByText('Saved 180.00 $ of 200.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
   })
 
+  it('leaves a deleted account\'s plan out of "planned" but keeps its saved amount', async () => {
+    // s1 100/120 USD + a deleted account's row planned 50, saved 10 -> planned 100, saved 130
+    renderWidget(budgetWith([s1, { ...s3, budgeted: '50', available: '40' }]))
+    expect(await screen.findByText('Saved 130.00 $ of 100.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
+  })
+
   it('omits the line without savings rows', async () => {
     renderWidget(budgetWith([]))
     expect(await screen.findByText('Spending progress')).toBeInTheDocument()

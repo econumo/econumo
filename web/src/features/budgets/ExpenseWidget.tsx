@@ -25,12 +25,14 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, '1') : null
 
-  // savings rows are in their own currencies; the line sums them in the budget's
+  // savings rows are in their own currencies; the line sums them in the budget's.
+  // A deleted account's plan is no longer a target, so "planned" skips it (as the
+  // plan view's Savings line does) while what it did save still counts.
   const savings = budget.structure.savings ?? []
   const savingsTotals = savings.reduce(
     (acc, row) => ({
       saved: add(acc.saved, exchangeFn(row.currencyId, budget.meta.currencyId, row.spent)),
-      planned: add(acc.planned, exchangeFn(row.currencyId, budget.meta.currencyId, row.budgeted)),
+      planned: row.isArchived === 1 ? acc.planned : add(acc.planned, exchangeFn(row.currencyId, budget.meta.currencyId, row.budgeted)),
     }),
     { saved: '0', planned: '0' },
   )

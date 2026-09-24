@@ -68,6 +68,24 @@ it('create-account upserts the item and inserts the opening-balance transaction'
   expect(queryClient.getQueryData<{ id: string }[]>(queryKeys.transactions)!.map((t) => t.id)).toEqual(['t-corr'])
 })
 
+it('a balance edit that returns a correction refetches budget and plan data', async () => {
+  server.use(
+    http.post('*/api/v1/account/update-account', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: 3 }, transaction: wireCorrection } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.accounts, [{ ...wireAccount, type: 3 }])
+  queryClient.setQueryData(queryKeys.transactions, [])
+  queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], null)
+  queryClient.setQueryData([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6], null)
+  const { result } = renderHook(() => useUpdateAccount(), { wrapper })
+  result.current.mutate({ id: 'a-real', name: 'Cash', balance: '100.5', icon: 'wallet', currencyId: 'c1', updatedAt: '2026-09-24 10:00:00', type: 3 })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState([...queryKeys.budget, 'b1', '2026-09-01'])!.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6])!.isInvalidated).toBe(true)
+})
+
 it('create-account with an empty folders cache refetches folders (first-account auto-folder)', async () => {
   let folderListHits = 0
   server.use(

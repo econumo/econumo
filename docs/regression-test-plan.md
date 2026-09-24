@@ -689,6 +689,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       "Savings balance"; for every month the two add up to the single
       Balance the same budget showed before its savings account was marked
       savings. Without savings accounts only "Balance" shows, unchanged.
+- [ ] 📱 Two savings accounts in the current month, one planned 500 with
+      nothing saved yet, the other planned 0 with 300 saved: the Savings line
+      shows 800 and the Savings balance rises by exactly 800 over the previous
+      month (Balance drops by the same). A transfer already booked into a future
+      month above that month's plan counts at its booked amount in both.
+- [ ] 📱 A past month where a savings account saved less than planned: the
+      cell does NOT take the green under-plan style an expense row gets.
+- [ ] 📱 Edit a savings account's balance (the correction transaction) with the
+      Plan view open in another tab or route: the Savings balance updates
+      without a manual reload.
 - [ ] 📱 "Savings balance" carries an info note (hover on desktop, tap the
       info icon on a phone): "Includes interest and other activity on savings
       accounts, which is not counted as saved". Record interest on a savings
@@ -727,7 +737,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Expense widget (select a currency chip): with savings accounts it
       shows "Saved X of Y planned" for the month in the budget currency, a
       savings account in another currency converted at the month's rate;
-      without savings accounts the line is absent.
+      a deleted savings account's plan is left out of "planned" while what it
+      saved still counts in "Saved"; without savings accounts the line is
+      absent.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
