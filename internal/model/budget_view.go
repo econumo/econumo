@@ -89,6 +89,14 @@ type MonthlyLimitRow struct {
 	Amount     string
 }
 
+// SavingsMonthRow is one account's amount in one month ("YYYY-MM-01"), in the
+// account's own currency.
+type SavingsMonthRow struct {
+	AccountID string
+	Month     string
+	Amount    string
+}
+
 // BudgetTransactionRow is one transaction in the budget transaction list, with
 // the account's currency joined and the optional category/payee/tag ids.
 type BudgetTransactionRow struct {

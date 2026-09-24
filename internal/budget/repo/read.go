@@ -818,6 +818,157 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 	return sql, args
 }
 
+// SavingsByMonth implements ReadModel: one grouped query per direction, merged
+// per (account, month) as in - out.
+func (r *ReadRepo) SavingsByMonth(ctx context.Context, savingsIDs, everydayIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+	if len(savingsIDs) == 0 || len(everydayIDs) == 0 {
+		return nil, nil
+	}
+	merged := map[string]vo.DecimalNumber{}
+	keys := map[string]model.SavingsMonthRow{}
+	for _, out := range []bool{false, true} {
+		sql, args := r.savingsByMonthSQL(out, savingsIDs, everydayIDs, from, to)
+		rows, err := r.monthAccountAmounts(ctx, sql, args)
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			k := row.Month + "|" + row.AccountID
+			acc, ok := merged[k]
+			if !ok {
+				acc = vo.NewDecimal("0")
+			}
+			amt := vo.NewDecimal(row.Amount)
+			if out {
+				acc = acc.Sub(amt)
+			} else {
+				acc = acc.Add(amt)
+			}
+			merged[k] = acc
+			keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
+		}
+	}
+	return sortedSavingsRows(merged, keys), nil
+}
+
+// savingsByMonthSQL: out=false sums amount_recipient of everyday -> savings
+// transfers (grouped by the recipient); out=true sums amount of savings ->
+// everyday transfers (grouped by the source).
+func (r *ReadRepo) savingsByMonthSQL(out bool, savingsIDs, everydayIDs []vo.Id, from, to time.Time) (string, []any) {
+	amountCol, savingsCol, everydayCol := "t.amount_recipient", "t.account_recipient_id", "t.account_id"
+	if out {
+		amountCol, savingsCol, everydayCol = "t.amount", "t.account_id", "t.account_recipient_id"
+	}
+	s, e := idArgs(savingsIDs), idArgs(everydayIDs)
+	args := append(append([]any{}, s...), e...)
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		dStart = "$" + itoa(1+len(s)+len(e))
+		dEnd = "$" + itoa(2+len(s)+len(e))
+		args = append(args, from, to)
+	} else {
+		// See sqliteDatetime.
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	month := r.planMonthExpr("t.spent_at")
+	sql := "SELECT " + month + " as month, " + savingsCol + " as account_id, SUM(" + amountCol + ") as amount FROM transactions t WHERE t.type = 2 AND " +
+		savingsCol + " IN (" + r.ph(1, len(s)) + ") AND " + everydayCol + " IN (" + r.ph(1+len(s), len(e)) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		" GROUP BY month, " + savingsCol
+	return sql, args
+}
+
+// AccountsNetByMonth implements ReadModel. The sign rules are balanceSQL's,
+// bucketed by month.
+func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(accountIDs)
+	n := len(ids)
+	month := r.planMonthExpr("t.spent_at")
+	var args []any
+	var d1, d2, d3, d4 string
+	if r.driver == "postgresql" {
+		args = append(append(append([]any{}, ids...), from, to), ids...)
+		args = append(args, from, to)
+		d1, d2 = "$"+itoa(n+1), "$"+itoa(n+2)
+		d3, d4 = "$"+itoa(2*n+3), "$"+itoa(2*n+4)
+	} else {
+		f, tt := sqliteDatetime(from), sqliteDatetime(to)
+		args = append(append(append([]any{}, ids...), f, tt), ids...)
+		args = append(args, f, tt)
+		d1, d2, d3, d4 = "?", "?", "?", "?"
+	}
+	sql := "SELECT month, account_id, SUM(amount) as amount FROM (" +
+		"SELECT " + month + " as month, t.account_id as account_id, CASE WHEN t.type = 1 THEN t.amount ELSE 0 - t.amount END as amount FROM transactions t WHERE t.account_id IN (" + r.ph(1, n) + ") AND t.spent_at >= " + d1 + " AND t.spent_at < " + d2 +
+		" UNION ALL " +
+		"SELECT " + month + " as month, t.account_recipient_id as account_id, t.amount_recipient as amount FROM transactions t WHERE t.type = 2 AND t.account_recipient_id IN (" + r.ph(n+3, n) + ") AND t.spent_at >= " + d3 + " AND t.spent_at < " + d4 +
+		") x GROUP BY month, account_id"
+	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+	merged := map[string]vo.DecimalNumber{}
+	keys := map[string]model.SavingsMonthRow{}
+	for _, row := range rows {
+		k := row.Month + "|" + row.AccountID
+		merged[k] = vo.NewDecimal(row.Amount)
+		keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
+	}
+	return sortedSavingsRows(merged, keys), nil
+}
+
+// monthAccountAmounts scans (month, account_id, amount) rows with the
+// engine's SUM representation.
+func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any) ([]model.SavingsMonthRow, error) {
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []model.SavingsMonthRow
+	for rows.Next() {
+		var row model.SavingsMonthRow
+		a := "0"
+		if r.driver == "postgresql" {
+			var amount *string
+			if err := rows.Scan(&row.Month, &row.AccountID, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				a = *amount
+			}
+		} else {
+			var amount *float64
+			if err := rows.Scan(&row.Month, &row.AccountID, &amount); err != nil {
+				return nil, err
+			}
+			if amount != nil {
+				a = strconv.FormatFloat(*amount, 'f', 8, 64)
+			}
+		}
+		row.Amount = a
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
+func sortedSavingsRows(merged map[string]vo.DecimalNumber, keys map[string]model.SavingsMonthRow) []model.SavingsMonthRow {
+	out := make([]model.SavingsMonthRow, 0, len(merged))
+	for k, amt := range merged {
+		row := keys[k]
+		row.Amount = amt.String()
+		out = append(out, row)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Month != out[j].Month {
+			return out[i].Month < out[j].Month
+		}
+		return out[i].AccountID < out[j].AccountID
+	})
+	return out
+}
+
 // LimitsByMonth implements ReadModel. SUM + GROUP BY is one row per
 // (element, month) anyway — (element_id, period) is unique — but keeps the
 // scan on the proven SummarizedLimits float/NUMERIC split.
