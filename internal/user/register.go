@@ -15,6 +15,9 @@ import (
 // gated on ECONUMO_ALLOW_REGISTRATION; the actual creation is shared with the
 // ungated CLI admin path via createUser.
 func (s *Service) Register(ctx context.Context, req model.RegisterRequest) (*model.RegisterResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	limitKey := strings.ToLower(strings.TrimSpace(req.Email))
 	if err := s.allowAttempt(RateScopeRegister, limitKey); err != nil {
 		return nil, err

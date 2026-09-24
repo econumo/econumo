@@ -200,6 +200,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		emailChangeRepo, changeMailer,
 		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
+	if cfg.PasswordLoginDisabled {
+		userSvc.DisablePasswordLogin()
+	}
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
@@ -214,6 +217,9 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
 		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
 		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+	if cfg.PasswordLoginDisabled {
+		oauthSvc.DisablePasswordLogin()
+	}
 	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
 	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
 	userSvc.SetIdentityEmailLister(NewIdentityEmailLister(oauthSvc))

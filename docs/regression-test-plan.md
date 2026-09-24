@@ -208,6 +208,41 @@ navigation (single-pane vs sidebar).
 - [ ] Web: with a custom backend selected (different origin than the page),
       Settings → Profile → Sign-in methods shows the linked list but offers no
       Link buttons.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false` with NO provider configured: the server
+      refuses to start, naming `ECONUMO_PASSWORD_LOGIN`. A malformed value
+      (e.g. `nope`) also fails at boot.
+- [ ] 📱 `ECONUMO_PASSWORD_LOGIN=false` with a provider configured: `/login`
+      shows only the provider buttons — no email/password fields, no "Sign
+      in" or "Forgot password" buttons, no "or continue with" divider. With
+      `ECONUMO_ALLOW_REGISTRATION=true` the Sign-up tab also shows only the
+      provider buttons (plus the privacy note), and a first sign-in through the
+      provider creates the account; with it `false` the Sign-up tab stays
+      disabled.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: calling `login-user`, `register-user`,
+      `remind-password`, `reset-password` or `update-password` directly returns
+      400 "Password sign-in is disabled" (localized); existing sessions and
+      personal access tokens keep working.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: Settings → Profile shows neither "Change
+      password" nor "Set a password"; on Sign-in methods an account with one
+      linked provider cannot unlink it ("This is your only sign-in method, so
+      it cannot be unlinked."), even if it has a password.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: a provider sign-in whose email matches an
+      account WITH a password is still refused, now with "An account with this
+      email address already exists and can't be linked automatically. Contact
+      your administrator." An account that linked the provider while passwords
+      were on signs in through it normally.
+- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
+      cold start the login screen drops the password form as soon as that
+      server's config arrives (no restart needed). Typing the address of a
+      backend that allows passwords into the custom-server field brings the
+      password form back within a second; switching back hides it again. An
+      unreachable address shows the password form (the server then decides).
+      Switching from a backend with no providers to a provider-only one shows
+      the new backend's provider buttons (never an empty screen).
+- [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
+      different origin: the password form is shown again (the provider buttons
+      are not), since the serving instance's setting says nothing about that
+      backend.
 
 ## 3. Onboarding (fresh user)
 

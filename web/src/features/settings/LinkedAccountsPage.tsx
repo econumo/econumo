@@ -10,9 +10,10 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, usePasswordLoginAvailable, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
+import { useServerConfig } from '@/lib/appConfig'
 import { SettingsShell } from './SettingsShell'
 import { useCompleteLink, useIdentities, useUnlinkIdentity } from './security'
 import { parseUtcDateTime } from './securityFormat'
@@ -64,7 +65,7 @@ export function LinkedAccountsPage() {
           // The providers query can still be pending here (both fire on mount), so
           // read the cache directly at toast time instead of the possibly-stale
           // `providers.data` this closure captured over.
-          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey) ?? providers.data, t)
+          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey(useServerConfig.getState().configHost)) ?? providers.data, t)
           if (provider === 'oidc' && name === t('auth.oauth.provider_name.oidc')) {
             void providers.refetch().then((r) => {
               toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: providerDisplayName(provider, r.data, t) }))
@@ -87,7 +88,9 @@ export function LinkedAccountsPage() {
   }, [oauthError, setSearchParams, t])
 
   const hasPassword = user.data?.hasPassword ?? true
-  const lastIdentityLocked = !hasPassword && (identities.data?.length ?? 0) <= 1
+  // With password sign-in off a stored password is no way back in.
+  const passwordLogin = usePasswordLoginAvailable()
+  const lastIdentityLocked = (!hasPassword || !passwordLogin) && (identities.data?.length ?? 0) <= 1
   const linkedIds = new Set(identities.data?.map((i) => i.provider))
   // A custom backend on a different origin than this page can never complete
   // the link callback (it returns to the backend's origin), so the "add a
@@ -138,7 +141,9 @@ export function LinkedAccountsPage() {
       </ul>
       {lastIdentityLocked && (identities.data?.length ?? 0) > 0 ? (
         <p id="linked-accounts-last-identity-hint" className="mt-2 text-xs text-muted-foreground">
-          {t('user.page.settings.profile.linked_accounts.last_identity_hint')}
+          {passwordLogin
+            ? t('user.page.settings.profile.linked_accounts.last_identity_hint')
+            : t('user.page.settings.profile.linked_accounts.last_sign_in_method_hint')}
         </p>
       ) : null}
       {unlinked.length > 0 ? (

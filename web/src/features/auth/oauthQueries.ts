@@ -3,13 +3,19 @@ import { create } from 'zustand'
 import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
-import { backendHost } from '@/lib/config'
+import { backendHost, isPasswordLoginAllowed } from '@/lib/config'
+import { useServerConfig } from '@/lib/appConfig'
 import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
-export const providersQueryKey = ['oauth', 'providers'] as const
+// Keyed by the server the app last requested config for (always null on the
+// web): each server has its own providers, so switching servers in the app must
+// not reuse another server's cached list.
+export function providersQueryKey(host: string | null) {
+  return ['oauth', 'providers', host] as const
+}
 
 const FLOW_KEY = 'oauthFlow'
 
@@ -65,6 +71,19 @@ export function oauthFlowCanReturnHere(): boolean {
   }
 }
 
+// PASSWORD_LOGIN describes the instance serving this page. A custom backend on
+// another origin cannot take the provider round trip back here, so there the
+// password form stays and that backend decides whether it accepts passwords.
+export function passwordLoginAvailable(): boolean {
+  return isPasswordLoginAllowed() || !oauthFlowCanReturnHere()
+}
+
+// Re-evaluates when the app merges a server config that arrived late.
+export function usePasswordLoginAvailable(): boolean {
+  useServerConfig((s) => s.revision)
+  return passwordLoginAvailable()
+}
+
 // The app leaves the WebView for the browser sheet and the start mutation
 // resolves as soon as the sheet is asked to open, so `isPending` alone lets a
 // second tap mint a second flow whose secret overwrites the first's. Ended by
@@ -98,9 +117,10 @@ export function openAuthorizationUrl(url: string): void {
 }
 
 export function useProviders() {
+  const host = useServerConfig((s) => s.configHost)
   return useQuery({
-    queryKey: providersQueryKey,
-    queryFn: oauthApi.getProviderList,
+    queryKey: providersQueryKey(host),
+    queryFn: () => oauthApi.getProviderList(host ?? undefined),
     staleTime: Infinity,
   })
 }

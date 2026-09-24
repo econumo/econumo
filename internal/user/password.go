@@ -57,6 +57,9 @@ func isNotFound(err error) bool {
 // (currentTokenID), PATs and linked identities survive — the owner is acting,
 // not recovering.
 func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentTokenID vo.Id, req model.UpdatePasswordRequest) (*model.UpdatePasswordResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	incorrect := &errs.ValidationError{Msg: "Password is not correct", MsgCode: errs.CodeUserPasswordIncorrect}
 	u, err := s.repo.GetByID(ctx, userID)
 	if err != nil {
@@ -108,6 +111,9 @@ func (s *Service) UpdatePassword(ctx context.Context, userID vo.Id, currentToken
 // codes with a fresh one (10-min expiry) and emails it. A missing user is hidden
 // (returns success) to avoid account enumeration.
 func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRequest) (*model.RemindPasswordResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeRemind, lowered); err != nil {
 		return nil, err
@@ -156,6 +162,9 @@ func (s *Service) RemindPassword(ctx context.Context, req model.RemindPasswordRe
 // the new password and consumes the code. An unknown user/code yields a generic
 // validation error; an expired code yields the frozen "The code is expired".
 func (s *Service) ResetPassword(ctx context.Context, req model.ResetPasswordRequest) (*model.ResetPasswordResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeReset, lowered); err != nil {
 		return nil, err

@@ -696,7 +696,8 @@
             "set_password": {
               "menu_item": "Définir un mot de passe",
               "description": "Vous vous êtes inscrit avec un compte externe. Nous vous enverrons un code par e-mail pour définir un mot de passe."
-            }
+            },
+            "last_sign_in_method_hint": "C'est votre seule méthode de connexion, elle ne peut donc pas être dissociée."
           },
           "analytics": {
             "label": "Partager les statistiques d'utilisation",
@@ -807,7 +808,8 @@
         "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo.",
         "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur.",
         "account_inactive": "Ce compte a été désactivé.",
-        "account_exists_password": "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe (ou réinitialisez-le), puis associez ce fournisseur depuis les Paramètres."
+        "account_exists_password": "Un compte existe déjà avec cette adresse e-mail. Connectez-vous avec votre mot de passe (ou réinitialisez-le), puis associez ce fournisseur depuis les Paramètres.",
+        "account_exists_contact_admin": "Un compte existe déjà avec cette adresse e-mail et ne peut pas être associé automatiquement. Contactez votre administrateur."
       }
     }
   },
@@ -1554,7 +1556,8 @@
       "identity_not_found": "Compte lié introuvable",
       "link_invalid": "La session de liaison est invalide ou a expiré",
       "identity_taken": "Ce compte externe est déjà lié à un autre compte Econumo",
-      "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur"
+      "provider_already_linked": "Votre compte a déjà un autre compte lié pour ce fournisseur",
+      "last_sign_in_method": "Vous ne pouvez pas dissocier votre seule méthode de connexion"
     },
     "payee": {
       "name_length": "Le nom du bénéficiaire doit contenir de {min} à {max} caractères.",
@@ -1592,7 +1595,8 @@
       "email_verification_required": "Veuillez confirmer votre adresse e-mail.",
       "verification_code_invalid": "Le code de confirmation n’est pas valide.",
       "verification_code_expired": "Le code a expiré.",
-      "email_unchanged": "Le nouvel e-mail est identique à votre e-mail actuel."
+      "email_unchanged": "Le nouvel e-mail est identique à votre e-mail actuel.",
+      "password_login_disabled": "La connexion par mot de passe est désactivée"
     }
   },
   "emails": {

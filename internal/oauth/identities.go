@@ -41,8 +41,9 @@ func (s *Service) ListIdentityEmails(ctx context.Context, userID vo.Id) ([]strin
 	return out, nil
 }
 
-// UnlinkIdentity refuses to remove the last identity of a passwordless user:
-// it would lock them out. The whole check-then-delete runs in one transaction
+// UnlinkIdentity refuses to remove the last identity of a user with no other
+// way in — passwordless, or password sign-in switched off: it would lock them
+// out. The whole check-then-delete runs in one transaction
 // that opens by taking the user row's lock, so two unlinks arriving together
 // cannot both count two identities and both delete.
 func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.UnlinkIdentityRequest) (*model.UnlinkIdentityResult, error) {
@@ -60,12 +61,16 @@ func (s *Service) UnlinkIdentity(ctx context.Context, userID vo.Id, req model.Un
 		if err != nil {
 			return err
 		}
-		if !u.HasPassword() {
+		if !u.HasPassword() || s.passwordLoginDisabled {
 			n, cerr := s.identities.CountByUser(ctx, userID)
 			if cerr != nil {
 				return cerr
 			}
 			if n <= 1 {
+				// "Set a password" is no remedy while passwords are off.
+				if s.passwordLoginDisabled {
+					return &errs.ValidationError{Msg: "You can't unlink your only sign-in method", MsgCode: errs.CodeOAuthLastSignInMethod}
+				}
 				return &errs.ValidationError{Msg: "Set a password before unlinking your only sign-in method", MsgCode: errs.CodeOAuthLastIdentity}
 			}
 		}

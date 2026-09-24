@@ -105,6 +105,7 @@ const (
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
+	CodeUserPasswordLoginDisabled     = "user.password_login_disabled"
 
 	CodeOAuthProviderNotConfigured = "oauth.provider_not_configured"
 	CodeOAuthHandoffInvalid        = "oauth.handoff_invalid"
@@ -113,6 +114,7 @@ const (
 	CodeOAuthLinkInvalid           = "oauth.link_invalid"
 	CodeOAuthIdentityTaken         = "oauth.identity_taken"
 	CodeOAuthProviderAlreadyLinked = "oauth.provider_already_linked"
+	CodeOAuthLastSignInMethod      = "oauth.last_sign_in_method"
 )
 
 var AllCodes = []string{
@@ -212,6 +214,7 @@ var AllCodes = []string{
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
+	CodeUserPasswordLoginDisabled,
 
 	CodeOAuthProviderNotConfigured,
 	CodeOAuthHandoffInvalid,
@@ -220,4 +223,5 @@ var AllCodes = []string{
 	CodeOAuthLinkInvalid,
 	CodeOAuthIdentityTaken,
 	CodeOAuthProviderAlreadyLinked,
+	CodeOAuthLastSignInMethod,
 }
