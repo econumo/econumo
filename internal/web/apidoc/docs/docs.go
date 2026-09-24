@@ -15756,6 +15756,44 @@ const docTemplate = `{
         "model.RevokeSessionResult": {
             "type": "object"
         },
+        "model.SavingsElementResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "string"
+                },
+                "budgeted": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
         "model.SessionItem": {
             "type": "object",
             "properties": {
@@ -15996,6 +16034,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.LabelSpendResult"
+                    }
+                },
+                "savings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.SavingsElementResult"
                     }
                 }
             }

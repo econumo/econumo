@@ -270,6 +270,11 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		}
 	}
 
+	savings, err := s.addMonthlySavings(ctx, f, options, toConvert)
+	if err != nil {
+		return model.StructureResult{}, err
+	}
+
 	// One bulk conversion for everything.
 	amounts, err := s.convertor.BulkConvert(ctx, f.periodStart, f.periodEnd, toConvert)
 	if err != nil {
@@ -381,7 +386,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		func(l model.LabelSpendResult) string { return f.labels[l.Id].SortKey },
 		func(l model.LabelSpendResult) string { return l.Id })
 
-	return model.StructureResult{Folders: folders, Elements: result, Labels: labels}, nil
+	return model.StructureResult{Folders: folders, Elements: result, Labels: labels, Savings: emitMonthlySavings(savings, limits, get)}, nil
 }
 
 // addSpendingConvert appends the spent / spent-budget / spent-before convert

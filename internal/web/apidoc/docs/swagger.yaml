@@ -2289,6 +2289,31 @@ definitions:
     type: object
   model.RevokeSessionResult:
     type: object
+  model.SavingsElementResult:
+    properties:
+      available:
+        type: string
+      budgeted:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      spent:
+        type: string
+      type:
+        type: integer
+    type: object
   model.SessionItem:
     properties:
       createdAt:
@@ -2446,6 +2471,10 @@ definitions:
       labels:
         items:
           $ref: '#/definitions/model.LabelSpendResult'
+        type: array
+      savings:
+        items:
+          $ref: '#/definitions/model.SavingsElementResult'
         type: array
     type: object
   model.SuggestImportRulesRequest:

@@ -120,11 +120,31 @@ type LabelSpendResult struct {
 	Children    []ChildElementResult `json:"children"`
 }
 
-// StructureResult is the budget's folders + ordered elements + labels.
+// SavingsElementResult is one savings account's row in get-budget's
+// structure.savings. Kept out of elements so older clients do not sum it into
+// expenses. Amounts are in CurrencyId (the element currency); there is no
+// carry-over: Available = Budgeted - Spent for this month only.
+type SavingsElementResult struct {
+	Id          string `json:"id"`
+	Type        int    `json:"type"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+	CurrencyId  string `json:"currencyId"`
+	OwnerUserId string `json:"ownerUserId"`
+	IsArchived  int    `json:"isArchived"`
+	Position    int    `json:"position"`
+	Budgeted    string `json:"budgeted"`
+	Spent       string `json:"spent"`
+	Available   string `json:"available"`
+}
+
+// StructureResult is the budget's folders + ordered elements + labels +
+// savings rows.
 type StructureResult struct {
-	Folders  []BudgetFolderResult  `json:"folders"`
-	Elements []ParentElementResult `json:"elements"`
-	Labels   []LabelSpendResult    `json:"labels"`
+	Folders  []BudgetFolderResult   `json:"folders"`
+	Elements []ParentElementResult  `json:"elements"`
+	Labels   []LabelSpendResult     `json:"labels"`
+	Savings  []SavingsElementResult `json:"savings"`
 }
 
 // BudgetResult is the full get-budget shape.
