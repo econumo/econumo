@@ -215,3 +215,51 @@ func TestGetBudgetSavings_EmptyIsArray(t *testing.T) {
 		t.Fatalf("get-budget body lacks \"savings\":[]: %s", env.raw)
 	}
 }
+
+func TestGetBudgetSavings_MissingElementRowUsesAccountCurrency(t *testing.T) {
+	h, tok, eur := newSavingsBudget(t)
+	// S2 first, in USD: only the missing row explains EUR and a trailing slot.
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
+		"budgetId": budgetID1, "elementId": savingsEURID, "currencyId": usdID,
+	})
+	if st, env := h.moveElement(t, tok, map[string]any{"id": savingsEURID, "folderId": nil, "afterId": nil}); st != http.StatusOK {
+		t.Fatalf("move-element: status=%d body=%s", st, env.raw)
+	}
+	if got := savingsIDs(savingsRows(t, h)); !equalIDs(got, []string{savingsEURID, savingsUSDID}) {
+		t.Fatalf("savings order = %v, want S2 first", got)
+	}
+	for _, q := range []string{
+		`DELETE FROM budgets_elements_limits WHERE element_id IN (SELECT id FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?)`,
+		`DELETE FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?`,
+	} {
+		if _, err := h.db.Exec(q, budgetID1, savingsEURID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	view, _ := h.savingsBudget(t, tok, "2026-08-15")
+	rows := view.Item.Structure.Savings
+	if len(rows) != 2 || rows[0].Id != savingsUSDID || rows[1].Id != savingsEURID || rows[1].Position != 1 {
+		t.Fatalf("savings = %+v, want S1 then the keyless S2", rows)
+	}
+	s2 := rows[1]
+	if s2.CurrencyId != eur || s2.Budgeted != "0" || s2.Spent != "100" {
+		t.Errorf("S2 = %+v, want the account's EUR, budgeted 0, spent 100", s2)
+	}
+}
+
+func TestGetBudgetSavings_DeletedAccountWithPlanOnly(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	h.setLimit(t, tok, savingsUSDID, "2026-07-01", "70")
+	if _, err := h.db.Exec(`UPDATE accounts SET is_deleted = 1 WHERE id = ?`, savingsUSDID); err != nil {
+		t.Fatal(err)
+	}
+	view, _ := h.savingsBudget(t, tok, "2026-07-15")
+	s1, ok := savingsByID(view.Item.Structure.Savings)[savingsUSDID]
+	if !ok {
+		t.Fatalf("July savings = %+v, want the deleted S1 kept for its plan", view.Item.Structure.Savings)
+	}
+	if s1.IsArchived != 1 || s1.Budgeted != "70" || s1.Spent != "0" {
+		t.Errorf("S1 = %+v, want isArchived 1, budgeted 70, spent 0", s1)
+	}
+}

@@ -262,6 +262,14 @@ definitions:
         items:
           $ref: '#/definitions/model.OpeningBalanceResult'
         type: array
+      savingsFlows:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      savingsOpeningBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
       structure:
         $ref: '#/definitions/model.PlanStructureResult'
       transfers:
@@ -2021,6 +2029,38 @@ definitions:
       period:
         type: string
     type: object
+  model.PlanSavingsElementResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanCellResult'
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: integer
+    type: object
+  model.PlanSavingsFlowResult:
+    properties:
+      amount:
+        type: string
+      currencyId:
+        type: string
+      month:
+        type: string
+    type: object
   model.PlanStructureResult:
     properties:
       elements:
@@ -2030,6 +2070,10 @@ definitions:
       folders:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+      savings:
+        items:
+          $ref: '#/definitions/model.PlanSavingsElementResult'
         type: array
     type: object
   model.PlanTransferResult:

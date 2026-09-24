@@ -378,21 +378,51 @@ type PlanMonthRatesResult struct {
 	Rates  []AverageCurrencyRateResult `json:"rates"`
 }
 
-// PlanStructureResult is all folders (income-, expense-sided and neutral) +
-// all plan rows.
-type PlanStructureResult struct {
-	Folders  []BudgetFolderResult `json:"folders"`
-	Elements []PlanElementResult  `json:"elements"`
+// PlanSavingsElementResult is one savings account's plan row. Cells align with
+// BudgetPlanResult.Months; Actual is money moved in from the everyday accounts,
+// in CurrencyId (the element currency); Planned is "" with no limit.
+type PlanSavingsElementResult struct {
+	Id          string           `json:"id"`
+	Type        int              `json:"type"`
+	Name        string           `json:"name"`
+	Icon        string           `json:"icon"`
+	CurrencyId  string           `json:"currencyId"`
+	OwnerUserId string           `json:"ownerUserId"`
+	IsArchived  int              `json:"isArchived"`
+	Position    int              `json:"position"`
+	Cells       []PlanCellResult `json:"cells"`
 }
 
-// BudgetPlanResult is the full get-budget-plan shape.
+// PlanSavingsFlowResult is one (month, account currency) net change of the
+// savings accounts: every transaction on them, interest and boundary transfers
+// included, so it deliberately exceeds the Savings row, which counts only what
+// was moved in from the everyday accounts.
+type PlanSavingsFlowResult struct {
+	Month      string `json:"month"`
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows; savings rows are listed apart from the elements.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult       `json:"folders"`
+	Elements []PlanElementResult        `json:"elements"`
+	Savings  []PlanSavingsElementResult `json:"savings"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
+// is OpeningBalances over the savings accounts only, per savings-account
+// currency; SavingsFlows lists only (month, currency) pairs with activity.
 type BudgetPlanResult struct {
-	Meta            MetaResult                 `json:"meta"`
-	Months          []string                   `json:"months"`
-	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
-	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
-	Transfers       []PlanMonthTransfersResult `json:"transfers"`
-	Structure       PlanStructureResult        `json:"structure"`
+	Meta                   MetaResult                 `json:"meta"`
+	Months                 []string                   `json:"months"`
+	OpeningBalances        []OpeningBalanceResult     `json:"openingBalances"`
+	SavingsOpeningBalances []OpeningBalanceResult     `json:"savingsOpeningBalances"`
+	CurrencyRates          []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers              []PlanMonthTransfersResult `json:"transfers"`
+	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
+	Structure              PlanStructureResult        `json:"structure"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.

@@ -3,6 +3,7 @@ package budget
 import (
 	"context"
 	"sort"
+	"time"
 
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/sortkey"
@@ -116,4 +117,164 @@ func emitMonthlySavings(rows []savingsRow, limits map[string]budgetedAmount, get
 		})
 	}
 	return out
+}
+
+// addPlanSavings queues each savings row's per-month actual into the plan's
+// single bulk conversion, account currency -> element currency, under the
+// same planKey scheme as the elements. hasActual marks accounts with any
+// activity in the window.
+func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[string]elementOption, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
+	hasActual := map[string]bool{}
+	rows, err := savingsRows(f, options)
+	if err != nil || len(rows) == 0 {
+		return rows, hasActual, err
+	}
+	ids, err := savingsAccountIDs(f)
+	if err != nil {
+		return nil, nil, err
+	}
+	windowEnd := monthsList[0].AddDate(0, len(monthsList), 0)
+	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, monthsList[0], windowEnd)
+	if err != nil {
+		return nil, nil, err
+	}
+	byID := map[string]savingsRow{}
+	for _, r := range rows {
+		byID[r.account.ID] = r
+	}
+	for _, a := range actual {
+		r, ok := byID[a.AccountID]
+		if !ok {
+			continue
+		}
+		i, ok := monthIdx[a.Month]
+		if !ok {
+			continue
+		}
+		from, perr := vo.ParseId(r.account.CurrencyID)
+		if perr != nil {
+			return nil, nil, perr
+		}
+		key := planKey(i, elementKey(a.AccountID, model.ElementSavings))
+		toConvert[key] = append(toConvert[key], model.ConvertItem{
+			PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0), From: from, To: r.currencyID, Amount: vo.NewDecimal(a.Amount),
+		})
+		hasActual[a.AccountID] = true
+	}
+	return rows, hasActual, nil
+}
+
+// emitPlanSavings renders the plan's savings rows in savingsRows order. A
+// deleted account stays only while it carries a plan or activity in the window.
+func emitPlanSavings(rows []savingsRow, plannedFor func(string) []string, hasActual map[string]bool, get func(string) vo.DecimalNumber, nMonths int) []model.PlanSavingsElementResult {
+	out := []model.PlanSavingsElementResult{}
+	for _, r := range rows {
+		index := elementKey(r.account.ID, model.ElementSavings)
+		planned := plannedFor(index)
+		hasPlan := false
+		for _, p := range planned {
+			if p != "" {
+				hasPlan = true
+			}
+		}
+		if r.account.IsDeleted && !hasPlan && !hasActual[r.account.ID] {
+			continue
+		}
+		cells := make([]model.PlanCellResult, nMonths)
+		for i := range cells {
+			cells[i] = model.PlanCellResult{Actual: get(planKey(i, index)).String(), Planned: planned[i]}
+		}
+		out = append(out, model.PlanSavingsElementResult{
+			Id: r.account.ID, Type: int(model.ElementSavings.Int16()), Name: r.account.Name, Icon: r.account.Icon,
+			CurrencyId: r.currencyID.String(), OwnerUserId: r.account.OwnerID, IsArchived: boolToInt(r.account.IsDeleted),
+			Position: len(out), Cells: cells,
+		})
+	}
+	return out
+}
+
+// buildSavingsOpeningBalances is buildOpeningBalances over the savings
+// accounts only (strictly before the window), per savings-account currency,
+// budget currency first then discovery order.
+func (s *Service) buildSavingsOpeningBalances(ctx context.Context, budgetCurrencyID vo.Id, f filters, from time.Time) ([]model.OpeningBalanceResult, error) {
+	out := []model.OpeningBalanceResult{}
+	ids, err := savingsAccountIDs(f)
+	if err != nil || len(ids) == 0 {
+		return out, err
+	}
+	rows, err := s.read.AccountsBalancesBeforeDate(ctx, ids, from)
+	if err != nil {
+		return nil, err
+	}
+	for _, cid := range savingsCurrencies(f, budgetCurrencyID) {
+		out = append(out, model.OpeningBalanceResult{CurrencyId: cid, Amount: sumBalances(rows, cid).String()})
+	}
+	return out, nil
+}
+
+// savingsCurrencies lists the savings accounts' currencies once each: the
+// budget currency first (only when a savings account holds it), then
+// discovery order.
+func savingsCurrencies(f filters, budgetCurrencyID vo.Id) []string {
+	budgetCur := budgetCurrencyID.String()
+	seen := map[string]bool{}
+	var rest []string
+	hasBudgetCur := false
+	for _, a := range f.savingsAccounts {
+		if seen[a.CurrencyID] {
+			continue
+		}
+		seen[a.CurrencyID] = true
+		if a.CurrencyID == budgetCur {
+			hasBudgetCur = true
+			continue
+		}
+		rest = append(rest, a.CurrencyID)
+	}
+	if hasBudgetCur {
+		return append([]string{budgetCur}, rest...)
+	}
+	return rest
+}
+
+// buildSavingsFlows sums AccountsNetByMonth per (month, account currency),
+// ordered by month, then budget currency first, then currency id. Months
+// without activity have no entry.
+func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time) ([]model.PlanSavingsFlowResult, error) {
+	out := []model.PlanSavingsFlowResult{}
+	ids, err := savingsAccountIDs(f)
+	if err != nil || len(ids) == 0 {
+		return out, err
+	}
+	rows, err := s.read.AccountsNetByMonth(ctx, ids, from, to)
+	if err != nil {
+		return nil, err
+	}
+	currencyOf := map[string]string{}
+	for _, a := range f.savingsAccounts {
+		currencyOf[a.ID] = a.CurrencyID
+	}
+	sums := map[[2]string]vo.DecimalNumber{}
+	for _, r := range rows {
+		k := [2]string{r.Month, currencyOf[r.AccountID]}
+		acc, ok := sums[k]
+		if !ok {
+			acc = vo.NewDecimal("0")
+		}
+		sums[k] = acc.Add(vo.NewDecimal(r.Amount))
+	}
+	budgetCur := budgetCurrencyID.String()
+	for k, v := range sums {
+		out = append(out, model.PlanSavingsFlowResult{Month: k[0], CurrencyId: k[1], Amount: v.String()})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Month != out[j].Month {
+			return out[i].Month < out[j].Month
+		}
+		if (out[i].CurrencyId == budgetCur) != (out[j].CurrencyId == budgetCur) {
+			return out[i].CurrencyId == budgetCur
+		}
+		return out[i].CurrencyId < out[j].CurrencyId
+	})
+	return out, nil
 }

@@ -62,13 +62,24 @@ func (s *Service) BuildBudgetPlan(ctx context.Context, userID vo.Id, b *budgetAg
 		return model.BudgetPlanResult{}, err
 	}
 
+	savingsOpening, err := s.buildSavingsOpeningBalances(ctx, b.budget.CurrencyID, f, from)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+	savingsFlows, err := s.buildSavingsFlows(ctx, b.budget.CurrencyID, f, from, windowEnd)
+	if err != nil {
+		return model.BudgetPlanResult{}, err
+	}
+
 	return model.BudgetPlanResult{
-		Meta:            meta,
-		Months:          monthStrs,
-		OpeningBalances: opening,
-		CurrencyRates:   rates,
-		Transfers:       transfers,
-		Structure:       structure,
+		Meta:                   meta,
+		Months:                 monthStrs,
+		OpeningBalances:        opening,
+		SavingsOpeningBalances: savingsOpening,
+		CurrencyRates:          rates,
+		Transfers:              transfers,
+		SavingsFlows:           savingsFlows,
+		Structure:              structure,
 	}, nil
 }
 
@@ -473,6 +484,11 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 		}
 	}
 
+	savingsRows, savingsHasActual, err := s.addPlanSavings(ctx, f, options, monthsList, monthIdx, toConvert)
+	if err != nil {
+		return model.PlanStructureResult{}, err
+	}
+
 	// BulkConvert's top-level (periodStart, periodEnd) doubles as month 0's rate
 	// range (its "currentKey" is monthKey(periodStart), so any item dated in
 	// that same month reuses this range instead of getting its own entry — see
@@ -488,7 +504,15 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 
 	result := s.emitPlanElements(elements, converted, nMonths)
-	return model.PlanStructureResult{Folders: folders, Elements: result}, nil
+	zero := vo.NewDecimal("0")
+	get := func(key string) vo.DecimalNumber {
+		if v, ok := converted[key]; ok {
+			return v
+		}
+		return zero
+	}
+	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, get, nMonths)
+	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
 }
 
 // emitPlanElements prunes, renders and positions the accumulated rows.

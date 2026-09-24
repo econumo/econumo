@@ -12669,6 +12669,18 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.OpeningBalanceResult"
                     }
                 },
+                "savingsFlows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "savingsOpeningBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
                 "structure": {
                     "$ref": "#/definitions/model.PlanStructureResult"
                 },
@@ -15351,6 +15363,55 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanSavingsElementResult": {
+            "type": "object",
+            "properties": {
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanCellResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PlanSavingsFlowResult": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "month": {
+                    "type": "string"
+                }
+            }
+        },
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
@@ -15364,6 +15425,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.BudgetFolderResult"
+                    }
+                },
+                "savings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsElementResult"
                     }
                 }
             }
