@@ -18,14 +18,14 @@ type Authenticator struct {
 	Level model.AccessLevel
 }
 
-func (a Authenticator) Authenticate(_ context.Context, token string) (vo.Id, vo.Id, model.AccessLevel, error) {
+func (a Authenticator) Authenticate(_ context.Context, token string) (model.Principal, error) {
 	id, err := vo.ParseId(token)
 	if err != nil {
-		return vo.Id{}, vo.Id{}, "", errs.NewUnauthorized("Invalid access token")
+		return model.Principal{}, errs.NewUnauthorized("Invalid access token")
 	}
 	level := a.Level
 	if level == "" {
 		level = model.AccessLevelFull
 	}
-	return id, id, level, nil
+	return model.Principal{UserID: id, TokenID: id, Level: level, Scope: model.TokenScopeFull}, nil
 }

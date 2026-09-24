@@ -10,6 +10,7 @@ import (
 type patItem struct {
 	Id         string  `json:"id"`
 	Name       string  `json:"name"`
+	Scope      string  `json:"scope"`
 	CreatedAt  string  `json:"createdAt"`
 	LastUsedAt string  `json:"lastUsedAt"`
 	ExpiresAt  *string `json:"expiresAt"`
@@ -18,6 +19,7 @@ type patItem struct {
 type createdPat struct {
 	Id        string  `json:"id"`
 	Name      string  `json:"name"`
+	Scope     string  `json:"scope"`
 	Token     string  `json:"token"`
 	CreatedAt string  `json:"createdAt"`
 	ExpiresAt *string `json:"expiresAt"`
@@ -28,7 +30,7 @@ var patTokenShape = regexp.MustCompile(`^eco_pat_[A-Za-z0-9_-]{43}$`)
 func (h *harness) createPat(t *testing.T, token, name, expiresAt string) createdPat {
 	t.Helper()
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/create-personal-token", token,
-		map[string]string{"name": name, "expiresAt": expiresAt})
+		map[string]string{"name": name, "scope": "full", "expiresAt": expiresAt})
 	if status != http.StatusOK {
 		t.Fatalf("create-personal-token = %d %s", status, env.raw)
 	}
@@ -86,9 +88,11 @@ func TestCreatePersonalToken_Validation(t *testing.T) {
 	ses := h.issueToken(t)
 
 	for name, body := range map[string]map[string]string{
-		"blank-name": {"name": "", "expiresAt": ""},
-		"long-name":  {"name": strings.Repeat("x", 65), "expiresAt": ""},
-		"bad-date":   {"name": "ok", "expiresAt": "tomorrow"},
+		"blank-name":  {"name": "", "scope": "full", "expiresAt": ""},
+		"long-name":   {"name": strings.Repeat("x", 65), "scope": "full", "expiresAt": ""},
+		"bad-date":    {"name": "ok", "scope": "full", "expiresAt": "tomorrow"},
+		"blank-scope": {"name": "ok", "scope": "", "expiresAt": ""},
+		"bad-scope":   {"name": "ok", "scope": "admin", "expiresAt": ""},
 	} {
 		status, env := h.do(t, http.MethodPost, "/api/v1/user/create-personal-token", ses, body)
 		if status != http.StatusBadRequest {
@@ -97,7 +101,7 @@ func TestCreatePersonalToken_Validation(t *testing.T) {
 	}
 
 	status, env := h.do(t, http.MethodPost, "/api/v1/user/create-personal-token", ses,
-		map[string]string{"name": "Expired", "expiresAt": "2020-01-01 00:00:00"})
+		map[string]string{"name": "Expired", "scope": "full", "expiresAt": "2020-01-01 00:00:00"})
 	if status != http.StatusBadRequest {
 		t.Fatalf("past date: status = %d; %s", status, env.raw)
 	}

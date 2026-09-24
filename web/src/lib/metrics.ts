@@ -127,6 +127,19 @@ export const METRICS = {
   CONNECTION_DECLINE_ACCOUNT_ACCESS: 'appConnectionDeclineAccountAccess',
   SUBSCRIPTION_CTA_CLICK: 'appSubscriptionCtaClick',
   SUBSCRIPTION_BANNER_SHOW: 'appSubscriptionBannerShow',
+  IMPORT_SOURCE_CONNECT: 'appImportSourceConnect',
+  IMPORT_ACCOUNT_LINK: 'appImportAccountLink',
+  IMPORT_ACCOUNT_IGNORE: 'appImportAccountIgnore',
+  IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
+  IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
+  IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
+  IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
+  IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
+  IMPORT_SHORTCUT_CHECK: 'appImportShortcutCheck',
+  IMPORT_SYNC: 'appImportSync',
+  IMPORT_RULE_CREATE: 'appImportRuleCreate',
+  IMPORT_RULE_APPLY: 'appImportRuleApply',
+  IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

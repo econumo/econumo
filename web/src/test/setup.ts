@@ -51,6 +51,14 @@ if (typeof Element !== 'undefined' && !Element.prototype.hasPointerCapture) {
   Element.prototype.releasePointerCapture = () => {}
 }
 
+// jsdom ships neither IndexedDB nor a full Web Crypto; the import credential
+// key lives in both. Node's webcrypto is spec-compliant for what we use.
+import 'fake-indexeddb/auto'
+if (typeof globalThis.crypto?.subtle === 'undefined') {
+  const { webcrypto } = await import('node:crypto')
+  Object.defineProperty(globalThis, 'crypto', { value: webcrypto, writable: true, configurable: true })
+}
+
 // Imported dynamically so the storage rebind above runs first (i18n reads the
 // persisted locale from localStorage at init).
 await import('@/app/i18n')

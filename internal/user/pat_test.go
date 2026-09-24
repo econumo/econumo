@@ -25,7 +25,7 @@ func TestCreatePersonalToken_RefusedWhenThePresentingSessionWasRevoked(t *testin
 	}
 	// Authenticate is what the auth middleware runs per request; its second
 	// return value is the token id it stashes in the context.
-	_, sessionTokenID, _, err := svc.Authenticate(ctx, login.Token)
+	principal, err := svc.Authenticate(ctx, login.Token)
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
@@ -35,7 +35,7 @@ func TestCreatePersonalToken_RefusedWhenThePresentingSessionWasRevoked(t *testin
 		t.Fatalf("revoke: %v", err)
 	}
 
-	_, err = svc.CreatePersonalToken(ctx, uid, sessionTokenID, model.CreatePersonalTokenRequest{Name: "mcp"})
+	_, err = svc.CreatePersonalToken(ctx, uid, principal.TokenID, model.CreatePersonalTokenRequest{Name: "mcp", Scope: string(model.TokenScopeFull)})
 	var unauthorized *errs.UnauthorizedError
 	if !errors.As(err, &unauthorized) || unauthorized.Msg != "Invalid access token" {
 		t.Fatalf("want 401 Invalid access token, got %v", err)
@@ -59,12 +59,12 @@ func TestCreatePersonalToken_SucceedsWhenThePresentingSessionIsLive(t *testing.T
 	if err != nil {
 		t.Fatalf("Login: %v", err)
 	}
-	_, sessionTokenID, _, err := svc.Authenticate(ctx, login.Token)
+	principal, err := svc.Authenticate(ctx, login.Token)
 	if err != nil {
 		t.Fatalf("Authenticate: %v", err)
 	}
 
-	res, err := svc.CreatePersonalToken(ctx, uid, sessionTokenID, model.CreatePersonalTokenRequest{Name: "mcp"})
+	res, err := svc.CreatePersonalToken(ctx, uid, principal.TokenID, model.CreatePersonalTokenRequest{Name: "mcp", Scope: string(model.TokenScopeFull)})
 	if err != nil {
 		t.Fatalf("CreatePersonalToken: %v", err)
 	}
