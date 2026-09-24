@@ -1076,6 +1076,17 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Budget savings**: an account with `accounts.type = 3` (`TypeSavings`) gets an
+  `ElementSavings` (type 5) row per budget it belongs to, synced lazily on budget writes into
+  its own ordering group (never a folder) and dropped once the account is no longer a type-3
+  member. "Actual saved" is the net of everyday↔savings transfers only — savings↔savings and
+  transfers with a non-member account don't count, and neither does interest — so the Savings
+  balance can rise by more than what shows as saved. These rows stay out of `structure.elements`
+  on the wire (unknown-field-safe for old clients): `get-budget` carries `structure.savings`,
+  `get-budget-plan` adds `savingsOpeningBalances`/`savingsFlows` alongside it. A deleted savings
+  account's row stays visible only while it still has a plan or actual activity in the period.
+  The account dialog asks for confirmation before switching savings off when a budget the
+  browser has cached plans savings for it.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

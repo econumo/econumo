@@ -266,8 +266,8 @@ navigation (single-pane vs sidebar).
 - [ ] 📱 "Savings account" switch (with its hint) in the account dialog:
       creating with it on makes a savings account, marked "Savings" next to
       its balance in the sidebar (desktop rows and mobile tiles) and in
-      Settings → Accounts; switching it off on an everyday account that was
-      switched on and back off before saving keeps its original type.
+      Settings → Accounts; toggling it on and back off before saving creates
+      an account with no "Savings" marker and no savings row in any budget.
 - [ ] Turning a savings account's switch off while a budget you have opened
       (monthly view or plan) plans savings for it asks "Turn off savings?"
       with the number of budgets; Cancel keeps the account savings and sends
@@ -675,8 +675,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       only (the order survives a reload); a savings row cannot be dropped
       into a folder or the Income/Expenses area, and its row menu has no
       "Move to folder…" (Change currency is still there).
-- [ ] 📱 A deleted savings account with history stays in the Savings section,
-      read-only (no amount editor, no drag grip).
+- [ ] 📱 A deleted savings account stays in the Savings section, read-only (no
+      amount editor, no drag grip), only while it still has a plan or actual
+      activity in the visible period; once neither remains it drops out.
+- [ ] An everyday→savings transfer counts toward "Saved" (the savings row's
+      Actual, and the monthly block's Saved column); a savings↔savings
+      transfer and a transfer with an account that is not a budget member do
+      not move it either way.
 - [ ] 📱 Totals: a "Savings" line appears below Transfers (actual for past
       months, the larger of actual and planned for the current and future
       months); without savings accounts the line is absent.
@@ -785,8 +790,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       current month cannot be removed (clear error); hidden-accounts note and
       included counter are correct (never "N of M" with N>M).
 - [ ] **Duplicate** (clone): name pre-fills with a localized "(copy)" suffix;
-      deep copy with/without plans from a chosen start month; copy starts
-      unarchived/open-ended; structure and sharing carried.
+      deep copy with/without plans from a chosen start month (a savings
+      account's Savings row carries over, and its planned limits carry over
+      too when plans are copied); copy starts unarchived/open-ended;
+      structure and sharing carried.
 - [ ] **Duplicate/Complete as shared admin** ("Full control", not owner): both
       actions are offered and succeed; the cloner owns the copy, the former
       owner appears in its sharing set as an accepted "Full control"
