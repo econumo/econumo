@@ -1,4 +1,12 @@
-import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto, PlanSavingsFlowDto } from '@/api/dto/budget'
+import type {
+  BudgetElementType,
+  BudgetFolderDto,
+  BudgetPlanDto,
+  PlanCellDto,
+  PlanElementDto,
+  PlanSavingsElementDto,
+  PlanSavingsFlowDto,
+} from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -101,6 +109,13 @@ export interface PlanRows {
   neutral: PlanFolderSection[]
   expense: { folders: PlanFolderSection[]; loose: PlanRow[]; uncategorized: PlanRow | null; hiddenCount: number }
   archived: PlanRow[]
+}
+
+// A savings row is never in a folder and has no breakdown, so presenting it as an
+// element lets the grid's row, cell editor, fill, keyboard navigation and comment
+// marker serve it unchanged.
+export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
+  return { ...s, folderId: null, children: [] }
 }
 
 const isRowHidden = (el: PlanElementDto): boolean => el.cells.every((c) => isZero(c.actual) && c.planned === '')

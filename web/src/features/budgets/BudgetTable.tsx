@@ -92,7 +92,7 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
 
 /* An explanation available on demand. Kept out of any collapsible trigger:
    explaining a block must never fold it. */
-function InfoNote({ text, testId }: { text: string; testId: string }) {
+export function InfoNote({ text, testId }: { text: string; testId: string }) {
   const { t } = useTranslation()
   return (
     <Popover>

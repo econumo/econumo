@@ -4,7 +4,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
-import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
@@ -179,6 +179,29 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
   return { ...query, fetchFrom: from, planKey }
 }
 
+// A plan row's id is either an element's or, for a savings row, the savings
+// account's; the two sets never collide, so one patch covers both arrays.
+function patchPlanCells(
+  plan: BudgetPlanDto | null | undefined,
+  elementId: Id,
+  patch: (cell: PlanCellDto, monthIndex: number) => PlanCellDto,
+): BudgetPlanDto | null | undefined {
+  if (!plan) {
+    return plan
+  }
+  const patchRow = <T extends { id: Id; cells: PlanCellDto[] }>(row: T): T =>
+    row.id === elementId ? { ...row, cells: row.cells.map(patch) } : row
+  const { savings } = plan.structure
+  return {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      elements: plan.structure.elements.map(patchRow),
+      ...(savings ? { savings: savings.map(patchRow) } : {}),
+    },
+  }
+}
+
 export function usePlanSetLimit(planKey: readonly unknown[]) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -187,27 +210,10 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
       const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
-        if (!prev) {
-          return prev
-        }
-        return {
-          ...prev,
-          structure: {
-            ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId
-                ? {
-                    ...el,
-                    cells: el.cells.map((c, i) =>
-                      i === form.monthIndex ? { ...c, planned: form.amount === null ? '' : form.amount } : c,
-                    ),
-                  }
-                : el,
-            ),
-          },
-        }
-      })
+      const planned = form.amount === null ? '' : form.amount
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
+        patchPlanCells(prev, form.elementId, (c, i) => (i === form.monthIndex ? { ...c, planned } : c)),
+      )
       return { previous }
     },
     onError: (_err, _form, context) => {
@@ -236,22 +242,9 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
       const covered = new Set(form.targets.map((t) => t.monthIndex))
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
-        if (!prev) {
-          return prev
-        }
-        return {
-          ...prev,
-          structure: {
-            ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId
-                ? { ...el, cells: el.cells.map((c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)) }
-                : el,
-            ),
-          },
-        }
-      })
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
+        patchPlanCells(prev, form.elementId, (c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)),
+      )
     },
     onSuccess: () => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)

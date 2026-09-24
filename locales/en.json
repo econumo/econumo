@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Income",
           "expenses": "Expenses",
+          "savings": "Savings",
           "archived": "Archived"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "In {in} · Out {out}",
           "show_transactions": "Show transactions",
           "net": "Net",
-          "balance": "Balance"
+          "balance": "Balance",
+          "savings": "Savings",
+          "savings_balance": "Savings balance",
+          "savings_balance_tooltip": "Includes interest and other activity on savings accounts, which is not counted as saved"
         },
         "density": {
           "hide_empty": "Hide empty rows",

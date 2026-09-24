@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",
+          "savings": "Sparen",
           "archived": "Gearchiveerd"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "In {in} · Uit {out}",
           "show_transactions": "Transacties tonen",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Sparen",
+          "savings_balance": "Spaarsaldo",
+          "savings_balance_tooltip": "Inclusief rente en andere bewegingen op spaarrekeningen, die niet als gespaard tellen"
         },
         "density": {
           "hide_empty": "Lege rijen verbergen",

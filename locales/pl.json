@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Przychody",
           "expenses": "Wydatki",
+          "savings": "Oszczędności",
           "archived": "W archiwum"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Przychodzące {in} · Wychodzące {out}",
           "show_transactions": "Pokaż transakcje",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Oszczędności",
+          "savings_balance": "Saldo oszczędności",
+          "savings_balance_tooltip": "Obejmuje odsetki i inne operacje na kontach oszczędnościowych, które nie są liczone jako zaoszczędzone"
         },
         "density": {
           "hide_empty": "Ukryj puste wiersze",

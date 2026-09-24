@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Entrate",
           "expenses": "Uscite",
+          "savings": "Risparmi",
           "archived": "In archivio"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Entrate {in} · Uscite {out}",
           "show_transactions": "Mostra le transazioni",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Risparmi",
+          "savings_balance": "Saldo risparmi",
+          "savings_balance_tooltip": "Include interessi e altri movimenti sui conti di risparmio, che non vengono contati come risparmiati"
         },
         "density": {
           "hide_empty": "Nascondi righe vuote",

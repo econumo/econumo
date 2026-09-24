@@ -46,6 +46,7 @@ import { useUpdateCategory } from '@/features/classifications/queries'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
+import { InfoNote } from './BudgetTable'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canConfigureBudget,
@@ -87,6 +88,7 @@ import {
   bucketPlanRows,
   clampFirstMonth,
   currentMonth,
+  everydayBalanceRow,
   fillTargetCol,
   folderSides,
   isOverspent,
@@ -96,6 +98,8 @@ import {
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
+  savingsAsPlanElement,
+  savingsBalanceRow,
   visibleSectionRows,
 } from './planMath'
 import type { FolderSide, MonthExchange, PlanFolderSection, PlanMonthTotals, PlanRow, PlanRows } from './planMath'
@@ -282,9 +286,13 @@ function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
         <DropdownMenuItem onSelect={() => ctx.onChangeCurrency(el)}>
           {t('budgets.page.budget.structure.element.action.change_currency')}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
-          {t('budgets.page.plan.menu.move_to_folder')}
-        </DropdownMenuItem>
+        {/* a savings row lives in its own section and never in a folder (the
+            server refuses one with budget.savings_folder_not_allowed) */}
+        {el.type !== BudgetElementType.SAVINGS ? (
+          <DropdownMenuItem onSelect={() => ctx.onMoveToFolder(el)}>
+            {t('budgets.page.plan.menu.move_to_folder')}
+          </DropdownMenuItem>
+        ) : null}
         {isEnvelopeType(el.type) ? (
           <>
             <DropdownMenuItem onSelect={() => ctx.onEditEnvelope(el)}>{t('common.button.edit.label')}</DropdownMenuItem>
@@ -932,7 +940,7 @@ function FolderRows({
 type TotalsLink = 'transfers'
 
 interface TotalsRowSpec {
-  key: 'income' | 'expenses' | 'transfers'
+  key: 'income' | 'expenses' | 'transfers' | 'savings'
   labelKey: string
   value: (t: PlanMonthTotals) => string
   link?: TotalsLink
@@ -950,12 +958,17 @@ const TOTALS_ROWS: TotalsRowSpec[] = [
   { key: 'transfers', labelKey: 'budgets.page.plan.totals.transfers', value: (t) => t.transfersNet, link: 'transfers', signed: true },
 ]
 
+// only listed while the budget has savings rows, so a budget without them keeps
+// today's totals block exactly
+const SAVINGS_TOTALS_ROW: TotalsRowSpec = { key: 'savings', labelKey: 'budgets.page.plan.totals.savings', value: (t) => t.effectiveSavings }
+
 function PlanTotals({
   visibleMonths,
   monthIndex,
   gridCols,
   totals,
   currency,
+  showSavings,
   onLinkClick,
 }: {
   visibleMonths: string[]
@@ -963,13 +976,15 @@ function PlanTotals({
   gridCols: string
   totals: PlanMonthTotals[]
   currency: CurrencyDto | undefined
+  showSavings: boolean
   onLinkClick: (link: TotalsLink, month: string) => void
 }) {
   const { t } = useTranslation()
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
+  const specs = showSavings ? [...TOTALS_ROWS, SAVINGS_TOTALS_ROW] : TOTALS_ROWS
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
-      {TOTALS_ROWS.map((spec) => (
+      {specs.map((spec) => (
         <Fragment key={spec.key}>
           <div role="row" className="grid items-center gap-1 px-2 py-1" style={{ gridTemplateColumns: gridCols }}>
             <span className="truncate text-xs font-medium text-muted-foreground">{t(spec.labelKey)}</span>
@@ -1020,11 +1035,66 @@ function PlanTotals({
   )
 }
 
+function PlanBalanceLine({
+  label,
+  info,
+  testIdPrefix,
+  values,
+  visibleMonths,
+  monthIndex,
+  gridCols,
+  currency,
+  cur,
+}: {
+  label: string
+  /** the savings balance moves with interest too, which the Savings line never
+   *  counts — without the note the two read as disagreeing */
+  info?: string
+  testIdPrefix: string
+  values: string[]
+  visibleMonths: string[]
+  monthIndex: (m: string) => number
+  gridCols: string
+  currency: CurrencyDto | undefined
+  cur: string
+}) {
+  return (
+    <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
+      <span className="flex min-w-0 items-center gap-1">
+        <span className="truncate text-xs font-semibold" title={info}>
+          {label}
+        </span>
+        {info ? <InfoNote text={info} testId="plan-savings-balance-info" /> : null}
+      </span>
+      {visibleMonths.map((m, i) => {
+        const idx = monthIndex(m)
+        const value = idx >= 0 ? values[idx] : undefined
+        const negative = value !== undefined && cmp(value, '0') < 0
+        return (
+          <div
+            key={m}
+            data-col={i}
+            data-testid={`${testIdPrefix}-${i}`}
+            className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
+          >
+            {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
+          </div>
+        )
+      })}
+      <span />
+    </div>
+  )
+}
+
+// With savings rows the combined balance splits in two: Balance becomes the
+// everyday part and Savings balance the rest, so the pair always sums to the
+// single Balance a budget without savings shows.
 function PlanBalanceRow({
   visibleMonths,
   monthIndex,
   gridCols,
   balance,
+  savingsBalance,
   currency,
   cur,
 }: {
@@ -1032,35 +1102,28 @@ function PlanBalanceRow({
   monthIndex: (m: string) => number
   gridCols: string
   balance: string[]
+  savingsBalance: string[] | null
   currency: CurrencyDto | undefined
   cur: string
 }) {
   const { t } = useTranslation()
+  const shared = { visibleMonths, monthIndex, gridCols, currency, cur }
   return (
     <div
       role="rowgroup"
       className="sticky bottom-0 z-10 border-t bg-background"
       data-testid="plan-balance-row"
     >
-      <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
-        <span className="truncate text-xs font-semibold">{t('budgets.page.plan.totals.balance')}</span>
-        {visibleMonths.map((m, i) => {
-          const idx = monthIndex(m)
-          const value = idx >= 0 ? balance[idx] : undefined
-          const negative = value !== undefined && cmp(value, '0') < 0
-          return (
-            <div
-              key={m}
-              data-col={i}
-              data-testid={`plan-balance-${i}`}
-              className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
-            >
-              {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
-            </div>
-          )
-        })}
-        <span />
-      </div>
+      <PlanBalanceLine label={t('budgets.page.plan.totals.balance')} testIdPrefix="plan-balance" values={balance} {...shared} />
+      {savingsBalance ? (
+        <PlanBalanceLine
+          label={t('budgets.page.plan.totals.savings_balance')}
+          info={t('budgets.page.plan.totals.savings_balance_tooltip')}
+          testIdPrefix="plan-savings-balance"
+          values={savingsBalance}
+          {...shared}
+        />
+      ) : null}
     </div>
   )
 }
@@ -1074,7 +1137,13 @@ function PlanBalanceRow({
 // children are read-only breakdown lines and are stepped over.
 type FlatRow = { kind: 'element'; rowKey: string; el: PlanElementDto } | { kind: 'folder'; rowKey: string; folderId: Id }
 
-function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set<string>, folded: (key: string) => boolean): FlatRow[] {
+function buildFlatRows(
+  rows: PlanRows,
+  savingsRows: PlanRow[],
+  hideEmpty: boolean,
+  revealedSections: Set<string>,
+  folded: (key: string) => boolean,
+): FlatRow[] {
   const flatRows: FlatRow[] = []
   const pushRow = (r: PlanRow) => {
     flatRows.push({ kind: 'element', rowKey: rowKey(r), el: r.element })
@@ -1099,6 +1168,9 @@ function buildFlatRows(rows: PlanRows, hideEmpty: boolean, revealedSections: Set
     if (rows.expense.uncategorized) {
       pushRow(rows.expense.uncategorized)
     }
+  }
+  if (!folded('savings')) {
+    savingsRows.forEach(pushRow)
   }
   if (rows.archived.length > 0 && !folded('archived')) {
     rows.archived.forEach(pushRow)
@@ -1456,6 +1528,24 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     return bucketPlanRows({ ...plan, structure }, false)
   }, [plan, dragArrangement])
 
+  // Live savings rows by position, then any deleted account's rows: those stay in
+  // this section as read-only history rather than joining the Archived band. A
+  // dropped reorder is held through the same dragArrangement the other bands use —
+  // a savings band arrangement names account ids only, so it never re-places an
+  // element, and vice versa.
+  const savingsRows = useMemo((): PlanRow[] => {
+    if (!plan) {
+      return []
+    }
+    const all = (plan.structure.savings ?? []).map(savingsAsPlanElement)
+    const placed = dragArrangement ? placeElements(all, dragArrangement) : all
+    const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
+    return [
+      ...placed.filter((el) => el.isArchived === 0).sort(byPosition),
+      ...placed.filter((el) => el.isArchived !== 0).sort(byPosition),
+    ].map((element) => ({ element, hidden: false }))
+  }, [plan, dragArrangement])
+
   // Rows that earn their place per VISIBLE window, not per fetched cells (the fetch
   // carries buffer months either side): an uncategorized row is dropped when every
   // visible column's actual is zero, and an archived row when no visible column has
@@ -1491,9 +1581,18 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const ex: MonthExchange | null = useMemo(() => (plan ? makePlanExchange(plan, currencies) : null), [plan, currencies])
   const totals = useMemo(() => (plan && ex ? planTotals(plan, ex) : []), [plan, ex])
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
+  const hasSavings = savingsRows.length > 0
+  const savingsBalance = useMemo(
+    () => (plan && ex && hasSavings ? savingsBalanceRow(plan, totals, ex) : null),
+    [plan, ex, totals, hasSavings],
+  )
+  const everydayBalance = useMemo(
+    () => (savingsBalance ? everydayBalanceRow(balance, savingsBalance) : balance),
+    [balance, savingsBalance],
+  )
   const flatRows = useMemo(
-    () => (shownRows ? buildFlatRows(shownRows, hideEmpty, revealedSections, folded) : []),
-    [shownRows, hideEmpty, revealedSections, folded],
+    () => (shownRows ? buildFlatRows(shownRows, savingsRows, hideEmpty, revealedSections, folded) : []),
+    [shownRows, savingsRows, hideEmpty, revealedSections, folded],
   )
   const folderSideMap = useMemo(() => (plan ? folderSides(plan) : new Map<Id, FolderSide>()), [plan])
 
@@ -1603,6 +1702,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const expenseLoose = visibleSectionRows(shownRows.expense.loose, expenseFolded, hideEmpty, expenseRevealed)
   const expenseHiddenCount = expenseFolded ? 0 : sectionHiddenCount(shownRows.expense.loose, expenseRevealed)
 
+  const savingsFolded = folded('savings')
+  const savingsLive = savingsRows.filter(isDraggableRow)
+  const savingsDeleted = savingsRows.filter((r) => !isDraggableRow(r))
+
   // The band's element buckets as the arrangement elementMove.ts operates on:
   // one container per folder plus the loose rows. Uncategorized and archived
   // rows are excluded — they carry no position the server would honour.
@@ -1662,7 +1765,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
 
     // a row dropped on a folder header lands in that folder, appended
     const target = overId.startsWith('pfolder:') ? `bfolder:${overId.slice('pfolder:'.length)}` : overId
-    const base = bandArrangement(side)
+    commitElementMove(bandArrangement(side), activeId, target)
+  }
+
+  // The savings band is one folder-less list: the only valid target is another
+  // live savings row, so the move always carries folderId null.
+  function handleSavingsDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) {
+      return
+    }
+    const ids = savingsLive.map((r) => r.element.id)
+    const overId = String(over.id)
+    if (!ids.includes(overId)) {
+      return
+    }
+    commitElementMove([{ folderId: null, ids }], String(active.id), overId)
+  }
+
+  function commitElementMove(base: ElementContainer[], activeId: string, target: string) {
     const moved = moveElementInArrangement(base, activeId, target)
     const item = arrangementItem(moved, activeId)
     const before = arrangementItem(base, activeId)
@@ -1693,7 +1814,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   // but the owner with NotFound, so a shared row must not offer the dialog at all.
   function openElementEditor(entry: Extract<FlatRow, { kind: 'element' }>) {
     const target = entry.el
-    if (target.id === UNCATEGORIZED_ID) {
+    // a savings row is an account, edited from the accounts screen, not here
+    if (target.id === UNCATEGORIZED_ID || target.type === BudgetElementType.SAVINGS) {
       return
     }
     // no right to edit: say why instead of silently ignoring the keystroke; a fixed
@@ -2237,6 +2359,38 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           ) : null}
         </section>
 
+        {hasSavings ? (
+          // Its own drag context: a savings row reorders among savings rows only and
+          // can never reach a folder, which the server refuses for it anyway.
+          <section role="rowgroup" data-testid="plan-section-savings" className="plan-band-savings mt-6 flex flex-col px-1 py-1">
+            <SectionHeader
+              label={t('budgets.page.plan.section.savings')}
+              foldKey="savings"
+              folded={savingsFolded}
+              onToggleFold={togglePlanFold}
+              hiddenCount={0}
+              onShow={() => {}}
+            />
+            {!savingsFolded ? (
+              <>
+                <PlanBand
+                  editMode={editMode}
+                  sensors={sensors}
+                  folderIds={[]}
+                  onDragStart={handleBandDragStart}
+                  onDragEnd={handleSavingsDragEnd}
+                  onDragCancel={() => setDraggingFolder(false)}
+                >
+                  <PlanRowList rows={savingsLive} ctx={ctx} />
+                </PlanBand>
+                {savingsDeleted.map((r) => (
+                  <ElementRow key={rowKey(r)} row={r} ctx={ctx} />
+                ))}
+              </>
+            ) : null}
+          </section>
+        ) : null}
+
         {shownRows.archived.length > 0 ? (
           <section role="rowgroup" data-testid="plan-section-archived" className="plan-band-archived flex flex-col gap-1 px-1 py-1">
             <SectionHeader
@@ -2259,6 +2413,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           gridCols={gridCols}
           totals={totals}
           currency={planCurrency}
+          showSavings={hasSavings}
           onLinkClick={openTotalsTransactions}
         />
 
@@ -2266,7 +2421,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           visibleMonths={visibleMonths}
           monthIndex={monthIndex}
           gridCols={gridCols}
-          balance={balance}
+          balance={everydayBalance}
+          savingsBalance={savingsBalance}
           currency={planCurrency}
           cur={cur}
         />

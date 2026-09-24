@@ -658,6 +658,40 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
+      budget, a "Savings" section appears below Expenses and above Archived,
+      one row per savings account in their saved order; a budget without
+      savings accounts shows no such section.
+- [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
+      reload; unfold brings them back.
+- [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
+      first savings row, and from the last savings row on the first archived
+      row; with Savings folded it skips straight to Archived.
+- [ ] 📱 Edit a savings row's planned amount (popover on desktop, dialog on a
+      phone): the new value shows at once and survives a reload.
+- [ ] Fill-right a savings planned amount (drag handle and Shift+Arrow): every
+      covered month gets the value.
+- [ ] 📱 Edit structure mode: savings rows reorder by drag among themselves
+      only (the order survives a reload); a savings row cannot be dropped
+      into a folder or the Income/Expenses area, and its row menu has no
+      "Move to folder…" (Change currency is still there).
+- [ ] 📱 A deleted savings account with history stays in the Savings section,
+      read-only (no amount editor, no drag grip).
+- [ ] 📱 Totals: a "Savings" line appears below Transfers (actual for past
+      months, the larger of actual and planned for the current and future
+      months); without savings accounts the line is absent.
+- [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
+      "Savings balance"; for every month the two add up to the single
+      Balance the same budget showed before its savings account was marked
+      savings. Without savings accounts only "Balance" shows, unchanged.
+- [ ] 📱 "Savings balance" carries an info note (hover on desktop, tap the
+      info icon on a phone): "Includes interest and other activity on savings
+      accounts, which is not counted as saved". Record interest on a savings
+      account: the Savings balance rises by it while the Savings line does
+      not — intended, not a bug.
+- [ ] 📱 A savings cell carries comment threads like any other cell: the
+      corner marker shows on a commented cell, and Shift+Enter (desktop) or a
+      tap on the marker opens its thread.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is

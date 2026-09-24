@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Доходи",
           "expenses": "Витрати",
+          "savings": "Заощадження",
           "archived": "В архіві"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Вхідні {in} · Вихідні {out}",
           "show_transactions": "Показати транзакції",
           "net": "Нетто",
-          "balance": "Баланс"
+          "balance": "Баланс",
+          "savings": "Заощадження",
+          "savings_balance": "Баланс заощаджень",
+          "savings_balance_tooltip": "Включає відсотки та інші операції на ощадних рахунках, які не враховуються як заощаджене"
         },
         "density": {
           "hide_empty": "Приховувати порожні рядки",

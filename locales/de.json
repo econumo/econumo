@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Einnahmen",
           "expenses": "Ausgaben",
+          "savings": "Sparen",
           "archived": "Archiviert"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Eingang {in} · Ausgang {out}",
           "show_transactions": "Transaktionen anzeigen",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Sparen",
+          "savings_balance": "Sparguthaben",
+          "savings_balance_tooltip": "Enthält Zinsen und andere Bewegungen auf Sparkonten, die nicht als gespart zählen"
         },
         "density": {
           "hide_empty": "Leere Zeilen ausblenden",

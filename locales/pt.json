@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Receitas",
           "expenses": "Despesas",
+          "savings": "Poupança",
           "archived": "Em arquivo"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Entradas {in} · Saídas {out}",
           "show_transactions": "Mostrar transações",
           "net": "Líquido",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Poupança",
+          "savings_balance": "Saldo da poupança",
+          "savings_balance_tooltip": "Inclui juros e outros movimentos nas contas poupança, que não contam como poupado"
         },
         "density": {
           "hide_empty": "Ocultar linhas vazias",

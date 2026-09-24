@@ -1342,6 +1342,7 @@
         "section": {
           "income": "Revenus",
           "expenses": "Dépenses",
+          "savings": "Épargne",
           "archived": "Archivés"
         },
         "nav": {
@@ -1365,7 +1366,10 @@
           "transfers_tooltip": "Entrées {in} · Sorties {out}",
           "show_transactions": "Afficher les transactions",
           "net": "Net",
-          "balance": "Solde"
+          "balance": "Solde",
+          "savings": "Épargne",
+          "savings_balance": "Solde épargne",
+          "savings_balance_tooltip": "Inclut les intérêts et les autres mouvements des comptes d’épargne, qui ne comptent pas comme épargnés"
         },
         "density": {
           "hide_empty": "Masquer les lignes vides",
