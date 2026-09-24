@@ -19,7 +19,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, userCurrencyId, userOption } from '@/features/user/queries'
 import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
-import { passwordLoginAvailable } from '@/features/auth/oauthQueries'
+import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
 
 
@@ -45,7 +45,7 @@ export function ProfilePage() {
   const [recoveryOpen, setRecoveryOpen] = useState(false)
   const savedTimer = useRef<number | null>(null)
   const hasPassword = user?.hasPassword !== false
-  const passwordLogin = passwordLoginAvailable()
+  const passwordLogin = usePasswordLoginAvailable()
 
   useEffect(() => {
     if (user) {

@@ -64,7 +64,13 @@ the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
 `ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
-instance in product analytics, not none. App and server version-check each
+instance in product analytics, not none. The merge is per server: typing a
+server address on the auth screens fetches that server's config
+(`useServerConfigFor`, debounced), the previous server's keys fall back to the
+bundled defaults the moment a different server is requested, and a response for
+a server no longer selected is dropped. Screens that read merged keys subscribe
+to `useServerConfig`'s `revision` so a config arriving after first paint
+re-renders them. App and server version-check each
 other in BOTH directions, one hard floor per side; both floors live in the
 single shared `compat/versions.json`
 (Go embeds it, the SPA imports it — same pattern as `locales/`):

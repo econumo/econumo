@@ -10,7 +10,7 @@ import { InfoBox } from '@/components/InfoBox'
 import { RouterPage } from '@/app/router-pages'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { useUserData } from '@/features/user/queries'
-import { oauthFlowCanReturnHere, passwordLoginAvailable, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
+import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, usePasswordLoginAvailable, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
 import { SettingsShell } from './SettingsShell'
@@ -88,7 +88,7 @@ export function LinkedAccountsPage() {
 
   const hasPassword = user.data?.hasPassword ?? true
   // With password sign-in off a stored password is no way back in.
-  const passwordLogin = passwordLoginAvailable()
+  const passwordLogin = usePasswordLoginAvailable()
   const lastIdentityLocked = (!hasPassword || !passwordLogin) && (identities.data?.length ?? 0) <= 1
   const linkedIds = new Set(identities.data?.map((i) => i.provider))
   // A custom backend on a different origin than this page can never complete

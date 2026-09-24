@@ -11,6 +11,7 @@ import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
+import { useServerConfigFor } from '@/lib/appConfig'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
@@ -53,8 +54,10 @@ export function LoginPage() {
   })
   const selfHostedChecked = watch('selfHosted')
   // Watched so a custom server address typed below re-evaluates whether the
-  // password form is available (see passwordLoginAvailable).
+  // password form is available (see passwordLoginAvailable); in the app the
+  // typed server's own config is fetched and decides.
   watch('host')
+  useServerConfigFor(config.backendHost())
   const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing

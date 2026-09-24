@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { useServerConfig } from '@/lib/appConfig'
 import { LoginPage } from './LoginPage'
 
 function renderLogin(path = '/login') {
@@ -270,5 +271,45 @@ describe('with password sign-in disabled', () => {
     renderLogin()
     expect(screen.getByLabelText('Email')).toBeInTheDocument()
     expect(screen.getByLabelText('Password')).toBeInTheDocument()
+  })
+})
+
+describe('in the native app', () => {
+  function serveConfig(host: string, values: Record<string, unknown>) {
+    return http.get(`${host}/econumo-config.js`, () =>
+      new HttpResponse(`window.econumoConfig = ${JSON.stringify(values)};\n`, { headers: { 'Content-Type': 'text/javascript' } }),
+    )
+  }
+
+  beforeEach(() => {
+    window.Capacitor = { isNativePlatform: () => true }
+    window.econumoConfig = { PASSWORD_LOGIN: true }
+    useServerConfig.setState({ configHost: null })
+    localStorage.setItem('selfHosted', 'true')
+    localStorage.setItem('backendHost', JSON.stringify('https://sso-only.example.test'))
+    server.use(
+      serveConfig('https://sso-only.example.test', { PASSWORD_LOGIN: false }),
+      serveConfig('https://passwords.example.test', { PASSWORD_LOGIN: true }),
+      http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
+    )
+  })
+
+  afterEach(() => {
+    delete (window as { Capacitor?: unknown }).Capacitor
+  })
+
+  it('hides the password form once the server config says passwords are off', async () => {
+    renderLogin()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+  })
+
+  it('follows the config of a newly entered server address', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+    const host = screen.getByLabelText('Server address')
+    await user.clear(host)
+    await user.type(host, 'https://passwords.example.test')
+    expect(await screen.findByLabelText('Password')).toBeInTheDocument()
   })
 })

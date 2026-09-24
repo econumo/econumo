@@ -231,6 +231,12 @@ navigation (single-pane vs sidebar).
       email address already exists and can't be linked automatically. Contact
       your administrator." An account that linked the provider while passwords
       were on signs in through it normally.
+- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
+      cold start the login screen drops the password form as soon as that
+      server's config arrives (no restart needed). Typing the address of a
+      backend that allows passwords into the custom-server field brings the
+      password form back within a second; switching back hides it again. An
+      unreachable address shows the password form (the server then decides).
 - [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that

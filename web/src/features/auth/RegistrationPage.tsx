@@ -10,6 +10,7 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
+import { useServerConfigFor } from '@/lib/appConfig'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
@@ -47,8 +48,10 @@ export function RegistrationPage() {
   })
   const selfHostedChecked = watch('selfHosted')
   // Watched so a custom server address typed below re-evaluates whether the
-  // password form is available (see passwordLoginAvailable).
+  // password form is available (see passwordLoginAvailable); in the app the
+  // typed server's own config is fetched and decides.
   watch('host')
+  const configRevision = useServerConfigFor(config.backendHost())
   const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing
@@ -80,7 +83,7 @@ export function RegistrationPage() {
     if (!config.isRegistrationAllowed()) {
       navigate(RouterPage.LOGIN, { replace: true })
     }
-  }, [navigate])
+  }, [navigate, configRevision])
 
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {

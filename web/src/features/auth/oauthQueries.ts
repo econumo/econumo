@@ -4,6 +4,7 @@ import * as oauthApi from '@/api/oauth'
 import type { OAuthProviderId, ProviderDto } from '@/api/dto/oauth'
 import { nativePlugin, isNativeApp } from '@/lib/platform'
 import { backendHost, isPasswordLoginAllowed } from '@/lib/config'
+import { useServerConfig } from '@/lib/appConfig'
 import type { BrowserPlugin } from '@/lib/externalLinks'
 import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
@@ -70,6 +71,12 @@ export function oauthFlowCanReturnHere(): boolean {
 // password form stays and that backend decides whether it accepts passwords.
 export function passwordLoginAvailable(): boolean {
   return isPasswordLoginAllowed() || !oauthFlowCanReturnHere()
+}
+
+// Re-evaluates when the app merges a server config that arrived late.
+export function usePasswordLoginAvailable(): boolean {
+  useServerConfig((s) => s.revision)
+  return passwordLoginAvailable()
 }
 
 // The app leaves the WebView for the browser sheet and the start mutation

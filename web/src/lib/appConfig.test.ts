@@ -3,7 +3,7 @@ import { evalConfigScript, fetchServerConfig, useServerConfig } from './appConfi
 
 beforeEach(() => {
   window.econumoConfig = { ALLOW_REGISTRATION: true, INSTANCE_ID: '', BILLING_URL: '' }
-  useServerConfig.setState({ serverVersion: null, minAppVersion: null })
+  useServerConfig.setState({ serverVersion: null, minAppVersion: null, configHost: null })
 })
 
 afterEach(() => {
@@ -68,4 +68,64 @@ it('is non-fatal on network failure', async () => {
   expect(window.econumoConfig.ALLOW_REGISTRATION).toBe(true)
   expect(useServerConfig.getState().serverVersion).toBeNull()
   expect(useServerConfig.getState().minAppVersion).toBeNull()
+})
+
+function servedConfig(values: Record<string, unknown>) {
+  return new Response(`window.econumoConfig = ${JSON.stringify(values)};\n`, { status: 200 })
+}
+
+// A server switch must never leave the previous server's settings in force:
+// they describe a different instance.
+it('drops the previous server config when switching servers', async () => {
+  window.econumoConfig = { ALLOW_REGISTRATION: true, PASSWORD_LOGIN: true, INSTANCE_ID: '' }
+  localStorage.setItem('selfHosted', 'true')
+  window.Capacitor = { isNativePlatform: () => true }
+  try {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('https://a.example.test')) {
+        return servedConfig({ PASSWORD_LOGIN: false, ALLOW_REGISTRATION: false, INSTANCE_ID: 'aaa', VERSION: 'v1.0.0' })
+      }
+      throw new Error('unreachable')
+    }))
+    localStorage.setItem('backendHost', JSON.stringify('https://a.example.test'))
+    await fetchServerConfig()
+    expect(window.econumoConfig.PASSWORD_LOGIN).toBe(false)
+    const revision = useServerConfig.getState().revision
+
+    localStorage.setItem('backendHost', JSON.stringify('https://b.example.test'))
+    await fetchServerConfig()
+    expect(window.econumoConfig.PASSWORD_LOGIN).toBe(true)
+    expect(window.econumoConfig.ALLOW_REGISTRATION).toBe(true)
+    expect(window.econumoConfig.INSTANCE_ID).toBe('')
+    expect(useServerConfig.getState().serverVersion).toBeNull()
+    expect(useServerConfig.getState().revision).toBeGreaterThan(revision)
+  } finally {
+    delete (window as { Capacitor?: unknown }).Capacitor
+    localStorage.clear()
+  }
+})
+
+it('ignores a response for a server that is no longer selected', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: true }
+  localStorage.setItem('selfHosted', 'true')
+  window.Capacitor = { isNativePlatform: () => true }
+  try {
+    let release: () => void = () => {}
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      await gate
+      return servedConfig({ PASSWORD_LOGIN: false })
+    }))
+    localStorage.setItem('backendHost', JSON.stringify('https://a.example.test'))
+    const pending = fetchServerConfig()
+    localStorage.setItem('backendHost', JSON.stringify('https://b.example.test'))
+    release()
+    await pending
+    expect(window.econumoConfig.PASSWORD_LOGIN).toBe(true)
+  } finally {
+    delete (window as { Capacitor?: unknown }).Capacitor
+    localStorage.clear()
+  }
 })

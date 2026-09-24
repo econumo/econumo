@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { useServerConfig } from '@/lib/appConfig'
 import { RegistrationPage } from './RegistrationPage'
 
 function renderPage() {
@@ -159,4 +160,23 @@ it('signs up through the providers only when password sign-in is disabled', asyn
   expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
   expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
+})
+
+it('leaves for the login page when the app learns registration is off', async () => {
+  window.Capacitor = { isNativePlatform: () => true }
+  window.econumoConfig = { ALLOW_REGISTRATION: true }
+  useServerConfig.setState({ configHost: null })
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://closed.example.test'))
+  server.use(
+    http.get('https://closed.example.test/econumo-config.js', () =>
+      new HttpResponse('window.econumoConfig = {"ALLOW_REGISTRATION":false};\n', { headers: { 'Content-Type': 'text/javascript' } }),
+    ),
+  )
+  try {
+    renderPage()
+    expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
+  } finally {
+    delete (window as { Capacitor?: unknown }).Capacitor
+  }
 })
