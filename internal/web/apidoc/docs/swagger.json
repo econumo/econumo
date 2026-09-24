@@ -13031,6 +13031,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "integer"
                 }
             }
         },
@@ -16320,6 +16323,9 @@
                 },
                 "name": {
                     "type": "string"
+                },
+                "type": {
+                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"

@@ -1790,7 +1790,8 @@
       "name_length": "Nazwa konta musi mieć od {min} do {max} znaków.",
       "list_empty": "Lista kont jest pusta.",
       "folder_list_empty": "Lista folderów jest pusta.",
-      "folder_already_exists": "Taki folder już istnieje."
+      "folder_already_exists": "Taki folder już istnieje.",
+      "invalid_type": "Typ konta musi wynosić 1, 2 lub 3."
     },
     "budget": {
       "name_length": "Nazwa budżetu musi mieć od {min} do {max} znaków.",

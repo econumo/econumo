@@ -1790,7 +1790,8 @@
       "name_length": "Account name must be {min}-{max} characters",
       "list_empty": "Accounts list is empty",
       "folder_list_empty": "Folders list is empty",
-      "folder_already_exists": "Folder already exists."
+      "folder_already_exists": "Folder already exists.",
+      "invalid_type": "Account type must be 1, 2 or 3"
     },
     "budget": {
       "name_length": "Budget name must be {min}-{max} characters",

@@ -21,6 +21,7 @@ type createAccountInput struct {
 	Balance    string `json:"balance,omitempty" jsonschema:"opening balance as a decimal string, e.g. 100.00; defaults to 0"`
 	Icon       string `json:"icon,omitempty" jsonschema:"optional icon name; defaults to 'wallet'"`
 	FolderID   string `json:"folder_id,omitempty" jsonschema:"account folder id (UUID), from an existing account's folderId in list_accounts; may be omitted only if you have no folders yet"`
+	Type       int    `json:"type,omitempty" jsonschema:"optional account type: 1 cash, 2 card (default), 3 savings (plannable in budgets)"`
 }
 
 type createAccountResult struct {
@@ -63,7 +64,7 @@ func Register(svc *appaccount.Service) webmcp.Register {
 				if balance == "" {
 					balance = "0"
 				}
-				res, err := svc.CreateAccount(ctx, userID, model.CreateAccountRequest{
+				createReq := model.CreateAccountRequest{
 					Id:         vo.NewId().String(), // operation id; the service mints the entity id
 					Name:       in.Name,
 					CurrencyId: in.CurrencyID,
@@ -71,7 +72,11 @@ func Register(svc *appaccount.Service) webmcp.Register {
 					Icon:       icon,
 					FolderId:   in.FolderID,
 					// Blank is accepted only when the user has no folders at all (internal/account/create.go).
-				})
+				}
+				if in.Type != 0 {
+					createReq.Type = &in.Type
+				}
+				res, err := svc.CreateAccount(ctx, userID, createReq)
 				if err != nil {
 					return nil, createAccountResult{}, webmcp.MapErr(ctx, err)
 				}

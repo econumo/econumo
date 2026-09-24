@@ -1790,7 +1790,8 @@
       "name_length": "账户名称需为 {min}-{max} 个字符。",
       "list_empty": "账户列表为空。",
       "folder_list_empty": "文件夹列表为空。",
-      "folder_already_exists": "该文件夹已存在。"
+      "folder_already_exists": "该文件夹已存在。",
+      "invalid_type": "账户类型必须为 1、2 或 3。"
     },
     "budget": {
       "name_length": "预算名称需为 {min}-{max} 个字符。",

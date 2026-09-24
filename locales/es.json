@@ -1790,7 +1790,8 @@
       "name_length": "El nombre de la cuenta debe tener entre {min} y {max} caracteres.",
       "list_empty": "La lista de cuentas está vacía.",
       "folder_list_empty": "La lista de carpetas está vacía.",
-      "folder_already_exists": "La carpeta ya existe."
+      "folder_already_exists": "La carpeta ya existe.",
+      "invalid_type": "El tipo de cuenta debe ser 1, 2 o 3."
     },
     "budget": {
       "name_length": "El nombre del presupuesto debe tener entre {min} y {max} caracteres.",

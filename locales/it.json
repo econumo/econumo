@@ -1790,7 +1790,8 @@
       "name_length": "Il nome del conto deve contenere da {min} a {max} caratteri",
       "list_empty": "L'elenco dei conti è vuoto",
       "folder_list_empty": "L'elenco delle cartelle è vuoto",
-      "folder_already_exists": "La cartella esiste già."
+      "folder_already_exists": "La cartella esiste già.",
+      "invalid_type": "Il tipo di conto deve essere 1, 2 o 3."
     },
     "budget": {
       "name_length": "Il nome del budget deve contenere da {min} a {max} caratteri",

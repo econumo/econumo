@@ -1790,7 +1790,8 @@
       "name_length": "Der Kontoname muss {min}-{max} Zeichen lang sein",
       "list_empty": "Die Kontenliste ist leer",
       "folder_list_empty": "Die Ordnerliste ist leer",
-      "folder_already_exists": "Der Ordner existiert bereits."
+      "folder_already_exists": "Der Ordner existiert bereits.",
+      "invalid_type": "Der Kontotyp muss 1, 2 oder 3 sein."
     },
     "budget": {
       "name_length": "Der Budgetname muss {min}-{max} Zeichen lang sein",

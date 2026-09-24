@@ -1790,7 +1790,8 @@
       "name_length": "Rekeningnaam moet {min}-{max} tekens bevatten.",
       "list_empty": "De lijst met rekeningen is leeg.",
       "folder_list_empty": "De lijst met mappen is leeg.",
-      "folder_already_exists": "Deze map bestaat al."
+      "folder_already_exists": "Deze map bestaat al.",
+      "invalid_type": "Rekeningtype moet 1, 2 of 3 zijn."
     },
     "budget": {
       "name_length": "Budgetnaam moet {min}-{max} tekens bevatten.",

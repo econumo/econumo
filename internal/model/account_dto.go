@@ -18,7 +18,7 @@ type UserResult struct {
 }
 
 // AccountResult is one account in the API. balance is a normalized decimal
-// string; type is the int (1 cash / 2 credit-card); sharedAccess is [] until the
+// string; type is the int (1 cash / 2 credit-card / 3 savings); sharedAccess is [] until the
 // connection module lands. folderId is the first folder containing the account
 // (or null). These wire shapes are frozen; see CLAUDE.md.
 type AccountResult struct {
@@ -44,7 +44,8 @@ type SharedAccess struct {
 }
 
 // CreateAccountRequest is the create-account body. balance defaults to 0; icon
-// has a value-object (non-empty) check tier-2.
+// has a value-object (non-empty) check tier-2. type is optional (1 cash, 2
+// credit card, 3 savings); absent keeps the default CREDIT_CARD.
 type CreateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
@@ -52,12 +53,14 @@ type CreateAccountRequest struct {
 	Balance    vo.FlexString `json:"balance" swaggertype:"string"`
 	Icon       string        `json:"icon"`
 	FolderId   string        `json:"folderId"`
+	Type       *int          `json:"type"`
 }
 
-// Validate enforces tier-1 NotBlank on id, name, currencyId, icon. folderId is
-// resolved tier-2 in the service: a blank folderId is accepted for a user's very
-// first account (a default folder is created), but rejected once folders exist.
-// The 3-64 name and decimal balance invariants are re-checked tier-2.
+// Validate enforces tier-1 NotBlank on id, name, currencyId, icon, and (when
+// present) that type is 1, 2 or 3. folderId is resolved tier-2 in the
+// service: a blank folderId is accepted for a user's very first account (a
+// default folder is created), but rejected once folders exist. The 3-64 name
+// and decimal balance invariants are re-checked tier-2.
 func (r CreateAccountRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
@@ -67,6 +70,9 @@ func (r CreateAccountRequest) Validate() error {
 		if strings.TrimSpace(f.val) == "" {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
+	}
+	if r.Type != nil && (*r.Type < 1 || *r.Type > 3 || !AccountType(*r.Type).Valid()) {
+		fields = append(fields, errs.FieldError{Key: "type", Message: "Account type must be 1, 2 or 3", Code: errs.CodeAccountInvalidType})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)
@@ -84,7 +90,8 @@ type CreateAccountResult struct {
 }
 
 // UpdateAccountRequest is the update-account body. currencyId is nullable;
-// updatedAt is the timestamp the correction transaction is dated with.
+// updatedAt is the timestamp the correction transaction is dated with. type
+// is optional (1 cash, 2 credit card, 3 savings); absent leaves it unchanged.
 type UpdateAccountRequest struct {
 	Id         string        `json:"id"`
 	Name       string        `json:"name"`
@@ -92,9 +99,11 @@ type UpdateAccountRequest struct {
 	Icon       string        `json:"icon"`
 	CurrencyId *string       `json:"currencyId"`
 	UpdatedAt  string        `json:"updatedAt"`
+	Type       *int          `json:"type"`
 }
 
-// Validate enforces tier-1 NotBlank on id, name, icon, updatedAt.
+// Validate enforces tier-1 NotBlank on id, name, icon, updatedAt, and (when
+// present) that type is 1, 2 or 3.
 func (r UpdateAccountRequest) Validate() error {
 	var fields []errs.FieldError
 	for _, f := range []struct{ key, val string }{
@@ -103,6 +112,9 @@ func (r UpdateAccountRequest) Validate() error {
 		if strings.TrimSpace(f.val) == "" {
 			fields = append(fields, errs.FieldError{Key: f.key, Message: "This value should not be blank.", Code: errs.CodeIsBlank})
 		}
+	}
+	if r.Type != nil && (*r.Type < 1 || *r.Type > 3 || !AccountType(*r.Type).Valid()) {
+		fields = append(fields, errs.FieldError{Key: "type", Message: "Account type must be 1, 2 or 3", Code: errs.CodeAccountInvalidType})
 	}
 	if len(fields) > 0 {
 		return errs.NewValidation("Validation failed", fields...)

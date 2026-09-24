@@ -1790,7 +1790,8 @@
       "name_length": "O nome da conta deve ter entre {min} e {max} caracteres.",
       "list_empty": "A lista de contas está vazia.",
       "folder_list_empty": "A lista de pastas está vazia.",
-      "folder_already_exists": "A pasta já existe."
+      "folder_already_exists": "A pasta já existe.",
+      "invalid_type": "O tipo de conta deve ser 1, 2 ou 3."
     },
     "budget": {
       "name_length": "O nome do orçamento deve ter entre {min} e {max} caracteres.",

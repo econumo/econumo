@@ -1790,7 +1790,8 @@
       "name_length": "Le nom du compte doit contenir de {min} à {max} caractères.",
       "list_empty": "La liste des comptes est vide.",
       "folder_list_empty": "La liste des dossiers est vide.",
-      "folder_already_exists": "Ce dossier existe déjà."
+      "folder_already_exists": "Ce dossier existe déjà.",
+      "invalid_type": "Le type de compte doit être 1, 2 ou 3."
     },
     "budget": {
       "name_length": "Le nom du budget doit contenir de {min} à {max} caractères.",
