@@ -541,20 +541,45 @@ describe('monthly Savings block', () => {
     expect(table.contains(block)).toBe(false)
   })
 
-  it('editing Planned sends set-limit for the account id and patches the savings row optimistically', async () => {
+  function hangingSetLimit(capture: (body: unknown) => void) {
+    return http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+      capture(await request.json())
+      await delay('infinite')
+      return HttpResponse.json({ success: true, message: '', data: {} })
+    })
+  }
+
+  it('desktop: Planned edits inline like a budgeted cell, sends set-limit for the account id and patches the row optimistically', async () => {
     let body: unknown
-    useSavingsHandlers([
-      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-        body = await request.json()
-        await delay('infinite')
-        return HttpResponse.json({ success: true, message: '', data: {} })
-      }),
-    ])
+    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
     const user = userEvent.setup()
     renderPage()
     const row = await screen.findByTestId('savings-row-acc-s1')
+    // the table's own LimitEditor popover, with its comments footer
+    await user.click(within(row).getByRole('button', { name: 'limit Rainy day' }))
+    expect(screen.queryByRole('dialog', { name: 'Set limit' })).not.toBeInTheDocument()
+    await user.click(await screen.findByRole('button', { name: /Comments \(1\)/ }))
+    expect(await screen.findByText('Bonus goes here')).toBeInTheDocument()
+    const input = screen.getByLabelText('Budget')
+    await user.clear(input)
+    await user.type(input, '200+50')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
+    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
+    expect(within(row).getByTestId('savings-remaining')).toHaveTextContent('130.00')
+  })
+
+  it('compact: Planned opens the set-limit dialog with the cell thread', async () => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    let body: unknown
+    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
+    const user = userEvent.setup()
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    expect(within(row).queryByRole('button', { name: 'limit Rainy day' })).not.toBeInTheDocument()
     await user.click(within(row).getByRole('button', { name: 'planned Rainy day' }))
-    // the page's one SetLimitDialog, carrying this cell's thread
     const input = await screen.findByLabelText('Budget')
     expect(screen.getByText('Bonus goes here')).toBeInTheDocument()
     await user.clear(input)
@@ -562,7 +587,6 @@ describe('monthly Savings block', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
     await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-    expect(within(row).getByTestId('savings-remaining')).toHaveTextContent('130.00')
   })
 
   it('the comment marker on a planned cell opens the page comments dialog', async () => {

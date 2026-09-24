@@ -20,6 +20,12 @@ import { commentCellKey } from './queries'
 
 const FOLD_KEY = 'monthly-savings'
 
+// Three amount columns next to the name leave a phone little room, so below sm
+// Planned/Saved narrow to w-16 with xs text (the pill is already xs). The header
+// labels use the same widths so the columns stay aligned.
+const AMOUNT_COL = 'w-16 shrink-0 sm:w-24'
+const PILL_COL = 'w-20 shrink-0 sm:w-24'
+
 interface SavingsBlockProps {
   budget: BudgetDto
   currencies: CurrencyDto[]
@@ -30,9 +36,13 @@ interface SavingsBlockProps {
   /** drag handles show only here */
   editMode: boolean
   commentsByCell: Map<string, BudgetCommentDto[]>
+  /** compact viewports: opens the page's set-limit dialog */
   onEditPlanned: (row: BudgetSavingsElementDto) => void
   onOpenComments: (row: BudgetSavingsElementDto) => void
   onMove: (id: Id, afterId: Id | null) => void
+  /** desktop: the inline editor the table's budgeted cells use; replaces the
+   *  onEditPlanned button on editable cells */
+  renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
 }
 
 function SortableSavingsRow({ id, children }: { id: string; children: ReactNode }) {
@@ -59,6 +69,7 @@ function SavingsRow({
   editMode,
   onEditPlanned,
   onOpenComments,
+  renderPlannedEditor,
 }: {
   row: BudgetSavingsElementDto
   currency: CurrencyDto | undefined
@@ -67,6 +78,7 @@ function SavingsRow({
   editMode: boolean
   onEditPlanned: (row: BudgetSavingsElementDto) => void
   onOpenComments: (row: BudgetSavingsElementDto) => void
+  renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
 }) {
   const opts = { showCurrency: false, useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 }
   const planned = moneyFormat(row.budgeted, currency, opts)
@@ -79,13 +91,15 @@ function SavingsRow({
       <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="hidden w-3.5 shrink-0 sm:block" />
         <EntityIcon name={row.icon} className="text-lg text-muted-foreground" />
-        <span className={`truncate text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
+        <span className={`truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
           {row.name}
         </span>
       </span>
-      <span className="relative w-20 text-right text-[15px] tabular-nums sm:w-24" data-testid="savings-planned">
+      <span className={`relative ${AMOUNT_COL} text-right text-xs tabular-nums sm:text-[15px]`} data-testid="savings-planned">
         {editMode ? (
           planned
+        ) : editable && renderPlannedEditor ? (
+          renderPlannedEditor(row)
         ) : (
           // a cell that cannot be edited (guest, pre-start month, deleted account)
           // still opens its thread, like a non-editable budgeted cell in the table
@@ -100,10 +114,10 @@ function SavingsRow({
         )}
         {comments.length > 0 ? <CommentMarker count={comments.length} onOpen={() => onOpenComments(row)} /> : null}
       </span>
-      <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24" data-testid="savings-saved">
+      <span className={`${AMOUNT_COL} text-center text-xs tabular-nums text-muted-foreground sm:text-[15px]`} data-testid="savings-saved">
         {moneyFormat(row.spent, currency, opts)}
       </span>
-      <span className="flex w-20 justify-center sm:w-24">
+      <span className={`flex ${PILL_COL} justify-center`}>
         <AvailablePill available={row.available} currency={currency} testId="savings-remaining" />
       </span>
       <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
@@ -121,6 +135,7 @@ export function SavingsBlock({
   onEditPlanned,
   onOpenComments,
   onMove,
+  renderPlannedEditor,
 }: SavingsBlockProps) {
   const { t } = useTranslation()
   const folded = useBudgetPeriodStore((s) => !!s.planFolds[FOLD_KEY])
@@ -173,6 +188,7 @@ export function SavingsBlock({
       editMode={editMode}
       onEditPlanned={onEditPlanned}
       onOpenComments={onOpenComments}
+      renderPlannedEditor={renderPlannedEditor}
     />
   )
 
@@ -197,7 +213,7 @@ export function SavingsBlock({
             <span
               key={col}
               title={t(`budgets.page.savings.${col}`)}
-              className={`w-20 truncate text-[11px] uppercase tracking-wide text-muted-foreground sm:w-24 ${col === 'planned' ? 'text-right' : 'text-center'}`}
+              className={`${col === 'remaining' ? PILL_COL : AMOUNT_COL} truncate text-[11px] uppercase tracking-wide text-muted-foreground ${col === 'planned' ? 'text-right' : 'text-center'}`}
             >
               {t(`budgets.page.savings.${col}`)}
             </span>

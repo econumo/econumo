@@ -216,7 +216,7 @@ function CommentsFooter({
   truncated,
 }: {
   budget: BudgetDto
-  element: BudgetElementDto
+  element: { id: Id }
   period: string
   comments: BudgetCommentDto[]
   userId: Id | undefined
@@ -552,6 +552,31 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     moveElement.mutate({ budgetId: budget.meta.id, item })
   }
 
+  // Desktop inline limit editing, shared by the table's budgeted cells and the
+  // Savings block's planned cells; compact viewports use SetLimitDialog instead.
+  const inlineLimitEditor =
+    limitsEditable && !editMode && !isCompact
+      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>) => (
+          <LimitEditor
+            id={cell.id}
+            name={cell.name}
+            value={cell.budgeted}
+            currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
+            onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
+            footer={
+              <CommentsFooter
+                budget={budget}
+                element={cell}
+                period={selectedDate}
+                comments={commentsByCell.get(commentCellKey(cell.id, selectedDate)) ?? []}
+                userId={user?.id}
+                truncated={commentsTruncated}
+              />
+            }
+          />
+        )
+      : undefined
+
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
   // columns line up with the element rows; folder ordering moved to dragging.
   const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
@@ -803,29 +828,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
-                    renderBudgetCell={
-                      limitsEditable && !editMode && !isCompact
-                        ? (element) => (
-                            <LimitEditor
-                              id={element.id}
-                              name={element.name}
-                              value={element.budgeted}
-                              currency={currencies.find((c) => c.id === (element.currencyId ?? budget.meta.currencyId))}
-                              onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: element.id, period: selectedDate, amount })}
-                              footer={
-                                <CommentsFooter
-                                  budget={budget}
-                                  element={element}
-                                  period={selectedDate}
-                                  comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
-                                  userId={user?.id}
-                                  truncated={commentsTruncated}
-                                />
-                              }
-                            />
-                          )
-                        : undefined
-                    }
+                    renderBudgetCell={inlineLimitEditor}
                     // a fallback behind renderBudgetCell, so passed even when limits are
                     // editable: the Archive section keeps only this one of the two
                     renderBudgetCellComments={
@@ -905,6 +908,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   commentsByCell={commentsByCell}
                   onEditPlanned={setLimitTarget}
                   onOpenComments={setCommentsTarget}
+                  renderPlannedEditor={inlineLimitEditor}
                   onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
                 />
               </div>

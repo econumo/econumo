@@ -697,12 +697,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       its totals), one row per savings account in their saved order, with
       Planned / Saved / Remaining in the account's currency (all three columns
       also on a phone). A budget without savings accounts shows no block.
-      Folding it survives a reload.
+      Folding it survives a reload. On a phone (375px) account names stay
+      readable next to the three amount columns, and the column headers line
+      up with the amounts.
 - [ ] 📱 Save more into a savings account than planned for the month:
       Remaining goes negative and turns red, the same over-plan style as a
       negative Available in the table.
-- [ ] 📱 Click (tap) a savings row's Planned amount: the set-limit dialog opens
-      with the current value and the cell's comments; saving shows the new
+- [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
+      on desktop a click opens the inline editor popover (with its comments
+      disclosure), on a phone a tap opens the set-limit dialog with the
+      cell's comments; either way the current value is prefilled and saving shows the new
       Planned and Remaining at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the

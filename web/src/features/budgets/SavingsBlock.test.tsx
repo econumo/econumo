@@ -158,6 +158,22 @@ it('clicking Planned opens the planned editor when the cell is editable', async 
   expect(props.onOpenComments).not.toHaveBeenCalled()
 })
 
+it('with an inline editor supplied, editable Planned cells render it; read-only cells keep the comments entry point', () => {
+  const renderPlannedEditor = vi.fn((row: BudgetSavingsElementDto) => <span data-testid="inline-editor">{row.id}</span>)
+  const view = renderBlock({ renderPlannedEditor })
+  expect(within(screen.getByTestId('savings-row-acc-s1')).getByTestId('inline-editor')).toHaveTextContent('acc-s1')
+  expect(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('inline-editor')).toHaveTextContent('acc-s2')
+  expect(screen.queryByRole('button', { name: /^planned / })).not.toBeInTheDocument()
+  // a deleted account's row never gets the editor
+  expect(within(screen.getByTestId('savings-row-acc-s3')).queryByTestId('inline-editor')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('savings-row-acc-s3')).getByRole('button', { name: 'comments Closed deposit' })).toBeInTheDocument()
+  view.unmount()
+
+  renderBlock({ renderPlannedEditor, canEdit: false })
+  expect(screen.queryByTestId('inline-editor')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'comments Rainy day' })).toBeInTheDocument()
+})
+
 it('a non-editable Planned cell never opens the editor: it falls back to the comments entry point', async () => {
   const user = userEvent.setup()
   const { props } = renderBlock({ canEdit: false })
