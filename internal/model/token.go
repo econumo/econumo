@@ -3,6 +3,7 @@ package model
 import (
 	"time"
 
+	"github.com/econumo/econumo/internal/shared/errs"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
@@ -13,6 +14,36 @@ const (
 	TokenKindPersonal = "personal"
 )
 
+// TokenScope narrows what a bearer token may call. Sessions and ordinary PATs
+// are full; an ingest PAT exists so a phone Shortcut can hold a credential that
+// can push transactions and do nothing else.
+type TokenScope string
+
+const (
+	TokenScopeFull   TokenScope = "full"
+	TokenScopeIngest TokenScope = "ingest"
+)
+
+// ParseTokenScope fails closed: anything but the two known values is an error.
+func ParseTokenScope(s string) (TokenScope, error) {
+	switch TokenScope(s) {
+	case TokenScopeFull, TokenScopeIngest:
+		return TokenScope(s), nil
+	}
+	return "", errs.NewValidation("Validation failed", errs.FieldError{
+		Key: "scope", Message: "The value you selected is not a valid choice.", Code: errs.CodeInvalidChoice,
+	})
+}
+
+// Principal is what a bearer token resolves to: who is calling, through which
+// token row, with what access level and scope.
+type Principal struct {
+	UserID  vo.Id
+	TokenID vo.Id
+	Level   AccessLevel
+	Scope   TokenScope
+}
+
 // AccessToken is one opaque bearer credential. Only the sha256 hash of the
 // token string is stored; the raw token exists client-side only.
 type AccessToken struct {
@@ -20,6 +51,7 @@ type AccessToken struct {
 	UserID     vo.Id
 	Kind       string
 	TokenHash  string
+	Scope      TokenScope
 	Name       *string // PAT only: the user-given label
 	UserAgent  *string // session only: User-Agent captured at login
 	CreatedAt  time.Time

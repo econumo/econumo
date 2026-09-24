@@ -343,7 +343,11 @@ func (s *Service) toResult(ctx context.Context, t *model.Transaction, labelIDs [
 	if err != nil {
 		return model.TransactionResult{}, err
 	}
-	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}, labelIDs), nil
+	imported, err := s.repo.ImportedTransactionIDs(ctx, []vo.Id{t.ID})
+	if err != nil {
+		return model.TransactionResult{}, err
+	}
+	return s.buildResult(t, model.UserResult{Id: author.ID, Avatar: author.Avatar, Name: author.Name}, labelIDs, imported[t.ID.String()]), nil
 }
 
 // labelIDStrings converts a resolved label id slice to its wire string form
@@ -362,7 +366,7 @@ func labelIDStrings(ids []vo.Id) []string {
 // buildResult assembles the wire DTO from an already-resolved author (no DB
 // access) and an already-resolved label id list, so callers control author
 // resolution/caching and label-loading strategy (single lookup vs. batch).
-func (s *Service) buildResult(t *model.Transaction, author model.UserResult, labelIDs []string) model.TransactionResult {
+func (s *Service) buildResult(t *model.Transaction, author model.UserResult, labelIDs []string, imported bool) model.TransactionResult {
 	amountRecipient := t.Amount
 	if ar := t.AmountRecipient; ar != nil {
 		amountRecipient = *ar
@@ -407,6 +411,7 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult, lab
 		Date:               t.SpentAt.Format(datetime.Layout),
 		RecurringId:        recurringID,
 		LabelIds:           labelIds,
+		IsImported:         boolToInt(imported),
 	}
 }
 
@@ -414,6 +419,13 @@ func (s *Service) buildResult(t *model.Transaction, author model.UserResult, lab
 func strPtrDecimal(v string) *string {
 	n := vo.NewDecimal(v).String()
 	return &n
+}
+
+func boolToInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
 }
 
 // accountListEmbed builds the account-list embed for the create/update/delete

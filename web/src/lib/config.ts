@@ -16,9 +16,11 @@ export interface EconumoConfig {
   VERSION?: string
   VERSION_LABEL?: string
   INSTANCE_ID?: string
+  AI_ENABLED?: boolean
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
+  IMPORT_MATCHER?: { matchDays: number; tipDays: number; tipTolerancePct: number; tokenMinLength: number }
 }
 
 declare global {
@@ -137,6 +139,10 @@ export function getVersionLabel(): string {
 // econumo-config.js (server truth); '' means billing UI is disabled.
 export function getBillingUrl(): string {
   return window.econumoConfig?.BILLING_URL || ''
+}
+
+export function isAiEnabled(): boolean {
+  return window.econumoConfig?.AI_ENABLED === true
 }
 
 export function isCustomApiAllowed(): boolean {

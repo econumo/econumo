@@ -2,9 +2,24 @@ import { create } from 'zustand'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { persist } from 'zustand/middleware'
 import type { AccountDto } from '@/api/dto/account'
+import type { TransactionImportLinkDto } from '@/api/dto/imports'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionPrefill, TransactionType } from '@/api/dto/transaction'
 import type { Id } from '@/api/types'
+import type { RuleDiff } from '@/lib/importMatch'
+
+// a queued import row being turned into a transaction: the dialog opens
+// prefilled with the bank's data and, on save, posts import-queued-event
+// (which links the row) instead of create-transaction
+export interface ImportQueuedPrefill {
+  linkId: Id
+  type: TransactionType
+  accountId: Id
+  amount: string
+  currency: string
+  payee: string
+  date: string
+}
 
 export interface OpenTransactionParams {
   transaction?: TransactionPrefill
@@ -14,6 +29,7 @@ export interface OpenTransactionParams {
   // TransactionDialog into posting mode (prefilled from the template, with a
   // recurringId sent alongside the created transaction)
   postRecurring?: RecurringDto
+  importQueued?: ImportQueuedPrefill
 }
 
 export interface OpenAccountParams {
@@ -25,6 +41,11 @@ export interface OpenRecurringParams {
   recurring?: RecurringDto
   fromTransaction?: TransactionPrefill
   accountId?: Id
+}
+
+export interface RulePromptParams {
+  link: TransactionImportLinkDto
+  diff: RuleDiff
 }
 
 interface UiState {
@@ -39,6 +60,8 @@ interface UiState {
   closeRecurringModal: () => void
   switchAccountPrompt: Id | null
   setSwitchAccountPrompt: (id: Id | null) => void
+  rulePrompt: RulePromptParams | null
+  setRulePrompt: (params: RulePromptParams | null) => void
 }
 
 export const useUiStore = create<UiState>()((set) => ({
@@ -71,6 +94,8 @@ export const useUiStore = create<UiState>()((set) => ({
   },
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
+  rulePrompt: null,
+  setRulePrompt: (params) => set({ rulePrompt: params }),
 }))
 
 interface SidebarState {

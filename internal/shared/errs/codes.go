@@ -109,14 +109,28 @@ const (
 	CodeUserEmailUnchanged            = "user.email_unchanged"
 	CodeUserPasswordLoginDisabled     = "user.password_login_disabled"
 
-	CodeOAuthProviderNotConfigured = "oauth.provider_not_configured"
-	CodeOAuthHandoffInvalid        = "oauth.handoff_invalid"
-	CodeOAuthLastIdentity          = "oauth.last_identity"
-	CodeOAuthIdentityNotFound      = "oauth.identity_not_found"
-	CodeOAuthLinkInvalid           = "oauth.link_invalid"
-	CodeOAuthIdentityTaken         = "oauth.identity_taken"
-	CodeOAuthProviderAlreadyLinked = "oauth.provider_already_linked"
-	CodeOAuthLastSignInMethod      = "oauth.last_sign_in_method"
+	CodeImportSourceNotFound        = "import.source_not_found"
+	CodeImportProviderUnsupported   = "import.provider_unsupported"
+	CodeImportAccountLinkExists     = "import.account_link_exists"
+	CodeImportCurrencyMismatch      = "import.currency_mismatch"
+	CodeImportLinkNotQueued         = "import.link_not_queued"
+	CodeImportLinkNotSkipped        = "import.link_not_skipped"
+	CodeImportEventNotFailed        = "import.event_not_failed"
+	CodeImportSetupTokenRejected    = "import.setup_token_rejected"
+	CodeImportProviderUnavailable   = "import.provider_unavailable"
+	CodeImportSyncRangeInvalid      = "import.sync_range_invalid"
+	CodeImportAccessUrlInvalid      = "import.access_url_invalid"
+	CodeImportRuleSkipNotApplicable = "import.rule_skip_not_applicable"
+	CodeImportAiDisabled            = "import.ai_disabled"
+	CodeImportAiUnavailable         = "import.ai_unavailable"
+	CodeOAuthProviderNotConfigured  = "oauth.provider_not_configured"
+	CodeOAuthHandoffInvalid         = "oauth.handoff_invalid"
+	CodeOAuthLastIdentity           = "oauth.last_identity"
+	CodeOAuthIdentityNotFound       = "oauth.identity_not_found"
+	CodeOAuthLinkInvalid            = "oauth.link_invalid"
+	CodeOAuthIdentityTaken          = "oauth.identity_taken"
+	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
+	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 )
 
 var AllCodes = []string{
@@ -220,6 +234,20 @@ var AllCodes = []string{
 	CodeUserEmailUnchanged,
 	CodeUserPasswordLoginDisabled,
 
+	CodeImportSourceNotFound,
+	CodeImportProviderUnsupported,
+	CodeImportAccountLinkExists,
+	CodeImportCurrencyMismatch,
+	CodeImportLinkNotQueued,
+	CodeImportLinkNotSkipped,
+	CodeImportEventNotFailed,
+	CodeImportSetupTokenRejected,
+	CodeImportProviderUnavailable,
+	CodeImportSyncRangeInvalid,
+	CodeImportAccessUrlInvalid,
+	CodeImportRuleSkipNotApplicable,
+	CodeImportAiDisabled,
+	CodeImportAiUnavailable,
 	CodeOAuthProviderNotConfigured,
 	CodeOAuthHandoffInvalid,
 	CodeOAuthLastIdentity,

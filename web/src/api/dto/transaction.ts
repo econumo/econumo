@@ -28,6 +28,8 @@ export interface TransactionDto extends CreateTransactionDto {
   /** the recurring template this transaction was posted from; null when hand-entered.
       Server-owned provenance — create/update never accept it. */
   recurringId: Id | null
+  /** 1 when at least one import link points at this transaction (server-owned; 0/1 like isArchived). */
+  isImported: 0 | 1
 }
 
 // Prefill data for the transaction/recurring dialogs: accepts enriched view

@@ -11,6 +11,7 @@ import { expiresAtFrom, PersonalTokensPage } from './PersonalTokensPage'
 const pat = {
   id: '01890000-0000-7000-8000-00000000d001',
   name: 'Home Assistant',
+  scope: 'full' as const,
   createdAt: '2026-07-01 10:00:00',
   lastUsedAt: '2026-07-10 09:00:00',
   expiresAt: null,
@@ -75,7 +76,7 @@ it('creates a token and shows it exactly once with a copy button', async () => {
 
   expect(await screen.findByTestId('created-token')).toHaveTextContent('eco_pat_shown-once-value')
   expect(screen.getByText(/won't be able to see it again/)).toBeInTheDocument()
-  expect(body).toEqual({ name: 'CI', expiresAt: '' })
+  expect(body).toEqual({ name: 'CI', scope: 'full', expiresAt: '' })
 
   await user.click(screen.getByRole('button', { name: 'Copy' }))
   expect(writeText).toHaveBeenCalledWith('eco_pat_shown-once-value')
@@ -139,7 +140,7 @@ it('picks a custom expiry from the calendar and shows it on the chip', async () 
   expect(screen.getByRole('button', { name: formatDate(tomorrow) })).toBeInTheDocument()
 
   await user.click(screen.getByRole('button', { name: 'Create token' }))
-  await waitFor(() => expect(body).toEqual({ name: 'CI', expiresAt: `${formatDate(tomorrow)} 23:59:59` }))
+  await waitFor(() => expect(body).toEqual({ name: 'CI', scope: 'full', expiresAt: `${formatDate(tomorrow)} 23:59:59` }))
 })
 
 it('requires a name', async () => {

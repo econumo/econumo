@@ -130,11 +130,11 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, tid, _, err := s.Authenticate(ctx, res.Token)
+	p, err := s.Authenticate(ctx, res.Token)
 	if err != nil {
 		t.Fatal(err)
 	}
-	out, err := s.Logout(ctx, tid)
+	out, err := s.Logout(ctx, p.TokenID)
 	if err != nil || out.LogoutUrl != "https://idp.example.test/end?x=1" || out.Provider != "oidc" || out.Result != "test" {
 		t.Fatalf("logout result %+v %v", out, err)
 	}
@@ -144,11 +144,11 @@ func TestLogout_ReturnsEndSessionURLForOIDCSessions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, tid2, _, err := s.Authenticate(ctx, res2.Token)
+	p2, err := s.Authenticate(ctx, res2.Token)
 	if err != nil {
 		t.Fatal(err)
 	}
-	out2, err := s.Logout(ctx, tid2)
+	out2, err := s.Logout(ctx, p2.TokenID)
 	if err != nil {
 		t.Fatal(err)
 	}

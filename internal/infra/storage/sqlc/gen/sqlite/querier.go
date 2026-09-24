@@ -59,6 +59,13 @@ type Querier interface {
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
 	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
+	DeleteImportAccountLink(ctx context.Context, id string) error
+	DeleteImportCredentialKey(ctx context.Context, userID string) error
+	DeleteImportEvent(ctx context.Context, id string) error
+	DeleteImportLinkAppliedLabels(ctx context.Context, linkID string) error
+	DeleteImportRule(ctx context.Context, id string) error
+	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
+	DeleteImportSource(ctx context.Context, id string) error
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
@@ -70,6 +77,7 @@ type Querier interface {
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. Writes are
 	// delete-then-insert inside the caller's transaction, so a re-save is
 	// idempotent and never duplicates a pair.
@@ -204,6 +212,18 @@ type Querier interface {
 	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
 	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
 	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
+	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
+	GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error)
+	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
+	GetImportRuleByID(ctx context.Context, id string) (ImportRule, error)
+	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
+	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
+	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	// Card identity is case-insensitive (Apple Wallet may report the same card
+	// with different casing between taps), so the account-id half of the key
+	// folds case; external_transaction_id stays exact.
+	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
+	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
 	// Write-side queries for the label module. The read-side query lives in
 	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
@@ -338,6 +358,18 @@ type Querier interface {
 	// user before an account reclaim must not land an identity after it. A plain
 	// INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
 	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
+	InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error
+	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
+	// the caller reads the row count to learn whether this payload was new.
+	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
+	InsertImportLinkAppliedLabel(ctx context.Context, arg InsertImportLinkAppliedLabelParams) error
+	InsertImportRule(ctx context.Context, arg InsertImportRuleParams) error
+	InsertImportRuleLabel(ctx context.Context, arg InsertImportRuleLabelParams) error
+	InsertImportRun(ctx context.Context, arg InsertImportRunParams) error
+	// Transaction import: sources, the push-event inbox, runs, and the link
+	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
+	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
 	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
 	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
@@ -444,6 +476,19 @@ type Querier interface {
 	// The user's folders. Ordering is applied by the caller/assembler (by sort key).
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
 	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
+	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
+	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportLinkAppliedLabels(ctx context.Context, linkID string) ([]ImportLinkAppliedLabel, error)
+	ListImportRuleLabels(ctx context.Context, ruleID string) ([]ImportRuleLabel, error)
+	ListImportRuleLabelsByUser(ctx context.Context, userID string) ([]ImportRuleLabel, error)
+	ListImportRulesByUser(ctx context.Context, userID string) ([]ImportRule, error)
+	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
+	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
+	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -531,6 +576,13 @@ type Querier interface {
 	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
+	// Note: sets run_id too so a processed event records the run that consumed it.
+	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
+	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
+	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
+	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
+	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
 	// The confirm-email-change path writes ONLY the email columns, under the
 	// generation it read after taking the user row's lock, so a stale aggregate can
 	// never be saved over an account a reset has just reclaimed.
@@ -565,6 +617,7 @@ type Querier interface {
 	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error
