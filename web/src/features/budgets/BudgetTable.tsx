@@ -20,12 +20,22 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
   renderBudgetCell?: (element: BudgetElementDto) => ReactNode
+  /** the entry point of a cell without `renderBudgetCell` (non-editable, or an
+   *  archived element's row): wraps the plain budgeted value in a popover
+   *  trigger, content supplied by the caller (the comments thread) */
+  renderBudgetCellComments?: (element: BudgetElementDto) => ReactNode
+  /** the comment-marker overlay for the budgeted cell — absolutely positioned by
+   *  the caller; returns null/undefined for a cell with no comments */
+  renderBudgetCellMarker?: (element: BudgetElementDto) => ReactNode
   /** trailing actions (edit-mode menus, drag handle) */
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
   /** compact screens hide the budget column — tapping Available opens the set-limit dialog instead */
   onAvailableClick?: (element: BudgetElementDto) => void
+  /** compact screens: tapping Available opens the comments dialog on a cell
+   *  without `onAvailableClick` (non-editable, or an archived element's row) */
+  onAvailableCommentsClick?: (element: BudgetElementDto) => void
 }
 
 interface BudgetTableProps extends ElementRowExtras {
@@ -210,14 +220,26 @@ function ElementRow({
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
-        <span className="hidden w-24 text-right text-[15px] tabular-nums sm:block" data-testid="cell-budgeted">
+        <span className="relative hidden w-24 text-right text-[15px] tabular-nums sm:block" data-testid="cell-budgeted">
           {isUncategorized ? (
             EMPTY_CELL
           ) : extras.renderBudgetCell ? (
             extras.renderBudgetCell(element)
+          ) : extras.renderBudgetCellComments ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`comments ${displayName}`}>
+                  {moneyFormat(element.budgeted, currency, opts)}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-2" align="end">
+                {extras.renderBudgetCellComments(element)}
+              </PopoverContent>
+            </Popover>
           ) : (
             moneyFormat(element.budgeted, currency, opts)
           )}
+          {extras.renderBudgetCellMarker?.(element)}
         </span>
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(
@@ -236,6 +258,15 @@ function ElementRow({
               title={t('budgets.modal.set_limit_form.header')}
               aria-label={`limit ${displayName}`}
               onClick={() => extras.onAvailableClick!(element)}
+            >
+              <AvailablePill available={available} currency={currency} testId="cell-available" />
+            </button>
+          ) : extras.onAvailableCommentsClick ? (
+            <button
+              type="button"
+              title={t('budgets.page.plan.comments.title')}
+              aria-label={`comments ${displayName}`}
+              onClick={() => extras.onAvailableCommentsClick!(element)}
             >
               <AvailablePill available={available} currency={currency} testId="cell-available" />
             </button>
@@ -571,7 +602,24 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                   budget={budget}
                   currencies={currencies}
                   accessById={accessById}
-                  extras={isReadOnlySection ? { onSpentClick: extras.onSpentClick } : extras}
+                  extras={
+                    isReadOnlySection
+                      ? {
+                          onSpentClick: extras.onSpentClick,
+                          // read affordances only: an individually-archived element keeps
+                          // its existing thread reachable (marker) and can still gain new
+                          // comments (the popover) — only the WRITE affordances (limit
+                          // editing, drag, folder actions) are read-only here. This branch
+                          // is reached only by the Archive section (Uncategorized returns
+                          // earlier, above, with its own fixed extras)
+                          renderBudgetCellMarker: extras.renderBudgetCellMarker,
+                          renderBudgetCellComments: extras.renderBudgetCellComments,
+                          // the marker and popover sit in the phone-hidden budgeted
+                          // column, so this tap is the thread's only way in on a phone
+                          onAvailableCommentsClick: extras.onAvailableCommentsClick,
+                        }
+                      : extras
+                  }
                   actionsColumn={actionsColumn}
                   hideChildren={hideChildren}
                 />

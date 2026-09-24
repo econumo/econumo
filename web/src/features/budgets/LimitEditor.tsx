@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CalculatorInput } from '@/components/CalculatorInput'
@@ -15,10 +16,12 @@ interface LimitEditorProps {
   value: string
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
+  /** rendered below the amount form, inside the same popover — the comments disclosure */
+  footer?: ReactNode
 }
 
 // Desktop inline budget-cell editor (Vue's q-popup-edit).
-export function LimitEditor({ id, name, value: currentValue, currency, onCommit }: LimitEditorProps) {
+export function LimitEditor({ id, name, value: currentValue, currency, onCommit, footer }: LimitEditorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
@@ -50,7 +53,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit 
           {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-64 p-2" align="end">
+      <PopoverContent className={footer ? 'w-80 p-2' : 'w-64 p-2'} align="end">
         <form
           className="flex flex-col gap-2"
           noValidate
@@ -69,6 +72,7 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit 
             {t('common.button.save.label')}
           </Button>
         </form>
+        {footer}
       </PopoverContent>
     </Popover>
   )

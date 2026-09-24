@@ -119,6 +119,18 @@ export interface BudgetTransactionDto {
   direction?: 'in' | 'out'
 }
 
+export interface BudgetCommentDto {
+  id: Id
+  elementId: Id
+  /** first of the month, Y-m-d */
+  period: string
+  comment: string
+  author: UserDto
+  /** frozen "Y-m-d H:i:s", server time */
+  createdAt: string
+  updatedAt: string
+}
+
 export interface BudgetDto {
   meta: BudgetMetaDto
   /** accounts is optional on the wire: servers older than the budget-membership

@@ -117,6 +117,7 @@ func newHarness(t *testing.T) *harness {
 			server.NewBudgetPayeeMetadataLookup(payeerepo.NewRepo("sqlite", txm)),
 		),
 		connections,
+		opGuard,
 		txm, clock.New(),
 	)
 	limiter := ratelimit.New(ratelimit.Config{

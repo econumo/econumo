@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/CalculatorInput'
@@ -12,10 +13,14 @@ interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
   onClose: () => void
   onCommit: (elementId: string, amount: string | null) => void
+  /** the comments thread for this cell — rendered under the amount card, always
+   *  expanded (unlike the desktop popover's disclosure): there is no room here
+   *  for a second collapsed layer on top of a full-screen dialog. */
+  comments?: ReactNode
 }
 
 // Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit, comments }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -68,6 +73,7 @@ export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProp
           <Button type="submit">{t('common.button.save.label')}</Button>
         </div>
       </form>
+      {comments ? <div className="mt-2 border-t pt-4">{comments}</div> : null}
     </ResponsiveDialog>
   )
 }
