@@ -248,6 +248,50 @@ func TestGetBudgetSavings_MissingElementRowUsesAccountCurrency(t *testing.T) {
 	}
 }
 
+func viewIDs(rows []savingsElementView) []string {
+	out := make([]string, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, r.Id)
+	}
+	return out
+}
+
+// Keyless (not yet synced) rows follow membership order, which is also the
+// order the first sync keys them in, so they don't jump after the next write.
+// S2 joins first here while S1 has the smaller account id.
+func TestGetBudgetSavings_KeylessRowsFollowMembershipOrder(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	for _, q := range []string{
+		`UPDATE budgets_accounts SET created_at = '2026-01-01 00:00:00' WHERE budget_id = ? AND account_id = ?`,
+		`DELETE FROM budgets_elements_limits WHERE element_id IN (SELECT id FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?)`,
+		`DELETE FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?`,
+	} {
+		if _, err := h.db.Exec(q, budgetID1, savingsEURID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, q := range []string{
+		`DELETE FROM budgets_elements_limits WHERE element_id IN (SELECT id FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?)`,
+		`DELETE FROM budgets_elements WHERE budget_id = ? AND type = 5 AND external_id = ?`,
+	} {
+		if _, err := h.db.Exec(q, budgetID1, savingsUSDID); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	view, _ := h.savingsBudget(t, tok, "2026-08-15")
+	if got := viewIDs(view.Item.Structure.Savings); !equalIDs(got, []string{savingsEURID, savingsUSDID}) {
+		t.Fatalf("keyless savings order = %v, want membership order S2, S1", got)
+	}
+
+	// set-limit on a missing row syncs every element row; the order must hold.
+	h.setLimit(t, tok, savingsUSDID, "2026-08-01", "400")
+	view, _ = h.savingsBudget(t, tok, "2026-08-15")
+	if got := viewIDs(view.Item.Structure.Savings); !equalIDs(got, []string{savingsEURID, savingsUSDID}) {
+		t.Fatalf("savings order after the first sync = %v, want S2, S1 unchanged", got)
+	}
+}
+
 func TestGetBudgetSavings_DeletedAccountWithPlanOnly(t *testing.T) {
 	h, tok, _ := newSavingsBudget(t)
 	h.setLimit(t, tok, savingsUSDID, "2026-07-01", "70")

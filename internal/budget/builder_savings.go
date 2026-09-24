@@ -36,11 +36,13 @@ func savingsRows(f filters, options map[string]elementOption) ([]savingsRow, err
 		}
 		out = append(out, savingsRow{account: a, currencyID: *cur, sortKey: opt.sortKey})
 	}
-	// Keyless rows (not synced yet) trail, by account id.
+	// Keyless rows (not synced yet) trail in membership order — the stable sort
+	// keeps it — because the first sync keys them in that same order, so they
+	// don't move once it runs.
 	sort.SliceStable(out, func(i, j int) bool {
 		ki, kj := out[i].sortKey, out[j].sortKey
-		if (ki == "") != (kj == "") {
-			return kj == ""
+		if ki == "" || kj == "" {
+			return ki != "" && kj == ""
 		}
 		if ki != kj {
 			return ki < kj
