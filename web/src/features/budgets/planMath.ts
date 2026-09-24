@@ -1,4 +1,4 @@
-import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto } from '@/api/dto/budget'
+import type { BudgetElementType, BudgetFolderDto, BudgetPlanDto, PlanCellDto, PlanElementDto, PlanSavingsFlowDto } from '@/api/dto/budget'
 import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -234,6 +234,12 @@ export interface PlanMonthTotals {
   transfersOut: string
   /** in − out: the Transfers line, and a term of Net / Balance */
   transfersNet: string
+  /** Σ savings actual, budget currency */
+  savingsActual: string
+  /** Σ non-archived savings planned, budget currency */
+  savingsPlanned: string
+  /** per-row max(actual, planned) summed; past months = actual; archived rows = actual */
+  effectiveSavings: string
 }
 
 export type MonthExchange = (fromCurrencyId: string, amount: string, monthIndex: number) => string
@@ -288,17 +294,37 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
         if (el.id === UNCATEGORIZED_ID) uncatExpense = add(uncatExpense, actual)
       }
     }
+    let savingsActual = '0'
+    let savingsPlanned = '0'
+    let effSavings = '0'
+    for (const el of plan.structure.savings ?? []) {
+      const cell = el.cells[i]
+      if (!cell) {
+        continue
+      }
+      const actual = ex(el.currencyId, cell.actual, i)
+      const planned = ex(el.currencyId, cell.planned === '' ? '0' : cell.planned, i)
+      const isPast = month < cur
+      const effective = isPast ? actual : cmp(actual, planned) >= 0 ? actual : planned
+      savingsActual = add(savingsActual, actual)
+      if (el.isArchived === 0) savingsPlanned = add(savingsPlanned, planned)
+      effSavings = add(effSavings, el.isArchived === 0 ? effective : actual)
+    }
     // Net carries the boundary transfers so the Balance row (which chains on
     // effectiveNet) reflects money that really left or entered the budget's
     // accounts — and Balance[m] − Balance[m−1] stays exactly the Net line.
-    // Planned figures never include them: a transfer has no plan.
+    // Planned figures never include them: a transfer has no plan. Savings
+    // actual/planned are subtracted from Net (money set aside is no longer
+    // available in the everyday split), but NOT from effectiveNet: that line
+    // is the COMBINED balance's per-month contribution, and an everyday->
+    // savings transfer moves nothing between accounts still inside the total.
     return {
       incomeActual,
       incomePlanned,
       expenseActual,
       expensePlanned,
-      netActual: add(sub(incomeActual, expenseActual), transfersNet),
-      netPlanned: sub(incomePlanned, expensePlanned),
+      netActual: sub(add(sub(incomeActual, expenseActual), transfersNet), savingsActual),
+      netPlanned: sub(sub(incomePlanned, expensePlanned), savingsPlanned),
       effectiveIncome: effIncome,
       effectiveExpense: effExpense,
       effectiveNet: add(sub(effIncome, effExpense), transfersNet),
@@ -306,6 +332,9 @@ export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): 
       transfersIn,
       transfersOut,
       transfersNet,
+      savingsActual,
+      savingsPlanned,
+      effectiveSavings: effSavings,
     }
   })
 }
@@ -317,4 +346,36 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
     running = add(running, t.effectiveNet)
     return running
   })
+}
+
+/** The savings side of the balance split: opening balance plus, per month, what
+ *  actually happened in the past, what is confirmed so far plus the gap still owed
+ *  to plan in the current month, and the plan alone for months not yet open. */
+export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
+  const cur = currentMonth(now)
+  const flowsByMonth = new Map<string, PlanSavingsFlowDto[]>()
+  for (const f of plan.savingsFlows ?? []) {
+    const arr = flowsByMonth.get(f.month) ?? []
+    arr.push(f)
+    flowsByMonth.set(f.month, arr)
+  }
+  let running = (plan.savingsOpeningBalances ?? []).reduce((acc, b) => add(acc, ex(b.currencyId, b.amount, 0)), '0')
+  return plan.months.map((month, i) => {
+    const flows = (flowsByMonth.get(month) ?? []).reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
+    const t = totals[i]
+    if (month < cur) {
+      running = add(running, flows)
+    } else if (month === cur) {
+      const gap = cmp(t.savingsPlanned, t.savingsActual) > 0 ? sub(t.savingsPlanned, t.savingsActual) : '0'
+      running = add(add(running, flows), gap)
+    } else {
+      running = add(running, t.savingsPlanned)
+    }
+    return running
+  })
+}
+
+/** The everyday side of the balance split: the combined balance minus the savings side. */
+export function everydayBalanceRow(combined: string[], savings: string[]): string[] {
+  return combined.map((c, i) => sub(c, savings[i] ?? '0'))
 }
