@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Progreso de los gastos",
-        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Ahorrado {saved} de {planned} previstos"
       },
       "duplicate_budget_form": {
         "header": "Duplicar presupuesto",
@@ -1402,6 +1403,12 @@
           "empty": "Aún no hay comentarios.",
           "truncated": "Mostrando los 2000 comentarios más recientes."
         }
+      },
+      "savings": {
+        "title": "Ahorros",
+        "planned": "Previsto",
+        "saved": "Ahorrado",
+        "remaining": "Restante"
       },
       "settings": {
         "menu_item": "Presupuestos y planes",

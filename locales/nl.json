@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Uitgaven",
-        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "{saved} van {planned} gepland gespaard"
       },
       "duplicate_budget_form": {
         "header": "Budget dupliceren",
@@ -1402,6 +1403,12 @@
           "empty": "Nog geen opmerkingen.",
           "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
+      },
+      "savings": {
+        "title": "Sparen",
+        "planned": "Gepland",
+        "saved": "Gespaard",
+        "remaining": "Resterend"
       },
       "settings": {
         "menu_item": "Budgetten & plannen",

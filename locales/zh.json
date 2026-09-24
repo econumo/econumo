@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "支出进度",
-        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "已储蓄 {saved}，计划 {planned}"
       },
       "duplicate_budget_form": {
         "header": "复制预算",
@@ -1402,6 +1403,12 @@
           "empty": "暂无评论。",
           "truncated": "仅显示最新的 2000 条评论。"
         }
+      },
+      "savings": {
+        "title": "储蓄",
+        "planned": "计划",
+        "saved": "已储蓄",
+        "remaining": "剩余"
       },
       "settings": {
         "menu_item": "预算与计划",

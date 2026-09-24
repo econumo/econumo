@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Progresso das despesas",
-        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Poupado {saved} de {planned} planeados"
       },
       "duplicate_budget_form": {
         "header": "Duplicar orçamento",
@@ -1402,6 +1403,12 @@
           "empty": "Ainda não há comentários.",
           "truncated": "A mostrar os 2000 comentários mais recentes."
         }
+      },
+      "savings": {
+        "title": "Poupança",
+        "planned": "Planeado",
+        "saved": "Poupado",
+        "remaining": "Restante"
       },
       "settings": {
         "menu_item": "Orçamentos e planos",

@@ -23,7 +23,6 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import { pluralPick } from '@/lib/plural'
 import type {
   BudgetCommentDto,
   BudgetDto,
@@ -71,7 +70,7 @@ import {
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
 import { CommentsDialog } from './CommentsDialog'
-import { CommentThread } from './CommentThread'
+import { CommentMarker, CommentThread } from './CommentThread'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -534,7 +533,7 @@ function CommentsFooter({ ctx, el, month, comments }: { ctx: GridCtx; el: PlanEl
 }
 
 const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: GridCtx }) {
-  const { t, i18n } = useTranslation()
+  const { t } = useTranslation()
   const el = row.element
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[el.id])
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
@@ -677,22 +676,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 )}
               </span>
               {commentCount > 0 && !isUncategorized ? (
-                // the visible triangle is drawn on an inner span so the button itself
-                // can carry a real hit area (a touch tap on the 6x6px border-only box
-                // used to land on the cell behind it and start editing the amount instead)
-                // without the marker taking any layout space or changing column width
-                <button
-                  type="button"
-                  data-testid="comment-marker"
-                  aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), commentCount, i18n.language)}
-                  className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    ctx.openComments({ el, month: m, monthIndex: idx })
-                  }}
-                >
-                  <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
-                </button>
+                <CommentMarker count={commentCount} onOpen={() => ctx.openComments({ el, month: m, monthIndex: idx })} />
               ) : null}
               {showFillHandle ? (
                 <span
@@ -1064,7 +1048,7 @@ function PlanBalanceLine({
         <span className="truncate text-xs font-semibold" title={info}>
           {label}
         </span>
-        {info ? <InfoNote text={info} testId="plan-savings-balance-info" /> : null}
+        {info ? <InfoNote text={info} testId={`${testIdPrefix}-info`} /> : null}
       </span>
       {visibleMonths.map((m, i) => {
         const idx = monthIndex(m)

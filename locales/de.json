@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Ausgaben",
-        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "{saved} von {planned} geplant gespart"
       },
       "duplicate_budget_form": {
         "header": "Budget duplizieren",
@@ -1402,6 +1403,12 @@
           "empty": "Noch keine Kommentare.",
           "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
         }
+      },
+      "savings": {
+        "title": "Sparen",
+        "planned": "Geplant",
+        "saved": "Gespart",
+        "remaining": "Verbleibend"
       },
       "settings": {
         "menu_item": "Budgets & Pläne",

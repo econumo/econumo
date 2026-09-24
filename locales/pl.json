@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Postęp wydatków",
-        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Zaoszczędzono {saved} z {planned} zaplanowanych"
       },
       "duplicate_budget_form": {
         "header": "Duplikuj budżet",
@@ -1402,6 +1403,12 @@
           "empty": "Brak komentarzy.",
           "truncated": "Wyświetlono 2000 najnowszych komentarzy."
         }
+      },
+      "savings": {
+        "title": "Oszczędności",
+        "planned": "Zaplanowano",
+        "saved": "Zaoszczędzono",
+        "remaining": "Pozostało"
       },
       "settings": {
         "menu_item": "Budżety i plany",

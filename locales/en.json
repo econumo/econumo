@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Spending progress",
-        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Saved {saved} of {planned} planned"
       },
       "duplicate_budget_form": {
         "header": "Duplicate budget",
@@ -1402,6 +1403,12 @@
           "empty": "No comments yet.",
           "truncated": "Showing the latest 2000 comments."
         }
+      },
+      "savings": {
+        "title": "Savings",
+        "planned": "Planned",
+        "saved": "Saved",
+        "remaining": "Remaining"
       },
       "settings": {
         "menu_item": "Budgets & Plans",

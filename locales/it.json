@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Andamento delle spese",
-        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Risparmiati {saved} su {planned} previsti"
       },
       "duplicate_budget_form": {
         "header": "Duplica budget",
@@ -1402,6 +1403,12 @@
           "empty": "Nessun commento ancora.",
           "truncated": "Vengono mostrati i 2000 commenti più recenti."
         }
+      },
+      "savings": {
+        "title": "Risparmi",
+        "planned": "Previsto",
+        "saved": "Risparmiato",
+        "remaining": "Rimanente"
       },
       "settings": {
         "menu_item": "Budget e piani",

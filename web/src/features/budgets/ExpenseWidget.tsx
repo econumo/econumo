@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import { Progress } from '@/components/ui/progress'
+import { add } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { BudgetDto } from '@/api/dto/budget'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -24,6 +25,16 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const rate = currencyId !== budget.meta.currencyId ? exchangeFn(budget.meta.currencyId, currencyId, '1') : null
 
+  // savings rows are in their own currencies; the line sums them in the budget's
+  const savings = budget.structure.savings ?? []
+  const savingsTotals = savings.reduce(
+    (acc, row) => ({
+      saved: add(acc.saved, exchangeFn(row.currencyId, budget.meta.currencyId, row.spent)),
+      planned: add(acc.planned, exchangeFn(row.currencyId, budget.meta.currencyId, row.budgeted)),
+    }),
+    { saved: '0', planned: '0' },
+  )
+
   return (
     <section className="flex w-full max-w-sm flex-col gap-2 rounded-md border p-3" data-testid="expense-widget">
       <header className="flex items-baseline justify-between text-sm font-medium">
@@ -40,6 +51,14 @@ export function ExpenseWidget({ budget, currencyId }: { budget: BudgetDto; curre
         className={math.overspent ? '[&>*]:bg-red-600' : undefined}
         data-overbudget={math.overspent || undefined}
       />
+      {savings.length > 0 ? (
+        <p className="text-xs text-muted-foreground" data-testid="expense-widget-savings">
+          {t('budgets.modal.expense_widget.saved_of_planned', {
+            saved: moneyFormat(savingsTotals.saved, budgetCurrency),
+            planned: moneyFormat(savingsTotals.planned, budgetCurrency),
+          })}
+        </p>
+      ) : null}
       {rate !== null && budgetCurrency && currency ? (
         <p className="text-xs text-muted-foreground">
           {t('budgets.modal.expense_widget.conversion_rate', {

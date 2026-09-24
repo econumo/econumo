@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Расходы",
-        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Отложено {saved} из {planned} запланированных"
       },
       "duplicate_budget_form": {
         "header": "Дублировать бюджет",
@@ -1402,6 +1403,12 @@
           "empty": "Пока нет комментариев.",
           "truncated": "Показаны последние 2000 комментариев."
         }
+      },
+      "savings": {
+        "title": "Сбережения",
+        "planned": "Запланировано",
+        "saved": "Отложено",
+        "remaining": "Осталось"
       },
       "settings": {
         "menu_item": "Бюджеты и планы",

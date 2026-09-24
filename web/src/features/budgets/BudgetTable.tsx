@@ -61,7 +61,7 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
+export function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
   return (
     <span
       data-testid={testId}

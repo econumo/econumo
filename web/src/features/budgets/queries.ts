@@ -10,6 +10,7 @@ import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
+import { sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
@@ -130,13 +131,17 @@ export function useSetLimit() {
         if (!prev) {
           return prev
         }
+        const budgeted = form.amount === null ? '0' : form.amount
+        const savings = prev.structure.savings
         return {
           ...prev,
           structure: {
             ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? '0' : form.amount } : el,
-            ),
+            elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted } : el)),
+            // a savings row carries no carry-over: its available is planned minus saved
+            ...(savings
+              ? { savings: savings.map((row) => (row.id === form.elementId ? { ...row, budgeted, available: sub(budgeted, row.spent) } : row)) }
+              : {}),
           },
         }
       })

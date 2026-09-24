@@ -497,3 +497,92 @@ it('a live budget shows no archived banner', async () => {
   expect(await screen.findByRole('button', { name: 'Configure' })).toBeInTheDocument()
   expect(screen.queryByText('This budget is archived and read-only')).not.toBeInTheDocument()
 })
+
+describe('monthly Savings block', () => {
+  const savingsWireBudget = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      savings: [
+        {
+          id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+          budgeted: '100', spent: '120', available: '-20',
+        },
+      ],
+    },
+  }
+  const savingsComment = {
+    id: 'cm-s1',
+    elementId: 'acc-s1',
+    period: '2026-07-01',
+    comment: 'Bonus goes here',
+    author: { id: 'u1', avatar: 'face:emerald', name: 'Ada' },
+    createdAt: '2026-07-17 09:00:00',
+    updatedAt: '2026-07-17 09:00:00',
+  }
+
+  function useSavingsHandlers(extra: Parameters<typeof server.use> = []) {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: savingsWireBudget } })),
+      http.get('*/api/v1/budget/get-comment-list', () =>
+        HttpResponse.json({ success: true, message: '', data: { items: [savingsComment], truncated: false } }),
+      ),
+      ...extra,
+    )
+  }
+
+  it('renders below the budget table', async () => {
+    useSavingsHandlers()
+    renderPage()
+    const block = await screen.findByTestId('budget-savings-block')
+    const table = screen.getByTestId('budget-table')
+    expect(table.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(table.contains(block)).toBe(false)
+  })
+
+  it('editing Planned sends set-limit for the account id and patches the savings row optimistically', async () => {
+    let body: unknown
+    useSavingsHandlers([
+      http.post('*/api/v1/budget/set-limit', async ({ request }) => {
+        body = await request.json()
+        await delay('infinite')
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    ])
+    const user = userEvent.setup()
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    await user.click(within(row).getByRole('button', { name: 'planned Rainy day' }))
+    // the page's one SetLimitDialog, carrying this cell's thread
+    const input = await screen.findByLabelText('Budget')
+    expect(screen.getByText('Bonus goes here')).toBeInTheDocument()
+    await user.clear(input)
+    await user.type(input, '250')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
+    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
+    expect(within(row).getByTestId('savings-remaining')).toHaveTextContent('130.00')
+  })
+
+  it('the comment marker on a planned cell opens the page comments dialog', async () => {
+    useSavingsHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    await user.click(await within(row).findByTestId('comment-marker'))
+    const dialog = await screen.findByRole('dialog')
+    expect(within(dialog).getByText('Rainy day')).toBeInTheDocument()
+    expect(within(dialog).getByText('Bonus goes here')).toBeInTheDocument()
+  })
+
+  it('a budget without savings rows renders no block', async () => {
+    server.use(
+      ...coreHandlers({ user: userWithBudget }),
+      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    )
+    renderPage()
+    expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
+    expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
+  })
+})

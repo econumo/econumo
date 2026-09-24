@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Suivi des dépenses",
-        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Épargné {saved} sur {planned} prévus"
       },
       "duplicate_budget_form": {
         "header": "Dupliquer le budget",
@@ -1402,6 +1403,12 @@
           "empty": "Aucun commentaire pour le moment.",
           "truncated": "Affichage des 2000 commentaires les plus récents."
         }
+      },
+      "savings": {
+        "title": "Épargne",
+        "planned": "Prévu",
+        "saved": "Épargné",
+        "remaining": "Restant"
       },
       "settings": {
         "menu_item": "Budgets et plans",

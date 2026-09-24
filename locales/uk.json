@@ -1184,7 +1184,8 @@
       },
       "expense_widget": {
         "header": "Витрати",
-        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Відкладено {saved} з {planned} запланованих"
       },
       "duplicate_budget_form": {
         "header": "Дублювати бюджет",
@@ -1402,6 +1403,12 @@
           "empty": "Поки що немає коментарів.",
           "truncated": "Показано останні 2000 коментарів."
         }
+      },
+      "savings": {
+        "title": "Заощадження",
+        "planned": "Заплановано",
+        "saved": "Відкладено",
+        "remaining": "Залишилось"
       },
       "settings": {
         "menu_item": "Бюджети й плани",

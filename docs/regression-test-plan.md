@@ -692,6 +692,33 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
+- [ ] 📱 **Monthly view — Savings block**: with a savings account in the
+      budget, a foldable "Savings" block appears below the budget table (and
+      its totals), one row per savings account in their saved order, with
+      Planned / Saved / Remaining in the account's currency (all three columns
+      also on a phone). A budget without savings accounts shows no block.
+      Folding it survives a reload.
+- [ ] 📱 Save more into a savings account than planned for the month:
+      Remaining goes negative and turns red, the same over-plan style as a
+      negative Available in the table.
+- [ ] 📱 Click (tap) a savings row's Planned amount: the set-limit dialog opens
+      with the current value and the cell's comments; saving shows the new
+      Planned and Remaining at once, and they survive a reload (the Plan view
+      shows the same amount for that month). As a guest, on a month before
+      the budget start, or on a deleted account's row, Planned opens the
+      comments instead and the amount cannot be changed.
+- [ ] 📱 Edit structure mode: savings rows show drag grips (a deleted
+      account's row has none) and reorder among themselves only; the order
+      survives a reload and matches the Plan view's Savings section. Dragging
+      a savings row onto a folder or a table row does nothing, and a table
+      row cannot be dropped into the Savings block.
+- [ ] 📱 A commented savings Planned cell carries the corner marker; clicking
+      (tapping) it opens that cell's thread. A comment posted there shows in
+      the Plan view on the same month's savings cell.
+- [ ] 📱 Expense widget (select a currency chip): with savings accounts it
+      shows "Saved X of Y planned" for the month in the budget currency, a
+      savings account in another currency converted at the month's rate;
+      without savings accounts the line is absent.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is

@@ -36,7 +36,6 @@ import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetCommentDto, BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
-import { pluralPick } from '@/lib/plural'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
 import { useCurrencies } from '@/features/currencies/queries'
@@ -72,9 +71,10 @@ import { BudgetTable } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
 import { ExpenseWidget } from './ExpenseWidget'
+import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
-import { CommentThread } from './CommentThread'
+import { CommentMarker, CommentThread } from './CommentThread'
 import { CommentsDialog } from './CommentsDialog'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
@@ -125,6 +125,8 @@ const preferRowCollisions: CollisionDetection = (args) => {
   const row = candidates.find((c) => !String(c.id).startsWith('bfolder:'))
   return row ? [row] : candidates
 }
+
+type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
 export type BudgetMode = 'budget' | 'plan'
 const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
@@ -280,7 +282,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
   const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
-  const [commentsTarget, setCommentsTarget] = useState<BudgetElementDto | null>(null)
+  // an element or a savings row: both dialogs need only the cell's id and name
+  const [commentsTarget, setCommentsTarget] = useState<CellTarget | null>(null)
 
   const setLimit = useSetLimit()
   const createEnvelope = useCreateEnvelope()
@@ -316,7 +319,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
-  const [limitTarget, setLimitTarget] = useState<BudgetElementDto | null>(null)
+  const [limitTarget, setLimitTarget] = useState<CellTarget | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
 
 
@@ -846,24 +849,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       if (cellComments.length === 0) {
                         return null
                       }
-                      return (
-                        // the visible triangle is drawn on an inner span so the button
-                        // carries a real hit area (a touch tap on the 6x6px border-only
-                        // box used to land on the row behind it instead) without taking
-                        // any layout space or changing column width
-                        <button
-                          type="button"
-                          data-testid="comment-marker"
-                          aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), cellComments.length, i18n.language)}
-                          className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setCommentsTarget(element)
-                          }}
-                        >
-                          <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
-                        </button>
-                      )
+                      return <CommentMarker count={cellComments.length} onOpen={() => setCommentsTarget(element)} />
                     }}
                     renderRowWrapper={
                       editMode
@@ -909,6 +895,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   />
                   </SortableContext>
                 </DndContext>
+                {/* its own DndContext: a savings row reorders within the block only */}
+                <SavingsBlock
+                  budget={budget}
+                  currencies={currencies}
+                  selectedDate={selectedDate}
+                  canEdit={limitsEditable && !editMode}
+                  editMode={editMode}
+                  commentsByCell={commentsByCell}
+                  onEditPlanned={setLimitTarget}
+                  onOpenComments={setCommentsTarget}
+                  onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
+                />
               </div>
             </>
           )}
