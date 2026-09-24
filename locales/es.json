@@ -1102,6 +1102,23 @@
           "no_access_envelope": "No puedes editar este sobre: tu rol en este presupuesto es de solo lectura.",
           "no_access_category": "No puedes editar esta categoría: pertenece a otro usuario.",
           "no_access_tag": "No puedes editar esta etiqueta: pertenece a otro usuario."
+        },
+        "comments": {
+          "title": "Comentarios",
+          "disclosure": "Comentarios ({count})",
+          "comment_label": "Comentario",
+          "marker_aria": "{count} comentario | {count} comentarios",
+          "composer_placeholder": "Añade una nota para este mes",
+          "post": "Publicar",
+          "edit": "Editar",
+          "delete": "Eliminar",
+          "cancel": "Cancelar",
+          "delete_confirm": "¿Eliminar este comentario?",
+          "edited": "(editado)",
+          "counter": "{count}/500",
+          "read_only": "Los comentarios aquí se pueden leer, pero no modificar.",
+          "empty": "Aún no hay comentarios.",
+          "truncated": "Mostrando los 2000 comentarios más recientes."
         }
       },
       "settings": {
@@ -1516,7 +1533,9 @@
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "accounts_required": "Selecciona al menos una cuenta",
       "archived": "Este presupuesto está archivado",
-      "end_before_start": "El mes final es anterior al inicio del presupuesto"
+      "end_before_start": "El mes final es anterior al inicio del presupuesto",
+      "comment_not_found": "Comentario no encontrado",
+      "comment_forbidden": "No puedes modificar este comentario"
     },
     "category": {
       "name_length": "El nombre de la categoría debe tener entre {min} y {max} caracteres.",

@@ -26,6 +26,7 @@ type Service struct {
 	envelopes   EnvelopeStore
 	elements    ElementStore
 	limits      LimitStore
+	comments    CommentStore
 	read        ReadModel
 	convertor   Convertor
 	rates       AverageRateLookup
@@ -34,6 +35,7 @@ type Service struct {
 	currency    CurrencyLookup
 	metadata    MetadataLookup
 	connections Connections
+	ops         port.OperationGuard
 	tx          port.TxRunner
 	clock       port.Clock
 
@@ -55,14 +57,15 @@ func NewService(
 	currency CurrencyLookup,
 	metadata MetadataLookup,
 	connections Connections,
+	ops port.OperationGuard,
 	tx port.TxRunner,
 	clock port.Clock,
 ) *Service {
 	return &Service{
-		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo,
+		budgets: repo, access: repo, folders: repo, envelopes: repo, elements: repo, limits: repo, comments: repo,
 		read: read, convertor: convertor, rates: rates,
 		users: users, accounts: accounts, currency: currency, metadata: metadata, connections: connections,
-		tx: tx, clock: clock,
+		ops: ops, tx: tx, clock: clock,
 	}
 }
 

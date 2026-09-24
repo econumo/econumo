@@ -192,7 +192,7 @@ func (s *Service) DeleteBudget(ctx context.Context, userID vo.Id, req model.Dele
 	return &model.DeleteBudgetResult{}, nil
 }
 
-// ResetBudget clears all element limits and resets the start month (owner|admin).
+// ResetBudget clears all element limits and comments and resets the start month (owner|admin).
 func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.ResetBudgetRequest) (*model.ResetBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -216,6 +216,11 @@ func (s *Service) ResetBudget(ctx context.Context, userID vo.Id, req model.Reset
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		if serr := s.limits.DeleteLimitsByBudget(txCtx, budgetID); serr != nil {
 			return serr
+		}
+		// Reset re-anchors the start month, so comments below the new start
+		// would be rows no view renders and the list endpoint still returns.
+		if cerr := s.comments.DeleteCommentsByBudget(txCtx, budgetID); cerr != nil {
+			return cerr
 		}
 		b.budget.StartFrom(startedAt, now)
 		return s.budgets.Save(txCtx, b.budget)

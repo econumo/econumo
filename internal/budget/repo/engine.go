@@ -58,6 +58,15 @@ type querier interface {
 	AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
+
+	ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error)
+	GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error)
+	ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error)
+	InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error
+	UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error
+	DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error
+	RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error
 }
 
 type sqliteQuerier struct{}
@@ -193,6 +202,51 @@ func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, b
 }
 func (sqliteQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return sqlitegen.New(db).RemoveBudgetAccountsOwnedBy(ctx, sqlitegen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
+}
+
+func (sqliteQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
+	// datetime(c.period) >= datetime(?) AND datetime(c.period) < datetime(?): bind
+	// both bounds as 'Y-m-d H:i:s' strings, the same belt-and-braces as the limit
+	// queries (limitPeriodArg).
+	return sqlitegen.New(db).ListBudgetCommentsForWindow(ctx, sqlitegen.ListBudgetCommentsForWindowParams{
+		BudgetID: budgetID, Datetime: limitPeriodArg(from), Datetime_2: limitPeriodArg(to), Limit: int64(limit),
+	})
+}
+func (sqliteQuerier) GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error) {
+	v, err := sqlitegen.New(db).GetBudgetComment(ctx, id)
+	if err != nil {
+		return commentJoined{}, err
+	}
+	return commentJoined{
+		ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+		CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+		AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+	}, nil
+}
+func (sqliteQuerier) ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error) {
+	return sqlitegen.New(db).ListBudgetCommentsFrom(ctx, sqlitegen.ListBudgetCommentsFromParams{BudgetID: budgetID, Datetime: limitPeriodArg(from)})
+}
+func (sqliteQuerier) InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error {
+	// Store `period` as 'Y-m-d H:i:s' text via raw exec, the same
+	// belt-and-braces as UpsertBudgetLimit: done via raw exec because the
+	// generated param type is time.Time.
+	_, err := db.ExecContext(ctx,
+		`INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		p.ID, p.ElementID, p.Period.Format(datetime.Layout), p.UserID, p.Comment, p.CreatedAt, p.UpdatedAt)
+	return err
+}
+func (sqliteQuerier) UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error {
+	return sqlitegen.New(db).UpdateBudgetCommentText(ctx, sqlitegen.UpdateBudgetCommentTextParams{Comment: text, UpdatedAt: updatedAt, ID: id})
+}
+func (sqliteQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error {
+	return sqlitegen.New(db).DeleteBudgetComment(ctx, id)
+}
+func (sqliteQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
+	return sqlitegen.New(db).RepointBudgetComments(ctx, sqlitegen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (sqliteQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
+	return sqlitegen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)
 }
 
 // pgsqlQuerier is the whole-struct shim (field-by-field for the limit row/params).
@@ -402,4 +456,61 @@ func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, bu
 }
 func (pgsqlQuerier) RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccountsOwnedBy(ctx, pgsqlgen.RemoveBudgetAccountsOwnedByParams{BudgetID: budgetID, UserID: userID})
+}
+
+func (pgsqlQuerier) ListBudgetCommentsForWindow(ctx context.Context, db backend.DBTX, budgetID string, from, to time.Time, limit int) ([]commentJoined, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetCommentsForWindow(ctx, pgsqlgen.ListBudgetCommentsForWindowParams{
+		BudgetID: budgetID, Period: from, Period_2: to, Limit: int32(limit),
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]commentJoined, len(rows))
+	for i, v := range rows {
+		out[i] = commentJoined{
+			ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+			CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+			AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+		}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) GetBudgetComment(ctx context.Context, db backend.DBTX, id string) (commentJoined, error) {
+	v, err := pgsqlgen.New(db).GetBudgetComment(ctx, id)
+	if err != nil {
+		return commentJoined{}, err
+	}
+	return commentJoined{
+		ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment,
+		CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt, BudgetID: v.BudgetID, ExternalID: v.ExternalID,
+		AuthorName: v.AuthorName, AuthorAvatar: v.AuthorAvatar,
+	}, nil
+}
+func (pgsqlQuerier) ListBudgetCommentsFrom(ctx context.Context, db backend.DBTX, budgetID string, from time.Time) ([]commentRow, error) {
+	rows, err := pgsqlgen.New(db).ListBudgetCommentsFrom(ctx, pgsqlgen.ListBudgetCommentsFromParams{BudgetID: budgetID, Period: from})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]commentRow, len(rows))
+	for i, v := range rows {
+		out[i] = commentRow{ID: v.ID, ElementID: v.ElementID, Period: v.Period, UserID: v.UserID, Comment: v.Comment, CreatedAt: v.CreatedAt, UpdatedAt: v.UpdatedAt}
+	}
+	return out, nil
+}
+func (pgsqlQuerier) InsertBudgetComment(ctx context.Context, db backend.DBTX, p inCommentP) error {
+	return pgsqlgen.New(db).InsertBudgetComment(ctx, pgsqlgen.InsertBudgetCommentParams{
+		ID: p.ID, ElementID: p.ElementID, Period: p.Period, UserID: p.UserID, Comment: p.Comment, CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	})
+}
+func (pgsqlQuerier) UpdateBudgetCommentText(ctx context.Context, db backend.DBTX, id, text string, updatedAt time.Time) error {
+	return pgsqlgen.New(db).UpdateBudgetCommentText(ctx, pgsqlgen.UpdateBudgetCommentTextParams{Comment: text, UpdatedAt: updatedAt, ID: id})
+}
+func (pgsqlQuerier) DeleteBudgetComment(ctx context.Context, db backend.DBTX, id string) error {
+	return pgsqlgen.New(db).DeleteBudgetComment(ctx, id)
+}
+func (pgsqlQuerier) RepointBudgetComments(ctx context.Context, db backend.DBTX, dstElementID, srcElementID string) error {
+	return pgsqlgen.New(db).RepointBudgetComments(ctx, pgsqlgen.RepointBudgetCommentsParams{ElementID: dstElementID, ElementID_2: srcElementID})
+}
+func (pgsqlQuerier) DeleteBudgetCommentsByBudget(ctx context.Context, db backend.DBTX, budgetID string) error {
+	return pgsqlgen.New(db).DeleteBudgetCommentsByBudget(ctx, budgetID)
 }

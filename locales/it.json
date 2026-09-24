@@ -1102,6 +1102,23 @@
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
           "no_access_category": "Non puoi modificare questa categoria: appartiene a un altro utente.",
           "no_access_tag": "Non puoi modificare questo tag: appartiene a un altro utente."
+        },
+        "comments": {
+          "title": "Commenti",
+          "disclosure": "Commenti ({count})",
+          "comment_label": "Commento",
+          "marker_aria": "{count} commento | {count} commenti",
+          "composer_placeholder": "Aggiungi una nota per questo mese",
+          "post": "Pubblica",
+          "edit": "Modifica",
+          "delete": "Elimina",
+          "cancel": "Annulla",
+          "delete_confirm": "Eliminare questo commento?",
+          "edited": "(modificato)",
+          "counter": "{count}/500",
+          "read_only": "I commenti qui possono essere letti, ma non modificati.",
+          "empty": "Nessun commento ancora.",
+          "truncated": "Vengono mostrati i 2000 commenti più recenti."
         }
       },
       "settings": {
@@ -1516,7 +1533,9 @@
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
-      "end_before_start": "Il mese finale precede l'inizio del budget"
+      "end_before_start": "Il mese finale precede l'inizio del budget",
+      "comment_not_found": "Commento non trovato",
+      "comment_forbidden": "Non puoi modificare questo commento"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",

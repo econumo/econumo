@@ -174,3 +174,50 @@ FROM budgets_elements_limits l
 JOIN budgets_elements e ON e.id = l.element_id
 WHERE e.budget_id = $1 AND l.period >= $2
 ORDER BY l.period, l.id;
+
+-- name: ListBudgetCommentsForWindow :many
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE c.id IN (
+  SELECT c2.id FROM budgets_elements_comments c2
+  JOIN budgets_elements e2 ON e2.id = c2.element_id
+  WHERE e2.budget_id = $1 AND c2.period >= $2 AND c2.period < $3
+  ORDER BY c2.created_at DESC, c2.id DESC
+  LIMIT $4
+)
+ORDER BY c.period, e.external_id, c.created_at, c.id;
+
+-- name: GetBudgetComment :one
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,
+       e.budget_id, e.external_id, u.name AS author_name, u.avatar AS author_avatar
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+JOIN users u ON u.id = c.user_id
+WHERE c.id = $1;
+
+-- name: ListBudgetCommentsFrom :many
+SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at
+FROM budgets_elements_comments c
+JOIN budgets_elements e ON e.id = c.element_id
+WHERE e.budget_id = $1 AND c.period >= $2
+ORDER BY c.period, c.created_at, c.id;
+
+-- name: InsertBudgetComment :exec
+INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: UpdateBudgetCommentText :exec
+UPDATE budgets_elements_comments SET comment = $1, updated_at = $2 WHERE id = $3;
+
+-- name: DeleteBudgetComment :exec
+DELETE FROM budgets_elements_comments WHERE id = $1;
+
+-- name: RepointBudgetComments :exec
+UPDATE budgets_elements_comments SET element_id = $1 WHERE element_id = $2;
+
+-- name: DeleteBudgetCommentsByBudget :exec
+DELETE FROM budgets_elements_comments
+WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1);

@@ -371,6 +371,23 @@ definitions:
       item:
         $ref: '#/definitions/model.BudgetResult'
     type: object
+  model.CommentResult:
+    properties:
+      author:
+        $ref: '#/definitions/model.UserResult'
+      comment:
+        type: string
+      createdAt:
+        type: string
+      elementId:
+        type: string
+      id:
+        type: string
+      period:
+        type: string
+      updatedAt:
+        type: string
+    type: object
   model.CompleteLinkRequest:
     properties:
       code:
@@ -536,6 +553,24 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.CategoryResult'
+    type: object
+  model.CreateCommentRequest:
+    properties:
+      budgetId:
+        type: string
+      comment:
+        type: string
+      elementId:
+        type: string
+      id:
+        type: string
+      period:
+        type: string
+    type: object
+  model.CreateCommentResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CommentResult'
     type: object
   model.CreateCurrencyRequest:
     properties:
@@ -869,6 +904,13 @@ definitions:
     type: object
   model.DeleteCategoryResult:
     type: object
+  model.DeleteCommentRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteCommentResult:
+    type: object
   model.DeleteConnectionRequest:
     properties:
       id:
@@ -1009,6 +1051,15 @@ definitions:
         items:
           $ref: '#/definitions/model.CategoryResult'
         type: array
+    type: object
+  model.GetCommentListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.CommentResult'
+        type: array
+      truncated:
+        type: boolean
     type: object
   model.GetConnectionListResult:
     properties:
@@ -2146,6 +2197,18 @@ definitions:
         type: string
     type: object
   model.UpdateCategoryResult:
+    type: object
+  model.UpdateCommentRequest:
+    properties:
+      comment:
+        type: string
+      id:
+        type: string
+    type: object
+  model.UpdateCommentResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.CommentResult'
     type: object
   model.UpdateCurrencyRequest:
     properties:
@@ -3346,6 +3409,50 @@ paths:
       summary: Create a budget
       tags:
       - Budget
+  /api/v1/budget/create-comment:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Create comment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateCommentResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Post a comment on a budget cell
+      tags:
+      - Budget
   /api/v1/budget/create-envelope:
     post:
       consumes:
@@ -3520,6 +3627,50 @@ paths:
       security:
       - Bearer: []
       summary: Delete a budget
+      tags:
+      - Budget
+  /api/v1/budget/delete-comment:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Delete comment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.DeleteCommentResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete a comment (author, or the budget owner/admin)
       tags:
       - Budget
   /api/v1/budget/delete-envelope:
@@ -3718,6 +3869,52 @@ paths:
       security:
       - Bearer: []
       summary: Multi-month budget plan sheet
+      tags:
+      - Budget
+  /api/v1/budget/get-comment-list:
+    get:
+      parameters:
+      - description: Budget id
+        in: query
+        name: budgetId
+        required: true
+        type: string
+      - description: Window start (Y-m-d, snapped to first of month; defaults to the
+          current month)
+        in: query
+        name: from
+        type: string
+      - description: Window length in months (1-24, default 1)
+        in: query
+        name: months
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetCommentListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Comment threads for a budget's cells in a month window
       tags:
       - Budget
   /api/v1/budget/get-transaction-list:
@@ -4185,6 +4382,50 @@ paths:
       security:
       - Bearer: []
       summary: Update a budget
+      tags:
+      - Budget
+  /api/v1/budget/update-comment:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Update comment
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateCommentRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateCommentResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Edit your own comment
       tags:
       - Budget
   /api/v1/budget/update-envelope:

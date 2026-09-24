@@ -1102,6 +1102,23 @@
           "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
           "no_access_category": "Sie können diese Kategorie nicht bearbeiten — sie gehört einem anderen Benutzer.",
           "no_access_tag": "Sie können diesen Tag nicht bearbeiten — er gehört einem anderen Benutzer."
+        },
+        "comments": {
+          "title": "Kommentare",
+          "disclosure": "Kommentare ({count})",
+          "comment_label": "Kommentar",
+          "marker_aria": "{count} Kommentar | {count} Kommentare",
+          "composer_placeholder": "Notiz für diesen Monat hinzufügen",
+          "post": "Veröffentlichen",
+          "edit": "Bearbeiten",
+          "delete": "Löschen",
+          "cancel": "Abbrechen",
+          "delete_confirm": "Diesen Kommentar löschen?",
+          "edited": "(bearbeitet)",
+          "counter": "{count}/500",
+          "read_only": "Kommentare können hier gelesen, aber nicht geändert werden.",
+          "empty": "Noch keine Kommentare.",
+          "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
         }
       },
       "settings": {
@@ -1516,7 +1533,9 @@
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "accounts_required": "Wähle mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
-      "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn"
+      "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",
+      "comment_not_found": "Kommentar nicht gefunden",
+      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",
