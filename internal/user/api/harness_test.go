@@ -249,7 +249,8 @@ func (h *harness) issueTokenFor(t *testing.T, userID string) string {
 	exp := now.Add(appuser.SessionTTL)
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
-		TokenHash: appuser.HashAccessToken(raw), CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		TokenHash: appuser.HashAccessToken(raw), Scope: model.TokenScopeFull,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
 	if n, err := h.tokens.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
 		t.Fatalf("seed session: %d %v", n, err)

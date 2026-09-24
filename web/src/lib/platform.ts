@@ -22,3 +22,11 @@ export function nativePlugin<T>(name: string): T | null {
   }
   return (window.Capacitor?.Plugins?.[name] as T | undefined) ?? null
 }
+
+// iPadOS 13+ reports itself as a Mac; the touch-point probe tells them apart.
+// Used only to decide whether the "Configure on this iPhone" button (a
+// shortcuts:// deep link) can work — never for feature gating.
+export function isIOS(): boolean {
+  const ua = navigator.userAgent
+  return /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+}

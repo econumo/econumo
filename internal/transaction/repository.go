@@ -46,4 +46,8 @@ type Repository interface {
 	// LabelsByTransactionIDs batch-loads label ids for many transactions, keyed
 	// by transaction id (string), for attaching to already-hydrated results.
 	LabelsByTransactionIDs(ctx context.Context, ids []vo.Id) (map[string][]string, error)
+
+	// ImportedTransactionIDs reports which of the given transactions carry at
+	// least one live import link (the list endpoint's isImported flag).
+	ImportedTransactionIDs(ctx context.Context, ids []vo.Id) (map[string]bool, error)
 }

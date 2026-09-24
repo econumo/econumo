@@ -188,6 +188,49 @@ func (r *Repo) labelsByTransactionIDsChunk(ctx context.Context, ids []vo.Id, out
 	return rows.Err()
 }
 
+// ImportedTransactionIDs reads import_transaction_links, a table the imports
+// feature owns. This is the one place the transaction feature touches it —
+// SQL, not a Go import, so archtest cannot see the coupling; keep it here and
+// nowhere else. Chunked like LabelsByTransactionIDs; an empty id slice never reaches the IN list.
+func (r *Repo) ImportedTransactionIDs(ctx context.Context, ids []vo.Id) (map[string]bool, error) {
+	out := make(map[string]bool, len(ids))
+	for len(ids) > 0 {
+		n := len(ids)
+		if n > labelsByTransactionIDsChunkSize {
+			n = labelsByTransactionIDsChunkSize
+		}
+		chunk := ids[:n]
+		ids = ids[n:]
+		if err := r.importedTransactionIDsChunk(ctx, chunk, out); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+func (r *Repo) importedTransactionIDsChunk(ctx context.Context, ids []vo.Id, out map[string]bool) error {
+	args := make([]any, len(ids))
+	for i, id := range ids {
+		args[i] = id.String()
+	}
+	query := "SELECT DISTINCT transaction_id FROM import_transaction_links WHERE transaction_id IN (" +
+		placeholders(r.driver, 1, len(args)) + ")"
+	rows, err := r.db(ctx).QueryContext(ctx, query, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var txID string
+		if err := rows.Scan(&txID); err != nil {
+			return err
+		}
+		out[txID] = true
+	}
+	return rows.Err()
+}
+
 // LinkRecurring stamps recurring_id on an existing transaction (Save never
 // touches the column, so an explicit link needs this dedicated write).
 func (r *Repo) LinkRecurring(ctx context.Context, id, recurringID vo.Id, now time.Time) error {

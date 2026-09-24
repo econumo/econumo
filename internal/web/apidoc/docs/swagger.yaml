@@ -159,6 +159,26 @@ definitions:
       item:
         $ref: '#/definitions/model.MetaResult'
     type: object
+  model.ApplyImportRuleRequest:
+    properties:
+      includeEdited:
+        type: boolean
+      ruleId:
+        type: string
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+    type: object
+  model.ApplyImportRuleResult:
+    properties:
+      skipped:
+        type: integer
+      updated:
+        type: integer
+    type: object
   model.ArchiveBudgetRequest:
     properties:
       id:
@@ -352,6 +372,16 @@ definitions:
         type: string
       type:
         type: integer
+    type: object
+  model.ClaimSetupTokenRequest:
+    properties:
+      setupToken:
+        type: string
+    type: object
+  model.ClaimSetupTokenResult:
+    properties:
+      accessUrl:
+        type: string
     type: object
   model.CloneBudgetRequest:
     properties:
@@ -632,6 +662,50 @@ definitions:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
     type: object
+  model.CreateImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
+    type: object
+  model.CreateImportSourceRequest:
+    properties:
+      credentialCiphertext:
+        type: string
+      name:
+        type: string
+      provider:
+        type: string
+    type: object
+  model.CreateImportSourceResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ImportSourceResult'
+    type: object
   model.CreateLabelRequest:
     properties:
       accountId:
@@ -666,6 +740,8 @@ definitions:
         type: string
       name:
         type: string
+      scope:
+        type: string
     type: object
   model.CreatePersonalTokenResult:
     properties:
@@ -676,6 +752,8 @@ definitions:
       id:
         type: string
       name:
+        type: string
+      scope:
         type: string
       token:
         type: string
@@ -943,6 +1021,16 @@ definitions:
     type: object
   model.DeleteFolderResult:
     type: object
+  model.DeleteImportRuleRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.DeleteImportSourceRequest:
+    properties:
+      id:
+        type: string
+    type: object
   model.DeleteInviteRequest:
     type: object
   model.DeleteInviteResult:
@@ -989,11 +1077,33 @@ definitions:
       item:
         $ref: '#/definitions/model.TransactionResult'
     type: object
+  model.DiscardImportEventRequest:
+    properties:
+      eventId:
+        type: string
+    type: object
   model.ExchangeHandoffRequest:
     properties:
       code:
         type: string
       flow:
+        type: string
+    type: object
+  model.ExternalAccountResult:
+    properties:
+      accountId:
+        type: string
+      balance:
+        type: string
+      externalAccountId:
+        type: string
+      externalCurrency:
+        type: string
+      externalName:
+        type: string
+      orgName:
+        type: string
+      state:
         type: string
     type: object
   model.FiltersResult:
@@ -1089,6 +1199,60 @@ definitions:
           $ref: '#/definitions/model.AccountFolderResult'
         type: array
     type: object
+  model.GetImportCredentialKeyResult:
+    properties:
+      kdf:
+        type: string
+      updatedAt:
+        type: string
+      wrappedDataKey:
+        type: string
+    type: object
+  model.GetImportQueueResult:
+    properties:
+      failed:
+        items:
+          $ref: '#/definitions/model.ImportFailedEventResult'
+        type: array
+      queued:
+        items:
+          $ref: '#/definitions/model.ImportQueuedEventResult'
+        type: array
+      skipped:
+        items:
+          $ref: '#/definitions/model.ImportQueuedEventResult'
+        type: array
+    type: object
+  model.GetImportRuleListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRuleResult'
+        type: array
+    type: object
+  model.GetImportRunListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRunResult'
+        type: array
+    type: object
+  model.GetImportRunResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ImportRunResult'
+      links:
+        items:
+          $ref: '#/definitions/model.ImportRunLinkResult'
+        type: array
+    type: object
+  model.GetImportSourceListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportSourceResult'
+        type: array
+    type: object
   model.GetLabelListResult:
     properties:
       items:
@@ -1122,6 +1286,13 @@ definitions:
       items:
         items:
           $ref: '#/definitions/model.TagResult'
+        type: array
+    type: object
+  model.GetTransactionImportListResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.TransactionImportLinkResult'
         type: array
     type: object
   model.GetTransactionListResult:
@@ -1195,6 +1366,82 @@ definitions:
       provider:
         type: string
     type: object
+  model.ImportAccountActionRequest:
+    properties:
+      externalAccountId:
+        type: string
+      externalName:
+        type: string
+      sourceId:
+        type: string
+    type: object
+  model.ImportCardResult:
+    properties:
+      accountId:
+        type: string
+      externalAccountId:
+        type: string
+      externalCurrency:
+        type: string
+      externalName:
+        type: string
+      lastSeenAt:
+        type: string
+      queuedCount:
+        type: integer
+      state:
+        type: string
+      tapCount:
+        type: integer
+    type: object
+  model.ImportFailedEventResult:
+    properties:
+      error:
+        type: string
+      eventId:
+        type: string
+      payload:
+        type: string
+      receivedAt:
+        type: string
+      sourceId:
+        type: string
+    type: object
+  model.ImportLinkActionRequest:
+    properties:
+      linkId:
+        type: string
+    type: object
+  model.ImportQueuedEventRequest:
+    properties:
+      linkId:
+        type: string
+      transaction:
+        $ref: '#/definitions/model.CreateTransactionRequest'
+    type: object
+  model.ImportQueuedEventResult:
+    properties:
+      accountId:
+        type: string
+      amount:
+        type: string
+      currency:
+        type: string
+      externalAccountId:
+        type: string
+      linkId:
+        type: string
+      payee:
+        type: string
+      postedAt:
+        type: string
+      reason:
+        type: string
+      sourceId:
+        type: string
+      type:
+        type: string
+    type: object
   model.ImportResult:
     properties:
       errors:
@@ -1207,6 +1454,158 @@ definitions:
         type: integer
       skipped:
         type: integer
+    type: object
+  model.ImportRuleResult:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        type: string
+      tagId:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+  model.ImportRuleSuggestion:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      reason:
+        type: string
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
+    type: object
+  model.ImportRunError:
+    properties:
+      externalAccountId:
+        type: string
+      message:
+        type: string
+    type: object
+  model.ImportRunLinkResult:
+    properties:
+      externalAccountId:
+        type: string
+      externalAmount:
+        type: string
+      externalCurrency:
+        type: string
+      externalPayee:
+        type: string
+      externalPostedAt:
+        type: string
+      externalTransactionId:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      transactionId:
+        type: string
+    type: object
+  model.ImportRunResult:
+    properties:
+      amountsUpdatedCount:
+        type: integer
+      errors:
+        items:
+          $ref: '#/definitions/model.ImportRunError'
+        type: array
+      failedCount:
+        type: integer
+      finishedAt:
+        type: string
+      id:
+        type: string
+      importedCount:
+        type: integer
+      matchedCount:
+        type: integer
+      provider:
+        type: string
+      queuedCount:
+        type: integer
+      skippedCount:
+        type: integer
+      sourceId:
+        type: string
+      startedAt:
+        type: string
+      status:
+        type: string
+      trigger:
+        type: string
+    type: object
+  model.ImportSourceResult:
+    properties:
+      cards:
+        items:
+          $ref: '#/definitions/model.ImportCardResult'
+        type: array
+      createdAt:
+        type: string
+      credentialCiphertext:
+        type: string
+      id:
+        type: string
+      lastSyncedAt:
+        type: string
+      name:
+        type: string
+      provider:
+        type: string
+      status:
+        type: string
+    type: object
+  model.IngestEventResult:
+    properties:
+      eventId:
+        type: string
+      status:
+        type: string
     type: object
   model.LabelResult:
     properties:
@@ -1245,6 +1644,31 @@ definitions:
         type: string
       spent:
         type: string
+    type: object
+  model.LinkImportAccountRequest:
+    properties:
+      accountId:
+        type: string
+      externalAccountId:
+        type: string
+      externalName:
+        type: string
+      sourceId:
+        type: string
+    type: object
+  model.ListExternalAccountsRequest:
+    properties:
+      accessUrl:
+        type: string
+      sourceId:
+        type: string
+    type: object
+  model.ListExternalAccountsResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ExternalAccountResult'
+        type: array
     type: object
   model.LoginRequest:
     properties:
@@ -1514,6 +1938,8 @@ definitions:
         type: string
       name:
         type: string
+      scope:
+        type: string
     type: object
   model.PlanCellResult:
     properties:
@@ -1661,6 +2087,47 @@ definitions:
       nextPaymentAt:
         type: string
     type: object
+  model.PreviewImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
+    type: object
+  model.PreviewImportRuleResult:
+    properties:
+      alreadyEdited:
+        type: integer
+      matched:
+        type: integer
+    type: object
   model.ProviderItem:
     properties:
       id:
@@ -1781,6 +2248,11 @@ definitions:
     type: object
   model.ResetPasswordResult:
     type: object
+  model.RetryImportEventRequest:
+    properties:
+      eventId:
+        type: string
+    type: object
   model.RevokeAccessRequest:
     properties:
       budgetId:
@@ -1829,6 +2301,13 @@ definitions:
         type: string
       userAgent:
         description: '"" when the login sent no User-Agent'
+        type: string
+    type: object
+  model.SetImportCredentialKeyRequest:
+    properties:
+      kdf:
+        type: string
+      wrappedDataKey:
         type: string
     type: object
   model.SetLimitRequest:
@@ -1967,6 +2446,42 @@ definitions:
           $ref: '#/definitions/model.LabelSpendResult'
         type: array
     type: object
+  model.SuggestImportRulesRequest:
+    properties:
+      runId:
+        type: string
+      scope:
+        type: string
+      scopeSourceId:
+        type: string
+    type: object
+  model.SuggestImportRulesResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/model.ImportRuleSuggestion'
+        type: array
+    type: object
+  model.SyncImportSourceRequest:
+    properties:
+      accessUrl:
+        type: string
+      endDate:
+        type: string
+      sourceId:
+        type: string
+      startDate:
+        type: string
+    type: object
+  model.SyncImportSourceResult:
+    properties:
+      accounts:
+        items:
+          $ref: '#/definitions/model.ExternalAccountResult'
+        type: array
+      run:
+        $ref: '#/definitions/model.ImportRunResult'
+    type: object
   model.TagResult:
     properties:
       createdAt:
@@ -1984,6 +2499,49 @@ definitions:
       position:
         type: integer
       updatedAt:
+        type: string
+    type: object
+  model.TransactionImportLinkResult:
+    properties:
+      appliedCategoryId:
+        type: string
+      appliedLabelIds:
+        items:
+          type: string
+        type: array
+      appliedPayeeId:
+        type: string
+      appliedRuleId:
+        type: string
+      appliedTagId:
+        type: string
+      externalAccountId:
+        type: string
+      externalAmount:
+        type: string
+      externalCurrency:
+        type: string
+      externalDescription:
+        type: string
+      externalPayee:
+        type: string
+      externalPostedAt:
+        type: string
+      externalTransactionId:
+        type: string
+      id:
+        type: string
+      importedAt:
+        type: string
+      provider:
+        type: string
+      runId:
+        type: string
+      sourceId:
+        type: string
+      sourceName:
+        type: string
+      status:
         type: string
     type: object
   model.TransactionResult:
@@ -2006,6 +2564,12 @@ definitions:
         type: string
       id:
         type: string
+      isImported:
+        description: |-
+          IsImported is 1 when at least one import link (any provider) points at
+          this transaction — int 0/1 like isArchived. Full provenance is a
+          separate per-transaction read (stage 2), so the list carries only the flag.
+        type: integer
       labelIds:
         description: |-
           LabelIds is always a list, never null, so clients can iterate without a
@@ -2273,6 +2837,43 @@ definitions:
     properties:
       item:
         $ref: '#/definitions/model.AccountFolderResult'
+    type: object
+  model.UpdateImportAccountResult:
+    properties:
+      item:
+        $ref: '#/definitions/model.ImportSourceResult'
+      run:
+        $ref: '#/definitions/model.ImportRunResult'
+    type: object
+  model.UpdateImportRuleRequest:
+    properties:
+      action:
+        type: string
+      categoryId:
+        type: string
+      id:
+        type: string
+      isCaseSensitive:
+        type: boolean
+      labelIds:
+        items:
+          type: string
+        type: array
+      matchField:
+        type: string
+      matchType:
+        type: string
+      matchValue:
+        type: string
+      payeeId:
+        type: string
+      priority:
+        type: integer
+      sourceId:
+        description: nil/"" = every source
+        type: string
+      tagId:
+        type: string
     type: object
   model.UpdateLabelRequest:
     properties:
@@ -5472,6 +6073,1229 @@ paths:
       summary: Update a custom currency
       tags:
       - Currency
+  /api/v1/import/apply-rule:
+    post:
+      consumes:
+      - application/json
+      description: Re-classifies (or skips) every already-imported transaction in
+        scope that matches the rule, skipping hand-edited ones unless includeEdited
+        is set.
+      parameters:
+      - description: Rule id + scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ApplyImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ApplyImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Apply a saved rule to existing imports
+      tags:
+      - Import
+  /api/v1/import/claim-setup-token:
+    post:
+      consumes:
+      - application/json
+      description: Exchanges a one-time SimpleFIN setup token for the bridge access
+        URL. The URL is returned to the client and never stored server-side; the client
+        encrypts it with its credential key and sends the ciphertext to create-source.
+        403 when the bridge rejects the token (already claimed or expired).
+      parameters:
+      - description: Setup token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ClaimSetupTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ClaimSetupTokenResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Claim a SimpleFIN setup token
+      tags:
+      - Import
+  /api/v1/import/create-rule:
+    post:
+      consumes:
+      - application/json
+      description: Creates a classify or skip rule for matching future/existing imports.
+      parameters:
+      - description: Create rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Create an import rule
+      tags:
+      - Import
+  /api/v1/import/create-source:
+    post:
+      consumes:
+      - application/json
+      description: Creates an import source (currently only the "apple-wallet" provider)
+        for the authenticated user. One source per provider per user.
+      parameters:
+      - description: Create source request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.CreateImportSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateImportSourceResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Connect an import source
+      tags:
+      - Import
+  /api/v1/import/delete-rule:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a rule. Requires ownership.
+      parameters:
+      - description: Delete rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseOk'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Delete an import rule
+      tags:
+      - Import
+  /api/v1/import/delete-source:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a source and cascades its events, runs, account links and
+        ledger rows. Imported transactions stay (they become plain transactions).
+      parameters:
+      - description: Delete source request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DeleteImportSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSourceListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Disconnect an import source
+      tags:
+      - Import
+  /api/v1/import/discard-event:
+    post:
+      consumes:
+      - application/json
+      description: Deletes a failed event and its payload for good.
+      parameters:
+      - description: Discard request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.DiscardImportEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportQueueResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Discard a failed event
+      tags:
+      - Import
+  /api/v1/import/get-credential-key:
+    get:
+      description: Returns the caller's passphrase-wrapped data key and KDF parameters.
+        The server cannot unwrap it. 400 (coded not-found) when no key has been set.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportCredentialKeyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the wrapped import credential key
+      tags:
+      - Import
+  /api/v1/import/get-queued-event-list:
+    get:
+      description: Returns the caller's queued events (waiting for a card mapping
+        or a manual import), skipped events, and failed events (unparsable payloads
+        awaiting retry/discard).
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportQueueResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get the import queue
+      tags:
+      - Import
+  /api/v1/import/get-rule-list:
+    get:
+      description: Returns the caller's classify/skip rules, newest first.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportRuleListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import rules
+      tags:
+      - Import
+  /api/v1/import/get-run:
+    get:
+      description: The run summary plus every ledger row it wrote. A row whose transaction
+        was deleted since keeps its external fields with an empty transactionId.
+      parameters:
+      - description: Run id
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportRunResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get one import run
+      tags:
+      - Import
+  /api/v1/import/get-run-list:
+    get:
+      description: The caller's most recent 50 import runs, newest first, optionally
+        filtered to one source.
+      parameters:
+      - description: Source id
+        in: query
+        name: sourceId
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportRunListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import runs
+      tags:
+      - Import
+  /api/v1/import/get-source-list:
+    get:
+      description: Returns the caller's import sources with their cards (external
+        accounts seen so far) and each card's mapping state.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportSourceListResult'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List import sources
+      tags:
+      - Import
+  /api/v1/import/get-transaction-import-list:
+    get:
+      description: Returns the import ledger rows linked to one of the caller's visible
+        transactions (source, external payee/amount/currency, posted and imported
+        timestamps).
+      parameters:
+      - description: Transaction id
+        in: query
+        name: transactionId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetTransactionImportListResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Get a transaction's import provenance
+      tags:
+      - Import
+  /api/v1/import/ignore-account:
+    post:
+      consumes:
+      - application/json
+      description: 'Marks a card ignored: its queued events are dropped and future
+        events for it are skipped on arrival.'
+      parameters:
+      - description: Ignore account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportAccountActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateImportAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Ignore a card
+      tags:
+      - Import
+  /api/v1/import/import-queued-event:
+    post:
+      consumes:
+      - application/json
+      description: Creates the given transaction (same body as create-transaction,
+        prefilled by the SPA from the queued event) and links the queued event to
+        it.
+      parameters:
+      - description: Import queued event request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportQueuedEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateTransactionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Import one queued event by hand
+      tags:
+      - Import
+  /api/v1/import/ingest-apple-wallet-event:
+    post:
+      consumes:
+      - application/json
+      description: 'Accepts one raw Apple Wallet event as pushed by the "econumo-wallet-v1"
+        shortcut, stores it, and processes it synchronously: created (a transaction
+        was written), duplicate (already seen), queued (card unmapped / no rate /
+        account deleted), skipped (card ignored) or failed (unparsable payload). The
+        body is never logged.'
+      parameters:
+      - description: 'Raw Apple Wallet event: {account, payee, amount, currency, occurredAt?,
+          type?, eventId?}'
+        in: body
+        name: request
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.IngestEventResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Push an Apple Wallet transaction event
+      tags:
+      - Import
+  /api/v1/import/link-account:
+    post:
+      consumes:
+      - application/json
+      description: Maps an external account (card) of a source onto one of the caller's
+        accounts and converts every queued event of that card in one run. Refuses
+        a card whose reported currency differs from the account's.
+      parameters:
+      - description: Link account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.LinkImportAccountRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateImportAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Map a card to an account
+      tags:
+      - Import
+  /api/v1/import/list-external-accounts:
+    post:
+      consumes:
+      - application/json
+      description: Asks the provider (with the client-decrypted access URL in the
+        body) for its accounts and joins each with the caller's mapping state. POST
+        because the access URL must not travel in a query string.
+      parameters:
+      - description: Source + access URL
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ListExternalAccountsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ListExternalAccountsResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List the accounts a pull source exposes
+      tags:
+      - Import
+  /api/v1/import/preview-rule:
+    post:
+      consumes:
+      - application/json
+      description: Reports how many imported transactions in scope match the rule
+        spec, and how many of those were already hand-edited.
+      parameters:
+      - description: Rule spec + scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.PreviewImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.PreviewImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Count the existing imports a rule would touch
+      tags:
+      - Import
+  /api/v1/import/retry-event:
+    post:
+      consumes:
+      - application/json
+      description: Re-runs the pipeline on a failed event's stored payload (after
+        a normalizer fix, for instance). Returns the new ingest status.
+      parameters:
+      - description: Retry request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RetryImportEventRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.IngestEventResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Retry a failed event
+      tags:
+      - Import
+  /api/v1/import/set-credential-key:
+    post:
+      consumes:
+      - application/json
+      description: Stores (or replaces) the caller's passphrase-wrapped data key and
+        KDF parameters. Replacing the key does not touch stored credential ciphertexts;
+        the client re-encrypts and re-submits them via create-source.
+      parameters:
+      - description: Wrapped key
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SetImportCredentialKeyRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportCredentialKeyResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Set the wrapped import credential key
+      tags:
+      - Import
+  /api/v1/import/skip-queued-event:
+    post:
+      consumes:
+      - application/json
+      description: Moves a queued event to the skipped list; a later push of the same
+        event stays skipped.
+      parameters:
+      - description: Skip request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportLinkActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportQueueResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Skip a queued event
+      tags:
+      - Import
+  /api/v1/import/suggest-rules:
+    post:
+      consumes:
+      - application/json
+      description: Returns AI-proposed rule specs for imports in scope. 400 import.ai_disabled
+        when no AI provider is configured on this server.
+      parameters:
+      - description: Scope
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SuggestImportRulesRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SuggestImportRulesResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Ask the configured AI for rule suggestions
+      tags:
+      - Import
+  /api/v1/import/sync-source:
+    post:
+      consumes:
+      - application/json
+      description: Fetches the date range from the provider using the client-decrypted
+        access URL and runs every returned row through the import pipeline (create
+        / match / queue / skip). Returns the run summary and the provider's accounts
+        with their mapping state. endDate defaults to today; the span is capped at
+        400 days.
+      parameters:
+      - description: Sync request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.SyncImportSourceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.SyncImportSourceResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Pull transactions from a bank source
+      tags:
+      - Import
+  /api/v1/import/unlink-account:
+    post:
+      consumes:
+      - application/json
+      description: Removes a card's mapping (or its ignore flag). Already-imported
+        transactions are untouched; new events for the card queue again.
+      parameters:
+      - description: Unlink account request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportAccountActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateImportAccountResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Unmap a card
+      tags:
+      - Import
+  /api/v1/import/unskip-queued-event:
+    post:
+      consumes:
+      - application/json
+      description: Moves a skipped event back to the queue.
+      parameters:
+      - description: Un-skip request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.ImportLinkActionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetImportQueueResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Un-skip an event
+      tags:
+      - Import
+  /api/v1/import/update-rule:
+    post:
+      consumes:
+      - application/json
+      description: Replaces a rule's match/target spec. Requires ownership.
+      parameters:
+      - description: Update rule request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.UpdateImportRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ImportRuleResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Update an import rule
+      tags:
+      - Import
   /api/v1/label/archive-label:
     post:
       consumes:
