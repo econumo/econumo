@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as accountApi from '@/api/account'
-import type { AccountDto, AccountItemDto, AccountRole } from '@/api/dto/account'
+import { isSavingsAccount, type AccountDto, type AccountItemDto, type AccountRole } from '@/api/dto/account'
 import type { FolderDto } from '@/api/dto/folder'
 import type { Id } from '@/api/types'
 import type { TransactionDto } from '@/api/dto/transaction'
@@ -69,17 +69,32 @@ export function useCreateAccount() {
     onSuccess: (result) => {
       applyItem(result, { checkFirstFolder: true })
       trackEvent(METRICS.ACCOUNT_CREATE)
+      if (isSavingsAccount(result.item)) {
+        trackEvent(METRICS.ACCOUNT_SAVINGS_TOGGLE)
+      }
     },
   })
 }
 
 export function useUpdateAccount() {
+  const queryClient = useQueryClient()
   const applyItem = useAccountItemEffects()
   return useMutation({
     mutationFn: accountApi.updateAccount,
-    onSuccess: (result) => {
+    // read before applyItem overwrites the cached row with the echo
+    onMutate: (form) => {
+      const prev = queryClient.getQueryData<AccountDto[]>(queryKeys.accounts)?.find((a) => a.id === form.id)
+      return { wasSavings: prev ? isSavingsAccount(prev) : false }
+    },
+    onSuccess: (result, _form, context) => {
       applyItem(result)
       trackEvent(METRICS.ACCOUNT_UPDATE)
+      if (isSavingsAccount(result.item) !== (context?.wasSavings ?? false)) {
+        // the server adds or drops this account's savings rows and plans
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+        void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+        trackEvent(METRICS.ACCOUNT_SAVINGS_TOGGLE)
+      }
     },
   })
 }

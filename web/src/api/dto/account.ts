@@ -3,8 +3,12 @@ import type { UserDto } from './user'
 import type { CurrencyDto } from './currency'
 import type { TransactionDto } from './transaction'
 
-export const AccountType = { CASH: 1, CREDIT_CARD: 2 } as const
+export const AccountType = { CASH: 1, CREDIT_CARD: 2, SAVINGS: 3 } as const
 export type AccountType = (typeof AccountType)[keyof typeof AccountType]
+
+// reads tolerate any stored type (a foreign import copies the column
+// verbatim); only 3 means savings, everything else is an everyday account
+export const isSavingsAccount = (a: { type: number }): boolean => a.type === AccountType.SAVINGS
 
 export type AccountRole = 'admin' | 'user' | 'guest'
 

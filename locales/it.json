@@ -168,7 +168,8 @@
       "default_folder": "Tutti i conti"
     },
     "account": {
-      "name_hidden": "[Conto nascosto]"
+      "name_hidden": "[Conto nascosto]",
+      "savings_marker": "Risparmio"
     },
     "switch_to_account": "Passa a",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Valuta"
+      },
+      "savings": {
+        "label": "Conto di risparmio",
+        "hint": "Pianifica nei tuoi budget quanto va su questo conto",
+        "confirm_title": "Disattivare il risparmio?",
+        "confirm_off": "I risparmi pianificati per questo conto verranno rimossi da {count} budget. Gli importi risparmiati e le transazioni non vengono modificati. | I risparmi pianificati per questo conto verranno rimossi da {count} budget. Gli importi risparmiati e le transazioni non vengono modificati.",
+        "confirm_action": "Disattiva"
       }
     },
     "page": {

@@ -168,7 +168,8 @@
       "default_folder": "All accounts"
     },
     "account": {
-      "name_hidden": "[Hidden account]"
+      "name_hidden": "[Hidden account]",
+      "savings_marker": "Savings"
     },
     "switch_to_account": "Switch to",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Currency"
+      },
+      "savings": {
+        "label": "Savings account",
+        "hint": "Plan how much goes into this account in your budgets",
+        "confirm_title": "Turn off savings?",
+        "confirm_off": "Planned savings for this account will be removed from {count} budget. Saved amounts and transactions are not affected. | Planned savings for this account will be removed from {count} budgets. Saved amounts and transactions are not affected.",
+        "confirm_action": "Turn off"
       }
     },
     "page": {

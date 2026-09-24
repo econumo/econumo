@@ -168,7 +168,8 @@
       "default_folder": "Todas las cuentas"
     },
     "account": {
-      "name_hidden": "[Cuenta oculta]"
+      "name_hidden": "[Cuenta oculta]",
+      "savings_marker": "Ahorro"
     },
     "switch_to_account": "Cambiar a",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Moneda"
+      },
+      "savings": {
+        "label": "Cuenta de ahorro",
+        "hint": "Planifica en tus presupuestos cuánto va a esta cuenta",
+        "confirm_title": "¿Desactivar el ahorro?",
+        "confirm_off": "El ahorro planificado para esta cuenta se eliminará de {count} presupuesto. Los importes ahorrados y las transacciones no se verán afectados. | El ahorro planificado para esta cuenta se eliminará de {count} presupuestos. Los importes ahorrados y las transacciones no se verán afectados.",
+        "confirm_action": "Desactivar"
       }
     },
     "page": {

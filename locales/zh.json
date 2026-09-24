@@ -168,7 +168,8 @@
       "default_folder": "所有账户"
     },
     "account": {
-      "name_hidden": "[隐藏账户]"
+      "name_hidden": "[隐藏账户]",
+      "savings_marker": "储蓄"
     },
     "switch_to_account": "切换到",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "货币"
+      },
+      "savings": {
+        "label": "储蓄账户",
+        "hint": "在预算中规划存入此账户的金额",
+        "confirm_title": "关闭储蓄？",
+        "confirm_off": "此账户的计划储蓄将从 {count} 个预算中移除。已存金额和交易不受影响。",
+        "confirm_action": "关闭"
       }
     },
     "page": {

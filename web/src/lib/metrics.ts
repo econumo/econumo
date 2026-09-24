@@ -50,6 +50,7 @@ export const METRICS = {
   ACCOUNT_CREATE: 'appAccountCreate',
   ACCOUNT_UPDATE: 'appAccountUpdate',
   ACCOUNT_DELETE: 'appAccountDelete',
+  ACCOUNT_SAVINGS_TOGGLE: 'appAccountSavingsToggle',
   ACCOUNT_DECLINE_ACCESS: 'appAccountDeclineAccess',
   ACCOUNT_ORDER_LIST: 'appApiAccountOrderList',
   ACCOUNT_FOLDER_EXPAND: 'appAccountFolderExpand',

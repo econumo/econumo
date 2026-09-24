@@ -168,7 +168,8 @@
       "default_folder": "Tous les comptes"
     },
     "account": {
-      "name_hidden": "[Compte masqué]"
+      "name_hidden": "[Compte masqué]",
+      "savings_marker": "Épargne"
     },
     "switch_to_account": "Basculer vers",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Devise"
+      },
+      "savings": {
+        "label": "Compte d'épargne",
+        "hint": "Planifiez dans vos budgets combien va sur ce compte",
+        "confirm_title": "Désactiver l'épargne ?",
+        "confirm_off": "L'épargne prévue pour ce compte sera supprimée de {count} budget. Les montants épargnés et les transactions ne sont pas affectés. | L'épargne prévue pour ce compte sera supprimée de {count} budgets. Les montants épargnés et les transactions ne sont pas affectés.",
+        "confirm_action": "Désactiver"
       }
     },
     "page": {

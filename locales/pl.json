@@ -168,7 +168,8 @@
       "default_folder": "Wszystkie konta"
     },
     "account": {
-      "name_hidden": "[Ukryte konto]"
+      "name_hidden": "[Ukryte konto]",
+      "savings_marker": "Oszczędności"
     },
     "switch_to_account": "Przełącz na",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Waluta"
+      },
+      "savings": {
+        "label": "Konto oszczędnościowe",
+        "hint": "Zaplanuj w budżetach, ile trafia na to konto",
+        "confirm_title": "Wyłączyć oszczędzanie?",
+        "confirm_off": "Zaplanowane oszczędności dla tego konta zostaną usunięte z {count} budżetu. Zaoszczędzone kwoty i transakcje pozostaną bez zmian. | Zaplanowane oszczędności dla tego konta zostaną usunięte z {count} budżetów. Zaoszczędzone kwoty i transakcje pozostaną bez zmian. | Zaplanowane oszczędności dla tego konta zostaną usunięte z {count} budżetów. Zaoszczędzone kwoty i transakcje pozostaną bez zmian.",
+        "confirm_action": "Wyłącz"
       }
     },
     "page": {

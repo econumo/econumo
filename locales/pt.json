@@ -168,7 +168,8 @@
       "default_folder": "Todas as contas"
     },
     "account": {
-      "name_hidden": "[Conta oculta]"
+      "name_hidden": "[Conta oculta]",
+      "savings_marker": "Poupança"
     },
     "switch_to_account": "Mudar para",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Moeda"
+      },
+      "savings": {
+        "label": "Conta poupança",
+        "hint": "Planeie nos seus orçamentos quanto vai para esta conta",
+        "confirm_title": "Desativar a poupança?",
+        "confirm_off": "A poupança planeada para esta conta será removida de {count} orçamento. Os montantes poupados e as transações não são afetados. | A poupança planeada para esta conta será removida de {count} orçamentos. Os montantes poupados e as transações não são afetados.",
+        "confirm_action": "Desativar"
       }
     },
     "page": {

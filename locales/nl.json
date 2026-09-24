@@ -168,7 +168,8 @@
       "default_folder": "Alle rekeningen"
     },
     "account": {
-      "name_hidden": "[Verborgen rekening]"
+      "name_hidden": "[Verborgen rekening]",
+      "savings_marker": "Sparen"
     },
     "switch_to_account": "Wisselen naar",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Valuta"
+      },
+      "savings": {
+        "label": "Spaarrekening",
+        "hint": "Plan in uw budgetten hoeveel er naar deze rekening gaat",
+        "confirm_title": "Sparen uitschakelen?",
+        "confirm_off": "Gepland spaargeld voor deze rekening wordt uit {count} budget verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd. | Gepland spaargeld voor deze rekening wordt uit {count} budgetten verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd.",
+        "confirm_action": "Uitschakelen"
       }
     },
     "page": {

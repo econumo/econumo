@@ -47,6 +47,7 @@ import {
   useGrantAccountAccess,
   useRevokeAccountAccess,
 } from './queries'
+import { SavingsMarker } from './SavingsMarker'
 import type { FolderBucket } from './accountOrdering'
 import { bucketsFromAccounts, moveAccount, accountMoveFrom } from './accountOrdering'
 import { snapRowToPointer } from '@/lib/dnd'
@@ -93,7 +94,10 @@ function AccountRow({
           <span className="truncate text-sm leading-tight" title={account.name}>
             {account.name}
           </span>
-          <span className="text-[13px] leading-tight text-muted-foreground">{moneyFormat(account.balance, account.currency)}</span>
+          <span className="flex items-baseline gap-2">
+            <span className="truncate text-[13px] leading-tight text-muted-foreground">{moneyFormat(account.balance, account.currency)}</span>
+            <SavingsMarker account={account} />
+          </span>
         </span>
         {account.sharedAccess.length > 0 ? (
           <span className="flex items-center -space-x-2" data-testid={`shared-avatars-${account.name}`}>

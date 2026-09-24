@@ -177,3 +177,154 @@ it('edit mode hides the access row from a non-admin member', async () => {
   await screen.findByRole('button', { name: /Currency/ })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
+
+describe('savings account switch', () => {
+  function captureCreate() {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/account/create-account', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        return HttpResponse.json({
+          success: true, message: '', data: { item: { ...fixtureAccounts[0], id: body.id, type: body.type }, transaction: null },
+        })
+      }),
+    )
+    return bodies
+  }
+
+  function captureUpdate() {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/account/update-account', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        return HttpResponse.json({
+          success: true, message: '', data: { item: { ...fixtureAccounts[0], id: body.id, type: body.type }, transaction: null },
+        })
+      }),
+    )
+    return bodies
+  }
+
+  const savingsAccount = { ...fixtureAccounts[0], type: 3 } as unknown as AccountDto
+
+  function planSavingsFor(queryClient: QueryClient, accountId: string) {
+    queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], {
+      meta: { id: 'b1', ownerUserId: 'u1', name: 'Family', startedAt: '2026-01-01 00:00:00', endedAt: '', currencyId: 'cur-usd', isArchived: 0, access: [] },
+      filters: { periodStart: '2026-09-01 00:00:00', periodEnd: '2026-10-01 00:00:00' },
+      balances: [],
+      currencyRates: [],
+      structure: {
+        folders: [], elements: [],
+        savings: [{
+          id: accountId, type: 5, name: 'Cash', icon: 'wallet', currencyId: 'cur-usd', ownerUserId: 'u1',
+          isArchived: 0, position: 0, budgeted: '100', spent: '0', available: '100',
+        }],
+      },
+    })
+  }
+
+  it('create sends type 3 with the switch on', async () => {
+    const bodies = captureCreate()
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({ folderId: 'f1' })
+    await screen.findByText('New account')
+    expect(screen.getByText('Plan how much goes into this account in your budgets')).toBeInTheDocument()
+    await user.type(screen.getByLabelText('Name'), 'Rainy day')
+    const savings = screen.getByRole('switch', { name: 'Savings account' })
+    expect(savings).not.toBeChecked()
+    await user.click(savings)
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(3)
+  })
+
+  it('create sends type 2 with the switch off', async () => {
+    const bodies = captureCreate()
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({ folderId: 'f1' })
+    await screen.findByText('New account')
+    await user.type(screen.getByLabelText('Name'), 'Wallet')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(2)
+  })
+
+  it('update of a type-1 account sends 3 when switched on', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+    await screen.findByText('Edit account')
+    await user.click(screen.getByRole('switch', { name: 'Savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(3)
+  })
+
+  it('update of a type-1 account keeps type 1 when switched on then off', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog()
+    useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+    await screen.findByText('Edit account')
+    const savings = screen.getByRole('switch', { name: 'Savings account' })
+    await user.click(savings)
+    await user.click(savings)
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(1)
+  })
+
+  it('turning a savings account off with no budget planning it updates directly with type 2', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    const queryClient = renderDialog()
+    planSavingsFor(queryClient, 'some-other-account')
+    useUiStore.getState().openAccountModal({ account: savingsAccount })
+    await screen.findByText('Edit account')
+    const savings = screen.getByRole('switch', { name: 'Savings account' })
+    expect(savings).toBeChecked()
+    await user.click(savings)
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(2)
+    expect(screen.queryByText('Turn off savings?')).toBeNull()
+  })
+
+  it('turning a planned savings account off asks first; cancel sends nothing', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    const queryClient = renderDialog()
+    planSavingsFor(queryClient, savingsAccount.id)
+    useUiStore.getState().openAccountModal({ account: savingsAccount })
+    await screen.findByText('Edit account')
+    await user.click(screen.getByRole('switch', { name: 'Savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    expect(await screen.findByText('Turn off savings?')).toBeInTheDocument()
+    expect(
+      screen.getByText('Planned savings for this account will be removed from 1 budget. Saved amounts and transactions are not affected.'),
+    ).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!)
+    await waitFor(() => expect(screen.queryByText('Turn off savings?')).toBeNull())
+    expect(bodies).toHaveLength(0)
+    expect(screen.getByText('Edit account')).toBeInTheDocument()
+  })
+
+  it('turning a planned savings account off sends type 2 once confirmed', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    const queryClient = renderDialog()
+    planSavingsFor(queryClient, savingsAccount.id)
+    useUiStore.getState().openAccountModal({ account: savingsAccount })
+    await screen.findByText('Edit account')
+    await user.click(screen.getByRole('switch', { name: 'Savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Turn off' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].type).toBe(2)
+  })
+})

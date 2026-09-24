@@ -168,7 +168,8 @@
       "default_folder": "Alle Konten"
     },
     "account": {
-      "name_hidden": "[Ausgeblendetes Konto]"
+      "name_hidden": "[Ausgeblendetes Konto]",
+      "savings_marker": "Sparen"
     },
     "switch_to_account": "Wechseln zu",
     "form": {
@@ -192,6 +193,13 @@
       },
       "currency": {
         "label": "Währung"
+      },
+      "savings": {
+        "label": "Sparkonto",
+        "hint": "Planen Sie in Ihren Budgets, wie viel auf dieses Konto fließt",
+        "confirm_title": "Sparen deaktivieren?",
+        "confirm_off": "Geplante Sparbeträge für dieses Konto werden aus {count} Budget entfernt. Gesparte Beträge und Transaktionen bleiben unverändert. | Geplante Sparbeträge für dieses Konto werden aus {count} Budgets entfernt. Gesparte Beträge und Transaktionen bleiben unverändert.",
+        "confirm_action": "Deaktivieren"
       }
     },
     "page": {

@@ -263,6 +263,16 @@ navigation (single-pane vs sidebar).
       now; account page shows it.
 - [ ] Edit account: rename, change icon; balance edit creates a correction to
       match the new balance.
+- [ ] 📱 "Savings account" switch (with its hint) in the account dialog:
+      creating with it on makes a savings account, marked "Savings" next to
+      its balance in the sidebar (desktop rows and mobile tiles) and in
+      Settings → Accounts; switching it off on an everyday account that was
+      switched on and back off before saving keeps its original type.
+- [ ] Turning a savings account's switch off while a budget you have opened
+      (monthly view or plan) plans savings for it asks "Turn off savings?"
+      with the number of budgets; Cancel keeps the account savings and sends
+      nothing, "Turn off" saves it as an everyday account. With no budget
+      planning it, it saves without asking.
 - [ ] Create a second currency account (e.g. EUR). On a fresh self-hosted DB
       (no OER token) there are no global currencies besides USD — create a
       custom currency in Settings → Currencies first (name, code, symbol,
