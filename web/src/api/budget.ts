@@ -1,6 +1,14 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { BudgetDto, BudgetElementDto, BudgetFolderDto, BudgetMetaDto, BudgetPlanDto, BudgetTransactionDto } from './dto/budget'
+import type {
+  BudgetCommentDto,
+  BudgetDto,
+  BudgetElementDto,
+  BudgetFolderDto,
+  BudgetMetaDto,
+  BudgetPlanDto,
+  BudgetTransactionDto,
+} from './dto/budget'
 
 interface Envelope<T> {
   data: T
@@ -203,4 +211,41 @@ export async function addAccount(budgetId: Id, accountId: Id): Promise<BudgetMet
 export async function removeAccount(budgetId: Id, accountId: Id): Promise<BudgetMetaDto> {
   const response = await api.post<Envelope<{ item: BudgetMetaDto }>>(apiUrl('/api/v1/budget/remove-account'), { id: budgetId, accountId })
   return response.data.data.item
+}
+
+export interface CommentWindow {
+  budgetId: Id
+  /** first of the month, Y-m-d */
+  from: string
+  months: number
+}
+
+export interface CreateCommentForm {
+  id: Id
+  budgetId: Id
+  elementId: Id
+  period: string
+  comment: string
+}
+
+export async function getCommentList(params: CommentWindow): Promise<{ items: BudgetCommentDto[]; truncated: boolean }> {
+  const query = new URLSearchParams({ budgetId: params.budgetId, from: params.from, months: String(params.months) })
+  const response = await api.get<Envelope<{ items: BudgetCommentDto[]; truncated: boolean }>>(
+    apiUrl(`/api/v1/budget/get-comment-list?${query.toString()}`),
+  )
+  return response.data.data
+}
+
+export async function createComment(form: CreateCommentForm): Promise<BudgetCommentDto> {
+  const response = await api.post<Envelope<{ item: BudgetCommentDto }>>(apiUrl('/api/v1/budget/create-comment'), form)
+  return response.data.data.item
+}
+
+export async function updateComment(form: { id: Id; comment: string }): Promise<BudgetCommentDto> {
+  const response = await api.post<Envelope<{ item: BudgetCommentDto }>>(apiUrl('/api/v1/budget/update-comment'), form)
+  return response.data.data.item
+}
+
+export async function deleteComment(form: { id: Id }): Promise<void> {
+  await api.post(apiUrl('/api/v1/budget/delete-comment'), form)
 }

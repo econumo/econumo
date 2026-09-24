@@ -1,9 +1,8 @@
 // Package fixture is the single, typed, engine-portable way tests seed database
 // rows. It centralizes the cross-engine gotchas in one place: the `?`-vs-`$N`
-// placeholder difference between SQLite and PostgreSQL, BOOLEAN columns rejecting
-// integer 1/0 on Postgres, and time.Time values needing to be bound as a bare
-// "Y-m-d H:i:s" string (the sqlite driver serializes time.Time to RFC3339, which
-// SQLite's datetime() cannot parse).
+// placeholder difference between SQLite and PostgreSQL, and BOOLEAN columns
+// rejecting integer 1/0 on Postgres. time.Time values are bound as-is, so they
+// are stored exactly as the production repositories store them.
 //
 // All of that is handled in ONE place here, so a test reads as intent:
 //
@@ -78,21 +77,12 @@ func (b *Builder) now() time.Time {
 	return ts
 }
 
-// insert runs an INSERT with engine-portable placeholders, converting any
-// time.Time arg to the bare "Y-m-d H:i:s" string the production code stores.
-// Boolean columns must use TRUE/FALSE literals IN THE QUERY TEXT (not bound
-// ints) — see the package doc. Fails the test on error.
+// insert runs an INSERT with engine-portable placeholders. Boolean columns must
+// use TRUE/FALSE literals IN THE QUERY TEXT (not bound ints) — see the package
+// doc. Fails the test on error.
 func (b *Builder) insert(query string, args ...any) {
 	b.t.Helper()
-	out := make([]any, len(args))
-	for i, a := range args {
-		if tm, ok := a.(time.Time); ok {
-			out[i] = tm.Format("2006-01-02 15:04:05")
-		} else {
-			out[i] = a
-		}
-	}
-	if _, err := b.db.Raw.ExecContext(context.Background(), rebind(b.db.Engine, query), out...); err != nil {
+	if _, err := b.db.Raw.ExecContext(context.Background(), rebind(b.db.Engine, query), args...); err != nil {
 		b.t.Fatalf("fixture insert (%s) %q: %v", b.db.Engine, query, err)
 	}
 }

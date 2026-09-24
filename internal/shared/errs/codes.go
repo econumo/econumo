@@ -45,6 +45,8 @@ const (
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
+	CodeBudgetCommentNotFound           = "budget.comment_not_found"
+	CodeBudgetCommentForbidden          = "budget.comment_forbidden"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -105,6 +107,30 @@ const (
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
+	CodeUserPasswordLoginDisabled     = "user.password_login_disabled"
+
+	CodeImportSourceNotFound        = "import.source_not_found"
+	CodeImportProviderUnsupported   = "import.provider_unsupported"
+	CodeImportAccountLinkExists     = "import.account_link_exists"
+	CodeImportCurrencyMismatch      = "import.currency_mismatch"
+	CodeImportLinkNotQueued         = "import.link_not_queued"
+	CodeImportLinkNotSkipped        = "import.link_not_skipped"
+	CodeImportEventNotFailed        = "import.event_not_failed"
+	CodeImportSetupTokenRejected    = "import.setup_token_rejected"
+	CodeImportProviderUnavailable   = "import.provider_unavailable"
+	CodeImportSyncRangeInvalid      = "import.sync_range_invalid"
+	CodeImportAccessUrlInvalid      = "import.access_url_invalid"
+	CodeImportRuleSkipNotApplicable = "import.rule_skip_not_applicable"
+	CodeImportAiDisabled            = "import.ai_disabled"
+	CodeImportAiUnavailable         = "import.ai_unavailable"
+	CodeOAuthProviderNotConfigured  = "oauth.provider_not_configured"
+	CodeOAuthHandoffInvalid         = "oauth.handoff_invalid"
+	CodeOAuthLastIdentity           = "oauth.last_identity"
+	CodeOAuthIdentityNotFound       = "oauth.identity_not_found"
+	CodeOAuthLinkInvalid            = "oauth.link_invalid"
+	CodeOAuthIdentityTaken          = "oauth.identity_taken"
+	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
+	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 )
 
 var AllCodes = []string{
@@ -144,6 +170,8 @@ var AllCodes = []string{
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,
 	CodeBudgetEndBeforeStart,
+	CodeBudgetCommentNotFound,
+	CodeBudgetCommentForbidden,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
@@ -204,4 +232,28 @@ var AllCodes = []string{
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
+	CodeUserPasswordLoginDisabled,
+
+	CodeImportSourceNotFound,
+	CodeImportProviderUnsupported,
+	CodeImportAccountLinkExists,
+	CodeImportCurrencyMismatch,
+	CodeImportLinkNotQueued,
+	CodeImportLinkNotSkipped,
+	CodeImportEventNotFailed,
+	CodeImportSetupTokenRejected,
+	CodeImportProviderUnavailable,
+	CodeImportSyncRangeInvalid,
+	CodeImportAccessUrlInvalid,
+	CodeImportRuleSkipNotApplicable,
+	CodeImportAiDisabled,
+	CodeImportAiUnavailable,
+	CodeOAuthProviderNotConfigured,
+	CodeOAuthHandoffInvalid,
+	CodeOAuthLastIdentity,
+	CodeOAuthIdentityNotFound,
+	CodeOAuthLinkInvalid,
+	CodeOAuthIdentityTaken,
+	CodeOAuthProviderAlreadyLinked,
+	CodeOAuthLastSignInMethod,
 }

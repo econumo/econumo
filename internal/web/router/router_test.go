@@ -221,8 +221,8 @@ func TestRuntimeConfigOverrides(t *testing.T) {
 	// The document is now generated ENTIRELY by the router (no merge against
 	// the dist file), so every key is present: the ones explicitly set above,
 	// plus every other key at its default (LILTAG_CONFIG_URL, LILTAG_CACHE_TTL,
-	// INSTANCE_ID, VERSION, VERSION_LABEL) and MIN_APP_VERSION because it was set.
-	want := `window.econumoConfig = {"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","VERSION":null,"VERSION_LABEL":null};`
+	// INSTANCE_ID, VERSION, VERSION_LABEL, IMPORT_MATCHER) and MIN_APP_VERSION because it was set.
+	want := `window.econumoConfig = {"AI_ENABLED":false,"ALLOW_CUSTOM_API":false,"ALLOW_REGISTRATION":false,"BILLING_URL":"https://pay.example.test/cloud/","IMPORT_MATCHER":{"matchDays":0,"tipDays":0,"tipTolerancePct":0,"tokenMinLength":0},"INSTANCE_ID":"","LILTAG_CACHE_TTL":0,"LILTAG_CONFIG_URL":"/liltag-config.json","MIN_APP_VERSION":"v9.9.9","PASSWORD_LOGIN":true,"VERSION":null,"VERSION_LABEL":null};`
 	if !strings.Contains(body, want) {
 		t.Fatalf("config body missing %q:\n%s", want, body)
 	}
@@ -270,12 +270,14 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 	defer resp.Body.Close()
 	body := readBody(t, resp)
 	for _, want := range []string{
+		`"AI_ENABLED":false`,
 		`"ALLOW_CUSTOM_API":true`,
 		`"LILTAG_CONFIG_URL":"/liltag-config.json"`,
 		`"LILTAG_CACHE_TTL":0`,
 		`"VERSION":null`,
 		`"VERSION_LABEL":null`,
 		`"INSTANCE_ID":""`,
+		`"PASSWORD_LOGIN":true`,
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("default %q missing:\n%s", want, body)
@@ -285,6 +287,22 @@ func TestRuntimeConfigOverrides_UnsetKeysGetDefaults(t *testing.T) {
 		if strings.Contains(body, `"`+absent+`":`) {
 			t.Fatalf("key %q must stay absent when unset:\n%s", absent, body)
 		}
+	}
+}
+
+func TestRuntimeConfigOverrides_PasswordLoginDisabled(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "econumo-config.js"), []byte("window.econumoConfig={};"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h := router.New(router.Deps{SPA: os.DirFS(dir), Cfg: config.Config{PasswordLoginDisabled: true}})
+	srv := httptest.NewServer(h)
+	t.Cleanup(srv.Close)
+
+	resp := get(t, srv, http.MethodGet, "/econumo-config.js")
+	defer resp.Body.Close()
+	if body := readBody(t, resp); !strings.Contains(body, `"PASSWORD_LOGIN":false`) {
+		t.Fatalf("PASSWORD_LOGIN must be false:\n%s", body)
 	}
 }
 
@@ -339,6 +357,51 @@ func TestRuntimeConfigOverrides_LiltagAndVersion(t *testing.T) {
 	} {
 		if !strings.Contains(body, want) {
 			t.Fatalf("config body missing %q:\n%s", want, body)
+		}
+	}
+}
+
+// The two platform association documents live on the ROOT mux (outside /api,
+// like /health), because Apple and Google fetch them from fixed paths.
+func TestAppLinks_ServedWhenConfigured(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "index.html"), []byte("<!doctype html><title>spa</title>"), 0o644); err != nil {
+		t.Fatalf("write index.html: %v", err)
+	}
+	cfg := config.Config{
+		AppLinksIOSAppIDs: []string{"ABCDE12345.com.econumo.app"},
+		AppLinksAndroid:   []config.AndroidAppLink{{Package: "com.econumo.app", Fingerprints: []string{"AA:BB"}}},
+	}
+	srv := httptest.NewServer(router.New(router.Deps{Cfg: cfg, SPA: os.DirFS(dir)}))
+	t.Cleanup(srv.Close)
+
+	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
+		resp := get(t, srv, http.MethodGet, path)
+		body, _ := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK || resp.Header.Get("Content-Type") != "application/json" {
+			t.Fatalf("%s: status=%d ct=%q", path, resp.StatusCode, resp.Header.Get("Content-Type"))
+		}
+		if !strings.Contains(string(body), "com.econumo.app") {
+			t.Fatalf("%s: body = %s", path, body)
+		}
+		// They run through the global chain, so a platform's fetch carries a
+		// request id and lands in the access log like any other request.
+		if resp.Header.Get("X-Request-Id") == "" {
+			t.Fatalf("%s: no X-Request-Id — not wrapped in the global middleware chain", path)
+		}
+	}
+}
+
+// With no app associated the paths must 404 rather than fall through to the SPA
+// shell: an OS fetching an association document has to see "no app here".
+func TestAppLinks_NotServedWhenUnconfigured(t *testing.T) {
+	srv := newServer(t, nil)
+	for _, path := range []string{"/.well-known/apple-app-site-association", "/.well-known/assetlinks.json"} {
+		resp := get(t, srv, http.MethodGet, path)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusNotFound {
+			t.Fatalf("%s: status=%d want 404", path, resp.StatusCode)
 		}
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/web/endpoint"
+	"github.com/econumo/econumo/internal/web/middleware"
 )
 
 // GetPersonalTokenList handles GET /api/v1/user/get-personal-token-list (auth).
@@ -45,7 +46,10 @@ func (h *Handlers) GetPersonalTokenList(w http.ResponseWriter, r *http.Request) 
 // @Security    Bearer
 // @Router      /api/v1/user/create-personal-token [post]
 func (h *Handlers) CreatePersonalToken(w http.ResponseWriter, r *http.Request) {
-	endpoint.Handle(w, r, h.svc.CreatePersonalToken)
+	endpoint.Handle(w, r, func(ctx context.Context, userID vo.Id, req model.CreatePersonalTokenRequest) (*model.CreatePersonalTokenResult, error) {
+		tokenID, _ := middleware.TokenIDFromCtx(ctx)
+		return h.svc.CreatePersonalToken(ctx, userID, tokenID, req)
+	})
 }
 
 // RevokePersonalToken handles POST /api/v1/user/revoke-personal-token (auth).

@@ -21,7 +21,9 @@ func NormalizeParity(b []byte) string {
 	s := uuidV7Re.ReplaceAllString(string(b), "<generated-uuid>")
 	s = tokenRe.ReplaceAllString(s, "<token>")
 	s = handoffRe.ReplaceAllString(s, "${1}t=<handoff-token>")
-	return inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
+	s = inviteCodeRe.ReplaceAllString(s, `"code":"<invite-code>"`)
+	s = oauthParamRe.ReplaceAllString(s, "${1}<random>")
+	return oauthFlowRe.ReplaceAllString(s, `"flow":"<oauth-flow>"`)
 }
 
 var (
@@ -44,6 +46,18 @@ var (
 	// `t=` would also match inside substrings like `format=v1.2` or
 	// `amount=1.5`, silently redacting strictly-compared golden content.
 	handoffRe = regexp.MustCompile(`([?&])t=[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+`)
+
+	// oauthParamRe redacts the per-request state/nonce/PKCE code_challenge
+	// values oidc.RandomToken mints for every authorization URL — 43-char
+	// base64url tokens (32 random bytes, RawURLEncoding), fresh every run.
+	// state additionally carries a leading "web."/"app." display-hint prefix
+	// (see clientFromState in internal/oauth/callback.go), which is also
+	// redacted so the golden doesn't pin which client a scenario used.
+	oauthParamRe = regexp.MustCompile(`([?&](?:state|nonce|code_challenge)=)(?:web\.|app\.)?[A-Za-z0-9_-]{43}`)
+
+	// oauthFlowRe redacts the per-flow secret start-login/start-link returns —
+	// the same 43-char base64url shape as the parameters above, fresh every run.
+	oauthFlowRe = regexp.MustCompile(`"flow":"[A-Za-z0-9_-]{43}"`)
 )
 
 // NormalizeGolden makes a response body stable across runs AND engines: the

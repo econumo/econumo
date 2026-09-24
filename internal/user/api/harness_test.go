@@ -19,9 +19,6 @@ import (
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/handoff"
 	"github.com/econumo/econumo/internal/infra/mailer"
-	"github.com/econumo/econumo/internal/infra/storage/backend"
-	"github.com/econumo/econumo/internal/infra/storage/migrate"
-	"github.com/econumo/econumo/internal/infra/storage/migrations"
 	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/server"
 	"github.com/econumo/econumo/internal/shared/vo"
@@ -70,20 +67,11 @@ func newHarness(t *testing.T) *harness { return newHarnessWithLimiter(t, nil) }
 // other test keeps the nil (disabled) default.
 func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harness {
 	t.Helper()
-	ctx := context.Background()
 
-	// Pinned to a single connection so the schema and data survive across queries
-	// (cache=shared + 1 conn keeps the :memory: db alive).
-	db, err := sql.Open("sqlite", "file:"+t.Name()+"?mode=memory&cache=shared")
-	if err != nil {
-		t.Fatalf("open sqlite: %v", err)
-	}
-	db.SetMaxOpenConns(1)
-	t.Cleanup(func() { _ = db.Close() })
-
-	if err := migrate.Run(ctx, db, toMigrations(migrations.SQLite()), migrate.WithCommandRunner(migrate.NoCommands)); err != nil {
-		t.Fatalf("migrate: %v", err)
-	}
+	// The shared opener: production DSN settings (frozen datetime layout,
+	// foreign keys, single connection) and every migration.
+	tdb := dbtest.NewSQLite(t)
+	db := tdb.Raw
 
 	encode := auth.NewEncodeService("") // salt-free, matching server.BuildAPI
 	hasher := auth.NewPasswordHasher()
@@ -92,8 +80,7 @@ func newHarnessWithLimiter(t *testing.T, limiter appuser.AttemptLimiter) *harnes
 	// integer-timestamp JWT claims.
 	clk := fixedClock{t: time.Now().Truncate(time.Second)}
 
-	txm := backend.NewTxManager(db)
-	tdb := &dbtest.DB{Raw: db, TX: txm, Engine: "sqlite"}
+	txm := tdb.TX
 
 	seed(t, tdb)
 
@@ -189,14 +176,6 @@ func (h *harness) seedBudget(t *testing.T) {
 	})
 }
 
-func toMigrations(files []migrations.File) []migrate.Migration {
-	out := make([]migrate.Migration, len(files))
-	for i, f := range files {
-		out[i] = migrate.Migration{Version: f.Version, SQL: f.SQL, Command: f.Command}
-	}
-	return out
-}
-
 // do issues a request to the harness server. token may be "" for public calls.
 // doHeader is do() for callers that need a response header rather than the body.
 func (h *harness) doHeader(t *testing.T, method, path string, body any, header string) (int, string) {
@@ -270,10 +249,11 @@ func (h *harness) issueTokenFor(t *testing.T, userID string) string {
 	exp := now.Add(appuser.SessionTTL)
 	tok := &model.AccessToken{
 		ID: vo.NewId(), UserID: vo.MustParseId(userID), Kind: model.TokenKindSession,
-		TokenHash: appuser.HashAccessToken(raw), CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
+		TokenHash: appuser.HashAccessToken(raw), Scope: model.TokenScopeFull,
+		CreatedAt: now, LastUsedAt: now, ExpiresAt: &exp,
 	}
-	if err := h.tokens.Insert(context.Background(), tok); err != nil {
-		t.Fatalf("seed session: %v", err)
+	if n, err := h.tokens.InsertIfGeneration(context.Background(), tok, 0); err != nil || n != 1 {
+		t.Fatalf("seed session: %d %v", n, err)
 	}
 	return raw
 }

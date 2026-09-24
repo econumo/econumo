@@ -16,7 +16,7 @@ FROM (
 -- Balances for every AVAILABLE account (own + shared via accounts_access), to
 -- match PHP getAccountsBalancesBeforeDate over the available account-id set.
 -- PostgreSQL's SUM(NUMERIC) is EXACT (not float like SQLite), so CAST AS TEXT
--- here yields the exact decimal — no precision-14 reformatting needed.
+-- here yields the exact decimal - no precision-14 reformatting needed.
 SELECT
     a.id as account_id,
     CAST(

@@ -3,10 +3,14 @@
 package config
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
 	"os"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -20,10 +24,13 @@ type Config struct {
 
 	// Econumo behavior
 	CurrencyBase      string // default "USD"
-	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
-	SQLiteBusyTimeout int
-	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	AllowRegistration bool   // ECONUMO_ALLOW_REGISTRATION: self-service sign-up (password and provider); with password login disabled it governs provider sign-up only
+	// PasswordLoginDisabled is ECONUMO_PASSWORD_LOGIN=false: no email+password
+	// sign-in, registration or recovery. Inverted so a zero Config keeps passwords on.
+	PasswordLoginDisabled bool
+	DataSalt              string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
+	SQLiteBusyTimeout     int
+	CheckUpdates          bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 	// Analytics is ECONUMO_ANALYTICS: DEPRECATED. It no longer gates anything at
 	// runtime — the per-user preference does — and no longer seeds new users
 	// either (they always start opted in). It reaches the app through exactly
@@ -34,12 +41,45 @@ type Config struct {
 	EmailVerification          bool // ECONUMO_EMAIL_VERIFICATION: unverified users must confirm an emailed code at login (default false)
 	CurrencyUpdateIntervalDays int  // ECONUMO_CURRENCY_UPDATE_INTERVAL: days between in-process rate refreshes; 0 (default) = off (requires OPEN_EXCHANGE_RATES_TOKEN)
 
+	ImportMatchDays       int // ECONUMO_IMPORT_MATCH_DAYS: ± window for the same-amount import adopt (default 3, 0-31)
+	ImportTipDays         int // ECONUMO_IMPORT_TIP_DAYS: how many days after a tap a bank record may post (default 5, 0-31)
+	ImportTipTolerancePct int // ECONUMO_IMPORT_TIP_TOLERANCE: percent of the tap amount a posted amount may differ by (default 20, 0-100)
+	ImportTokenMinLength  int // ECONUMO_IMPORT_TOKEN_MIN_LENGTH: shortest merchant token that must be contained (default 3, 1-16)
+	// ImportAllowPrivateHosts is ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS: let the
+	// bridge client reach loopback/private/link-local addresses. Off by
+	// default — the bridge URL is user-supplied, so the guard is what stops
+	// the server being used to probe its own network. A self-hosted bridge on
+	// a LAN needs it on.
+	ImportAllowPrivateHosts bool
+
 	// Admin listener for the payment portal. Both empty on a self-hosted
 	// instance, so the listener never opens and its routes exist on no mux.
 	AdminPort  string // ECONUMO_ADMIN_PORT
 	AdminToken string // ECONUMO_ADMIN_TOKEN: bearer credential AND handoff HMAC key
 	BillingURL string // ECONUMO_BILLING_URL: payment portal; empty disables billing
 	AppURL     string // ECONUMO_URL: this instance's public URL; when set, appended as a link to every email
+
+	// Verified Universal / App Links for the mobile app (RFC 8252 §7). Set
+	// either one and the OAuth app flow returns through an https URL on AppURL
+	// that only the associated app may claim, instead of the private scheme any
+	// app on the device can register.
+	AppLinksIOSAppIDs []string         // ECONUMO_APP_LINKS_IOS: <TEAMID>.<bundle id> entries
+	AppLinksAndroid   []AndroidAppLink // ECONUMO_APP_LINKS_ANDROID: <package>=<SHA-256 fingerprint> entries
+
+	// OAuth / OIDC provider slots (see docs/superpowers/specs/2026-09-07-oauth-login-design.md §3).
+	// A slot is enabled when every required variable is set; a partial slot fails at boot.
+	OAuthGoogleClientID     string   // ECONUMO_OAUTH_GOOGLE_CLIENT_ID
+	OAuthGoogleClientSecret string   // ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET
+	OAuthAppleClientID      string   // ECONUMO_OAUTH_APPLE_CLIENT_ID (the Services ID)
+	OAuthAppleTeamID        string   // ECONUMO_OAUTH_APPLE_TEAM_ID
+	OAuthAppleKeyID         string   // ECONUMO_OAUTH_APPLE_KEY_ID
+	OAuthApplePrivateKey    string   // contents of the .p8 file named by ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE
+	OIDCIssuerURL           string   // ECONUMO_OIDC_ISSUER_URL
+	OIDCClientID            string   // ECONUMO_OIDC_CLIENT_ID
+	OIDCClientSecret        string   // ECONUMO_OIDC_CLIENT_SECRET
+	OIDCName                string   // ECONUMO_OIDC_NAME: button label, default "SSO"
+	OIDCScopes              []string // ECONUMO_OIDC_SCOPES: default openid profile email; must contain openid
+	OIDCTrustEmail          bool     // ECONUMO_OIDC_TRUST_EMAIL: treat the issuer's email claim as verified (default false)
 
 	// Auth brute-force protection (see the 2026-07-09 auth-rate-limiting spec).
 	// Counts are attempts per key per RateLimitWindow; 0 disables a check.
@@ -52,6 +92,11 @@ type Config struct {
 	RateLimitConfirmEmail       int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL: failed confirm-email attempts per username
 	RateLimitRequestEmailChange int           // ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE: change-email code sends per user (every send counts)
 	RateLimitConfirmEmailChange int           // ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE: failed confirm-email-change attempts per user
+	RateLimitIngest             int           // ECONUMO_RATE_LIMIT_INGEST: ingest pushes per user (every request counts)
+	RateLimitClaimSetupToken    int           // ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN: SimpleFIN setup-token claims per user (every request counts)
+	RateLimitSync               int           // ECONUMO_RATE_LIMIT_SYNC: pull syncs per user (every request counts)
+	RateLimitSuggestRules       int           // ECONUMO_RATE_LIMIT_SUGGEST_RULES: AI rule suggestions per user (every call is a paid completion)
+	RateLimitPreviewRule        int           // ECONUMO_RATE_LIMIT_PREVIEW_RULE: rule previews per user (fired from a typing debounce; every request counts)
 	RateLimitWindow             time.Duration // ECONUMO_RATE_LIMIT_WINDOW: sliding window (Go duration)
 	RateLimitGlobal             int           // ECONUMO_RATE_LIMIT_GLOBAL: per-endpoint cap per minute
 
@@ -62,6 +107,15 @@ type Config struct {
 	MailAPIKey   string // transport credential (the Resend API key)
 	MailFrom     string // from query param
 	MailReplyTo  string // reply_to query param
+
+	// AI — DERIVED from ECONUMO_AI_DSN (openai://<key>@host[:port][/prefix]?model=…).
+	// Empty disables import-rule suggestions: suggest-rules answers a coded
+	// 400 and the SPA hides the action (AI_ENABLED in econumo-config.js).
+	AIDSN      string
+	AIEnabled  bool
+	AIEndpoint string // https://host/v1 (plain http for loopback hosts or ?insecure=true)
+	AIAPIKey   string
+	AIModel    string
 
 	// HTTP
 	Port               string   // PORT: HTTP listen port ("8181" or ":8181"); required, no default
@@ -92,6 +146,26 @@ func isLoopbackHost(host string) bool {
 	}
 	ip := net.ParseIP(host)
 	return ip != nil && ip.IsLoopback()
+}
+
+// AndroidAppLink is one Digital Asset Links target: an Android package plus the
+// SHA-256 fingerprints of the certificates it may be signed with. Play App
+// Signing gives a package two (the upload key and the app-signing key), so the
+// list is plural.
+type AndroidAppLink struct {
+	Package      string
+	Fingerprints []string
+}
+
+func (c Config) AppLinksEnabled() bool {
+	return len(c.AppLinksIOSAppIDs) > 0 || len(c.AppLinksAndroid) > 0
+}
+
+func (c Config) OAuthGoogleEnabled() bool { return c.OAuthGoogleClientID != "" }
+func (c Config) OAuthAppleEnabled() bool  { return c.OAuthAppleClientID != "" }
+func (c Config) OIDCEnabled() bool        { return c.OIDCIssuerURL != "" }
+func (c Config) OAuthEnabled() bool {
+	return c.OAuthGoogleEnabled() || c.OAuthAppleEnabled() || c.OIDCEnabled()
 }
 
 // Load reads and validates configuration from the environment.
@@ -132,6 +206,16 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 	c.MailProvider, c.MailAPIKey, c.MailFrom, c.MailReplyTo = provider, apiKey, from, replyTo
+
+	// The completion endpoint is a scheme-prefixed DSN for the same reason:
+	// one variable turns the feature on and carries every part of it.
+	c.AIDSN = getEnv("ECONUMO_AI_DSN", "")
+	aiEndpoint, aiKey, aiModel, err := parseAIDSN(c.AIDSN)
+	if err != nil {
+		return Config{}, err
+	}
+	c.AIEndpoint, c.AIAPIKey, c.AIModel = aiEndpoint, aiKey, aiModel
+	c.AIEnabled = c.AIEndpoint != ""
 
 	// Strict parse (unlike the lenient getBool): a typo while trying to
 	// DISABLE analytics must fail at boot, not silently leave it enabled.
@@ -178,6 +262,38 @@ func Load() (Config, error) {
 	}
 	c.CurrencyUpdateIntervalDays = interval
 
+	// Matcher thresholds are guesses until real bank data has been through
+	// them, so they are tunable — but a typo must fail at boot, not silently
+	// change what counts as a duplicate.
+	for _, p := range []struct {
+		key      string
+		def      int
+		min, max int
+		dst      *int
+	}{
+		{"ECONUMO_IMPORT_MATCH_DAYS", 3, 0, 31, &c.ImportMatchDays},
+		{"ECONUMO_IMPORT_TIP_DAYS", 5, 0, 31, &c.ImportTipDays},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", 20, 0, 100, &c.ImportTipTolerancePct},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", 3, 1, 16, &c.ImportTokenMinLength},
+	} {
+		n, err := getIntStrict(p.key, p.def)
+		if err != nil {
+			return Config{}, err
+		}
+		if n < p.min || n > p.max {
+			return Config{}, fmt.Errorf("%s %d is out of range (%d-%d)", p.key, n, p.min, p.max)
+		}
+		*p.dst = n
+	}
+
+	// Strict parse: a typo must fail at boot rather than silently opening the
+	// server's private network to a user-supplied bridge URL.
+	allowPrivateHosts, err := getBoolStrict("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", false)
+	if err != nil {
+		return Config{}, err
+	}
+	c.ImportAllowPrivateHosts = allowPrivateHosts
+
 	c.AdminPort = getEnv("ECONUMO_ADMIN_PORT", "")
 	c.AdminToken = getEnv("ECONUMO_ADMIN_TOKEN", "")
 	// Half-configured is operator error, and a listener that silently fails to
@@ -218,6 +334,26 @@ func Load() (Config, error) {
 		c.AppURL = v
 	}
 
+	if err := loadOAuth(&c); err != nil {
+		return Config{}, err
+	}
+
+	if err := loadAppLinks(&c); err != nil {
+		return Config{}, err
+	}
+
+	// Strict parse: a typo while trying to switch passwords off must fail at
+	// boot, not leave the password form open.
+	passwordLogin, err := getBoolStrict("ECONUMO_PASSWORD_LOGIN", true)
+	if err != nil {
+		return Config{}, err
+	}
+	// With no provider there would be no way to sign in at all.
+	if !passwordLogin && !c.OAuthEnabled() {
+		return Config{}, fmt.Errorf("ECONUMO_PASSWORD_LOGIN=false requires an OAuth/OIDC provider (otherwise nobody can sign in)")
+	}
+	c.PasswordLoginDisabled = !passwordLogin
+
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
 		return Config{}, err
@@ -240,6 +376,11 @@ func Load() (Config, error) {
 		{&c.RateLimitConfirmEmail, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL", 5},
 		{&c.RateLimitRequestEmailChange, "ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE", 3},
 		{&c.RateLimitConfirmEmailChange, "ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE", 5},
+		{&c.RateLimitIngest, "ECONUMO_RATE_LIMIT_INGEST", 60},
+		{&c.RateLimitClaimSetupToken, "ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", 5},
+		{&c.RateLimitSync, "ECONUMO_RATE_LIMIT_SYNC", 10},
+		{&c.RateLimitSuggestRules, "ECONUMO_RATE_LIMIT_SUGGEST_RULES", 3},
+		{&c.RateLimitPreviewRule, "ECONUMO_RATE_LIMIT_PREVIEW_RULE", 120},
 		{&c.RateLimitGlobal, "ECONUMO_RATE_LIMIT_GLOBAL", 60},
 	} {
 		n, err := getIntStrict(p.key, p.def)
@@ -259,6 +400,136 @@ func Load() (Config, error) {
 	// the CLI's composition entry point, and those commands never bind a port.
 	// Only DATABASE_URL is universally required.
 	return c, nil
+}
+
+var (
+	// An Apple app ID is the ten-character Team ID, a dot, then the bundle id.
+	iosAppIDRe = regexp.MustCompile(`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`)
+	// A Digital Asset Links fingerprint is the certificate's SHA-256 digest as
+	// 32 colon-separated hex bytes, exactly as keytool prints it.
+	androidFingerprintRe = regexp.MustCompile(`^([0-9A-F]{2}:){31}[0-9A-F]{2}$`)
+)
+
+func loadAppLinks(c *Config) error {
+	for _, v := range getStringList("ECONUMO_APP_LINKS_IOS", nil) {
+		if !iosAppIDRe.MatchString(v) {
+			return fmt.Errorf("ECONUMO_APP_LINKS_IOS: %q is not a <TEAMID>.<bundle id> pair (ten upper-case alphanumerics, a dot, the bundle id)", v)
+		}
+		c.AppLinksIOSAppIDs = append(c.AppLinksIOSAppIDs, v)
+	}
+	for _, v := range getStringList("ECONUMO_APP_LINKS_ANDROID", nil) {
+		pkg, fingerprint, ok := strings.Cut(v, "=")
+		pkg, fingerprint = strings.TrimSpace(pkg), strings.ToUpper(strings.TrimSpace(fingerprint))
+		if !ok || pkg == "" || !androidFingerprintRe.MatchString(fingerprint) {
+			return fmt.Errorf("ECONUMO_APP_LINKS_ANDROID: %q is not a <package>=<SHA-256 fingerprint> pair (32 colon-separated hex bytes)", v)
+		}
+		// Repeated entries for one package accumulate: an app signed through
+		// Play App Signing has both an upload and an app-signing certificate,
+		// and only listing both lets debug and store builds verify.
+		if i := slices.IndexFunc(c.AppLinksAndroid, func(a AndroidAppLink) bool { return a.Package == pkg }); i >= 0 {
+			c.AppLinksAndroid[i].Fingerprints = append(c.AppLinksAndroid[i].Fingerprints, fingerprint)
+			continue
+		}
+		c.AppLinksAndroid = append(c.AppLinksAndroid, AndroidAppLink{Package: pkg, Fingerprints: []string{fingerprint}})
+	}
+	if !c.AppLinksEnabled() {
+		return nil
+	}
+	// Both platforms fetch the association document over https and refuse to
+	// verify a plain-http link, so app links on a non-https instance would be a
+	// silently dead configuration.
+	u, err := url.Parse(c.AppURL)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("ECONUMO_APP_LINKS_IOS/ECONUMO_APP_LINKS_ANDROID require ECONUMO_URL to be an https URL, got %q", c.AppURL)
+	}
+	return nil
+}
+
+// loadOAuth reads the three provider slots. A slot is all-or-nothing: the
+// first missing required variable of a partially set slot is named in the
+// error, and any enabled slot requires ECONUMO_URL (redirect URIs derive from it).
+func loadOAuth(c *Config) error {
+	requireAll := func(slot string, vars ...string) (bool, error) {
+		set := 0
+		for _, v := range vars {
+			if os.Getenv(v) != "" {
+				set++
+			}
+		}
+		if set == 0 {
+			return false, nil
+		}
+		for _, v := range vars {
+			if os.Getenv(v) == "" {
+				return false, fmt.Errorf("%s: %s is required when the other %s variables are set", slot, v, slot)
+			}
+		}
+		return true, nil
+	}
+
+	google, err := requireAll("ECONUMO_OAUTH_GOOGLE", "ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET")
+	if err != nil {
+		return err
+	}
+	if google {
+		c.OAuthGoogleClientID = os.Getenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID")
+		c.OAuthGoogleClientSecret = os.Getenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET")
+	}
+
+	if os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY") != "" {
+		return errors.New("ECONUMO_OAUTH_APPLE_PRIVATE_KEY is no longer supported: write the .p8 to a file and set ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE to its path")
+	}
+	apple, err := requireAll("ECONUMO_OAUTH_APPLE", "ECONUMO_OAUTH_APPLE_CLIENT_ID", "ECONUMO_OAUTH_APPLE_TEAM_ID", "ECONUMO_OAUTH_APPLE_KEY_ID", "ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE")
+	if err != nil {
+		return err
+	}
+	if apple {
+		c.OAuthAppleClientID = os.Getenv("ECONUMO_OAUTH_APPLE_CLIENT_ID")
+		c.OAuthAppleTeamID = os.Getenv("ECONUMO_OAUTH_APPLE_TEAM_ID")
+		c.OAuthAppleKeyID = os.Getenv("ECONUMO_OAUTH_APPLE_KEY_ID")
+		// Read from a file rather than an env value: the PEM is multi-line, and
+		// systemd's EnvironmentFile parser eats the backslash of a "\n" escape,
+		// silently corrupting a one-line key into an unparseable blob.
+		path := os.Getenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE")
+		key, err := os.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE: %w", err)
+		}
+		if len(bytes.TrimSpace(key)) == 0 {
+			return fmt.Errorf("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE: %s is empty", path)
+		}
+		c.OAuthApplePrivateKey = string(key)
+	}
+
+	oidc, err := requireAll("ECONUMO_OIDC", "ECONUMO_OIDC_ISSUER_URL", "ECONUMO_OIDC_CLIENT_ID", "ECONUMO_OIDC_CLIENT_SECRET")
+	if err != nil {
+		return err
+	}
+	if oidc {
+		raw := os.Getenv("ECONUMO_OIDC_ISSUER_URL")
+		u, perr := url.Parse(raw)
+		if perr != nil || u.Host == "" || (u.Scheme != "https" && !(u.Scheme == "http" && isLoopbackHost(u.Hostname()))) {
+			return fmt.Errorf("ECONUMO_OIDC_ISSUER_URL: must be an absolute https URL (plain http only for loopback hosts): %q", raw)
+		}
+		c.OIDCIssuerURL = strings.TrimSuffix(raw, "/")
+		c.OIDCClientID = os.Getenv("ECONUMO_OIDC_CLIENT_ID")
+		c.OIDCClientSecret = os.Getenv("ECONUMO_OIDC_CLIENT_SECRET")
+		c.OIDCName = getEnv("ECONUMO_OIDC_NAME", "SSO")
+		c.OIDCScopes = getStringList("ECONUMO_OIDC_SCOPES", []string{"openid", "profile", "email"})
+		if !slices.Contains(c.OIDCScopes, "openid") {
+			return fmt.Errorf("ECONUMO_OIDC_SCOPES: must contain \"openid\", got %q", strings.Join(c.OIDCScopes, ","))
+		}
+		trust, terr := getBoolStrict("ECONUMO_OIDC_TRUST_EMAIL", false)
+		if terr != nil {
+			return terr
+		}
+		c.OIDCTrustEmail = trust
+	}
+
+	if (google || apple || oidc) && c.AppURL == "" {
+		return fmt.Errorf("ECONUMO_URL is required when an OAuth/OIDC provider is configured (redirect URIs derive from it)")
+	}
+	return nil
 }
 
 // driverFromURL maps a DATABASE_URL scheme to a backend driver name.
@@ -318,6 +589,51 @@ func parseMailerDSN(dsn string) (provider, apiKey, from, replyTo string, err err
 	default:
 		return "", "", "", "", fmt.Errorf("unsupported MAILER_DSN scheme %q (want resend, console/log, or empty)", u.Scheme)
 	}
+}
+
+// parseAIDSN maps ECONUMO_AI_DSN to the chat-completions base endpoint the
+// way parseMailerDSN maps MAILER_DSN: the scheme picks the API dialect (only
+// the OpenAI-compatible one exists), the userinfo is the key, the host is
+// the server, and the model is mandatory because no default is right for
+// both a hosted vendor and a local runtime.
+//
+//	(empty)                                            -> disabled (all empty)
+//	openai://<api-key>@api.openai.com?model=gpt-5-mini -> https://api.openai.com/v1, key, model
+//	openai://localhost:11434?model=llama3              -> http://localhost:11434/v1, keyless (loopback = plain http)
+//	openai://host/custom/v1?model=m&insecure=true      -> http://host/custom/v1 (insecure forces plain http elsewhere)
+func parseAIDSN(dsn string) (endpoint, apiKey, model string, err error) {
+	dsn = strings.TrimSpace(dsn)
+	if dsn == "" {
+		return "", "", "", nil
+	}
+	u, err := url.Parse(dsn)
+	if err != nil {
+		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: %w", err)
+	}
+	if strings.ToLower(u.Scheme) != "openai" {
+		return "", "", "", fmt.Errorf("ECONUMO_AI_DSN: unsupported scheme %q (want openai://)", u.Scheme)
+	}
+	if u.Host == "" || u.Hostname() == "" {
+		return "", "", "", errors.New("ECONUMO_AI_DSN: host is required")
+	}
+	q := u.Query()
+	model = strings.TrimSpace(q.Get("model"))
+	if model == "" {
+		return "", "", "", errors.New("ECONUMO_AI_DSN: model query parameter is required")
+	}
+	if u.User != nil {
+		apiKey = u.User.Username()
+	}
+	scheme := "https"
+	host := strings.ToLower(u.Hostname())
+	if host == "localhost" || host == "127.0.0.1" || host == "::1" || q.Get("insecure") == "true" {
+		scheme = "http"
+	}
+	path := strings.TrimRight(u.Path, "/")
+	if path == "" {
+		path = "/v1"
+	}
+	return scheme + "://" + u.Host + path, apiKey, model, nil
 }
 
 func getEnv(key, def string) string {

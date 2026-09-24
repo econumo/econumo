@@ -469,6 +469,276 @@
     "make_recurring": "Tornar recorrente",
     "not_posted": "Não lançada"
   },
+  "imports": {
+    "badge": "Importada",
+    "banner": {
+      "text": "{count} transação importada aguarda revisão | {count} transações importadas aguardam revisão",
+      "cta": "Rever"
+    },
+    "data_page": {
+      "menu_item": "Importar e exportar",
+      "header": "Importar e exportar",
+      "sync_all": "Sincronizar ligações bancárias",
+      "history": "Histórico de importações",
+      "sync_all_done": "{imported} importadas, {matched} correspondidas, {failed} falhadas"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Registe pagamentos Apple Pay automaticamente com um atalho do iPhone. Cada pagamento é enviado ao Econumo; associa cada cartão a uma conta uma única vez.",
+      "connect": "Configurar Apple Wallet",
+      "connected": "Ligado",
+      "disconnect": "Desligar",
+      "disconnect_modal": {
+        "title": "Desligar o Apple Wallet?",
+        "question": "As associações de cartões e a fila de revisão desta ligação serão removidas. As transações já importadas mantêm-se."
+      },
+      "steps": {
+        "hint_desktop": "Abra esta página no seu iPhone para executar os passos lá. Neste dispositivo pode transferir os atalhos e marcar os passos manualmente.",
+        "install_wallet": {
+          "title": "Instalar econumo-wallet-v1",
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+        },
+        "install_setup": {
+          "title": "Instalar econumo-setup-v1",
+          "text": "Abra o ficheiro no seu iPhone e toque em «Adicionar atalho»."
+        },
+        "configure": {
+          "title": "Configurar os atalhos",
+          "text": "Cria um token de acesso para o atalho e entrega-o a econumo-setup-v1 juntamente com o endereço do servidor.",
+          "button": "Configurar neste iPhone",
+          "manual": "Configurar manualmente"
+        },
+        "test": {
+          "title": "Executar econumo-wallet-v1 uma vez",
+          "text": "Execute-o manualmente e toque em «Permitir sempre» em cada pedido — isso concede as permissões de que a automatização vai precisar. Nada é criado; o Econumo apenas regista que o atalho chegou.",
+          "button": "Executar econumo-wallet-v1",
+          "check": "Verificar",
+          "none": "Ainda nada recebido. Execute o atalho, aceite os pedidos e verifique novamente."
+        },
+        "automate": {
+          "title": "Criar a automatização",
+          "text": "Na app Atalhos: Automatização → + → Wallet → escolha os cartões e categorias a importar (o mais seguro é escolher todos) → Executar após confirmação → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Fazer o primeiro pagamento com o iPhone desbloqueado",
+          "text": "Pague uma vez com Apple Pay com o iPhone desbloqueado. Toque em «Executar» quando a automatização pedir e depois em «Permitir sempre» quando os Atalhos pedirem acesso à Wallet.",
+          "check": "Verificar",
+          "none": "Ainda nenhum pagamento recebido. Pague uma vez com o iPhone desbloqueado e verifique novamente."
+        },
+        "immediate": {
+          "title": "Mudar a automatização para «Executar imediatamente»",
+          "text": "Na app Atalhos, abra a automatização e mude «Executar após confirmação» para «Executar imediatamente». A partir daí os pagamentos são importados sem perguntar, também a partir do ecrã bloqueado."
+        },
+        "complete": "Configuração concluída",
+        "show": "Mostrar passos",
+        "hide": "Ocultar passos"
+      },
+      "same_named_cards": "Cartões com o mesmo nome no Wallet chegam aqui como um único cartão.",
+      "cards": {
+        "header": "Cartões",
+        "empty": "Ainda sem cartões — o primeiro pagamento Apple Pay adiciona um.",
+        "state": {
+          "mapped": "Associado",
+          "ignored": "Ignorado",
+          "unmapped": "Sem associação · {count} em fila"
+        },
+        "taps": "{count} pagamento | {count} pagamentos",
+        "last_seen": "Visto pela última vez {date}",
+        "map": "Associar a uma conta",
+        "map_instead": "Associar em vez disso",
+        "ignore": "Ignorar",
+        "unlink": "Desassociar",
+        "unlink_modal": {
+          "title": "Desassociar {card}?",
+          "question": "Novos pagamentos deste cartão aguardarão revisão até o associar novamente."
+        },
+        "map_modal": {
+          "header": "Associar {card}",
+          "account": "Conta",
+          "submit": "Associar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Ligue um banco através do SimpleFIN Bridge. As suas credenciais da ponte são cifradas neste dispositivo com uma frase-passe que só você conhece; o servidor guarda-as cifradas e só as vê durante uma sincronização.",
+      "forget_device": "Esquecer este dispositivo",
+      "connect": {
+        "intro": "Cole o token de configuração da sua conta SimpleFIN Bridge e escolha uma frase-passe. A frase-passe nunca é enviada ao servidor — se a esquecer, terá de voltar a ligar-se com um novo token de configuração.",
+        "reconnect_intro": "Cole um novo token de configuração do SimpleFIN Bridge. A ligação anterior será substituída; as suas associações de contas são mantidas.",
+        "token_label": "Token de configuração",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nova ligação → copie o token de configuração. Um token só pode ser usado uma vez.",
+        "forgot_passphrase": "Esqueci a minha frase-passe — definir uma nova",
+        "passphrase_new": "Frase-passe",
+        "passphrase_existing": "A sua frase-passe",
+        "passphrase_confirm": "Repita a frase-passe",
+        "passphrase_help": "Pelo menos 8 caracteres. Não recuperável: ninguém, nem nós, a pode restaurar.",
+        "submit": "Ligar",
+        "submit_reconnect": "Ligar novamente",
+        "errors": {
+          "token_required": "Cole primeiro o token de configuração.",
+          "passphrase_short": "A frase-passe deve ter pelo menos 8 caracteres.",
+          "passphrase_mismatch": "As frases-passe não coincidem."
+        }
+      },
+      "unlock": {
+        "intro": "Introduza a sua frase-passe para usar o SimpleFIN neste dispositivo.",
+        "passphrase": "Frase-passe",
+        "submit": "Desbloquear",
+        "reconnect": "Ligar novamente",
+        "wrong_passphrase": "Frase-passe incorreta.",
+        "forgot_help": "Esqueceu-se? Volte a ligar-se com um novo token de configuração e uma nova frase-passe.",
+        "stale_intro": "A sua frase-passe foi alterada noutro dispositivo. Introduza a nova frase-passe para continuar a usar o SimpleFIN aqui."
+      },
+      "accounts": {
+        "header": "Contas",
+        "empty": "A ponte ainda não reportou contas.",
+        "state": {
+          "mapped": "Associada",
+          "ignored": "Ignorada",
+          "unmapped": "Sem associação · {count} em fila"
+        },
+        "taps": "{count} transação | {count} transações",
+        "last_seen": "Visto pela última vez {date}",
+        "map": "Associar a uma conta",
+        "map_instead": "Associar em vez disso",
+        "ignore": "Ignorar",
+        "unlink": "Desassociar",
+        "unlink_modal": {
+          "title": "Desassociar {card}?",
+          "question": "As novas transações desta conta aguardarão revisão até a associar novamente."
+        },
+        "map_modal": {
+          "header": "Associar {card}",
+          "account": "Conta",
+          "submit": "Associar"
+        },
+        "mapped_toast": "{imported} importadas, {matched} correspondidas, {skipped} ignoradas"
+      },
+      "sync": {
+        "button": "Sincronizar agora",
+        "running": "A sincronizar…",
+        "from": "Desde",
+        "last_synced": "Última sincronização {date}",
+        "never": "Nunca sincronizado",
+        "done_toast": "{imported} importadas, {matched} correspondidas"
+      }
+    },
+    "runs": {
+      "header": "Histórico de importações",
+      "detail_header": "Importação",
+      "history_link": "Histórico de importações",
+      "empty": "Ainda não há importações.",
+      "rows_header": "Transações",
+      "rows_empty": "Esta importação não afetou nenhuma transação.",
+      "status": {
+        "running": "Em curso",
+        "completed": "Concluído",
+        "partial": "Concluído com erros",
+        "failed": "Falhou"
+      },
+      "counts": "{imported} importadas · {matched} correspondidas · {updated} montantes atualizados · {queued} em fila · {skipped} ignoradas · {failed} falhadas",
+      "row_status": {
+        "imported": "Importada",
+        "deleted": "Eliminada entretanto",
+        "queued": "A aguardar revisão",
+        "skipped": "Ignorada"
+      }
+    },
+    "queue": {
+      "header": "Fila de importação",
+      "empty": "Nada para rever.",
+      "card_amount": "Valor do cartão: {amount} {currency}",
+      "queued": "A aguardar revisão",
+      "skipped": "Ignoradas",
+      "failed": "Precisam de atenção",
+      "reason": {
+        "unmapped": "Cartão sem associação",
+        "account_deleted": "Conta eliminada",
+        "no_rate": "Sem taxa de câmbio para {currency}"
+      },
+      "import": "Importar",
+      "skip": "Ignorar",
+      "unskip": "Repor",
+      "retry": "Tentar novamente",
+      "discard": "Descartar",
+      "received": "Recebido {date}",
+      "retry_result": {
+        "created": "Importada",
+        "queued": "Em fila para revisão",
+        "skipped": "Ignorada",
+        "duplicate": "Já importada",
+        "failed": "Continua a falhar"
+      }
+    },
+    "provenance": {
+      "header": "Importada de"
+    },
+    "rules": {
+      "field": { "external_payee": "Beneficiário", "description": "Descrição" },
+      "type": { "contains": "contém", "prefix": "começa com", "exact": "é exatamente" },
+      "action": { "classify": "Classificar", "skip": "Ignorar" },
+      "prompt": {
+        "title": "Criar uma regra de importação",
+        "changed_category": "Definiu a categoria como {name}. Criar uma regra para importações semelhantes?",
+        "changed_payee": "Definiu o beneficiário como {name}. Criar uma regra para importações semelhantes?",
+        "changed_tag": "Definiu a etiqueta como {name}. Criar uma regra para importações semelhantes?",
+        "changed_labels": "Adicionou as etiquetas {names}. Criar uma regra para importações semelhantes?",
+        "existing_rule": "Esta transação foi classificada pela regra “{rule}”.",
+        "match_count": "Corresponde a {count} transações nesta importação",
+        "not_now": "Agora não",
+        "create_rule": "Criar regra",
+        "update_rule": "Atualizar regra",
+        "apply_question": "Aplicar esta regra a {count} transações correspondentes nesta importação?",
+        "skipped_edited": "{count} ignoradas (foram editadas por si)",
+        "include_edited": "Atualizar também as {count} transações que editou",
+        "skip_apply": "Ignorar",
+        "apply": "Aplicar",
+        "applied_toast": "{count} transações atualizadas",
+        "source_question": "Aplicar também a todas as importações de {source}? {count} transações correspondem.",
+        "apply_source": "Aplicar a todas as importações",
+        "done": "Concluído"
+      },
+      "editor": {
+        "field": "Campo de correspondência",
+        "type": "Tipo de correspondência",
+        "title_create": "Nova regra de importação",
+        "title_edit": "Editar regra de importação",
+        "action": "Ação",
+        "value": "Valor de correspondência",
+        "case_sensitive": "Sensível a maiúsculas e minúsculas",
+        "category": "Categoria",
+        "payee": "Beneficiário",
+        "tag": "Etiqueta de orçamento",
+        "labels": "Etiquetas de relatório",
+        "match_count": "Corresponde a {count} transações importadas"
+      },
+      "page": {
+        "menu_item": "Regras de importação",
+        "title": "Regras de importação",
+        "intro": "As regras classificam ou ignoram automaticamente as transações importadas. Executam-se de cima para baixo; arraste para alterar a ordem.",
+        "add": "Adicionar regra",
+        "empty": "Ainda não há regras. Corrija uma transação importada e o Econumo irá propor criar uma.",
+        "reorder": "Reordenar",
+        "edit": "Editar",
+        "delete": "Eliminar",
+        "delete_title": "Eliminar esta regra?",
+        "delete_confirm": "Eliminar regra",
+        "skip_hint": "As transações correspondentes não são importadas"
+      },
+      "suggest": {
+        "button": "Sugerir regras",
+        "running": "A pensar…",
+        "heading": "Regras sugeridas",
+        "accept": "Aceitar",
+        "discard": "Descartar"
+      }
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Escolha o seu avatar",
@@ -632,7 +902,8 @@
             "revoke_others": "Terminar sessão nos outros dispositivos",
             "confirm_sign_out": "Terminar sessão neste dispositivo?",
             "confirm_revoke": "Revogar esta sessão? A sessão será terminada nesse dispositivo.",
-            "confirm_revoke_others": "Terminar sessão em todos os outros dispositivos? Apenas esta sessão permanecerá ativa."
+            "confirm_revoke_others": "Terminar sessão em todos os outros dispositivos? Apenas esta sessão permanecerá ativa.",
+            "via": "via {provider}"
           },
           "tokens": {
             "menu_item": "Tokens de API",
@@ -681,9 +952,26 @@
             "revoke": "Revogar",
             "confirm_revoke": "Revogar este token? As integrações que o utilizam deixarão de funcionar imediatamente."
           },
+          "linked_accounts": {
+            "menu_item": "Métodos de início de sessão",
+            "header": "Métodos de início de sessão",
+            "description": "Contas externas que pode usar para iniciar sessão no Econumo.",
+            "empty": "Não há métodos de início de sessão disponíveis para associar.",
+            "linked_on": "Vinculada",
+            "link": "Vincular",
+            "unlink": "Desvincular",
+            "confirm_unlink": "Desvincular esta conta? Deixará de poder iniciar sessão com ela.",
+            "last_identity_hint": "Defina uma palavra-passe antes de desvincular o seu único método de início de sessão.",
+            "linked_toast": "Conta {provider} vinculada.",
+            "set_password": {
+              "menu_item": "Definir uma palavra-passe",
+              "description": "Registou-se com uma conta externa. Enviar-lhe-emos um código por email para definir uma palavra-passe."
+            },
+            "last_sign_in_method_hint": "Este é o seu único método de início de sessão, por isso não pode ser desvinculado."
+          },
           "analytics": {
             "label": "Partilhar estatísticas de utilização",
-            "description": "Ajuda-nos a melhorar o Econumo. Os dados financeiros e as informações pessoais — nome, email — nunca são enviados."
+            "description": "Ajuda-nos a melhorar o Econumo.\nOs dados financeiros e as informações pessoais — nome, email — nunca são enviados."
           }
         }
       }
@@ -700,7 +988,8 @@
       "instruction": "Enviámos um código de segurança para o seu email. Introduza-o abaixo e escolha uma nova palavra-passe.",
       "new_password": "Nova palavra-passe",
       "send_failed": "Não foi possível enviar o código. Verifique o endereço de email e tente novamente.",
-      "reset_failed": "A palavra-passe não foi reposta. Verifique o código e tente novamente."
+      "reset_failed": "A palavra-passe não foi reposta. Verifique o código e tente novamente.",
+      "reclaim_notice": "Redefinir a palavra-passe termina todas as sessões, revoga os tokens de API e remove os métodos de início de sessão associados que usam outro endereço de e-mail."
     },
     "verify_email": {
       "header": "Confirme o seu email",
@@ -758,6 +1047,39 @@
         "privacy": {
           "text": "Ao registar-se, concorda com a nossa <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Política de Privacidade</a> e os <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Termos de Serviço</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "ou continuar com",
+      "button": {
+        "google": "Continuar com Google",
+        "apple": "Continuar com Apple",
+        "oidc": "Continuar com {name}"
+      },
+      "callback": {
+        "signing_in": "A iniciar sessão…"
+      },
+      "app_return": {
+        "title": "Início de sessão concluído — volte à aplicação Econumo.",
+        "open_app": "Abrir a aplicação"
+      },
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "O início de sessão foi cancelado.",
+        "invalid_state": "A tentativa de início de sessão expirou ou já foi utilizada. Tente novamente.",
+        "provider_error": "O provedor de início de sessão devolveu um erro. Tente novamente.",
+        "email_required": "O provedor de início de sessão não partilhou um endereço de email, que o Econumo requer.",
+        "email_unverified": "O provedor de início de sessão não verificou este endereço de email.",
+        "registration_disabled": "O registo está desativado neste servidor. Inicie sessão primeiro com uma conta existente.",
+        "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo.",
+        "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor.",
+        "account_inactive": "Esta conta foi desativada.",
+        "account_exists_password": "Já existe uma conta com este endereço de e-mail. Inicie sessão com a sua palavra-passe (ou redefina-a) e depois associe este fornecedor nas Definições.",
+        "account_exists_contact_admin": "Já existe uma conta com este endereço de e-mail e não pode ser associada automaticamente. Contacte o seu administrador."
       }
     }
   },
@@ -1050,6 +1372,23 @@
           "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
           "no_access_category": "Não pode editar esta categoria — pertence a outro utilizador.",
           "no_access_tag": "Não pode editar esta etiqueta — pertence a outro utilizador."
+        },
+        "comments": {
+          "title": "Comentários",
+          "disclosure": "Comentários ({count})",
+          "comment_label": "Comentário",
+          "marker_aria": "{count} comentário | {count} comentários",
+          "composer_placeholder": "Adicione uma nota para este mês",
+          "post": "Publicar",
+          "edit": "Editar",
+          "delete": "Eliminar",
+          "cancel": "Cancelar",
+          "delete_confirm": "Eliminar este comentário?",
+          "edited": "(editado)",
+          "counter": "{count}/500",
+          "read_only": "Os comentários aqui podem ser lidos, mas não alterados.",
+          "empty": "Ainda não há comentários.",
+          "truncated": "A mostrar os 2000 comentários mais recentes."
         }
       },
       "settings": {
@@ -1464,7 +1803,9 @@
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",
-      "end_before_start": "O mês final é anterior ao início do orçamento"
+      "end_before_start": "O mês final é anterior ao início do orçamento",
+      "comment_not_found": "Comentário não encontrado",
+      "comment_forbidden": "Você não pode alterar este comentário"
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",
@@ -1492,10 +1833,36 @@
       "base_immutable": "A moeda base não pode ser alterada.",
       "cannot_be_hidden": "Esta moeda não pode ser ocultada."
     },
+    "import": {
+      "source_not_found": "A Apple Wallet não está ligada. Ligue-a primeiro em Definições → Apple Wallet.",
+      "provider_unsupported": "Este fornecedor de importação não é suportado.",
+      "account_link_exists": "Este cartão já está associado.",
+      "currency_mismatch": "A moeda do cartão não corresponde à moeda da conta.",
+      "link_not_queued": "Este evento não está a aguardar revisão.",
+      "link_not_skipped": "Este evento não está ignorado.",
+      "event_not_failed": "Este evento não falhou.",
+      "setup_token_rejected": "O SimpleFIN rejeitou este token de configuração. Pode já ter sido utilizado — gere um novo no seu bridge SimpleFIN.",
+      "provider_unavailable": "Não foi possível contactar o bridge bancário. Tente novamente dentro de alguns minutos.",
+      "sync_range_invalid": "O intervalo de datas é inválido: o início não pode ser posterior ao fim, e o intervalo não pode exceder 400 dias.",
+      "access_url_invalid": "A credencial bancária guardada não é um URL de acesso válido. Volte a ligar o SimpleFIN com um novo token de configuração.",
+      "rule_skip_not_applicable": "Uma regra de ignorar não pode ser aplicada a transações existentes",
+      "ai_disabled": "As sugestões de IA não estão ativadas neste servidor",
+      "ai_unavailable": "O serviço de IA está indisponível. Tente novamente mais tarde."
+    },
     "label": {
       "name_length": "O nome da etiqueta deve ter entre {min} e {max} caracteres.",
       "cannot_be_merged": "As etiquetas selecionadas não podem ser mescladas.",
       "list_empty": "A lista de etiquetas está vazia."
+    },
+    "oauth": {
+      "provider_not_configured": "O provedor de início de sessão não está configurado",
+      "handoff_invalid": "O link de início de sessão é inválido ou expirou",
+      "last_identity": "Defina uma palavra-passe antes de desvincular o seu único método de início de sessão",
+      "identity_not_found": "Conta vinculada não encontrada",
+      "link_invalid": "A sessão de vinculação é inválida ou expirou",
+      "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo",
+      "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor",
+      "last_sign_in_method": "Não pode desvincular o seu único método de início de sessão"
     },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
@@ -1533,7 +1900,8 @@
       "email_verification_required": "Confirme o seu endereço de email.",
       "verification_code_invalid": "O código de confirmação não é válido.",
       "verification_code_expired": "O código expirou.",
-      "email_unchanged": "O novo email é igual ao atual."
+      "email_unchanged": "O novo email é igual ao atual.",
+      "password_login_disabled": "O início de sessão com palavra-passe está desativado"
     }
   },
   "emails": {
@@ -1552,6 +1920,14 @@
     "change_email_notice": {
       "subject": "Pedido de alteração de email",
       "body": "Olá, {name},\n\nAlguém pediu a alteração do email da sua conta para {email}. Se não fez este pedido, altere a sua palavra-passe imediatamente."
+    },
+    "identity_linked": {
+      "subject": "Novo método de início de sessão adicionado",
+      "body": "Olá {name},\n\nA sua conta {provider} acabou de ser associada à sua conta Econumo e já pode ser usada para iniciar sessão.\n\nSe não foi você, desassocie a conta nas Definições e altere a sua palavra-passe.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Método de início de sessão removido",
+      "body": "Olá {name},\n\nA sua conta {provider} acabou de ser desassociada da sua conta Econumo e já não pode ser usada para iniciar sessão.\n\nSe não foi você, altere a sua palavra-passe e verifique as contas associadas nas Definições.\n\n--\nEconumo — Faça a gestão do dinheiro. Em conjunto.\n"
     }
   }
 }

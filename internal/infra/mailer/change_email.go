@@ -28,10 +28,13 @@ func (s *ChangeEmailSender) SendEmailChangeCode(ctx context.Context, to, name, c
 }
 
 // SendEmailChangeNotice emails the OLD address that a change was requested,
-// naming the proposed new address so an unwanted change is noticeable.
-func (s *ChangeEmailSender) SendEmailChangeNotice(ctx context.Context, to, name, newEmail string) error {
+// naming the proposed new address so an unwanted change is noticeable. cc adds
+// the account's linked-provider addresses; the proposed NEW address is
+// deliberately not among them — it has proved nothing yet.
+func (s *ChangeEmailSender) SendEmailChangeNotice(ctx context.Context, to, name, newEmail string, cc []string) error {
 	lang := reqctx.Language(ctx)
 	subject := i18n.T(lang, "emails.change_email_notice.subject", nil)
 	body := i18n.T(lang, "emails.change_email_notice.body", map[string]any{"name": name, "email": newEmail})
-	return s.m.Send(ctx, Message{From: s.from, To: to, ReplyTo: s.replyTo, Subject: subject, Text: body})
+	return s.m.Send(ctx, Message{From: s.from, To: to, Cc: ccAddresses(to, cc), ReplyTo: s.replyTo,
+		Subject: subject, Text: body})
 }

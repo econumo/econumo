@@ -229,3 +229,53 @@ it('logout confirm has the exact copy and navigates', async () => {
   await user.click(screen.getByRole('button', { name: 'Log out' }))
   expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
 })
+
+it('shows a Sign-in methods row in the Security group', async () => {
+  renderPage()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.getByText('Change password')).toBeInTheDocument()
+})
+
+it('replaces "Change password" with "Set a password" when the user has no password', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  renderPage()
+  expect(await screen.findByText('Set a password')).toBeInTheDocument()
+  expect(screen.getByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.queryByText('Change password')).not.toBeInTheDocument()
+})
+
+it('offers neither password entry when password sign-in is disabled', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: false }
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  renderPage()
+  expect(await screen.findByText('Sign-in methods')).toBeInTheDocument()
+  expect(screen.queryByText('Change password')).not.toBeInTheDocument()
+  expect(screen.queryByText('Set a password')).not.toBeInTheDocument()
+})
+
+it('"Set a password" opens the recovery dialog with the email locked', async () => {
+  server.use(...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }))
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Set a password'))
+  const dialog = await screen.findByRole('dialog')
+  const emailField = within(dialog).getByLabelText(/e-?mail/i)
+  expect(emailField).toHaveValue(fixtureUser.email)
+  expect(emailField).toBeDisabled()
+})
+
+it('signs out after a passwordless user sets a password (the reset revoked this session)', async () => {
+  server.use(
+    ...coreHandlers({ user: { ...fixtureUser, hasPassword: false } }),
+    http.post('*/api/v1/user/remind-password', () => HttpResponse.json({ success: true, message: '', data: {} })),
+    http.post('*/api/v1/user/reset-password', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  await user.click(await screen.findByText('Set a password'))
+  await user.click(screen.getByRole('button', { name: 'Send code' }))
+  await user.type(await screen.findByLabelText(/code/i), '123456')
+  await user.type(screen.getByLabelText(/new password/i), 'Password123!')
+  await user.click(screen.getByRole('button', { name: 'Reset password' }))
+  expect(await screen.findByText('LOGOUT ROUTE')).toBeInTheDocument()
+})

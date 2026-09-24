@@ -23,12 +23,14 @@ import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
+import { ImportQueueBanner } from '@/features/imports/ImportQueueBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { usePendingInvites } from '@/features/connections/pendingInvites'
 import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
+import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
@@ -138,9 +140,16 @@ export function ApplicationLayout() {
     // The PWA viewport is edge-to-edge (viewport-fit=cover), so the shell keeps
     // itself clear of the status bar / rounded corners; the bottom inset is
     // handled per bottom bar so their backgrounds still reach the screen edge.
-    <div className="flex h-svh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
+    // dvh, never svh: the document does not scroll, so no browser chrome ever
+    // retracts and the two are the same number everywhere — except that iOS
+    // caches svh PER WINDOW, and a standalone PWA returning from Apple's
+    // cross-site POST callback gets one 130px short for the window's whole
+    // lifetime (a reload and a rotation both keep it; only a relaunch clears
+    // it). dvh tracked the real viewport in both states.
+    <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
+      <ImportQueueBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
@@ -282,6 +291,7 @@ export function ApplicationLayout() {
 
       <AccountDialog />
       <TransactionDialog />
+      <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />
       <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />

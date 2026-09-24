@@ -6,6 +6,9 @@
 // Route layout:
 //
 //	/health           (GET)  -> health check, wrapped in the global chain
+//	/.well-known/...  (GET)  -> the mobile app's Universal / App Link
+//	                            association documents, only when app links are
+//	                            configured (internal/web/applinks)
 //	/api/...          (*)    -> API groups, wrapped in the global chain; the
 //	                            module-supplied RegisterAPI seam attaches the
 //	                            public group (login/register/remind/reset, plus
@@ -26,6 +29,7 @@ import (
 	"net/http"
 
 	"github.com/econumo/econumo/internal/config"
+	"github.com/econumo/econumo/internal/web/applinks"
 	"github.com/econumo/econumo/internal/web/middleware"
 	"github.com/econumo/econumo/internal/web/spa"
 	"github.com/econumo/econumo/web"
@@ -142,6 +146,18 @@ func New(deps Deps) http.Handler {
 	// the global chain (recover + requestid + cors apply here too).
 	root.Handle("GET /health", global(healthCheckHandler(deps.DB)))
 
+	// Mobile-app association documents, on the root mux beside /health (their
+	// paths are fixed by Apple and Google, and being outside /api keeps them
+	// away from the REST parity scanner). Wrapped in the same global chain, so a
+	// platform's fetch is observable in the access log like any other request.
+	// Unmounted when no app is associated, so the spa handler's reserved-path
+	// rule answers an honest 404 there.
+	if deps.Cfg.AppLinksEnabled() {
+		assoc := global(applinks.Handler(deps.Cfg))
+		root.Handle("GET "+applinks.AASAPath, assoc)
+		root.Handle("GET "+applinks.AssetLinksPath, assoc)
+	}
+
 	// API subtree. Modules register their concrete routes via RegisterAPI; the
 	// router wraps the whole subtree in the global chain. Public vs
 	// authenticated grouping happens inside RegisterAPI (the public group:
@@ -198,7 +214,11 @@ func New(deps Deps) http.Handler {
 		versionLabel = deps.SPAVersionLabel
 	}
 	overrides := map[string]any{
+		// Whether ECONUMO_AI_DSN is configured: the SPA hides the "Suggest
+		// rules" action rather than offering a button that always 400s.
+		"AI_ENABLED":         deps.Cfg.AIEnabled,
 		"ALLOW_REGISTRATION": deps.Cfg.AllowRegistration,
+		"PASSWORD_LOGIN":     !deps.Cfg.PasswordLoginDisabled,
 		// Present even when empty: the backend decides whether create-billing-link
 		// works, so an empty value must switch the SPA's billing UI off rather than
 		// leave a stale default pointing at a portal the server will not mint for.
@@ -211,6 +231,16 @@ func New(deps Deps) http.Handler {
 		"INSTANCE_ID":   deps.InstanceID,
 		"VERSION":       version,
 		"VERSION_LABEL": versionLabel,
+		// The matcher thresholds the import queue uses client-side to group
+		// cross-provider duplicates. Stage 2 ships one provider, so the SPA only
+		// types the key today; serving the value now means stage 3 needs no
+		// server change.
+		"IMPORT_MATCHER": map[string]int{
+			"matchDays":       deps.Cfg.ImportMatchDays,
+			"tipDays":         deps.Cfg.ImportTipDays,
+			"tipTolerancePct": deps.Cfg.ImportTipTolerancePct,
+			"tokenMinLength":  deps.Cfg.ImportTokenMinLength,
+		},
 	}
 	// MIN_APP_VERSION is the one key that stays conditional: the app's
 	// version-check treats a present-but-empty value differently from an

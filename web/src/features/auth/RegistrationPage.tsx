@@ -10,10 +10,13 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
+import { useServerConfigFor } from '@/lib/appConfig'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl, isValidName, isValidPassword } from '@/lib/validation'
 import { RouterPage } from '@/app/router-pages'
 import { CustomServerSection } from './CustomServerSection'
+import { passwordLoginAvailable } from './oauthQueries'
+import { ProviderButtons } from './ProviderButtons'
 import { useRegister } from './queries'
 
 interface RegistrationForm {
@@ -44,6 +47,12 @@ export function RegistrationPage() {
     },
   })
   const selfHostedChecked = watch('selfHosted')
+  // Watched so a custom server address typed below re-evaluates whether the
+  // password form is available (see passwordLoginAvailable); in the app the
+  // typed server's own config is fetched and decides.
+  watch('host')
+  const configRevision = useServerConfigFor(config.backendHost())
+  const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing
   // forgets the previously configured server address.
@@ -74,7 +83,7 @@ export function RegistrationPage() {
     if (!config.isRegistrationAllowed()) {
       navigate(RouterPage.LOGIN, { replace: true })
     }
-  }, [navigate])
+  }, [navigate, configRevision])
 
   const onSubmit = handleSubmit(async ({ name, email, password }) => {
     try {
@@ -94,75 +103,81 @@ export function RegistrationPage() {
   return (
     <>
       <div className="flex w-full flex-col gap-4">
-        <form onSubmit={onSubmit} className="flex flex-col gap-4" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-name">{t('user.form.name.label')}</Label>
-            <Input
-              className="h-11"
-              id="reg-name"
-              placeholder={t('user.form.name.placeholder')}
-              {...register('name', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.name.validation.required_field'),
-                  name: (v) => isValidName(v) || t('user.form.name.validation.invalid_name'),
-                },
-              })}
-            />
-            {errors.name ? <p className="text-sm text-destructive">{errors.name.message}</p> : null}
-          </div>
+        <form onSubmit={passwordForm ? onSubmit : (e) => e.preventDefault()} className="flex flex-col gap-4" noValidate>
+          {passwordForm ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reg-name">{t('user.form.name.label')}</Label>
+                <Input
+                  className="h-11"
+                  id="reg-name"
+                  placeholder={t('user.form.name.placeholder')}
+                  {...register('name', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.name.validation.required_field'),
+                      name: (v) => isValidName(v) || t('user.form.name.validation.invalid_name'),
+                    },
+                  })}
+                />
+                {errors.name ? <p className="text-sm text-destructive">{errors.name.message}</p> : null}
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-email">{t('user.form.email.label')}</Label>
-            <Input
-              className="h-11"
-              id="reg-email"
-              type="email"
-              placeholder={t('user.form.email.placeholder')}
-              {...register('email', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
-                  email: (v) => isValidEmail(v) || t('user.form.email.validation.invalid_email'),
-                },
-              })}
-            />
-            {errors.email ? <p className="text-sm text-destructive">{errors.email.message}</p> : null}
-          </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reg-email">{t('user.form.email.label')}</Label>
+                <Input
+                  className="h-11"
+                  id="reg-email"
+                  type="email"
+                  placeholder={t('user.form.email.placeholder')}
+                  {...register('email', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
+                      email: (v) => isValidEmail(v) || t('user.form.email.validation.invalid_email'),
+                    },
+                  })}
+                />
+                {errors.email ? <p className="text-sm text-destructive">{errors.email.message}</p> : null}
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-password">{t('user.form.password.label')}</Label>
-            <PasswordInput
-              className="h-11"
-              id="reg-password"
-              placeholder={t('user.form.password.placeholder')}
-              {...register('password', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.password.validation.required_field'),
-                  password: (v) => isValidPassword(v) || t('user.form.password.validation.invalid_password'),
-                },
-              })}
-            />
-            {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
-          </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reg-password">{t('user.form.password.label')}</Label>
+                <PasswordInput
+                  className="h-11"
+                  id="reg-password"
+                  placeholder={t('user.form.password.placeholder')}
+                  {...register('password', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.password.validation.required_field'),
+                      password: (v) => isValidPassword(v) || t('user.form.password.validation.invalid_password'),
+                    },
+                  })}
+                />
+                {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
+              </div>
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="reg-password-retry">{t('user.form.password_retry.label')}</Label>
-            <PasswordInput
-              className="h-11"
-              id="reg-password-retry"
-              placeholder={t('user.form.password_retry.placeholder')}
-              {...register('passwordRetry', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.password_retry.validation.invalid_password'),
-                  equals: (v, values) => v === values.password || t('user.form.password_retry.validation.not_equals'),
-                },
-              })}
-            />
-            {errors.passwordRetry ? <p className="text-sm text-destructive">{errors.passwordRetry.message}</p> : null}
-          </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="reg-password-retry">{t('user.form.password_retry.label')}</Label>
+                <PasswordInput
+                  className="h-11"
+                  id="reg-password-retry"
+                  placeholder={t('user.form.password_retry.placeholder')}
+                  {...register('passwordRetry', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.password_retry.validation.invalid_password'),
+                      equals: (v, values) => v === values.password || t('user.form.password_retry.validation.not_equals'),
+                    },
+                  })}
+                />
+                {errors.passwordRetry ? <p className="text-sm text-destructive">{errors.passwordRetry.message}</p> : null}
+              </div>
 
-          <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={registerMutation.isPending}>
-            {t('auth.form.sign_up.action.sign_up')}
-          </Button>
+              <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={registerMutation.isPending}>
+                {t('auth.form.sign_up.action.sign_up')}
+              </Button>
+            </>
+          ) : null}
+
+          {config.isRegistrationAllowed() ? <ProviderButtons intent="login" divider={passwordForm} /> : null}
 
           {customApiAllowed ? (
             <CustomServerSection open={selfHostedChecked} onToggle={toggleCustomServer}>

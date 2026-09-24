@@ -19,7 +19,9 @@ ExecStart=/opt/econumo/econumo serve
 Restart=on-failure
 RestartSec=5
 
-# Hardening: the process only ever writes its database directory.
+# Hardening: the process only ever writes its database directory. A Sign in
+# with Apple key (ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE) is read, not written,
+# so keep it outside ReadWritePaths; ProtectSystem=strict still permits reads.
 NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes

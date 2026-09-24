@@ -61,10 +61,18 @@ the single frontend. App-specific behavior branches on `isNativeApp()`
 (`web/src/lib/platform.ts`, probes the injected `window.Capacitor` global — no
 Capacitor npm dependency in `web/`) and is dead code on the web. In app mode
 the SPA fetches `econumo-config.js` from the selected backend and merges ONLY
-`ALLOW_REGISTRATION` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
+`ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `INSTANCE_ID` into `window.econumoConfig` (a fixed
 allowlist; the server's `VERSION` and `MIN_APP_VERSION` go to a separate
 store) — an app pointed at a self-hosted backend must report that backend's
-instance in product analytics, not none. App and server version-check each
+instance in product analytics, not none. The merge is per server: typing a
+server address on the auth screens fetches that server's config
+(`useServerConfigFor`, debounced), the previous server's keys fall back to the
+bundled defaults the moment a different server is requested, and a response for
+a server no longer selected is dropped. Screens that read merged keys subscribe
+to `useServerConfig`'s `revision` so a config arriving after first paint
+re-renders them. The oauth provider list is cached per server the same way
+(`providersQueryKey(configHost)`), so a switch never shows another server's
+providers. App and server version-check each
 other in BOTH directions, one hard floor per side; both floors live in the
 single shared `compat/versions.json`
 (Go embeds it, the SPA imports it — same pattern as `locales/`):
@@ -131,8 +139,8 @@ aws CLI installed.
 ### Feature packages (vertical slices)
 
 The backend is organized as vertical feature packages rather than horizontal
-layers. Each of the twelve features (`account`, `admin`, `budget`, `category`, `connection`,
-`currency`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
+layers. Each of the fourteen features (`account`, `admin`, `budget`, `category`, `connection`,
+`currency`, `imports`, `oauth`, `payee`, `recurring`, `system`, `tag`, `transaction`, `user`) is a single `internal/<feature>`
 tree holding its own use cases, persistence, and HTTP edge; the entities and
 DTOs those use cases operate on live in the shared `internal/model` package
 (below), so a feature package is behavior-only:
@@ -150,7 +158,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │                                one file per feature (account.go, account_dto.go, ...); imports only
 │   │                                the shared kernel; part of the archtest kernel alongside `shared`
 │   ├── <feature>/ ................. one package per feature (account, budget, category, connection,
-│   │   │                            currency, payee, system, tag, transaction, user); root package holds only
+│   │   │                            currency, imports, payee, system, tag, transaction, user); root package holds only
 │   │   │                            behavior — the entities/DTOs it operates on live in `internal/model`:
 │   │   │   <verb>.go .............   one file per use case or a closely related group (create.go,
 │   │   │                             update.go, delete.go, read.go, ...), naming a package-level `Service`
@@ -169,6 +177,7 @@ DTOs those use cases operate on live in the shared `internal/model` package
 │   │   │                          client-supplied operation ids on create endpoints
 │   │   ├── auth/ ................ password hashing + AES email encryption
 │   │   ├── clock/ ................ time source abstraction
+│   │   ├── ai/ .................. OpenAI-compatible chat-completions client (rule suggestions); imports nothing internal
 │   │   └── mailer/ .............. transactional email; transport from MAILER_DSN (console stdout | Resend API)
 │   ├── web/ ..................... HTTP-edge infrastructure shared by every feature (the Go server edge —
 │   │                              distinct from the repo-root web/, the React SPA): middleware, router,
@@ -185,7 +194,31 @@ Not every feature has a `repository.go`/`ports.go` — e.g. `currency` has no
 per-user persistence shape (it's rates + conversion + admin lookups), so it
 keeps `read.go`/`admin.go`/`convertor.go` but no `repository.go`; `system` is
 similar — it's in-memory poller state only (no persistence at all), so it has
-no `repository.go` either.
+no `repository.go` either. `imports` (the bank/phone transaction-import
+subsystem, spec in `docs/superpowers/specs/2026-08-15-transaction-import-design.md`)
+ships in stages: stage 1 (persistence + matcher core), stage 2 (the Apple
+Wallet push provider), stage 3 (the SimpleFIN pull provider), and stage 4
+(rule-based classification) are in. The
+root package holds no provider-specific code: each provider is a subpackage —
+`internal/imports/applewallet` (the push-event parser), `internal/imports/simplefin`
+(the bridge client + stored-row parser) — that plugs into the service's
+`EventParser` and `Provider` registries in `internal/server/server.go` (a new
+provider = one subpackage + one registration line). Rules (stage 4) live in
+the root package (`rules.go` matcher, `rule_*.go` use cases) and consult an
+optional `Completer` (`internal/infra/ai`, an OpenAI-compatible chat client)
+for `suggest-rules` — `internal/imports` never imports `internal/infra/ai`;
+the concrete client is injected in `internal/server`. It has `repository.go`, `ports.go` (account /
+currency / transaction-creation ports, wired in `internal/server/glue_imports.go`),
+`repo/`, and `api/` with 28 routes under `/api/v1/import/` (`create-source`,
+`get-source-list`, `delete-source`, `link-account`, `ignore-account`,
+`unlink-account`, `ingest-apple-wallet-event`, `get-queued-event-list`,
+`import-queued-event`, `skip-queued-event`, `unskip-queued-event`, `retry-event`,
+`discard-event`, `get-transaction-import-list`, `claim-setup-token`,
+`get-credential-key`, `set-credential-key`, `list-external-accounts`,
+`sync-source`, `get-run-list`, `get-run`, `get-rule-list`, `create-rule`,
+`update-rule`, `delete-rule`, `preview-rule`, `apply-rule`, `suggest-rules`).
+The package name is `imports`
+(not `import`, a Go keyword). No MCP surface yet.
 
 ### Dependency rule
 
@@ -280,9 +313,15 @@ short-circuit, e.g. the classification creates). Prefer the shared hook/store
 choke point over per-page call sites so every surface (pages, dialogs, inline
 creates) is covered once. `web/src/lib/metrics-coverage.test.ts` fails the
 suite if a `METRICS` key is never fired; a catalogue key may only be excused
-via its documented `NOT_WIRED` list. Analytics are identified, not anonymous:
-every batch carries a hashed user id (`$user_id`, a truncated SHA-256 over the
-user's id, computed client-side in `web/src/lib/analyticsId.ts`) and a
+via its documented `NOT_WIRED` list. Analytics are identified, never anonymous:
+the collector receives authenticated sessions only — `trackEvent` skips
+`capture` without a session token (login/register page views and the
+pre-login auth events reach the `dataLayer` only), and the transport holds a
+batch until the user id is set (the boot page view fires before
+`get-user-data` resolves), discarding anything still unattributed on
+logout/401 — so every batch carries a hashed user id (`$user_id`, a truncated
+SHA-256 over the user's id, computed client-side in
+`web/src/lib/analyticsId.ts`) and a
 per-instance group (`$group_id`, the bare per-deployment digest from
 `internal/infra/instance`; `$group_name`, the same `host` value every event
 carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
@@ -350,7 +389,12 @@ the `internal/test/i18ntest` guards derive their language list from
 
 Tests live alongside the Go code:
 - `*_test.go` unit/integration tests per package (sqlite via `internal/test/dbtest`;
-  dbtest applies production pragmas, e.g. `foreign_keys = ON`).
+  `dbtest.NewSQLite` opens through the production opener `sqlite.Backend.Open`,
+  so tests get the same connection settings as `serve`: the frozen datetime
+  layout DSN parameters, `foreign_keys = ON`, one connection). Feature API
+  harnesses and the CLI test env go through the same opener — never open a
+  test SQLite with a raw `sql.Open`, or rows land in the driver's default
+  `time.Time.String()` form that production no longer writes.
 - `internal/test/apiparity/` — the shared API scenario catalogue: every registered
   route is replayed against the REAL production handler (`server.BuildAPI`).
   Two consumers: the untagged **smoke suite** (every `make go-test`) diffs each
@@ -361,7 +405,9 @@ Tests live alongside the Go code:
   Regenerate goldens with `UPDATE_GOLDEN=1 go test ./internal/test/apiparity/`,
   then INSPECT the diff — a golden change means observable behavior changed;
   never hand-edit a golden. If route-registration files move, update
-  `handlerGlobs` in `guard_test.go`.
+  `handlerGlobs` in `guard_test.go`. For a 3xx response (the oauth callback error
+  redirects) the harness records the response as `Location: <value>` instead of a
+  body, so the golden captures the redirect target rather than an empty page.
 - `dbtest.New(t)` selects the engine by `DBTEST_ENGINE` (default sqlite; `pgsql`
   under `-tags enginecompare` → Postgres, each test in its own schema). `make
   test-repo-pgsql` reruns the whole repo/unit suite against PostgreSQL so the
@@ -382,6 +428,9 @@ Tests live alongside the Go code:
   `-tags enginecompare`, against both engines. Regenerate goldens with
   `UPDATE_GOLDEN=1 go test ./internal/test/mcpparity/`, then INSPECT the diff — same rule
   as `apiparity`.
+- `internal/infra/oidc/oidctest` — an in-process fake OpenID provider (discovery, authorize,
+  token, JWKS, userinfo, end-session) used to drive the real `internal/oauth` callback through
+  `httptest`, so provider-flow tests exercise actual protocol code rather than stubbing it out.
 
 ### Manual regression test plan
 
@@ -415,7 +464,24 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   Set it to your old salt, run that command, then unset it. Until you migrate, a still-salted
   database has unreadable emails, so those users cannot log in (the intended push to migrate);
   `serve` logs a WARN at boot while it is set.
-- `ECONUMO_ALLOW_REGISTRATION` — enable/disable the register endpoint.
+- `ECONUMO_ALLOW_REGISTRATION` — enable/disable self-service sign-up: the register endpoint
+  and first-sign-in provisioning through a provider.
+- `ECONUMO_PASSWORD_LOGIN` — email + password sign-in (default `true`; strict boolean). `false`
+  refuses, with the coded 400 `user.password_login_disabled`, every password flow:
+  `login-user`, `register-user`, `remind-password`, `reset-password` (so also the passwordless
+  "Set a password"), `update-password`, and the login-time `confirm-email` /
+  `resend-verification-code`. The check runs before rate-limit accounting and any lookup.
+  Sessions, PATs, provider sign-in and the CLI are unaffected. It requires at least one
+  provider slot (boot fails otherwise), and `ECONUMO_ALLOW_REGISTRATION` then governs provider
+  sign-up only — together they give provider-only sign-up. The `account_exists_password`
+  refusal is unchanged, so accounts with a password must link a provider BEFORE the switch
+  (`docs/oidc-setup.md`). While it is off, a stored password no longer counts as a sign-in
+  method: `unlink-identity` refuses the last identity with `oauth.last_sign_in_method`. The
+  config field is inverted (`PasswordLoginDisabled`) so a zero `config.Config` in tests keeps
+  passwords on, and the served config carries it as `PASSWORD_LOGIN`. The SPA hides the
+  password forms and Settings' password entries through `passwordLoginAvailable()`
+  (`web/src/features/auth/oauthQueries.ts`), which keeps the form whenever the page's backend
+  is a custom one on another origin, since `PASSWORD_LOGIN` describes the serving instance.
 - `ECONUMO_TRIAL` — trial length in DAYS for a newly self-registered user. `0`
   (default; also `none`/empty) grants no trial, so the user keeps permanent full
   access — the self-hosted default. A positive integer `N` grants full access
@@ -456,6 +522,51 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   bodies byte-for-byte unchanged (the wrapper is not installed). Must be an absolute
   http(s) URL — plain http is allowed (unlike `ECONUMO_BILLING_URL`, an app link carries no
   signed token). Not a translatable string, so it touches no `emails.*` catalogue key.
+- `ECONUMO_OAUTH_GOOGLE_*` / `ECONUMO_OAUTH_APPLE_*` / `ECONUMO_OIDC_*` — three independent
+  "Sign in with…" provider slots (`internal/oauth`), each **all-or-nothing**: any one variable
+  of a slot set without the rest fails at boot naming the missing variable. Google needs
+  `ECONUMO_OAUTH_GOOGLE_CLIENT_ID` + `_CLIENT_SECRET`; Apple needs `ECONUMO_OAUTH_APPLE_CLIENT_ID`
+  (the Services ID) + `_TEAM_ID` + `_KEY_ID` + `_PRIVATE_KEY_FILE` (a path to the `.p8` file,
+  read verbatim at boot; a missing or empty file fails at boot). The key is a file rather than
+  an env value because systemd's `EnvironmentFile=` eats the backslash of an unquoted `\n`,
+  which silently corrupted the one-line form the removed `_PRIVATE_KEY` variable took; that
+  variable is now rejected at boot with a message naming its replacement. The custom OIDC slot needs
+  `ECONUMO_OIDC_ISSUER_URL` (absolute `https://`, plain `http` only for loopback hosts) +
+  `_CLIENT_ID` + `_CLIENT_SECRET`, plus optional `_NAME` (button label, default `SSO`) and
+  `_SCOPES` (comma-separated, default `openid,profile,email`; must contain `openid` or boot
+  fails). Any enabled slot requires `ECONUMO_URL` — every callback URI derives from it as
+  `<ECONUMO_URL>/api/v1/oauth/callback-<google|apple|oidc>`, the one URL to register with the
+  provider; there is no separate redirect-URI variable. Discovery documents are fetched lazily
+  and cached for the process lifetime; the JWKS is cached and re-fetched when a token names an
+  unknown key id (at most once a minute per issuer), so a signing-key rotation needs no restart.
+  Discovered endpoints must be absolute https URLs (plain http only for loopback issuers); a
+  document that violates that is rejected.
+  `serve` builds the provider clients once,
+  probes each configured issuer's discovery document in the background right after the listener
+  is up (one 5-second timeout per provider) and logs a WARN (never fails boot) when one is
+  unreachable, so sign-in through it fails until the issuer answers.
+  `ECONUMO_OIDC_TRUST_EMAIL` (strict bool, default `false`) treats the custom issuer's email
+  claim as verified; `false` rejects any token without `email_verified=true` with
+  `email_unverified`, for every intent (login, auto-link,
+  and linking from Settings) — an issuer that never sends that claim needs the flag set or no
+  sign-in through it will ever succeed. Google and Apple are fixed issuers/scopes; Apple is
+  always treated as trusted (every Apple ID address is verified) but Google's `email_verified`
+  claim is honoured, not trusted blindly — Google always sends it and documents `false` for
+  unverified addresses. See `docs/oidc-setup.md`.
+- `ECONUMO_APP_LINKS_IOS` / `ECONUMO_APP_LINKS_ANDROID` — the mobile apps allowed to claim
+  `<ECONUMO_URL>/oauth/app-return` as a verified Universal Link / App Link, which is how the
+  OAuth app flow returns without the globally claimable private scheme. iOS: comma-separated
+  `<Team ID>.<bundle id>` (`^[A-Z0-9]{10}\.[A-Za-z0-9.-]+$`). Android: comma-separated
+  `<package>=<SHA-256 signing fingerprint>` (32 colon-separated hex bytes, upper-cased on load;
+  repeating a package adds a second certificate, as Play App Signing requires). Either one set
+  enables app links and makes the server publish `/.well-known/apple-app-site-association` and
+  `/.well-known/assetlinks.json` (`internal/web/applinks`, mounted on the root mux next to
+  `/health`; the platform with no entries 404s). A malformed entry fails boot, as does an
+  `ECONUMO_URL` that is not `https://` — neither OS verifies a plain-http link. They only make
+  sense on the domain the store app is actually associated with (`app.econumo.com`): a
+  self-hosted backend used from the store app must leave them unset and keeps the private
+  `com.econumo.app://oauth` scheme, whose residual risk is that any app on the device may
+  register it.
 - `ECONUMO_CORS_ALLOW_ORIGIN` — comma-separated cross-origin allowlist. Empty (default) = same-domain
   only (no `Access-Control-Allow-Origin` emitted; the bundled SPA and API share an origin so it
   just works). A configured origin is reflected back with `Vary: Origin`; `*` allows any origin.
@@ -493,6 +604,24 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   the newest stored rate is within N days, so a restart loop never burns API
   quota. Idempotent per `(date, currency, base)`, so it is safe alongside an
   existing external cron.
+- `ECONUMO_IMPORT_MATCH_DAYS` / `ECONUMO_IMPORT_TIP_DAYS` / `ECONUMO_IMPORT_TIP_TOLERANCE` /
+  `ECONUMO_IMPORT_TOKEN_MIN_LENGTH` — transaction-import matcher thresholds (defaults 3 / 5 / 20 / 3;
+  ranges 0–31 days, 0–31 days, 0–100 percent, 1–16 chars). Strict parse: malformed or out-of-range
+  fails at boot. Read into `imports.MatcherConfig`; the matcher itself is a pure function of
+  `(event, candidates, config)`.
+- `ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS` — lift the SimpleFIN client's SSRF guard (strict
+  boolean, default `false`, malformed fails at boot). With the guard on, the client resolves
+  every bridge host and refuses any address that is not global unicast (loopback, RFC1918,
+  link-local, unique-local, multicast, unspecified) — the setup token and the access URL are
+  user-supplied, so without it the server fetches whatever its own network can reach. A
+  self-hosted bridge on a LAN needs it on. The check runs on the address the client dials,
+  so behind an `HTTPS_PROXY` it inspects the proxy, not the bridge: a private proxy needs
+  the guard lifted, and a public proxy resolves the bridge host itself, outside the guard.
+- `ECONUMO_AI_DSN` — `openai://<api-key>@<host>[:port][/prefix]?model=<model>` enables AI rule
+  suggestions (`suggest-rules`) against any OpenAI-compatible chat-completions endpoint; the key
+  is optional for local servers (`openai://localhost:11434?model=llama3.1`). Unset (default) =
+  disabled: the endpoint returns 400 `import.ai_disabled` and the SPA hides the action. A bad
+  scheme/missing host/missing `model` fails at boot.
 - `SQLITE_BUSY_TIMEOUT` — SQLite `busy_timeout` PRAGMA in ms (default `0`); bare name mirrors the engine pragma.
 - `ECONUMO_RATE_LIMIT_LOGIN` / `ECONUMO_RATE_LIMIT_RESET` / `ECONUMO_RATE_LIMIT_REMIND` /
   `ECONUMO_RATE_LIMIT_REGISTER` — brute-force protection for the public auth endpoints:
@@ -505,6 +634,11 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL` — failed confirm-email attempts per username per window (default `5`; cleared on success).
   `ECONUMO_RATE_LIMIT_REQUEST_EMAIL_CHANGE` — change-email code sends per user per window (default `3`; every send counts).
   `ECONUMO_RATE_LIMIT_CONFIRM_EMAIL_CHANGE` — failed confirm-email-change attempts per user per window (default `5`; cleared on success).
+  `ECONUMO_RATE_LIMIT_INGEST` — `import/ingest-apple-wallet-event` pushes per user per window (default `60`; every request counts).
+  `ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN` — `import/claim-setup-token` calls per user per window (default `5`; every request counts).
+  `ECONUMO_RATE_LIMIT_SYNC` — `import/sync-source` calls per user per window (default `10`; every request counts — a sync is a real bridge round trip).
+  `ECONUMO_RATE_LIMIT_SUGGEST_RULES` — `import/suggest-rules` calls per user per window (default `3`; every call counts — each is a paid completion).
+  `ECONUMO_RATE_LIMIT_PREVIEW_RULE` — `import/preview-rule` calls per user per window (default `120`; every request counts — the rule editors fire it from a 300 ms typing debounce, and each call walks every matching link).
   `ECONUMO_RATE_LIMIT_WINDOW` — sliding window (Go duration, default `15m`).
   `ECONUMO_RATE_LIMIT_GLOBAL` — per-endpoint cap per minute across all keys (default `60`).
   `0` on a count disables that check (the window must be positive). Over-limit requests get HTTP 429 with the standard error envelope
@@ -534,7 +668,12 @@ The Go server reads its environment from `.env` (see `.env.example`). Key vars:
   migrated database), defaulting to `""` when unresolved; `migrate.Run` always
   runs before `server.Build` (`cmd/econumo/main.go`), so `schema_migrations` is
   already populated and a real id is present from the very first boot.
-  `ALLOW_REGISTRATION` and `BILLING_URL` are always present (server truth).
+  `ALLOW_REGISTRATION`, `PASSWORD_LOGIN` and `BILLING_URL` are always present (server truth).
+  `IMPORT_MATCHER` (`{matchDays, tipDays, tipTolerancePct, tokenMinLength}`, the
+  effective `ECONUMO_IMPORT_*` values) is always present (typed on
+  `EconumoConfig`, not consumed by any surface yet). `AI_ENABLED` (bool,
+  always present, `true` iff `ECONUMO_AI_DSN` is set) drives whether the SPA
+  shows the "Suggest rules" action.
   `MIN_APP_VERSION` is the one key that stays conditional — omitted entirely
   when empty, since the app's version-check treats a present-but-empty value
   differently from an absent one. The composition root resolves the FS
@@ -595,8 +734,27 @@ line with operation-specific params via `reqctx.AddLogAttr(ctx, key, value)` (e.
 - **SQLite** (default): pure-Go `modernc.org/sqlite` driver (CGO off).
 - **PostgreSQL**: `jackc/pgx/v5` (stdlib), simple protocol (PgBouncer-safe).
 - Migrations live in `internal/infra/storage/migrations/{sqlite,pgsql}` and run on boot.
+- **SQLite datetime storage contract.** DATETIME/TIMESTAMP columns hold bare
+  `Y-m-d H:i:s` UTC TEXT (19 characters; PostgreSQL's `TIMESTAMP(0)` is the
+  same wall clock). Every SQLite connection is opened with
+  `_time_format=datetime&_timezone=UTC` (`sqlite.WithFrozenTimeFormat`, applied
+  by `Backend.Open` and therefore by `dbtest`), so a bound `time.Time` is
+  converted to UTC and stored in that layout, and stored text parses back as
+  UTC. Rows written before this setting held `time.Time.String()` text; the
+  command migration `migration:normalize-sqlite-datetimes` (boot step
+  `20260915000001`) rewrites them. `currencies_rates.published_at` is the one
+  DATE column and is `Y-m-d`: its write query binds that text explicitly
+  because the driver would store a time part and split one day into two keys
+  of the textual unique index. The hand-built budget/account SQL still binds
+  its range bounds as `datetime.Layout` strings (`sqliteDatetime`,
+  `limitPeriodArg`) even though a bound `time.Time` now yields the same bytes:
+  that is deliberate belt-and-braces so those comparisons never depend on a
+  DSN parameter, not a sign that the driver still needs it.
 - After changing a query: edit `query/{sqlite,pgsql}/*.sql` and regenerate with
   `sqlc generate` (config at `internal/infra/storage/sqlc/sqlc.yaml`).
+- Keep `.sql` query files ASCII-only, including comments — a multibyte character (an em dash,
+  a curly quote) in a comment silently truncates the generated SQL constant, and the failure
+  surfaces at runtime as `SQL logic error: incomplete input`, not at `sqlc generate`.
 - Migrations may also be **command steps** (`migrations.RegisterCommand(version, "migration:<slug>")`):
   the boot runner invokes the named CLI command in version order between SQL files, records the
   version only on success, and gives it no surrounding transaction — every `migration:*` command
@@ -624,6 +782,7 @@ data:remove-salt
 data:import-sqlite [--force] <sqlite-path>
 migration:zero-deleted-accounts
 migration:seed-analytics-option
+migration:normalize-sqlite-datetimes
 ```
 
 `data:remove-salt` is a one-off migration that decrypts every user's email
@@ -657,20 +816,33 @@ also invoked automatically at boot as migration step `20260817000001`.
 `ECONUMO_ANALYTICS` value (above); idempotent, and invoked automatically at
 boot as migration step `20260903000000`.
 
+`migration:normalize-sqlite-datetimes` rewrites SQLite DATETIME/TIMESTAMP
+values stored in Go's `time.Time.String()` form (what the driver wrote before
+every connection was opened with `_time_format=datetime`, see
+`sqlite.WithFrozenTimeFormat`) to `Y-m-d H:i:s` UTC. It discovers columns from
+the live schema, skips `schema_migrations` (the instance id's anchor), parses
+each value with the exact driver layout and leaves anything unparseable as
+stored; idempotent, a no-op on PostgreSQL, and invoked automatically at boot as
+migration step `20260915000001`.
+
 In the distroless image these run via the binary directly, e.g.
 `docker exec <container> /app/econumo user:create …`.
 
 ## API conventions
 
 - **Methods — only two.** `GET` for reads; `POST` for every write — create, update,
-  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs.
+  AND delete. There is no `PUT`/`PATCH`/`DELETE`; deletes are POSTs. One exception:
+  `/api/v1/import/list-external-accounts` is a POST *read*, because the bridge access URL
+  travels in the body — it must never reach a query string (logs, history, referrers).
 - **Path shape:** `/api/v1/{module}/{action}-{subject}`, all kebab-case, the action
   verb leading. List endpoints end in `-list`. Examples from the source:
   - Reads (`GET`): `/api/v1/account/get-account-list`, `/api/v1/budget/get-budget`,
-    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`.
+    `/api/v1/category/get-category-list`, `/api/v1/user/get-user-data`,
+    `/api/v1/import/get-source-list`.
   - Writes (`POST`): `/api/v1/category/create-category`, `/api/v1/account/update-account`,
     `/api/v1/category/delete-category`, `/api/v1/connection/generate-invite`,
-    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`.
+    `/api/v1/budget/set-limit`, `/api/v1/payee/archive-payee`,
+    `/api/v1/import/ingest-apple-wallet-event`.
 - **Authentication is header-based:** send `Authorization: Bearer <token>` (an opaque
   access token, `eco_ses_*`/`eco_pat_*`; the scheme is case-insensitive). The auth
   middleware resolves the token's sha256 against the `access_tokens` table, rejects
@@ -678,27 +850,92 @@ In the distroless image these run via the binary directly, e.g.
   token row id into the request context (the latter is the "current session" for
   logout/revoke/isCurrent). Public routes (login, register, remind-password,
   reset-password, confirm-email, resend-verification-code, `/api/doc`,
-  `/api/doc.json`) need no header; everything else does.
+  `/api/doc.json`, and the six public `oauth` routes — `get-provider-list`,
+  `start-login`, `callback-google`, `callback-oidc`, `callback-apple`,
+  `exchange-handoff`) need no header; everything else does.
 - **Read-only access is enforced at the edge:** a caller whose access level is
   `readonly` (trial ended, no access granted) gets HTTP 402 on any `POST` route not
   in the middleware's small allowlist (account security actions — logout, session/PAT
-  revocation, password update, email change — plus `update-analytics`: withdrawing
-  from product analytics is a privacy right, not a paid feature, so it must work
-  regardless of access level); `GET` reads are never restricted.
+  revocation, password update, email change, `oauth/start-link`,
+  `oauth/complete-link`, `oauth/unlink-identity` —
+  plus `update-analytics`: withdrawing from product analytics is a privacy right, not a
+  paid feature, so it must work regardless of access level); `GET` reads are never restricted.
 
 ## Authentication
 
 - **Method**: opaque bearer tokens stored (sha256-hashed) in the `access_tokens` table.
   Two kinds: `session` (minted at login; sliding 30-day TTL — expiry renews on use, with
   last-used persistence throttled to once per 5 minutes) and `personal` (user-created
-  PATs with an optional fixed expiry, full access, shown exactly once at creation).
+  PATs with an optional fixed expiry, shown exactly once at creation).
+  Every token carries a scope: `full` (sessions, ordinary PATs) or `ingest` (a PAT
+  that may ONLY call `/api/v1/import/ingest-*`; anywhere else it gets the frozen 401
+  `"Invalid access token"`). `create-personal-token` requires `scope`.
 - The `user` feature owns everything: `Authenticate` (the per-request hot path),
   session/PAT use cases, and the revocation cascades. The middleware seam is
   `middleware.TokenAuthenticator`, wired to the user service in `server.BuildAPI`.
-- Revocation cascades: `update-password` revokes all sessions EXCEPT the presenting
-  one; `reset-password` and CLI `user:change-password` revoke ALL sessions;
-  `user:deactivate` revokes sessions AND PATs (which is why per-request auth needs no
-  `is_active` join). PATs survive password changes.
+- Revocation cascades: `update-password` (the user changing their own password) rotates
+  the credential in one locked transaction: bumps the generation (an in-flight login with
+  the old password mints nothing), sweeps pending reset codes and email-change requests,
+  and revokes the OTHER sessions; it keeps the presenting session, PATs and linked
+  identities — integrations must outlive a password change. `user:deactivate` revokes
+  sessions AND PATs and bumps the credentials generation, all in the deactivating transaction
+  (which is why per-request auth needs no `is_active` join, and why a login racing the
+  deactivation cannot mint a session that outlives it). **`reset-password` and
+  CLI `user:change-password` are the account RECLAIM** (one primitive,
+  `user.reclaimCredentials`): a completed reset is the account's proof of mailbox
+  ownership and an operator setting a password is evicting whoever holds the account, so
+  both revoke every session AND every PAT, drop every pending grant (outstanding reset
+  codes, a pending email change, and on the oauth side every unredeemed handoff — a
+  60-second sign-in code is a session in waiting — plus in-flight link states naming
+  the account), and unlink every external identity whose provider vouches for a
+  DIFFERENT address (`user.OAuthReclaimer` → `oauth.ReclaimAccount`, wired in
+  `internal/server` for the API and by the CLI container over the same
+  `server.NewOAuthReclaimer`; the proven address is the presented one on the reset path
+  and the account's own on the CLI path, where the operator is authoritative). What the
+  reclaim deliberately does NOT touch is data sharing: connections and budget grants
+  survive, because a routine reset must not dissolve a family's shared budget.
+  Registration does not always verify email, so a squatter could have linked their own
+  provider account to an address they never owned; revoking passwords and tokens alone would leave that link
+  as a way back in. An identity claiming the proven address survives — obtaining one
+  needs that mailbox — which is also why the passwordless "Set a password" flow (the
+  same reset endpoint) keeps its provider. All of it shares the password write's
+  transaction. `unlink-identity` carries a small cascade of its own: it drops that
+  provider's pending sign-in handoffs along with the identity row, and a redemption
+  re-checks its identity under the same user row lock, so a code the unlinked provider
+  authorized can no longer be claimed.
+- **The credentials fence** (`users.credentials_generation`): sweeping what exists is
+  not enough on its own, because a request that read its evidence BEFORE the reclaim
+  can still write after it — redeeming a handoff it consumed a moment earlier, landing
+  an identity from a callback already in flight, or minting a PAT under a session the
+  reclaim just revoked. Every such flow captures the user's generation when it reads
+  its evidence (the verified password hash, the resolved oauth user — carried on the
+  handoff row as `oauth_handoffs.credentials_generation`) and presents it again at
+  write time. Session inserts (`InsertAccessTokenIfGeneration`) and identity writes
+  (`InsertIdentityIfGeneration` / `UpdateIdentityIfGeneration`) are conditional on it
+  inside the SQL, so the DATABASE
+  decides the race: the reclaim bumps the generation, and anything in flight writes
+  zero rows and fails closed. Checking in Go would be the race it is meant to close.
+  The fence only sees COMMITTED rows, so it is paired with a lock: every write to an
+  existing user's row and every credential mint — session and PAT inserts, and the
+  identity INSERTs of complete-link, auto-link and provisioning — runs under the user
+  row lock (`Repository.LockRow`), taken before the row is read and held in the same
+  transaction as the write, and the reclaim takes it first
+  too (it bumps `users` before it sweeps) — so on PostgreSQL a write racing the
+  reclaim's still-open transaction blocks instead of slipping past, and a
+  whole-aggregate `Save` can never put back a row read before the reclaim landed.
+  The narrow fenced `users` UPDATEs (`rehashLegacyPassword`, `mirrorEmailDrift`) are
+  the one exception, and need no lock: PostgreSQL serializes concurrent UPDATEs on the
+  row itself and re-evaluates their WHERE against the committed version, so the fence
+  is decided after the reclaim rather than before it. The reset re-reads the locked
+  row's address too: a confirmed email change landing in the window makes it a
+  different account, and the reset is refused rather than written to it. Its code is
+  fenced the same way: the reset re-reads the presented code under that lock and
+  consumes it row-counted, and `remind-password` replaces a user's codes under the
+  same lock, so one code is one reset — a code a fresh remind replaced, or one a
+  concurrent reset already took, resets nothing. Verification codes, like reset
+  and email-change codes, are issued and consumed under the user row lock, so a
+  confirmation can only ever take the row it checked and never sweeps a code a
+  concurrent resend has just emailed.
 - Dead rows (expired/revoked > 30 days ago) are purged opportunistically at login;
   `token:purge [days]` does the same globally in one indexed DELETE (the
   revoked_at/expires_at indexes exist for it).
@@ -708,6 +945,39 @@ In the distroless image these run via the binary directly, e.g.
 - Login lives under `internal/user/api` (`/api/v1/user/login-user`).
 - Token refresh is not implemented (sessions slide instead; clients re-authenticate
   after 30 days of inactivity).
+- **Provider sign-in** (`internal/oauth`): a state-carrying redirect to the provider, a
+  callback that verifies the ID token and resolves to an existing
+  `(provider, issuer, subject)` identity, an auto-link by verified email, or (when
+  `ECONUMO_ALLOW_REGISTRATION` is on) a
+  new passwordless account (`users.algorithm = 'none'`), then a one-time, 60-second
+  handoff code the client exchanges for a normal session — never a token in a redirect URL
+  or server log. The `start-*` call also returns a **flow secret** (stored in `sessionStorage`
+  on the web, `localStorage` in the app) that the client must present alongside the handoff:
+  the flow is bound to the client that began it, so a forged callback cannot log a victim
+  into an attacker's account. **Auto-link happens only into a PASSWORDLESS account**
+  (one a provider created, whose owner therefore already proved the address); a verified
+  email matching an account that has a password is refused with `account_exists_password`,
+  because whoever set that password never had to prove they own the address. No eviction
+  is thorough enough there — a squatter's other linked identities, shares and invites
+  would be inherited by whoever the provider vouched for — so the owner signs in with
+  their password (or resets it through the mailbox the provider just proved they hold)
+  and links the provider from Settings instead. That reset is itself the reclaim: see
+  the revocation cascade above for what it takes away, and the credentials fence below
+  for what stops an in-flight sign-in from outrunning it. **A link started from Settings writes nothing on
+  the callback**: the provider redirects whichever browser followed the authorization URL,
+  so the callback parks the resolved identity in a one-shot *link* handoff and the
+  authenticated `POST /api/v1/oauth/complete-link` performs the write once the initiating
+  client presents both its flow secret and a session for the account the link started
+  from — without that, an attacker's own start-link URL opened by a victim would bind the
+  victim's identity to the attacker's account. Identities live in `users_identities`,
+  keyed by `(provider, issuer, subject)`; the issuer is in the key because the custom
+  slot's provider id is always `oidc`, so repointing `ECONUMO_OIDC_ISSUER_URL` must not
+  let a subject collision at the new issuer resolve to the old issuer's user (a returning
+  user matched by verified email has their one row per slot repointed instead).
+  Every oauth-originated session stamps `provider` on the row (Google, Apple, and the custom
+  OIDC slot alike); only the custom OIDC slot also stores `id_token`, since Google and Apple
+  publish no end-session endpoint. `logout-user` returns a non-empty `logoutUrl` only for a
+  session that carries an `id_token` — i.e. an OIDC session — built from that stored value.
 
 ## Wire & data contract (frozen)
 
@@ -747,12 +1017,14 @@ data unreadable. Most are also asserted by the test suite.
   authenticator error — no internals leak).
 - Sessions: sliding `expires_at = last_used_at + 30d`, touched at most every 5 minutes.
   PAT `expires_at` never moves (NULL = never expires).
+- `scope`: `"full"` | `"ingest"` on `create-personal-token` (required; blank → `common.is_blank`,
+  unknown → `common.invalid_choice`) and echoed on `get-personal-token-list`.
 
 ### Encodings, messages, routes
 - Datetimes: `"2006-01-02 15:04:05"` — space separator, no zone, no fractional seconds.
 - `isArchived` → int `0`/`1` (not bool); category `type` → alias string `"expense"`/`"income"`; empty string for NULL where the schema does.
 - Validation strings are exact per language and asserted by tests in `en` (the default with no `Accept-Language` and no stored preference), e.g. `"Category name must be 3-64 characters"` (field `name`), `"Invalid credentials."` (401), `"This value should not be blank."` (code `common.is_blank`); coded errors render from the `errors.*` catalogue in the caller's language (see the envelope section).
-- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`; everything else needs a valid access token.
+- Exact route paths/methods are contract, e.g. `POST /api/v1/user/login-user`, `POST /api/v1/user/register-user`. Login takes `username` (email) + `password` and returns `{"token", "user"}`; register returns the created user **without** a token. Public routes: login, register, remind-password, reset-password, confirm-email, resend-verification-code, `/api/doc`, `/api/doc.json`, and the six public `oauth` routes (`get-provider-list`, `start-login`, `callback-google`, `callback-oidc`, `callback-apple`, `exchange-handoff`); everything else needs a valid access token.
 - Data: ids are stored as `TEXT`. New ids are UUIDv7; existing ids are never rewritten (they're FK targets and held by clients).
 - `avatar` (user embeds) → `"<icon>:<color>"`, e.g. `"face:fuchsia"` — a Material
   icon ligature name plus a color slug from the 7-slug allowlist in
@@ -804,6 +1076,80 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Transaction import (Apple Wallet)**: one `import_sources` row per user per
+  provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
+  normalized name and starts `unmapped` — its events queue (`import_transaction_links`
+  with no transaction) until the user maps it to an OWNED account (`link-account`
+  replays the queue in one run) or ignores it. Ingest is scope-gated (`ingest` PATs),
+  exact-duplicate-safe (`(source, external_account_id, external_transaction_id)`), and never fails the
+  request on a bad transaction — parse errors land in `import_events.status = failed`
+  for the queue page's "needs attention" list. Imported transactions read
+  `isImported: 1`; `get-transaction-import-list` is their provenance.
+- **Transaction import (SimpleFIN pull)**: the client claims the one-shot setup token
+  through `claim-setup-token` (the server returns the access URL and keeps nothing), encrypts
+  it in the browser with a passphrase-wrapped data key (`web/src/lib/importCrypto.ts`; the
+  wrapped key lives in `import_credential_keys`, one row per user; the unwrapped key stays
+  non-extractable in IndexedDB), and stores only the ciphertext on the source. Every
+  `list-external-accounts`/`sync-source` call carries the plaintext access URL in the body —
+  "at rest zero-knowledge, in flight trusted" — and it is never persisted, logged, or
+  formatted into an error. A sync is one `import_runs` row; per-account failures leave the
+  run `partial` (so do rows the bridge returned in an unparsable shape), a bridge failure leaves it `failed`; `last_synced_at` moves only on
+  `completed`/`partial`. Sync is manual (a button); sync-on-open is a follow-up.
+- **Transaction import (rules)**: one `import_rules` row per rule, per user, optionally scoped
+  to a source; `classify` rules only fill empty fields on newly imported rows (first match per
+  field in priority order, labels unioned up to 10), `skip` rules drop the row after currency
+  conversion and before matching and beat every classify rule; the ledger row snapshots what was
+  applied (`applied*` on `get-transaction-import-list`) and the SPA diffs a later edit against it
+  to offer a rule; `apply-rule` backfills existing imports by run/source/all, skipping edited
+  rows unless `includeEdited`.
+- **OAuth/OIDC auto-link and email verification**: a callback with a verified (or
+  `ECONUMO_OIDC_TRUST_EMAIL`-trusted) email auto-links to an existing **passwordless**
+  account by `lower(email)` (no matching identity yet) — no confirmation screen, since both
+  the account's address and the new claim were proven by providers. A match on an account
+  that has a password is refused (`account_exists_password`), never merged. An unverified
+  email is rejected (`email_unverified`) for every intent, including an already-linked
+  identity signing in again and a link started from Settings — there is no path around the
+  trust flag. **Every change to the set of sign-in methods emails the account owner** a
+  best-effort notice naming the provider's display name in the account's stored language:
+  `emails.identity_linked.*` when a provider is auto-linked or linked from Settings
+  (`complete-link`, on the INSERT branch only — a relink that just refreshes a stored
+  email grants nothing and stays silent), `emails.identity_unlinked.*` on
+  `unlink-identity`. The notice is about DETECTION, not surprise — mail is the one channel
+  a caller holding a stolen session cannot suppress — which is why the flows the owner
+  started notify too. Each send sits outside the write's transaction and never fails it (or
+  the callback redirect). The reclaim's identity sweep (`ReclaimAccount`) is the one
+  deliberate exception: it runs inside a password reset the owner just completed, which
+  announces itself.
+- **Notice emails reach every linked address**: the three NOTICES — identity linked,
+  identity unlinked, and the change-email heads-up to the old address — are CC'd to the
+  addresses the owner's linked providers reported (`users_identities.email`, via
+  `oauth.Service.ListIdentityEmails`; the user feature reads it through its
+  `IdentityEmailLister` port, wired in `internal/server` like `OAuthReclaimer`). The three
+  CODE emails are not: a reset, verification or change-email code exists to prove control
+  of one specific mailbox, so copying it elsewhere would defeat the check it exists for.
+  `mailer.ccAddresses` drops the To address and dedupes case-insensitively, so the primary
+  address never appears twice. Resolving the list is best-effort — a lookup failure sends
+  the notice to the primary address alone rather than failing it — and the unlink notice
+  copies the addresses that REMAIN, the removed row being gone by the time it sends.
+- **OAuth app return**: an app-client flow lands on `<ECONUMO_URL>/oauth/app-return` when
+  app links are configured (`ECONUMO_APP_LINKS_IOS`/`_ANDROID`) and on the private
+  `com.econumo.app://oauth` scheme otherwise. Either way the one-shot code rides in the
+  fragment (`#handoff=` / `#linkHandoff=`) and failures in the query (`?error=` /
+  `?linkError=`), so a handoff never reaches a server log or a `Referer` header on the https
+  variant. The https form matters because only the associated app can receive it (RFC 8252
+  §7): a counterfeit app that registers the private scheme can otherwise start its own flow,
+  hold the flow secret, and catch the victim's handoff.
+- **OAuth email drift**: when a provider's claimed email differs from the signed-in user's
+  stored email, the stored email is left alone UNLESS the user is passwordless, has exactly
+  one linked identity, and no other user already holds the new address — in that narrow case
+  (the IdP is the account's sole authority) the primary email is replaced immediately after,
+  in its own transaction. The rule stops applying the moment the user sets a password or
+  links a second identity.
+- **RP-initiated logout is web-only**: `logout-user` returns `logoutUrl` when the ending
+  session's provider published an `end_session_endpoint` (the custom OIDC slot only — Google
+  and Apple publish none); the web client navigates there, landing back at
+  `<ECONUMO_URL>/login`, while the app always logs out locally and shows the "your {provider}
+  session may still be active" notice instead.
 
 ## Deployment
 

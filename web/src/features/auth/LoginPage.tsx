@@ -11,10 +11,13 @@ import { FailDialog } from '@/components/FailDialog'
 import { PasswordInput } from '@/components/PasswordInput'
 import * as config from '@/lib/config'
 import { isNativeApp } from '@/lib/platform'
+import { useServerConfigFor } from '@/lib/appConfig'
 import { isForbidden, retryAfterSeconds } from '@/lib/apiError'
 import { getToken } from '@/lib/storage'
 import { isNotEmpty, isValidEmail, isValidHttpUrl } from '@/lib/validation'
 import { CustomServerSection } from './CustomServerSection'
+import { passwordLoginAvailable } from './oauthQueries'
+import { ProviderButtons } from './ProviderButtons'
 import { RecoveryDialog } from './RecoveryDialog'
 import { VerifyEmailDialog } from './VerifyEmailDialog'
 import { useLogin } from './queries'
@@ -36,6 +39,7 @@ export function LoginPage() {
   const [verifyOpen, setVerifyOpen] = useState(false)
   const [verifyCooldown, setVerifyCooldown] = useState(0)
   const sessionExpired = searchParams.get('reason') === 'expired'
+  const oauthError = searchParams.get('oauthError')
   const customApiAllowed = config.isCustomApiAllowed()
 
   const { register, handleSubmit, setValue, getValues, watch, control, formState: { errors } } = useForm<LoginForm>({
@@ -49,6 +53,12 @@ export function LoginPage() {
     },
   })
   const selfHostedChecked = watch('selfHosted')
+  // Watched so a custom server address typed below re-evaluates whether the
+  // password form is available (see passwordLoginAvailable); in the app the
+  // typed server's own config is fetched and decides.
+  watch('host')
+  useServerConfigFor(config.backendHost())
+  const passwordForm = passwordLoginAvailable()
 
   // The disclosure state persists immediately (not on submit), and collapsing
   // forgets the previously configured server address.
@@ -104,74 +114,91 @@ export function LoginPage() {
           </Alert>
         ) : null}
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-4" aria-label="Login form" noValidate>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="login-email">{t('user.form.email.label')}</Label>
-            <Input
-              className="h-11"
-              id="login-email"
-              type="email"
-              placeholder={t('user.form.email.placeholder')}
-              aria-required="true"
-              {...register('username', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
-                  email: (v) => isValidEmail(v) || t('user.form.email.validation.invalid_email'),
-                },
-                onChange: (e: ChangeEvent<HTMLInputElement>) => {
-                  if (getValues('rememberEmail')) {
-                    config.rememberedEmail(e.target.value)
-                  }
-                },
-              })}
-            />
-            {errors.username ? <p className="text-sm text-destructive">{errors.username.message}</p> : null}
-          </div>
+        {oauthError ? (
+          <Alert variant="destructive">
+            <AlertDescription>
+              {/* "Sign in with your password" is no remedy while passwords are off */}
+              {oauthError === 'account_exists_password' && !passwordForm
+                ? t('auth.oauth.errors.account_exists_contact_admin')
+                : t(`auth.oauth.errors.${oauthError}`, { defaultValue: t('auth.oauth.errors.provider_error') })}
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="login-password">{t('user.form.password.label')}</Label>
-            <PasswordInput
-              className="h-11"
-              id="login-password"
-              placeholder={t('user.form.password.placeholder')}
-              aria-required="true"
-              {...register('password', {
-                validate: {
-                  required: (v) => isNotEmpty(v) || t('user.form.password.validation.required_field'),
-                },
-              })}
-            />
-            {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Controller
-              control={control}
-              name="rememberEmail"
-              render={({ field }) => (
-                <Checkbox
-                  id="login-remember-email"
-                  checked={field.value}
-                  onCheckedChange={(checked) => {
-                    field.onChange(checked)
-                    if (checked) {
-                      config.rememberedEmail(getValues('username'))
-                    } else {
-                      config.clearRememberedEmail()
-                    }
-                  }}
+        <form onSubmit={passwordForm ? onSubmit : (e) => e.preventDefault()} className="flex flex-col gap-4" aria-label="Login form" noValidate>
+          {passwordForm ? (
+            <>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="login-email">{t('user.form.email.label')}</Label>
+                <Input
+                  className="h-11"
+                  id="login-email"
+                  type="email"
+                  placeholder={t('user.form.email.placeholder')}
+                  aria-required="true"
+                  {...register('username', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.email.validation.required_field'),
+                      email: (v) => isValidEmail(v) || t('user.form.email.validation.invalid_email'),
+                    },
+                    onChange: (e: ChangeEvent<HTMLInputElement>) => {
+                      if (getValues('rememberEmail')) {
+                        config.rememberedEmail(e.target.value)
+                      }
+                    },
+                  })}
                 />
-              )}
-            />
-            <Label htmlFor="login-remember-email">{t('auth.form.sign_in.remember_me')}</Label>
-          </div>
+                {errors.username ? <p className="text-sm text-destructive">{errors.username.message}</p> : null}
+              </div>
 
-          <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={login.isPending}>
-            {t('auth.form.sign_in.action.sign_in')}
-          </Button>
-          <Button type="button" variant="secondary" className="w-full h-11" onClick={() => setRecoveryOpen(true)}>
-            {t('auth.form.sign_in.action.forget_password')}
-          </Button>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="login-password">{t('user.form.password.label')}</Label>
+                <PasswordInput
+                  className="h-11"
+                  id="login-password"
+                  placeholder={t('user.form.password.placeholder')}
+                  aria-required="true"
+                  {...register('password', {
+                    validate: {
+                      required: (v) => isNotEmpty(v) || t('user.form.password.validation.required_field'),
+                    },
+                  })}
+                />
+                {errors.password ? <p className="text-sm text-destructive">{errors.password.message}</p> : null}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={control}
+                  name="rememberEmail"
+                  render={({ field }) => (
+                    <Checkbox
+                      id="login-remember-email"
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked)
+                        if (checked) {
+                          config.rememberedEmail(getValues('username'))
+                        } else {
+                          config.clearRememberedEmail()
+                        }
+                      }}
+                    />
+                  )}
+                />
+                <Label htmlFor="login-remember-email">{t('auth.form.sign_in.remember_me')}</Label>
+              </div>
+
+              <Button type="submit" className="w-full bg-econumo-yellow text-econumo-yellow-text hover:bg-econumo-yellow/85 h-11" disabled={login.isPending}>
+                {t('auth.form.sign_in.action.sign_in')}
+              </Button>
+              <Button type="button" variant="secondary" className="w-full h-11" onClick={() => setRecoveryOpen(true)}>
+                {t('auth.form.sign_in.action.forget_password')}
+              </Button>
+            </>
+          ) : null}
+
+          <ProviderButtons intent="login" divider={passwordForm} />
 
           {customApiAllowed ? (
             <CustomServerSection open={selfHostedChecked} onToggle={toggleCustomServer}>

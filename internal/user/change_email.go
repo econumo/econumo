@@ -49,20 +49,22 @@ func (s *Service) RequestEmailChange(ctx context.Context, userID vo.Id, req mode
 	}
 
 	now := s.clock.Now()
-	if err := s.issueEmailChangeCode(ctx, u.ID, newEmail, u.Name, now); err != nil {
+	if err := s.issueEmailChangeCode(ctx, u, newEmail, now); err != nil {
 		return nil, err
 	}
 	s.markEmailChangeSent(key)
 	if s.changeMailer != nil {
-		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail); nerr != nil {
+		if nerr := s.changeMailer.SendEmailChangeNotice(ctx, strings.TrimSpace(currentEmail), u.Name, newEmail,
+			s.linkedEmails(ctx, userID)); nerr != nil {
 			return nil, nerr
 		}
 	}
 	return &model.RequestEmailChangeResult{}, nil
 }
 
-// ConfirmEmailChange validates the code, commits the new email, marks it
-// verified, deletes the pending row, and revokes other sessions. A
+// ConfirmEmailChange validates the code, then under the user's row lock
+// consumes the pending request — the grant the new email rests on — and commits
+// the address, marking it verified, before revoking the other sessions. A
 // missing/wrong/expired code is a generic invalid-code error (anti-enumeration,
 // though this is authenticated); failed attempts count toward the cap.
 func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID vo.Id, req model.ConfirmEmailChangeRequest) (model.CurrentUserResult, error) {
@@ -90,33 +92,52 @@ func (s *Service) ConfirmEmailChange(ctx context.Context, userID, currentTokenID
 		s.failAttempt(RateScopeConfirmEmailChange, key)
 		return empty, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
 	}
-	// Commit-time race guard: the target could have been taken since the request.
-	exists, eerr := s.repo.ExistsByEmail(ctx, cr.NewEmail)
-	if eerr != nil {
-		return empty, eerr
-	}
-	if exists {
-		return empty, &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
-	}
-
 	encrypted, eerr := s.encode.Encode(cr.NewEmail)
 	if eerr != nil {
 		return empty, eerr
 	}
 	var updated *model.User
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The users row first, then the grant row: the same order the reclaim
+		// takes (see reclaimCredentials), so the two can only serialize, never
+		// deadlock.
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		// The pending row is this confirmation's authority, so consuming it is
+		// what proves the authority was still there: a reclaim (or a concurrent
+		// confirm) that already took it leaves nothing to delete.
+		taken, cerr := s.emailChangeRequests.Consume(ctx, cr.ID, userID)
+		if cerr != nil {
+			return cerr
+		}
+		if taken != 1 {
+			return invalid
+		}
 		u, gerr := s.repo.GetByID(ctx, userID)
 		if gerr != nil {
 			return gerr
 		}
+		// Commit-time race guard: the target could have been taken since the
+		// request. Inside the transaction, so the check and the write agree.
+		exists, xerr := s.repo.ExistsByEmail(ctx, cr.NewEmail)
+		if xerr != nil {
+			return xerr
+		}
+		if exists {
+			return &errs.ValidationError{Msg: "User already exists", MsgCode: errs.CodeUserAlreadyExists}
+		}
+		// Only the email columns, under the generation read after the lock: a
+		// full aggregate Save would carry the pre-reset password back with it.
+		rows, uerr := s.repo.ReplaceEmailIfGeneration(ctx, userID, encrypted, now, u.CredentialsGeneration)
+		if uerr != nil {
+			return uerr
+		}
+		if rows != 1 {
+			return invalid
+		}
 		u.UpdateEmail(encrypted, now)
 		u.MarkEmailVerified(now)
-		if serr := s.repo.Save(ctx, u); serr != nil {
-			return serr
-		}
-		if derr := s.emailChangeRequests.DeleteByUser(ctx, userID); derr != nil {
-			return derr
-		}
 		updated = u
 		return nil
 	}); err != nil {
@@ -160,7 +181,7 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 	if err != nil {
 		return nil, 0, err
 	}
-	if err := s.issueEmailChangeCode(ctx, userID, cr.NewEmail, u.Name, now); err != nil {
+	if err := s.issueEmailChangeCode(ctx, u, cr.NewEmail, now); err != nil {
 		return nil, 0, err
 	}
 	return result, fullGap, nil
@@ -168,23 +189,41 @@ func (s *Service) ResendEmailChangeCode(ctx context.Context, userID vo.Id) (*mod
 
 // issueEmailChangeCode generates a fresh code, replaces any pending row for the
 // user (preserving newEmail), and emails the code to the new address. It does
-// NOT rate-limit — callers own that.
-func (s *Service) issueEmailChangeCode(ctx context.Context, userID vo.Id, newEmail, name string, now time.Time) error {
+// NOT rate-limit — callers own that. The insert is fenced on u's credentials
+// generation — the one read together with the password the caller verified —
+// so a reset committing in between refuses the grant rather than handing the
+// old session a way to rewrite the recovered account's login key. The users row
+// is locked first (the same order the reclaim takes, so the two serialize and
+// cannot deadlock) because the fence alone is not enough on PostgreSQL: under
+// READ COMMITTED a reclaim whose users UPDATE has not committed yet is
+// invisible to the EXISTS check, so an unfenced insert could still land after
+// the reclaim swept the pending rows.
+func (s *Service) issueEmailChangeCode(ctx context.Context, u *model.User, newEmail string, now time.Time) error {
 	code, err := generatePasswordCode()
 	if err != nil {
 		return err
 	}
-	cr := model.NewEmailChangeRequest(vo.NewId(), userID, newEmail, HashResetCode(code), now)
+	cr := model.NewEmailChangeRequest(vo.NewId(), u.ID, newEmail, HashResetCode(code), now)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		if derr := s.emailChangeRequests.DeleteByUser(ctx, userID); derr != nil {
+		if lerr := s.repo.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
+		if derr := s.emailChangeRequests.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}
-		return s.emailChangeRequests.Save(ctx, cr)
+		rows, serr := s.emailChangeRequests.Save(ctx, cr, u.CredentialsGeneration)
+		if serr != nil {
+			return serr
+		}
+		if rows != 1 {
+			return errs.NewUnauthorized("Invalid access token")
+		}
+		return nil
 	}); err != nil {
 		return err
 	}
 	if s.changeMailer != nil {
-		return s.changeMailer.SendEmailChangeCode(ctx, newEmail, name, code)
+		return s.changeMailer.SendEmailChangeCode(ctx, newEmail, u.Name, code)
 	}
 	return nil
 }
@@ -214,4 +253,18 @@ func (s *Service) emailChangeSentCooldown(key string, now time.Time) time.Durati
 		remaining += time.Second - rem
 	}
 	return remaining
+}
+
+// linkedEmails resolves the addresses the user's providers vouched for. The
+// copy list is a nicety, so a lookup failure yields none rather than failing
+// the notice the user is waiting on.
+func (s *Service) linkedEmails(ctx context.Context, userID vo.Id) []string {
+	if s.identityEmails == nil {
+		return nil
+	}
+	addrs, err := s.identityEmails.ListEmails(ctx, userID)
+	if err != nil {
+		return nil
+	}
+	return addrs
 }

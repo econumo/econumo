@@ -2,6 +2,7 @@ package user_test
 
 import (
 	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
@@ -40,14 +41,27 @@ func newChangeEmailEnv(t *testing.T) (svc *appuser.Service, repo *userrepo.Repo,
 	db := dbtest.New(t)
 	clk = &testClock{now: authT0}
 	enc = auth.NewEncodeService("")
-	hasher := auth.NewPasswordHasher()
 	repo = userrepo.NewRepo(db.Engine, db.TX)
 	tokens = userrepo.NewAccessTokenRepo(db.Engine, db.TX)
-	lookup := currencyrepo.New(db.Engine, db.TX)
-	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
-	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
 	ecRepo = userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
 	cap = &captureMailer{}
+	svc, _ = newChangeEmailSvc(t, db, repo, ecRepo, enc, cap, clk)
+	return
+}
+
+// newChangeEmailSvc wires the change-email Service over the given persistence
+// seams -- a race test hands in decorated ones -- and over a real
+// password-request store, so a test can land a genuine password reset (the
+// account reclaim) in the middle of a change-email use case. That store is
+// returned for seeding the reset code.
+func newChangeEmailSvc(t *testing.T, db *dbtest.DB, repo appuser.Repository, ecReqs appuser.EmailChangeRequests, enc *auth.EncodeService, cap *captureMailer, clk *testClock) (*appuser.Service, *userrepo.PasswordRequestRepo) {
+	t.Helper()
+	hasher := auth.NewPasswordHasher()
+	tokens := userrepo.NewAccessTokenRepo(db.Engine, db.TX)
+	lookup := currencyrepo.New(db.Engine, db.TX)
+	budgets := server.NewUserBudgetAccess(db.Engine, db.TX)
+	prRepo := userrepo.NewPasswordRequestRepo(db.Engine, db.TX)
+	evRepo := userrepo.NewEmailVerificationRepo(db.Engine, db.TX)
 	changeMailer := mailer.NewChangeEmailSender(cap, "noreply@econumo.test", "")
 	limiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
@@ -57,11 +71,12 @@ func newChangeEmailEnv(t *testing.T) (svc *appuser.Service, repo *userrepo.Repo,
 		Window: time.Hour,
 		Global: 0,
 	}, clk)
-	svc = appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets, nil, nil,
+	svc := appuser.NewService(repo, db.TX, enc, hasher, tokens, server.NewUserCurrencyLookup(lookup), budgets,
+		prRepo, nil,
 		evRepo, nil,
-		ecRepo, changeMailer,
+		ecReqs, changeMailer,
 		appuser.FixedAvatarPicker(appuser.DefaultAvatar), clk, limiter, false, 0, false)
-	return
+	return svc, prRepo
 }
 
 func createChangeEmailUser(t *testing.T, svc *appuser.Service, name, email, password string) vo.Id {
@@ -355,5 +370,260 @@ func TestResendEmailChangeCode_Cooldown(t *testing.T) {
 	}
 	if len(cap.msgs) != 3 {
 		t.Fatalf("resend past the gap must send a fresh code, got %d messages", len(cap.msgs))
+	}
+}
+
+// hookedRequests fires a hook once, right after GetByUser has produced the row
+// the confirm path treats as its evidence: the window an account reclaim has to
+// win for the race tests below.
+type hookedRequests struct {
+	appuser.EmailChangeRequests
+	afterGetByUser func()
+}
+
+func (h *hookedRequests) GetByUser(ctx context.Context, userID vo.Id) (*model.EmailChangeRequest, error) {
+	cr, err := h.EmailChangeRequests.GetByUser(ctx, userID)
+	if err == nil && h.afterGetByUser != nil {
+		fire := h.afterGetByUser
+		h.afterGetByUser = nil
+		fire()
+	}
+	return cr, err
+}
+
+// hookedUsers is the same one-shot hook on the user row RequestEmailChange
+// verifies the password against.
+type hookedUsers struct {
+	appuser.Repository
+	afterGetByID    func()
+	afterGetByEmail func()
+}
+
+func (h *hookedUsers) GetByEmail(ctx context.Context, email string) (*model.User, error) {
+	u, err := h.Repository.GetByEmail(ctx, email)
+	if err == nil && h.afterGetByEmail != nil {
+		fire := h.afterGetByEmail
+		h.afterGetByEmail = nil
+		fire()
+	}
+	return u, err
+}
+
+func (h *hookedUsers) GetByID(ctx context.Context, id vo.Id) (*model.User, error) {
+	u, err := h.Repository.GetByID(ctx, id)
+	if err == nil && h.afterGetByID != nil {
+		fire := h.afterGetByID
+		h.afterGetByID = nil
+		fire()
+	}
+	return u, err
+}
+
+// resetChangeEmailPassword runs the production reset flow (seeding the code the
+// way remind persists it), so a hook lands the real reclaim: generation bump,
+// grant sweep, token revocation.
+func resetChangeEmailPassword(t *testing.T, svc *appuser.Service, prRepo *userrepo.PasswordRequestRepo, uid vo.Id, email, newPassword string) {
+	t.Helper()
+	ctx := context.Background()
+	pr := &model.PasswordRequest{
+		ID: vo.NewId(), UserID: uid, Code: appuser.HashResetCode("482913"),
+		CreatedAt: authT0, UpdatedAt: authT0, ExpiredAt: authT0.Add(10 * time.Minute),
+	}
+	if err := prRepo.Save(ctx, pr); err != nil {
+		t.Fatalf("seed password request: %v", err)
+	}
+	if _, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
+		Username: email, Code: "482913", Password: newPassword,
+	}); err != nil {
+		t.Fatalf("ResetPassword: %v", err)
+	}
+}
+
+// A confirmation that read its pending request before a reset committed must
+// not land after it: the reset is the account's ownership proof and sweeps the
+// pending change, so the recovered account keeps its own address.
+func TestConfirmEmailChange_ResetBetweenTheRequestReadAndTheWriteIsRefused(t *testing.T) {
+	db := dbtest.New(t)
+	clk := &testClock{now: authT0}
+	enc := auth.NewEncodeService("")
+	repo := userrepo.NewRepo(db.Engine, db.TX)
+	reqs := &hookedRequests{EmailChangeRequests: userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)}
+	cap := &captureMailer{}
+	svc, prRepo := newChangeEmailSvc(t, db, repo, reqs, enc, cap, clk)
+	ctx := context.Background()
+
+	uid := createChangeEmailUser(t, svc, "Owner", "owner@econumo.test", "secretpass1")
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "attacker@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	code := changeCodeFrom(t, cap.msgs[0].Text)
+
+	reqs.afterGetByUser = func() {
+		resetChangeEmailPassword(t, svc, prRepo, uid, "owner@econumo.test", "new-owner-password")
+	}
+
+	_, err := svc.ConfirmEmailChange(ctx, uid, vo.Id{}, model.ConfirmEmailChangeRequest{Code: code})
+	if !isValidationCode(err, errs.CodeUserVerificationCodeInvalid) {
+		t.Fatalf("want the invalid-code error, got %v", err)
+	}
+	u, gerr := repo.GetByID(ctx, uid)
+	if gerr != nil {
+		t.Fatalf("GetByID: %v", gerr)
+	}
+	if got, _ := enc.Decode(u.Email); got != "owner@econumo.test" {
+		t.Fatalf("the confirmation crossed the reclaim: email is now %q", got)
+	}
+}
+
+// A pending change is a grant to rewrite the login key, so it must not be
+// created by a session the reclaim has already invalidated -- even when the
+// password it presented was verified against the pre-reset row.
+func TestRequestEmailChange_ResetBetweenThePasswordCheckAndTheInsertIsRefused(t *testing.T) {
+	db := dbtest.New(t)
+	clk := &testClock{now: authT0}
+	enc := auth.NewEncodeService("")
+	users := &hookedUsers{Repository: userrepo.NewRepo(db.Engine, db.TX)}
+	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
+	cap := &captureMailer{}
+	svc, prRepo := newChangeEmailSvc(t, db, users, ecRepo, enc, cap, clk)
+	ctx := context.Background()
+
+	uid := createChangeEmailUser(t, svc, "Owner", "owner@econumo.test", "secretpass1")
+	users.afterGetByID = func() {
+		resetChangeEmailPassword(t, svc, prRepo, uid, "owner@econumo.test", "new-owner-password")
+	}
+
+	_, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "attacker@econumo.test", Password: "secretpass1",
+	})
+	var unauthorized *errs.UnauthorizedError
+	if !errors.As(err, &unauthorized) {
+		t.Fatalf("want *errs.UnauthorizedError, got %v", err)
+	}
+	if _, gerr := ecRepo.GetByUser(ctx, uid); !isNotFound(gerr) {
+		t.Fatalf("a pending request was created after the reclaim: %v", gerr)
+	}
+}
+
+// A reset code proves control of ONE address, and only for as long as that
+// address is still the account's. A confirmed email change landing between the
+// reset's lookup and its row lock leaves the locked row pointing at a different
+// mailbox, so the reset must refuse it rather than hand the new password (and a
+// verified stamp) to whoever owns that address now.
+func TestResetPassword_EmailChangeConfirmedBeforeTheLockIsRefused(t *testing.T) {
+	db := dbtest.New(t)
+	clk := &testClock{now: authT0}
+	enc := auth.NewEncodeService("")
+	users := &hookedUsers{Repository: userrepo.NewRepo(db.Engine, db.TX)}
+	ecRepo := userrepo.NewEmailChangeRequestRepo(db.Engine, db.TX)
+	cap := &captureMailer{}
+	svc, prRepo := newChangeEmailSvc(t, db, users, ecRepo, enc, cap, clk)
+	ctx := context.Background()
+
+	uid := createChangeEmailUser(t, svc, "Owner", "owner@econumo.test", "secretpass1")
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "attacker@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	changeCode := changeCodeFrom(t, cap.msgs[0].Text)
+
+	pr := &model.PasswordRequest{
+		ID: vo.NewId(), UserID: uid, Code: appuser.HashResetCode("482913"),
+		CreatedAt: authT0, UpdatedAt: authT0, ExpiredAt: authT0.Add(10 * time.Minute),
+	}
+	if err := prRepo.Save(ctx, pr); err != nil {
+		t.Fatalf("seed password request: %v", err)
+	}
+
+	// The window: the reset has resolved the user by the address its code
+	// proves, and has not taken the row lock yet (the argon2 hash sits in
+	// between).
+	users.afterGetByEmail = func() {
+		if _, err := svc.ConfirmEmailChange(ctx, uid, vo.Id{}, model.ConfirmEmailChangeRequest{Code: changeCode}); err != nil {
+			t.Fatalf("ConfirmEmailChange: %v", err)
+		}
+	}
+
+	_, err := svc.ResetPassword(ctx, model.ResetPasswordRequest{
+		Username: "owner@econumo.test", Code: "482913", Password: "reset-password",
+	})
+	if !isValidationCode(err, errs.CodeUserResetPasswordError) {
+		t.Fatalf("want the reset-password error, got %v", err)
+	}
+	u, gerr := userrepo.NewRepo(db.Engine, db.TX).GetByID(ctx, uid)
+	if gerr != nil {
+		t.Fatalf("GetByID: %v", gerr)
+	}
+	if got, _ := enc.Decode(u.Email); got != "attacker@econumo.test" {
+		t.Fatalf("email = %q, want the confirmed change to stand", got)
+	}
+	if auth.NewPasswordHasher().Verify(u.Algorithm, u.Password, "reset-password", u.Salt) {
+		t.Fatal("the reset wrote its password onto a row whose address it never proved")
+	}
+}
+
+// stubIdentityEmails is the oauth feature's linked-address lookup as the user
+// service sees it.
+type stubIdentityEmails struct {
+	emails []string
+	err    error
+}
+
+func (s stubIdentityEmails) ListEmails(_ context.Context, _ vo.Id) ([]string, error) {
+	return s.emails, s.err
+}
+
+func TestRequestEmailChange_NoticeCcsLinkedAddressesButTheCodeDoesNot(t *testing.T) {
+	svc, _, _, _, _, cap, _ := newChangeEmailEnv(t)
+	ctx := context.Background()
+	uid := createChangeEmailUser(t, svc, "Cc Me", "old@econumo.test", "secretpass1")
+	// The account's own address is among the linked ones, as it is whenever a
+	// provider created or auto-linked the account; it must not be duplicated.
+	svc.SetIdentityEmailLister(stubIdentityEmails{emails: []string{"old@econumo.test", "alice@gmail.test"}})
+
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "new@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	if len(cap.msgs) != 2 {
+		t.Fatalf("want 2 emails (code + notice), got %d", len(cap.msgs))
+	}
+
+	// The CODE proves control of the proposed new mailbox, so it goes there and
+	// nowhere else -- copying it to a linked address would defeat that check.
+	code := cap.msgs[0]
+	if code.To != "new@econumo.test" || len(code.Cc) != 0 {
+		t.Errorf("code message = To %q Cc %v, want the new address alone", code.To, code.Cc)
+	}
+
+	notice := cap.msgs[1]
+	if notice.To != "old@econumo.test" {
+		t.Errorf("notice To = %q, want the OLD address", notice.To)
+	}
+	if len(notice.Cc) != 1 || notice.Cc[0] != "alice@gmail.test" {
+		t.Errorf("notice Cc = %v, want the other linked address only", notice.Cc)
+	}
+}
+
+func TestRequestEmailChange_SendsTheNoticeWhenTheListerFails(t *testing.T) {
+	svc, _, _, _, _, cap, _ := newChangeEmailEnv(t)
+	ctx := context.Background()
+	uid := createChangeEmailUser(t, svc, "Cc Me", "old@econumo.test", "secretpass1")
+	svc.SetIdentityEmailLister(stubIdentityEmails{err: errors.New("boom")})
+
+	if _, err := svc.RequestEmailChange(ctx, uid, model.RequestEmailChangeRequest{
+		NewEmail: "new@econumo.test", Password: "secretpass1",
+	}); err != nil {
+		t.Fatalf("RequestEmailChange: %v", err)
+	}
+	if len(cap.msgs) != 2 {
+		t.Fatalf("want 2 emails even with no copy list, got %d", len(cap.msgs))
+	}
+	if notice := cap.msgs[1]; notice.To != "old@econumo.test" || len(notice.Cc) != 0 {
+		t.Errorf("notice = To %q Cc %v, want the old address alone", notice.To, notice.Cc)
 	}
 }

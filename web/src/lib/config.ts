@@ -11,13 +11,16 @@ export interface LocaleOption {
 
 export interface EconumoConfig {
   ALLOW_REGISTRATION?: boolean | string
+  PASSWORD_LOGIN?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   VERSION_LABEL?: string
   INSTANCE_ID?: string
+  AI_ENABLED?: boolean
   BILLING_URL?: string
   LILTAG_CONFIG_URL?: string
   LILTAG_CACHE_TTL?: string
+  IMPORT_MATCHER?: { matchDays: number; tipDays: number; tipTolerancePct: number; tokenMinLength: number }
 }
 
 declare global {
@@ -138,6 +141,10 @@ export function getBillingUrl(): string {
   return window.econumoConfig?.BILLING_URL || ''
 }
 
+export function isAiEnabled(): boolean {
+  return window.econumoConfig?.AI_ENABLED === true
+}
+
 export function isCustomApiAllowed(): boolean {
   if (isNativeApp()) {
     return true
@@ -158,6 +165,17 @@ export function isRegistrationAllowed(): boolean {
     return allowRegistration
   }
   return allowRegistration === 'true'
+}
+
+export function isPasswordLoginAllowed(): boolean {
+  const passwordLogin = window.econumoConfig?.PASSWORD_LOGIN
+  if (passwordLogin === undefined) {
+    return true
+  }
+  if (typeof passwordLogin === 'boolean') {
+    return passwordLogin
+  }
+  return passwordLogin === 'true'
 }
 
 export function getInstanceId(): string {

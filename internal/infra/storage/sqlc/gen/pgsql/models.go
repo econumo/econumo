@@ -19,6 +19,9 @@ type AccessToken struct {
 	LastUsedAt time.Time
 	ExpiresAt  *time.Time
 	RevokedAt  *time.Time
+	Scope      string
+	Provider   *string
+	IDToken    *string
 }
 
 type Account struct {
@@ -92,6 +95,16 @@ type BudgetsElement struct {
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	SortKey    string
+}
+
+type BudgetsElementsComment struct {
+	ID        string
+	ElementID string
+	Period    time.Time
+	UserID    string
+	Comment   string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type BudgetsElementsLimit struct {
@@ -169,6 +182,116 @@ type Folder struct {
 	SortKey   string
 }
 
+type ImportAccountLink struct {
+	ID                string
+	SourceID          string
+	ExternalAccountID string
+	ExternalName      string
+	ExternalCurrency  *string
+	AccountID         *string
+	Mode              string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type ImportCredentialKey struct {
+	UserID         string
+	WrappedDataKey string
+	Kdf            string
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type ImportEvent struct {
+	ID          string
+	SourceID    string
+	RunID       *string
+	Payload     string
+	PayloadHash string
+	Status      string
+	ParseError  *string
+	ReceivedAt  time.Time
+}
+
+type ImportLinkAppliedLabel struct {
+	LinkID  string
+	LabelID string
+}
+
+type ImportRule struct {
+	ID               string
+	UserID           string
+	SourceID         *string
+	Action           string
+	MatchField       string
+	MatchType        string
+	MatchValue       string
+	IsCaseSensitive  bool
+	TargetCategoryID *string
+	TargetPayeeID    *string
+	TargetTagID      *string
+	Priority         int64
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}
+
+type ImportRuleLabel struct {
+	RuleID  string
+	LabelID string
+}
+
+type ImportRun struct {
+	ID                  string
+	UserID              string
+	SourceID            string
+	Provider            string
+	Params              string
+	Status              string
+	ImportedCount       int64
+	MatchedCount        int64
+	SkippedCount        int64
+	FailedCount         int64
+	StartedAt           time.Time
+	FinishedAt          *time.Time
+	QueuedCount         int64
+	AmountsUpdatedCount int64
+	Trigger             string
+	Errors              string
+}
+
+type ImportSource struct {
+	ID                   string
+	UserID               string
+	Provider             string
+	Name                 string
+	CredentialCiphertext *string
+	Status               string
+	LastSyncedAt         *time.Time
+	CreatedAt            time.Time
+	UpdatedAt            time.Time
+}
+
+type ImportTransactionLink struct {
+	ID                    string
+	SourceID              string
+	RunID                 *string
+	EventID               *string
+	ExternalAccountID     string
+	ExternalTransactionID string
+	TransactionID         *string
+	Status                string
+	ExternalPayee         string
+	ExternalDescription   string
+	ExternalAmount        string
+	ExternalCurrency      *string
+	ExternalPostedAt      time.Time
+	AppliedCategoryID     *string
+	AppliedPayeeID        *string
+	AppliedTagID          *string
+	AppliedRuleID         *string
+	ImportedAt            time.Time
+}
+
 type Label struct {
 	ID         string
 	UserID     string
@@ -188,6 +311,34 @@ type MessengerMessage struct {
 	CreatedAt   time.Time
 	AvailableAt time.Time
 	DeliveredAt *time.Time
+}
+
+type OauthHandoff struct {
+	CodeHash              string
+	Kind                  string
+	UserID                string
+	Provider              string
+	Issuer                string
+	Subject               string
+	Email                 string
+	FlowHash              string
+	IDToken               *string
+	CreatedAt             time.Time
+	ExpiresAt             time.Time
+	CredentialsGeneration int64
+}
+
+type OauthState struct {
+	StateHash    string
+	Provider     string
+	Nonce        string
+	CodeVerifier string
+	FlowHash     string
+	Client       string
+	Intent       string
+	LinkUserID   *string
+	CreatedAt    time.Time
+	ExpiresAt    time.Time
 }
 
 type OperationRequestsID struct {
@@ -265,22 +416,23 @@ type TransactionsLabel struct {
 }
 
 type User struct {
-	ID            string
-	Identifier    string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	Timezone      string
-	Language      string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	EmailVerified bool
+	ID                    string
+	Identifier            string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	Timezone              string
+	Language              string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 type UsersConnection struct {
@@ -317,6 +469,17 @@ type UsersHiddenCurrency struct {
 	UserID     string
 	CurrencyID string
 	CreatedAt  time.Time
+}
+
+type UsersIdentity struct {
+	ID        string
+	UserID    string
+	Provider  string
+	Issuer    string
+	Subject   string
+	Email     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }
 
 type UsersOption struct {

@@ -1,0 +1,262 @@
+package repo
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/errs"
+	"github.com/econumo/econumo/internal/shared/vo"
+	"github.com/econumo/econumo/internal/test/dbtest"
+	"github.com/econumo/econumo/internal/test/fixture"
+	userrepo "github.com/econumo/econumo/internal/user/repo"
+)
+
+func TestIdentityRepo(t *testing.T) {
+	db := dbtest.New(t)
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
+	r := NewIdentityRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	if _, err := r.GetByProviderSubject(ctx, "google", "https://idp.example.test", "s1"); err == nil {
+		t.Fatal("want not found")
+	} else if _, ok := errs.AsNotFound(err); !ok {
+		t.Fatalf("want *errs.NotFoundError, got %T", err)
+	}
+	id := model.NewIdentity(r.NextIdentity(), uid, "google", "https://idp.example.test", "s1", "a@example.test", now)
+	if n, err := r.InsertIfCurrent(ctx, id, 0); err != nil || n != 1 {
+		t.Fatalf("insert %d %v", n, err)
+	}
+	got, err := r.GetByProviderSubject(ctx, "google", "https://idp.example.test", "s1")
+	if err != nil || !got.UserID.Equal(uid) || got.Email != "a@example.test" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	id.UpdateEmail("b@example.test", now.Add(time.Minute))
+	if n, err := r.UpdateIfCurrent(ctx, id, 0); err != nil || n != 1 {
+		t.Fatalf("update %d %v", n, err)
+	}
+	// The reclaim fence: the same write at a generation the account has moved
+	// past touches nothing, which is what stops an in-flight callback from
+	// resurrecting an identity a password reset just removed.
+	if n, err := r.UpdateIfCurrent(ctx, id, 7); err != nil || n != 0 {
+		t.Fatalf("stale-generation update %d %v, want 0 rows", n, err)
+	}
+	got, _ = r.GetByUserProvider(ctx, uid, "google")
+	if got.Email != "b@example.test" || !got.UpdatedAt.Equal(now.Add(time.Minute)) {
+		t.Fatalf("update must refresh email/updated_at: %+v", got)
+	}
+	// Another issuer's row may reuse the subject: the key is (provider, issuer, subject).
+	other := model.NewIdentity(r.NextIdentity(), vo.MustParseId(fixture.New(t, db).User(fixture.User{Email: "two@example.test"})),
+		"google", "https://other.example.test", "s1", "c@example.test", now)
+	if n, err := r.InsertIfCurrent(ctx, other, 0); err != nil || n != 1 {
+		t.Fatalf("a colliding subject at another issuer must insert: %d %v", n, err)
+	}
+	if got, err := r.GetByProviderSubject(ctx, "google", "https://other.example.test", "s1"); err != nil || got.Email != "c@example.test" {
+		t.Fatalf("issuer must select the row: %+v %v", got, err)
+	}
+	if n, _ := r.CountByUser(ctx, uid); n != 1 {
+		t.Fatalf("count %d", n)
+	}
+	list, _ := r.ListByUser(ctx, uid)
+	if len(list) != 1 || list[0].Provider != "google" {
+		t.Fatalf("list %+v", list)
+	}
+	if n, err := r.DeleteByUserProvider(ctx, uid, "google"); err != nil || n != 1 {
+		t.Fatalf("delete %d %v", n, err)
+	}
+	if n, _ := r.DeleteByUserProvider(ctx, uid, "google"); n != 0 {
+		t.Fatal("second delete affects nothing")
+	}
+}
+
+func TestStateAndHandoffRepos(t *testing.T) {
+	db := dbtest.New(t)
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
+	ctx := context.Background()
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	states := NewStateRepo(db.Engine, db.TX)
+	st := &model.OAuthState{StateHash: "h1", Provider: "oidc", Nonce: "n", CodeVerifier: "v", FlowHash: "fh1", Client: "web", Intent: "link",
+		LinkUserID: uid, CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL)}
+	if err := states.Insert(ctx, st); err != nil {
+		t.Fatal(err)
+	}
+	got, err := states.Get(ctx, "h1")
+	if err != nil || !got.LinkUserID.Equal(uid) || got.Intent != "link" || got.CodeVerifier != "v" || got.FlowHash != "fh1" {
+		t.Fatalf("%+v %v", got, err)
+	}
+	st2 := &model.OAuthState{StateHash: "h2", Provider: "google", Nonce: "n", Client: "app", Intent: "login",
+		CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-50 * time.Minute)}
+	if err := states.Insert(ctx, st2); err != nil {
+		t.Fatal(err)
+	}
+	got2, _ := states.Get(ctx, "h2")
+	if !got2.LinkUserID.IsZero() {
+		t.Fatal("login state has no link user")
+	}
+	if n, _ := states.DeleteExpired(ctx, now); n != 1 {
+		t.Fatalf("expired purge %d", n)
+	}
+	if n, err := states.Delete(ctx, "h1"); err != nil || n != 1 {
+		t.Fatalf("first delete %d %v", n, err)
+	}
+	if _, err := states.Get(ctx, "h1"); err == nil {
+		t.Fatal("deleted state must be gone")
+	}
+	if n, err := states.Delete(ctx, "h1"); err != nil || n != 0 {
+		t.Fatalf("second delete must affect no rows: %d %v", n, err)
+	}
+
+	handoffs := NewHandoffRepo(db.Engine, db.TX)
+	tok := "id.tok"
+	h := &model.OAuthHandoff{CodeHash: "c1", Kind: model.OAuthHandoffKindLogin, UserID: uid, Provider: "oidc", FlowHash: "fh1",
+		IDToken: &tok, CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
+	if err := handoffs.Insert(ctx, h); err != nil {
+		t.Fatal(err)
+	}
+	hg, err := handoffs.Get(ctx, "c1")
+	if err != nil || hg.IDToken == nil || *hg.IDToken != tok || !hg.UserID.Equal(uid) || hg.FlowHash != "fh1" || hg.Kind != model.OAuthHandoffKindLogin {
+		t.Fatalf("%+v %v", hg, err)
+	}
+	// A link handoff round-trips the identity the callback refused to write.
+	link := &model.OAuthHandoff{CodeHash: "c3", Kind: model.OAuthHandoffKindLink, UserID: uid, Provider: "google",
+		Issuer: "https://idp.example.test", Subject: "s9", Email: "l@example.test", FlowHash: "fh2", CreatedAt: now, ExpiresAt: now.Add(model.OAuthHandoffTTL)}
+	if err := handoffs.Insert(ctx, link); err != nil {
+		t.Fatal(err)
+	}
+	lg, err := handoffs.Get(ctx, "c3")
+	if err != nil || lg.Kind != model.OAuthHandoffKindLink || lg.Issuer != "https://idp.example.test" || lg.Subject != "s9" || lg.Email != "l@example.test" {
+		t.Fatalf("%+v %v", lg, err)
+	}
+	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 1 {
+		t.Fatalf("first delete %d %v", n, err)
+	}
+	if _, err := handoffs.Get(ctx, "c1"); err == nil {
+		t.Fatal("deleted handoff must be gone")
+	}
+	if n, err := handoffs.Delete(ctx, "c1"); err != nil || n != 0 {
+		t.Fatalf("second delete must affect no rows: %d %v", n, err)
+	}
+	// Reclaim shape: every pending grant of one user goes at once.
+	if n, err := handoffs.DeleteByUser(ctx, uid); err != nil || n != 1 {
+		t.Fatalf("DeleteByUser removed %d (%v), want 1", n, err)
+	}
+	if _, err := handoffs.Get(ctx, "c3"); err == nil {
+		t.Fatal("the user's pending handoff must be gone")
+	}
+	if n, err := states.DeleteByLinkUser(ctx, uid); err != nil || n != 0 {
+		t.Fatalf("DeleteByLinkUser removed %d (%v), want 0 — no link state seeded", n, err)
+	}
+	linkState := &model.OAuthState{StateHash: "h9", Provider: "google", Nonce: "n9", Client: "web",
+		Intent: model.OAuthIntentLink, LinkUserID: uid, CreatedAt: now, ExpiresAt: now.Add(model.OAuthStateTTL)}
+	if err := states.Insert(ctx, linkState); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := states.DeleteByLinkUser(ctx, uid); err != nil || n != 1 {
+		t.Fatalf("DeleteByLinkUser removed %d (%v), want 1", n, err)
+	}
+	old := &model.OAuthHandoff{CodeHash: "c2", Kind: model.OAuthHandoffKindLogin, UserID: uid, Provider: "google", CreatedAt: now.Add(-time.Hour), ExpiresAt: now.Add(-time.Hour)}
+	_ = handoffs.Insert(ctx, old)
+	if n, _ := handoffs.DeleteExpired(ctx, now); n != 1 {
+		t.Fatalf("expired purge %d", n)
+	}
+}
+
+// Unlinking one provider must take only that provider's pending codes, and
+// only for that user: the other provider's sign-in link and another account's
+// codes keep working.
+func TestHandoffRepo_DeleteByUserProviderTakesOnlyThatProvidersCodes(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	uid := vo.MustParseId(f.User(fixture.User{Email: "a@example.test"}))
+	other := vo.MustParseId(f.User(fixture.User{Email: "b@example.test"}))
+	ctx := context.Background()
+	now := time.Date(2026, 9, 7, 12, 0, 0, 0, time.UTC)
+
+	handoffs := NewHandoffRepo(db.Engine, db.TX)
+	for _, h := range []*model.OAuthHandoff{
+		{CodeHash: "a-google", UserID: uid, Provider: "google"},
+		{CodeHash: "a-oidc", UserID: uid, Provider: "oidc"},
+		{CodeHash: "b-google", UserID: other, Provider: "google"},
+	} {
+		h.Kind, h.CreatedAt, h.ExpiresAt = model.OAuthHandoffKindLogin, now, now.Add(model.OAuthHandoffTTL)
+		if err := handoffs.Insert(ctx, h); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if n, err := handoffs.DeleteByUserProvider(ctx, uid, "google"); err != nil || n != 1 {
+		t.Fatalf("DeleteByUserProvider removed %d (%v), want 1", n, err)
+	}
+	if _, err := handoffs.Get(ctx, "a-google"); err == nil {
+		t.Fatal("the unlinked provider's code must be gone")
+	}
+	for _, code := range []string{"a-oidc", "b-google"} {
+		if _, err := handoffs.Get(ctx, code); err != nil {
+			t.Fatalf("%s must survive: %v", code, err)
+		}
+	}
+	if n, err := handoffs.DeleteByUserProvider(ctx, uid, "google"); err != nil || n != 0 {
+		t.Fatalf("a second delete must affect no rows: %d %v", n, err)
+	}
+}
+
+// A reclaim deletes the identities that never proved the address. A callback
+// already in flight then holds a stale *model.Identity; its update must find
+// nothing rather than write the row back (which an upsert would do).
+func TestUpdateIfCurrent_DoesNotResurrectADeletedIdentity(t *testing.T) {
+	db := dbtest.New(t)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	ids := NewIdentityRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
+	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
+
+	id := model.NewIdentity(ids.NextIdentity(), uid, "google", "https://accounts.google.com", "sub-1", "s@example.test", now)
+	if n, err := ids.InsertIfCurrent(ctx, id, 0); err != nil || n != 1 {
+		t.Fatalf("insert: n=%d err=%v", n, err)
+	}
+	if _, err := ids.DeleteByUserProvider(ctx, uid, "google"); err != nil {
+		t.Fatal(err)
+	}
+	if err := users.BumpCredentialsGeneration(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+
+	// The flow read the identity before the reclaim; even presenting the
+	// CURRENT generation, the update must still find no row.
+	id.UpdateEmail("t@example.test", now.Add(time.Minute))
+	n, err := ids.UpdateIfCurrent(ctx, id, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("UpdateIfCurrent resurrected the identity: n=%d", n)
+	}
+	if _, err := ids.GetByUserProvider(ctx, uid, "google"); err == nil {
+		t.Fatal("identity exists again after the reclaim")
+	}
+}
+
+func TestInsertIfCurrent_RefusesAStaleGeneration(t *testing.T) {
+	db := dbtest.New(t)
+	users := userrepo.NewRepo(db.Engine, db.TX)
+	ids := NewIdentityRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	uid := vo.MustParseId(fixture.New(t, db).User(fixture.User{}))
+	if err := users.BumpCredentialsGeneration(ctx, uid); err != nil {
+		t.Fatal(err)
+	}
+
+	id := model.NewIdentity(ids.NextIdentity(), uid, "google", "https://accounts.google.com", "sub-1", "s@example.test",
+		time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC))
+	n, err := ids.InsertIfCurrent(ctx, id, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n != 0 {
+		t.Fatalf("stale insert wrote %d rows", n)
+	}
+}

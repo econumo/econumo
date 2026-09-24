@@ -26,10 +26,6 @@ func (s *spendingStub) CountSpending(context.Context, []vo.Id, []vo.Id, time.Tim
 	return s.rows, nil
 }
 
-func (s *spendingStub) AccountsBalancesOnDate(context.Context, []vo.Id, time.Time) ([]model.AccountBalanceRow, error) {
-	return nil, nil
-}
-
 func (s *spendingStub) AccountsBalancesBeforeDate(context.Context, []vo.Id, time.Time) ([]model.AccountBalanceRow, error) {
 	return nil, nil
 }

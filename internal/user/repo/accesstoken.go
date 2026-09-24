@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/econumo/econumo/internal/infra/storage/backend"
@@ -18,19 +19,25 @@ import (
 )
 
 type (
-	accessTokenRow            = sqlitegen.AccessToken
-	accessTokenWithAccessRow  = sqlitegen.GetAccessTokenByHashRow
-	insertAccessTokenParams   = sqlitegen.InsertAccessTokenParams
-	updateAccessTokenParams   = sqlitegen.UpdateAccessTokenParams
-	listAccessTokensParams    = sqlitegen.ListAccessTokensByUserParams
-	deleteDeadAccessTokParams = sqlitegen.DeleteDeadAccessTokensParams
+	accessTokenRow                   = sqlitegen.AccessToken
+	accessTokenWithAccessRow         = sqlitegen.GetAccessTokenByHashRow
+	touchAccessTokenParams           = sqlitegen.TouchAccessTokenParams
+	revokeAccessTokenParams          = sqlitegen.RevokeAccessTokenParams
+	revokeUserAccessTokensParams     = sqlitegen.RevokeUserAccessTokensParams
+	listAccessTokensParams           = sqlitegen.ListAccessTokensByUserParams
+	deleteDeadAccessTokParams        = sqlitegen.DeleteDeadAccessTokensParams
+	insertTokenIfGenParams           = sqlitegen.InsertAccessTokenIfGenerationParams
+	insertTokenIfPresenterLiveParams = sqlitegen.InsertAccessTokenIfPresenterLiveParams
 )
 
 type accessTokenQuerier interface {
-	InsertAccessToken(ctx context.Context, db backend.DBTX, p insertAccessTokenParams) error
+	InsertAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertTokenIfGenParams) (int64, error)
+	InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error)
 	GetAccessTokenByHash(ctx context.Context, db backend.DBTX, hash string) (accessTokenWithAccessRow, error)
 	GetAccessTokenByID(ctx context.Context, db backend.DBTX, id string) (accessTokenRow, error)
-	UpdateAccessToken(ctx context.Context, db backend.DBTX, p updateAccessTokenParams) error
+	TouchAccessToken(ctx context.Context, db backend.DBTX, p touchAccessTokenParams) (int64, error)
+	RevokeAccessToken(ctx context.Context, db backend.DBTX, p revokeAccessTokenParams) error
+	RevokeUserAccessTokens(ctx context.Context, db backend.DBTX, p revokeUserAccessTokensParams) error
 	ListAccessTokensByUser(ctx context.Context, db backend.DBTX, p listAccessTokensParams) ([]accessTokenRow, error)
 	DeleteAccessToken(ctx context.Context, db backend.DBTX, id string) error
 	DeleteDeadAccessTokens(ctx context.Context, db backend.DBTX, p deleteDeadAccessTokParams) (int64, error)
@@ -56,11 +63,31 @@ func NewAccessTokenRepo(driver string, tx *backend.TxManager) *AccessTokenRepo {
 
 func (r *AccessTokenRepo) db(ctx context.Context) backend.DBTX { return r.tx.Querier(ctx) }
 
-func (r *AccessTokenRepo) Insert(ctx context.Context, t *model.AccessToken) error {
-	return r.q.InsertAccessToken(ctx, r.db(ctx), insertAccessTokenParams{
+func (r *AccessTokenRepo) InsertIfGeneration(ctx context.Context, t *model.AccessToken, generation int64) (int64, error) {
+	if _, err := model.ParseTokenScope(string(t.Scope)); err != nil {
+		return 0, fmt.Errorf("access token %s: %w", t.ID, err)
+	}
+	return r.q.InsertAccessTokenIfGeneration(ctx, r.db(ctx), insertTokenIfGenParams{
 		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
-		Name: t.Name, UserAgent: t.UserAgent,
+		Scope: string(t.Scope), Name: t.Name, UserAgent: t.UserAgent,
 		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
+		Provider: t.Provider, IDToken: t.IDToken,
+		ID_2: t.UserID.String(), CredentialsGeneration: generation,
+	})
+}
+
+func (r *AccessTokenRepo) InsertIfPresenterLive(ctx context.Context, t *model.AccessToken, presentingTokenID vo.Id) (int64, error) {
+	if _, err := model.ParseTokenScope(string(t.Scope)); err != nil {
+		return 0, fmt.Errorf("access token %s: %w", t.ID, err)
+	}
+	// ID_2 is the presenting token's id (the guard condition); UserID_2 is the
+	// owner the new row is inserted for — t.UserID, not the presenter's user.
+	return r.q.InsertAccessTokenIfPresenterLive(ctx, r.db(ctx), insertTokenIfPresenterLiveParams{
+		ID: t.ID.String(), UserID: t.UserID.String(), Kind: t.Kind, TokenHash: t.TokenHash,
+		Scope: string(t.Scope), Name: t.Name, UserAgent: t.UserAgent,
+		CreatedAt: t.CreatedAt, LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt,
+		Provider: t.Provider, IDToken: t.IDToken,
+		ID_2: presentingTokenID.String(), UserID_2: t.UserID.String(),
 	})
 }
 
@@ -85,10 +112,12 @@ func (r *AccessTokenRepo) GetByHash(ctx context.Context, hash string) (*model.Ac
 
 // tokenRowFromHashRow strips the joined access_level/access_until columns
 // back down to the plain access_tokens row shape shared by every other query.
+// The hot-path query does not select provider/id_token (see
+// GetAccessTokenByHash's SQL comment), so both stay nil here.
 func tokenRowFromHashRow(row accessTokenWithAccessRow) accessTokenRow {
 	return accessTokenRow{
 		ID: row.ID, UserID: row.UserID, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: row.Scope, Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
 	}
@@ -105,9 +134,29 @@ func (r *AccessTokenRepo) GetByID(ctx context.Context, id vo.Id) (*model.AccessT
 	return accessTokenFromRow(row)
 }
 
-func (r *AccessTokenRepo) Update(ctx context.Context, t *model.AccessToken) error {
-	return r.q.UpdateAccessToken(ctx, r.db(ctx), updateAccessTokenParams{
-		LastUsedAt: t.LastUsedAt, ExpiresAt: t.ExpiresAt, RevokedAt: t.RevokedAt, ID: t.ID.String(),
+func (r *AccessTokenRepo) Touch(ctx context.Context, id vo.Id, lastUsedAt time.Time, expiresAt *time.Time) (int64, error) {
+	return r.q.TouchAccessToken(ctx, r.db(ctx), touchAccessTokenParams{
+		LastUsedAt: lastUsedAt, ExpiresAt: expiresAt, ID: id.String(),
+	})
+}
+
+func (r *AccessTokenRepo) Revoke(ctx context.Context, id vo.Id, now time.Time) error {
+	return r.q.RevokeAccessToken(ctx, r.db(ctx), revokeAccessTokenParams{RevokedAt: &now, ID: id.String()})
+}
+
+// noExceptedTokenID stands in for the zero id in RevokeAll's `id <> ?` guard.
+// The zero id's own string is empty, which PostgreSQL rejects as uuid syntax
+// before the statement ever runs; the nil UUID is valid uuid text on both
+// engines and can never collide with a real UUIDv7 id.
+const noExceptedTokenID = "00000000-0000-0000-0000-000000000000"
+
+func (r *AccessTokenRepo) RevokeAll(ctx context.Context, userID vo.Id, kind string, exceptID vo.Id, now time.Time) error {
+	except := noExceptedTokenID
+	if !exceptID.IsZero() {
+		except = exceptID.String()
+	}
+	return r.q.RevokeUserAccessTokens(ctx, r.db(ctx), revokeUserAccessTokensParams{
+		RevokedAt: &now, UserID: userID.String(), Kind: kind, ID: except,
 	})
 }
 
@@ -146,8 +195,9 @@ func accessTokenFromRow(row accessTokenRow) (*model.AccessToken, error) {
 	}
 	return &model.AccessToken{
 		ID: id, UserID: uid, Kind: row.Kind, TokenHash: row.TokenHash,
-		Name: row.Name, UserAgent: row.UserAgent,
+		Scope: model.TokenScope(row.Scope), Name: row.Name, UserAgent: row.UserAgent,
 		CreatedAt: row.CreatedAt, LastUsedAt: row.LastUsedAt,
 		ExpiresAt: row.ExpiresAt, RevokedAt: row.RevokedAt,
+		Provider: row.Provider, IDToken: row.IDToken,
 	}, nil
 }

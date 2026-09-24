@@ -17,6 +17,9 @@ import (
 // current user. A bad username or password yields an UnauthorizedError (HTTP
 // 401, "Invalid credentials.").
 func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent string, now time.Time) (*model.LoginResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
 		return nil, err
@@ -33,7 +36,6 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 		s.failAttempt(RateScopeLogin, limitKey)
 		return nil, &errs.UnauthorizedError{Msg: "Invalid credentials.", Code: errs.CodeInvalidCredentials}
 	}
-
 	// Transparently upgrade a legacy (sha512) hash to argon2id now that we hold the
 	// verified plaintext. Best-effort: a failure must never block a valid login.
 	s.rehashLegacyPassword(ctx, u, req.Password, now)
@@ -50,7 +52,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 	if err := s.purgeDeadTokens(ctx, u.ID, now); err != nil {
 		return nil, err
 	}
-	token, terr := s.createSession(ctx, u.ID, userAgent, now)
+	// u.CredentialsGeneration came out of the SAME row read as the hash just
+	// verified, so a reset committing from here on bumps past it and the
+	// guarded insert refuses the session.
+	token, terr := s.createSession(ctx, u.ID, userAgent, "", nil, now, u.CredentialsGeneration)
 	if terr != nil {
 		return nil, terr
 	}
@@ -66,7 +71,10 @@ func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent s
 
 // rehashLegacyPassword upgrades a still-sha512 hash to argon2id in place. It runs
 // only on a verified login (the plaintext is proven correct) and is best-effort:
-// any failure is logged and swallowed so a valid login always succeeds.
+// any failure is logged and swallowed so a valid login always succeeds. It writes
+// ONLY the credential columns, guarded by the generation u was loaded under, so a
+// reset that commits between Login's evidence read and this call is never
+// overwritten by this stale aggregate (see model.User.CredentialsGeneration).
 func (s *Service) rehashLegacyPassword(ctx context.Context, u *model.User, plaintext string, now time.Time) {
 	if u.Algorithm == model.AlgorithmArgon2id {
 		return
@@ -76,10 +84,12 @@ func (s *Service) rehashLegacyPassword(ctx context.Context, u *model.User, plain
 		slog.WarnContext(ctx, "legacy password rehash: hashing failed", "err", err.Error())
 		return
 	}
-	if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
-		return s.repo.Save(txCtx, u)
-	}); err != nil {
+	n, err := s.repo.UpdatePasswordIfGeneration(ctx, u.ID, newHash, u.Salt, model.AlgorithmArgon2id, now, u.CredentialsGeneration)
+	if err != nil {
 		slog.WarnContext(ctx, "legacy password rehash: persist failed", "err", err.Error())
+		return
+	}
+	if n == 1 {
+		u.UpdatePassword(newHash, model.AlgorithmArgon2id, now)
 	}
 }

@@ -30,6 +30,8 @@ import {
 import { canWriteToAccount } from '@/features/connections/shared'
 import { useExchange } from '@/features/currencies/useExchange'
 import { usePostRecurring } from '@/features/recurring/queries'
+import { useImportQueuedEvent, useTransactionImportLinks } from '@/features/imports/queries'
+import { latestImportLink, ruleDiff } from '@/lib/importMatch'
 import { useUserData } from '@/features/user/queries'
 import { useCreateTransaction, useUpdateTransaction } from './queries'
 import {
@@ -64,10 +66,14 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   const { data: user } = useUserData()
   const exchangeFn = useExchange()
   const setSwitchAccountPrompt = useUiStore((s) => s.setSwitchAccountPrompt)
+  const setRulePrompt = useUiStore((s) => s.setRulePrompt)
+  const isImported = params.transaction?.isImported === 1
+  const { data: importLinks = [] } = useTransactionImportLinks(params.transaction?.id ?? '', isImported)
 
   const createTransaction = useCreateTransaction()
   const updateTransaction = useUpdateTransaction()
   const postRecurring = usePostRecurring()
+  const importQueued = useImportQueuedEvent()
   const createCategory = useCreateCategory()
   const createPayee = useCreatePayee()
 
@@ -132,6 +138,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const setRecipientAccount = (id: string | null) => {
+    clearError('accountRecipientId')
     const recipient = accounts.find((a) => a.id === id)
     patch({
       accountRecipientId: id,
@@ -180,6 +187,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     if (amountError) {
       next.amount = amountError
     }
+    if (isTransfer && !form.accountRecipientId) {
+      next.accountRecipientId = t('common.validation.required_field')
+    }
     if (crossCurrency) {
       const recipientError = amountErrors(form.amountRecipient, false)
       if (recipientError) {
@@ -196,7 +206,9 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
     }
     const payload = buildPayload(form)
     try {
-      if (params.postRecurring) {
+      if (params.importQueued) {
+        await importQueued.mutateAsync({ linkId: params.importQueued.linkId, transaction: payload })
+      } else if (params.postRecurring) {
         await postRecurring.mutateAsync({ ...payload, recurringId: params.postRecurring.id })
       } else if (form.isNew) {
         await createTransaction.mutateAsync(payload)
@@ -205,6 +217,13 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
         }
       } else {
         await updateTransaction.mutateAsync(payload)
+        const link = latestImportLink(importLinks)
+        // params.transaction is the row as it was BEFORE this edit: only a
+        // classification THIS save changed may prompt for a rule
+        const diff = link ? ruleDiff(payload, link, params.transaction ?? null) : null
+        if (link && diff) {
+          setRulePrompt({ link, diff })
+        }
       }
       onDone()
     } catch {
@@ -213,7 +232,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
   }
 
   const dateOnly = dayKey(form.date)
-  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending
+  const pending = createTransaction.isPending || updateTransaction.isPending || postRecurring.isPending || importQueued.isPending
   // posting a template creates an ordinary transaction (prefilled from it), so
   // it reads as the regular add dialog rather than a mode of its own
   const title = form.isNew
@@ -335,6 +354,14 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
           <CalculatorInput id="tx-amount" autoFocus placeholder={t('transactions.modal.form.amount.label')} value={form.amount} onChange={setAmount} />
         </div>
         {errors.amount ? <p className="pb-1 text-sm text-destructive">{errors.amount}</p> : null}
+        {params.importQueued ? (
+          <p className="pb-1 text-sm text-muted-foreground">
+            {t('imports.queue.card_amount', {
+              amount: moneyFormat(params.importQueued.amount, null, { showCurrency: false, useNativePrecision: false }),
+              currency: params.importQueued.currency,
+            })}
+          </p>
+        ) : null}
       </div>
 
       {isTransfer ? (
@@ -381,7 +408,7 @@ function TransactionForm({ params, onDone }: { params: OpenTransactionParams; on
                 <ArrowUpDown className="size-4" />
               </Button>
             </div>
-            <SelectCard label={t('transactions.modal.form.to.label')}>
+            <SelectCard label={t('transactions.modal.form.to.label')} error={errors.accountRecipientId}>
               <EntitySelect
                 aria-label="to account"
                 value={form.accountRecipientId}

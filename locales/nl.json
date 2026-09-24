@@ -469,6 +469,276 @@
     "make_recurring": "Terugkerend maken",
     "not_posted": "Niet geboekt"
   },
+  "imports": {
+    "badge": "Geïmporteerd",
+    "banner": {
+      "text": "{count} geïmporteerde transactie wacht op controle | {count} geïmporteerde transacties wachten op controle",
+      "cta": "Controleren"
+    },
+    "data_page": {
+      "menu_item": "Import & export",
+      "header": "Import & export",
+      "sync_all": "Bankverbindingen synchroniseren",
+      "history": "Importgeschiedenis",
+      "sync_all_done": "{imported} geïmporteerd, {matched} gematcht, {failed} mislukt"
+    },
+    "apple_wallet": {
+      "header": "Apple Wallet",
+      "menu_item": "Apple Wallet",
+      "intro": "Leg Apple Pay-betalingen automatisch vast met een iPhone-opdracht. Elke betaling wordt naar Econumo gestuurd; je koppelt elke kaart één keer aan een rekening.",
+      "connect": "Apple Wallet instellen",
+      "connected": "Verbonden",
+      "disconnect": "Verbinding verbreken",
+      "disconnect_modal": {
+        "title": "Apple Wallet loskoppelen?",
+        "question": "Kaartkoppelingen en de controlewachtrij van deze verbinding worden verwijderd. Al geïmporteerde transacties blijven staan."
+      },
+      "steps": {
+        "hint_desktop": "Open deze pagina op je iPhone om de stappen daar uit te voeren. Op dit apparaat kun je de opdrachten downloaden en stappen handmatig afvinken.",
+        "install_wallet": {
+          "title": "econumo-wallet-v1 installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+        },
+        "install_setup": {
+          "title": "econumo-setup-v1 installeren",
+          "text": "Open het bestand op je iPhone en tik op ‘Voeg opdracht toe’."
+        },
+        "configure": {
+          "title": "Opdrachten configureren",
+          "text": "Maakt een toegangstoken voor de opdracht en geeft die samen met het serveradres door aan econumo-setup-v1.",
+          "button": "Configureren op deze iPhone",
+          "manual": "Handmatig configureren"
+        },
+        "test": {
+          "title": "econumo-wallet-v1 één keer uitvoeren",
+          "text": "Voer hem handmatig uit en tik bij elke melding op ‘Altijd toestaan’ — zo krijgt de automatisering de rechten die ze later nodig heeft. Er wordt niets aangemaakt; Econumo registreert alleen dat de opdracht is aangekomen.",
+          "button": "econumo-wallet-v1 uitvoeren",
+          "check": "Controleren",
+          "none": "Nog niets ontvangen. Voer de opdracht uit, sta de meldingen toe en controleer opnieuw."
+        },
+        "automate": {
+          "title": "Automatisering aanmaken",
+          "text": "In de Opdrachten-app: Automatisering → + → Wallet → kies de kaarten en categorieën die je wilt importeren (alles kiezen is het veiligst) → Voer uit na bevestiging → econumo-wallet-v1."
+        },
+        "payment": {
+          "title": "Eerste betaling met ontgrendelde iPhone",
+          "text": "Betaal één keer met Apple Pay terwijl de iPhone ontgrendeld is. Tik op ‘Voer uit’ als de automatisering erom vraagt en daarna op ‘Altijd toestaan’ als Opdrachten toegang tot Wallet vraagt.",
+          "check": "Controleren",
+          "none": "Nog geen betaling ontvangen. Betaal één keer met ontgrendelde iPhone en controleer opnieuw."
+        },
+        "immediate": {
+          "title": "Zet de automatisering op ‘Voer direct uit’",
+          "text": "Open in de Opdrachten-app de automatisering en verander ‘Voer uit na bevestiging’ in ‘Voer direct uit’. Vanaf dan worden betalingen zonder vraag geïmporteerd, ook vanaf het toegangsscherm."
+        },
+        "complete": "Installatie voltooid",
+        "show": "Stappen tonen",
+        "hide": "Stappen verbergen"
+      },
+      "same_named_cards": "Kaarten met dezelfde naam in Wallet komen hier als één kaart binnen.",
+      "cards": {
+        "header": "Kaarten",
+        "empty": "Nog geen kaarten — de eerste Apple Pay-betaling voegt er een toe.",
+        "state": {
+          "mapped": "Gekoppeld",
+          "ignored": "Genegeerd",
+          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+        },
+        "taps": "{count} betaling | {count} betalingen",
+        "last_seen": "Laatst gezien {date}",
+        "map": "Koppelen aan rekening",
+        "map_instead": "Toch koppelen",
+        "ignore": "Negeren",
+        "unlink": "Ontkoppelen",
+        "unlink_modal": {
+          "title": "{card} ontkoppelen?",
+          "question": "Nieuwe betalingen van deze kaart wachten op controle tot je haar opnieuw koppelt."
+        },
+        "map_modal": {
+          "header": "{card} koppelen",
+          "account": "Rekening",
+          "submit": "Koppelen"
+        },
+        "mapped_toast": "{imported} geïmporteerd, {matched} gematcht, {skipped} overgeslagen"
+      }
+    },
+    "simplefin": {
+      "menu_item": "SimpleFIN",
+      "title": "SimpleFIN",
+      "intro": "Koppel een bank via SimpleFIN Bridge. Je bridge-gegevens worden op dit apparaat versleuteld met een wachtwoordzin die alleen jij kent; de server bewaart ze versleuteld en ziet ze alleen tijdens een synchronisatie.",
+      "forget_device": "Dit apparaat vergeten",
+      "connect": {
+        "intro": "Plak het installatietoken van je SimpleFIN Bridge-account en kies een wachtwoordzin. De wachtwoordzin wordt nooit naar de server verzonden — als je hem vergeet, moet je opnieuw verbinden met een nieuw installatietoken.",
+        "reconnect_intro": "Plak een nieuw installatietoken van SimpleFIN Bridge. De vorige verbinding wordt vervangen; je rekeningkoppelingen blijven behouden.",
+        "token_label": "Installatietoken",
+        "token_placeholder": "aHR0cHM6Ly9…",
+        "token_help": "SimpleFIN Bridge → Nieuwe verbinding → kopieer het installatietoken. Een token kan één keer worden gebruikt.",
+        "forgot_passphrase": "Ik ben mijn wachtwoordzin vergeten — nieuwe instellen",
+        "passphrase_new": "Wachtwoordzin",
+        "passphrase_existing": "Je wachtwoordzin",
+        "passphrase_confirm": "Herhaal de wachtwoordzin",
+        "passphrase_help": "Minstens 8 tekens. Niet herstelbaar: niemand, ook wij niet, kan hem terughalen.",
+        "submit": "Verbinden",
+        "submit_reconnect": "Opnieuw verbinden",
+        "errors": {
+          "token_required": "Plak eerst het installatietoken.",
+          "passphrase_short": "De wachtwoordzin moet minstens 8 tekens lang zijn.",
+          "passphrase_mismatch": "De wachtwoordzinnen komen niet overeen."
+        }
+      },
+      "unlock": {
+        "intro": "Voer je wachtwoordzin in om SimpleFIN op dit apparaat te gebruiken.",
+        "passphrase": "Wachtwoordzin",
+        "submit": "Ontgrendelen",
+        "reconnect": "Opnieuw verbinden",
+        "wrong_passphrase": "Onjuiste wachtwoordzin.",
+        "forgot_help": "Vergeten? Verbind opnieuw met een nieuw installatietoken en een nieuwe wachtwoordzin.",
+        "stale_intro": "Je wachtwoordzin is op een ander apparaat gewijzigd. Voer de nieuwe wachtwoordzin in om SimpleFIN hier te blijven gebruiken."
+      },
+      "accounts": {
+        "header": "Rekeningen",
+        "empty": "Nog geen rekeningen gemeld door de bridge.",
+        "state": {
+          "mapped": "Gekoppeld",
+          "ignored": "Genegeerd",
+          "unmapped": "Niet gekoppeld · {count} in wachtrij"
+        },
+        "taps": "{count} transactie | {count} transacties",
+        "last_seen": "Laatst gezien {date}",
+        "map": "Koppelen aan rekening",
+        "map_instead": "Toch koppelen",
+        "ignore": "Negeren",
+        "unlink": "Ontkoppelen",
+        "unlink_modal": {
+          "title": "{card} ontkoppelen?",
+          "question": "Nieuwe transacties van deze rekening wachten op controle tot je haar opnieuw koppelt."
+        },
+        "map_modal": {
+          "header": "{card} koppelen",
+          "account": "Rekening",
+          "submit": "Koppelen"
+        },
+        "mapped_toast": "{imported} geïmporteerd, {matched} gematcht, {skipped} overgeslagen"
+      },
+      "sync": {
+        "button": "Nu synchroniseren",
+        "running": "Synchroniseren…",
+        "from": "Vanaf",
+        "last_synced": "Laatst gesynchroniseerd {date}",
+        "never": "Nooit gesynchroniseerd",
+        "done_toast": "{imported} geïmporteerd, {matched} gematcht"
+      }
+    },
+    "runs": {
+      "header": "Importgeschiedenis",
+      "detail_header": "Import",
+      "history_link": "Importgeschiedenis",
+      "empty": "Nog geen imports.",
+      "rows_header": "Transacties",
+      "rows_empty": "Deze import raakte geen transacties.",
+      "status": {
+        "running": "Bezig",
+        "completed": "Voltooid",
+        "partial": "Voltooid met fouten",
+        "failed": "Mislukt"
+      },
+      "counts": "{imported} geïmporteerd · {matched} gematcht · {updated} bedragen bijgewerkt · {queued} in wachtrij · {skipped} overgeslagen · {failed} mislukt",
+      "row_status": {
+        "imported": "Geïmporteerd",
+        "deleted": "Sindsdien verwijderd",
+        "queued": "Wacht op controle",
+        "skipped": "Overgeslagen"
+      }
+    },
+    "queue": {
+      "header": "Importwachtrij",
+      "empty": "Niets te controleren.",
+      "card_amount": "Kaartbedrag: {amount} {currency}",
+      "queued": "Wacht op controle",
+      "skipped": "Overgeslagen",
+      "failed": "Aandacht nodig",
+      "reason": {
+        "unmapped": "Kaart niet gekoppeld",
+        "account_deleted": "Rekening verwijderd",
+        "no_rate": "Geen wisselkoers voor {currency}"
+      },
+      "import": "Importeren",
+      "skip": "Overslaan",
+      "unskip": "Herstellen",
+      "retry": "Opnieuw proberen",
+      "discard": "Verwijderen",
+      "received": "Ontvangen {date}",
+      "retry_result": {
+        "created": "Geïmporteerd",
+        "queued": "In wachtrij voor controle",
+        "skipped": "Overgeslagen",
+        "duplicate": "Al geïmporteerd",
+        "failed": "Mislukt nog steeds"
+      }
+    },
+    "provenance": {
+      "header": "Geïmporteerd uit"
+    },
+    "rules": {
+      "field": { "external_payee": "Begunstigde", "description": "Omschrijving" },
+      "type": { "contains": "bevat", "prefix": "begint met", "exact": "is precies" },
+      "action": { "classify": "Classificeren", "skip": "Overslaan" },
+      "prompt": {
+        "title": "Importregel maken",
+        "changed_category": "Je hebt de categorie ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_payee": "Je hebt de begunstigde ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_tag": "Je hebt de tag ingesteld op {name}. Een regel maken voor vergelijkbare imports?",
+        "changed_labels": "Je hebt de tags {names} toegevoegd. Een regel maken voor vergelijkbare imports?",
+        "existing_rule": "Deze transactie is geclassificeerd door de regel “{rule}”.",
+        "match_count": "Komt overeen met {count} transacties in deze import",
+        "not_now": "Niet nu",
+        "create_rule": "Regel maken",
+        "update_rule": "Regel bijwerken",
+        "apply_question": "Deze regel toepassen op {count} overeenkomende transacties in deze import?",
+        "skipped_edited": "{count} overgeslagen (door jou bewerkt)",
+        "include_edited": "Ook de {count} transacties bijwerken die je hebt bewerkt",
+        "skip_apply": "Overslaan",
+        "apply": "Toepassen",
+        "applied_toast": "{count} transacties bijgewerkt",
+        "source_question": "Ook toepassen op alle imports van {source}? {count} transacties komen overeen.",
+        "apply_source": "Toepassen op alle imports",
+        "done": "Klaar"
+      },
+      "editor": {
+        "field": "Overeenkomstveld",
+        "type": "Overeenkomsttype",
+        "title_create": "Nieuwe importregel",
+        "title_edit": "Importregel bewerken",
+        "action": "Actie",
+        "value": "Overeenkomstwaarde",
+        "case_sensitive": "Hoofdlettergevoelig",
+        "category": "Categorie",
+        "payee": "Begunstigde",
+        "tag": "Budgettag",
+        "labels": "Rapportagetags",
+        "match_count": "Komt overeen met {count} geïmporteerde transacties"
+      },
+      "page": {
+        "menu_item": "Importregels",
+        "title": "Importregels",
+        "intro": "Regels classificeren of slaan geïmporteerde transacties automatisch over. Ze worden van boven naar beneden uitgevoerd; sleep om de volgorde te wijzigen.",
+        "add": "Regel toevoegen",
+        "empty": "Nog geen regels. Corrigeer een geïmporteerde transactie en Econumo biedt aan er een te maken.",
+        "reorder": "Volgorde wijzigen",
+        "edit": "Bewerken",
+        "delete": "Verwijderen",
+        "delete_title": "Deze regel verwijderen?",
+        "delete_confirm": "Regel verwijderen",
+        "skip_hint": "Overeenkomende transacties worden niet geïmporteerd"
+      },
+      "suggest": {
+        "button": "Regels voorstellen",
+        "running": "Aan het nadenken…",
+        "heading": "Voorgestelde regels",
+        "accept": "Accepteren",
+        "discard": "Verwerpen"
+      }
+    }
+  },
   "user": {
     "avatar_picker": {
       "title": "Kies uw avatar",
@@ -632,7 +902,8 @@
             "revoke_others": "Andere apparaten uitloggen",
             "confirm_sign_out": "Op dit apparaat uitloggen?",
             "confirm_revoke": "Deze sessie intrekken? Het apparaat wordt uitgelogd.",
-            "confirm_revoke_others": "Op alle andere apparaten uitloggen? Alleen deze sessie blijft actief."
+            "confirm_revoke_others": "Op alle andere apparaten uitloggen? Alleen deze sessie blijft actief.",
+            "via": "via {provider}"
           },
           "tokens": {
             "menu_item": "API-tokens",
@@ -681,9 +952,26 @@
             "revoke": "Intrekken",
             "confirm_revoke": "Dit token intrekken? Integraties die het gebruiken werken direct niet meer."
           },
+          "linked_accounts": {
+            "menu_item": "Aanmeldmethoden",
+            "header": "Aanmeldmethoden",
+            "description": "Externe accounts waarmee u kunt inloggen bij Econumo.",
+            "empty": "Geen aanmeldmethoden beschikbaar om te koppelen.",
+            "linked_on": "Gekoppeld",
+            "link": "Koppelen",
+            "unlink": "Ontkoppelen",
+            "confirm_unlink": "Dit account ontkoppelen? U kunt hiermee niet meer inloggen.",
+            "last_identity_hint": "Stel een wachtwoord in voordat u uw enige aanmeldmethode ontkoppelt.",
+            "linked_toast": "{provider}-account gekoppeld.",
+            "set_password": {
+              "menu_item": "Wachtwoord instellen",
+              "description": "U hebt zich aangemeld met een extern account. Wij sturen u een code per e-mail om een wachtwoord in te stellen."
+            },
+            "last_sign_in_method_hint": "Dit is je enige inlogmethode, dus deze kan niet worden ontkoppeld."
+          },
           "analytics": {
             "label": "Gebruiksstatistieken delen",
-            "description": "Helpt ons Econumo te verbeteren. Financiële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
+            "description": "Helpt ons Econumo te verbeteren.\nFinanciële gegevens en persoonlijke informatie — naam, e-mail — worden nooit verzonden."
           }
         }
       }
@@ -700,7 +988,8 @@
       "instruction": "We hebben een beveiligingscode naar uw e-mailadres gestuurd. Voer die hieronder in en kies een nieuw wachtwoord.",
       "new_password": "Nieuw wachtwoord",
       "send_failed": "De code kon niet worden verzonden. Controleer het e-mailadres en probeer het opnieuw.",
-      "reset_failed": "Het wachtwoord is niet gereset. Controleer de code en probeer het opnieuw."
+      "reset_failed": "Het wachtwoord is niet gereset. Controleer de code en probeer het opnieuw.",
+      "reclaim_notice": "Het opnieuw instellen van het wachtwoord meldt alle sessies af, trekt API-tokens in en verwijdert gekoppelde aanmeldmethoden met een ander e-mailadres."
     },
     "verify_email": {
       "header": "Bevestig uw e-mailadres",
@@ -758,6 +1047,39 @@
         "privacy": {
           "text": "Door u te registreren gaat u akkoord met ons <a href=\"https://econumo.com/docs/legal/privacy-policy/\" target=\"_blank\" class='register-form-privacy-link'>Privacybeleid</a> en onze <a href=\"https://econumo.com/docs/legal/terms-of-service/\" target=\"_blank\" class='register-form-privacy-link'>Servicevoorwaarden</a>"
         }
+      }
+    },
+    "oauth": {
+      "divider": "of ga verder met",
+      "button": {
+        "google": "Doorgaan met Google",
+        "apple": "Doorgaan met Apple",
+        "oidc": "Doorgaan met {name}"
+      },
+      "callback": {
+        "signing_in": "Aanmelden…"
+      },
+      "app_return": {
+        "title": "Aanmelden voltooid — ga terug naar de Econumo-app.",
+        "open_app": "App openen"
+      },
+      "provider_name": {
+        "google": "Google",
+        "apple": "Apple",
+        "oidc": "SSO"
+      },
+      "errors": {
+        "denied": "Aanmelden is geannuleerd.",
+        "invalid_state": "De aanmeldpoging is verlopen of al gebruikt. Probeer het opnieuw.",
+        "provider_error": "De aanmeldprovider heeft een fout teruggegeven. Probeer het opnieuw.",
+        "email_required": "De aanmeldprovider heeft geen e-mailadres gedeeld, terwijl Econumo dat vereist.",
+        "email_unverified": "De aanmeldprovider heeft dit e-mailadres niet geverifieerd.",
+        "registration_disabled": "Registratie is uitgeschakeld op deze server. Log eerst in met een bestaand account.",
+        "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account.",
+        "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider.",
+        "account_inactive": "Dit account is gedeactiveerd.",
+        "account_exists_password": "Er bestaat al een account met dit e-mailadres. Log in met uw wachtwoord (of stel het opnieuw in) en koppel deze provider daarna in Instellingen.",
+        "account_exists_contact_admin": "Er bestaat al een account met dit e-mailadres dat niet automatisch kan worden gekoppeld. Neem contact op met je beheerder."
       }
     }
   },
@@ -1050,6 +1372,23 @@
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
           "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
           "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
+        },
+        "comments": {
+          "title": "Opmerkingen",
+          "disclosure": "Opmerkingen ({count})",
+          "comment_label": "Opmerking",
+          "marker_aria": "{count} opmerking | {count} opmerkingen",
+          "composer_placeholder": "Voeg een notitie toe voor deze maand",
+          "post": "Plaatsen",
+          "edit": "Bewerken",
+          "delete": "Verwijderen",
+          "cancel": "Annuleren",
+          "delete_confirm": "Deze opmerking verwijderen?",
+          "edited": "(bewerkt)",
+          "counter": "{count}/500",
+          "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
+          "empty": "Nog geen opmerkingen.",
+          "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
       },
       "settings": {
@@ -1464,7 +1803,9 @@
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
-      "end_before_start": "De eindmaand ligt vóór de start van het budget"
+      "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "comment_not_found": "Opmerking niet gevonden",
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
@@ -1492,10 +1833,36 @@
       "base_immutable": "De basisvaluta kan niet worden gewijzigd.",
       "cannot_be_hidden": "Deze valuta kan niet worden verborgen."
     },
+    "import": {
+      "source_not_found": "Apple Wallet is niet gekoppeld. Koppel het eerst via Instellingen → Apple Wallet.",
+      "provider_unsupported": "Deze importbron wordt niet ondersteund.",
+      "account_link_exists": "Deze kaart is al gekoppeld.",
+      "currency_mismatch": "De valuta van de kaart komt niet overeen met de valuta van de rekening.",
+      "link_not_queued": "Deze gebeurtenis wacht niet op beoordeling.",
+      "link_not_skipped": "Deze gebeurtenis is niet overgeslagen.",
+      "event_not_failed": "Deze gebeurtenis is niet mislukt.",
+      "setup_token_rejected": "SimpleFIN heeft dit setup-token geweigerd. Het is mogelijk al gebruikt — genereer een nieuw token in je SimpleFIN-bridge.",
+      "provider_unavailable": "De bankbridge kon niet worden bereikt. Probeer het over een paar minuten opnieuw.",
+      "sync_range_invalid": "De datumreeks is ongeldig: de startdatum mag niet na de einddatum liggen en de reeks mag niet langer dan 400 dagen zijn.",
+      "access_url_invalid": "De opgeslagen bankgegevens zijn geen geldige toegangs-URL. Verbind SimpleFIN opnieuw met een nieuw setup-token.",
+      "rule_skip_not_applicable": "Een overslaan-regel kan niet worden toegepast op bestaande transacties",
+      "ai_disabled": "AI-suggesties zijn niet ingeschakeld op deze server",
+      "ai_unavailable": "De AI-service is niet beschikbaar. Probeer het later opnieuw."
+    },
     "label": {
       "name_length": "Tagnaam moet {min}-{max} tekens bevatten.",
       "cannot_be_merged": "De geselecteerde tags kunnen niet worden samengevoegd.",
       "list_empty": "De lijst met tags is leeg."
+    },
+    "oauth": {
+      "provider_not_configured": "De aanmeldprovider is niet geconfigureerd",
+      "handoff_invalid": "De aanmeldlink is ongeldig of verlopen",
+      "last_identity": "Stel een wachtwoord in voordat u uw enige aanmeldmethode ontkoppelt",
+      "identity_not_found": "Gekoppeld account niet gevonden",
+      "link_invalid": "De koppelingssessie is ongeldig of verlopen",
+      "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account",
+      "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider",
+      "last_sign_in_method": "Je kunt je enige inlogmethode niet ontkoppelen"
     },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
@@ -1533,7 +1900,8 @@
       "email_verification_required": "Bevestig uw e-mailadres.",
       "verification_code_invalid": "De bevestigingscode is ongeldig.",
       "verification_code_expired": "De code is verlopen.",
-      "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres."
+      "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres.",
+      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld"
     }
   },
   "emails": {
@@ -1552,6 +1920,14 @@
     "change_email_notice": {
       "subject": "Wijziging van e-mailadres aangevraagd",
       "body": "Hallo {name},\n\nIemand heeft aangevraagd om het e-mailadres van uw account te wijzigen in {email}. Als u dit niet was, wijzig dan onmiddellijk uw wachtwoord."
+    },
+    "identity_linked": {
+      "subject": "Nieuwe aanmeldmethode toegevoegd",
+      "body": "Hallo {name},\n\nUw {provider}-account is zojuist aan uw Econumo-account gekoppeld en kan nu worden gebruikt om in te loggen.\n\nAls u dit niet was, ontkoppel het account dan in Instellingen en wijzig uw wachtwoord.\n\n--\nEconumo — Geld beheren. Samen.\n"
+    },
+    "identity_unlinked": {
+      "subject": "Aanmeldmethode verwijderd",
+      "body": "Hallo {name},\n\nUw {provider}-account is zojuist ontkoppeld van uw Econumo-account en kan niet meer worden gebruikt om in te loggen.\n\nAls u dit niet was, wijzig dan uw wachtwoord en controleer de gekoppelde accounts in Instellingen.\n\n--\nEconumo — Geld beheren. Samen.\n"
     }
   }
 }

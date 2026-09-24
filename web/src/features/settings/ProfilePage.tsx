@@ -18,6 +18,8 @@ import { RouterPage } from '@/app/router-pages'
 import { useCurrencies } from '@/features/currencies/queries'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, useUpdateName, useUpdateCurrency, useUpdateAnalytics, userCurrencyId, userOption } from '@/features/user/queries'
+import { RecoveryDialog } from '@/features/auth/RecoveryDialog'
+import { usePasswordLoginAvailable } from '@/features/auth/oauthQueries'
 import { SettingsShell } from './SettingsShell'
 
 
@@ -40,7 +42,10 @@ export function ProfilePage() {
   const [languageOpen, setLanguageOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [savedVisible, setSavedVisible] = useState(false)
+  const [recoveryOpen, setRecoveryOpen] = useState(false)
   const savedTimer = useRef<number | null>(null)
+  const hasPassword = user?.hasPassword !== false
+  const passwordLogin = usePasswordLoginAvailable()
 
   useEffect(() => {
     if (user) {
@@ -176,11 +181,29 @@ export function ProfilePage() {
           {t('user.page.settings.profile.change_email.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+        {!passwordLogin ? null : hasPassword ? (
+          <Link
+            to={RouterPage.SETTINGS_CHANGE_PASSWORD}
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+          >
+            {t('user.page.settings.profile.change_password.menu_item')}
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-left text-sm hover:bg-econumo-hover"
+            onClick={() => setRecoveryOpen(true)}
+          >
+            {t('user.page.settings.profile.linked_accounts.set_password.menu_item')}
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </button>
+        )}
         <Link
-          to={RouterPage.SETTINGS_CHANGE_PASSWORD}
+          to={RouterPage.SETTINGS_LINKED_ACCOUNTS}
           className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
         >
-          {t('user.page.settings.profile.change_password.menu_item')}
+          {t('user.page.settings.profile.linked_accounts.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
         <Link
@@ -205,7 +228,7 @@ export function ProfilePage() {
       <div className="flex max-w-md items-center justify-between gap-4 rounded-lg bg-econumo-card px-4 py-3.5">
         <label htmlFor="profile-analytics" className="text-sm">
           {t('user.page.settings.profile.analytics.label')}
-          <span className="mt-0.5 block text-xs text-muted-foreground">
+          <span className="mt-0.5 block whitespace-pre-line text-xs text-muted-foreground">
             {t('user.page.settings.profile.analytics.description')}
           </span>
         </label>
@@ -232,6 +255,10 @@ export function ProfilePage() {
       <LanguageDialog open={languageOpen} onClose={() => setLanguageOpen(false)} />
 
       <AvatarPickerDialog open={avatarOpen} onClose={() => setAvatarOpen(false)} />
+
+      {recoveryOpen ? (
+        <RecoveryDialog open onClose={() => setRecoveryOpen(false)} onSuccess={() => navigate(RouterPage.LOGOUT)} email={user?.email} />
+      ) : null}
 
       <ConfirmDialog
         open={logoutOpen}

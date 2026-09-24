@@ -12,9 +12,12 @@ window.econumoConfig = {
   LILTAG_CONFIG_URL: '/liltag-config.json',
   LILTAG_CACHE_TTL: 0,
   ALLOW_REGISTRATION: true,
+  PASSWORD_LOGIN: true,
   INSTANCE_ID: '',
   BILLING_URL: '',
+  AI_ENABLED: false,
   ALLOW_CUSTOM_API: true,
   VERSION: null,
   VERSION_LABEL: null,
+  IMPORT_MATCHER: { matchDays: 3, tipDays: 5, tipTolerancePct: 20, tokenMinLength: 3 },
 };

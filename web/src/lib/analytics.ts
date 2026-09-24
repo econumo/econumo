@@ -1,15 +1,18 @@
 // Twillingate capture transport — the only file that knows the collector exists.
-// Identified, not anonymous: once set, every batch carries a hashed user id
-// ($user_id, opaque — never the raw id or $user_name) and a per-instance group
-// ($group_id/$group_name identifying the deployment, not the person). Nothing
-// is written to the device — $install_id and the identity fields all live in
+// Identified, never anonymous: a batch leaves only once a hashed user id is
+// set ($user_id, opaque — never the raw id or $user_name), alongside a
+// per-instance group ($group_id/$group_name identifying the deployment, not
+// the person). Events captured before the user resolves wait in the queue;
+// resetAnalyticsIdentity discards whatever is still unattributed. Nothing is
+// written to the device — $install_id and the identity fields all live in
 // memory only, cleared by resetAnalyticsIdentity on logout (the group survives,
 // since it describes the instance rather than the visitor).
-// Wire format: POST /api/events, one batch per flush.
+// Wire format: POST /ingest/events, one batch per flush.
 
 import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
+import { forgetAuthMethods } from './analyticsAuthMethods'
 
-const COLLECTOR_URL = 'https://t.econumo.com/api/events'
+const COLLECTOR_URL = 'https://t.econumo.com/ingest/events'
 // An ingest key is public by design (it can only ingest events). It belongs
 // to the collector's `econumo` project (identity=identified) — the in-app
 // transport is that project's only source. The cloud's liltag snippet posts
@@ -55,6 +58,8 @@ export function setAnalyticsUser(id: string | null): void {
   // device — the same class of leak the install-id re-mint below guards.
   flush()
   userId = id
+  // Release anything held while the user was unresolved (the boot page view).
+  scheduleFlush()
 }
 
 export function setAnalyticsGroup(id: string, name: string): void {
@@ -62,13 +67,19 @@ export function setAnalyticsGroup(id: string, name: string): void {
   groupName = name
 }
 
-// Called on logout. Flush first for the same reason as setAnalyticsUser, then
-// re-mint the install id so the next person on a shared browser inherits
-// nothing; the group is the deployment, not the person, so it stays.
+// Called on logout and on a dead session (401). Flush first for the same
+// reason as setAnalyticsUser, then drop what could not go out (events held
+// for a user who never resolved) and re-mint the install id so the next
+// person on a shared browser inherits nothing; the group is the deployment,
+// not the person, so it stays.
 export function resetAnalyticsIdentity(): void {
   flush()
   userId = null
+  queue = []
   installId = uuidv4()
+  // Describes the person whose session just ended, so it goes with it —
+  // unlike the analytics opt-out, which is a device-level fail-safe and stays.
+  forgetAuthMethods()
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {
@@ -80,6 +91,13 @@ export function capture(event: string, properties: Record<string, unknown> = {})
     name: event,
     attributes: properties,
   })
+  scheduleFlush()
+}
+
+function scheduleFlush(): void {
+  if (queue.length === 0) {
+    return
+  }
   if (queue.length >= FLUSH_AT) {
     flush()
     return
@@ -92,7 +110,9 @@ function takeBatch(): string | null {
     clearTimeout(timer)
     timer = null
   }
-  if (queue.length === 0) {
+  // No user yet means the events stay queued: the collector holds
+  // authenticated sessions only, so a batch never leaves anonymous.
+  if (queue.length === 0 || !userId) {
     return null
   }
   // The key travels in the body, not a header: sendBeacon cannot set headers,
@@ -102,7 +122,7 @@ function takeBatch(): string | null {
     attributes: {
       ...batchContext,
       $install_id: installId,
-      ...(userId ? { $user_id: userId } : {}),
+      $user_id: userId,
       ...(groupId ? { $group_id: groupId, $group_name: groupName } : {}),
     },
     events: queue,

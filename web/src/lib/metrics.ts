@@ -1,8 +1,10 @@
 import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
+import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
 import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
 import { isNativeApp } from './platform'
+import { hasToken } from './storage'
 
 declare global {
   interface Window {
@@ -37,6 +39,10 @@ export const METRICS = {
   USER_RESET_PASSWORD: 'appUserResetPassword',
   EMAIL_VERIFICATION_COMPLETED: 'appEmailVerificationCompleted',
   EMAIL_VERIFICATION_RESENT: 'appEmailVerificationResent',
+  OAUTH_LOGIN_COMPLETED: 'appOauthLoginCompleted',
+  OAUTH_ACCOUNT_CREATED: 'appOauthAccountCreated',
+  IDENTITY_LINKED: 'appIdentityLinked',
+  IDENTITY_UNLINKED: 'appIdentityUnlinked',
   SESSION_REVOKE: 'appSessionRevoke',
   SESSION_REVOKE_OTHERS: 'appSessionRevokeOthers',
   PERSONAL_TOKEN_CREATE: 'appPersonalTokenCreate',
@@ -98,6 +104,9 @@ export const METRICS = {
   BUDGET_PLAN_HIDE_EMPTY_TOGGLE: 'appBudgetPlanHideEmptyToggle',
   BUDGET_PLAN_FILL_RIGHT: 'appBudgetPlanFillRight',
   BUDGET_PLAN_PASTE_CELL: 'appBudgetPlanPasteCell',
+  BUDGET_CREATE_COMMENT: 'appBudgetCreateComment',
+  BUDGET_UPDATE_COMMENT: 'appBudgetUpdateComment',
+  BUDGET_DELETE_COMMENT: 'appBudgetDeleteComment',
   TAG_CREATE: 'appTagCreate',
   TAG_UPDATE: 'appTagUpdate',
   TAG_ORDER_LIST: 'appTagOrderList',
@@ -130,6 +139,19 @@ export const METRICS = {
   UI_MODAL_TRANSACTION_CLOSE: 'appUIModalTransactionClose',
   UI_MODAL_RECURRING_OPEN: 'appUIModalRecurringOpen',
   UI_MODAL_RECURRING_CLOSE: 'appUIModalRecurringClose',
+  IMPORT_SOURCE_CONNECT: 'appImportSourceConnect',
+  IMPORT_ACCOUNT_LINK: 'appImportAccountLink',
+  IMPORT_ACCOUNT_IGNORE: 'appImportAccountIgnore',
+  IMPORT_QUEUE_IMPORT: 'appImportQueueImport',
+  IMPORT_QUEUE_SKIP: 'appImportQueueSkip',
+  IMPORT_SHORTCUT_DOWNLOAD: 'appImportShortcutDownload',
+  IMPORT_SHORTCUT_CONFIGURE: 'appImportShortcutConfigure',
+  IMPORT_SHORTCUT_TEST: 'appImportShortcutTest',
+  IMPORT_SHORTCUT_CHECK: 'appImportShortcutCheck',
+  IMPORT_SYNC: 'appImportSync',
+  IMPORT_RULE_CREATE: 'appImportRuleCreate',
+  IMPORT_RULE_APPLY: 'appImportRuleApply',
+  IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
@@ -234,9 +256,21 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // Batch-level (session-wide) attributes: recomputed on every call rather
   // than fixed at module load, since the profile counts change as the query
   // cache fills in behind the boot loader.
+  //
+  // Everything here describes the SESSION, not the action — where the user is
+  // signed in, how they signed in, what their data looks like — so it is sent
+  // once per batch instead of being repeated on every event. Only facts that
+  // vary between two events in the same batch stay per-event (current_url).
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
+    host: analyticsHost(),
+    deployment: deploymentKind(),
+    locale: locale(),
+    mode: viewMode(),
+    // Omitted while unknown, so neither reads as a measured "none".
+    ...(currentAccessState ? { access_state: currentAccessState } : {}),
+    ...(authMethods() ?? {}),
     ...profileAttributes(),
   })
   window.dataLayer = window.dataLayer || []
@@ -252,16 +286,17 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
     eventTimestamp: Date.now(),
   })
   // Per-field/modal micro-interactions stay dataLayer-only: they dominate
-  // event volume without informing any product decision.
-  if (!metric.startsWith('appUIModal')) {
-    const host = analyticsHost()
+  // event volume without informing any product decision. So does everything
+  // outside an authenticated session (login/register page views, the
+  // pre-login auth events): the collector project is identified-only, and a
+  // visitor who never signs in would otherwise show up as a one-day person
+  // who can never return, dragging retention down for no product signal.
+  if (!metric.startsWith('appUIModal') && hasToken()) {
+    // The one genuinely per-event fact: which page the event happened on.
+    // Built from the same synthetic host as the batch attribute, so a
+    // self-hosted deployment's real hostname still never appears.
     capture(analyticsEventName(metric), {
-      host,
-      deployment: deploymentKind(),
-      locale: locale(),
-      mode: viewMode(),
-      current_url: `https://${host}/${scrubbedPage(window.location.pathname)}`,
-      ...(currentAccessState ? { access_state: currentAccessState } : {}),
+      current_url: `https://${analyticsHost()}/${scrubbedPage(window.location.pathname)}`,
     })
   }
 }

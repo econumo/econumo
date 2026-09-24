@@ -43,5 +43,10 @@ func RegisterAPI(h *Handlers, authn middleware.TokenAuthenticator) router.Regist
 		mux.Handle("POST /api/v1/budget/change-element-currency", auth(h.ChangeElementCurrency))
 		mux.Handle("POST /api/v1/budget/set-limit", auth(h.SetLimit))
 		mux.Handle("POST /api/v1/budget/move-element", auth(h.MoveElement))
+
+		mux.Handle("GET /api/v1/budget/get-comment-list", auth(h.GetCommentList))
+		mux.Handle("POST /api/v1/budget/create-comment", auth(h.CreateComment))
+		mux.Handle("POST /api/v1/budget/update-comment", auth(h.UpdateComment))
+		mux.Handle("POST /api/v1/budget/delete-comment", auth(h.DeleteComment))
 	}
 }

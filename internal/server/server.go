@@ -37,6 +37,12 @@ import (
 	handlercurrency "github.com/econumo/econumo/internal/currency/api"
 	currencymcp "github.com/econumo/econumo/internal/currency/mcp"
 	currencyrepo "github.com/econumo/econumo/internal/currency/repo"
+	appimports "github.com/econumo/econumo/internal/imports"
+	handlerimports "github.com/econumo/econumo/internal/imports/api"
+	"github.com/econumo/econumo/internal/imports/applewallet"
+	importsrepo "github.com/econumo/econumo/internal/imports/repo"
+	"github.com/econumo/econumo/internal/imports/simplefin"
+	"github.com/econumo/econumo/internal/infra/ai"
 	"github.com/econumo/econumo/internal/infra/auth"
 	"github.com/econumo/econumo/internal/infra/clock"
 	"github.com/econumo/econumo/internal/infra/handoff"
@@ -51,6 +57,9 @@ import (
 	labelmcp "github.com/econumo/econumo/internal/label/mcp"
 	labelrepo "github.com/econumo/econumo/internal/label/repo"
 	"github.com/econumo/econumo/internal/model"
+	appoauth "github.com/econumo/econumo/internal/oauth"
+	handleroauth "github.com/econumo/econumo/internal/oauth/api"
+	oauthrepo "github.com/econumo/econumo/internal/oauth/repo"
 	apppayee "github.com/econumo/econumo/internal/payee"
 	handlerpayee "github.com/econumo/econumo/internal/payee/api"
 	payeemcp "github.com/econumo/econumo/internal/payee/mcp"
@@ -95,6 +104,18 @@ type Seams struct {
 	// transport (console default / Resend); tests inject a recording transport to
 	// capture the emitted reset code, which is no longer readable from the DB.
 	Mailer mailer.Mailer
+	// ImportProviders overrides the pull-import providers keyed by
+	// model.ImportProvider* name. nil registers the real SimpleFIN client;
+	// tests inject a stub so no scenario reaches the network.
+	ImportProviders map[string]appimports.Provider
+	// OAuthProviders, when non-nil, are the provider clients to mount; serve
+	// builds them once (so the boot probe warms the same discovery cache the
+	// server uses) and tests inject fakes. nil builds them from cfg.
+	OAuthProviders []appoauth.Provider
+	// OAuthHTTPClient is the HTTP client for provider discovery/token/JWKS
+	// calls when providers are built from cfg (nil = the default 10s client);
+	// the apiparity harness maps a fixed literal issuer onto its fake.
+	OAuthHTTPClient *http.Client
 }
 
 // BuildAPI wires every resource module over the given (already opened+migrated)
@@ -164,6 +185,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	resetMailer := mailer.NewResetSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	verifyMailer := mailer.NewVerifySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	changeMailer := mailer.NewChangeEmailSender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
+	identityMailer := mailer.NewIdentitySender(mailTransport, cfg.MailFrom, cfg.MailReplyTo)
 	authLimiter := ratelimit.New(ratelimit.Config{
 		Limits: map[string]int{
 			appuser.RateScopeLogin:              cfg.RateLimitLogin,
@@ -175,6 +197,14 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 			appuser.RateScopeRequestEmailChange: cfg.RateLimitRequestEmailChange,
 			appuser.RateScopeConfirmEmailChange: cfg.RateLimitConfirmEmailChange,
 			appconnection.RateScopeAcceptInvite: cfg.RateLimitAccept,
+			appimports.RateScopeIngest:          cfg.RateLimitIngest,
+			appimports.RateScopeClaimSetupToken: cfg.RateLimitClaimSetupToken,
+			appimports.RateScopeSync:            cfg.RateLimitSync,
+			appimports.RateScopeSuggestRules:    cfg.RateLimitSuggestRules,
+			appimports.RateScopePreviewRule:     cfg.RateLimitPreviewRule,
+			// No per-key cap: the caller of start-login/start-link is anonymous
+			// until the provider answers. The global per-minute cap applies.
+			appoauth.RateScopeOAuthStart: 0,
 		},
 		Window: cfg.RateLimitWindow,
 		Global: cfg.RateLimitGlobal,
@@ -185,9 +215,31 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		emailChangeRepo, changeMailer,
 		avatars, clk, authLimiter, cfg.AllowRegistration, cfg.TrialDays, cfg.EmailVerification,
 	)
+	if cfg.PasswordLoginDisabled {
+		userSvc.DisablePasswordLogin()
+	}
 	userReadSvc := appuser.NewReadService(userReadRepo, encodeSvc, clk)
 	billingSvc := appuser.NewBillingService(cfg.BillingURL, handoff.NewSigner(cfg.AdminToken), clk)
 	userHandlers := handleruser.NewHandlers(userSvc, userReadSvc, clk, billingSvc)
+
+	oauthProviders := seams.OAuthProviders
+	if oauthProviders == nil {
+		oauthProviders, err = appoauth.ProvidersFromConfig(cfg, seams.OAuthHTTPClient)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+	}
+	oauthSvc := appoauth.NewService(oauthProviders, NewOAuthUsers(userSvc),
+		oauthrepo.NewIdentityRepo(cfg.DatabaseDriver, txm), oauthrepo.NewStateRepo(cfg.DatabaseDriver, txm),
+		oauthrepo.NewHandoffRepo(cfg.DatabaseDriver, txm), txm, clk, authLimiter, cfg.AppURL, cfg.AllowRegistration, cfg.AppLinksEnabled())
+	if cfg.PasswordLoginDisabled {
+		oauthSvc.DisablePasswordLogin()
+	}
+	userSvc.SetLogoutURLBuilder(oauthLogoutURLs{oauth: oauthSvc})
+	userSvc.SetOAuthReclaimer(NewOAuthReclaimer(oauthSvc))
+	userSvc.SetIdentityEmailLister(NewIdentityEmailLister(oauthSvc))
+	oauthSvc.SetNotifier(NewOAuthNotifier(userSvc, identityMailer, oauthSvc))
+	oauthHandlers := handleroauth.NewHandlers(oauthSvc)
 
 	// Shared-account access resolver (account owner + connected-user grant role),
 	// used by the category/tag create-for-account paths.
@@ -197,7 +249,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	// classification services take a merger over it; budgetSvc itself still needs
 	// the later dependencies.
 	budgetRepo := budgetrepo.NewRepo(cfg.DatabaseDriver, txm)
-	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, clk)}
+	classificationMerger := classificationBudgetMerger{svc: appbudget.NewMergeService(budgetRepo, budgetRepo, budgetRepo, clk)}
 
 	categoryRepo := categoryrepo.NewRepo(cfg.DatabaseDriver, txm)
 	categoryReadRepo := categoryrepo.NewReadRepo(cfg.DatabaseDriver, txm)
@@ -289,6 +341,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		NewBudgetCurrencyLookup(currencyLookup),
 		budgetrepo.NewMetadataLookup(NewBudgetCategoryMetadataLookup(categoryRepo), NewBudgetTagMetadataLookup(tagRepo), NewBudgetPayeeMetadataLookup(payeeRepo)),
 		accountAccessResolver,
+		opGuard,
 		txm, clk,
 	)
 	budgetHandlers := handlerbudget.NewHandlers(budgetSvc)
@@ -328,6 +381,37 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	)
 	transactionHandlers := handlertransaction.NewHandlers(transactionSvc)
 
+	importsRepo := importsrepo.NewRepo(cfg.DatabaseDriver, txm)
+	importsSvc := appimports.NewService(
+		importsRepo,
+		NewImportsAccountReader(accountSvc, currencyLookup),
+		NewImportsCurrencyConverter(currencyLookup, rateProvider, convertor),
+		NewImportsTransactionWriter(transactionSvc),
+		NewImportsTransactionLister(transactionRepo),
+		NewImportsClassificationLister(txImportCategories.CategoriesByOwner, txImportPayees.PayeesByOwner, txImportTags.TagsByOwner, txImportLabels.LabelsByOwner),
+		authLimiter, txm, clk,
+		appimports.MatcherConfig{
+			MatchDays:       cfg.ImportMatchDays,
+			TipDays:         cfg.ImportTipDays,
+			TipTolerancePct: cfg.ImportTipTolerancePct,
+			TokenMinLength:  cfg.ImportTokenMinLength,
+		},
+	)
+	importsSvc.RegisterParser(model.ImportProviderAppleWallet, applewallet.Parser{})
+	importsSvc.RegisterParser(model.ImportProviderSimpleFIN, simplefin.Parser{})
+	if seams.ImportProviders == nil {
+		importsSvc.RegisterProvider(model.ImportProviderSimpleFIN, simplefin.New(simplefin.Options{AllowPrivateHosts: cfg.ImportAllowPrivateHosts}))
+	}
+	for name, p := range seams.ImportProviders {
+		importsSvc.RegisterProvider(name, p)
+	}
+	// The completion client is injected here, never imported by the feature:
+	// internal/imports declares the Completer interface and nothing more.
+	if cfg.AIEnabled {
+		importsSvc.SetCompleter(ai.New(ai.Config{Endpoint: cfg.AIEndpoint, APIKey: cfg.AIAPIKey, Model: cfg.AIModel}))
+	}
+	importsHandlers := handlerimports.NewHandlers(importsSvc)
+
 	recurringRepo := recurringrepo.NewRepo(cfg.DatabaseDriver, txm)
 	recurringSvc := apprecurring.NewService(recurringRepo, accountSvc, accountAccessResolver, accountSvc, transactionSvc, labelOwnership, txm, opGuard, clk)
 	recurringHandlers := handlerrecurring.NewHandlers(recurringSvc)
@@ -338,6 +422,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
+		handleroauth.RegisterAPI(oauthHandlers, authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
 		handlerlabel.RegisterAPI(labelHandlers, authn),
@@ -348,6 +433,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		handlerrecurring.RegisterAPI(recurringHandlers, authn),
 		handlerconnection.RegisterAPI(connectionHandlers, authn),
 		handlerbudget.RegisterAPI(budgetHandlers, authn),
+		handlerimports.RegisterAPI(importsHandlers, authn),
 		handlersystem.RegisterAPI(systemHandlers, authn),
 		apidoc.RegisterAPI(),
 	)

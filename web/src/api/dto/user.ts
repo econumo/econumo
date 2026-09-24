@@ -32,6 +32,8 @@ export interface CurrentUserDto {
   accessUntil: string
   /** frozen wire format "YYYY-MM-DD HH:mm:ss" UTC */
   createdAt: string
+  /** false for an account created via OAuth that never set a password */
+  hasPassword: boolean
   /** @deprecated */
   currency: string
   /** @deprecated */
@@ -56,11 +58,14 @@ export interface SessionDto {
   createdAt: string
   lastUsedAt: string
   isCurrent: boolean
+  /** OAuth provider id the session was opened through; '' for a password session */
+  provider: string
 }
 
 export interface PersonalTokenDto {
   id: Id
   name: string
+  scope: 'full' | 'ingest'
   createdAt: string
   lastUsedAt: string
   expiresAt: string | null
@@ -73,4 +78,12 @@ export interface CreatedPersonalTokenDto {
   token: string
   createdAt: string
   expiresAt: string | null
+}
+
+export interface LogoutResultDto {
+  result: string
+  /** IdP end-session URL to navigate to; '' when the session logs out locally */
+  logoutUrl: string
+  /** OAuth provider id the session was opened through; '' for password sessions */
+  provider: string
 }

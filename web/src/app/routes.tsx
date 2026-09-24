@@ -7,6 +7,8 @@ import { NotFoundPage } from '@/pages/NotFoundPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { RegistrationPage } from '@/features/auth/RegistrationPage'
 import { LogoutPage } from '@/features/auth/LogoutPage'
+import { OAuthCallbackPage } from '@/features/auth/OAuthCallbackPage'
+import { AppReturnPage } from '@/features/auth/AppReturnPage'
 import { HomePage } from '@/features/home/HomePage'
 import { AccountPage } from '@/features/accounts/AccountPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
@@ -15,6 +17,7 @@ import { ChangePasswordPage } from '@/features/settings/ChangePasswordPage'
 import { ChangeEmailPage } from '@/features/settings/ChangeEmailPage'
 import { SessionsPage } from '@/features/settings/SessionsPage'
 import { PersonalTokensPage } from '@/features/settings/PersonalTokensPage'
+import { LinkedAccountsPage } from '@/features/settings/LinkedAccountsPage'
 import { AccountsSettingsPage } from '@/features/accounts/AccountsSettingsPage'
 import { CategoriesPage } from '@/features/classifications/CategoriesPage'
 import { PayeesPage } from '@/features/classifications/PayeesPage'
@@ -23,6 +26,13 @@ import { CurrenciesPage } from '@/features/currencies/CurrenciesPage'
 import { BudgetsPage } from '@/features/budgets/BudgetsPage'
 import { ConnectionsPage } from '@/features/connections/ConnectionsPage'
 import { RecurringSettingsPage } from '@/features/recurring/RecurringSettingsPage'
+import { ImportsDataPage } from '@/features/imports/ImportsDataPage'
+import { AppleWalletPage } from '@/features/imports/AppleWalletPage'
+import { SimpleFINPage } from '@/features/imports/SimpleFINPage'
+import { ImportQueuePage } from '@/features/imports/ImportQueuePage'
+import { ImportRunListPage } from '@/features/imports/ImportRunListPage'
+import { ImportRunPage } from '@/features/imports/ImportRunPage'
+import { ImportRulesPage } from '@/features/imports/ImportRulesPage'
 import { OnboardingPage } from '@/features/onboarding/OnboardingPage'
 import { BudgetPage } from '@/features/budgets/BudgetPage'
 
@@ -39,6 +49,8 @@ export function createRouter() {
           ],
         },
         { path: '/logout', element: <LogoutPage /> },
+        { path: '/oauth/callback', element: <OAuthCallbackPage /> },
+        { path: '/oauth/app-return', element: <AppReturnPage /> },
         {
           element: <RequireAuth />,
           children: [
@@ -56,6 +68,7 @@ export function createRouter() {
                 { path: '/settings/profile/change-email', element: <ChangeEmailPage /> },
                 { path: '/settings/profile/sessions', element: <SessionsPage /> },
                 { path: '/settings/profile/tokens', element: <PersonalTokensPage /> },
+                { path: '/settings/profile/linked-accounts', element: <LinkedAccountsPage /> },
                 { path: '/settings/accounts', element: <AccountsSettingsPage /> },
                 { path: '/settings/categories', element: <CategoriesPage /> },
                 { path: '/settings/payees', element: <PayeesPage /> },
@@ -64,6 +77,13 @@ export function createRouter() {
                 { path: '/settings/connections', element: <ConnectionsPage /> },
                 { path: '/settings/budgets', element: <BudgetsPage /> },
                 { path: '/settings/recurring', element: <RecurringSettingsPage /> },
+                { path: '/settings/data', element: <ImportsDataPage /> },
+                { path: '/settings/apple-wallet', element: <AppleWalletPage /> },
+                { path: '/settings/simplefin', element: <SimpleFINPage /> },
+                { path: '/settings/import-rules', element: <ImportRulesPage /> },
+                { path: '/imports/queue', element: <ImportQueuePage /> },
+                { path: '/imports/runs', element: <ImportRunListPage /> },
+                { path: '/imports/runs/:id', element: <ImportRunPage /> },
               ],
             },
           ],

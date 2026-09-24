@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const bumpUserCredentialsGeneration = `-- name: BumpUserCredentialsGeneration :execrows
+UPDATE users SET credentials_generation = credentials_generation + 1 WHERE id = ?
+`
+
+func (q *Queries) BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error) {
+	result, err := q.db.ExecContext(ctx, bumpUserCredentialsGeneration, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const existsUserByEmail = `-- name: ExistsUserByEmail :one
 SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower(?))
 `
@@ -22,26 +34,27 @@ func (q *Queries) ExistsUserByEmail(ctx context.Context, lower string) (int64, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE lower(email) = lower(?)
 `
 
 type GetUserByEmailRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
@@ -62,31 +75,33 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEm
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified
+SELECT id, email, name, avatar, password, salt, created_at, updated_at, is_active, algorithm, access_level, access_until, timezone, email_verified, credentials_generation
 FROM users
 WHERE id = ?
 `
 
 type GetUserByIDRow struct {
-	ID            string
-	Email         string
-	Name          string
-	Avatar        string
-	Password      string
-	Salt          string
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	IsActive      bool
-	Algorithm     string
-	AccessLevel   string
-	AccessUntil   *time.Time
-	Timezone      string
-	EmailVerified bool
+	ID                    string
+	Email                 string
+	Name                  string
+	Avatar                string
+	Password              string
+	Salt                  string
+	CreatedAt             time.Time
+	UpdatedAt             time.Time
+	IsActive              bool
+	Algorithm             string
+	AccessLevel           string
+	AccessUntil           *time.Time
+	Timezone              string
+	EmailVerified         bool
+	CredentialsGeneration int64
 }
 
 func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, error) {
@@ -107,6 +122,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id string) (GetUserByIDRow, e
 		&i.AccessUntil,
 		&i.Timezone,
 		&i.EmailVerified,
+		&i.CredentialsGeneration,
 	)
 	return i, err
 }
@@ -196,6 +212,78 @@ func (q *Queries) ListUserIDs(ctx context.Context) ([]string, error) {
 	return items, nil
 }
 
+const lockUserRow = `-- name: LockUserRow :exec
+UPDATE users SET updated_at = updated_at WHERE id = ?
+`
+
+// The row lock behind every existing-row write and credential mint (see
+// user.Repository.LockRow). SQLite has no row-level lock modes, so this stays
+// a no-op UPDATE to take the row's write lock; the single-writer pool already
+// serializes concurrent transactions regardless, so the extra tuple version
+// this writes per call is not worth chasing here (unlike PostgreSQL, which
+// uses SELECT ... FOR NO KEY UPDATE instead, see the pgsql query).
+func (q *Queries) LockUserRow(ctx context.Context, id string) error {
+	_, err := q.db.ExecContext(ctx, lockUserRow, id)
+	return err
+}
+
+const updateUserEmailIfGeneration = `-- name: UpdateUserEmailIfGeneration :execrows
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
+WHERE id = ? AND credentials_generation = ?
+`
+
+type UpdateUserEmailIfGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The confirm-email-change path writes ONLY the email columns, under the
+// generation it read after taking the user row's lock, so a stale aggregate can
+// never be saved over an account a reset has just reclaimed.
+func (q *Queries) UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+const updateUserEmailIfPasswordlessAndGeneration = `-- name: UpdateUserEmailIfPasswordlessAndGeneration :execrows
+UPDATE users SET email = ?, email_verified = 1, updated_at = ?
+WHERE id = ? AND credentials_generation = ? AND algorithm = 'none'
+`
+
+type UpdateUserEmailIfPasswordlessAndGenerationParams struct {
+	Email                 string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The oauth email-drift mirror writes the provider's new address onto the
+// primary email only while the account is still passwordless and still at the
+// generation the callback resolved it under: a password reset committing after
+// those checks must keep the recovered account's own address.
+func (q *Queries) UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserEmailIfPasswordlessAndGeneration,
+		arg.Email,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const updateUserLanguage = `-- name: UpdateUserLanguage :exec
 UPDATE users SET language = ? WHERE id = ?
 `
@@ -208,6 +296,38 @@ type UpdateUserLanguageParams struct {
 func (q *Queries) UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error {
 	_, err := q.db.ExecContext(ctx, updateUserLanguage, arg.Language, arg.ID)
 	return err
+}
+
+const updateUserPasswordIfGeneration = `-- name: UpdateUserPasswordIfGeneration :execrows
+UPDATE users SET password = ?, salt = ?, algorithm = ?, updated_at = ?
+WHERE id = ? AND credentials_generation = ?
+`
+
+type UpdateUserPasswordIfGenerationParams struct {
+	Password              string
+	Salt                  string
+	Algorithm             string
+	UpdatedAt             time.Time
+	ID                    string
+	CredentialsGeneration int64
+}
+
+// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+// only under the generation the login verified the hash under, so a reset
+// committing mid-login is never overwritten by a stale aggregate save.
+func (q *Queries) UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserPasswordIfGeneration,
+		arg.Password,
+		arg.Salt,
+		arg.Algorithm,
+		arg.UpdatedAt,
+		arg.ID,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const updateUserTimezone = `-- name: UpdateUserTimezone :exec

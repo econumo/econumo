@@ -360,6 +360,105 @@ func Register(svc *appbudget.Service) webmcp.Register {
 				return nil, setLimitResult{BudgetID: in.BudgetID, ElementID: in.ElementID, Month: in.Month, Amount: in.Amount}, nil
 			})
 
+		type listCommentsInput struct {
+			BudgetID string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+			Month    string `json:"month,omitempty" jsonschema:"YYYY-MM; defaults to the current month"`
+			Months   int    `json:"months,omitempty" jsonschema:"window length in months, 1-24 (default 1)"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "list_budget_comments",
+			Description: "Comment threads on a budget's cells for a month window. Each comment names its element (the id get_budget returns) and its month."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in listCommentsInput) (*sdk.CallToolResult, model.GetCommentListResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "list_budget_comments")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.GetCommentListResult{}, err
+				}
+				from := ""
+				if in.Month != "" {
+					if _, perr := time.Parse("2006-01", in.Month); perr != nil {
+						return nil, model.GetCommentListResult{}, errs.NewValidation("month must be YYYY-MM")
+					}
+					from = in.Month + "-01"
+				}
+				months := ""
+				if in.Months != 0 {
+					months = strconv.Itoa(in.Months)
+				}
+				res, err := svc.GetCommentList(ctx, userID, model.GetCommentListRequest{BudgetId: in.BudgetID, From: from, Months: months})
+				if err != nil {
+					return nil, model.GetCommentListResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type createCommentInput struct {
+			BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+			ElementID string `json:"element_id" jsonschema:"envelope, category or tag id (UUID), from get_budget"`
+			Month     string `json:"month" jsonschema:"YYYY-MM; must be inside the budget's months"`
+			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "create_budget_comment",
+			Description: "Post a comment on one budget cell (element + month). Every participant may post, read-only guests included."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in createCommentInput) (*sdk.CallToolResult, model.CreateCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "create_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.CreateCommentResult{}, err
+				}
+				if _, perr := time.Parse("2006-01", in.Month); perr != nil {
+					return nil, model.CreateCommentResult{}, errs.NewValidation("month must be YYYY-MM")
+				}
+				res, err := svc.CreateComment(ctx, userID, model.CreateCommentRequest{
+					Id:       vo.NewId().String(), // comment id, minted server-side for MCP
+					BudgetId: in.BudgetID, ElementId: in.ElementID, Period: in.Month + "-01", Comment: in.Comment,
+				})
+				if err != nil {
+					return nil, model.CreateCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type updateCommentInput struct {
+			CommentID string `json:"comment_id" jsonschema:"comment id (UUID), from list_budget_comments"`
+			Comment   string `json:"comment" jsonschema:"plain text, 1-500 characters"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "update_budget_comment",
+			Description: "Edit a comment you wrote. Only the author may edit."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in updateCommentInput) (*sdk.CallToolResult, model.UpdateCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "update_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.UpdateCommentResult{}, err
+				}
+				res, err := svc.UpdateComment(ctx, userID, model.UpdateCommentRequest{Id: in.CommentID, Comment: in.Comment})
+				if err != nil {
+					return nil, model.UpdateCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
+		type deleteCommentInput struct {
+			CommentID string `json:"comment_id" jsonschema:"comment id (UUID), from list_budget_comments"`
+		}
+
+		sdk.AddTool(s, &sdk.Tool{Name: "delete_budget_comment",
+			Description: "Delete a comment. The author may delete their own; the budget owner or an admin may delete any."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in deleteCommentInput) (*sdk.CallToolResult, model.DeleteCommentResult, error) {
+				reqctx.AddLogAttr(ctx, "tool", "delete_budget_comment")
+				userID, err := webmcp.UserID(ctx)
+				if err != nil {
+					return nil, model.DeleteCommentResult{}, err
+				}
+				res, err := svc.DeleteComment(ctx, userID, model.DeleteCommentRequest{Id: in.CommentID})
+				if err != nil {
+					return nil, model.DeleteCommentResult{}, webmcp.MapErr(ctx, err)
+				}
+				return nil, *res, nil
+			})
+
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
 			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {

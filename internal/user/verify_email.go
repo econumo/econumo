@@ -38,13 +38,18 @@ func (s *Service) requireVerifiedEmail(ctx context.Context, u *model.User, email
 // invalid-code error) so the route cannot be used for account enumeration;
 // failed attempts count toward the confirm-email cap and clear on success.
 func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailRequest) (*model.ConfirmEmailResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeConfirmEmail, lowered); err != nil {
 		return nil, err
 	}
 	invalid := &errs.ValidationError{Msg: "The confirmation code is not valid.", MsgCode: errs.CodeUserVerificationCodeInvalid}
 
-	u, err := s.repo.GetByEmail(ctx, lowered)
+	// This lookup only resolves WHOSE row to lock; everything the confirmation
+	// decides on is read again inside the transaction, under that lock.
+	found, err := s.repo.GetByEmail(ctx, lowered)
 	if err != nil {
 		if isNotFound(err) {
 			s.failAttempt(RateScopeConfirmEmail, lowered)
@@ -52,29 +57,53 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 		}
 		return nil, err
 	}
-	ev, err := s.emailVerifications.GetByUser(ctx, u.ID)
-	if err != nil {
-		if isNotFound(err) {
-			s.failAttempt(RateScopeConfirmEmail, lowered)
-			return nil, invalid
-		}
-		return nil, err
-	}
-	if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
-		s.failAttempt(RateScopeConfirmEmail, lowered)
-		return nil, invalid
-	}
-	if ev.IsExpired(s.clock.Now()) {
-		s.failAttempt(RateScopeConfirmEmail, lowered)
-		return nil, &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
-	}
+	userID := found.ID
 
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
-		u.MarkEmailVerified(s.clock.Now())
-		if serr := s.repo.Save(ctx, u); serr != nil {
-			return serr
+		// The row lock first, then the read the whole-aggregate Save is built
+		// from: a row read before a reclaim committed would carry the pre-reset
+		// password back. Same order the reclaim takes, so the two serialize.
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
 		}
-		return s.emailVerifications.DeleteByUser(ctx, u.ID)
+		u, gerr := s.repo.GetByID(ctx, userID)
+		if gerr != nil {
+			if isNotFound(gerr) {
+				s.failAttempt(RateScopeConfirmEmail, lowered)
+				return invalid
+			}
+			return gerr
+		}
+		ev, verr := s.emailVerifications.GetByUser(ctx, userID)
+		if verr != nil {
+			if isNotFound(verr) {
+				s.failAttempt(RateScopeConfirmEmail, lowered)
+				return invalid
+			}
+			return verr
+		}
+		if HashResetCode(strings.TrimSpace(req.Code)) != ev.Code {
+			s.failAttempt(RateScopeConfirmEmail, lowered)
+			return invalid
+		}
+		if ev.IsExpired(s.clock.Now()) {
+			s.failAttempt(RateScopeConfirmEmail, lowered)
+			return &errs.ValidationError{Msg: "The code is expired", MsgCode: errs.CodeUserVerificationCodeExpired}
+		}
+		// The code is this confirmation's authority, so consuming it is what
+		// proves the authority was still there: a resend that replaced it (or a
+		// concurrent confirmation) leaves nothing to take. Row-counted, so the
+		// sweep can only ever remove the row that was actually checked, never a
+		// code the user has just been emailed.
+		taken, cerr := s.emailVerifications.Consume(ctx, ev.ID, userID)
+		if cerr != nil {
+			return cerr
+		}
+		if taken != 1 {
+			return invalid
+		}
+		u.MarkEmailVerified(s.clock.Now())
+		return s.repo.Save(ctx, u)
 	}); err != nil {
 		return nil, err
 	}
@@ -98,6 +127,9 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 // and already-verified usernames included — so it can never be read as proof
 // that an unverified account exists.
 func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVerificationCodeRequest) (*model.ResendVerificationCodeResult, time.Duration, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, 0, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	now := s.clock.Now()
 
@@ -254,6 +286,12 @@ func (s *Service) issueVerificationCode(ctx context.Context, u *model.User, emai
 	}
 	ev := model.NewEmailVerification(vo.NewId(), u.ID, HashResetCode(code), now)
 	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		// The user row first, then its code row: the same order a confirmation
+		// takes, so the two serialize instead of a confirmation's sweep landing
+		// on the code this call is about to email.
+		if lerr := s.repo.LockRow(ctx, u.ID); lerr != nil {
+			return lerr
+		}
 		if derr := s.emailVerifications.DeleteByUser(ctx, u.ID); derr != nil {
 			return derr
 		}

@@ -23,6 +23,6 @@ func (passwordRequestSqliteQuerier) GetUserPasswordRequestByUserAndCode(ctx cont
 	return sqlitegen.New(db).GetUserPasswordRequestByUserAndCode(ctx, p)
 }
 
-func (passwordRequestSqliteQuerier) DeleteUserPasswordRequest(ctx context.Context, db backend.DBTX, id string) error {
-	return sqlitegen.New(db).DeleteUserPasswordRequest(ctx, id)
+func (passwordRequestSqliteQuerier) ConsumeUserPasswordRequest(ctx context.Context, db backend.DBTX, p consumeParams) (int64, error) {
+	return sqlitegen.New(db).ConsumeUserPasswordRequest(ctx, p)
 }

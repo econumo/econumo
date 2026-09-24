@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { useServerConfig } from '@/lib/appConfig'
 import { RegistrationPage } from './RegistrationPage'
 
 function renderPage() {
@@ -27,6 +28,7 @@ function renderPage() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
 })
 
 it('registers, remembers the new email, and navigates to the login page', async () => {
@@ -144,4 +146,37 @@ it('redirects to login when registration is disabled', async () => {
   window.econumoConfig = { ALLOW_REGISTRATION: 'false' }
   renderPage()
   expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
+})
+
+it('signs up through the providers only when password sign-in is disabled', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_REGISTRATION: true, ALLOW_CUSTOM_API: 'false' }
+  server.use(
+    http.get('*/api/v1/oauth/get-provider-list', () =>
+      HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] }),
+    ),
+  )
+  renderPage()
+  expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+  expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+  expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /sign up/i })).not.toBeInTheDocument()
+})
+
+it('leaves for the login page when the app learns registration is off', async () => {
+  window.Capacitor = { isNativePlatform: () => true }
+  window.econumoConfig = { ALLOW_REGISTRATION: true }
+  useServerConfig.setState({ configHost: null })
+  localStorage.setItem('selfHosted', 'true')
+  localStorage.setItem('backendHost', JSON.stringify('https://closed.example.test'))
+  server.use(
+    http.get('https://closed.example.test/econumo-config.js', () =>
+      new HttpResponse('window.econumoConfig = {"ALLOW_REGISTRATION":false};\n', { headers: { 'Content-Type': 'text/javascript' } }),
+    ),
+  )
+  try {
+    renderPage()
+    expect(await screen.findByText('LOGIN PAGE')).toBeInTheDocument()
+  } finally {
+    delete (window as { Capacitor?: unknown }).Capacitor
+  }
 })

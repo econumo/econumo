@@ -14,7 +14,7 @@ export function useTransactions() {
   })
 }
 
-function useApplyTransactionItem() {
+export function useApplyTransactionItem() {
   const queryClient = useQueryClient()
   return (result: TransactionItemDto, mode: 'add' | 'update' | 'delete') => {
     queryClient.setQueryData(queryKeys.accounts, result.accounts)

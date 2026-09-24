@@ -112,19 +112,16 @@ func (sqliteInviteQuerier) GetByUser(ctx context.Context, db backend.DBTX, userI
 }
 func (sqliteInviteQuerier) GetByCode(ctx context.Context, db backend.DBTX, code string, now time.Time) (inviteRow, error) {
 	// sqlite compares datetime(expired_at) >= datetime(?) with a 'Y-m-d H:i:s'
-	// string bound (a time.Time mis-compares against the stored datetime TEXT).
+	// text bound, the layout the column is stored in.
 	row, err := sqlitegen.New(db).GetConnectionInviteByCode(ctx, sqlitegen.GetConnectionInviteByCodeParams{
 		Code: &code, Datetime: now.Format(datetime.Layout),
 	})
 	return inviteRow{UserID: row.UserID, Code: row.Code, ExpiredAt: row.ExpiredAt}, err
 }
 func (sqliteInviteQuerier) Upsert(ctx context.Context, db backend.DBTX, userID string, code *string, expiredAt *time.Time) error {
-	// Store expired_at as a 'Y-m-d H:i:s' string (not a *time.Time): the modernc
-	// driver serializes time.Time as RFC3339 with a 'T'/'Z'/fractional seconds,
-	// which SQLite's datetime() CANNOT parse (it returns ""), breaking the
-	// by-code expiry comparison. A plain 'Y-m-d H:i:s' string is what datetime()
-	// expects. Done via a raw upsert since the generated param type is *time.Time.
-	// (Same SQLite datetime-binding gotcha handled in the budget repo.)
+	// Store expired_at as 'Y-m-d H:i:s' text, the form datetime() parses for the
+	// by-code expiry comparison. Done via a raw upsert since the generated param
+	// type is *time.Time.
 	var exp any
 	if expiredAt != nil {
 		exp = expiredAt.Format(datetime.Layout)

@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
+import { useServerConfig } from '@/lib/appConfig'
 import { LoginPage } from './LoginPage'
 
 function renderLogin(path = '/login') {
@@ -21,6 +22,7 @@ function renderLogin(path = '/login') {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  server.use(http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })))
 })
 
 it('logs in and stores the token', async () => {
@@ -226,4 +228,110 @@ it('submits with the custom-server section collapsed and custom API allowed', as
   await user.type(screen.getByLabelText('Password'), 'secret12')
   await user.click(screen.getByRole('button', { name: /sign in/i }))
   await vi.waitFor(() => expect(assign).toHaveBeenCalledWith('/'))
+})
+
+it('shows the oauth error from the query string', async () => {
+  renderLogin('/login?oauthError=email_unverified')
+  expect(await screen.findByText('The sign-in provider has not verified this email address.')).toBeInTheDocument()
+})
+
+describe('with password sign-in disabled', () => {
+  beforeEach(() => {
+    window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_CUSTOM_API: 'false' }
+    server.use(
+      http.get('*/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] }),
+      ),
+    )
+  })
+
+  it('offers only the provider buttons', async () => {
+    renderLogin()
+    expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Email')).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Password')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sign in/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /forgot/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('or continue with')).not.toBeInTheDocument()
+  })
+
+  it('points a password account at the administrator instead of the password form', async () => {
+    renderLogin('/login?oauthError=account_exists_password')
+    expect(await screen.findByText(/contact your administrator/i)).toBeInTheDocument()
+    expect(screen.queryByText(/sign in with your password/i)).not.toBeInTheDocument()
+  })
+
+  // PASSWORD_LOGIN describes the instance serving this page; a custom backend
+  // on another origin cannot take the provider round trip back here, so the
+  // password form stays and that backend decides.
+  it('keeps the password form for a custom backend on another origin', async () => {
+    window.econumoConfig = { PASSWORD_LOGIN: false, ALLOW_CUSTOM_API: 'true' }
+    localStorage.setItem('selfHosted', 'true')
+    localStorage.setItem('backendHost', JSON.stringify('https://other.example.test'))
+    renderLogin()
+    expect(screen.getByLabelText('Email')).toBeInTheDocument()
+    expect(screen.getByLabelText('Password')).toBeInTheDocument()
+  })
+})
+
+describe('in the native app', () => {
+  function serveConfig(host: string, values: Record<string, unknown>) {
+    return http.get(`${host}/econumo-config.js`, () =>
+      new HttpResponse(`window.econumoConfig = ${JSON.stringify(values)};\n`, { headers: { 'Content-Type': 'text/javascript' } }),
+    )
+  }
+
+  beforeEach(() => {
+    window.Capacitor = { isNativePlatform: () => true }
+    window.econumoConfig = { PASSWORD_LOGIN: true }
+    useServerConfig.setState({ configHost: null })
+    localStorage.setItem('selfHosted', 'true')
+    localStorage.setItem('backendHost', JSON.stringify('https://sso-only.example.test'))
+    server.use(
+      serveConfig('https://sso-only.example.test', { PASSWORD_LOGIN: false }),
+      serveConfig('https://passwords.example.test', { PASSWORD_LOGIN: true }),
+      http.get('*/api/v1/oauth/get-provider-list', () => HttpResponse.json({ success: true, message: '', data: [] })),
+    )
+  })
+
+  afterEach(() => {
+    delete (window as { Capacitor?: unknown }).Capacitor
+  })
+
+  it('hides the password form once the server config says passwords are off', async () => {
+    renderLogin()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+  })
+
+  it('follows the config of a newly entered server address', async () => {
+    const user = userEvent.setup()
+    renderLogin()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+    const host = screen.getByLabelText('Server address')
+    await user.clear(host)
+    await user.type(host, 'https://passwords.example.test')
+    expect(await screen.findByLabelText('Password')).toBeInTheDocument()
+  })
+
+  // The provider list belongs to a server too: a cached empty list from a
+  // password server must not leave a provider-only server with no way in.
+  it('shows the provider buttons of a newly entered server', async () => {
+    localStorage.setItem('backendHost', JSON.stringify('https://passwords.example.test'))
+    server.use(
+      http.get('https://passwords.example.test/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [] })),
+      http.get('https://sso-only.example.test/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] })),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+    expect(await screen.findByLabelText('Password')).toBeInTheDocument()
+    await waitFor(() => expect(useServerConfig.getState().configHost).toBe('https://passwords.example.test'))
+    expect(screen.queryByRole('button', { name: 'Continue with Authentik' })).not.toBeInTheDocument()
+    const host = screen.getByLabelText('Server address')
+    await user.clear(host)
+    await user.type(host, 'https://sso-only.example.test')
+    expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+  })
 })

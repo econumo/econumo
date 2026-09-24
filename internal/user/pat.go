@@ -1,5 +1,5 @@
 // Personal access tokens: user-created bearer credentials for integrations.
-// Full-access (no scopes); optional fixed expiry; never touched by password
+// Scoped (full | ingest); optional fixed expiry; never touched by password
 // changes — only explicit revocation or user:deactivate kills them.
 package user
 
@@ -13,7 +13,7 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req model.CreatePersonalTokenRequest) (*model.CreatePersonalTokenResult, error) {
+func (s *Service) CreatePersonalToken(ctx context.Context, userID, presentingTokenID vo.Id, req model.CreatePersonalTokenRequest) (*model.CreatePersonalTokenResult, error) {
 	now := s.clock.Now()
 	var expiresAt *time.Time
 	if req.ExpiresAt != "" {
@@ -32,15 +32,36 @@ func (s *Service) CreatePersonalToken(ctx context.Context, userID vo.Id, req mod
 		return nil, err
 	}
 	name := req.Name
+	// Validate() already guarantees req.Scope parses.
 	t := &model.AccessToken{
 		ID: vo.NewId(), UserID: userID, Kind: model.TokenKindPersonal, TokenHash: hash,
-		Name: &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
+		Scope: model.TokenScope(req.Scope),
+		Name:  &name, CreatedAt: now, LastUsedAt: now, ExpiresAt: expiresAt,
 	}
-	if err := s.tokens.Insert(ctx, t); err != nil {
+	// Fenced on the presenting credential, not a generation read: the caller's
+	// session was authenticated before this call, so a reclaim revoking it in
+	// between must not leave them a brand-new credential behind it. Checked at
+	// write time inside the database — a Go-side read would be exactly the
+	// race this is meant to close. Under the user's row lock, taken first (the
+	// reclaim's order), because the fence only sees COMMITTED rows: on
+	// PostgreSQL a mint racing the reclaim's still-open transaction would
+	// otherwise find the presenting token unrevoked and survive the sweep.
+	var n int64
+	if err := s.tx.WithTx(ctx, func(ctx context.Context) error {
+		if lerr := s.repo.LockRow(ctx, userID); lerr != nil {
+			return lerr
+		}
+		var ierr error
+		n, ierr = s.tokens.InsertIfPresenterLive(ctx, t, presentingTokenID)
+		return ierr
+	}); err != nil {
 		return nil, err
 	}
+	if n != 1 {
+		return nil, errs.NewUnauthorized("Invalid access token")
+	}
 	return &model.CreatePersonalTokenResult{
-		Id: t.ID.String(), Name: name, Token: raw,
+		Id: t.ID.String(), Name: name, Scope: req.Scope, Token: raw,
 		CreatedAt: now.UTC().Format(datetime.Layout),
 		ExpiresAt: formatOptionalDatetime(expiresAt),
 	}, nil
@@ -64,7 +85,7 @@ func (s *Service) ListPersonalTokens(ctx context.Context, userID vo.Id) ([]model
 			name = *rows[i].Name
 		}
 		out = append(out, model.PersonalTokenItem{
-			Id: rows[i].ID.String(), Name: name,
+			Id: rows[i].ID.String(), Name: name, Scope: string(rows[i].Scope),
 			CreatedAt:  rows[i].CreatedAt.UTC().Format(datetime.Layout),
 			LastUsedAt: rows[i].LastUsedAt.UTC().Format(datetime.Layout),
 			ExpiresAt:  formatOptionalDatetime(rows[i].ExpiresAt),
@@ -90,8 +111,7 @@ func (s *Service) RevokePersonalToken(ctx context.Context, userID vo.Id, req mod
 	if !t.UserID.Equal(userID) || t.Kind != model.TokenKindPersonal {
 		return nil, errs.NewNotFound("Token not found")
 	}
-	t.Revoke(s.clock.Now())
-	if err := s.tokens.Update(ctx, t); err != nil {
+	if err := s.tokens.Revoke(ctx, t.ID, s.clock.Now()); err != nil {
 		return nil, err
 	}
 	return &model.RevokePersonalTokenResult{}, nil

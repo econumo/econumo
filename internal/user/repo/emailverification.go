@@ -17,14 +17,16 @@ import (
 )
 
 type (
-	emailVerificationRow          = sqlitegen.UsersEmailVerification
-	emailVerificationInsertParams = sqlitegen.InsertUserEmailVerificationParams
+	emailVerificationRow           = sqlitegen.UsersEmailVerification
+	emailVerificationInsertParams  = sqlitegen.InsertUserEmailVerificationParams
+	emailVerificationConsumeParams = sqlitegen.ConsumeUserEmailVerificationParams
 )
 
 type emailVerificationQuerier interface {
 	DeleteUserEmailVerificationsByUser(ctx context.Context, db backend.DBTX, userID string) error
 	InsertUserEmailVerification(ctx context.Context, db backend.DBTX, p emailVerificationInsertParams) error
 	GetUserEmailVerificationByUser(ctx context.Context, db backend.DBTX, userID string) (emailVerificationRow, error)
+	ConsumeUserEmailVerification(ctx context.Context, db backend.DBTX, p emailVerificationConsumeParams) (int64, error)
 }
 
 type EmailVerificationRepo struct {
@@ -49,6 +51,14 @@ func (r *EmailVerificationRepo) db(ctx context.Context) backend.DBTX { return r.
 
 func (r *EmailVerificationRepo) DeleteByUser(ctx context.Context, userID vo.Id) error {
 	return r.q.DeleteUserEmailVerificationsByUser(ctx, r.db(ctx), userID.String())
+}
+
+// Consume takes the checked code back row-counted (see user.EmailVerifications).
+func (r *EmailVerificationRepo) Consume(ctx context.Context, id, userID vo.Id) (int64, error) {
+	return r.q.ConsumeUserEmailVerification(ctx, r.db(ctx), emailVerificationConsumeParams{
+		ID:     id.String(),
+		UserID: userID.String(),
+	})
 }
 
 func (r *EmailVerificationRepo) Save(ctx context.Context, v *model.EmailVerification) error {

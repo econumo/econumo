@@ -14,12 +14,26 @@ type Querier interface {
 	AddAccountToFolder(ctx context.Context, arg AddAccountToFolderParams) error
 	AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error
 	AddEnvelopeCategory(ctx context.Context, arg AddEnvelopeCategoryParams) error
+	BumpUserCredentialsGeneration(ctx context.Context, id string) (int64, error)
+	// The confirm path's evidence and its consumption are the same row: taking it
+	// row-counted is how a confirmation learns that the reclaim (or a concurrent
+	// confirm) already took the grant.
+	ConsumeUserEmailChangeRequest(ctx context.Context, arg ConsumeUserEmailChangeRequestParams) (int64, error)
+	// The confirmation's evidence and its consumption are the same row: taking it
+	// row-counted is how a confirm learns that a resend replaced the code it
+	// checked (or that a concurrent confirm already took it).
+	ConsumeUserEmailVerification(ctx context.Context, arg ConsumeUserEmailVerificationParams) (int64, error)
+	// The reset's evidence and its consumption are the same row: taking it
+	// row-counted is how a reset learns that a replacement code (or a concurrent
+	// reset) already took the one it read.
+	ConsumeUserPasswordRequest(ctx context.Context, arg ConsumeUserPasswordRequestParams) (int64, error)
 	CountAvailableAccounts(ctx context.Context, arg CountAvailableAccountsParams) (int64, error)
 	CountCategoriesByOwner(ctx context.Context, userID string) (int64, error)
 	// Usage census for delete protection. Only LIVE references count: a soft-deleted
 	// account is unreachable and unrestorable, so it must not pin a currency forever.
 	CountCurrencyUsage(ctx context.Context, arg CountCurrencyUsageParams) (int64, error)
 	CountFoldersByUser(ctx context.Context, userID string) (int64, error)
+	CountIdentitiesByUser(ctx context.Context, userID string) (int64, error)
 	CountLabelsByOwner(ctx context.Context, userID string) (int64, error)
 	CountPayeesByOwner(ctx context.Context, userID string) (int64, error)
 	CountTagsByOwner(ctx context.Context, userID string) (int64, error)
@@ -28,6 +42,8 @@ type Querier interface {
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
 	DeleteBudgetAccess(ctx context.Context, arg DeleteBudgetAccessParams) error
+	DeleteBudgetComment(ctx context.Context, id string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, budgetID string) error
 	DeleteBudgetElement(ctx context.Context, id string) error
 	DeleteBudgetEnvelope(ctx context.Context, id string) error
 	DeleteBudgetFolder(ctx context.Context, id string) error
@@ -38,14 +54,30 @@ type Querier interface {
 	DeleteCategory(ctx context.Context, id string) error
 	DeleteConnectionLink(ctx context.Context, arg DeleteConnectionLinkParams) error
 	DeleteDeadAccessTokens(ctx context.Context, arg DeleteDeadAccessTokensParams) (int64, error)
+	DeleteExpiredOAuthHandoffs(ctx context.Context, expiresAt time.Time) (int64, error)
+	DeleteExpiredOAuthStates(ctx context.Context, expiresAt time.Time) (int64, error)
 	DeleteFolder(ctx context.Context, id string) error
 	DeleteHiddenCurrency(ctx context.Context, arg DeleteHiddenCurrencyParams) error
+	DeleteIdentityByUserProvider(ctx context.Context, arg DeleteIdentityByUserProviderParams) (int64, error)
+	DeleteImportAccountLink(ctx context.Context, id string) error
+	DeleteImportCredentialKey(ctx context.Context, userID string) error
+	DeleteImportEvent(ctx context.Context, id string) error
+	DeleteImportLinkAppliedLabels(ctx context.Context, linkID string) error
+	DeleteImportRule(ctx context.Context, id string) error
+	DeleteImportRuleLabels(ctx context.Context, ruleID string) error
+	DeleteImportSource(ctx context.Context, id string) error
 	// transactions_labels rows for this label are removed by ON DELETE CASCADE;
 	// unlike tags there is no SET NULL, because the link is a join table.
 	DeleteLabel(ctx context.Context, id string) error
+	DeleteOAuthHandoff(ctx context.Context, codeHash string) (int64, error)
+	DeleteOAuthHandoffsByUser(ctx context.Context, userID string) (int64, error)
+	DeleteOAuthHandoffsByUserProvider(ctx context.Context, arg DeleteOAuthHandoffsByUserProviderParams) (int64, error)
+	DeleteOAuthState(ctx context.Context, stateHash string) (int64, error)
+	DeleteOAuthStatesByLinkUser(ctx context.Context, linkUserID *string) (int64, error)
 	// Transactions referencing this payee have payee_id set to NULL via the ON
 	// DELETE SET NULL FK, matching the PHP delete behaviour.
 	DeletePayee(ctx context.Context, id string) error
+	DeleteQueuedImportTransactionLinksByExternalAccount(ctx context.Context, arg DeleteQueuedImportTransactionLinksByExternalAccountParams) error
 	// Link rows between a recurring template and its reporting labels. Writes are
 	// delete-then-insert inside the caller's transaction, so a re-save is
 	// idempotent and never duplicates a pair.
@@ -68,7 +100,6 @@ type Querier interface {
 	// deletes it once verified. Expiry is compared in the app layer (Go time),
 	// not in SQL, to avoid engine date-format differences.
 	DeleteUserEmailVerificationsByUser(ctx context.Context, userID string) error
-	DeleteUserPasswordRequest(ctx context.Context, id string) error
 	// Password-reset request queries (users_password_requests). The reset flow:
 	// remind-password deletes the user's old codes and inserts a fresh one;
 	// reset-password looks it up by (user, code), checks expiry in Go, then deletes
@@ -79,7 +110,9 @@ type Querier interface {
 	// Joins users for access_level/access_until so per-request auth can report
 	// the caller's effective access level in the same round trip. This does NOT
 	// reuse the is_active shortcut (see GetAccessTokenByHash's Go caller): a
-	// lapsed user must still authenticate, just read-only.
+	// lapsed user must still authenticate, just read-only. Deliberately omits
+	// provider/id_token: nothing on the per-request hot path reads them (logout
+	// uses GetByID, the sessions list uses ListByUser), so they stay off it.
 	GetAccessTokenByHash(ctx context.Context, tokenHash string) (GetAccessTokenByHashRow, error)
 	GetAccessTokenByID(ctx context.Context, id string) (AccessToken, error)
 	// Connection module queries (SQLite). accounts_access holds per-account grants
@@ -128,6 +161,7 @@ type Querier interface {
 	// (limit amount) are NUMERIC(19,8) -> string; booleans (is_accepted,
 	// is_archived) -> bool; SMALLINT/SMALLINT UNSIGNED -> int16 via sqlc.yaml.
 	GetBudgetByID(ctx context.Context, id string) (Budget, error)
+	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
@@ -147,8 +181,7 @@ type Querier interface {
 	// repeated positionally, so sqlc generates a two-field Params struct.
 	GetCategoryListView(ctx context.Context, arg GetCategoryListViewParams) ([]Category, error)
 	// Look up a non-expired invite by code. The caller passes 'now' as a
-	// 'Y-m-d H:i:s' string so the comparison is against the stored datetime TEXT
-	// (a time.Time bound mis-compares at the boundary; see the budget read notes).
+	// 'Y-m-d H:i:s' string, the layout the datetime TEXT is stored in.
 	GetConnectionInviteByCode(ctx context.Context, arg GetConnectionInviteByCodeParams) (UsersConnectionsInvite, error)
 	GetConnectionInviteByUser(ctx context.Context, userID string) (UsersConnectionsInvite, error)
 	// One GLOBAL currency by ISO code (full row), for the idempotency check in
@@ -176,6 +209,21 @@ type Querier interface {
 	// and contains accounts via accounts_folders.
 	GetFolderByID(ctx context.Context, id string) (Folder, error)
 	GetHiddenCurrencyIDs(ctx context.Context, userID string) ([]string, error)
+	// OAuth feature queries: identities, in-flight states, one-shot handoffs.
+	GetIdentityByProviderSubject(ctx context.Context, arg GetIdentityByProviderSubjectParams) (UsersIdentity, error)
+	GetIdentityByUserProvider(ctx context.Context, arg GetIdentityByUserProviderParams) (UsersIdentity, error)
+	GetImportAccountLinkByID(ctx context.Context, id string) (ImportAccountLink, error)
+	GetImportCredentialKey(ctx context.Context, userID string) (ImportCredentialKey, error)
+	GetImportEventByID(ctx context.Context, id string) (ImportEvent, error)
+	GetImportRuleByID(ctx context.Context, id string) (ImportRule, error)
+	GetImportRunByID(ctx context.Context, id string) (GetImportRunByIDRow, error)
+	GetImportSourceByID(ctx context.Context, id string) (ImportSource, error)
+	GetImportSourceByUserProvider(ctx context.Context, arg GetImportSourceByUserProviderParams) (ImportSource, error)
+	// Card identity is case-insensitive (Apple Wallet may report the same card
+	// with different casing between taps), so the account-id half of the key
+	// folds case; external_transaction_id stays exact.
+	GetImportTransactionLinkByExternalKey(ctx context.Context, arg GetImportTransactionLinkByExternalKeyParams) (ImportTransactionLink, error)
+	GetImportTransactionLinkByID(ctx context.Context, id string) (ImportTransactionLink, error)
 	// Write-side queries for the label module. The read-side query lives in
 	// label_read.sql to keep the CQRS boundary visible (matching tags.sql vs
 	// tag_read.sql). Unlike tags, a label's icon IS persisted from the start.
@@ -187,9 +235,8 @@ type Querier interface {
 	GetLabelListView(ctx context.Context, arg GetLabelListViewParams) ([]Label, error)
 	// Most-recent published_at for a base currency strictly before a date (matches
 	// CurrencyRateRepository::getLatestDate). Compare via datetime() with a
-	// 'Y-m-d H:i:s' string bound: a time.Time bound mis-compares against the stored
-	// datetime TEXT, letting rows AT/after the boundary leak in (so "< Dec 1" wrongly
-	// returned a December date, snapping the rate period to the wrong month).
+	// 'Y-m-d H:i:s' string bound, so rows AT/after the boundary stay out (else
+	// "< Dec 1" returns a December date, snapping the rate period to the wrong month).
 	GetLatestCurrencyRateDate(ctx context.Context, arg GetLatestCurrencyRateDateParams) (time.Time, error)
 	// Latest rate row per (currency, base) pair. The previous single-latest-date
 	// form dropped any currency whose newest rate predates the newest OXR batch,
@@ -202,6 +249,8 @@ type Querier interface {
 	// ORDER BY ... LIMIT 1 (not MAX) so the result types as the published_at column
 	// (time.Time) instead of an aggregate interface{}. sql.ErrNoRows = no rates yet.
 	GetLatestRateDate(ctx context.Context) (time.Time, error)
+	GetOAuthHandoff(ctx context.Context, codeHash string) (OauthHandoff, error)
+	GetOAuthState(ctx context.Context, stateHash string) (OauthState, error)
 	GetOperationId(ctx context.Context, id string) (OperationRequestsID, error)
 	// Write-side queries for the payee module. The read-side query lives in
 	// payee_read.sql to keep the CQRS boundary visible (matching tags.sql vs
@@ -279,7 +328,17 @@ type Querier interface {
 	// tokens. Liveness (revoked/expired) is evaluated in the app layer (Go
 	// time.Time), not in SQL, to avoid engine date-format differences; the
 	// list/get queries return raw rows.
-	InsertAccessToken(ctx context.Context, arg InsertAccessTokenParams) error
+	// Mints a token only while the user's credentials generation is still the one
+	// the caller's evidence was read under: an account reclaim bumps it, so a
+	// session built on evidence from before the reclaim inserts nothing.
+	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
+	// Mints a personal token only while the credential that authenticated the
+	// request (the presenting token) is still unrevoked: the reclaim revokes
+	// every token in the same transaction that bumps the generation, so a
+	// request that passed the auth middleware before the reclaim inserts
+	// nothing after it.
+	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
+	InsertBudgetComment(ctx context.Context, arg InsertBudgetCommentParams) error
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -295,6 +354,24 @@ type Querier interface {
 	// Add a new currency. Mirrors CurrencyUpdateService::updateCurrencies (create).
 	InsertCurrency(ctx context.Context, arg InsertCurrencyParams) error
 	InsertHiddenCurrency(ctx context.Context, arg InsertHiddenCurrencyParams) error
+	// Same fence as InsertAccessTokenIfGeneration: a callback that resolved its
+	// user before an account reclaim must not land an identity after it. A plain
+	// INSERT, never an upsert: an identity the reclaim deleted must stay deleted.
+	InsertIdentityIfGeneration(ctx context.Context, arg InsertIdentityIfGenerationParams) (int64, error)
+	InsertImportAccountLink(ctx context.Context, arg InsertImportAccountLinkParams) error
+	// The (source_id, payload_hash) unique index makes a re-fired push a no-op;
+	// the caller reads the row count to learn whether this payload was new.
+	InsertImportEvent(ctx context.Context, arg InsertImportEventParams) (int64, error)
+	InsertImportLinkAppliedLabel(ctx context.Context, arg InsertImportLinkAppliedLabelParams) error
+	InsertImportRule(ctx context.Context, arg InsertImportRuleParams) error
+	InsertImportRuleLabel(ctx context.Context, arg InsertImportRuleLabelParams) error
+	InsertImportRun(ctx context.Context, arg InsertImportRunParams) error
+	// Transaction import: sources, the push-event inbox, runs, and the link
+	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
+	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
+	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	InsertOAuthHandoff(ctx context.Context, arg InsertOAuthHandoffParams) error
+	InsertOAuthState(ctx context.Context, arg InsertOAuthStateParams) error
 	// Idempotency queries over operation_requests_ids, shared by every module whose
 	// create endpoint takes a client-supplied operation id (category, tag, ...). The
 	// shared OperationGuard (internal/infra/operation) is built on these.
@@ -305,7 +382,11 @@ type Querier interface {
 	InsertTransactionLabel(ctx context.Context, arg InsertTransactionLabelParams) error
 	InsertUser(ctx context.Context, arg InsertUserParams) error
 	InsertUserCurrency(ctx context.Context, arg InsertUserCurrencyParams) error
-	InsertUserEmailChangeRequest(ctx context.Context, arg InsertUserEmailChangeRequestParams) error
+	// A pending change is a grant to rewrite the login key, so it must not be
+	// created by a session an account reclaim has already invalidated: the reclaim
+	// bumps the generation, and the insert only lands under the one the password
+	// check read.
+	InsertUserEmailChangeRequestIfGeneration(ctx context.Context, arg InsertUserEmailChangeRequestIfGenerationParams) (int64, error)
 	InsertUserEmailVerification(ctx context.Context, arg InsertUserEmailVerificationParams) error
 	InsertUserPasswordRequest(ctx context.Context, arg InsertUserPasswordRequestParams) error
 	// The one write that touches recurring_id on an existing row: an explicit
@@ -332,6 +413,14 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
+	// Every comment on every element of a budget inside a half-open month window.
+	// period is datetime TEXT, so normalize both sides with datetime() and bind the
+	// bounds as 'Y-m-d H:i:s' strings, exactly like the limit queries.
+	// Over the limit the NEWEST comments are kept (the inner select), still
+	// returned in window order.
+	ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error)
+	// Clone reads every comment at or after the copy's start month.
+	ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	// Every budget in which this category/tag appears. A merge must touch them all,
 	// including budgets shared with connected users.
@@ -341,10 +430,9 @@ type Querier interface {
 	// Every period this element holds a limit for. A merge transfers all of them,
 	// past and future alike, so there is deliberately no period filter.
 	ListBudgetLimitsByElement(ctx context.Context, elementID string) ([]BudgetsElementsLimit, error)
-	// period is stored as a datetime TEXT whose exact form varies (RFC3339
-	// "...T00:00:00Z" from Go writes vs "Y-m-d H:i:s" from PHP fixtures). A bound
-	// time.Time does NOT compare equal to either via raw "=", so normalize both
-	// sides with datetime() and bind the period as a 'Y-m-d H:i:s' string.
+	// period is datetime TEXT; legacy rows held RFC3339 "...T00:00:00Z" until
+	// 20260816000000. Normalize both sides with datetime() and bind the period as a
+	// 'Y-m-d H:i:s' string.
 	ListBudgetLimitsForPeriod(ctx context.Context, arg ListBudgetLimitsForPeriodParams) ([]BudgetsElementsLimit, error)
 	// Clone reads every limit at or after the copy's start month. period is stored
 	// as datetime TEXT in varying forms, so normalize both sides with datetime()
@@ -387,6 +475,20 @@ type Querier interface {
 	ListFolderMembershipsByUser(ctx context.Context, userID string) ([]AccountsFolder, error)
 	// The user's folders. Ordering is applied by the caller/assembler (by sort key).
 	ListFoldersByUser(ctx context.Context, userID string) ([]Folder, error)
+	ListIdentitiesByUser(ctx context.Context, userID string) ([]UsersIdentity, error)
+	ListImportAccountLinksBySource(ctx context.Context, sourceID string) ([]ImportAccountLink, error)
+	ListImportEventsBySourceStatus(ctx context.Context, arg ListImportEventsBySourceStatusParams) ([]ImportEvent, error)
+	ListImportLinkAppliedLabels(ctx context.Context, linkID string) ([]ImportLinkAppliedLabel, error)
+	ListImportRuleLabels(ctx context.Context, ruleID string) ([]ImportRuleLabel, error)
+	ListImportRuleLabelsByUser(ctx context.Context, userID string) ([]ImportRuleLabel, error)
+	ListImportRulesByUser(ctx context.Context, userID string) ([]ImportRule, error)
+	ListImportRunsBySource(ctx context.Context, arg ListImportRunsBySourceParams) ([]ListImportRunsBySourceRow, error)
+	ListImportRunsByUser(ctx context.Context, arg ListImportRunsByUserParams) ([]ListImportRunsByUserRow, error)
+	ListImportSourcesByUser(ctx context.Context, userID string) ([]ImportSource, error)
+	ListImportTransactionLinksByRun(ctx context.Context, runID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksBySource(ctx context.Context, sourceID string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByTransaction(ctx context.Context, transactionID *string) ([]ImportTransactionLink, error)
+	ListImportTransactionLinksByUser(ctx context.Context, userID string) ([]ImportTransactionLink, error)
 	// Grants on accounts OWNED by this user (issued to others).
 	ListIssuedAccountAccess(ctx context.Context, userID string) ([]AccountsAccess, error)
 	// The owner's labels ordered by sort key; used by move-label (load, place the
@@ -414,6 +516,13 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// The row lock behind every existing-row write and credential mint (see
+	// user.Repository.LockRow). SQLite has no row-level lock modes, so this stays
+	// a no-op UPDATE to take the row's write lock; the single-writer pool already
+	// serializes concurrent transactions regardless, so the extra tuple version
+	// this writes per call is not worth chasing here (unlike PostgreSQL, which
+	// uses SELECT ... FOR NO KEY UPDATE instead, see the pgsql query).
+	LockUserRow(ctx context.Context, id string) error
 	MarkOperationHandled(ctx context.Context, arg MarkOperationHandledParams) error
 	// Deleted customs release their code, so they must not block a re-create.
 	OwnerCurrencyCodeExists(ctx context.Context, arg OwnerCurrencyCodeExistsParams) (int64, error)
@@ -445,18 +554,49 @@ type Querier interface {
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does
 	// not update external_id, hence this dedicated statement.
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
+	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	// Set-based, so a revoke sweep is one statement and cannot race a concurrent
+	// touch row by row. The excepted id is the presenting token (or an id that
+	// matches nothing when everything must go).
+	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.
 	SoftDeleteCurrency(ctx context.Context, id string) error
-	UpdateAccessToken(ctx context.Context, arg UpdateAccessTokenParams) error
+	// The sliding-expiry touch never writes revoked_at and never touches a row a
+	// reclaim has revoked: a request that read the row before the revoke must not
+	// be able to write a stale NULL back.
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
+	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
+	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error
+	// Note: sets run_id too so a processed event records the run that consumed it.
+	UpdateImportEventStatus(ctx context.Context, arg UpdateImportEventStatusParams) error
+	UpdateImportRule(ctx context.Context, arg UpdateImportRuleParams) error
+	UpdateImportRun(ctx context.Context, arg UpdateImportRunParams) error
+	UpdateImportSource(ctx context.Context, arg UpdateImportSourceParams) error
+	UpdateImportTransactionLink(ctx context.Context, arg UpdateImportTransactionLinkParams) error
+	// The confirm-email-change path writes ONLY the email columns, under the
+	// generation it read after taking the user row's lock, so a stale aggregate can
+	// never be saved over an account a reset has just reclaimed.
+	UpdateUserEmailIfGeneration(ctx context.Context, arg UpdateUserEmailIfGenerationParams) (int64, error)
+	// The oauth email-drift mirror writes the provider's new address onto the
+	// primary email only while the account is still passwordless and still at the
+	// generation the callback resolved it under: a password reset committing after
+	// those checks must keep the recovered account's own address.
+	UpdateUserEmailIfPasswordlessAndGeneration(ctx context.Context, arg UpdateUserEmailIfPasswordlessAndGenerationParams) (int64, error)
 	UpdateUserLanguage(ctx context.Context, arg UpdateUserLanguageParams) error
+	// The opportunistic legacy-hash upgrade writes ONLY the credential columns and
+	// only under the generation the login verified the hash under, so a reset
+	// committing mid-login is never overwritten by a stale aggregate save.
+	UpdateUserPasswordIfGeneration(ctx context.Context, arg UpdateUserPasswordIfGenerationParams) (int64, error)
 	UpdateUserTimezone(ctx context.Context, arg UpdateUserTimezoneParams) error
 	UpsertAccount(ctx context.Context, arg UpsertAccountParams) error
 	UpsertAccountAccess(ctx context.Context, arg UpsertAccountAccessParams) error
@@ -471,14 +611,13 @@ type Querier interface {
 	// One invite row per user (user_id PK). code/expired_at are nullable (a cleared
 	// invite). expired_at is bound as a 'Y-m-d H:i:s' string (or NULL).
 	UpsertConnectionInvite(ctx context.Context, arg UpsertConnectionInviteParams) error
-	// Insert or update a rate for (published_at, currency, base). published_at is a
-	// DATE; the repo passes a time.Time truncated to midnight UTC. modernc stores
-	// date/datetime columns in ISO8601 (like every other date the Go repos write);
-	// the read path is format-agnostic because it compares via date()/MAX, and the
-	// midnight truncation keeps the value stable so the ON CONFLICT
-	// (identifier_uniq_currencies_rates) upsert dedupes per day.
+	// Insert or update a rate for (published_at, currency, base). published_at is
+	// bound as 'Y-m-d' TEXT, never a time.Time: the column is a DATE, and a
+	// time.Time would store a time part, splitting one day into distinct keys of
+	// the ON CONFLICT (identifier_uniq_currencies_rates) upsert.
 	UpsertCurrencyRate(ctx context.Context, arg UpsertCurrencyRateParams) error
 	UpsertFolder(ctx context.Context, arg UpsertFolderParams) error
+	UpsertImportCredentialKey(ctx context.Context, arg UpsertImportCredentialKeyParams) error
 	UpsertLabel(ctx context.Context, arg UpsertLabelParams) error
 	UpsertPayee(ctx context.Context, arg UpsertPayeeParams) error
 	UpsertRecurringTransaction(ctx context.Context, arg UpsertRecurringTransactionParams) error

@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -131,6 +132,13 @@ func TestLoad_RateLimitDefaults(t *testing.T) {
 	if c.RateLimitGlobal != 60 {
 		t.Fatalf("global = %d, want 60", c.RateLimitGlobal)
 	}
+	if c.RateLimitIngest != 60 {
+		t.Fatalf("ingest = %d, want 60", c.RateLimitIngest)
+	}
+	if c.RateLimitClaimSetupToken != 5 || c.RateLimitSync != 10 || c.RateLimitSuggestRules != 3 || c.RateLimitPreviewRule != 120 {
+		t.Fatalf("claim/sync/suggest/preview = %d/%d/%d/%d, want 5/10/3/120",
+			c.RateLimitClaimSetupToken, c.RateLimitSync, c.RateLimitSuggestRules, c.RateLimitPreviewRule)
+	}
 }
 
 func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
@@ -141,6 +149,9 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	t.Setenv("ECONUMO_RATE_LIMIT_REGISTER", "8")
 	t.Setenv("ECONUMO_RATE_LIMIT_WINDOW", "1h30m")
 	t.Setenv("ECONUMO_RATE_LIMIT_GLOBAL", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_INGEST", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_CLAIM_SETUP_TOKEN", "0")
+	t.Setenv("ECONUMO_RATE_LIMIT_SYNC", "2")
 	c, err := Load()
 	if err != nil {
 		t.Fatal(err)
@@ -148,8 +159,11 @@ func TestLoad_RateLimitOverridesAndDisable(t *testing.T) {
 	if c.RateLimitLogin != 10 || c.RateLimitReset != 0 || c.RateLimitRemind != 7 || c.RateLimitRegister != 8 {
 		t.Fatalf("overrides not applied: %+v", c)
 	}
-	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 {
-		t.Fatalf("window/global overrides not applied: %v / %d", c.RateLimitWindow, c.RateLimitGlobal)
+	if c.RateLimitWindow != 90*time.Minute || c.RateLimitGlobal != 0 || c.RateLimitIngest != 0 {
+		t.Fatalf("window/global/ingest overrides not applied: %v / %d / %d", c.RateLimitWindow, c.RateLimitGlobal, c.RateLimitIngest)
+	}
+	if c.RateLimitClaimSetupToken != 0 || c.RateLimitSync != 2 {
+		t.Fatalf("claim/sync overrides not applied: %d / %d", c.RateLimitClaimSetupToken, c.RateLimitSync)
 	}
 }
 
@@ -558,5 +572,388 @@ func TestLoad_CurrencyUpdateIntervalBadValueFailsBoot(t *testing.T) {
 				t.Fatalf("Load: want error for %q, got nil", bad)
 			}
 		})
+	}
+}
+
+func TestLoad_ImportMatcherDefaults(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportMatchDays != 3 || cfg.ImportTipDays != 5 || cfg.ImportTipTolerancePct != 20 || cfg.ImportTokenMinLength != 3 {
+		t.Errorf("defaults = %d/%d/%d/%d", cfg.ImportMatchDays, cfg.ImportTipDays, cfg.ImportTipTolerancePct, cfg.ImportTokenMinLength)
+	}
+}
+
+func TestLoad_ImportAllowPrivateHosts(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.ImportAllowPrivateHosts {
+		t.Error("the SSRF guard must be on by default")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "true")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !cfg.ImportAllowPrivateHosts {
+		t.Error("ImportAllowPrivateHosts should be true")
+	}
+
+	t.Setenv("ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_IMPORT_ALLOW_PRIVATE_HOSTS must fail at boot")
+	}
+}
+
+func TestLoad_ImportMatcherBounds(t *testing.T) {
+	cases := []struct {
+		key, val string
+		ok       bool
+	}{
+		{"ECONUMO_IMPORT_MATCH_DAYS", "0", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "31", true},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "32", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "-1", false},
+		{"ECONUMO_IMPORT_MATCH_DAYS", "three", false},
+		{"ECONUMO_IMPORT_TIP_DAYS", "31", true},
+		{"ECONUMO_IMPORT_TIP_DAYS", "32", false},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "100", true},
+		{"ECONUMO_IMPORT_TIP_TOLERANCE", "101", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "1", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "0", false},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "16", true},
+		{"ECONUMO_IMPORT_TOKEN_MIN_LENGTH", "17", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.key+"="+tc.val, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv(tc.key, tc.val)
+			_, err := Load()
+			if (err == nil) != tc.ok {
+				t.Fatalf("Load() err = %v, want ok=%v", err, tc.ok)
+			}
+		})
+	}
+}
+
+func TestParseAIDSN(t *testing.T) {
+	cases := []struct {
+		name, dsn, endpoint, apiKey, model string
+		wantErr                            bool
+	}{
+		{name: "empty disables", dsn: ""},
+		{name: "openai with key", dsn: "openai://sk-abc@api.openai.com?model=gpt-5-mini", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "gpt-5-mini"},
+		{name: "scheme is case-insensitive", dsn: "OpenAI://sk-abc@api.openai.com?model=m", endpoint: "https://api.openai.com/v1", apiKey: "sk-abc", model: "m"},
+		{name: "keyless loopback is plain http", dsn: "openai://localhost:11434?model=llama3", endpoint: "http://localhost:11434/v1", model: "llama3"},
+		{name: "127.0.0.1 is plain http", dsn: "openai://127.0.0.1:8000?model=m", endpoint: "http://127.0.0.1:8000/v1", model: "m"},
+		{name: "custom prefix kept, trailing slash trimmed", dsn: "openai://k@gateway.example/openai/v1/?model=m", endpoint: "https://gateway.example/openai/v1", apiKey: "k", model: "m"},
+		{name: "insecure flag forces http on a LAN host", dsn: "openai://10.0.0.5:8080?model=m&insecure=true", endpoint: "http://10.0.0.5:8080/v1", model: "m"},
+		{name: "unknown scheme", dsn: "anthropic://k@api.anthropic.com?model=m", wantErr: true},
+		{name: "missing model", dsn: "openai://k@api.openai.com", wantErr: true},
+		{name: "missing host", dsn: "openai://k@?model=m", wantErr: true},
+		{name: "not a url", dsn: "::nope", wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			endpoint, apiKey, model, err := parseAIDSN(tc.dsn)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if endpoint != tc.endpoint || apiKey != tc.apiKey || model != tc.model {
+				t.Fatalf("got (%q, %q, %q), want (%q, %q, %q)", endpoint, apiKey, model, tc.endpoint, tc.apiKey, tc.model)
+			}
+		})
+	}
+}
+
+func TestLoad_AIDSN(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_AI_DSN", "openai://sk-abc@api.openai.com?model=gpt-5-mini")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.AIEnabled || c.AIEndpoint != "https://api.openai.com/v1" || c.AIAPIKey != "sk-abc" || c.AIModel != "gpt-5-mini" {
+		t.Fatalf("ai config = %+v", c)
+	}
+	t.Setenv("ECONUMO_AI_DSN", "")
+	c, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.AIEnabled {
+		t.Fatal("empty DSN must disable AI")
+	}
+	t.Setenv("ECONUMO_AI_DSN", "smtp://x")
+	if _, err := Load(); err == nil {
+		t.Fatal("bad scheme must fail boot")
+	}
+}
+
+func TestLoad_OAuthGoogleRequiresBoth(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc.apps.googleusercontent.com")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET") {
+		t.Fatalf("half-configured google slot must name the missing variable, got %v", err)
+	}
+}
+
+func TestLoad_OAuthRequiresAppURL(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_URL") {
+		t.Fatalf("a provider without ECONUMO_URL must fail naming ECONUMO_URL, got %v", err)
+	}
+}
+
+func TestLoad_OAuthGoogleEnabled(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !c.OAuthGoogleEnabled() || c.OAuthAppleEnabled() || c.OIDCEnabled() || !c.OAuthEnabled() {
+		t.Fatalf("google=%v apple=%v oidc=%v any=%v", c.OAuthGoogleEnabled(), c.OAuthAppleEnabled(), c.OIDCEnabled(), c.OAuthEnabled())
+	}
+}
+
+// applePEM is a multi-line stand-in for a real .p8 file.
+const applePEM = "-----BEGIN PRIVATE KEY-----\nMIGH\n-----END PRIVATE KEY-----\n"
+
+func appleEnv(t *testing.T) {
+	t.Helper()
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_APPLE_CLIENT_ID", "com.example.web")
+	t.Setenv("ECONUMO_OAUTH_APPLE_TEAM_ID", "TEAM123456")
+	t.Setenv("ECONUMO_OAUTH_APPLE_KEY_ID", "KEY1234567")
+}
+
+func TestLoad_OAuthApplePrivateKeyFileReadsVerbatim(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "AuthKey.p8")
+	if err := os.WriteFile(path, []byte(applePEM), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Read byte-for-byte: no unescaping, so a real PEM survives intact.
+	if c.OAuthApplePrivateKey != applePEM {
+		t.Fatalf("key must be read verbatim, got %q", c.OAuthApplePrivateKey)
+	}
+	if !c.OAuthAppleEnabled() {
+		t.Fatal("apple slot should be enabled")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileMissingFails(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", filepath.Join(t.TempDir(), "absent.p8"))
+	if _, err := Load(); err == nil {
+		t.Fatal("a missing key file must fail at boot")
+	}
+}
+
+func TestLoad_OAuthApplePrivateKeyFileEmptyFails(t *testing.T) {
+	appleEnv(t)
+	path := filepath.Join(t.TempDir(), "empty.p8")
+	if err := os.WriteFile(path, []byte("  \n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE", path)
+	if _, err := Load(); err == nil {
+		t.Fatal("an empty key file must fail at boot")
+	}
+}
+
+// The inline variable silently corrupted the key under systemd, so it is
+// rejected outright rather than ignored.
+func TestLoad_OAuthApplePrivateKeyInlineRejected(t *testing.T) {
+	appleEnv(t)
+	t.Setenv("ECONUMO_OAUTH_APPLE_PRIVATE_KEY", applePEM)
+	_, err := Load()
+	if err == nil {
+		t.Fatal("the removed inline variable must fail at boot")
+	}
+	if !strings.Contains(err.Error(), "ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE") {
+		t.Fatalf("error must name the replacement, got %v", err)
+	}
+}
+
+func TestLoad_OIDCDefaultsAndValidation(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "https://auth.example.test/application/o/econumo/")
+	t.Setenv("ECONUMO_OIDC_CLIENT_ID", "cid")
+	t.Setenv("ECONUMO_OIDC_CLIENT_SECRET", "sec")
+	c, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.OIDCName != "SSO" || strings.Join(c.OIDCScopes, " ") != "openid profile email" || c.OIDCTrustEmail {
+		t.Fatalf("defaults: name=%q scopes=%v trust=%v", c.OIDCName, c.OIDCScopes, c.OIDCTrustEmail)
+	}
+
+	t.Setenv("ECONUMO_OIDC_SCOPES", "profile,email")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "openid") {
+		t.Fatalf("scopes without openid must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_SCOPES", "openid,email")
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://auth.example.test")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "https") {
+		t.Fatalf("plain http issuer on a non-loopback host must fail, got %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_ISSUER_URL", "http://127.0.0.1:9000")
+	if _, err := Load(); err != nil {
+		t.Fatalf("loopback http issuer must be accepted: %v", err)
+	}
+	t.Setenv("ECONUMO_OIDC_TRUST_EMAIL", "maybe")
+	if _, err := Load(); err == nil {
+		t.Fatal("malformed ECONUMO_OIDC_TRUST_EMAIL must fail")
+	}
+}
+
+func TestLoad_AppLinks(t *testing.T) {
+	t.Run("parses both platforms", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+		t.Setenv("ECONUMO_APP_LINKS_IOS", "ABCDE12345.com.econumo.app, ZZZZZ99999.com.econumo.app.dev")
+		t.Setenv("ECONUMO_APP_LINKS_ANDROID", "com.econumo.app="+strings.Repeat("aa:", 31)+"aa")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !c.AppLinksEnabled() {
+			t.Fatal("AppLinksEnabled() = false")
+		}
+		if len(c.AppLinksIOSAppIDs) != 2 || c.AppLinksIOSAppIDs[0] != "ABCDE12345.com.econumo.app" ||
+			c.AppLinksIOSAppIDs[1] != "ZZZZZ99999.com.econumo.app.dev" {
+			t.Fatalf("iOS app ids = %q", c.AppLinksIOSAppIDs)
+		}
+		want := strings.Repeat("AA:", 31) + "AA" // fingerprints are upper-cased on load
+		if len(c.AppLinksAndroid) != 1 || c.AppLinksAndroid[0].Package != "com.econumo.app" ||
+			len(c.AppLinksAndroid[0].Fingerprints) != 1 || c.AppLinksAndroid[0].Fingerprints[0] != want {
+			t.Fatalf("android = %+v", c.AppLinksAndroid)
+		}
+	})
+
+	// Play App Signing gives one package two certificates (upload + app signing).
+	t.Run("repeated package accumulates fingerprints", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+		t.Setenv("ECONUMO_APP_LINKS_ANDROID",
+			"com.econumo.app="+strings.Repeat("AA:", 31)+"AA,com.econumo.app="+strings.Repeat("BB:", 31)+"BB")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(c.AppLinksAndroid) != 1 || len(c.AppLinksAndroid[0].Fingerprints) != 2 {
+			t.Fatalf("android = %+v", c.AppLinksAndroid)
+		}
+	})
+
+	t.Run("unset", func(t *testing.T) {
+		t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+		c, err := Load()
+		if err != nil {
+			t.Fatal(err)
+		}
+		if c.AppLinksEnabled() || c.AppLinksIOSAppIDs != nil || c.AppLinksAndroid != nil {
+			t.Fatalf("enabled=%v ios=%q android=%+v", c.AppLinksEnabled(), c.AppLinksIOSAppIDs, c.AppLinksAndroid)
+		}
+	})
+
+	for _, v := range []string{"com.econumo.app", "abcde12345.com.econumo.app", "ABCDE1234.com.econumo.app", "ABCDE12345."} {
+		t.Run("reject ios "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+			t.Setenv("ECONUMO_APP_LINKS_IOS", v)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_APP_LINKS_IOS") {
+				t.Fatalf("ECONUMO_APP_LINKS_IOS=%q must fail at boot, got %v", v, err)
+			}
+		})
+	}
+
+	for _, v := range []string{
+		"com.econumo.app",                                     // no fingerprint
+		"com.econumo.app=AA:BB",                               // too short
+		"=" + strings.Repeat("AA:", 31) + "AA",                // no package
+		"com.econumo.app=" + strings.Repeat("ZZ:", 31) + "ZZ", // not hex
+		"com.econumo.app=" + strings.Repeat("AA", 32),         // no separators
+	} {
+		t.Run("reject android "+v, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", "https://app.econumo.com")
+			t.Setenv("ECONUMO_APP_LINKS_ANDROID", v)
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_APP_LINKS_ANDROID") {
+				t.Fatalf("ECONUMO_APP_LINKS_ANDROID=%q must fail at boot, got %v", v, err)
+			}
+		})
+	}
+
+	// A verified app link is an https URL; the OS will not fetch an association
+	// document over plain http, and neither platform claims an http link.
+	for _, appURL := range []string{"http://192.168.1.10:8181", ""} {
+		t.Run("reject app url "+appURL, func(t *testing.T) {
+			t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+			t.Setenv("ECONUMO_URL", appURL)
+			t.Setenv("ECONUMO_APP_LINKS_IOS", "ABCDE12345.com.econumo.app")
+			if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_URL") {
+				t.Fatalf("app links with ECONUMO_URL=%q must fail at boot naming ECONUMO_URL, got %v", appURL, err)
+			}
+		})
+	}
+}
+
+func TestLoad_PasswordLogin(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.PasswordLoginDisabled {
+		t.Error("password login should default to enabled")
+	}
+
+	t.Setenv("ECONUMO_PASSWORD_LOGIN", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_PASSWORD_LOGIN must fail at boot")
+	}
+
+	t.Setenv("ECONUMO_PASSWORD_LOGIN", "false")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_PASSWORD_LOGIN") {
+		t.Fatalf("disabling password login without a provider must fail naming the variable, got %v", err)
+	}
+
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load with a provider: %v", err)
+	}
+	if !c.PasswordLoginDisabled {
+		t.Error("password login should be disabled")
 	}
 }

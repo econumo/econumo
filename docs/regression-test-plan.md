@@ -84,14 +84,165 @@ navigation (single-pane vs sidebar).
 - [ ] Expired/invalid token: clear the token (or revoke the session elsewhere)
       → next API call redirects to `/login?reason=expired` with the
       session-expired notice.
+- [ ] Password login lands in the app and STAYS there: sign in, confirm the
+      dashboard loads and a reload keeps you signed in (the token survives).
+      A 401 from the background `get-identity-list` probe must never bounce a
+      just-signed-in user back to `/login`. Same check after an OAuth
+      "Continue with..." sign-in.
 - [ ] With `ECONUMO_ALLOW_REGISTRATION=false`: Sign-up tab is disabled on the
       login screen, opening `/register` directly redirects to the login page,
       and registering via API returns an error.
 - [ ] With `ECONUMO_EMAIL_VERIFICATION=true` (separate boot): fresh
       registration → first login is blocked, code email is sent, verification
       dialog accepts the code, resend has a cooldown, then login proceeds.
+- [ ] A verification code is single-use and only the newest one works: wait out
+      the cooldown and resend, then the FIRST emailed code is refused with "The
+      confirmation code is not valid." while the second one confirms; after the
+      confirmation, submitting that same code again is refused the same way and
+      login still proceeds.
 - [ ] Language badge/selector on the login page switches the auth UI language
       and persists.
+- [ ] 📱 With Google/Apple/SSO configured: "Continue with…" buttons appear on
+      both `/login` and `/register`, on desktop and mobile; sign-in through
+      each provider completes and lands the user in the app.
+- [ ] 📱 iOS home-screen PWA, Sign in with Apple: the app shell fills the whole
+      screen afterwards — no white band below the sidebar footer. Apple is the
+      only provider that returns by cross-site POST, which leaves iOS holding a
+      stale (too short) `svh` for that window; the full-screen shells are sized
+      in `dvh` so the band cannot appear. It used to survive a reload and a
+      rotation, so relaunch the PWA between attempts when retesting.
+- [ ] Apple key is loaded from a FILE: with
+      `ECONUMO_OAUTH_APPLE_PRIVATE_KEY_FILE` pointing at the unmodified `.p8`,
+      the server boots and Apple sign-in completes — under systemd as well as
+      Docker. A path that does not exist, or an empty file, fails at boot with
+      a message naming the variable; the removed inline
+      `ECONUMO_OAUTH_APPLE_PRIVATE_KEY` also fails at boot and points to the
+      file variable.
+- [ ] First sign-in through a provider (no matching Econumo account, email
+      verified) creates a new account and lands on onboarding.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      account that HAS a password is refused with "An account with this email
+      address already exists. Sign in with your password (or reset it), then
+      link this provider from Settings." — no session, no linked identity, and
+      the account is otherwise untouched (its password, sessions and personal
+      access tokens all keep working). Signing in with the password and
+      linking from Settings then works.
+- [ ] Sign-in through a provider whose verified email matches an existing
+      PASSWORDLESS account (one created through another provider) auto-links
+      with no confirmation dialog, signs into that account, shows the new
+      provider under Settings → Profile → Sign-in methods, and delivers the
+      owner's notice email (console transport prints it to server stdout in
+      dev) naming the provider, addressed to the account email and CC'd to
+      every OTHER address the account's providers reported (the account email
+      itself is never duplicated into the Cc).
+- [ ] Starting a provider sign-in in one browser and opening the returned
+      Econumo callback URL in a DIFFERENT browser (or a private window) fails
+      with "The sign-in attempt expired or was already used." — only the
+      browser that started the flow can complete it.
+- [ ] Sign-in with a provider that reports an unverified email is rejected
+      with "The sign-in provider has not verified this email address."; no
+      account created or linked (this includes a Google account whose
+      sign-in address Google reports as unverified).
+- [ ] With `ECONUMO_ALLOW_REGISTRATION=false` (separate boot) and no matching
+      account: sign-in via a provider shows "Registration is disabled on this
+      server. Sign in with an existing account first."
+- [ ] Cancelling at the provider (deny consent / close the flow) returns to
+      Econumo showing "Sign-in was cancelled."
+- [ ] Password reset is a full reclaim: on an account with an open session, a
+      personal access token and two linked providers (one whose provider email
+      matches the account's, one whose does not), completing "Forgot password"
+      signs the session out, makes the token stop authenticating, removes the
+      provider with the different email from Settings → Profile → Linked
+      accounts, and keeps the matching one. A provider sign-in started just
+      before the reset can no longer be completed afterwards (the returning
+      browser lands on the login page with an error instead of a session), and
+      a pending email change is cancelled. A provider sign-in that was already
+      mid-flight when the reset landed cannot be completed either — finishing
+      it returns the sign-in error rather than a session. An email change that
+      was pending (code sent but not yet confirmed) can no longer be confirmed
+      after the reset, even if the confirmation was already in flight — it
+      reports "The confirmation code is not valid." and the account keeps its
+      own address. The recovery dialog says so before the reset is submitted.
+      CLI `user:change-password <email> <new>` performs the same reclaim
+      (sessions, tokens, foreign identity, pending grants).
+- [ ] A reset code is single-use and only the newest one works: request
+      "Forgot password" twice and the FIRST emailed code is refused with
+      "Reset password error" (the second one still works); after a reset
+      completes, submitting that same code again is refused the same way and
+      the password stays the one the completed reset set.
+- [ ] A provider-created (passwordless) account using Settings → Profile →
+      "Set a password" keeps its linked provider through that flow — it is the
+      same reset endpoint, and the provider vouches for the account's address.
+- [ ] Linking from Settings completes only in the browser that started it:
+      start the link in one browser, then open the returned Econumo callback
+      URL in a DIFFERENT browser signed in as another user — that user's
+      Sign-in methods page shows an error and gains NO identity, and the
+      provider account stays unlinked everywhere.
+- [ ] A FAILED link from Settings (e.g. linking a provider account already
+      linked to another Econumo user) returns to Settings → Profile → Linked
+      accounts with the error banner there ("This external account is already
+      linked to another Econumo account."), not to the login page; the banner
+      does not survive a reload. 📱 The app does the same via the deep link.
+- [ ] RP-initiated logout (custom OIDC slot with an end-session endpoint):
+      logging out redirects through the provider and back to `/login`.
+- [ ] Logging out of a Google/Apple session (or any provider in the app) ends
+      the Econumo session and lands on `/login` with no interstitial notice —
+      those providers publish no end-session endpoint, so there is no IdP
+      redirect and nothing to confirm.
+- [ ] 📱 App: starting provider sign-in opens the in-app browser sheet, not an
+      embedded web view; completing sign-in returns to the app (the verified
+      `https://<backend>/oauth/app-return` link, or the
+      `com.econumo.app://oauth` scheme on a backend without app links) and the
+      sheet closes automatically. An expired or already-used attempt returns to
+      the app's login page with "The sign-in attempt expired or was already
+      used." (not a web page inside the sheet).
+- [ ] 📱 With app links configured, the return from the provider opens the app
+      directly; opening the return URL in a browser with the app not installed
+      shows the "return to the app" page with a single "Open the app" link (and
+      no handoff code visible in the page text).
+- [ ] 📱 App: tapping a provider button twice while the browser sheet is
+      opening starts ONE flow; the buttons stay disabled until the sheet
+      closes or the sign-in returns.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      no provider buttons are shown.
+- [ ] Web: with a custom backend selected (different origin than the page),
+      Settings → Profile → Sign-in methods shows the linked list but offers no
+      Link buttons.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false` with NO provider configured: the server
+      refuses to start, naming `ECONUMO_PASSWORD_LOGIN`. A malformed value
+      (e.g. `nope`) also fails at boot.
+- [ ] 📱 `ECONUMO_PASSWORD_LOGIN=false` with a provider configured: `/login`
+      shows only the provider buttons — no email/password fields, no "Sign
+      in" or "Forgot password" buttons, no "or continue with" divider. With
+      `ECONUMO_ALLOW_REGISTRATION=true` the Sign-up tab also shows only the
+      provider buttons (plus the privacy note), and a first sign-in through the
+      provider creates the account; with it `false` the Sign-up tab stays
+      disabled.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: calling `login-user`, `register-user`,
+      `remind-password`, `reset-password` or `update-password` directly returns
+      400 "Password sign-in is disabled" (localized); existing sessions and
+      personal access tokens keep working.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: Settings → Profile shows neither "Change
+      password" nor "Set a password"; on Sign-in methods an account with one
+      linked provider cannot unlink it ("This is your only sign-in method, so
+      it cannot be unlinked."), even if it has a password.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: a provider sign-in whose email matches an
+      account WITH a password is still refused, now with "An account with this
+      email address already exists and can't be linked automatically. Contact
+      your administrator." An account that linked the provider while passwords
+      were on signs in through it normally.
+- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
+      cold start the login screen drops the password form as soon as that
+      server's config arrives (no restart needed). Typing the address of a
+      backend that allows passwords into the custom-server field brings the
+      password form back within a second; switching back hides it again. An
+      unreachable address shows the password form (the server then decides).
+      Switching from a backend with no providers to a provider-only one shows
+      the new backend's provider buttons (never an empty screen).
+- [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
+      different origin: the password form is shown again (the provider buttons
+      are not), since the serving instance's setting says nothing about that
+      backend.
 
 ## 3. Onboarding (fresh user)
 
@@ -149,6 +300,12 @@ navigation (single-pane vs sidebar).
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
+- [ ] 📱 Transfer with no "To" account: Add/Update shows "Required field" under
+      the To select and sends nothing; the API rejects the same body with a
+      400 on `accountRecipientId` (create AND update).
+- [ ] A legacy transfer row whose recipient is NULL (renders "[Hidden
+      account]") still offers Delete from the row menu and the preview
+      dialog, and deleting it restores the source balance.
 - [ ] Edit a transaction (amount, category, date, account) → balances and
       budget figures update everywhere (sidebar, account header, budget table).
 - [ ] Delete from row menu and from preview dialog → confirm → balance updates.
@@ -156,7 +313,12 @@ navigation (single-pane vs sidebar).
       write access (see sharing suite); "make recurring" pre-fills the
       recurring dialog.
 - [ ] Future-dated transaction shows above the "today" separator and does not
-      count toward "balance as of end of today".
+      count toward "balance as of end of today" — including one dated exactly
+      00:00 tomorrow (SQLite AND PostgreSQL).
+- [ ] Transaction list rows carry `isImported` (0/1) in the API response; an
+      imported row shows the import glyph (tooltip "Imported"), hand-entered
+      rows do not; the preview dialog of an imported row lists "Imported from"
+      (source · card · merchant amount currency · posted time).
 - [ ] **CSV import** 📱: pick a file, map columns (single amount and
       inflow/outflow dual mode, date, category, payee, description, tags,
       labels with separator), constant-value fields; result dialog shows
@@ -166,6 +328,233 @@ navigation (single-pane vs sidebar).
       detailed, good rows imported.
 - [ ] **CSV export**: multi-select accounts, select-all/deselect-all; exported
       file contains the expected rows/columns and respects the account choice.
+
+## 5a. Imports — Apple Wallet
+
+- [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
+      import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
+      setup, cards, "Import queue" link; back returns to Settings).
+- [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
+      second device does not create a second source); the section flips to
+      "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
+      econumo-setup-v1, Configure the Shortcuts, Run econumo-wallet-v1 once,
+      Create the automation, Make the first payment with the iPhone unlocked,
+      Switch the automation to Run Immediately), every box unticked; "Disconnect" (confirmation) removes the source, its
+      cards, its queue and the hand ticks; already-imported transactions stay.
+- [ ] Any step can be ticked/unticked by hand; ticks survive a reload and are
+      per source (a reconnect starts with an empty list) 📱.
+- [ ] A ticked step (by hand or automatically) folds to its title only: its
+      text, download link, buttons and "Configure manually" link disappear;
+      unticking it by hand brings them back 📱.
+- [ ] Steps 1–2 links download `econumo-wallet-v1.shortcut` and
+      `econumo-setup-v1.shortcut` in a new window (from the home-screen app the
+      Safari sheet closes back to the page, no relaunch needed) 📱.
+- [ ] iOS only 📱: "Configure on this iPhone" mints an ingest PAT (visible under
+      Profile → Tokens with scope `ingest`), opens the Shortcuts app with the
+      Setup shortcut prefilled and ticks step 3 (folded to its title); a user
+      who already holds an `ingest` PAT sees step 3 ticked on load. "Configure
+      manually" opens `https://econumo.com/docs/user-guide/apple-wallet` in a
+      new tab (no in-app token/recipe panel).
+- [ ] iOS only 📱: Configure with an `ingest` PAT minted meanwhile from another
+      device (page rendered before it existed) revokes that token first and
+      mints a fresh one — Profile → Tokens shows exactly one live `ingest`
+      PAT afterwards; `full` PATs are untouched.
+- [ ] Desktop: an "Open this page on your iPhone…" hint sits above the list and
+      the iOS-only buttons ("Configure on this iPhone", "Run econumo-wallet-v1")
+      are absent; downloads, "Configure manually", both "Check" buttons and the
+      hand ticks still work.
+- [ ] Step 4 📱 iOS only: "Run econumo-wallet-v1" opens
+      `shortcuts://run-shortcut?name=econumo-wallet-v1`; after allowing the
+      prompts on the phone, "Check" ticks step 4 (folded to its title) and the
+      `account is required` row disappears from the queue's "Needs attention"
+      list; "Check" with nothing received reports "Nothing received yet…" and
+      leaves the box unticked.
+- [ ] Step 5 text walks through Automation → + → Wallet → cards & categories →
+      Run After Confirmation → econumo-wallet-v1; step 6 text says to tap Run
+      when the automation asks and Always Allow for Wallet access.
+- [ ] Step 6: with no cards on the source its "Check" reports "No payment
+      received yet…" and leaves the box unticked.
+- [ ] The first card arriving from Apple Pay ticks steps 1–6 by itself,
+      regardless of which were ticked by hand; step 7 (Switch the automation
+      to Run Immediately) stays a hand tick and is the only open step left 📱.
+- [ ] With all seven steps done the list collapses to "Setup complete" + "Show
+      steps"; "Show steps" expands the ticked list (titles only), "Hide steps"
+      collapses it again 📱.
+- [ ] Ingest with an `ingest`-scoped PAT: `POST /api/v1/import/ingest-apple-wallet-event`
+      → `status: queued` for an unmapped card; the card appears in the list as
+      "Unmapped · 1 queued", tap count and last-seen date update per event; a
+      `full` PAT / session token is accepted too; an `ingest` PAT on any other route
+      is 401.
+- [ ] Same payload twice → `duplicate`, no second row; a body without `account`
+      or with a bad currency → `status: failed`, row in "Needs attention" with the
+      error text and the raw payload; Retry re-parses (toast with the outcome),
+      Discard removes it.
+- [ ] Map card → account (owned accounts only in the picker; shared accounts
+      absent): the queue replays — toast "N imported, N matched, N skipped";
+      imported transactions appear on the account with the glyph; a same-amount
+      hand-entered transaction within ±3 days is adopted (no duplicate) and shows
+      the provenance card.
+- [ ] Currency mismatch (card USD → EUR account) is refused with the "Card
+      currency does not match the account" error; an ignored card offers
+      "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
+      new taps queue again.
+- [ ] Review banner 📱: with queued rows, every page except the queue shows
+      "N imported transactions are waiting for review" + "Review"; the banner
+      disappears when the queue empties.
+- [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
+      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
+      dialog prefilled (account, amount, merchant as description, posted date);
+      saving posts `import-queued-event` — the row leaves the queue and the
+      transaction is created with the glyph; Skip moves a row to "Skipped",
+      Restore brings it back.
+- [ ] A second tap with the same amount on the same card within ±3 days of a
+      hand-entered transaction of that amount is adopted (no duplicate); a tap
+      already linked from this source is never adopted twice.
+- [ ] Rate limit: the 61st ingest within the window from one user is 429 with the
+      frozen envelope.
+- [ ] A tap whose merchant name exceeds 255 characters is imported with the
+      name cut to 255 (no failed row).
+- [ ] Manually importing a queued row whose card currency differs from the
+      chosen account's opens the dialog with an EMPTY amount and a "Card
+      amount: … EUR" line; a same-currency row is prefilled.
+
+## 5b. Imports — SimpleFIN
+
+Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fresh setup token.
+
+- [ ] Settings → SimpleFIN on a device with no key: the connect form asks for a
+      setup token and a passphrase (+ repeat); a passphrase under 8 characters or
+      a mismatch is rejected inline before any request. 📱
+- [ ] Connect: after "Connect" the page shows the bridge's accounts as Unmapped
+      rows, the source row reads "Never synced", and the network log shows
+      `create-source` carrying `credentialCiphertext` starting `v1:` — the access
+      URL appears in no request other than `list-external-accounts`/`sync-source`
+      bodies.
+- [ ] A used/invalid setup token shows the server's error inline; nothing is
+      created (Settings → SimpleFIN still shows the connect form after reload).
+- [ ] Second device (or same browser after "Forget this device"): the page shows
+      the unlock prompt; a wrong passphrase reads "Wrong passphrase."; the right
+      one lists the accounts. 📱
+- [ ] "Forget this device" returns the page to the unlock prompt; "Reconnect"
+      from the unlock prompt with "I forgot my passphrase" ticked accepts a new
+      setup token + new passphrase and replaces the connection (account mappings
+      kept).
+- [ ] After that passphrase reset, a device still unlocked under the OLD
+      passphrase opens Settings → SimpleFIN to the unlock prompt reading "Your
+      passphrase was changed on another device…" (not the reconnect form); the
+      new passphrase unlocks it and Sync now works. 📱
+- [ ] Map a bridge account to an owned account: the queue replays immediately and
+      toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
+      carry the Imported badge and their provenance sheet names the SimpleFIN
+      source.
+- [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
+      run toasts "{n} imported, {m} matched" (a partial or failed run shows no
+      toast — the run summary card is the only record of it).
+- [ ] Sync with a "From" date after today, or a range longer than 400 days, is
+      accepted by the form (there is no client-side check) but rejected by the
+      server (`import.sync_range_invalid`) and surfaced as a toast; "From"
+      defaults to 3 days before the last sync (30 days back before the first).
+- [ ] Sync twice with the same window: the second run reports 0 imported, 0
+      matched (exact duplicates are skipped) and the last-synced timestamp
+      advances.
+- [ ] An Apple Wallet tap transaction later confirmed by SimpleFIN's posted
+      version of the same purchase (same merchant tokens, within the
+      tip-tolerance window) is adopted and its amount corrected to the posted
+      value ("amounts updated" count > 0) rather than creating a second
+      transaction — needs Apple Wallet connected on the same account too.
+- [ ] A hand-entered transaction with the exact same amount as an incoming
+      bridge row, dated within a few days of it, is adopted (matched count)
+      rather than duplicated.
+- [ ] Unmapped bridge account with transactions: sync queues them (queue page
+      shows them with "Card not mapped" reason); mapping the account replays
+      the queue.
+- [ ] Per-account failure (one linked account's transaction write errors
+      mid-sync while another account succeeds — not triggered by a missing
+      rate or a deleted account, both of which queue their events instead):
+      the run shows "Completed with errors", the failing account's error is
+      listed under the run summary, other accounts' rows still import.
+- [ ] Bridge unreachable: "Sync now" toasts the server's "try again in a few
+      minutes" message, the run list shows a Failed run, and the failed state
+      stays on the page until the next successful sync.
+- [ ] Access URL revoked in the bridge (or the connection deleted there): "Sync
+      now" toasts the "access URL is no longer valid, reconnect" message rather
+      than the unreachable one, so the user reconnects instead of retrying.
+- [ ] A run where some bridge rows cannot be parsed reports "Completed with
+      errors" with a non-zero failed count and no success toast (never a clean
+      "Completed"); the rows are listed on the queue page's needs-attention
+      list.
+- [ ] Run detail names each row's bank account the way the run summary does
+      (the bank's own account name, falling back to the bridge id) — never a
+      bare `ACT-…` id when the source's accounts are known. 📱
+- [ ] Settings → Data: "Sync bank connections" is absent without a SimpleFIN
+      source; with one and a locked device it navigates to Settings →
+      SimpleFIN; unlocked it syncs every pull source and toasts the totals; the
+      row is disabled (not clickable, dimmed) while the syncs run. 📱
+- [ ] Settings → Data → Import history lists runs newest first with status,
+      counts and errors; a run opens its detail; a transaction deleted after
+      import shows struck-through with "Deleted since"; queued rows read
+      "Waiting for review". Rows have no actions in this version. 📱
+- [ ] Rate limits: the 6th `claim-setup-token` within 15 minutes and the 11th
+      `sync-source` return 429 with the standard envelope.
+- [ ] Ingest-scoped PATs get 401 on every SimpleFIN endpoint; a read-only
+      (trial-ended) user gets 402 on `claim-setup-token`, `set-credential-key`,
+      `sync-source`.
+- [ ] Apple Wallet regression: §5a still passes unchanged (the `cards` list,
+      queue, and provenance UI share code with the SimpleFIN account list).
+
+## 5c. Imports — Rules
+
+Preconditions: at least one import source with a completed run (§5a or §5b) whose transactions are still unedited.
+
+- [ ] Edit an imported transaction and change only its category: after "Update"
+      a "Create an import rule" prompt opens with the payee prefilled as a
+      trimmed match value (store number, city, state and processor prefix
+      dropped) and a live "Matches N transactions in this import" count that
+      updates as the value is edited. 📱
+- [ ] Edit the same transaction again changing only notes/amount/date: no prompt.
+      Re-open it and pick the category the import already applied (or that a
+      previous rule set): no prompt.
+- [ ] After creating a rule from a transaction and applying it (that source row
+      is counted as "skipped — you edited it"), re-open THAT transaction and
+      save a notes-only change: still no prompt, and no second copy of the rule
+      is ever offered. Changing its category again does prompt.
+- [ ] Prompt → "Create rule" → "Apply": the matching unedited transactions in
+      that import take the category; "N skipped (you've edited these)" names
+      the edited ones and the "Also update the N transactions you edited"
+      checkbox is off by default. Ticking it rewrites them too.
+- [ ] After applying to the run, the "Also apply to all imports from <source>?"
+      step shows its own count; "Apply to all imports" updates the older runs,
+      "Done" leaves them alone. "Not now" on the first step creates nothing.
+- [ ] A transaction that a rule classified (Import rules page shows the rule):
+      changing its category offers "Update rule" (match shown read-only, no
+      editor) rather than a second rule; the rule's targets change.
+- [ ] Same flow on a rule that sets two or more labels: add a THIRD label to an
+      imported transaction and choose "Update rule" — the rule keeps its
+      original labels and gains the new one (the label set is unioned, never
+      replaced by the single added label).
+- [ ] Settings → Import & export → Import rules (also under Settings → Data):
+      rules list in priority order, skip rules carry a red "Skip" badge and no
+      targets; "Add rule" opens the editor with a live "Matches N imported
+      transactions" count; Save/Edit/Delete round-trip; drag (or focus the
+      grip, Space, arrow, Space) reorders and the order survives reload. 📱
+- [ ] A skip rule with prefix "PAYMENT THANK YOU" on description: the next
+      sync/ingest of a matching row lands as `skipped` in the run summary and
+      creates no transaction; a classify rule on payee sets category/payee/
+      tag/labels on newly imported rows only where the row had none.
+- [ ] `ECONUMO_AI_DSN` unset: no "Suggest rules" button; `suggest-rules` returns
+      400 `import.ai_disabled`. Set to a working OpenAI-compatible endpoint:
+      the button proposes rules with a reason and a live count each; Accept
+      creates the rule at the bottom of the list, Edit opens the editor
+      prefilled, Discard removes the row; a 4th click inside the window gets
+      429 with the standard envelope.
+- [ ] Typing in either rule editor fires `preview-rule` on a 300 ms debounce and
+      it is capped per user (`ECONUMO_RATE_LIMIT_PREVIEW_RULE`, default 120 per
+      window): set it to 1 and the second preview returns 429 with the standard
+      envelope while the rest of the editor still works.
+- [ ] Ingest-scoped PATs get 401 on every rule endpoint; a read-only
+      (trial-ended) user gets 402 on `create-rule`/`update-rule`/`delete-rule`/
+      `apply-rule`/`suggest-rules` and 402 on `preview-rule` as well, and 200
+      on `get-rule-list`.
 
 ## 6. Recurring transactions
 
@@ -259,8 +648,58 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
+      immediately and survives a reload.
+- [ ] 📱 Open the same cell in the monthly view for that month: the comment is
+      there (cross-view sync).
+- [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Another participant cannot edit your comment; the budget owner can
+      delete it.
+- [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
+- [ ] A cell with comments shows the corner marker; a cell without shows none;
+      the uncategorized row never shows one.
+- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
+      thread opens (expanded in the amount popover, or the standalone dialog
+      on a non-editable/compact cell); plain Enter on the same cell instead
+      opens the amount editor, unaffected.
+- [ ] On desktop, a non-editable cell (guest role, an archived element —
+      even on a budget you can edit — or a month outside the budget's range)
+      shows its own "comments" link in
+      place of the amount, so a thread can be started even where there is no
+      amount popover to hang the disclosure off of.
+- [ ] 📱 On a phone, tap the Available pill of an individually-archived
+      element (in the Archive section, on a budget you can edit): its comment
+      thread opens and accepts a new comment.
+- [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
+      one comment is created, and Post stays disabled until it lands.
+- [ ] Post a comment, then start typing the next one before the first lands:
+      the new text stays in the composer.
+- [ ] Archive the budget: comment threads are readable, the composer is gone.
+- [ ] Reset the budget (REST route only — there is no UI for reset): planned
+      amounts AND comments are cleared.
+- [ ] Clone a budget with plans: comments at or after the start month come
+      across with their original authors; cloning without plans copies none.
+- [ ] Merge two categories: the source cell's comment thread appears on the
+      target cell.
+- [ ] Revoke a participant: their comments on surviving cells still render
+      their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
+- [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
+      applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
+      account in a budget-currency category counts in the category's spent at
+      the converted amount (not 1:1), in both the table and the plan sheet, and
+      `get-budget` `currencyRates` lists the global rates, not only custom ones.
+- [ ] Transaction dated exactly 00:00 on the 1st of the budget month (e.g. a
+      date-only CSV import row), on SQLite AND PostgreSQL: it counts ONCE, in
+      that month's income/expenses, not also in its starting balance; every
+      month's starting balance equals the previous month's ending balance.
+- [ ] SQLite instance upgraded from a release before this fix: after the first
+      boot, account balances and transaction lists (dates included) match the
+      pre-upgrade figures. Include transactions imported from a CSV whose date
+      column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
+      they list and export at the UTC time after the upgrade instead of
+      failing the list.
 
 ## 10. Budget lifecycle & list
 
@@ -335,12 +774,16 @@ User C sees none of it.
 - [ ] Name inline edit with validation (length limits).
 - [ ] Default currency picker and language dialog persist (language also
       server-side — a relogin/other device keeps it).
-- [ ] **Change password**: wrong old password rejected; success revokes all
-      *other* sessions (verify: second browser session is logged out, current
-      one stays).
+- [ ] **Change password**: wrong old password rejected. Changing the password
+      from Settings signs out the other sessions, keeps this one and personal
+      tokens, cancels a pending email change and any outstanding reset code,
+      and a login with the old password that was already in flight gets
+      "Invalid credentials."
 - [ ] **Change email**: request (new email + password) → code sent to the new
       address → confirm; resend with cooldown; wrong code rejected; login works
-      with the new email only.
+      with the new email only. The heads-up notice to the OLD address is CC'd
+      to the account's linked-provider addresses; the CODE to the new address
+      goes to that address alone, with no Cc.
 - [ ] **Sessions** 📱: list shows device descriptions, current badge, relative
       last-active; revoke one (other) session logs that device out; revoke-all-
       others keeps only the current; revoking the current session logs out.
@@ -352,6 +795,85 @@ User C sees none of it.
       page): switching it off persists across a reload; log out and back in —
       the toggle still reads off; a read-only user (lapsed trial) can still
       flip it, unlike other writes on that account.
+- [ ] Create a personal token with scope "full" — it works everywhere; an
+      "ingest" token (created via "Configure on this iPhone" or the API) is
+      rejected with 401 on every non-import route and accepted on
+      `import/ingest-apple-wallet-event`.
+      flip it, unlike other writes on that account. Its description renders on
+      TWO lines (the reassurance about financial and personal data starts a new
+      line), in every UI language.
+- [ ] Analytics reach the collector for signed-in sessions only (DevTools →
+      Network, filter `t.econumo.com`): the login/register pages send no
+      request; after login every request body carries `$user_id`; a reload of
+      a signed-in page sends its page view once the user data has loaded; log
+      out — the logout event goes out, nothing after it.
+- [ ] Session facts ride the BATCH, not each event (same Network filter): the
+      request body's top-level `attributes` carries `access_state`,
+      `deployment`, `host`, `locale` and `mode` once; each entry in `events`
+      carries only `current_url` (the page that event happened on), which
+      differs between events in one batch when you navigate mid-flush.
+- [ ] Auth-method flags say which sign-in methods the user HAS (same Network
+      filter, batch-level `attributes`, NOT the per-event ones):
+      `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
+      or `off`. A password account with Google linked sends
+      `auth_password: on`, `auth_google: on`, `auth_apple: off`,
+      `auth_sso: off`; an OAuth-only account (never set a password) sends
+      `auth_password: off`. They are present from the FIRST batch after
+      sign-in without opening Settings, and survive a reload. Link a provider
+      in Settings → its flag flips to `on` on the next event; unlink it →
+      back to `off`. The custom OIDC provider reports as
+      `auth_sso`. Log out and sign in as someone else → the flags describe the
+      new user, never the previous one's.
+- [ ] 📱 Sign-in methods (Settings → Profile → Sign-in methods): lists every
+      linked provider with its email and linked date; linking an unlinked
+      provider goes through the provider flow and returns with a "linked"
+      toast AND the newly linked provider already in the list (no manual
+      reload — the return trip is what writes the link) AND the owner's notice
+      email naming the provider (console transport prints it to server stdout
+      in dev); linking a SECOND
+      provider straight afterwards, without leaving the page, works the same
+      way (📱 especially in the app, where the deep link returns to the same
+      screen); unlinking a provider (with confirm dialog) removes it from the
+      list AND emails the owner a notice naming the unlinked provider.
+- [ ] Linking a provider account that is ALREADY linked to this same Econumo
+      account again (unlink then relink is a fresh link, so use a second pass
+      through the flow while it is still linked) succeeds without sending a
+      second notice email — only a newly gained sign-in method is announced.
+- [ ] Unlink a provider while a sign-in through it is mid-flight (callback
+      done, handoff not yet exchanged): the exchange fails with the
+      sign-in-link-invalid error and no session is opened.
+- [ ] Unlink is refused for a passwordless user's last remaining identity
+      (button disabled, hint text shown: "Set a password before unlinking
+      your only sign-in method."), including two unlink requests sent at the
+      same time — one succeeds, the other is refused. A refused unlink sends
+      no notice email; the concurrent pair sends exactly one.
+- [ ] Both identity notices (linked and unlinked) arrive in the ACCOUNT's
+      stored language, not the language of whoever triggered the flow: set
+      the UI language to e.g. Russian, link and unlink a provider, and check
+      both emails are Russian.
+- [ ] Both identity notices are CC'd to the account's linked-provider
+      addresses. With two providers linked under different addresses, unlink
+      one: the notice goes To the account email and Cc's the address of the
+      provider that is STILL linked — the just-unlinked address is not copied,
+      and no address ever appears twice.
+- [ ] A password reset on an account with a provider linked under a DIFFERENT
+      email unlinks that identity (the reclaim) and sends NO unlink notice —
+      the reset itself is the announcement.
+- [ ] For a passwordless user, Settings → Profile shows a "Set a password"
+      row in place of "Change password"; it sends a reset code to the
+      account's email (the email field pre-filled/locked) and, after
+      entering the code and a new password the app signs the user out (the
+      reset ends every session, including this one) and lands on the login
+      page; signing in with the new password works and Settings → Profile
+      now shows "Change password" instead of "Set a password".
+- [ ] Sessions list (Settings → Profile → Sessions) shows "via Google" (or
+      Apple/SSO) under a session opened through a provider; a password
+      session shows nothing extra.
+- [ ] On an SSO-only (passwordless, single-identity) account, signing in
+      again after the provider reports a changed email updates the account's
+      stored email to match; the same drift on an account that has a
+      password, a second linked provider, or where the new email already
+      belongs to another user leaves the stored email unchanged.
 
 ## 13. Cross-cutting & platform
 

@@ -5,8 +5,9 @@ type AnalyticsModule = typeof import('./analytics')
 let analytics: AnalyticsModule
 let fetchMock: ReturnType<typeof vi.fn>
 
-const COLLECTOR = 'https://t.econumo.com/api/events'
+const COLLECTOR = 'https://t.econumo.com/ingest/events'
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const USER = 'u'.repeat(32)
 
 beforeEach(async () => {
   vi.useFakeTimers()
@@ -14,6 +15,8 @@ beforeEach(async () => {
   vi.stubGlobal('fetch', fetchMock)
   vi.resetModules()
   analytics = await import('./analytics')
+  // Nothing leaves without a resolved user; identity tests below set their own.
+  analytics.setAnalyticsUser(USER)
 })
 
 afterEach(() => {
@@ -118,6 +121,7 @@ describe('capture', () => {
     vi.stubGlobal('crypto', { getRandomValues })
     vi.resetModules()
     const insecure = await import('./analytics')
+    insecure.setAnalyticsUser(USER)
     insecure.capture('a')
     vi.advanceTimersByTime(10_000)
     const payload = sentPayload()
@@ -139,7 +143,7 @@ describe('capture', () => {
     Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })
 
-  it('carries identity on the batch and drops it on reset', () => {
+  it('carries identity on the batch and sends nothing once it is reset', () => {
     analytics.setAnalyticsUser('a'.repeat(32))
     analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
 
@@ -154,11 +158,16 @@ describe('capture', () => {
     const installId = first.attributes.$install_id
 
     analytics.resetAnalyticsIdentity()
-    analytics.capture('after_logout')
+    vi.advanceTimersByTime(10_000)
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    analytics.setAnalyticsUser('b'.repeat(32))
+    analytics.capture('by_b')
     vi.advanceTimersByTime(10_000)
 
     const second = sentPayload(1)
-    expect(second.attributes.$user_id).toBeUndefined()
+    expect(second.events.map((e) => e.name)).toEqual(['by_b'])
+    expect(second.attributes.$user_id).toBe('b'.repeat(32))
     // A fresh install id so the next person on a shared browser is not linked.
     expect(second.attributes.$install_id).not.toBe(installId)
     // The group is the deployment, not the person, so it survives logout.
@@ -185,21 +194,59 @@ describe('capture', () => {
     expect(second.attributes.$user_id).toBe('b'.repeat(32))
   })
 
-  it('does not retroactively attribute a queued anonymous event to a user who logs in after', () => {
-    analytics.capture('queued_anonymous')
-    // No flush yet: this event is still sitting in the queue when the user logs in.
+  // The boot page view fires before get-user-data resolves the session's user.
+  // The transport cannot tell that case from "nobody signed in": keeping
+  // logged-out captures away from the next person is trackEvent's token gate
+  // (metrics.test.ts), not this module's job.
+  it('holds an event captured before the user is known and sends it once the user resolves', () => {
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('boot_page_view')
+    vi.advanceTimersByTime(10_000)
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    analytics.setAnalyticsUser('a'.repeat(32))
+    vi.advanceTimersByTime(10_000)
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const payload = sentPayload()
+    expect(payload.events.map((e) => e.name)).toEqual(['boot_page_view'])
+    expect(payload.attributes.$user_id).toBe('a'.repeat(32))
+  })
+
+  it('flushes held events at the batch size once the user resolves', () => {
+    analytics.resetAnalyticsIdentity()
+    for (let i = 0; i < 10; i++) {
+      analytics.capture(`event-${i}`)
+    }
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    analytics.setAnalyticsUser('a'.repeat(32))
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(sentPayload().events).toHaveLength(10)
+  })
+
+  it('discards held events when identity is reset before a user resolved', () => {
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('held_then_expired')
+    // A 401 on get-user-data: the token was dead, nobody ever resolved.
+    analytics.resetAnalyticsIdentity()
     analytics.setAnalyticsUser('a'.repeat(32))
     analytics.capture('by_a')
     vi.advanceTimersByTime(10_000)
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    const first = sentPayload(0)
-    expect(first.events).toHaveLength(1)
-    expect(first.events[0].name).toBe('queued_anonymous')
-    expect(first.attributes.$user_id).toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(sentPayload().events.map((e) => e.name)).toEqual(['by_a'])
+  })
 
-    const second = sentPayload(1)
-    expect(second.events.map((e) => e.name)).not.toContain('queued_anonymous')
-    expect(second.attributes.$user_id).toBe('a'.repeat(32))
+  it('does not beacon held events when the tab hides before the user resolved', () => {
+    const beacon = vi.fn(() => true)
+    vi.stubGlobal('navigator', { ...window.navigator, sendBeacon: beacon })
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('a')
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
+    document.dispatchEvent(new Event('visibilitychange'))
+    expect(beacon).not.toHaveBeenCalled()
+    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
   })
 })
