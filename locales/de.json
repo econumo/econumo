@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "Passwort festlegen",
               "description": "Sie haben sich mit einem externen Konto registriert. Wir senden Ihnen einen Code per E-Mail, um ein Passwort festzulegen."
-            }
+            },
+            "last_sign_in_method_hint": "Dies ist Ihre einzige Anmeldemethode und kann daher nicht entfernt werden."
           },
           "analytics": {
             "label": "Nutzungsstatistiken teilen",
@@ -1077,7 +1078,8 @@
         "identity_taken": "Dieses externe Konto ist bereits mit einem anderen Econumo-Konto verknüpft.",
         "provider_already_linked": "Ihr Konto hat für diesen Anbieter bereits ein anderes Konto verknüpft.",
         "account_inactive": "Dieses Konto wurde deaktiviert.",
-        "account_exists_password": "Es existiert bereits ein Konto mit dieser E-Mail-Adresse. Melden Sie sich mit Ihrem Passwort an (oder setzen Sie es zurück) und verknüpfen Sie diesen Anbieter dann in den Einstellungen."
+        "account_exists_password": "Es existiert bereits ein Konto mit dieser E-Mail-Adresse. Melden Sie sich mit Ihrem Passwort an (oder setzen Sie es zurück) und verknüpfen Sie diesen Anbieter dann in den Einstellungen.",
+        "account_exists_contact_admin": "Es existiert bereits ein Konto mit dieser E-Mail-Adresse, das nicht automatisch verknüpft werden kann. Wenden Sie sich an Ihren Administrator."
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "Sie können diesen Umschlag nicht bearbeiten — Ihre Rolle in diesem Budget ist schreibgeschützt.",
           "no_access_category": "Sie können diese Kategorie nicht bearbeiten — sie gehört einem anderen Benutzer.",
           "no_access_tag": "Sie können diesen Tag nicht bearbeiten — er gehört einem anderen Benutzer."
+        },
+        "comments": {
+          "title": "Kommentare",
+          "disclosure": "Kommentare ({count})",
+          "comment_label": "Kommentar",
+          "marker_aria": "{count} Kommentar | {count} Kommentare",
+          "composer_placeholder": "Notiz für diesen Monat hinzufügen",
+          "post": "Veröffentlichen",
+          "edit": "Bearbeiten",
+          "delete": "Löschen",
+          "cancel": "Abbrechen",
+          "delete_confirm": "Diesen Kommentar löschen?",
+          "edited": "(bearbeitet)",
+          "counter": "{count}/500",
+          "read_only": "Kommentare können hier gelesen, aber nicht geändert werden.",
+          "empty": "Noch keine Kommentare.",
+          "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "accounts_required": "Wähle mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
-      "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn"
+      "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",
+      "comment_not_found": "Kommentar nicht gefunden",
+      "comment_forbidden": "Du kannst diesen Kommentar nicht ändern"
     },
     "category": {
       "name_length": "Der Kategoriename muss {min}-{max} Zeichen lang sein",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "Verknüpftes Konto nicht gefunden",
       "link_invalid": "Die Verknüpfungssitzung ist ungültig oder abgelaufen",
       "identity_taken": "Dieses externe Konto ist bereits mit einem anderen Econumo-Konto verknüpft",
-      "provider_already_linked": "Ihr Konto hat für diesen Anbieter bereits ein anderes Konto verknüpft"
+      "provider_already_linked": "Ihr Konto hat für diesen Anbieter bereits ein anderes Konto verknüpft",
+      "last_sign_in_method": "Sie können Ihre einzige Anmeldemethode nicht entfernen"
     },
     "payee": {
       "name_length": "Der Name des Zahlungsempfängers muss {min}-{max} Zeichen lang sein",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "Bitte bestätigen Sie Ihre E-Mail-Adresse.",
       "verification_code_invalid": "Der Bestätigungscode ist ungültig.",
       "verification_code_expired": "Der Code ist abgelaufen",
-      "email_unchanged": "Die neue E-Mail-Adresse ist mit Ihrer aktuellen identisch."
+      "email_unchanged": "Die neue E-Mail-Adresse ist mit Ihrer aktuellen identisch.",
+      "password_login_disabled": "Die Anmeldung mit Passwort ist deaktiviert"
     }
   },
   "emails": {

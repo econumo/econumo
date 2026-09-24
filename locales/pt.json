@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "Definir uma palavra-passe",
               "description": "Registou-se com uma conta externa. Enviar-lhe-emos um código por email para definir uma palavra-passe."
-            }
+            },
+            "last_sign_in_method_hint": "Este é o seu único método de início de sessão, por isso não pode ser desvinculado."
           },
           "analytics": {
             "label": "Partilhar estatísticas de utilização",
@@ -1077,7 +1078,8 @@
         "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo.",
         "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor.",
         "account_inactive": "Esta conta foi desativada.",
-        "account_exists_password": "Já existe uma conta com este endereço de e-mail. Inicie sessão com a sua palavra-passe (ou redefina-a) e depois associe este fornecedor nas Definições."
+        "account_exists_password": "Já existe uma conta com este endereço de e-mail. Inicie sessão com a sua palavra-passe (ou redefina-a) e depois associe este fornecedor nas Definições.",
+        "account_exists_contact_admin": "Já existe uma conta com este endereço de e-mail e não pode ser associada automaticamente. Contacte o seu administrador."
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "Não pode editar este envelope — o seu papel neste orçamento é só de leitura.",
           "no_access_category": "Não pode editar esta categoria — pertence a outro utilizador.",
           "no_access_tag": "Não pode editar esta etiqueta — pertence a outro utilizador."
+        },
+        "comments": {
+          "title": "Comentários",
+          "disclosure": "Comentários ({count})",
+          "comment_label": "Comentário",
+          "marker_aria": "{count} comentário | {count} comentários",
+          "composer_placeholder": "Adicione uma nota para este mês",
+          "post": "Publicar",
+          "edit": "Editar",
+          "delete": "Eliminar",
+          "cancel": "Cancelar",
+          "delete_confirm": "Eliminar este comentário?",
+          "edited": "(editado)",
+          "counter": "{count}/500",
+          "read_only": "Os comentários aqui podem ser lidos, mas não alterados.",
+          "empty": "Ainda não há comentários.",
+          "truncated": "A mostrar os 2000 comentários mais recentes."
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",
-      "end_before_start": "O mês final é anterior ao início do orçamento"
+      "end_before_start": "O mês final é anterior ao início do orçamento",
+      "comment_not_found": "Comentário não encontrado",
+      "comment_forbidden": "Você não pode alterar este comentário"
     },
     "category": {
       "name_length": "O nome da categoria deve ter entre {min} e {max} caracteres.",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "Conta vinculada não encontrada",
       "link_invalid": "A sessão de vinculação é inválida ou expirou",
       "identity_taken": "Esta conta externa já está vinculada a outra conta Econumo",
-      "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor"
+      "provider_already_linked": "A sua conta já tem outra conta vinculada para este provedor",
+      "last_sign_in_method": "Não pode desvincular o seu único método de início de sessão"
     },
     "payee": {
       "name_length": "O nome do beneficiário deve ter entre {min} e {max} caracteres.",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "Confirme o seu endereço de email.",
       "verification_code_invalid": "O código de confirmação não é válido.",
       "verification_code_expired": "O código expirou.",
-      "email_unchanged": "O novo email é igual ao atual."
+      "email_unchanged": "O novo email é igual ao atual.",
+      "password_login_disabled": "O início de sessão com palavra-passe está desativado"
     }
   },
   "emails": {

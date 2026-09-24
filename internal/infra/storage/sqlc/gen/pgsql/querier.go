@@ -38,6 +38,8 @@ type Querier interface {
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
 	DeleteBudgetAccess(ctx context.Context, arg DeleteBudgetAccessParams) error
+	DeleteBudgetComment(ctx context.Context, id string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, budgetID string) error
 	DeleteBudgetElement(ctx context.Context, id string) error
 	DeleteBudgetEnvelope(ctx context.Context, id string) error
 	DeleteBudgetFolder(ctx context.Context, id string) error
@@ -104,6 +106,7 @@ type Querier interface {
 	GetBudgetAccess(ctx context.Context, arg GetBudgetAccessParams) (BudgetsAccess, error)
 	// Budget module queries (PostgreSQL). See the sqlite variant for documentation.
 	GetBudgetByID(ctx context.Context, id string) (Budget, error)
+	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
@@ -235,6 +238,7 @@ type Querier interface {
 	InsertAccessTokenIfGeneration(ctx context.Context, arg InsertAccessTokenIfGenerationParams) (int64, error)
 	// See the sqlite sibling.
 	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
+	InsertBudgetComment(ctx context.Context, arg InsertBudgetCommentParams) error
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (PostgreSQL: $N placeholders). See the
 	// sqlite variant for documentation.
@@ -290,6 +294,8 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, userID string) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
+	ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error)
+	ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	ListBudgetElementsByExternal(ctx context.Context, externalID string) ([]BudgetsElement, error)
 	ListBudgetEnvelopes(ctx context.Context, budgetID string) ([]BudgetsEnvelope, error)
@@ -383,6 +389,7 @@ type Querier interface {
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	// See the sqlite sibling.
@@ -393,6 +400,7 @@ type Querier interface {
 	SoftDeleteCurrency(ctx context.Context, id string) error
 	// See the sqlite sibling.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error

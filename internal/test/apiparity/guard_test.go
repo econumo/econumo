@@ -91,7 +91,9 @@ func registeredRoutes(t *testing.T) map[string]bool {
 	// 119 -> 128 on 2026-09-07: the 9 oauth routes were added.
 	// 128 -> 129 on 2026-09-13: oauth/complete-link (the link write moved off
 	// the public callback onto an authenticated completion).
-	const minRoutes = 129
+	// 129 -> 133 on 2026-09-23: +4 budget cell comment routes (get-comment-list,
+	// create/update/delete-comment).
+	const minRoutes = 133
 	if len(routes) < minRoutes {
 		t.Fatalf("route scan found only %d routes, want >= %d — a registration file moved outside handlerGlobs, or a route is no longer a literal \"METHOD /path\" string (see comment above)", len(routes), minRoutes)
 	}

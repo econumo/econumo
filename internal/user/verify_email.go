@@ -38,6 +38,9 @@ func (s *Service) requireVerifiedEmail(ctx context.Context, u *model.User, email
 // invalid-code error) so the route cannot be used for account enumeration;
 // failed attempts count toward the confirm-email cap and clear on success.
 func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailRequest) (*model.ConfirmEmailResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeConfirmEmail, lowered); err != nil {
 		return nil, err
@@ -124,6 +127,9 @@ func (s *Service) ConfirmEmail(ctx context.Context, req model.ConfirmEmailReques
 // and already-verified usernames included — so it can never be read as proof
 // that an unverified account exists.
 func (s *Service) ResendVerificationCode(ctx context.Context, req model.ResendVerificationCodeRequest) (*model.ResendVerificationCodeResult, time.Duration, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, 0, err
+	}
 	lowered := strings.ToLower(strings.TrimSpace(req.Username))
 	now := s.clock.Now()
 

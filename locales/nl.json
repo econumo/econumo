@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "Wachtwoord instellen",
               "description": "U hebt zich aangemeld met een extern account. Wij sturen u een code per e-mail om een wachtwoord in te stellen."
-            }
+            },
+            "last_sign_in_method_hint": "Dit is je enige inlogmethode, dus deze kan niet worden ontkoppeld."
           },
           "analytics": {
             "label": "Gebruiksstatistieken delen",
@@ -1077,7 +1078,8 @@
         "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account.",
         "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider.",
         "account_inactive": "Dit account is gedeactiveerd.",
-        "account_exists_password": "Er bestaat al een account met dit e-mailadres. Log in met uw wachtwoord (of stel het opnieuw in) en koppel deze provider daarna in Instellingen."
+        "account_exists_password": "Er bestaat al een account met dit e-mailadres. Log in met uw wachtwoord (of stel het opnieuw in) en koppel deze provider daarna in Instellingen.",
+        "account_exists_contact_admin": "Er bestaat al een account met dit e-mailadres dat niet automatisch kan worden gekoppeld. Neem contact op met je beheerder."
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "U kunt deze envelop niet bewerken — uw rol in dit budget is alleen-lezen.",
           "no_access_category": "U kunt deze categorie niet bewerken — deze hoort bij een andere gebruiker.",
           "no_access_tag": "U kunt deze tag niet bewerken — deze hoort bij een andere gebruiker."
+        },
+        "comments": {
+          "title": "Opmerkingen",
+          "disclosure": "Opmerkingen ({count})",
+          "comment_label": "Opmerking",
+          "marker_aria": "{count} opmerking | {count} opmerkingen",
+          "composer_placeholder": "Voeg een notitie toe voor deze maand",
+          "post": "Plaatsen",
+          "edit": "Bewerken",
+          "delete": "Verwijderen",
+          "cancel": "Annuleren",
+          "delete_confirm": "Deze opmerking verwijderen?",
+          "edited": "(bewerkt)",
+          "counter": "{count}/500",
+          "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
+          "empty": "Nog geen opmerkingen.",
+          "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
-      "end_before_start": "De eindmaand ligt vóór de start van het budget"
+      "end_before_start": "De eindmaand ligt vóór de start van het budget",
+      "comment_not_found": "Opmerking niet gevonden",
+      "comment_forbidden": "Je kunt deze opmerking niet wijzigen"
     },
     "category": {
       "name_length": "Categorienaam moet {min}-{max} tekens bevatten.",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "Gekoppeld account niet gevonden",
       "link_invalid": "De koppelingssessie is ongeldig of verlopen",
       "identity_taken": "Dit externe account is al gekoppeld aan een ander Econumo-account",
-      "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider"
+      "provider_already_linked": "Uw account heeft al een ander account gekoppeld voor deze provider",
+      "last_sign_in_method": "Je kunt je enige inlogmethode niet ontkoppelen"
     },
     "payee": {
       "name_length": "Naam van begunstigde moet {min}-{max} tekens bevatten.",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "Bevestig uw e-mailadres.",
       "verification_code_invalid": "De bevestigingscode is ongeldig.",
       "verification_code_expired": "De code is verlopen.",
-      "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres."
+      "email_unchanged": "Het nieuwe e-mailadres is hetzelfde als uw huidige e-mailadres.",
+      "password_login_disabled": "Inloggen met een wachtwoord is uitgeschakeld"
     }
   },
   "emails": {

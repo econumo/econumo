@@ -924,3 +924,36 @@ func TestLoad_AppLinks(t *testing.T) {
 		})
 	}
 }
+
+func TestLoad_PasswordLogin(t *testing.T) {
+	t.Setenv("DATABASE_URL", "sqlite:///tmp/x.sqlite")
+
+	c, err := Load()
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if c.PasswordLoginDisabled {
+		t.Error("password login should default to enabled")
+	}
+
+	t.Setenv("ECONUMO_PASSWORD_LOGIN", "banana")
+	if _, err := Load(); err == nil {
+		t.Error("malformed ECONUMO_PASSWORD_LOGIN must fail at boot")
+	}
+
+	t.Setenv("ECONUMO_PASSWORD_LOGIN", "false")
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "ECONUMO_PASSWORD_LOGIN") {
+		t.Fatalf("disabling password login without a provider must fail naming the variable, got %v", err)
+	}
+
+	t.Setenv("ECONUMO_URL", "https://money.example.test")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_ID", "abc")
+	t.Setenv("ECONUMO_OAUTH_GOOGLE_CLIENT_SECRET", "def")
+	c, err = Load()
+	if err != nil {
+		t.Fatalf("Load with a provider: %v", err)
+	}
+	if !c.PasswordLoginDisabled {
+		t.Error("password login should be disabled")
+	}
+}

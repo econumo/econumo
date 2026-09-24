@@ -42,6 +42,8 @@ type Querier interface {
 	DeleteAccountOptionForUser(ctx context.Context, arg DeleteAccountOptionForUserParams) error
 	DeleteBudget(ctx context.Context, id string) error
 	DeleteBudgetAccess(ctx context.Context, arg DeleteBudgetAccessParams) error
+	DeleteBudgetComment(ctx context.Context, id string) error
+	DeleteBudgetCommentsByBudget(ctx context.Context, budgetID string) error
 	DeleteBudgetElement(ctx context.Context, id string) error
 	DeleteBudgetEnvelope(ctx context.Context, id string) error
 	DeleteBudgetFolder(ctx context.Context, id string) error
@@ -159,6 +161,7 @@ type Querier interface {
 	// (limit amount) are NUMERIC(19,8) -> string; booleans (is_accepted,
 	// is_archived) -> bool; SMALLINT/SMALLINT UNSIGNED -> int16 via sqlc.yaml.
 	GetBudgetByID(ctx context.Context, id string) (Budget, error)
+	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
@@ -335,6 +338,7 @@ type Querier interface {
 	// request that passed the auth middleware before the reclaim inserts
 	// nothing after it.
 	InsertAccessTokenIfPresenterLive(ctx context.Context, arg InsertAccessTokenIfPresenterLiveParams) (int64, error)
+	InsertBudgetComment(ctx context.Context, arg InsertBudgetCommentParams) error
 	// Idempotently create one direction of the symmetric users_connections link.
 	InsertConnectionLink(ctx context.Context, arg InsertConnectionLinkParams) error
 	// Balance-correction transaction insert (SQLite). The account module's create
@@ -409,6 +413,14 @@ type Querier interface {
 	ListAvailableAccounts(ctx context.Context, arg ListAvailableAccountsParams) ([]Account, error)
 	ListBudgetAccess(ctx context.Context, budgetID string) ([]BudgetsAccess, error)
 	ListBudgetAccounts(ctx context.Context, budgetID string) ([]ListBudgetAccountsRow, error)
+	// Every comment on every element of a budget inside a half-open month window.
+	// period is datetime TEXT, so normalize both sides with datetime() and bind the
+	// bounds as 'Y-m-d H:i:s' strings, exactly like the limit queries.
+	// Over the limit the NEWEST comments are kept (the inner select), still
+	// returned in window order.
+	ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error)
+	// Clone reads every comment at or after the copy's start month.
+	ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error)
 	ListBudgetElements(ctx context.Context, budgetID string) ([]BudgetsElement, error)
 	// Every budget in which this category/tag appears. A merge must touch them all,
 	// including budgets shared with connected users.
@@ -542,6 +554,7 @@ type Querier interface {
 	RemoveBudgetAccount(ctx context.Context, arg RemoveBudgetAccountParams) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, arg RemoveBudgetAccountsOwnedByParams) error
 	RemoveEnvelopeCategory(ctx context.Context, arg RemoveEnvelopeCategoryParams) error
+	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	// Merge, no-conflict branch: hand the element to another classification instead
 	// of deleting and recreating it, which keeps its folder and sort position so the
 	// budget row stays where the user put it. UpsertBudgetElement deliberately does
@@ -560,6 +573,7 @@ type Querier interface {
 	// reclaim has revoked: a request that read the row before the revoke must not
 	// be able to write a stale NULL back.
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) (int64, error)
+	UpdateBudgetCommentText(ctx context.Context, arg UpdateBudgetCommentTextParams) error
 	UpdateCurrencyDetails(ctx context.Context, arg UpdateCurrencyDetailsParams) error
 	UpdateIdentityIfGeneration(ctx context.Context, arg UpdateIdentityIfGenerationParams) (int64, error)
 	UpdateImportAccountLink(ctx context.Context, arg UpdateImportAccountLinkParams) error

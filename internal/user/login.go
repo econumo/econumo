@@ -17,6 +17,9 @@ import (
 // current user. A bad username or password yields an UnauthorizedError (HTTP
 // 401, "Invalid credentials.").
 func (s *Service) Login(ctx context.Context, req model.LoginRequest, userAgent string, now time.Time) (*model.LoginResult, error) {
+	if err := s.requirePasswordLogin(); err != nil {
+		return nil, err
+	}
 	limitKey := strings.ToLower(strings.TrimSpace(req.Username))
 	if err := s.allowAttempt(RateScopeLogin, limitKey); err != nil {
 		return nil, err

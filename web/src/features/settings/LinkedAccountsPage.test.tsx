@@ -85,6 +85,16 @@ it('disables Unlink with a hint for a passwordless user with one identity', asyn
   expect(screen.getByText('Set a password before unlinking your only sign-in method.')).toBeInTheDocument()
 })
 
+it('keeps the last identity when password sign-in is disabled, even for a password user', async () => {
+  window.econumoConfig = { PASSWORD_LOGIN: false }
+  mockUser(true)
+  renderPage()
+  const btn = await screen.findByRole('button', { name: 'Unlink' })
+  expect(btn).toBeDisabled()
+  expect(screen.getByText('This is your only sign-in method, so it cannot be unlinked.')).toBeInTheDocument()
+  expect(screen.queryByText(/set a password/i)).not.toBeInTheDocument()
+})
+
 it('completes the link from #linkHandoff= and shows the toast', async () => {
   mockUser(true)
   sessionStorage.setItem('oauthFlow', 'f1')

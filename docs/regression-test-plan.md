@@ -208,6 +208,41 @@ navigation (single-pane vs sidebar).
 - [ ] Web: with a custom backend selected (different origin than the page),
       Settings → Profile → Sign-in methods shows the linked list but offers no
       Link buttons.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false` with NO provider configured: the server
+      refuses to start, naming `ECONUMO_PASSWORD_LOGIN`. A malformed value
+      (e.g. `nope`) also fails at boot.
+- [ ] 📱 `ECONUMO_PASSWORD_LOGIN=false` with a provider configured: `/login`
+      shows only the provider buttons — no email/password fields, no "Sign
+      in" or "Forgot password" buttons, no "or continue with" divider. With
+      `ECONUMO_ALLOW_REGISTRATION=true` the Sign-up tab also shows only the
+      provider buttons (plus the privacy note), and a first sign-in through the
+      provider creates the account; with it `false` the Sign-up tab stays
+      disabled.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: calling `login-user`, `register-user`,
+      `remind-password`, `reset-password` or `update-password` directly returns
+      400 "Password sign-in is disabled" (localized); existing sessions and
+      personal access tokens keep working.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: Settings → Profile shows neither "Change
+      password" nor "Set a password"; on Sign-in methods an account with one
+      linked provider cannot unlink it ("This is your only sign-in method, so
+      it cannot be unlinked."), even if it has a password.
+- [ ] `ECONUMO_PASSWORD_LOGIN=false`: a provider sign-in whose email matches an
+      account WITH a password is still refused, now with "An account with this
+      email address already exists and can't be linked automatically. Contact
+      your administrator." An account that linked the provider while passwords
+      were on signs in through it normally.
+- [ ] 📱 App pointed at a backend with `ECONUMO_PASSWORD_LOGIN=false`: on a
+      cold start the login screen drops the password form as soon as that
+      server's config arrives (no restart needed). Typing the address of a
+      backend that allows passwords into the custom-server field brings the
+      password form back within a second; switching back hides it again. An
+      unreachable address shows the password form (the server then decides).
+      Switching from a backend with no providers to a provider-only one shows
+      the new backend's provider buttons (never an empty screen).
+- [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
+      different origin: the password form is shown again (the provider buttons
+      are not), since the serving instance's setting says nothing about that
+      backend.
 
 ## 3. Onboarding (fresh user)
 
@@ -613,6 +648,41 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
+      immediately and survives a reload.
+- [ ] 📱 Open the same cell in the monthly view for that month: the comment is
+      there (cross-view sync).
+- [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Another participant cannot edit your comment; the budget owner can
+      delete it.
+- [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
+- [ ] A cell with comments shows the corner marker; a cell without shows none;
+      the uncategorized row never shows one.
+- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
+      thread opens (expanded in the amount popover, or the standalone dialog
+      on a non-editable/compact cell); plain Enter on the same cell instead
+      opens the amount editor, unaffected.
+- [ ] On desktop, a non-editable cell (guest role, an archived element —
+      even on a budget you can edit — or a month outside the budget's range)
+      shows its own "comments" link in
+      place of the amount, so a thread can be started even where there is no
+      amount popover to hang the disclosure off of.
+- [ ] 📱 On a phone, tap the Available pill of an individually-archived
+      element (in the Archive section, on a budget you can edit): its comment
+      thread opens and accepts a new comment.
+- [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
+      one comment is created, and Post stays disabled until it lands.
+- [ ] Post a comment, then start typing the next one before the first lands:
+      the new text stays in the composer.
+- [ ] Archive the budget: comment threads are readable, the composer is gone.
+- [ ] Reset the budget (REST route only — there is no UI for reset): planned
+      amounts AND comments are cleared.
+- [ ] Clone a budget with plans: comments at or after the start month come
+      across with their original authors; cloning without plans copies none.
+- [ ] Merge two categories: the source cell's comment thread appears on the
+      target cell.
+- [ ] Revoke a participant: their comments on surviving cells still render
+      their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
       correct; expense widget shows the conversion note.
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are

@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "设置密码",
               "description": "您使用外部账户注册。我们将向您发送邮箱验证码以设置密码。"
-            }
+            },
+            "last_sign_in_method_hint": "这是您唯一的登录方式，因此无法解除关联。"
           },
           "analytics": {
             "label": "分享使用统计",
@@ -1077,7 +1078,8 @@
         "identity_taken": "该外部账户已关联到另一个 Econumo 账户。",
         "provider_already_linked": "您的账户已关联了该提供方的另一个账户。",
         "account_inactive": "该账户已被停用。",
-        "account_exists_password": "该邮箱地址已有账户。请用密码登录（或重置密码），然后在设置中关联该提供方。"
+        "account_exists_password": "该邮箱地址已有账户。请用密码登录（或重置密码），然后在设置中关联该提供方。",
+        "account_exists_contact_admin": "该邮箱地址已有账户，无法自动关联。请联系管理员。"
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "无法编辑此信封——您在此预算中的角色为只读。",
           "no_access_category": "无法编辑此分类——它属于其他用户。",
           "no_access_tag": "无法编辑此标签——它属于其他用户。"
+        },
+        "comments": {
+          "title": "评论",
+          "disclosure": "评论（{count}）",
+          "comment_label": "评论",
+          "marker_aria": "{count} 条评论",
+          "composer_placeholder": "为本月添加备注",
+          "post": "发布",
+          "edit": "编辑",
+          "delete": "删除",
+          "cancel": "取消",
+          "delete_confirm": "删除此评论？",
+          "edited": "（已编辑）",
+          "counter": "{count}/500",
+          "read_only": "此处的评论可以查看，但无法更改。",
+          "empty": "暂无评论。",
+          "truncated": "仅显示最新的 2000 条评论。"
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "accounts_required": "请至少选择一个账户",
       "archived": "此预算已归档",
-      "end_before_start": "结束月份早于预算开始时间"
+      "end_before_start": "结束月份早于预算开始时间",
+      "comment_not_found": "未找到评论",
+      "comment_forbidden": "您无法修改此评论"
     },
     "category": {
       "name_length": "分类名称需为 {min}-{max} 个字符。",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "未找到关联账户",
       "link_invalid": "关联会话无效或已过期",
       "identity_taken": "该外部账户已关联到另一个 Econumo 账户",
-      "provider_already_linked": "您的账户已关联了该提供方的另一个账户"
+      "provider_already_linked": "您的账户已关联了该提供方的另一个账户",
+      "last_sign_in_method": "无法解除唯一登录方式的关联"
     },
     "payee": {
       "name_length": "收款人名称需为 {min}-{max} 个字符。",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "请先验证您的邮箱地址。",
       "verification_code_invalid": "验证码不正确。",
       "verification_code_expired": "验证码已过期。",
-      "email_unchanged": "新邮箱与当前邮箱相同。"
+      "email_unchanged": "新邮箱与当前邮箱相同。",
+      "password_login_disabled": "密码登录已停用"
     }
   },
   "emails": {

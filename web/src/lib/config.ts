@@ -11,6 +11,7 @@ export interface LocaleOption {
 
 export interface EconumoConfig {
   ALLOW_REGISTRATION?: boolean | string
+  PASSWORD_LOGIN?: boolean | string
   ALLOW_CUSTOM_API?: boolean | string
   VERSION?: string
   VERSION_LABEL?: string
@@ -164,6 +165,17 @@ export function isRegistrationAllowed(): boolean {
     return allowRegistration
   }
   return allowRegistration === 'true'
+}
+
+export function isPasswordLoginAllowed(): boolean {
+  const passwordLogin = window.econumoConfig?.PASSWORD_LOGIN
+  if (passwordLogin === undefined) {
+    return true
+  }
+  if (typeof passwordLogin === 'boolean') {
+    return passwordLogin
+  }
+  return passwordLogin === 'true'
 }
 
 export function getInstanceId(): string {

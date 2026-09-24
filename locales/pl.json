@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "Ustaw hasło",
               "description": "Zarejestrowałeś się przy użyciu konta zewnętrznego. Wyślemy Ci kod e-mailem, aby ustawić hasło."
-            }
+            },
+            "last_sign_in_method_hint": "To Twoja jedyna metoda logowania, więc nie można jej odłączyć."
           },
           "analytics": {
             "label": "Udostępniaj statystyki użytkowania",
@@ -1077,7 +1078,8 @@
         "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo.",
         "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy.",
         "account_inactive": "To konto zostało dezaktywowane.",
-        "account_exists_password": "Konto z tym adresem e-mail już istnieje. Zaloguj się hasłem (lub zresetuj je), a następnie powiąż tego dostawcę w Ustawieniach."
+        "account_exists_password": "Konto z tym adresem e-mail już istnieje. Zaloguj się hasłem (lub zresetuj je), a następnie powiąż tego dostawcę w Ustawieniach.",
+        "account_exists_contact_admin": "Konto z tym adresem e-mail już istnieje i nie można go połączyć automatycznie. Skontaktuj się z administratorem."
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "Nie możesz edytować tej koperty — Twoja rola w tym budżecie jest tylko do odczytu.",
           "no_access_category": "Nie możesz edytować tej kategorii — należy do innego użytkownika.",
           "no_access_tag": "Nie możesz edytować tego tagu — należy do innego użytkownika."
+        },
+        "comments": {
+          "title": "Komentarze",
+          "disclosure": "Komentarze ({count})",
+          "comment_label": "Komentarz",
+          "marker_aria": "{count} komentarz | {count} komentarze | {count} komentarzy",
+          "composer_placeholder": "Dodaj notatkę dla tego miesiąca",
+          "post": "Opublikuj",
+          "edit": "Edytuj",
+          "delete": "Usuń",
+          "cancel": "Anuluj",
+          "delete_confirm": "Usunąć ten komentarz?",
+          "edited": "(edytowano)",
+          "counter": "{count}/500",
+          "read_only": "Komentarze tutaj można odczytywać, ale nie można ich zmieniać.",
+          "empty": "Brak komentarzy.",
+          "truncated": "Wyświetlono 2000 najnowszych komentarzy."
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
       "accounts_required": "Wybierz co najmniej jedno konto",
       "archived": "Ten budżet jest zarchiwizowany",
-      "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu"
+      "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu",
+      "comment_not_found": "Nie znaleziono komentarza",
+      "comment_forbidden": "Nie możesz zmienić tego komentarza"
     },
     "category": {
       "name_length": "Nazwa kategorii musi mieć od {min} do {max} znaków.",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "Nie znaleziono powiązanego konta",
       "link_invalid": "Sesja powiązania jest nieprawidłowa lub wygasła",
       "identity_taken": "To zewnętrzne konto jest już powiązane z innym kontem Econumo",
-      "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy"
+      "provider_already_linked": "Twoje konto ma już powiązane inne konto dla tego dostawcy",
+      "last_sign_in_method": "Nie możesz odłączyć jedynej metody logowania"
     },
     "payee": {
       "name_length": "Nazwa odbiorcy musi mieć od {min} do {max} znaków.",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "Potwierdź swój adres e-mail.",
       "verification_code_invalid": "Nieprawidłowy kod potwierdzający.",
       "verification_code_expired": "Kod wygasł.",
-      "email_unchanged": "Nowy adres e-mail jest taki sam jak obecny."
+      "email_unchanged": "Nowy adres e-mail jest taki sam jak obecny.",
+      "password_login_disabled": "Logowanie hasłem jest wyłączone"
     }
   },
   "emails": {

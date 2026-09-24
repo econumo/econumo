@@ -198,6 +198,27 @@ func init() {
 			RPC: `{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"get_budget","arguments":{"budget_id":"b0000000-0000-0000-0000-0000000000c1","month":"2024-05"}}}`},
 	}})
 
+	// budget_comments drives the four comment tools end to end: post, list,
+	// edit, a validation-error create (bad month), delete, then list again to
+	// confirm the delete took.
+	const mcpCommentBudget = "b0000000-0000-0000-0000-0000000000c8"
+	register(Scenario{Name: "budget_comments", Steps: []Step{
+		{Label: "seed-budget", Method: "POST", Path: "/api/v1/budget/create-budget",
+			Body: map[string]any{"id": mcpCommentBudget, "name": "MCP Comments", "currencyId": apiparity.USD, "startDate": "2024-04-01", "accountIds": []string{apiparity.OwnerAccount}}},
+		{Label: "create-comment", CaptureAs: "comment_id", MCPCapturePath: []string{"item", "id"},
+			RPC: `{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"create_budget_comment","arguments":{"budget_id":"` + mcpCommentBudget + `","element_id":"` + apiparity.CatFood + `","month":"2024-05","comment":"Trip to Lisbon"}}}`},
+		{Label: "list-comments",
+			RPC: `{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"list_budget_comments","arguments":{"budget_id":"` + mcpCommentBudget + `","month":"2024-05"}}}`},
+		{Label: "update-comment",
+			RPC: `{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"update_budget_comment","arguments":{"comment_id":"{{comment_id}}","comment":"Trip to Lisbon in May"}}}`},
+		{Label: "create-comment-bad-month",
+			RPC: `{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"create_budget_comment","arguments":{"budget_id":"` + mcpCommentBudget + `","element_id":"` + apiparity.CatFood + `","month":"junk","comment":"nope"}}}`},
+		{Label: "delete-comment",
+			RPC: `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"delete_budget_comment","arguments":{"comment_id":"{{comment_id}}"}}}`},
+		{Label: "list-after-delete",
+			RPC: `{"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"list_budget_comments","arguments":{"budget_id":"` + mcpCommentBudget + `","month":"2024-05"}}}`},
+	}})
+
 	// transactions REST-seeds a FRESH account (so list_transactions starts
 	// empty rather than inheriting the fixture's two seeded transactions),
 	// captures its minted id, then drives create_transaction / list_transactions

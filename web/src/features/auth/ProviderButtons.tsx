@@ -20,7 +20,9 @@ const buttonLabel: Record<OAuthProviderId, string> = {
   oidc: 'auth.oauth.button.oidc',
 }
 
-export function ProviderButtons({ intent }: { intent: 'login' | 'link' }) {
+// divider: the "or continue with" rule separating the buttons from a password
+// form above them; off when the buttons are the only way in.
+export function ProviderButtons({ intent, divider = intent === 'login' }: { intent: 'login' | 'link'; divider?: boolean }) {
   const { t } = useTranslation()
   const providers = useProviders()
   const start = useStartOAuth()
@@ -33,7 +35,7 @@ export function ProviderButtons({ intent }: { intent: 'login' | 'link' }) {
   }
   return (
     <div data-testid="provider-buttons" className="flex flex-col gap-3">
-      {intent === 'login' ? (
+      {divider ? (
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
           <div className="h-px flex-1 bg-border" />
           <span>{t('auth.oauth.divider')}</span>

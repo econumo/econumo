@@ -966,7 +966,8 @@
             "set_password": {
               "menu_item": "Imposta una password",
               "description": "Ti sei registrato con un account esterno. Ti invieremo un codice via email per impostare una password."
-            }
+            },
+            "last_sign_in_method_hint": "Questo è il tuo unico metodo di accesso, quindi non può essere scollegato."
           },
           "analytics": {
             "label": "Condividi le statistiche di utilizzo",
@@ -1077,7 +1078,8 @@
         "identity_taken": "Questo account esterno è già collegato a un altro account Econumo.",
         "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider.",
         "account_inactive": "Questo account è stato disattivato.",
-        "account_exists_password": "Esiste già un account con questo indirizzo email. Accedi con la tua password (o reimpostala), poi collega questo provider dalle Impostazioni."
+        "account_exists_password": "Esiste già un account con questo indirizzo email. Accedi con la tua password (o reimpostala), poi collega questo provider dalle Impostazioni.",
+        "account_exists_contact_admin": "Esiste già un account con questo indirizzo email e non può essere collegato automaticamente. Contatta il tuo amministratore."
       }
     }
   },
@@ -1370,6 +1372,23 @@
           "no_access_envelope": "Non puoi modificare questa busta: il tuo ruolo in questo budget è di sola lettura.",
           "no_access_category": "Non puoi modificare questa categoria: appartiene a un altro utente.",
           "no_access_tag": "Non puoi modificare questo tag: appartiene a un altro utente."
+        },
+        "comments": {
+          "title": "Commenti",
+          "disclosure": "Commenti ({count})",
+          "comment_label": "Commento",
+          "marker_aria": "{count} commento | {count} commenti",
+          "composer_placeholder": "Aggiungi una nota per questo mese",
+          "post": "Pubblica",
+          "edit": "Modifica",
+          "delete": "Elimina",
+          "cancel": "Annulla",
+          "delete_confirm": "Eliminare questo commento?",
+          "edited": "(modificato)",
+          "counter": "{count}/500",
+          "read_only": "I commenti qui possono essere letti, ma non modificati.",
+          "empty": "Nessun commento ancora.",
+          "truncated": "Vengono mostrati i 2000 commenti più recenti."
         }
       },
       "settings": {
@@ -1784,7 +1803,9 @@
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
-      "end_before_start": "Il mese finale precede l'inizio del budget"
+      "end_before_start": "Il mese finale precede l'inizio del budget",
+      "comment_not_found": "Commento non trovato",
+      "comment_forbidden": "Non puoi modificare questo commento"
     },
     "category": {
       "name_length": "Il nome della categoria deve contenere da {min} a {max} caratteri",
@@ -1840,7 +1861,8 @@
       "identity_not_found": "Account collegato non trovato",
       "link_invalid": "La sessione di collegamento non è valida o è scaduta",
       "identity_taken": "Questo account esterno è già collegato a un altro account Econumo",
-      "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider"
+      "provider_already_linked": "Il tuo account ha già un account diverso collegato per questo provider",
+      "last_sign_in_method": "Non puoi scollegare il tuo unico metodo di accesso"
     },
     "payee": {
       "name_length": "Il nome del beneficiario deve contenere da {min} a {max} caratteri",
@@ -1878,7 +1900,8 @@
       "email_verification_required": "Verifica il tuo indirizzo email.",
       "verification_code_invalid": "Il codice di conferma non è valido.",
       "verification_code_expired": "Il codice è scaduto",
-      "email_unchanged": "La nuova email coincide con quella attuale."
+      "email_unchanged": "La nuova email coincide con quella attuale.",
+      "password_login_disabled": "L'accesso con password è disattivato"
     }
   },
   "emails": {

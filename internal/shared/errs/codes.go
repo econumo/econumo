@@ -45,6 +45,8 @@ const (
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
+	CodeBudgetCommentNotFound           = "budget.comment_not_found"
+	CodeBudgetCommentForbidden          = "budget.comment_forbidden"
 
 	CodeCategoryNameLength     = "category.name_length"
 	CodeCategoryTypeInvalid    = "category.type_invalid"
@@ -105,6 +107,7 @@ const (
 	CodeUserVerificationCodeInvalid   = "user.verification_code_invalid"
 	CodeUserVerificationCodeExpired   = "user.verification_code_expired"
 	CodeUserEmailUnchanged            = "user.email_unchanged"
+	CodeUserPasswordLoginDisabled     = "user.password_login_disabled"
 
 	CodeImportSourceNotFound        = "import.source_not_found"
 	CodeImportProviderUnsupported   = "import.provider_unsupported"
@@ -127,6 +130,7 @@ const (
 	CodeOAuthLinkInvalid            = "oauth.link_invalid"
 	CodeOAuthIdentityTaken          = "oauth.identity_taken"
 	CodeOAuthProviderAlreadyLinked  = "oauth.provider_already_linked"
+	CodeOAuthLastSignInMethod       = "oauth.last_sign_in_method"
 )
 
 var AllCodes = []string{
@@ -166,6 +170,8 @@ var AllCodes = []string{
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,
 	CodeBudgetEndBeforeStart,
+	CodeBudgetCommentNotFound,
+	CodeBudgetCommentForbidden,
 
 	CodeCategoryNameLength,
 	CodeCategoryTypeInvalid,
@@ -226,6 +232,7 @@ var AllCodes = []string{
 	CodeUserVerificationCodeInvalid,
 	CodeUserVerificationCodeExpired,
 	CodeUserEmailUnchanged,
+	CodeUserPasswordLoginDisabled,
 
 	CodeImportSourceNotFound,
 	CodeImportProviderUnsupported,
@@ -248,4 +255,5 @@ var AllCodes = []string{
 	CodeOAuthLinkInvalid,
 	CodeOAuthIdentityTaken,
 	CodeOAuthProviderAlreadyLinked,
+	CodeOAuthLastSignInMethod,
 }

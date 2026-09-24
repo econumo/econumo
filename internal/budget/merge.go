@@ -18,11 +18,12 @@ import (
 type MergeService struct {
 	elements ElementStore
 	limits   LimitStore
+	comments CommentStore
 	clock    port.Clock
 }
 
-func NewMergeService(elements ElementStore, limits LimitStore, clock port.Clock) *MergeService {
-	return &MergeService{elements: elements, limits: limits, clock: clock}
+func NewMergeService(elements ElementStore, limits LimitStore, comments CommentStore, clock port.Clock) *MergeService {
+	return &MergeService{elements: elements, limits: limits, comments: comments, clock: clock}
 }
 
 // MergeElements folds one classification's budget presence into another's,
@@ -58,6 +59,9 @@ func (s *MergeService) MergeElements(ctx context.Context, oldExternalID, newExte
 		}
 		if merr := s.mergeElementLimits(ctx, src, target, now); merr != nil {
 			return merr
+		}
+		if rerr := s.comments.RepointComments(ctx, src.ID, target.ID); rerr != nil {
+			return rerr
 		}
 		// The source's own limits cascade off the element.
 		if derr := s.elements.DeleteElement(ctx, src.ID); derr != nil {

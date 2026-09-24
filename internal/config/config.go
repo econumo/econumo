@@ -24,10 +24,13 @@ type Config struct {
 
 	// Econumo behavior
 	CurrencyBase      string // default "USD"
-	AllowRegistration bool
-	DataSalt          string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
-	SQLiteBusyTimeout int
-	CheckUpdates      bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
+	AllowRegistration bool   // ECONUMO_ALLOW_REGISTRATION: self-service sign-up (password and provider); with password login disabled it governs provider sign-up only
+	// PasswordLoginDisabled is ECONUMO_PASSWORD_LOGIN=false: no email+password
+	// sign-in, registration or recovery. Inverted so a zero Config keeps passwords on.
+	PasswordLoginDisabled bool
+	DataSalt              string // ECONUMO_DATA_SALT. DEPRECATED and IGNORED by the API/repositories (they run salt-free); consumed only by the data:remove-salt migration to decrypt existing data. Unset it after migrating.
+	SQLiteBusyTimeout     int
+	CheckUpdates          bool // ECONUMO_CHECK_UPDATES: poll econumo.com for the latest release (default true)
 	// Analytics is ECONUMO_ANALYTICS: DEPRECATED. It no longer gates anything at
 	// runtime — the per-user preference does — and no longer seeds new users
 	// either (they always start opted in). It reaches the app through exactly
@@ -338,6 +341,18 @@ func Load() (Config, error) {
 	if err := loadAppLinks(&c); err != nil {
 		return Config{}, err
 	}
+
+	// Strict parse: a typo while trying to switch passwords off must fail at
+	// boot, not leave the password form open.
+	passwordLogin, err := getBoolStrict("ECONUMO_PASSWORD_LOGIN", true)
+	if err != nil {
+		return Config{}, err
+	}
+	// With no provider there would be no way to sign in at all.
+	if !passwordLogin && !c.OAuthEnabled() {
+		return Config{}, fmt.Errorf("ECONUMO_PASSWORD_LOGIN=false requires an OAuth/OIDC provider (otherwise nobody can sign in)")
+	}
+	c.PasswordLoginDisabled = !passwordLogin
 
 	allowCustomAPI, err := getBoolOptional("ECONUMO_ALLOW_CUSTOM_API")
 	if err != nil {
