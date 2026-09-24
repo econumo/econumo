@@ -338,7 +338,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "set_limit",
-			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id."},
+			Description: "Set or clear an envelope/category/tag's limit for one month. Use get_budget for element_id. Savings rows (structure.savings) take limits too: element_id is the savings account id."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in setLimitInput) (*sdk.CallToolResult, setLimitResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "set_limit")
 				userID, err := webmcp.UserID(ctx)
@@ -460,7 +460,7 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "move_element",
-			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first."},
+			Description: "Move one budget element (an envelope, tag or standalone category) into a folder and/or reorder it. Use get_budget for element_id, folder_id and after_element_id; omit folder_id for the default ungrouped area, and omit after_element_id to place it first. A savings row (id = savings account id) reorders only among savings rows and cannot be put into a folder."},
 			func(ctx context.Context, req *sdk.CallToolRequest, in moveElementInput) (*sdk.CallToolResult, moveElementResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "move_element")
 				userID, err := webmcp.UserID(ctx)

@@ -112,17 +112,31 @@ func TestGetBudgetPlanSavings_Rows(t *testing.T) {
 }
 
 func TestGetBudgetPlanSavings_ConvertsToElementCurrency(t *testing.T) {
-	h, tok, _ := newSavingsBudget(t)
+	h, tok, eur := newSavingsBudget(t)
+	// A second EUR rate plus EUR activity in a DIFFERENT window month than the
+	// shared fixture's August 100 EUR: with only one rate in play (the previous
+	// version of this test), a builder bug that converted every month at a single
+	// (e.g. month-0) rate instead of its OWN month's rate would still pass. Two
+	// months, two distinct rates, two distinct expected results close that gap.
+	const septEURRate = "0.87"
+	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: usdID, Rate: septEURRate, PublishedAt: "2026-09-05"})
+	// structure.savings' "actual" comes from SavingsByMonth, which counts only
+	// type=2 everyday<->savings transfers (not a bare income row on the savings
+	// account) — see savingsByMonthSQL in internal/budget/repo/read.go.
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: accountID, AccountRecipientID: savingsEURID,
+		Type: 2, Amount: "66", AmountRecipient: "60", SpentAt: time.Date(2026, 9, 10, 12, 0, 0, 0, time.UTC)})
+
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
 		"budgetId": budgetID1, "elementId": savingsEURID, "currencyId": usdID,
 	})
 	view, _ := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
 	s2 := planSavingsByID(view.Item.Structure.Savings)[savingsEURID]
-	want := vo.NewDecimal("100").Div(vo.NewDecimal(augustEURRate)).Round(2)
+	wantAug := vo.NewDecimal("100").Div(vo.NewDecimal(augustEURRate)).Round(2)
+	wantSep := vo.NewDecimal("60").Div(vo.NewDecimal(septEURRate)).Round(2)
 	if s2.CurrencyId != usdID {
 		t.Fatalf("S2 currency = %s, want USD", s2.CurrencyId)
 	}
-	assertPlanCells(t, "S2", s2.Cells, []planSavingsCellView{{"0", ""}, {want.String(), "50"}, {"0", ""}})
+	assertPlanCells(t, "S2", s2.Cells, []planSavingsCellView{{"0", ""}, {wantAug.String(), "50"}, {wantSep.String(), ""}})
 }
 
 func TestGetBudgetPlanSavings_OpeningBalances(t *testing.T) {

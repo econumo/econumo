@@ -9,8 +9,9 @@ import (
 )
 
 // Savings budget elements (type 5): one row per savings-account member, kept by
-// the lazy element sync. The readers do not emit them yet, so these tests
-// observe the rows through budgets_elements directly and read the expense side
+// the lazy element sync. These tests observe the rows through budgets_elements
+// directly (get-budget/get-budget-plan's own savings surface is covered by
+// savings_budget_test.go and savings_plan_test.go) and read the expense side
 // through get-budget.
 
 const (

@@ -190,6 +190,19 @@ func planChildKey(monthIdx int, index, subIndex string) string {
 	return fmt.Sprintf("plan%d_%s_%s", monthIdx, index, subIndex)
 }
 
+// convertedGetter closes over a BulkConvert result, returning zero for a key
+// that never accumulated an item (no actual that period) instead of the zero
+// vo.DecimalNumber's own not-found behavior.
+func convertedGetter(converted map[string]vo.DecimalNumber) func(string) vo.DecimalNumber {
+	zero := vo.NewDecimal("0")
+	return func(key string) vo.DecimalNumber {
+		if v, ok := converted[key]; ok {
+			return v
+		}
+		return zero
+	}
+}
+
 // buildPlanStructure emits all folders plus every plan row.
 func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f filters, monthsList []time.Time) (model.PlanStructureResult, error) {
 	nMonths := len(monthsList)
@@ -504,14 +517,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 	}
 
 	result := s.emitPlanElements(elements, converted, nMonths)
-	zero := vo.NewDecimal("0")
-	get := func(key string) vo.DecimalNumber {
-		if v, ok := converted[key]; ok {
-			return v
-		}
-		return zero
-	}
-	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, get, nMonths)
+	savings := emitPlanSavings(savingsRows, plannedFor, savingsHasActual, convertedGetter(converted), nMonths)
 	return model.PlanStructureResult{Folders: folders, Elements: result, Savings: savings}, nil
 }
 
@@ -523,13 +529,7 @@ func (s *Service) buildPlanStructure(ctx context.Context, b *budgetAggregate, f 
 // Uncategorized rows, which render only with actuals. Archived anything needs
 // window activity.
 func (s *Service) emitPlanElements(elements []*planElement, converted map[string]vo.DecimalNumber, nMonths int) []model.PlanElementResult {
-	zero := vo.NewDecimal("0")
-	get := func(key string) vo.DecimalNumber {
-		if v, ok := converted[key]; ok {
-			return v
-		}
-		return zero
-	}
+	get := convertedGetter(converted)
 	hasPlanned := func(el *planElement) bool {
 		for _, p := range el.planned {
 			if p != "" {

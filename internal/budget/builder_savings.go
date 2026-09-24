@@ -64,20 +64,32 @@ func savingsAccountIDs(f filters) ([]vo.Id, error) {
 	return out, nil
 }
 
-// addMonthlySavings queues each savings row's actual for the period into the
-// structure's single bulk conversion, account currency -> element currency.
-func (s *Service) addMonthlySavings(ctx context.Context, f filters, options map[string]elementOption, toConvert map[string][]model.ConvertItem) ([]savingsRow, error) {
+// savingsConvertKey resolves one SavingsByMonth row to its toConvert bucket
+// key and the [start,end) rate period that row's amount was earned in — the
+// monthly builder always returns the same key/period (one period, the whole
+// call), the plan builder returns a distinct key/period per window month, and
+// signals "not this window" with ok=false (a month outside monthIdx).
+type savingsConvertKey func(row model.SavingsMonthRow) (key string, start, end time.Time, ok bool)
+
+// addSavings queues each savings row's actual amount(s) into the caller's
+// single bulk conversion, account currency -> element currency, over
+// [from,to). keyFor is what differs between the monthly and plan builders
+// (see savingsConvertKey); everything else — resolving the rows, loading
+// SavingsByMonth once, and building the ConvertItem — is shared.
+func (s *Service) addSavings(ctx context.Context, f filters, options map[string]elementOption, from, to time.Time,
+	keyFor savingsConvertKey, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
+	hasActual := map[string]bool{}
 	rows, err := savingsRows(f, options)
 	if err != nil || len(rows) == 0 {
-		return rows, err
+		return rows, hasActual, err
 	}
 	ids, err := savingsAccountIDs(f)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, f.periodStart, f.periodEnd)
+	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, from, to)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	byID := map[string]savingsRow{}
 	for _, r := range rows {
@@ -88,16 +100,30 @@ func (s *Service) addMonthlySavings(ctx context.Context, f filters, options map[
 		if !ok {
 			continue
 		}
-		from, perr := vo.ParseId(r.account.CurrencyID)
-		if perr != nil {
-			return nil, perr
+		key, start, end, ok := keyFor(a)
+		if !ok {
+			continue
 		}
-		key := savingsSpentKey(a.AccountID)
+		accountCur, perr := vo.ParseId(r.account.CurrencyID)
+		if perr != nil {
+			return nil, nil, perr
+		}
 		toConvert[key] = append(toConvert[key], model.ConvertItem{
-			PeriodStart: f.periodStart, PeriodEnd: f.periodEnd, From: from, To: r.currencyID, Amount: vo.NewDecimal(a.Amount),
+			PeriodStart: start, PeriodEnd: end, From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(a.Amount),
 		})
+		hasActual[a.AccountID] = true
 	}
-	return rows, nil
+	return rows, hasActual, nil
+}
+
+// addMonthlySavings queues each savings row's actual for the period into the
+// structure's single bulk conversion, account currency -> element currency.
+func (s *Service) addMonthlySavings(ctx context.Context, f filters, options map[string]elementOption, toConvert map[string][]model.ConvertItem) ([]savingsRow, error) {
+	rows, _, err := s.addSavings(ctx, f, options, f.periodStart, f.periodEnd,
+		func(a model.SavingsMonthRow) (string, time.Time, time.Time, bool) {
+			return savingsSpentKey(a.AccountID), f.periodStart, f.periodEnd, true
+		}, toConvert)
+	return rows, err
 }
 
 func emitMonthlySavings(rows []savingsRow, limits map[string]budgetedAmount, get func(string) vo.DecimalNumber) []model.SavingsElementResult {
@@ -124,44 +150,15 @@ func emitMonthlySavings(rows []savingsRow, limits map[string]budgetedAmount, get
 // same planKey scheme as the elements. hasActual marks accounts with any
 // activity in the window.
 func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[string]elementOption, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
-	hasActual := map[string]bool{}
-	rows, err := savingsRows(f, options)
-	if err != nil || len(rows) == 0 {
-		return rows, hasActual, err
-	}
-	ids, err := savingsAccountIDs(f)
-	if err != nil {
-		return nil, nil, err
-	}
 	windowEnd := monthsList[0].AddDate(0, len(monthsList), 0)
-	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, monthsList[0], windowEnd)
-	if err != nil {
-		return nil, nil, err
-	}
-	byID := map[string]savingsRow{}
-	for _, r := range rows {
-		byID[r.account.ID] = r
-	}
-	for _, a := range actual {
-		r, ok := byID[a.AccountID]
-		if !ok {
-			continue
-		}
-		i, ok := monthIdx[a.Month]
-		if !ok {
-			continue
-		}
-		from, perr := vo.ParseId(r.account.CurrencyID)
-		if perr != nil {
-			return nil, nil, perr
-		}
-		key := planKey(i, elementKey(a.AccountID, model.ElementSavings))
-		toConvert[key] = append(toConvert[key], model.ConvertItem{
-			PeriodStart: monthsList[i], PeriodEnd: monthsList[i].AddDate(0, 1, 0), From: from, To: r.currencyID, Amount: vo.NewDecimal(a.Amount),
-		})
-		hasActual[a.AccountID] = true
-	}
-	return rows, hasActual, nil
+	return s.addSavings(ctx, f, options, monthsList[0], windowEnd,
+		func(a model.SavingsMonthRow) (string, time.Time, time.Time, bool) {
+			i, ok := monthIdx[a.Month]
+			if !ok {
+				return "", time.Time{}, time.Time{}, false
+			}
+			return planKey(i, elementKey(a.AccountID, model.ElementSavings)), monthsList[i], monthsList[i].AddDate(0, 1, 0), true
+		}, toConvert)
 }
 
 // emitPlanSavings renders the plan's savings rows in savingsRows order. A
