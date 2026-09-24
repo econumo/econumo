@@ -744,7 +744,7 @@ describe('savings + net + balance split', () => {
     expect(totals.map((t) => t.effectiveNet)).toEqual(totalsWithoutSavings.map((t) => t.effectiveNet))
   })
 
-  it('savingsBalanceRow: opening + flows(past), + flows + max(0, planned-actual)(current), + planned(future)', () => {
+  it('savingsBalanceRow: opening + flows(past), + flows + (effectiveSavings - savingsActual)(current), + effectiveSavings(future)', () => {
     const plan = buildPlan()
     const ex = makePlanExchange(plan, [usd, eur])
     const totals = planTotals(plan, ex, now)
@@ -753,10 +753,97 @@ describe('savings + net + balance split', () => {
 
     // opening 1000 USD + flows 303 (past month) = 1303
     expect(savings[0]).toBe('1303')
-    // + flows 0 + max(0, 200 - 155) = 45 -> 1348
-    expect(savings[1]).toBe('1348')
-    // + savingsPlanned 200 (future) -> 1548
-    expect(savings[2]).toBe('1548')
+    // + flows 0 + (effectiveSavings 205 - savingsActual 155) = 50 -> 1353
+    // (the archived row's 5 is in both terms, so it adds nothing)
+    expect(savings[1]).toBe('1353')
+    // + effectiveSavings 200 (future) -> 1553
+    expect(savings[2]).toBe('1553')
+  })
+
+  it('savingsBalanceRow current month: the gap is per row, so it agrees with the Savings line when one row is under plan and another over', () => {
+    // TFSA planned 500, saved 0; RRSP planned 0, saved 300 (all USD, current month).
+    // Savings line = max(0, 500) + max(300, 0) = 800.
+    // Balance = opening 0 + flows 300 + per-row gap (500 - 0) + (300 - 300) = 800.
+    // The aggregate gap max(0, 500 - 300) = 200 would give 500, 300 short.
+    const tfsa = mkSavingsEl({
+      id: 'sav-tfsa',
+      name: 'TFSA',
+      currencyId: 'cur-usd',
+      cells: [
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '500' },
+        { actual: '0', planned: '' },
+      ],
+    })
+    const rrsp = mkSavingsEl({
+      id: 'sav-rrsp',
+      name: 'RRSP',
+      currencyId: 'cur-usd',
+      cells: [
+        { actual: '0', planned: '' },
+        { actual: '300', planned: '0' },
+        { actual: '0', planned: '' },
+      ],
+    })
+    const plan = mkPlan({
+      months,
+      openingBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
+      currencyRates: months.map(eurRate),
+      structure: { folders: [], elements: [], savings: [tfsa, rrsp] },
+      savingsFlows: [{ month: '2026-07-01', currencyId: 'cur-usd', amount: '300' }],
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const totals = planTotals(plan, ex, now)
+    expect(totals[1].effectiveSavings).toBe('800')
+
+    const savings = savingsBalanceRow(plan, totals, ex, now)
+    expect(savings).toEqual(['0', '800', '800'])
+    // combined stays at the opening 1000 (savings never change the combined total)
+    expect(everydayBalanceRow(balanceRow(plan, totals, ex, now), savings)).toEqual(['1000', '200', '200'])
+  })
+
+  it('savingsBalanceRow future month: a future-dated transfer above plan counts at its booked amount, like the Savings line', () => {
+    // future month: planned 50, a transfer of 120 already booked -> effective 120
+    const fund = mkSavingsEl({
+      id: 'sav-fund',
+      name: 'Fund',
+      currencyId: 'cur-usd',
+      cells: [
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '' },
+        { actual: '120', planned: '50' },
+      ],
+    })
+    const plan = mkPlan({
+      months,
+      currencyRates: months.map(eurRate),
+      structure: { folders: [], elements: [], savings: [fund] },
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const totals = planTotals(plan, ex, now)
+    expect(totals[2].effectiveSavings).toBe('120')
+    expect(savingsBalanceRow(plan, totals, ex, now)).toEqual(['0', '0', '120'])
+  })
+
+  it('savingsBalanceRow converts a non-budget-currency flow with that month\'s rate', () => {
+    // EUR rate 2 in June, 4 in July: a 400 EUR flow in July is 100 USD (not 200 at June's rate)
+    const july = {
+      period: '2026-07-01',
+      rates: [
+        { currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: '2026-07-01', periodEnd: '2026-07-01' },
+        { currencyId: 'cur-eur', baseCurrencyId: 'cur-usd', rate: '4', periodStart: '2026-07-01', periodEnd: '2026-07-01' },
+      ],
+    }
+    const rates = [eurRate('2026-06-01'), july, eurRate('2026-08-01')]
+    const plan = mkPlan({
+      months,
+      currencyRates: rates,
+      structure: { folders: [], elements: [], savings: [] },
+      savingsFlows: [{ month: '2026-07-01', currencyId: 'cur-eur', amount: '400' }],
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const totals = planTotals(plan, ex, now)
+    expect(savingsBalanceRow(plan, totals, ex, now)).toEqual(['0', '100', '100'])
   })
 
   it('everydayBalanceRow splits the combined balance into everyday + savings', () => {
@@ -771,8 +858,8 @@ describe('savings + net + balance split', () => {
     expect(everyday).toEqual(combined.map((c, i) => sub(c, savings[i])))
     // combined: opening 2000 + effectiveNet(-200 each month, unchanged by savings) = 1800, 1600, 1400
     expect(combined).toEqual(['1800', '1600', '1400'])
-    // savings from the previous test: 1303, 1348, 1548
-    expect(everyday).toEqual(['497', '252', '-148'])
+    // savings from the previous test: 1303, 1353, 1553
+    expect(everyday).toEqual(['497', '247', '-153'])
   })
 
   it('a plan without savings/savingsFlows/savingsOpeningBalances (older server) reads savings totals and balance as zero', () => {
@@ -859,5 +946,9 @@ describe('isUnderspent', () => {
   it('never flags an income row or a missing cell', () => {
     expect(isUnderspent(INCOME_CATEGORY, { actual: '100', planned: '2000' }, '2026-05-01', cur)).toBe(false)
     expect(isUnderspent(CATEGORY, undefined, '2026-05-01', cur)).toBe(false)
+  })
+
+  it('never flags a savings row: saving less than planned is not a good outcome', () => {
+    expect(isUnderspent(BudgetElementType.SAVINGS, { actual: '0', planned: '500' }, '2026-05-01', cur)).toBe(false)
   })
 })

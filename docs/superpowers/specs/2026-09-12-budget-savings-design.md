@@ -283,8 +283,15 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
   - **Net** = Income − Expenses + Transfers − Savings (actual and effective);
     planned Net = planned Income − planned Expenses − planned Savings.
   - **Savings balance** = Σ `savingsOpeningBalances` + running sum of:
-    past months → `savingsFlows`; current month → `savingsFlows` +
-    max(0, planned savings − actual savings); future months → planned savings.
+    past months → `savingsFlows`; current month → `savingsFlows` + the per-row
+    gap Σ(effective − actual) over the savings rows (never negative; a deleted
+    account's row contributes 0, its effective being its actual); future months →
+    the Savings row's effective total (= planned savings when nothing is booked, so
+    a future-dated transfer counts exactly as the Savings row shows it). The gap is
+    per row, never the aggregate max(0, planned − actual): one account over its plan
+    must not offset another's shortfall, or the balance would move by less than the
+    Savings row shows (planned 500 / saved 0 next to planned 0 / saved 300 shows
+    Savings 800, and the balance must add 800, not 300 + 200).
   - **Balance** (everyday) = today's combined balance (unchanged computation)
     − Savings balance, so the two rows always sum to the former total. The Savings
     balance row carries the "includes interest and other activity" tooltip above.

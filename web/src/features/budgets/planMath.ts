@@ -1,5 +1,4 @@
 import type {
-  BudgetElementType,
   BudgetFolderDto,
   BudgetPlanDto,
   PlanCellDto,
@@ -7,7 +6,7 @@ import type {
   PlanSavingsElementDto,
   PlanSavingsFlowDto,
 } from '@/api/dto/budget'
-import { isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { compareNames } from '@/lib/collate'
@@ -140,9 +139,10 @@ export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefin
 
 /** the underspend highlight: a PAST month whose plan the actual stayed under — the
  *  current and future months are still open, so being under plan there means nothing
- *  yet. Never true without a plan (unset = 0), and never on the income side. */
+ *  yet. Never true without a plan (unset = 0), and never on the income side. Never on
+ *  a savings row either: saving less than planned is no win. */
 export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
-  if (!cell || isIncomeType(type) || month >= cur) {
+  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS || month >= cur) {
     return false
   }
   return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
@@ -364,8 +364,11 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
 }
 
 /** The savings side of the balance split: opening balance plus, per month, what
- *  actually happened in the past, what is confirmed so far plus the gap still owed
- *  to plan in the current month, and the plan alone for months not yet open. */
+ *  actually happened in the past; in the current month the flows so far plus each
+ *  row's own gap to plan, Σ(max(actual, planned) − actual); and the Savings line
+ *  (effectiveSavings) for months not yet open. The gap is per row so an over-saved
+ *  row cannot cover another row's shortfall — the balance must move by exactly
+ *  what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
   const cur = currentMonth(now)
   const flowsByMonth = new Map<string, PlanSavingsFlowDto[]>()
@@ -381,10 +384,9 @@ export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[]
     if (month < cur) {
       running = add(running, flows)
     } else if (month === cur) {
-      const gap = cmp(t.savingsPlanned, t.savingsActual) > 0 ? sub(t.savingsPlanned, t.savingsActual) : '0'
-      running = add(add(running, flows), gap)
+      running = add(add(running, flows), sub(t.effectiveSavings, t.savingsActual))
     } else {
-      running = add(running, t.savingsPlanned)
+      running = add(running, t.effectiveSavings)
     }
     return running
   })
