@@ -1801,6 +1801,7 @@
       "transaction_filter_required": "La validación falló.",
       "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
       "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
+      "savings_folder_not_allowed": "Los ahorros no se pueden colocar en una carpeta.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "accounts_required": "Selecciona al menos una cuenta",
       "archived": "Este presupuesto está archivado",

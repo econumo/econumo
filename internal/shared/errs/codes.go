@@ -42,6 +42,7 @@ const (
 	CodeBudgetTransactionFilterRequired = "budget.transaction_filter_required"
 	CodeBudgetEnvelopeSideMixed         = "budget.envelope_side_mixed"
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
+	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
@@ -168,6 +169,7 @@ var AllCodes = []string{
 	CodeBudgetTransactionFilterRequired,
 	CodeBudgetEnvelopeSideMixed,
 	CodeBudgetFolderSideMixed,
+	CodeBudgetSavingsFolderNotAllowed,
 	CodeBudgetAccountNotRemovable,
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,

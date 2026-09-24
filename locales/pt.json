@@ -1801,6 +1801,7 @@
       "transaction_filter_required": "Falha na validação.",
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
+      "savings_folder_not_allowed": "As poupanças não podem ser colocadas numa pasta.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",

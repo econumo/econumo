@@ -1801,6 +1801,7 @@
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
+      "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
       "accounts_required": "Wähle mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
