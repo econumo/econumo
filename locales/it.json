@@ -1116,7 +1116,7 @@
           "counter": "{count}/500",
           "read_only": "I commenti qui possono essere letti, ma non modificati.",
           "empty": "Nessun commento ancora.",
-          "truncated": "Vengono mostrati i primi 2000 commenti."
+          "truncated": "Vengono mostrati i 2000 commenti più recenti."
         }
       },
       "settings": {

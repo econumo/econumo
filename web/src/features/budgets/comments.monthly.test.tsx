@@ -164,7 +164,7 @@ it('shows the truncated notice when get-comment-list reports its cap was hit', a
 
   const row = await screen.findByTestId('element-cat-food')
   await user.click(within(row).getByTestId('comment-marker'))
-  expect(await screen.findByText('Showing the first 2000 comments.')).toBeInTheDocument()
+  expect(await screen.findByText('Showing the latest 2000 comments.')).toBeInTheDocument()
 })
 
 it('shows no marker on a cell without comments', async () => {

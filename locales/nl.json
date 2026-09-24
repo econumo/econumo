@@ -1116,7 +1116,7 @@
           "counter": "{count}/500",
           "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
           "empty": "Nog geen opmerkingen.",
-          "truncated": "De eerste 2000 opmerkingen worden weergegeven."
+          "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
       },
       "settings": {

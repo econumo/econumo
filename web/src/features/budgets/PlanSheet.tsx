@@ -228,7 +228,7 @@ interface GridCtx {
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   openDialog: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
-  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped its tail */
+  /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
   commentsTruncated: boolean
   /** `fromGrid` marks a keyboard-originated open (Shift+Enter): only the branch that
    *  actually sets one of the four `editorOpen` states (the standalone dialog) should

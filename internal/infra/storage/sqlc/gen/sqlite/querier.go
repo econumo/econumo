@@ -384,6 +384,8 @@ type Querier interface {
 	// Every comment on every element of a budget inside a half-open month window.
 	// period is datetime TEXT, so normalize both sides with datetime() and bind the
 	// bounds as 'Y-m-d H:i:s' strings, exactly like the limit queries.
+	// Over the limit the NEWEST comments are kept (the inner select), still
+	// returned in window order.
 	ListBudgetCommentsForWindow(ctx context.Context, arg ListBudgetCommentsForWindowParams) ([]ListBudgetCommentsForWindowRow, error)
 	// Clone reads every comment at or after the copy's start month.
 	ListBudgetCommentsFrom(ctx context.Context, arg ListBudgetCommentsFromParams) ([]BudgetsElementsComment, error)

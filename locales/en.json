@@ -1116,7 +1116,7 @@
           "counter": "{count}/500",
           "read_only": "Comments here can be read but not changed.",
           "empty": "No comments yet.",
-          "truncated": "Showing the first 2000 comments."
+          "truncated": "Showing the latest 2000 comments."
         }
       },
       "settings": {

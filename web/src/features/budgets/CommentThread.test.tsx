@@ -169,12 +169,12 @@ it('readOnly hides the composer and every menu, and shows the read-only hint', (
 
 it('shows the truncated notice only when the fetch behind comments hit the server cap', () => {
   renderThread({ comments: [commentByAda], truncated: true })
-  expect(screen.getByText('Showing the first 2000 comments.')).toBeInTheDocument()
+  expect(screen.getByText('Showing the latest 2000 comments.')).toBeInTheDocument()
 })
 
 it('shows no truncated notice when the fetch was not capped', () => {
   renderThread({ comments: [commentByAda], truncated: false })
-  expect(screen.queryByText('Showing the first 2000 comments.')).toBeNull()
+  expect(screen.queryByText('Showing the latest 2000 comments.')).toBeNull()
 })
 
 it('a failed post leaves the typed comment in the composer instead of silently dropping it', async () => {

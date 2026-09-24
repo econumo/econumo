@@ -22,7 +22,7 @@ export interface CommentThreadProps {
   canModerate: boolean
   /** archived budget or a month outside the budget's range: read the thread, write nothing */
   readOnly: boolean
-  /** the fetch behind `comments` hit the 2000-item server cap and dropped its tail */
+  /** the fetch behind `comments` hit the 2000-item server cap and dropped the oldest */
   truncated: boolean
 }
 

@@ -74,7 +74,7 @@ DTOs in `internal/model/budget_dto.go`:
 - `GetCommentListResult{Items []CommentResult, Truncated bool}` →
   `{"items": [...], "truncated": false}` (`items` is `[]`, never `null`, when empty,
   matching `GetBudgetListResult`; `truncated` is always present and true only when
-  the 2000-item cap cut the tail).
+  the 2000-item cap dropped the oldest comments).
 
 ### Use cases (`internal/budget/comments.go`)
 
@@ -83,7 +83,8 @@ pending invite denied). Window `[from, from + months)`. Returns every comment on
 every element of the budget in that window, ordered `period, external_id,
 created_at, id`. Archived budgets and months outside start/end are still readable.
 The response is unpaginated, so it is capped: `months` ≤ 24 (already validated) and
-at most 2000 comments, oldest first; hitting the cap truncates the tail and sets
+at most 2000 comments; hitting the cap keeps the NEWEST 2000 by `created_at, id`
+(still returned in the order above), drops the rest, and sets
 `truncated: true` on the result so the SPA can say so rather than silently showing a
 partial thread. A budget that large is pathological — the cap is a guard, not a
 paging design.

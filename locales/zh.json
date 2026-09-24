@@ -1116,7 +1116,7 @@
           "counter": "{count}/500",
           "read_only": "此处的评论可以查看，但无法更改。",
           "empty": "暂无评论。",
-          "truncated": "仅显示前 2000 条评论。"
+          "truncated": "仅显示最新的 2000 条评论。"
         }
       },
       "settings": {

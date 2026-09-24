@@ -181,9 +181,14 @@ SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updat
 FROM budgets_elements_comments c
 JOIN budgets_elements e ON e.id = c.element_id
 JOIN users u ON u.id = c.user_id
-WHERE e.budget_id = $1 AND c.period >= $2 AND c.period < $3
-ORDER BY c.period, e.external_id, c.created_at, c.id
-LIMIT $4;
+WHERE c.id IN (
+  SELECT c2.id FROM budgets_elements_comments c2
+  JOIN budgets_elements e2 ON e2.id = c2.element_id
+  WHERE e2.budget_id = $1 AND c2.period >= $2 AND c2.period < $3
+  ORDER BY c2.created_at DESC, c2.id DESC
+  LIMIT $4
+)
+ORDER BY c.period, e.external_id, c.created_at, c.id;
 
 -- name: GetBudgetComment :one
 SELECT c.id, c.element_id, c.period, c.user_id, c.comment, c.created_at, c.updated_at,

@@ -742,8 +742,8 @@ type CommentResult struct {
 }
 
 // GetCommentListResult is {items: [...], truncated: bool}. Truncated is true
-// only when the server-side cap cut the tail, so the SPA can say so instead of
-// silently showing a partial thread.
+// only when the server-side cap dropped the window's oldest comments, so the SPA
+// can say so instead of silently showing a partial thread.
 type GetCommentListResult struct {
 	Items     []CommentResult `json:"items"`
 	Truncated bool            `json:"truncated"`

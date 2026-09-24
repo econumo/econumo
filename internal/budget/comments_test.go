@@ -354,11 +354,14 @@ func TestGetCommentList_WindowAndOrder(t *testing.T) {
 	}
 }
 
-// The cap is applied in SQL: the list returns exactly 2000 rows and flags the
-// overflow from the one extra row it asked for, never reading the rest.
-func TestGetCommentList_CapSetsTruncated(t *testing.T) {
+// The cap is applied in SQL: the list returns exactly 2000 rows, the newest
+// ones, and flags the overflow from the one extra row it asked for. The oldest
+// comment sits in the MIDDLE month, so it is neither end of the window order.
+func TestGetCommentList_CapKeepsNewestAndSetsTruncated(t *testing.T) {
 	h := newCommentHarness(t)
-	seed := h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "seed")
+	may := h.mustCreate(t, h.owner, "cat-food", "2026-05-01", "May")
+	oldest := h.mustCreate(t, h.owner, "cat-food", "2026-06-01", "June, oldest")
+	july := h.mustCreate(t, h.owner, "cat-food", "2026-07-01", "July")
 
 	tx, err := h.tdb.Raw.BeginTx(h.ctx, nil)
 	if err != nil {
@@ -366,8 +369,12 @@ func TestGetCommentList_CapSetsTruncated(t *testing.T) {
 	}
 	query := h.tdb.Rebind(`INSERT INTO budgets_elements_comments (id, element_id, period, user_id, comment, created_at, updated_at)
 		SELECT ?, element_id, period, user_id, comment, created_at, updated_at FROM budgets_elements_comments WHERE id = ?`)
-	for range 2000 {
-		if _, err := tx.ExecContext(h.ctx, query, vo.NewId().String(), seed.Item.Id); err != nil {
+	for i := range 1998 {
+		src := may.Item.Id
+		if i%2 == 1 {
+			src = july.Item.Id
+		}
+		if _, err := tx.ExecContext(h.ctx, query, vo.NewId().String(), src); err != nil {
 			_ = tx.Rollback()
 			t.Fatalf("seed copy: %v", err)
 		}
@@ -375,10 +382,19 @@ func TestGetCommentList_CapSetsTruncated(t *testing.T) {
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
+	h.backdateComment(t, oldest.Item.Id, time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC))
 
-	res := h.list(t, h.owner, "2026-05-01", "1")
+	res := h.list(t, h.owner, "2026-05-01", "3")
 	if len(res.Items) != 2000 || !res.Truncated {
 		t.Fatalf("items=%d truncated=%v want 2000 and true over 2001 rows", len(res.Items), res.Truncated)
+	}
+	for _, item := range res.Items {
+		if item.Id == oldest.Item.Id {
+			t.Fatal("the oldest comment survived the cap; the newest 2000 should be kept")
+		}
+	}
+	if res.Items[0].Period != "2026-05-01" || res.Items[len(res.Items)-1].Period != "2026-07-01" {
+		t.Fatalf("first=%s last=%s want window order kept", res.Items[0].Period, res.Items[len(res.Items)-1].Period)
 	}
 }
 

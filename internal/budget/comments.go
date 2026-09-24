@@ -53,13 +53,28 @@ func (s *Service) GetCommentList(ctx context.Context, userID vo.Id, req model.Ge
 	}
 	truncated := len(rows) > commentListCap
 	if truncated {
-		rows = rows[:commentListCap]
+		rows = dropOldestComment(rows)
 	}
 	items := make([]model.CommentResult, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, commentResult(row))
 	}
 	return &model.GetCommentListResult{Items: items, Truncated: truncated}, nil
+}
+
+// dropOldestComment removes the extra row fetched past the cap. The query
+// keeps the NEWEST rows but returns them in window order, so that row can sit
+// anywhere: it is the minimum of the query's (created_at, id) ranking.
+func dropOldestComment(rows []model.BudgetCommentRow) []model.BudgetCommentRow {
+	oldest := 0
+	for i, row := range rows {
+		o := rows[oldest].Comment
+		if row.Comment.CreatedAt.Before(o.CreatedAt) ||
+			(row.Comment.CreatedAt.Equal(o.CreatedAt) && row.Comment.ID.String() < o.ID.String()) {
+			oldest = i
+		}
+	}
+	return append(rows[:oldest:oldest], rows[oldest+1:]...)
 }
 
 func commentResult(row model.BudgetCommentRow) model.CommentResult {

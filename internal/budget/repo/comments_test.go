@@ -123,7 +123,9 @@ func TestComments_InsertListUpdateDelete(t *testing.T) {
 	}
 }
 
-func TestComments_ListWindowAppliesLimitInOrder(t *testing.T) {
+// Over the limit the window keeps its NEWEST comments, still returned in
+// window order.
+func TestComments_ListWindowLimitKeepsNewest(t *testing.T) {
 	ctx, r, fx := newCommentFixture(t)
 	period := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
 
@@ -144,8 +146,8 @@ func TestComments_ListWindowAppliesLimitInOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rows) != 2 || rows[0].Comment.Comment != want[0] || rows[1].Comment.Comment != want[1] {
-		t.Fatalf("rows=%+v want the first two of %v", rows, want)
+	if len(rows) != 2 || rows[0].Comment.Comment != want[1] || rows[1].Comment.Comment != want[2] {
+		t.Fatalf("rows=%+v want the last two of %v, oldest first", rows, want)
 	}
 }
 
