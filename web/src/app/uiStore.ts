@@ -43,32 +43,14 @@ interface UiState {
 
 export const useUiStore = create<UiState>()((set) => ({
   transactionModal: null,
-  openTransactionModal: (params) => {
-    trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
-    set({ transactionModal: params })
-  },
-  closeTransactionModal: () => {
-    trackEvent(METRICS.UI_MODAL_TRANSACTION_CLOSE)
-    set({ transactionModal: null })
-  },
+  openTransactionModal: (params) => set({ transactionModal: params }),
+  closeTransactionModal: () => set({ transactionModal: null }),
   accountModal: null,
-  openAccountModal: (params) => {
-    trackEvent(METRICS.UI_MODAL_ACCOUNT_OPEN)
-    set({ accountModal: params })
-  },
-  closeAccountModal: () => {
-    trackEvent(METRICS.UI_MODAL_ACCOUNT_CLOSE)
-    set({ accountModal: null })
-  },
+  openAccountModal: (params) => set({ accountModal: params }),
+  closeAccountModal: () => set({ accountModal: null }),
   recurringModal: null,
-  openRecurringModal: (params) => {
-    trackEvent(METRICS.UI_MODAL_RECURRING_OPEN)
-    set({ recurringModal: params })
-  },
-  closeRecurringModal: () => {
-    trackEvent(METRICS.UI_MODAL_RECURRING_CLOSE)
-    set({ recurringModal: null })
-  },
+  openRecurringModal: (params) => set({ recurringModal: params }),
+  closeRecurringModal: () => set({ recurringModal: null }),
   switchAccountPrompt: null,
   setSwitchAccountPrompt: (id) => set({ switchAccountPrompt: id }),
 }))

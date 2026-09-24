@@ -296,11 +296,15 @@ capture — it cannot be bundled, the served file carries the collector's
 origin — as the named instance `econumo` (the cloud's liltag snippet owns the
 default one), `identity: "identified"`, no consent (so it keeps nothing on the
 device, sends `$consent: 0` and no `$install_id`, and detects `$os`/`$browser`/
-`$device` itself) and no automatic tracking. `trackEvent` skips the collector
-without a session token (login/register page views and the pre-login auth
-events reach the `dataLayer` only); `PAGE_VIEW` goes out as a real
-`$page_view` (synthetic `$host`, UUID-templated `$path`, no `$referrer`) and
-every other metric as a product event. The wrapper holds calls until the SDK
+`$device` itself) and no automatic tracking. Twillingate is the only sink —
+there is no `window.dataLayer`. `trackEvent` sends nothing without a session
+token (login/register page views and the pre-login auth events go nowhere);
+`PAGE_VIEW` goes out as a real `$page_view` (no `$referrer`) and every other
+metric as a product event carrying its `eventData`. Both kinds carry the
+system keys `$host` (synthetic, below), `$path` (the route with every UUID
+templated to `:id`), `$device` (the layout mode — `mobile`/`tablet`/`desktop`
+by viewport width, overriding the SDK's detected form factor) and
+`$app_locale` (the UI language). The wrapper holds calls until the SDK
 has loaded AND the user id is set (the boot page view fires before
 `get-user-data` resolves), discarding anything still unattributed on
 logout/401, and flushes the SDK before every identity change, because the SDK
@@ -308,18 +312,16 @@ reads identity at flush time — so every batch carries a hashed user id (`$user
 SHA-256 over the user's id, computed client-side in
 `web/src/lib/analyticsId.ts`) and a
 per-instance group (`$group_id`, the bare per-deployment digest from
-`internal/infra/instance`; `$group_name`, the same `host` value every event
+`internal/infra/instance`; `$group_name`, the same `$host` value every event
 carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
 `selfhosted_<instance-digest>` (`isCloudHost`/`analyticsHost` in
 `web/src/lib/metrics.ts`), so a self-hosted deployment's real hostname never
 appears in an event payload (the browser's request still discloses it via the
-mandatory `Origin` header, which the collector does not record); `current_url`
-is built from that same synthetic host),
+mandatory `Origin` header, which the collector does not record)),
 plus session-wide account-profile counts (connections, accounts,
 categories, payees, tags — `web/src/lib/analyticsProfile.ts`), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
-`analytics` option (`users_options`, on by default) gates capture: it silences
-both the Twillingate collector and the `window.dataLayer`/liltag push, is
+`analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
 resolves after the first pageview), and is toggled via
 `POST /api/v1/user/update-analytics`.

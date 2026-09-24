@@ -8,6 +8,12 @@ import { coreHandlers } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { PayeesPage } from './PayeesPage'
 import { TagsPage } from './TagsPage'
+import { METRICS, trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 function mockViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
@@ -140,7 +146,7 @@ it('search collapses back to the icon when left empty, but stays open while filt
 })
 
 it('search fires the analytics event once per visit', async () => {
-  window.dataLayer = []
+  vi.mocked(trackEvent).mockClear()
   const user = userEvent.setup()
   renderPage(<PayeesPage />)
   await screen.findByText('Grocer')
@@ -148,9 +154,9 @@ it('search fires the analytics event once per visit', async () => {
   await user.type(search, 'gro')
   await user.clear(search)
   await user.type(search, 'tw')
-  const events = window.dataLayer.filter((e) => (e as { event?: string }).event === 'appClassificationSearch')
+  const events = vi.mocked(trackEvent).mock.calls.filter(([metric]) => metric === METRICS.CLASSIFICATION_SEARCH)
   expect(events).toHaveLength(1)
-  expect((events[0] as { eventData?: { type?: string } }).eventData?.type).toBe('payee')
+  expect(events[0][1]).toEqual({ type: 'payee' })
 })
 
 it('tag delete invalidates the budget cache; payee delete does not', async () => {

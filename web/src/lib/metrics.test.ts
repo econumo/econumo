@@ -28,65 +28,70 @@ beforeEach(() => {
   // The collector receives authenticated sessions only.
   setToken('eco_ses_test')
   window.econumoConfig = {}
-  window.dataLayer = []
   window.history.replaceState({}, '', '/')
 })
 
-it('sends nothing to either sink when opted out', () => {
-  const captureSpy = vi.spyOn(analyticsModule, 'capture')
-  window.dataLayer = []
+it('sends nothing when opted out', () => {
   rememberAnalyticsPreference(false)
 
   trackEvent(METRICS.ACCOUNT_CREATE)
+  trackEvent(METRICS.PAGE_VIEW)
 
-  expect(captureSpy).not.toHaveBeenCalled()
-  expect(window.dataLayer).toHaveLength(0)
+  expect(capture).not.toHaveBeenCalled()
+  expect(capturePageView).not.toHaveBeenCalled()
 })
 
-it('pushes the event with context to the dataLayer', () => {
-  trackEvent(METRICS.TRANSACTION_CREATE, { a: 1 })
-  expect(window.dataLayer).toHaveLength(1)
-  const entry = window.dataLayer[0] as Record<string, unknown>
-  expect(entry.event).toBe('appTransactionCreate')
-  expect(entry.eventData).toEqual({ a: 1 })
-  expect(entry.eventContext).toMatchObject({ selfHosted: false, locale: 'en' })
+it('leaves no dataLayer behind', () => {
+  trackEvent(METRICS.TRANSACTION_CREATE)
+  expect(window).not.toHaveProperty('dataLayer')
 })
 
 describe('collector capture', () => {
-  it('sends nothing to the collector without a session token, but still feeds the dataLayer', () => {
+  it('sends nothing without a session token', () => {
     localStorage.clear()
     trackEvent(METRICS.PAGE_VIEW)
     trackEvent(METRICS.USER_REGISTRATION)
     expect(capture).not.toHaveBeenCalled()
     expect(capturePageView).not.toHaveBeenCalled()
-    expect(window.dataLayer).toHaveLength(2)
   })
 
-  // Only the page the event happened on is per-event; everything else
-  // describes the session and rides the batch instead.
-  it('captures the per-event url only', () => {
+  // The event's own data and the page it happened on are per-event;
+  // everything else describes the session and comes from the context.
+  it('captures the event data and the masked path', () => {
     window.history.replaceState({}, '', '/budgets/01980e2c-1111-7000-8000-123456789abc/details')
-    trackEvent(METRICS.TRANSACTION_CREATE, { secret: 'never-sent' })
+    trackEvent(METRICS.CLASSIFICATION_MERGE, { type: 'payee' })
     expect(capture).toHaveBeenCalledTimes(1)
     const [event, props] = vi.mocked(capture).mock.calls[0]
-    expect(event).toBe('transaction_create')
-    // jsdom runs on localhost with no INSTANCE_ID configured
-    expect(props).toEqual({ current_url: 'https://selfhosted_unknown/budgets/:id/details' })
+    expect(event).toBe('classification_merge')
+    expect(props).toEqual({ type: 'payee', $path: '/budgets/:id/details' })
   })
 
-  it('sends the session-wide facts on the batch, not on each event', () => {
+  it('keeps the masked path over event data claiming one', () => {
+    window.history.replaceState({}, '', '/account/01980e2c-1111-7000-8000-123456789abc')
+    trackEvent(METRICS.TRANSACTION_CREATE, { $path: '/account/01980e2c-1111-7000-8000-123456789abc' })
+    const [, props] = vi.mocked(capture).mock.calls[0]
+    expect(props?.$path).toBe('/account/:id')
+  })
+
+  it('sends the session-wide facts, system keys included, through the context', () => {
     const contextSpy = vi.spyOn(analyticsModule, 'setAnalyticsContext')
     trackEvent(METRICS.TRANSACTION_CREATE)
     expect(contextSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        host: 'selfhosted_unknown',
+        $platform: 'web',
+        // jsdom runs on localhost with no INSTANCE_ID configured
+        $host: 'selfhosted_unknown',
+        $app_locale: 'en',
+        $device: 'desktop', // jsdom default viewport is 1024px wide
         deployment: 'self-hosted',
-        locale: 'en',
-        mode: 'desktop', // jsdom default viewport is 1024px wide
       }),
     )
+    const context = contextSpy.mock.calls.at(-1)![0]
+    for (const key of ['host', 'locale', 'mode', 'current_url']) {
+      expect(context).not.toHaveProperty(key)
+    }
     const [, props] = vi.mocked(capture).mock.calls.at(-1)!
-    for (const key of ['host', 'deployment', 'locale', 'mode', 'version', 'self_hosted']) {
+    for (const key of ['$host', 'deployment', '$app_locale', '$device']) {
       expect(props).not.toHaveProperty(key)
     }
   })
@@ -96,21 +101,11 @@ describe('collector capture', () => {
     trackEvent(METRICS.PAGE_VIEW)
     expect(capture).not.toHaveBeenCalled()
     expect(capturePageView).toHaveBeenCalledWith('/account/01980e2c-1111-7000-8000-123456789abc', {
-      // jsdom runs on localhost with no INSTANCE_ID configured
-      $host: 'selfhosted_unknown',
       $path: '/account/:id',
       // null drops the SDK's document.referrer: a self-hosted instance's own
       // domain would otherwise be stored as a referral source.
       $referrer: null,
     })
-    // The dataLayer name is frozen and unaffected.
-    expect((window.dataLayer[0] as { event: string }).event).toBe('appPageView')
-  })
-
-  it('keeps ui_modal micro-interactions dataLayer-only', () => {
-    trackEvent(METRICS.UI_MODAL_TRANSACTION_OPEN)
-    expect(capture).not.toHaveBeenCalled()
-    expect(window.dataLayer).toHaveLength(1)
   })
 })
 

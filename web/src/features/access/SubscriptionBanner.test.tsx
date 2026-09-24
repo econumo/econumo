@@ -6,6 +6,12 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser } from '@/test/fixtures'
 import { formatDate } from '@/lib/datetime'
 import { SubscriptionBanner } from './SubscriptionBanner'
+import { METRICS, trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 function utcIn(days: number): string {
   return new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 19).replace('T', ' ')
@@ -22,13 +28,13 @@ function renderBanner() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  window.dataLayer = []
+  vi.mocked(trackEvent).mockClear()
 })
 
 it('renders nothing for full access', async () => {
   server.use(...coreHandlers())
   renderBanner()
-  await waitFor(() => expect(window.dataLayer).toEqual([]))
+  await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
   expect(screen.queryByRole('button')).not.toBeInTheDocument()
 })
 
@@ -36,7 +42,7 @@ it('renders nothing for a trial outside the 3-day window', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(30) } }))
   renderBanner()
-  await waitFor(() => expect(window.dataLayer).toEqual([]))
+  await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
 })
 
 it('shows the dismissible trial variant inside 3 days, with the CTA, and fires the metric', async () => {
@@ -46,7 +52,7 @@ it('shows the dismissible trial variant inside 3 days, with the CTA, and fires t
   renderBanner()
   expect(await screen.findByText('Your subscription ends in 2 days')).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionBannerShow' }))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, expect.anything())
   await user.click(screen.getByRole('button', { name: 'Dismiss' }))
   expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
 })
@@ -58,12 +64,12 @@ it('keeps the trial variant dismissed for the rest of the day across mounts', as
   const { unmount } = renderBanner()
   await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
   unmount()
-  window.dataLayer = []
+  vi.mocked(trackEvent).mockClear()
   renderBanner()
   await new Promise((r) => setTimeout(r, 50))
   expect(screen.queryByText('Your subscription ends in 2 days')).not.toBeInTheDocument()
   // No show metric for a banner suppressed by a persisted dismissal
-  expect(window.dataLayer).toEqual([])
+  expect(trackEvent).not.toHaveBeenCalled()
 })
 
 it('shows the trial variant again when the dismissal is from a previous day', async () => {
@@ -77,7 +83,7 @@ it('shows the trial variant again when the dismissal is from a previous day', as
 it('hides the trial variant entirely when billing is disabled', async () => {
   server.use(...coreHandlers({ user: { ...fixtureUser, accessUntil: utcIn(2) } }))
   renderBanner()
-  await waitFor(() => expect(window.dataLayer).toEqual([]))
+  await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
 })
 
 it('shows the permanent readonly variant even without billing, minus the CTA', async () => {
@@ -106,14 +112,14 @@ it('warns when a connection trial ends within 3 days, with the partner name', as
   expect(await screen.findByText("Megan's subscription ends in 2 days")).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Manage subscription' })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
-  expect(window.dataLayer).toContainEqual(expect.objectContaining({ event: 'appSubscriptionBannerShow' }))
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_BANNER_SHOW, expect.anything())
 })
 
 it('shows nothing for a connection trial more than 3 days out', async () => {
   window.econumoConfig = { BILLING_URL: 'https://pay.example.test/' }
   server.use(...coreHandlers({ connections: partnerConn('full', utcIn(30)) }))
   renderBanner()
-  await waitFor(() => expect(window.dataLayer).toEqual([]))
+  await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
 })
 
 it('warns dismissibly when a connection is read-only', async () => {
@@ -143,5 +149,5 @@ it('own trial outranks a read-only connection', async () => {
 it('shows no partner variants when billing is disabled', async () => {
   server.use(...coreHandlers({ connections: partnerConn('readonly', '') }))
   renderBanner()
-  await waitFor(() => expect(window.dataLayer).toEqual([]))
+  await waitFor(() => expect(trackEvent).not.toHaveBeenCalled())
 })

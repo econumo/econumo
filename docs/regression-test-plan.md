@@ -546,11 +546,17 @@ User C sees none of it.
       `app.econumo.com` on the cloud and `selfhosted_<id>` on a self-hosted
       instance, whose `$path` has every UUID replaced by `:id`
       (`/account/:id`), and which carry no `$referrer`.
-- [ ] Session facts ride every event (same Network filter): each entry in
-      `events` carries `access_state`, `deployment`, `host`, `locale` and
-      `mode`; a product event additionally carries `current_url` (the page
-      that event happened on), which differs between events in one batch when
-      you navigate mid-flush.
+- [ ] System and session keys ride every event, view or product (same
+      Network filter): each entry in `events` carries `$host` (as above),
+      `$path` (the page that event happened on, UUIDs as `:id` — it differs
+      between events in one batch when you navigate mid-flush), `$device`
+      (`desktop` in a wide window; narrow the window below 768px and the next
+      event says `mobile`, 768–1023px `tablet`), `$app_locale` (switch the UI
+      language and the next event carries the new code), `access_state` and
+      `deployment`; none carries `host`, `locale`, `mode` or `current_url`.
+      A product event also carries its own data where it has any (merging a
+      payee sends `type: payee`). `window.dataLayer` is undefined in the
+      console.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`

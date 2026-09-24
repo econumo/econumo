@@ -106,7 +106,6 @@ it('does NOT intercept a 401 from logout-user — LogoutPage owns its own cleanu
 })
 
 it('on 402 fires the metric, toasts once by id, and invalidates the user query', async () => {
-  window.dataLayer = []
   const invalidate = vi.spyOn(queryClient, 'invalidateQueries').mockResolvedValue()
   server.use(
     http.post('*/api/v1/category/create-category', () =>

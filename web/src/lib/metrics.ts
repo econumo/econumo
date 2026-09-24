@@ -2,18 +2,12 @@ import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
-import { backendHost, getInstanceId, getVersion, locale, selfHosted } from './config'
+import { backendHost, getInstanceId, getVersion, locale } from './config'
 import { isNativeApp } from './platform'
 import { hasToken } from './storage'
 
-declare global {
-  interface Window {
-    dataLayer: unknown[]
-  }
-}
-
-// prefix "app" is required! These are the frozen dataLayer (GTM/liltag) names;
-// collector event names derive from them via analyticsEventName().
+// Collector event names derive from these via analyticsEventName(), so a
+// renamed value is a new event in the dashboards, cut off from its history.
 export const METRICS = {
   PAGE_VIEW: 'appPageView',
   USER_LOGIN: 'appUserLogin',
@@ -130,12 +124,6 @@ export const METRICS = {
   CONNECTION_DECLINE_ACCOUNT_ACCESS: 'appConnectionDeclineAccountAccess',
   SUBSCRIPTION_CTA_CLICK: 'appSubscriptionCtaClick',
   SUBSCRIPTION_BANNER_SHOW: 'appSubscriptionBannerShow',
-  UI_MODAL_ACCOUNT_OPEN: 'appUIModalAccountOpen',
-  UI_MODAL_ACCOUNT_CLOSE: 'appUIModalAccountClose',
-  UI_MODAL_TRANSACTION_OPEN: 'appUIModalTransactionOpen',
-  UI_MODAL_TRANSACTION_CLOSE: 'appUIModalTransactionClose',
-  UI_MODAL_RECURRING_OPEN: 'appUIModalRecurringOpen',
-  UI_MODAL_RECURRING_CLOSE: 'appUIModalRecurringClose',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 
@@ -160,8 +148,8 @@ export function viewMode(width: number = window.innerWidth): 'mobile' | 'tablet'
   return 'desktop'
 }
 
-// Collector names: the frozen dataLayer prefix+camelCase becomes snake_case,
-// e.g. appUIModalTransactionOpen -> ui_modal_transaction_open.
+// Collector names: the app-prefixed camelCase becomes snake_case,
+// e.g. appBudgetPlanFillRight -> budget_plan_fill_right.
 export function analyticsEventName(metric: string): string {
   return metric
     .replace(/^app/, '')
@@ -224,9 +212,14 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   if (!metric) {
     return
   }
-  // Both sinks are third-party (liltag/GTM tags read the dataLayer too), so
-  // an opt-out must gate here, before either one fires.
   if (!analyticsAllowed()) {
+    return
+  }
+  // Nothing outside an authenticated session (login/register page views, the
+  // pre-login auth events): the collector project is identified-only, and a
+  // visitor who never signs in would otherwise show up as a one-day person
+  // who can never return, dragging retention down for no product signal.
+  if (!hasToken()) {
     return
   }
   // Resolved on every call rather than once at module load: in the mobile app
@@ -242,58 +235,32 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // behind the boot loader.
   //
   // Everything here describes the SESSION, not the action — where the user is
-  // signed in, how they signed in, what their data looks like. Only
-  // current_url describes the event itself.
+  // signed in, how they signed in, what their data looks like. Only $path
+  // describes the event itself. The system keys go on views and product
+  // events alike. $host is the synthetic host, so a self-hosted deployment's
+  // real hostname never appears; $device is the layout the user actually saw,
+  // which wins over the form factor the SDK detects.
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
-    host: analyticsHost(),
+    $host: analyticsHost(),
+    $app_locale: locale(),
+    $device: viewMode(),
     deployment: deploymentKind(),
-    locale: locale(),
-    mode: viewMode(),
     // Omitted while unknown, so neither reads as a measured "none".
     ...(currentAccessState ? { access_state: currentAccessState } : {}),
     ...(authMethods() ?? {}),
     ...profileAttributes(),
   })
-  window.dataLayer = window.dataLayer || []
-  window.dataLayer.push({
-    event: metric,
-    eventData,
-    eventContext: {
-      selfHosted: selfHosted(),
-      locale: locale(),
-      // the Vue app ran on hash routing; the path is the equivalent here
-      page: window.location.pathname.substring(1),
-    },
-    eventTimestamp: Date.now(),
-  })
-  // Per-field/modal micro-interactions stay dataLayer-only: they dominate
-  // event volume without informing any product decision. So does everything
-  // outside an authenticated session (login/register page views, the
-  // pre-login auth events): the collector project is identified-only, and a
-  // visitor who never signs in would otherwise show up as a one-day person
-  // who can never return, dragging retention down for no product signal.
-  if (metric.startsWith('appUIModal') || !hasToken()) {
-    return
-  }
   const pathname = window.location.pathname
+  // Every UUID templated to :id: no instance data may ride along.
+  const $path = `/${scrubbedPage(pathname)}`
   if (metric === METRICS.PAGE_VIEW) {
     // A real view, not a product event, so it lands in the views dashboards.
-    // Same synthetic host and UUID-templated path as current_url below, and
-    // no $referrer: a self-hosted instance's own domain would be stored as a
-    // referral source, since it never matches the synthetic host.
-    capturePageView(pathname, {
-      $host: analyticsHost(),
-      $path: `/${scrubbedPage(pathname)}`,
-      $referrer: null,
-    })
+    // No $referrer: a self-hosted instance's own domain would be stored as a
+    // referral source, since it never matches the synthetic $host.
+    capturePageView(pathname, { $path, $referrer: null })
     return
   }
-  // The one genuinely per-event fact: which page the event happened on.
-  // Built from the same synthetic host as the host attribute, so a
-  // self-hosted deployment's real hostname still never appears.
-  capture(analyticsEventName(metric), {
-    current_url: `https://${analyticsHost()}/${scrubbedPage(pathname)}`,
-  })
+  capture(analyticsEventName(metric), { ...eventData, $path })
 }
