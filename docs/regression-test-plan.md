@@ -237,6 +237,8 @@ navigation (single-pane vs sidebar).
       backend that allows passwords into the custom-server field brings the
       password form back within a second; switching back hides it again. An
       unreachable address shows the password form (the server then decides).
+      Switching from a backend with no providers to a provider-only one shows
+      the new backend's provider buttons (never an empty screen).
 - [ ] Web, `ECONUMO_PASSWORD_LOGIN=false` with a custom backend selected on a
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that

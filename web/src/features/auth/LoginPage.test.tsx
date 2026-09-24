@@ -312,4 +312,26 @@ describe('in the native app', () => {
     await user.type(host, 'https://passwords.example.test')
     expect(await screen.findByLabelText('Password')).toBeInTheDocument()
   })
+
+  // The provider list belongs to a server too: a cached empty list from a
+  // password server must not leave a provider-only server with no way in.
+  it('shows the provider buttons of a newly entered server', async () => {
+    localStorage.setItem('backendHost', JSON.stringify('https://passwords.example.test'))
+    server.use(
+      http.get('https://passwords.example.test/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [] })),
+      http.get('https://sso-only.example.test/api/v1/oauth/get-provider-list', () =>
+        HttpResponse.json({ success: true, message: '', data: [{ id: 'oidc', name: 'Authentik' }] })),
+    )
+    const user = userEvent.setup()
+    renderLogin()
+    expect(await screen.findByLabelText('Password')).toBeInTheDocument()
+    await waitFor(() => expect(useServerConfig.getState().configHost).toBe('https://passwords.example.test'))
+    expect(screen.queryByRole('button', { name: 'Continue with Authentik' })).not.toBeInTheDocument()
+    const host = screen.getByLabelText('Server address')
+    await user.clear(host)
+    await user.type(host, 'https://sso-only.example.test')
+    expect(await screen.findByRole('button', { name: 'Continue with Authentik' })).toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByLabelText('Password')).not.toBeInTheDocument())
+  })
 })

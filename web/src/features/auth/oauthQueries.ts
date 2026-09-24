@@ -10,7 +10,12 @@ import { clearPersistedQueryCache } from '@/lib/queryPersist'
 import { setToken } from '@/lib/storage'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
-export const providersQueryKey = ['oauth', 'providers'] as const
+// Keyed by the server the app last requested config for (always null on the
+// web): each server has its own providers, so switching servers in the app must
+// not reuse another server's cached list.
+export function providersQueryKey(host: string | null) {
+  return ['oauth', 'providers', host] as const
+}
 
 const FLOW_KEY = 'oauthFlow'
 
@@ -112,9 +117,10 @@ export function openAuthorizationUrl(url: string): void {
 }
 
 export function useProviders() {
+  const host = useServerConfig((s) => s.configHost)
   return useQuery({
-    queryKey: providersQueryKey,
-    queryFn: oauthApi.getProviderList,
+    queryKey: providersQueryKey(host),
+    queryFn: () => oauthApi.getProviderList(host ?? undefined),
     staleTime: Infinity,
   })
 }

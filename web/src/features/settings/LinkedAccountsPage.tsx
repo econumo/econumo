@@ -13,6 +13,7 @@ import { useUserData } from '@/features/user/queries'
 import { oauthFlowCanReturnHere, providerDisplayName, providersQueryKey, takeOAuthFlow, useOAuthInFlight, usePasswordLoginAvailable, useProviders, useStartOAuth } from '@/features/auth/oauthQueries'
 import { ProviderMark } from '@/features/auth/providerIcons'
 import { apiErrorMessage } from '@/lib/apiError'
+import { useServerConfig } from '@/lib/appConfig'
 import { SettingsShell } from './SettingsShell'
 import { useCompleteLink, useIdentities, useUnlinkIdentity } from './security'
 import { parseUtcDateTime } from './securityFormat'
@@ -64,7 +65,7 @@ export function LinkedAccountsPage() {
           // The providers query can still be pending here (both fire on mount), so
           // read the cache directly at toast time instead of the possibly-stale
           // `providers.data` this closure captured over.
-          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey) ?? providers.data, t)
+          const name = providerDisplayName(provider, queryClient.getQueryData<ProviderDto[]>(providersQueryKey(useServerConfig.getState().configHost)) ?? providers.data, t)
           if (provider === 'oidc' && name === t('auth.oauth.provider_name.oidc')) {
             void providers.refetch().then((r) => {
               toast.success(t('user.page.settings.profile.linked_accounts.linked_toast', { provider: providerDisplayName(provider, r.data, t) }))

@@ -70,7 +70,9 @@ server address on the auth screens fetches that server's config
 bundled defaults the moment a different server is requested, and a response for
 a server no longer selected is dropped. Screens that read merged keys subscribe
 to `useServerConfig`'s `revision` so a config arriving after first paint
-re-renders them. App and server version-check each
+re-renders them. The oauth provider list is cached per server the same way
+(`providersQueryKey(configHost)`), so a switch never shows another server's
+providers. App and server version-check each
 other in BOTH directions, one hard floor per side; both floors live in the
 single shared `compat/versions.json`
 (Go embeds it, the SPA imports it — same pattern as `locales/`):

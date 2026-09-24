@@ -1,4 +1,5 @@
 import { api, apiUrl } from './client'
+import { backendHost } from '@/lib/config'
 import type { UserLoginItemDto } from './dto/user'
 import type { IdentityDto, OAuthProviderId, ProviderDto } from './dto/oauth'
 import { UserOptions } from './dto/user'
@@ -15,8 +16,8 @@ interface Envelope<T> {
 
 export type OAuthClient = 'web' | 'app'
 
-export async function getProviderList(): Promise<ProviderDto[]> {
-  const response = await api.get<Envelope<ProviderDto[]>>(apiUrl('/api/v1/oauth/get-provider-list'))
+export async function getProviderList(host: string = backendHost()): Promise<ProviderDto[]> {
+  const response = await api.get<Envelope<ProviderDto[]>>(`${host}/api/v1/oauth/get-provider-list`)
   return response.data.data
 }
 
