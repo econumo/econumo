@@ -2,251 +2,215 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 type AnalyticsModule = typeof import('./analytics')
 
-let analytics: AnalyticsModule
-let fetchMock: ReturnType<typeof vi.fn>
-
-const COLLECTOR = 'https://t.econumo.com/ingest/events'
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+const SDK_URL = 'https://t.econumo.com/js/twillingate.js'
 const USER = 'u'.repeat(32)
 
+// Records every SDK call in order, so tests can assert both what was sent and
+// that a flush came before an identity change.
+function fakeInstance() {
+  const log: Array<[string, ...unknown[]]> = []
+  const instance = {
+    log,
+    init: vi.fn((opts: unknown) => log.push(['init', opts])),
+    identify: vi.fn((user: string) => log.push(['identify', user])),
+    group: vi.fn((id: string, name?: string) => log.push(['group', id, name])),
+    track: vi.fn((name: string, attrs?: unknown) => log.push(['track', name, attrs])),
+    page: vi.fn((path: string, attrs?: unknown) => log.push(['page', path, attrs])),
+    flush: vi.fn(() => log.push(['flush'])),
+    reset: vi.fn(() => log.push(['reset'])),
+  }
+  return instance
+}
+
+let analytics: AnalyticsModule
+let instance: ReturnType<typeof fakeInstance>
+
+function sdkScripts(): HTMLScriptElement[] {
+  return Array.from(document.head.querySelectorAll<HTMLScriptElement>(`script[src="${SDK_URL}"]`))
+}
+
+// What the browser does once the injected tag has run: the SDK global exists
+// and the script fires load.
+function loadSdk(): void {
+  window.twillingate = {
+    get: vi.fn(() => undefined),
+    create: vi.fn(() => instance),
+  }
+  sdkScripts()[0].dispatchEvent(new Event('load'))
+}
+
+function tracked(): string[] {
+  return instance.log.filter(([call]) => call === 'track').map(([, name]) => name as string)
+}
+
 beforeEach(async () => {
-  vi.useFakeTimers()
-  fetchMock = vi.fn(() => Promise.resolve(new Response()))
-  vi.stubGlobal('fetch', fetchMock)
+  document.head.innerHTML = ''
+  delete window.twillingate
+  instance = fakeInstance()
   vi.resetModules()
   analytics = await import('./analytics')
-  // Nothing leaves without a resolved user; identity tests below set their own.
-  analytics.setAnalyticsUser(USER)
 })
 
 afterEach(() => {
-  vi.unstubAllGlobals()
-  vi.useRealTimers()
+  delete window.twillingate
 })
 
-interface Envelope {
-  key: string
-  attributes: Record<string, unknown>
-  events: Array<Record<string, unknown>>
-}
+describe('loading the SDK', () => {
+  it('injects nothing until the first capture', () => {
+    analytics.setAnalyticsUser(USER)
+    expect(sdkScripts()).toHaveLength(0)
+  })
 
-function sentPayload(call = 0): Envelope {
-  const init = fetchMock.mock.calls[call][1] as RequestInit
-  return JSON.parse(init.body as string)
-}
-
-describe('setAnalyticsContext', () => {
-  it('spreads the given attributes into every flushed batch, not per-event', () => {
-    analytics.setAnalyticsContext({ $app_version: 'v1.2.3', $platform: 'web' })
+  it('injects the collector-served SDK once, dormant, as a named instance', () => {
     analytics.capture('a')
-    vi.advanceTimersByTime(10_000)
-    const { attributes, events } = sentPayload()
-    expect(attributes.$app_version).toBe('v1.2.3')
-    expect(attributes.$platform).toBe('web')
-    expect(events[0].attributes).toEqual({})
+    analytics.capture('b')
+    const scripts = sdkScripts()
+    expect(scripts).toHaveLength(1)
+    expect(scripts[0].dataset.instance).toBe('econumo')
+    // Without data-key the tag does not auto-init; start() does.
+    expect(scripts[0].dataset.key).toBeUndefined()
+    expect(scripts[0].referrerPolicy).toBe('no-referrer')
+  })
+
+  it('initialises the instance identified, without consent and without automatic tracking', () => {
+    analytics.setAnalyticsUser(USER)
+    analytics.capture('a')
+    loadSdk()
+    expect(window.twillingate!.create).toHaveBeenCalledWith('econumo')
+    expect(instance.init).toHaveBeenCalledTimes(1)
+    const opts = instance.init.mock.calls[0][0] as Record<string, unknown>
+    expect(opts.key).toMatch(/^ak_/)
+    expect(opts.identity).toBe('identified')
+    expect(opts.autoPageviews).toBe(false)
+    expect(opts.taggedEvents).toBe(false)
+    // Consent unlocks device storage; the SDK default (none) keeps nothing there.
+    expect(opts).not.toHaveProperty('consent')
+    expect(opts).not.toHaveProperty('storage')
+  })
+
+  it('reuses an instance another SDK copy already registered', () => {
+    analytics.setAnalyticsUser(USER)
+    analytics.capture('a')
+    window.twillingate = { get: vi.fn(() => instance), create: vi.fn() }
+    sdkScripts()[0].dispatchEvent(new Event('load'))
+    expect(window.twillingate.create).not.toHaveBeenCalled()
+    expect(tracked()).toEqual(['a'])
+  })
+
+  it('goes quiet when the script is blocked', () => {
+    analytics.setAnalyticsUser(USER)
+    analytics.capture('a')
+    sdkScripts()[0].dispatchEvent(new Event('error'))
+    expect(() => analytics.capture('b')).not.toThrow()
+    expect(sdkScripts()).toHaveLength(1)
   })
 })
 
 describe('capture', () => {
-  it('batches and flushes on the timer with the collector envelope shape', () => {
-    analytics.capture('transaction_create', { locale: 'en' })
-    expect(fetchMock).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(10_000)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    expect(url).toBe(COLLECTOR)
-    expect(init.method).toBe('POST')
-    expect(init.keepalive).toBe(true)
-    // text/plain keeps the POST CORS-simple (no preflight) and matches what
-    // sendBeacon sends for a string body, so both transports look identical.
-    expect(init.headers).toEqual({ 'Content-Type': 'text/plain' })
-    // Origin cannot be suppressed (mandatory on a non-GET/HEAD fetch), but
-    // Referer can be, and this is what suppresses it.
-    expect(init.referrerPolicy).toBe('no-referrer')
-    const payload = sentPayload()
-    expect(payload.key).toMatch(/^ak_/)
-    expect(payload.events).toHaveLength(1)
-    expect(payload.events[0].name).toBe('transaction_create')
-    expect(payload.events[0].ts).toBeTruthy()
-    expect(payload.events[0].attributes).toEqual({ locale: 'en' })
-  })
-
-  it('gives every event its own id, so a replayed batch dedupes server-side', () => {
+  it('sends events captured before the script loaded, in order, once it has', () => {
+    analytics.setAnalyticsUser(USER)
     analytics.capture('a')
     analytics.capture('b')
-    vi.advanceTimersByTime(10_000)
-    const { events } = sentPayload()
-    expect(events[0].id).toMatch(UUID_RE)
-    expect(events[0].id).not.toBe(events[1].id)
+    expect(instance.track).not.toHaveBeenCalled()
+    loadSdk()
+    expect(tracked()).toEqual(['a', 'b'])
   })
 
-  it('uses one in-memory $install_id per page load', () => {
-    analytics.capture('a')
-    vi.advanceTimersByTime(10_000)
-    const first = sentPayload().attributes.$install_id
-    analytics.capture('b')
-    vi.advanceTimersByTime(10_000)
-    expect(sentPayload(1).attributes.$install_id).toBe(first)
-    expect(first).toMatch(UUID_RE)
-    expect(document.cookie).toBe('')
-    expect(localStorage.length).toBe(0)
+  it('stamps the session context under the event properties at capture time', () => {
+    analytics.setAnalyticsUser(USER)
+    loadSdkAfterFirstCapture()
+    analytics.setAnalyticsContext({ $app_version: 'v1.2.3', locale: 'en', mode: 'desktop' })
+    analytics.capture('transaction_create', { current_url: 'https://h/x', mode: 'mobile' })
+    analytics.setAnalyticsContext({ locale: 'de' })
+    expect(instance.track).toHaveBeenLastCalledWith('transaction_create', {
+      $app_version: 'v1.2.3',
+      locale: 'en',
+      mode: 'mobile',
+      current_url: 'https://h/x',
+    })
   })
 
-  it('flushes immediately at 10 queued events', () => {
-    for (let i = 0; i < 10; i++) {
-      analytics.capture(`event-${i}`)
-    }
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sentPayload().events).toHaveLength(10)
-    // The timer was cleared by the size-triggered flush: nothing further goes out.
-    vi.advanceTimersByTime(10_000)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+  it('sends a page view as a view with the given raw path and masked attributes', () => {
+    analytics.setAnalyticsUser(USER)
+    loadSdkAfterFirstCapture()
+    analytics.capturePageView('/account/1234', { $host: 'h', $path: '/account/:id', $referrer: null })
+    expect(instance.page).toHaveBeenCalledWith('/account/1234', { $host: 'h', $path: '/account/:id', $referrer: null })
   })
+})
 
-  it('drops the batch silently when fetch rejects', async () => {
-    fetchMock.mockImplementation(() => Promise.reject(new TypeError('blocked')))
-    analytics.capture('a')
-    vi.advanceTimersByTime(10_000)
-    await vi.runAllTimersAsync()
-    // No unhandled rejection, and the queue restarts empty.
-    analytics.capture('b')
-    vi.advanceTimersByTime(10_000)
-    expect(sentPayload(1).events).toHaveLength(1)
-  })
-
-  // crypto.randomUUID exists only in secure contexts, so a self-hosted instance
-  // reached over http://<lan-ip> does not have it (issue #197).
-  it('assigns an $install_id in an insecure context, where crypto.randomUUID is absent', async () => {
-    const getRandomValues = globalThis.crypto.getRandomValues.bind(globalThis.crypto)
-    vi.stubGlobal('crypto', { getRandomValues })
-    vi.resetModules()
-    const insecure = await import('./analytics')
-    insecure.setAnalyticsUser(USER)
-    insecure.capture('a')
-    vi.advanceTimersByTime(10_000)
-    const payload = sentPayload()
-    expect(payload.attributes.$install_id).toMatch(UUID_RE)
-    expect(payload.events[0].id).toMatch(UUID_RE)
-  })
-
-  it('sends the tail via sendBeacon when the tab hides', () => {
-    const beacon = vi.fn(() => true)
-    vi.stubGlobal('navigator', { ...window.navigator, sendBeacon: beacon })
-    analytics.capture('a')
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
-    document.dispatchEvent(new Event('visibilitychange'))
-    expect(beacon).toHaveBeenCalledTimes(1)
-    const [url, body] = beacon.mock.calls[0] as unknown as [string, string]
-    expect(url).toBe(COLLECTOR)
-    expect(JSON.parse(body).events).toHaveLength(1)
-    expect(fetchMock).not.toHaveBeenCalled()
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
-  })
-
-  it('carries identity on the batch and sends nothing once it is reset', () => {
-    analytics.setAnalyticsUser('a'.repeat(32))
-    analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
-
-    analytics.capture('test_event')
-    vi.advanceTimersByTime(10_000)
-
-    const first = sentPayload()
-    expect(first.attributes.$user_id).toBe('a'.repeat(32))
-    expect(first.attributes.$group_id).toBe('a3f19c02b7d4')
-    expect(first.attributes.$group_name).toBe('selfhosted_a3f19c02b7d4')
-    expect(first.attributes.$user_name).toBeUndefined()
-    const installId = first.attributes.$install_id
-
-    analytics.resetAnalyticsIdentity()
-    vi.advanceTimersByTime(10_000)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-
-    analytics.setAnalyticsUser('b'.repeat(32))
-    analytics.capture('by_b')
-    vi.advanceTimersByTime(10_000)
-
-    const second = sentPayload(1)
-    expect(second.events.map((e) => e.name)).toEqual(['by_b'])
-    expect(second.attributes.$user_id).toBe('b'.repeat(32))
-    // A fresh install id so the next person on a shared browser is not linked.
-    expect(second.attributes.$install_id).not.toBe(installId)
-    // The group is the deployment, not the person, so it survives logout.
-    expect(second.attributes.$group_id).toBe('a3f19c02b7d4')
-  })
-
-  it('drains a queued event under the outgoing user before switching to a new one', () => {
-    analytics.setAnalyticsUser('a'.repeat(32))
-    analytics.capture('queued_by_a')
-    // No flush yet: this event is still sitting in the queue when identity changes.
-    analytics.resetAnalyticsIdentity()
-    analytics.setAnalyticsUser('b'.repeat(32))
-    analytics.capture('by_b')
-    vi.advanceTimersByTime(10_000)
-
-    expect(fetchMock).toHaveBeenCalledTimes(2)
-    const first = sentPayload(0)
-    expect(first.events).toHaveLength(1)
-    expect(first.events[0].name).toBe('queued_by_a')
-    expect(first.attributes.$user_id).toBe('a'.repeat(32))
-
-    const second = sentPayload(1)
-    expect(second.events.map((e) => e.name)).not.toContain('queued_by_a')
-    expect(second.attributes.$user_id).toBe('b'.repeat(32))
-  })
-
-  // The boot page view fires before get-user-data resolves the session's user.
-  // The transport cannot tell that case from "nobody signed in": keeping
-  // logged-out captures away from the next person is trackEvent's token gate
-  // (metrics.test.ts), not this module's job.
-  it('holds an event captured before the user is known and sends it once the user resolves', () => {
-    analytics.resetAnalyticsIdentity()
+describe('identity', () => {
+  it('holds events captured before the user is known and sends them once the user resolves', () => {
     analytics.capture('boot_page_view')
-    vi.advanceTimersByTime(10_000)
-    expect(fetchMock).not.toHaveBeenCalled()
+    loadSdk()
+    expect(instance.track).not.toHaveBeenCalled()
 
-    analytics.setAnalyticsUser('a'.repeat(32))
-    vi.advanceTimersByTime(10_000)
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    const payload = sentPayload()
-    expect(payload.events.map((e) => e.name)).toEqual(['boot_page_view'])
-    expect(payload.attributes.$user_id).toBe('a'.repeat(32))
+    analytics.setAnalyticsUser(USER)
+    const calls = instance.log.map(([call]) => call)
+    expect(calls.indexOf('identify')).toBeLessThan(calls.indexOf('track'))
+    expect(instance.identify).toHaveBeenCalledWith(USER)
+    expect(tracked()).toEqual(['boot_page_view'])
   })
 
-  it('flushes held events at the batch size once the user resolves', () => {
-    analytics.resetAnalyticsIdentity()
-    for (let i = 0; i < 10; i++) {
-      analytics.capture(`event-${i}`)
-    }
-    expect(fetchMock).not.toHaveBeenCalled()
+  it('carries the group to the instance whenever it is set', () => {
+    analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+    analytics.setAnalyticsUser(USER)
+    analytics.capture('a')
+    loadSdk()
+    expect(instance.group).toHaveBeenCalledWith('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+  })
 
+  // The SDK reads identity at flush time, so a batch still queued at an
+  // identity change must go out before the change.
+  it('flushes under the outgoing user before switching to a new one', () => {
     analytics.setAnalyticsUser('a'.repeat(32))
+    loadSdkAfterFirstCapture()
+    analytics.setAnalyticsUser('b'.repeat(32))
+    const calls = instance.log.map(([call]) => call)
+    expect(calls.lastIndexOf('flush')).toBeLessThan(calls.lastIndexOf('identify'))
+    expect(instance.identify).toHaveBeenLastCalledWith('b'.repeat(32))
+  })
 
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sentPayload().events).toHaveLength(10)
+  it('flushes, resets and keeps the group on logout', () => {
+    analytics.setAnalyticsGroup('a3f19c02b7d4', 'selfhosted_a3f19c02b7d4')
+    analytics.setAnalyticsUser(USER)
+    loadSdkAfterFirstCapture()
+    instance.log.length = 0
+
+    analytics.resetAnalyticsIdentity()
+
+    expect(instance.log).toEqual([
+      ['flush'],
+      ['reset'],
+      // The group is the deployment, not the person, so it survives logout.
+      ['group', 'a3f19c02b7d4', 'selfhosted_a3f19c02b7d4'],
+    ])
+  })
+
+  it('sends nothing after logout until the next user resolves', () => {
+    analytics.setAnalyticsUser('a'.repeat(32))
+    loadSdkAfterFirstCapture()
+    analytics.resetAnalyticsIdentity()
+    analytics.capture('after_logout')
+    expect(tracked()).not.toContain('after_logout')
+
+    analytics.setAnalyticsUser('b'.repeat(32))
+    expect(tracked()).toContain('after_logout')
+    expect(instance.identify).toHaveBeenLastCalledWith('b'.repeat(32))
   })
 
   it('discards held events when identity is reset before a user resolved', () => {
-    analytics.resetAnalyticsIdentity()
     analytics.capture('held_then_expired')
+    loadSdk()
     // A 401 on get-user-data: the token was dead, nobody ever resolved.
     analytics.resetAnalyticsIdentity()
-    analytics.setAnalyticsUser('a'.repeat(32))
-    analytics.capture('by_a')
-    vi.advanceTimersByTime(10_000)
-
-    expect(fetchMock).toHaveBeenCalledTimes(1)
-    expect(sentPayload().events.map((e) => e.name)).toEqual(['by_a'])
-  })
-
-  it('does not beacon held events when the tab hides before the user resolved', () => {
-    const beacon = vi.fn(() => true)
-    vi.stubGlobal('navigator', { ...window.navigator, sendBeacon: beacon })
-    analytics.resetAnalyticsIdentity()
-    analytics.capture('a')
-    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true })
-    document.dispatchEvent(new Event('visibilitychange'))
-    expect(beacon).not.toHaveBeenCalled()
-    Object.defineProperty(document, 'visibilityState', { value: 'visible', configurable: true })
+    analytics.setAnalyticsUser(USER)
+    analytics.capture('by_user')
+    expect(tracked()).toEqual(['by_user'])
   })
 })
+
+// Loads the SDK through the only path that injects it: a first capture.
+function loadSdkAfterFirstCapture(): void {
+  analytics.capture('first')
+  loadSdk()
+}

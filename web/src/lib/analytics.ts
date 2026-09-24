@@ -1,169 +1,203 @@
-// Twillingate capture transport — the only file that knows the collector exists.
-// Identified, never anonymous: a batch leaves only once a hashed user id is
-// set ($user_id, opaque — never the raw id or $user_name), alongside a
+// Twillingate SDK wrapper — the only file that knows the collector exists.
+// The SDK is injected from the collector (the served file carries the
+// collector's origin, so it cannot be bundled) the first time an event is
+// captured, which only happens for a signed-in user who has analytics on.
+//
+// Identified, never anonymous: nothing reaches the SDK until a hashed user id
+// is set ($user_id, opaque — never the raw id or $user_name), alongside a
 // per-instance group ($group_id/$group_name identifying the deployment, not
-// the person). Events captured before the user resolves wait in the queue;
-// resetAnalyticsIdentity discards whatever is still unattributed. Nothing is
-// written to the device — $install_id and the identity fields all live in
-// memory only, cleared by resetAnalyticsIdentity on logout (the group survives,
-// since it describes the instance rather than the visitor).
-// Wire format: POST /ingest/events, one batch per flush.
+// the person). Calls made before the user resolves (the boot page view) or
+// before the script loads wait here; resetAnalyticsIdentity discards whatever
+// is still unattributed. The SDK runs without consent, so it keeps nothing on
+// the device, sends $consent 0 and no $install_id.
 
-import { v4 as uuidv4, v7 as uuidv7 } from 'uuid'
 import { forgetAuthMethods } from './analyticsAuthMethods'
 
-const COLLECTOR_URL = 'https://t.econumo.com/ingest/events'
+const SDK_URL = 'https://t.econumo.com/js/twillingate.js'
+// Named, so the SDK copy the cloud's liltag config loads for its own web
+// analytics project keeps the default instance and the two never collide.
+const INSTANCE = 'econumo'
 // An ingest key is public by design (it can only ingest events). It belongs
-// to the collector's `econumo` project (identity=identified) — the in-app
-// transport is that project's only source. The cloud's liltag snippet posts
-// to a separate, anonymous project and is unrelated to this key.
+// to the collector's product-analytics project — this wrapper is that
+// project's only source.
 const INGEST_KEY = 'ak_f81498e32742bc1ec94d35f60bcf7e0b'
-const FLUSH_AT = 10
-const FLUSH_INTERVAL_MS = 10_000
+// Same bound as the SDK's own pre-init hold: oldest dropped first.
+const MAX_HELD = 500
 
-interface CapturedEvent {
-  id: string
-  ts: string
-  name: string
-  attributes: Record<string, unknown>
+interface TwillingateInstance {
+  init(opts: Record<string, unknown>): unknown
+  identify(user: string): void
+  group(id: string, name?: string): void
+  track(name: string, attrs?: Record<string, unknown>): void
+  page(path: string, attrs?: Record<string, unknown>): void
+  flush(): void
+  reset(): void
 }
 
-// Not crypto.randomUUID: that one is secure-context-only, so it is missing on a
-// self-hosted instance served over plain http://<lan-ip>, and this module-level
-// call would take the whole SPA down there. uuid falls back to getRandomValues.
-let installId = uuidv4()
-let queue: CapturedEvent[] = []
-let timer: ReturnType<typeof setTimeout> | null = null
+interface TwillingateGlobal {
+  get(name: string): TwillingateInstance | undefined
+  create(name: string): TwillingateInstance
+}
+
+declare global {
+  interface Window {
+    twillingate?: TwillingateGlobal
+  }
+}
+
+type Call = (sdk: TwillingateInstance) => void
+
+let sdk: TwillingateInstance | null = null
+let injected = false
+let failed = false
+let held: Call[] = []
 
 let userId: string | null = null
 let groupId: string | null = null
 let groupName: string | null = null
-// Batch-level (not per-event) attributes — host/platform/version facts that
-// hold for the whole session, set once by the caller rather than recomputed
-// on every capture().
-let batchContext: Record<string, unknown> = {}
+// Session-wide attributes, set once by the caller rather than recomputed on
+// every capture(), and stamped onto each event when it is captured.
+let context: Record<string, unknown> = {}
 
 export function setAnalyticsContext(attrs: Record<string, unknown>): void {
-  batchContext = attrs
+  context = attrs
 }
 
 export function setAnalyticsUser(id: string | null): void {
   if (id === userId) {
     return
   }
-  // Drain the queue under the outgoing identity first: capture() does not
-  // snapshot who was current when an event was queued, so without this a
-  // batch still sitting in the queue at an identity change would flush under
-  // the new (or cleared) userId, misattributing it across people on a shared
-  // device — the same class of leak the install-id re-mint below guards.
-  flush()
+  // The SDK reads identity when it flushes, not when an event is captured:
+  // send what is queued under the outgoing identity first, or a batch still
+  // waiting at an identity change would go out under the new (or cleared)
+  // user, misattributing it across people on a shared device.
+  sdk?.flush()
   userId = id
-  // Release anything held while the user was unresolved (the boot page view).
-  scheduleFlush()
+  if (sdk) {
+    applyIdentity(sdk)
+  }
+  release()
 }
 
 export function setAnalyticsGroup(id: string, name: string): void {
   groupId = id
   groupName = name
+  sdk?.group(id, name)
 }
 
 // Called on logout and on a dead session (401). Flush first for the same
 // reason as setAnalyticsUser, then drop what could not go out (events held
-// for a user who never resolved) and re-mint the install id so the next
-// person on a shared browser inherits nothing; the group is the deployment,
-// not the person, so it stays.
+// for a user who never resolved) so the next person on a shared browser
+// inherits nothing; the group is the deployment, not the person, so it stays.
 export function resetAnalyticsIdentity(): void {
-  flush()
+  sdk?.flush()
   userId = null
-  queue = []
-  installId = uuidv4()
+  held = []
+  if (sdk) {
+    applyIdentity(sdk)
+  }
   // Describes the person whose session just ended, so it goes with it —
   // unlike the analytics opt-out, which is a device-level fail-safe and stays.
   forgetAuthMethods()
 }
 
 export function capture(event: string, properties: Record<string, unknown> = {}): void {
-  queue.push({
-    // v7 so ids sort by time; supplying one at all is what makes a batch that
-    // was retried after a timeout land as a no-op instead of double-counting.
-    id: uuidv7(),
-    ts: new Date().toISOString(),
-    name: event,
-    attributes: properties,
+  const attrs = { ...context, ...properties }
+  run((s) => s.track(event, attrs))
+}
+
+// path is the raw location, which is what the SDK dedupes on (a masked one
+// would collapse /account/1 -> /account/2 into one view); properties must
+// carry the masked $host and $path that are actually stored.
+export function capturePageView(path: string, properties: Record<string, unknown>): void {
+  const attrs = { ...context, ...properties }
+  run((s) => s.page(path, attrs))
+}
+
+function run(call: Call): void {
+  if (failed) {
+    return
+  }
+  inject()
+  if (sdk && userId) {
+    call(sdk)
+    return
+  }
+  if (held.length >= MAX_HELD) {
+    held.shift()
+  }
+  held.push(call)
+}
+
+function release(): void {
+  if (!sdk || !userId) {
+    return
+  }
+  const calls = held
+  held = []
+  for (const call of calls) {
+    call(sdk)
+  }
+}
+
+function applyIdentity(s: TwillingateInstance): void {
+  if (userId) {
+    s.identify(userId)
+    return
+  }
+  // reset() also clears the group, which describes the instance, not the person.
+  s.reset()
+  if (groupId) {
+    s.group(groupId, groupName ?? undefined)
+  }
+}
+
+function inject(): void {
+  if (injected) {
+    return
+  }
+  injected = true
+  const script = document.createElement('script')
+  script.src = SDK_URL
+  script.async = true
+  // No data-key: the tag loads dormant and is initialised in start().
+  // data-instance registers the named instance whichever SDK copy got to the
+  // page first.
+  script.dataset.instance = INSTANCE
+  script.referrerPolicy = 'no-referrer'
+  script.addEventListener('load', () => {
+    const global = window.twillingate
+    if (!global) {
+      fail()
+      return
+    }
+    start(global.get(INSTANCE) ?? global.create(INSTANCE))
   })
-  scheduleFlush()
+  // Blocked or offline: analytics must never break or noisy-log the app.
+  script.addEventListener('error', fail)
+  document.head.appendChild(script)
 }
 
-function scheduleFlush(): void {
-  if (queue.length === 0) {
-    return
-  }
-  if (queue.length >= FLUSH_AT) {
-    flush()
-    return
-  }
-  timer ??= setTimeout(flush, FLUSH_INTERVAL_MS)
-}
-
-function takeBatch(): string | null {
-  if (timer) {
-    clearTimeout(timer)
-    timer = null
-  }
-  // No user yet means the events stay queued: the collector holds
-  // authenticated sessions only, so a batch never leaves anonymous.
-  if (queue.length === 0 || !userId) {
-    return null
-  }
-  // The key travels in the body, not a header: sendBeacon cannot set headers,
-  // and beacons are the only transport that survives page teardown.
-  const body = JSON.stringify({
+function start(instance: TwillingateInstance): void {
+  instance.init({
     key: INGEST_KEY,
-    attributes: {
-      ...batchContext,
-      $install_id: installId,
-      $user_id: userId,
-      ...(groupId ? { $group_id: groupId, $group_name: groupName } : {}),
-    },
-    events: queue,
+    identity: 'identified',
+    // Page views are sent explicitly (capturePageView) with the masked host
+    // and path; nothing in the markup is tracked.
+    autoPageviews: false,
+    taggedEvents: false,
   })
-  queue = []
-  return body
+  sdk = instance
+  if (groupId) {
+    instance.group(groupId, groupName ?? undefined)
+  }
+  if (userId) {
+    instance.identify(userId)
+  }
+  release()
 }
 
-function flush(): void {
-  const body = takeBatch()
-  if (!body) {
-    return
-  }
-  void fetch(COLLECTOR_URL, {
-    method: 'POST',
-    // text/plain keeps the request CORS-simple, so no preflight round trip.
-    headers: { 'Content-Type': 'text/plain' },
-    keepalive: true,
-    // Origin is mandatory on a non-GET/HEAD fetch and cannot be suppressed;
-    // this at least kills Referer, which would otherwise also leak the URL.
-    referrerPolicy: 'no-referrer',
-    body,
-  }).catch(() => {
-    // Dropped on purpose: analytics must never break or noisy-log the app.
-    // Dropping is also the correct retry policy — the collector treats every
-    // 4xx as a poison batch, and a failed flush is not worth a second one.
-  })
+function fail(): void {
+  failed = true
+  held = []
 }
-
-// Flush the tail when the tab hides; sendBeacon survives page teardown.
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'hidden') {
-    return
-  }
-  const body = takeBatch()
-  if (!body) {
-    return
-  }
-  try {
-    navigator.sendBeacon(COLLECTOR_URL, body)
-  } catch {
-    // Same policy as flush: drop silently.
-  }
-})

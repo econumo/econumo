@@ -10,7 +10,7 @@ import {
   viewMode,
   setAnalyticsAccessState,
 } from './metrics'
-import { capture } from './analytics'
+import { capture, capturePageView } from './analytics'
 import * as analyticsModule from './analytics'
 import { rememberAnalyticsPreference } from './analyticsPreference'
 import { authMethods, forgetAuthMethods, rememberHasPassword, rememberLinkedProviders } from './analyticsAuthMethods'
@@ -19,7 +19,7 @@ import { setToken } from './storage'
 
 vi.mock('./analytics', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./analytics')>()
-  return { ...actual, capture: vi.fn() }
+  return { ...actual, capture: vi.fn(), capturePageView: vi.fn() }
 })
 
 beforeEach(() => {
@@ -58,6 +58,7 @@ describe('collector capture', () => {
     trackEvent(METRICS.PAGE_VIEW)
     trackEvent(METRICS.USER_REGISTRATION)
     expect(capture).not.toHaveBeenCalled()
+    expect(capturePageView).not.toHaveBeenCalled()
     expect(window.dataLayer).toHaveLength(2)
   })
 
@@ -88,6 +89,22 @@ describe('collector capture', () => {
     for (const key of ['host', 'deployment', 'locale', 'mode', 'version', 'self_hosted']) {
       expect(props).not.toHaveProperty(key)
     }
+  })
+
+  it('sends a page view as a masked $page_view, not a product event', () => {
+    window.history.replaceState({}, '', '/account/01980e2c-1111-7000-8000-123456789abc')
+    trackEvent(METRICS.PAGE_VIEW)
+    expect(capture).not.toHaveBeenCalled()
+    expect(capturePageView).toHaveBeenCalledWith('/account/01980e2c-1111-7000-8000-123456789abc', {
+      // jsdom runs on localhost with no INSTANCE_ID configured
+      $host: 'selfhosted_unknown',
+      $path: '/account/:id',
+      // null drops the SDK's document.referrer: a self-hosted instance's own
+      // domain would otherwise be stored as a referral source.
+      $referrer: null,
+    })
+    // The dataLayer name is frozen and unaffected.
+    expect((window.dataLayer[0] as { event: string }).event).toBe('appPageView')
   })
 
   it('keeps ui_modal micro-interactions dataLayer-only', () => {

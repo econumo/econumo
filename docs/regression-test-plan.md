@@ -532,17 +532,27 @@ User C sees none of it.
       TWO lines (the reassurance about financial and personal data starts a new
       line), in every UI language.
 - [ ] Analytics reach the collector for signed-in sessions only (DevTools →
-      Network, filter `t.econumo.com`): the login/register pages send no
-      request; after login every request body carries `$user_id`; a reload of
-      a signed-in page sends its page view once the user data has loaded; log
-      out — the logout event goes out, nothing after it.
-- [ ] Session facts ride the BATCH, not each event (same Network filter): the
-      request body's top-level `attributes` carries `access_state`,
-      `deployment`, `host`, `locale` and `mode` once; each entry in `events`
-      carries only `current_url` (the page that event happened on), which
-      differs between events in one batch when you navigate mid-flush.
+      Network, filter `t.econumo.com`): the login/register pages load neither
+      `twillingate.js` nor send any request; after login the SDK script loads
+      once and every `ingest/events` body carries `$user_id`, `$consent: 0`,
+      a detected `$os`, and no `$install_id`; a reload of a signed-in page
+      sends its page view once the user data has loaded; log out — the logout
+      event goes out, nothing after it. With analytics switched off in
+      Settings, a reload loads no `twillingate.js` at all. DevTools →
+      Application: no `twillingate_*` or `econumo_*` key in localStorage and no
+      cookie from it.
+- [ ] Page views are real views (same Network filter): navigating between
+      pages sends events named `$page_view` (not `page_view`) whose `$host` is
+      `app.econumo.com` on the cloud and `selfhosted_<id>` on a self-hosted
+      instance, whose `$path` has every UUID replaced by `:id`
+      (`/account/:id`), and which carry no `$referrer`.
+- [ ] Session facts ride every event (same Network filter): each entry in
+      `events` carries `access_state`, `deployment`, `host`, `locale` and
+      `mode`; a product event additionally carries `current_url` (the page
+      that event happened on), which differs between events in one batch when
+      you navigate mid-flush.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
-      filter, batch-level `attributes`, NOT the per-event ones):
+      filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
       or `off`. A password account with Google linked sends
       `auth_password: on`, `auth_google: on`, `auth_apple: off`,

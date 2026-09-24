@@ -1,4 +1,4 @@
-import { capture, setAnalyticsContext, setAnalyticsGroup } from './analytics'
+import { capture, capturePageView, setAnalyticsContext, setAnalyticsGroup } from './analytics'
 import { analyticsAllowed } from './analyticsPreference'
 import { authMethods } from './analyticsAuthMethods'
 import { profileAttributes } from './analyticsProfile'
@@ -170,9 +170,9 @@ export function analyticsEventName(metric: string): string {
     .toLowerCase()
 }
 
-// There is no analytics SDK and no persisted profile to hang a default attribute on
-// (see lib/analytics.ts) — per-event accuracy comes from stamping the state
-// at capture time from this module-level value, refreshed wherever user data
+// There is no persisted profile to hang a default attribute on (see
+// lib/analytics.ts) — per-event accuracy comes from stamping the state at
+// capture time from this module-level value, refreshed wherever user data
 // lands (login, get-user-data).
 let currentAccessState: string | null = null
 
@@ -237,14 +237,13 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   if (instanceId) {
     setAnalyticsGroup(instanceId, analyticsHost())
   }
-  // Batch-level (session-wide) attributes: recomputed on every call rather
-  // than fixed at module load, since the profile counts change as the query
-  // cache fills in behind the boot loader.
+  // Session-wide attributes: recomputed on every call rather than fixed at
+  // module load, since the profile counts change as the query cache fills in
+  // behind the boot loader.
   //
   // Everything here describes the SESSION, not the action — where the user is
-  // signed in, how they signed in, what their data looks like — so it is sent
-  // once per batch instead of being repeated on every event. Only facts that
-  // vary between two events in the same batch stay per-event (current_url).
+  // signed in, how they signed in, what their data looks like. Only
+  // current_url describes the event itself.
   setAnalyticsContext({
     $app_version: getVersion(),
     $platform: analyticsPlatform(),
@@ -275,12 +274,26 @@ export function trackEvent(metric: Metric, eventData: Record<string, unknown> = 
   // pre-login auth events): the collector project is identified-only, and a
   // visitor who never signs in would otherwise show up as a one-day person
   // who can never return, dragging retention down for no product signal.
-  if (!metric.startsWith('appUIModal') && hasToken()) {
-    // The one genuinely per-event fact: which page the event happened on.
-    // Built from the same synthetic host as the batch attribute, so a
-    // self-hosted deployment's real hostname still never appears.
-    capture(analyticsEventName(metric), {
-      current_url: `https://${analyticsHost()}/${scrubbedPage(window.location.pathname)}`,
-    })
+  if (metric.startsWith('appUIModal') || !hasToken()) {
+    return
   }
+  const pathname = window.location.pathname
+  if (metric === METRICS.PAGE_VIEW) {
+    // A real view, not a product event, so it lands in the views dashboards.
+    // Same synthetic host and UUID-templated path as current_url below, and
+    // no $referrer: a self-hosted instance's own domain would be stored as a
+    // referral source, since it never matches the synthetic host.
+    capturePageView(pathname, {
+      $host: analyticsHost(),
+      $path: `/${scrubbedPage(pathname)}`,
+      $referrer: null,
+    })
+    return
+  }
+  // The one genuinely per-event fact: which page the event happened on.
+  // Built from the same synthetic host as the host attribute, so a
+  // self-hosted deployment's real hostname still never appears.
+  capture(analyticsEventName(metric), {
+    current_url: `https://${analyticsHost()}/${scrubbedPage(pathname)}`,
+  })
 }
