@@ -396,3 +396,20 @@ export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[]
 export function everydayBalanceRow(combined: string[], savings: string[]): string[] {
   return combined.map((c, i) => sub(c, savings[i] ?? '0'))
 }
+
+/** Whether the plan carries ANY savings money, independent of whether a savings row is
+ *  currently on screen: a savings account removed from the budget (no plan, no activity
+ *  in the fetched window) drops its row from `structure.savings`, but its pre-window
+ *  balance still arrives in `savingsOpeningBalances` and must not be counted as everyday
+ *  money. The balance split therefore keys off this — a row, or a non-zero opening
+ *  balance, or a non-zero flow — while the Savings section and its totals line stay tied
+ *  to rows alone (there is nothing to list or total without one). */
+export function planHasSavingsData(plan: BudgetPlanDto): boolean {
+  if ((plan.structure.savings ?? []).length > 0) {
+    return true
+  }
+  if ((plan.savingsOpeningBalances ?? []).some((b) => !isZero(b.amount))) {
+    return true
+  }
+  return (plan.savingsFlows ?? []).some((f) => !isZero(f.amount))
+}

@@ -94,6 +94,7 @@ import {
   isUnderspent,
   makePlanExchange,
   monthDate,
+  planHasSavingsData,
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
@@ -1565,10 +1566,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const ex: MonthExchange | null = useMemo(() => (plan ? makePlanExchange(plan, currencies) : null), [plan, currencies])
   const totals = useMemo(() => (plan && ex ? planTotals(plan, ex) : []), [plan, ex])
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
+  // The Savings section and its totals line are tied to ROWS: there is nothing to list
+  // or total without one. The balance split is tied to DATA instead (planHasSavingsData):
+  // a removed savings account can leave a pre-window opening balance or flow with no row
+  // to show for it, and that money is still not everyday money.
   const hasSavings = savingsRows.length > 0
+  const hasSavingsData = plan ? planHasSavingsData(plan) : false
   const savingsBalance = useMemo(
-    () => (plan && ex && hasSavings ? savingsBalanceRow(plan, totals, ex) : null),
-    [plan, ex, totals, hasSavings],
+    () => (plan && ex && hasSavingsData ? savingsBalanceRow(plan, totals, ex) : null),
+    [plan, ex, totals, hasSavingsData],
   )
   const everydayBalance = useMemo(
     () => (savingsBalance ? everydayBalanceRow(balance, savingsBalance) : balance),

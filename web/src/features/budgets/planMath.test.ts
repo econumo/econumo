@@ -21,6 +21,7 @@ import {
   makePlanExchange,
   monthDate,
   monthDiff,
+  planHasSavingsData,
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
@@ -873,6 +874,42 @@ describe('savings + net + balance split', () => {
       expect(t.effectiveSavings).toBe('0')
     }
     expect(savingsBalanceRow(plan, totals, ex, now)).toEqual(['0', '0', '0'])
+  })
+})
+
+describe('planHasSavingsData', () => {
+  it('is false for a plan with no savings rows, no opening balances and no flows', () => {
+    expect(planHasSavingsData(mkPlan())).toBe(false)
+    expect(planHasSavingsData(mkPlan({ structure: { folders: [], elements: [], savings: [] } }))).toBe(false)
+  })
+
+  it('is true when a savings row exists, even with all-zero cells', () => {
+    const savings = mkSavingsEl({ id: 'sav-1', name: 'Rainy day' })
+    expect(planHasSavingsData(mkPlan({ structure: { folders: [], elements: [], savings: [savings] } }))).toBe(true)
+  })
+
+  it('is true when a savings opening balance is non-zero', () => {
+    expect(planHasSavingsData(mkPlan({ savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '1000' }] }))).toBe(true)
+  })
+
+  it('is false when every savings opening balance is zero', () => {
+    expect(
+      planHasSavingsData(
+        mkPlan({ savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '0' }, { currencyId: 'cur-eur', amount: '0' }] }),
+      ),
+    ).toBe(false)
+  })
+
+  it('is true when a savings flow is non-zero', () => {
+    expect(
+      planHasSavingsData(mkPlan({ savingsFlows: [{ month: '2026-06-01', currencyId: 'cur-usd', amount: '125' }] })),
+    ).toBe(true)
+  })
+
+  it('is false when every savings flow is zero', () => {
+    expect(
+      planHasSavingsData(mkPlan({ savingsFlows: [{ month: '2026-06-01', currencyId: 'cur-usd', amount: '0' }] })),
+    ).toBe(false)
   })
 })
 

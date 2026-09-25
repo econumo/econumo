@@ -396,3 +396,36 @@ it('without savings rows: no Savings section, totals line or balance row, and Ba
     )
   }
 })
+
+it('a deleted savings account with only an opening balance splits the balance without a Savings section or totals line', async () => {
+  const openingOnlyPlan = {
+    ...fixtureWirePlan,
+    structure: { ...fixtureWirePlan.structure, savings: [] },
+    savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
+  }
+  useHandlers(openingOnlyPlan)
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+
+  // no rows to show, so no Savings section and no Savings line in totals
+  expect(screen.queryByTestId('plan-section-savings')).not.toBeInTheDocument()
+  const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
+  expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
+
+  // but the balance still splits: the 1000 opening balance is savings money, not everyday money
+  const plan = openingOnlyPlan as unknown as BudgetPlanDto
+  const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
+  const totals = planTotals(plan, ex)
+  const combined = balanceRow(plan, totals, ex)
+  const savings = savingsBalanceRow(plan, totals, ex)
+  const everyday = everydayBalanceRow(combined, savings)
+  const fmt = (v: string) => moneyFormat(v, fixtureUsd, { showCurrency: false, useNativePrecision: false })
+
+  const balanceArea = screen.getByTestId('plan-balance-row')
+  expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
+  expect(within(balanceArea).getByText('Savings balance')).toBeInTheDocument()
+  for (let col = 0; col < 3; col++) {
+    expect(screen.getByTestId(`plan-balance-${col}`)).toHaveTextContent(fmt(everyday[col + 1]))
+    expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
+  }
+})
