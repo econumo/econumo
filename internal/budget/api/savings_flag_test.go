@@ -469,3 +469,42 @@ func TestSavingsFlag_ArchivedBudgetRefusesFlagWrites(t *testing.T) {
 	}
 	sameFlags(t, "archived", memberFlags(t, h, budgetID1), map[string]bool{accountID: false, savingsUSDID: true, savingsEURID: true})
 }
+
+// A revoked participant's savings rows go with their other element rows: a
+// re-accept that flags the same account again starts from an empty row, not
+// the plans and comments left before the revoke.
+func TestSavingsFlag_RevokeDropsParticipantSavingsRows(t *testing.T) {
+	h := newHarnessWithClock(t, fixedAugust())
+	h.f.User(fixture.User{ID: otherUserID, Email: "o@e.test", Name: "O", Password: "pw", Salt: seedSalt})
+	h.f.Account(fixture.Account{ID: otherAccountID, UserID: otherUserID, CurrencyID: usdID, Name: "Theirs"})
+	tok := h.grantAndInvite(t, "user")
+	join := func() {
+		t.Helper()
+		h.mustDo(t, http.MethodPost, "/api/v1/budget/accept-access", otherUserID, map[string]any{"budgetId": budgetID1})
+		h.mustDo(t, http.MethodPost, "/api/v1/budget/update-budget", otherUserID, map[string]any{
+			"id": budgetID1, "name": "Budget", "currencyId": usdID, "savingsAccountIds": []string{otherAccountID},
+		})
+	}
+
+	join()
+	h.setLimit(t, otherUserID, otherAccountID, "2026-08-01", "300")
+	h.comment(t, otherUserID, budgetID1, otherAccountID, flagCommentID1)
+	if el, lim, com := savingsData(t, h, budgetID1, otherAccountID); el != 1 || lim != 1 || com != 1 {
+		t.Fatalf("before revoke: elements=%d limits=%d comments=%d, want 1/1/1", el, lim, com)
+	}
+
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/revoke-access", tok, map[string]any{"budgetId": budgetID1, "userId": otherUserID})
+	if el, lim, com := savingsData(t, h, budgetID1, otherAccountID); el != 0 || lim != 0 || com != 0 {
+		t.Fatalf("after revoke: elements=%d limits=%d comments=%d, want none left", el, lim, com)
+	}
+
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/grant-access", tok, map[string]any{"budgetId": budgetID1, "userId": otherUserID, "role": "user"})
+	join()
+	if el, lim, com := savingsData(t, h, budgetID1, otherAccountID); el != 1 || lim != 0 || com != 0 {
+		t.Fatalf("after rejoin: elements=%d limits=%d comments=%d, want a fresh row with no plan or comment", el, lim, com)
+	}
+	rows := savingsByID(h.savingsBudgetOf(t, otherUserID, budgetID1, "2026-08-15").Item.Structure.Savings)
+	if r, ok := rows[otherAccountID]; !ok || r.Budgeted != "0" {
+		t.Fatalf("rejoined savings row = %+v (present %v), want budgeted 0", r, ok)
+	}
+}

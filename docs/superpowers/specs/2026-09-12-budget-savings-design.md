@@ -85,8 +85,10 @@ be planned.
   carries `confirmSavingsRemoval: true` (`update-budget`, `add-account`,
   `remove-account`). The check runs on the server, so it holds whatever the client
   has loaded. Nothing is written when it refuses. (A participant whose access is
-  revoked takes their accounts with them, as before; their savings rows go on the
-  next sync with no confirmation — revocation is already the destructive act.)
+  revoked, who declines, or whose connection is deleted takes their accounts with
+  them, as before; the savings rows of those accounts are removed at that moment,
+  with the participant's other element rows and in the same transaction, with no
+  confirmation — revocation is already the destructive act.)
 - Every write above runs `syncElements` in its own transaction, so a savings row
   appears or disappears together with the flag (with its limits and #246 comments,
   by cascade) — no lazy deletion is left waiting for an unrelated write.

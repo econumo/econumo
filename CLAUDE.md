@@ -1083,9 +1083,11 @@ data unreadable. Most are also asserted by the test suite.
   create/update budget dialogs' per-account "Savings" switch, visible next to every
   own selected account, plus `add-account`'s `isSavings`) — never from the account
   dialog, and never by another participant (only the account's owner may flag it).
-  A flagged member gets an `ElementSavings` (type 5) row per budget, synced lazily on
-  budget writes into its own ordering group (never a folder) and dropped once the
-  flag goes off or the member leaves. Turning a savings member off, or removing one,
+  A flagged member gets an `ElementSavings` (type 5) row per budget, in its own
+  ordering group (never a folder); the flag or membership write that adds or drops
+  the savings member creates or deletes the row in the same transaction, and a
+  departing participant's savings rows are deleted at revocation with their other
+  element rows. Turning a savings member off, or removing one,
   while it still carries plans or comments is refused unless the write also sets
   `confirmSavingsRemoval: true` (`update-budget`/`add-account`/`remove-account`); the
   SPA asks first (naming what will be deleted) and resends with the flag set on
