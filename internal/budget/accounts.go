@@ -57,24 +57,28 @@ func accountNotRemovable() error {
 // the filters block (they keep counting), so a client may well name one again;
 // only a NEW member has to be a live account.
 func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error) {
-	budgetID, accountID, b, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
+	budgetID, accountID, _, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
 	if err != nil {
 		return nil, err
 	}
-	change := newMemberChange(budgetID, b.accounts)
-	if !b.hasAccount(accountID) {
-		views, verr := s.accounts.AccountsByIDs(ctx, []vo.Id{accountID})
+	err = s.writeMemberChange(ctx, budgetID, req.ConfirmSavingsRemoval, func(txCtx context.Context, c *memberChange) error {
+		if c.isMember(accountID) {
+			if req.IsSavings != nil {
+				c.setFlag(accountID, *req.IsSavings)
+			}
+			return nil
+		}
+		views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{accountID})
 		if verr != nil {
-			return nil, verr
+			return verr
 		}
 		if views[0].IsDeleted {
-			return nil, model.ValidateBlank(map[string]string{"accountId": ""})
+			return model.ValidateBlank(map[string]string{"accountId": ""})
 		}
-		change.addMember(accountID, req.IsSavings != nil && *req.IsSavings)
-	} else if req.IsSavings != nil {
-		change.setFlag(accountID, *req.IsSavings)
-	}
-	if err := s.writeMemberChange(ctx, change, req.ConfirmSavingsRemoval); err != nil {
+		c.addMember(accountID, req.IsSavings != nil && *req.IsSavings)
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
@@ -91,18 +95,21 @@ func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.Rem
 	if err != nil {
 		return nil, err
 	}
-	change := newMemberChange(budgetID, b.accounts)
-	if b.hasAccount(accountID) {
-		removable, rerr := s.removableAccounts(ctx, b, []vo.Id{accountID}, s.clock.Now())
+	err = s.writeMemberChange(ctx, budgetID, req.ConfirmSavingsRemoval, func(txCtx context.Context, c *memberChange) error {
+		if !c.isMember(accountID) {
+			return nil
+		}
+		removable, rerr := s.removableAccounts(txCtx, b, []vo.Id{accountID}, s.clock.Now())
 		if rerr != nil {
-			return nil, rerr
+			return rerr
 		}
 		if !removable[accountID.String()] {
-			return nil, accountNotRemovable()
+			return accountNotRemovable()
 		}
-		change.removeMember(accountID)
-	}
-	if err := s.writeMemberChange(ctx, change, req.ConfirmSavingsRemoval); err != nil {
+		c.removeMember(accountID)
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)

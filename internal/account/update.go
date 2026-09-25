@@ -66,9 +66,6 @@ func (s *Service) UpdateAccount(ctx context.Context, userID vo.Id, req model.Upd
 		now := s.clock.Now()
 		acct.UpdateName(name, now)
 		acct.UpdateIcon(icon, now)
-		if req.Type != nil {
-			acct.UpdateType(model.AccountType(*req.Type), now)
-		}
 		if currencyID != nil {
 			acct.UpdateCurrency(*currencyID, now)
 		}

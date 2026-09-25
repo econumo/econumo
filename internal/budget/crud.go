@@ -71,7 +71,13 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 			}
 		}
 		// Everything is checked before the first write, so a refusal leaves the
-		// name and the membership as they were.
+		// name and the membership as they were. The membership is re-read here so
+		// the guard judges the members as they are now, not as they were loaded.
+		members, merr := s.budgets.MemberAccounts(txCtx, budgetID)
+		if merr != nil {
+			return merr
+		}
+		b.accounts = members
 		change, perr := s.planOwnMembership(txCtx, userID, b, req.AccountIds, req.SavingsAccountIds, now)
 		if perr != nil {
 			return perr

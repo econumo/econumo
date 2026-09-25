@@ -1809,8 +1809,7 @@
       "name_length": "Il nome del conto deve contenere da {min} a {max} caratteri",
       "list_empty": "L'elenco dei conti è vuoto",
       "folder_list_empty": "L'elenco delle cartelle è vuoto",
-      "folder_already_exists": "La cartella esiste già.",
-      "invalid_type": "Il tipo di conto deve essere 1, 2 o 3."
+      "folder_already_exists": "La cartella esiste già."
     },
     "budget": {
       "name_length": "Il nome del budget deve contenere da {min} a {max} caratteri",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
       "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
-      "savings_removal_unconfirmed": "Disattivare il risparmio elimina gli importi pianificati e i commenti di questo budget per quel conto; conferma per continuare",
+      "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
       "end_before_start": "Il mese finale precede l'inizio del budget",

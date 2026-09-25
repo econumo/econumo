@@ -1809,8 +1809,7 @@
       "name_length": "El nombre de la cuenta debe tener entre {min} y {max} caracteres.",
       "list_empty": "La lista de cuentas está vacía.",
       "folder_list_empty": "La lista de carpetas está vacía.",
-      "folder_already_exists": "La carpeta ya existe.",
-      "invalid_type": "El tipo de cuenta debe ser 1, 2 o 3."
+      "folder_already_exists": "La carpeta ya existe."
     },
     "budget": {
       "name_length": "El nombre del presupuesto debe tener entre {min} y {max} caracteres.",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "Los ahorros no se pueden colocar en una carpeta.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
       "savings_account_not_member": "Las cuentas de ahorro deben ser tus propias cuentas en este presupuesto",
-      "savings_removal_unconfirmed": "Desactivar el ahorro elimina los importes planificados y los comentarios de este presupuesto para esa cuenta; confirma para continuar",
+      "savings_removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de las cuentas de ahorro que desactivaste o quitaste de este presupuesto; confirma para continuar",
       "accounts_required": "Selecciona al menos una cuenta",
       "archived": "Este presupuesto está archivado",
       "end_before_start": "El mes final es anterior al inicio del presupuesto",

@@ -1809,8 +1809,7 @@
       "name_length": "Le nom du compte doit contenir de {min} à {max} caractères.",
       "list_empty": "La liste des comptes est vide.",
       "folder_list_empty": "La liste des dossiers est vide.",
-      "folder_already_exists": "Ce dossier existe déjà.",
-      "invalid_type": "Le type de compte doit être 1, 2 ou 3."
+      "folder_already_exists": "Ce dossier existe déjà."
     },
     "budget": {
       "name_length": "Le nom du budget doit contenir de {min} à {max} caractères.",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "L'épargne ne peut pas être placée dans un dossier.",
       "account_not_removable": "Ce compte a des transactions dans des mois passés et ne peut plus être retiré du budget",
       "savings_account_not_member": "Les comptes d'épargne doivent être vos propres comptes dans ce budget",
-      "savings_removal_unconfirmed": "Désactiver l'épargne supprime les montants prévus et les commentaires de ce budget pour ce compte ; confirmez pour continuer",
+      "savings_removal_unconfirmed": "Cela supprime les montants prévus et les commentaires des comptes d'épargne que vous avez désactivés ou retirés de ce budget ; confirmez pour continuer",
       "accounts_required": "Sélectionnez au moins un compte",
       "archived": "Ce budget est archivé",
       "end_before_start": "Le mois de fin est antérieur au début du budget",

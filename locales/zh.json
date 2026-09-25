@@ -1809,8 +1809,7 @@
       "name_length": "账户名称需为 {min}-{max} 个字符。",
       "list_empty": "账户列表为空。",
       "folder_list_empty": "文件夹列表为空。",
-      "folder_already_exists": "该文件夹已存在。",
-      "invalid_type": "账户类型必须为 1、2 或 3。"
+      "folder_already_exists": "该文件夹已存在。"
     },
     "budget": {
       "name_length": "预算名称需为 {min}-{max} 个字符。",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "储蓄不能放入文件夹。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
       "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
-      "savings_removal_unconfirmed": "关闭储蓄将删除此预算中该账户的计划金额和评论；请确认以继续",
+      "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",
       "accounts_required": "请至少选择一个账户",
       "archived": "此预算已归档",
       "end_before_start": "结束月份早于预算开始时间",

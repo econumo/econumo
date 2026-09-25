@@ -71,6 +71,13 @@ func newHarness(t *testing.T) *harness {
 // (e.g. around a month boundary for timezone-sensitive behaviour).
 func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	t.Helper()
+	return newHarnessWithTx(t, clk, nil)
+}
+
+// newHarnessWithTx lets a test wrap the budget service's transaction runner,
+// e.g. to run another request between a use case's reads and its transaction.
+func newHarnessWithTx(t *testing.T, clk port.Clock, wrapTx func(port.TxRunner) port.TxRunner) *harness {
+	t.Helper()
 	// The shared opener: production DSN settings (frozen datetime layout,
 	// foreign keys, single connection) and every migration.
 	tdb := dbtest.NewSQLite(t)
@@ -99,6 +106,10 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	payeeRepo := payeerepo.NewRepo("sqlite", txm)
 	currencyLookup := currencyrepo.New("sqlite", txm)
 
+	var svcTx port.TxRunner = txm
+	if wrapTx != nil {
+		svcTx = wrapTx(txm)
+	}
 	budgetRepo := budgetrepo.NewRepo("sqlite", txm)
 	budgetReadRepo := budgetrepo.NewReadRepo("sqlite", txm)
 	rateProvider := currencyrepo.NewRateProvider("sqlite", txm, currencyLookup, usdID)
@@ -111,7 +122,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 		budgetrepo.NewMetadataLookup(server.NewBudgetCategoryMetadataLookup(categoryRepo), server.NewBudgetTagMetadataLookup(tagRepo), server.NewBudgetPayeeMetadataLookup(payeeRepo)),
 		connectionrepo.NewAccountAccessResolver(connectionrepo.NewRepo("sqlite", txm)),
 		operationrepo.NewGuard("sqlite", txm),
-		txm, clk,
+		svcTx, clk,
 	)
 
 	cfg := config.Config{CORSAllowedOrigins: []string{"*"}}

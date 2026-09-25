@@ -527,8 +527,6 @@ definitions:
         type: string
       name:
         type: string
-      type:
-        type: integer
     type: object
   model.CreateAccountResult:
     properties:
@@ -2762,8 +2760,6 @@ definitions:
         type: string
       name:
         type: string
-      type:
-        type: integer
       updatedAt:
         type: string
     type: object

@@ -1,16 +1,16 @@
 package apiparity
 
-// budget_savings exercises the savings budget-element surface end to end
-// (account type=3, the ElementSavings=5 element, structure.savings, and the
-// folder/reorder rules) against the real production handler.
+// budget_savings exercises the savings budget-element surface end to end (the
+// budgets_accounts.is_savings membership flag, the ElementSavings=5 element,
+// structure.savings, the folder/reorder rules and the removal confirmation)
+// against the real production handler.
 //
-// Three fresh accounts: an everyday account (default type), a savings account
-// created directly with "type":3 (USD, same currency as the budget), and a
-// second account created normal then FLIPPED to type 3 via update-account —
-// in a custom currency (EUR-like, rate 2 per base USD) so its element
-// currency is later changed to USD via change-element-currency, forcing a
-// real BulkConvert (not a same-currency pass-through) that both engines must
-// compute identically.
+// Three fresh accounts join the budget as ordinary members: an everyday
+// account, a USD account and a second one in a custom currency (EUR-like,
+// rate 2 per base USD). update-budget then flags the latter two as savings in
+// this budget. The EUR one's element currency is changed to USD via
+// change-element-currency, forcing a real BulkConvert (not a same-currency
+// pass-through) that both engines must compute identically.
 //
 // Amounts (all dated May 2024, all on the everyday account's transfers out):
 //
@@ -22,9 +22,9 @@ package apiparity
 // 50.00); S2 carries no limit (budgeted 0.00, spent 50.00 [converted],
 // available -50.00).
 //
-// set-limit on S1 self-heals BOTH savings element rows via syncElements (see
-// getElementSelfHeal), so by the time move-element is exercised both rows
-// already exist and can be found by external id.
+// Flagging syncs both savings element rows, so move-element finds them by
+// external id. Turning S1 off is refused while its May plan exists and goes
+// through once confirmed, taking the row (and the plan) with it.
 
 func init() {
 	register(Scenario{Name: "budget_savings", Calls: func() []Call {
@@ -34,7 +34,6 @@ func init() {
 			opEveryday      = "a0000000-0000-0000-0000-00000000005a"
 			opSavingsA      = "a0000000-0000-0000-0000-00000000005b"
 			opSavingsB      = "a0000000-0000-0000-0000-00000000005c"
-			opBadType       = "a0000000-0000-0000-0000-00000000005d"
 			opTransferA     = "d0000000-0000-0000-0000-00000000005a"
 			opTransferB     = "d0000000-0000-0000-0000-00000000005b"
 			savingsFolderID = "bf000000-0000-0000-0000-00000000005a"
@@ -47,23 +46,21 @@ func init() {
 			{Label: "create-everyday-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
 				Body:          map[string]any{"id": opEveryday, "name": "Checking", "icon": "wallet", "currencyId": USD, "folderId": OwnerFolder},
 				CaptureIDInto: &everydayID},
-			{Label: "create-savings-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
-				Body:          map[string]any{"id": opSavingsA, "name": "Rainy day", "icon": "savings", "currencyId": USD, "folderId": OwnerFolder, "type": 3},
+			{Label: "create-savings-account-a", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
+				Body:          map[string]any{"id": opSavingsA, "name": "Rainy day", "icon": "savings", "currencyId": USD, "folderId": OwnerFolder},
 				CaptureIDInto: &savingsAID},
-			{Label: "create-future-savings-account", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
+			{Label: "create-savings-account-b", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
 				Body:          map[string]any{"id": opSavingsB, "name": "Euro pot", "icon": "euro", "currencyId": &eurID, "folderId": OwnerFolder},
 				CaptureIDInto: &savingsBID},
-			{Label: "flip-account-to-savings", Method: "POST", Path: "/api/v1/account/update-account", Auth: "owner",
-				Body: map[string]any{"id": &savingsBID, "name": "Euro pot", "icon": "euro", "updatedAt": "2024-05-01 00:00:00", "type": 3}},
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
 				Body: map[string]any{"id": savingsBudget, "name": "Savings Budget", "currencyId": USD, "startDate": "2024-04-01",
 					"accountIds": []any{&everydayID, &savingsAID, &savingsBID}}},
-			// Interim: account type 3 no longer makes a member savings (the flag
-			// is on the membership and has no write path yet), so these two find
-			// no savings element. The scenario is rewritten around the flag.
-			{Label: "err:set-limit-savings-a", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+			{Label: "flag-savings", Method: "POST", Path: "/api/v1/budget/update-budget", Auth: "owner",
+				Body: map[string]any{"id": savingsBudget, "name": "Savings Budget", "currencyId": USD,
+					"savingsAccountIds": []any{&savingsAID, &savingsBID}}},
+			{Label: "set-limit-savings-a", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "elementId": &savingsAID, "period": "2024-05-01", "amount": "200"}},
-			{Label: "err:change-savings-b-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
+			{Label: "change-savings-b-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "elementId": &savingsBID, "currencyId": USD}},
 			{Label: "transfer-to-savings-a", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": opTransferA, "accountId": &everydayID, "accountRecipientId": &savingsAID, "type": "transfer",
@@ -77,17 +74,22 @@ func init() {
 				Path: "/api/v1/budget/get-budget-plan?id=" + savingsBudget + "&from=2024-04-01&months=3", Auth: "owner"},
 			{Label: "create-folder", Method: "POST", Path: "/api/v1/budget/create-folder", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "id": savingsFolderID, "name": "Vault"}},
-			// Both savings rows already exist (self-healed by set-limit-savings-a
-			// above), so this hits the savings-specific 400 rather than a silent
-			// no-op reorder.
+			// Both savings rows exist (synced by flag-savings), so this hits the
+			// savings-specific 400 rather than a silent no-op reorder.
 			{Label: "err:move-savings-into-folder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "id": &savingsAID, "folderId": savingsFolderID, "afterId": nil}},
 			{Label: "move-savings-reorder", Method: "POST", Path: "/api/v1/budget/move-element", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "id": &savingsBID, "folderId": nil, "afterId": nil}},
 			{Label: "get-budget-after-move", Method: "GET",
 				Path: "/api/v1/budget/get-budget?id=" + savingsBudget + "&date=2024-05-15", Auth: "owner"},
-			{Label: "err:create-account-invalid-type", Method: "POST", Path: "/api/v1/account/create-account", Auth: "owner",
-				Body: map[string]any{"id": opBadType, "name": "Bad", "icon": "wallet", "currencyId": USD, "folderId": OwnerFolder, "type": 9}},
+			{Label: "err:savings-off-unconfirmed", Method: "POST", Path: "/api/v1/budget/update-budget", Auth: "owner",
+				Body: map[string]any{"id": savingsBudget, "name": "Savings Budget", "currencyId": USD,
+					"savingsAccountIds": []any{&savingsBID}}},
+			{Label: "savings-off-confirmed", Method: "POST", Path: "/api/v1/budget/update-budget", Auth: "owner",
+				Body: map[string]any{"id": savingsBudget, "name": "Savings Budget", "currencyId": USD,
+					"savingsAccountIds": []any{&savingsBID}, "confirmSavingsRemoval": true}},
+			{Label: "get-budget-after-savings-off", Method: "GET",
+				Path: "/api/v1/budget/get-budget?id=" + savingsBudget + "&date=2024-05-15", Auth: "owner"},
 		}
 	}})
 }

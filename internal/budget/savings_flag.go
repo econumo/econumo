@@ -128,18 +128,34 @@ func (s *Service) applyMemberChange(ctx context.Context, c *memberChange, now ti
 	return nil
 }
 
-// writeMemberChange is guard + apply in one transaction, for the use cases
-// whose only write is the membership change.
-func (s *Service) writeMemberChange(ctx context.Context, c *memberChange, confirmed bool) error {
-	if c.empty() {
-		return nil
-	}
+// writeMemberChange is plan + guard + apply in one transaction, for the use
+// cases whose only write is the membership change. The plan works from the
+// members read inside the transaction, not the aggregate loaded before it: a
+// member another request flagged and planned in between must still meet the
+// guard, and its savings row must still go with it.
+func (s *Service) writeMemberChange(ctx context.Context, budgetID vo.Id, confirmed bool, plan func(ctx context.Context, c *memberChange) error) error {
 	return s.tx.WithTx(ctx, func(txCtx context.Context) error {
+		members, err := s.budgets.MemberAccounts(txCtx, budgetID)
+		if err != nil {
+			return err
+		}
+		c := newMemberChange(budgetID, members)
+		if err := plan(txCtx, c); err != nil {
+			return err
+		}
+		if c.empty() {
+			return nil
+		}
 		if err := s.guardSavingsRemoval(txCtx, c, confirmed); err != nil {
 			return err
 		}
 		return s.applyMemberChange(txCtx, c, s.clock.Now())
 	})
+}
+
+func (c *memberChange) isMember(id vo.Id) bool {
+	_, ok := c.current[id.String()]
+	return ok
 }
 
 // planOwnMembership works out update-budget's change over the CALLER's own
@@ -275,7 +291,7 @@ func savingsAccountNotMember() error {
 func savingsRemovalUnconfirmed() error {
 	return errs.NewValidation("Validation failed", errs.FieldError{
 		Key:     "confirmSavingsRemoval",
-		Message: "Turning savings off deletes this budget's planned amounts and comments for that account; confirm to continue",
+		Message: "This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue",
 		Code:    errs.CodeBudgetSavingsRemovalUnconfirmed,
 	})
 }

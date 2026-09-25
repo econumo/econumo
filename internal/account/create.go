@@ -70,9 +70,6 @@ func (s *Service) CreateAccount(ctx context.Context, userID vo.Id, req model.Cre
 
 		now := s.clock.Now()
 		acct := model.NewAccount(id, userID, currencyID, name, icon, now)
-		if req.Type != nil {
-			acct.Type = model.AccountType(*req.Type)
-		}
 		if serr := s.accounts.Save(ctx, acct); serr != nil {
 			return serr
 		}

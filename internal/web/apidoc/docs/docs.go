@@ -13060,9 +13060,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "type": {
-                    "type": "integer"
                 }
             }
         },
@@ -16461,9 +16458,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "type": {
-                    "type": "integer"
                 },
                 "updatedAt": {
                     "type": "string"

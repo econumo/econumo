@@ -33,7 +33,6 @@ const (
 	CodeAccountListEmpty           = "account.list_empty"
 	CodeAccountFolderListEmpty     = "account.folder_list_empty"
 	CodeAccountFolderAlreadyExists = "account.folder_already_exists"
-	CodeAccountInvalidType         = "account.invalid_type"
 
 	CodeBudgetNameLength                = "budget.name_length"
 	CodeBudgetEnvelopeNameLength        = "budget.envelope_name_length"
@@ -162,7 +161,6 @@ var AllCodes = []string{
 	CodeAccountListEmpty,
 	CodeAccountFolderListEmpty,
 	CodeAccountFolderAlreadyExists,
-	CodeAccountInvalidType,
 
 	CodeBudgetNameLength,
 	CodeBudgetEnvelopeNameLength,

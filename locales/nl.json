@@ -1809,8 +1809,7 @@
       "name_length": "Rekeningnaam moet {min}-{max} tekens bevatten.",
       "list_empty": "De lijst met rekeningen is leeg.",
       "folder_list_empty": "De lijst met mappen is leeg.",
-      "folder_already_exists": "Deze map bestaat al.",
-      "invalid_type": "Rekeningtype moet 1, 2 of 3 zijn."
+      "folder_already_exists": "Deze map bestaat al."
     },
     "budget": {
       "name_length": "Budgetnaam moet {min}-{max} tekens bevatten.",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "Spaargeld kan niet in een map worden geplaatst.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
       "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
-      "savings_removal_unconfirmed": "Sparen uitschakelen verwijdert de geplande bedragen en opmerkingen van dit budget voor die rekening; bevestig om door te gaan",
+      "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die je in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
       "end_before_start": "De eindmaand ligt vóór de start van het budget",

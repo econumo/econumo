@@ -17,9 +17,8 @@ import (
 
 // AccountType is the account type value object. The DB stores it as a
 // SMALLINT and the wire contract uses the same int (NOT an alias string,
-// unlike category): CASH=1, CREDIT_CARD=2, SAVINGS=3. New accounts are always
-// created as CREDIT_CARD. Reads tolerate any stored value (a legacy or
-// future value round-trips unchanged); Valid gates writes only.
+// unlike category): CASH=1, CREDIT_CARD=2. New accounts are always created
+// as CREDIT_CARD.
 type AccountType int16
 
 const (
@@ -28,17 +27,12 @@ const (
 	// TypeCreditCard is the credit-card account type (db/wire value 2); the
 	// default for newly-created accounts.
 	TypeCreditCard AccountType = 2
-	// TypeSavings is the savings account type (db/wire value 3); marks an
-	// account for budget savings planning.
-	TypeSavings AccountType = 3
 )
 
 func (t AccountType) Int16() int16 { return int16(t) }
 
 // Valid reports whether t is a known account type.
-func (t AccountType) Valid() bool {
-	return t == TypeCash || t == TypeCreditCard || t == TypeSavings
-}
+func (t AccountType) Valid() bool { return t == TypeCash || t == TypeCreditCard }
 
 // Account is the account aggregate root. Fields are validated on the way in by
 // the application layer; the entity holds already-valid state. Soft delete: an
@@ -76,13 +70,6 @@ func (a *Account) UpdateName(name string, now time.Time) {
 func (a *Account) UpdateIcon(icon string, now time.Time) {
 	if a.Icon != icon {
 		a.Icon = icon
-		a.UpdatedAt = now
-	}
-}
-
-func (a *Account) UpdateType(t AccountType, now time.Time) {
-	if a.Type != t {
-		a.Type = t
 		a.UpdatedAt = now
 	}
 }

@@ -11,17 +11,17 @@ var (
 )
 
 func TestType_Values(t *testing.T) {
-	if TypeCash != 1 || TypeCreditCard != 2 || TypeSavings != 3 {
-		t.Fatalf("type values drifted: cash=%d cc=%d savings=%d", TypeCash, TypeCreditCard, TypeSavings)
+	if TypeCash != 1 || TypeCreditCard != 2 {
+		t.Fatalf("type values drifted: cash=%d cc=%d", TypeCash, TypeCreditCard)
 	}
-	if TypeCash.Int16() != 1 || TypeCreditCard.Int16() != 2 || TypeSavings.Int16() != 3 {
+	if TypeCash.Int16() != 1 || TypeCreditCard.Int16() != 2 {
 		t.Fatal("Int16 mismatch")
 	}
-	if !TypeCash.Valid() || !TypeCreditCard.Valid() || !TypeSavings.Valid() {
-		t.Fatal("cash/credit-card/savings must be valid")
+	if !TypeCash.Valid() || !TypeCreditCard.Valid() {
+		t.Fatal("cash/credit-card must be valid")
 	}
-	if AccountType(0).Valid() || AccountType(4).Valid() {
-		t.Fatal("0 and 4 must be invalid types")
+	if AccountType(0).Valid() || AccountType(3).Valid() {
+		t.Fatal("0 and 3 must be invalid types")
 	}
 }
 

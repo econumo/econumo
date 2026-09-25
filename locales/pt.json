@@ -1809,8 +1809,7 @@
       "name_length": "O nome da conta deve ter entre {min} e {max} caracteres.",
       "list_empty": "A lista de contas está vazia.",
       "folder_list_empty": "A lista de pastas está vazia.",
-      "folder_already_exists": "A pasta já existe.",
-      "invalid_type": "O tipo de conta deve ser 1, 2 ou 3."
+      "folder_already_exists": "A pasta já existe."
     },
     "budget": {
       "name_length": "O nome do orçamento deve ter entre {min} e {max} caracteres.",
@@ -1823,7 +1822,7 @@
       "savings_folder_not_allowed": "As poupanças não podem ser colocadas numa pasta.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
       "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
-      "savings_removal_unconfirmed": "Desativar a poupança elimina os montantes planeados e os comentários deste orçamento para essa conta; confirme para continuar",
+      "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",
       "end_before_start": "O mês final é anterior ao início do orçamento",
