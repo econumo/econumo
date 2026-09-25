@@ -5,6 +5,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { queryKeys } from '@/app/queryKeys'
 import type { AccountDto } from '@/api/dto/account'
+import type { BudgetMetaDto } from '@/api/dto/budget'
 import { isPendingForMe } from '@/features/connections/shared'
 
 let client: QueryClient | null = null
@@ -19,14 +20,30 @@ function list<T>(key: readonly unknown[]): T[] | undefined {
 }
 
 // A count whose query has not loaded is omitted entirely (never sent as 0 —
-// that would read as a real measurement rather than "unknown").
-function archivedCounts(out: Record<string, number>, key: readonly unknown[], name: string): void {
-  const rows = list<{ isArchived: 0 | 1 }>(key)
-  if (!rows) {
-    return
+// that would read as a real measurement rather than "unknown"). Every count is
+// a total: active, hidden and archived items alike.
+function count(out: Record<string, number>, key: readonly unknown[], name: string): void {
+  const rows = list<unknown>(key)
+  if (rows) {
+    out[name] = rows.length
   }
-  out[name] = rows.filter((r) => r.isArchived === 0).length
-  out[`${name}_archived`] = rows.filter((r) => r.isArchived === 1).length
+}
+
+// Whole calendar months since signup, the day and time of day included, so
+// the value only ticks over on the monthly anniversary. createdAt is UTC wall
+// clock ("2006-01-02 15:04:05"), parsed as such so no local zone shifts the
+// boundary.
+function monthsSince(createdAt: string, now: Date): number | undefined {
+  const signup = new Date(`${createdAt.replace(' ', 'T')}Z`)
+  if (Number.isNaN(signup.getTime())) {
+    return undefined
+  }
+  let months = (now.getUTCFullYear() - signup.getUTCFullYear()) * 12 + (now.getUTCMonth() - signup.getUTCMonth())
+  const intoMonth = (d: Date) => d.getTime() - Date.UTC(d.getUTCFullYear(), d.getUTCMonth())
+  if (intoMonth(now) < intoMonth(signup)) {
+    months -= 1
+  }
+  return Math.max(0, months)
 }
 
 export function profileAttributes(): Record<string, number> {
@@ -46,36 +63,36 @@ export function profileAttributes(): Record<string, number> {
   // Filtering needs "me," so if the user query hasn't loaded, the count is
   // not-yet-known rather than risking an unfiltered (skewed) number.
   const accounts = list<AccountDto>(queryKeys.accounts)
-  const folders = list<{ id: string; isVisible: 0 | 1 }>(queryKeys.folders)
   if (accounts && user?.id) {
-    const mine = accounts.filter((a) => !isPendingForMe(a, user.id))
-    out.accounts = mine.length
-    if (folders) {
-      // Accounts have no visibility of their own; a hidden folder hides them,
-      // and an unfoldered account (folderId: null) counts as visible.
-      const hidden = new Set(folders.filter((f) => f.isVisible === 0).map((f) => f.id))
-      out.accounts_hidden = mine.filter((a) => a.folderId !== null && hidden.has(a.folderId)).length
-    }
+    out.accounts = accounts.filter((a) => !isPendingForMe(a, user.id)).length
   }
 
-  archivedCounts(out, queryKeys.categories, 'categories')
-  archivedCounts(out, queryKeys.payees, 'payees')
-  archivedCounts(out, queryKeys.tags, 'tags')
-
-  const connections = list<unknown>(queryKeys.connections)
-  if (connections) {
-    out.connections = connections.length
+  // Same reasoning as accounts: the raw list carries budget invites the user
+  // has not accepted, which useBudgets() filters out in its `select`.
+  const budgets = list<BudgetMetaDto>(queryKeys.budgets)
+  if (budgets && user?.id) {
+    const me = user.id
+    out.budgets = budgets.filter(
+      (b) => b.ownerUserId === me || b.access.some((a) => a.user.id === me && a.isAccepted === 1),
+    ).length
   }
+
+  count(out, queryKeys.categories, 'categories')
+  count(out, queryKeys.payees, 'payees')
+  count(out, queryKeys.tags, 'tags')
+  count(out, queryKeys.labels, 'labels')
+  count(out, queryKeys.connections, 'connections')
 
   if (user?.createdAt) {
-    // "2006-01-02 15:04:05" UTC; a cohort label, so it is read verbatim
-    // rather than parsed as a local Date (which would drift across zones).
-    const [y, m] = user.createdAt.slice(0, 7).split('-')
-    const year = Number(y)
-    const month = Number(m)
-    if (Number.isFinite(year) && Number.isFinite(month)) {
+    // A cohort label, so it is read verbatim rather than parsed as a local
+    // Date (which would drift across zones).
+    const year = Number(user.createdAt.slice(0, 4))
+    if (Number.isFinite(year)) {
       out.signup_year = year
-      out.signup_month = month
+    }
+    const months = monthsSince(user.createdAt, new Date())
+    if (months !== undefined) {
+      out.months_since_signup = months
     }
   }
   return out

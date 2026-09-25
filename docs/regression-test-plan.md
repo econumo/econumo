@@ -556,6 +556,13 @@ User C sees none of it.
       A product event also carries its own data where it has any (merging a
       payee sends `type: payee`). `window.dataLayer` is undefined in the
       console.
+- [ ] Profile facts are totals (same Network filter, in each event's
+      `attributes`, once the relevant page has loaded its list): `accounts`,
+      `categories`, `payees`, `tags` and `labels` count hidden and archived
+      items too (archive one → the count does not drop), `budgets` counts
+      archived budgets but not an unaccepted invite, `months_since_signup` is
+      the whole months since registration (`0` in the first month), and no
+      `accounts_hidden`, `*_archived` or `signup_month` key is sent.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
       filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`

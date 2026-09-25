@@ -317,8 +317,10 @@ carries — `econumo.com`/`*.econumo.com` verbatim, every other hostname as
 `web/src/lib/metrics.ts`), so a self-hosted deployment's real hostname never
 appears in an event payload (the browser's request still discloses it via the
 mandatory `Origin` header, which the collector does not record)),
-plus session-wide account-profile counts (connections, accounts,
-categories, payees, tags — `web/src/lib/analyticsProfile.ts`), stamped onto
+plus session-wide account-profile facts (`web/src/lib/analyticsProfile.ts`:
+total counts of connections, budgets, accounts, categories, payees, tags and
+labels — active, hidden and archived alike, unaccepted invites excluded — plus
+`signup_year` and `months_since_signup`), stamped onto
 each event at capture time (the SDK has no custom batch attributes). A per-user
 `analytics` option (`users_options`, on by default) gates capture, is
 mirrored to `localStorage` for a synchronous boot-time check (`get-user-data`
