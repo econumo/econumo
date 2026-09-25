@@ -147,11 +147,19 @@ export interface BudgetSavingsElementDto {
   available: string
 }
 
+/** one of the requester's own member accounts */
+export interface BudgetAccountFilterDto {
+  id: Id
+  removable: boolean
+  /** optional: servers older than the savings release omit it */
+  isSavings?: boolean
+}
+
 export interface BudgetDto {
   meta: BudgetMetaDto
   /** accounts is optional on the wire: servers older than the budget-membership
    *  release — still accepted by the app's compat floor — omit it. */
-  filters: { periodStart: string; periodEnd: string; accounts?: { id: Id; removable: boolean }[] }
+  filters: { periodStart: string; periodEnd: string; accounts?: BudgetAccountFilterDto[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
   /** labels is optional on the wire: servers older than the labels release —

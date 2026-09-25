@@ -25,11 +25,11 @@ const baseBudget: BudgetDto = {
   structure: { folders: [], elements: [] },
 }
 
-function renderDialog(budget: BudgetDto) {
+function renderDialog(budget: BudgetDto, onClose = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
     <QueryClientProvider client={queryClient}>
-      <BudgetUpdateDialog open budget={budget} onClose={vi.fn()} />
+      <BudgetUpdateDialog open budget={budget} onClose={onClose} />
     </QueryClientProvider>,
   )
 }
@@ -122,4 +122,109 @@ it('renders when the server omits filters entirely', async () => {
   const legacy = { ...baseBudget, filters: undefined } as unknown as BudgetDto
   renderDialog(legacy)
   await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
+})
+
+describe('savings toggles', () => {
+  const savingsBudget: BudgetDto = {
+    ...baseBudget,
+    filters: {
+      ...baseBudget.filters,
+      accounts: [
+        { id: 'a1', removable: false, isSavings: true },
+        { id: 'a2', removable: true, isSavings: false },
+      ],
+    },
+  }
+  const confirmQuestion =
+    'Planned amounts and comments of the savings accounts you turned off or removed will be deleted from this budget. Saved amounts and transactions are not affected.'
+
+  function captureUpdate(respond: (call: number) => Response | undefined = () => undefined) {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return respond(bodies.length) ?? HttpResponse.json({ success: true, message: '', data: { item: baseBudget.meta } })
+      }),
+    )
+    return bodies
+  }
+
+  const refusal = (field: string, message: string) =>
+    HttpResponse.json({ success: false, message: 'Form validation error', code: 400, errors: { [field]: [message] } }, { status: 400 })
+
+  it('initialises the toggles from filters.accounts and sends the full own savings set', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog(savingsBudget)
+    const cashSavings = await screen.findByRole('switch', { name: 'Cash is a savings account' })
+    expect(cashSavings).toBeChecked()
+    // a locked member can still change its savings role
+    expect(cashSavings).not.toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Bank is a savings account' })).not.toBeChecked()
+    await user.click(screen.getByRole('switch', { name: 'Bank is a savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].accountIds).toEqual(['a1', 'a2'])
+    expect(bodies[0].savingsAccountIds).toEqual(['a1', 'a2'])
+    expect(bodies[0]).not.toHaveProperty('confirmSavingsRemoval')
+  })
+
+  it('deselecting an account drops it from savingsAccountIds', async () => {
+    const bodies = captureUpdate()
+    const user = userEvent.setup()
+    renderDialog({
+      ...savingsBudget,
+      filters: { ...savingsBudget.filters, accounts: [{ id: 'a1', removable: false, isSavings: false }, { id: 'a2', removable: true, isSavings: true }] },
+    })
+    await screen.findByRole('switch', { name: 'Bank is a savings account' })
+    await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+    expect(screen.queryByRole('switch', { name: 'Bank is a savings account' })).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(bodies).toHaveLength(1))
+    expect(bodies[0].accountIds).toEqual(['a1'])
+    expect(bodies[0].savingsAccountIds).toEqual([])
+  })
+
+  it('a refused savings removal asks; cancel sends nothing more and keeps the edits', async () => {
+    const bodies = captureUpdate((n) => (n === 1 ? refusal('confirmSavingsRemoval', 'confirm to continue') : undefined))
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderDialog(savingsBudget, onClose)
+    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    expect(await screen.findByText(confirmQuestion)).toBeInTheDocument()
+    await user.click(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!)
+    await waitFor(() => expect(screen.queryByText(confirmQuestion)).toBeNull())
+    expect(bodies).toHaveLength(1)
+    expect(onClose).not.toHaveBeenCalled()
+    expect(screen.getByRole('switch', { name: 'Cash is a savings account' })).not.toBeChecked()
+    expect(screen.queryByText('confirm to continue')).toBeNull()
+  })
+
+  it('confirming resends the same payload with confirmSavingsRemoval and closes on success', async () => {
+    const bodies = captureUpdate((n) => (n === 1 ? refusal('confirmSavingsRemoval', 'confirm to continue') : undefined))
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderDialog(savingsBudget, onClose)
+    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await user.click(await screen.findByRole('button', { name: 'Delete plans' }))
+    await waitFor(() => expect(bodies).toHaveLength(2))
+    expect(bodies[0].savingsAccountIds).toEqual([])
+    expect(bodies[1]).toEqual({ ...bodies[0], confirmSavingsRemoval: true })
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('another 400 surfaces as the dialog error, not the confirmation', async () => {
+    const bodies = captureUpdate(() => refusal('savingsAccountIds', 'Savings accounts must be your own accounts in this budget'))
+    const onClose = vi.fn()
+    const user = userEvent.setup()
+    renderDialog(savingsBudget, onClose)
+    await screen.findByRole('switch', { name: 'Cash is a savings account' })
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    expect(await screen.findByText('Savings accounts must be your own accounts in this budget')).toBeInTheDocument()
+    expect(screen.queryByText(confirmQuestion)).toBeNull()
+    expect(bodies).toHaveLength(1)
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })

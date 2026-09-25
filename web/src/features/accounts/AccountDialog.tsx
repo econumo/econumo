@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { useQueryClient } from '@tanstack/react-query'
 import { v7 as uuidv7 } from 'uuid'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CalculatorInput } from '@/components/CalculatorInput'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
@@ -16,8 +13,6 @@ import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDia
 import { formatDateTime } from '@/lib/datetime'
 import { defaultAccountIcon } from '@/lib/icons'
 import { moneyFormat } from '@/lib/money'
-import { pluralPick } from '@/lib/plural'
-import { AccountType, isSavingsAccount, type AccountDto } from '@/api/dto/account'
 import { evaluateFormula, sanitizeInput } from '@/lib/calculator'
 import { isNotEmpty, isValidAccountName, isValidDecimalNumber, isValidFormula, isValidNumber } from '@/lib/validation'
 import { useUiStore } from '@/app/uiStore'
@@ -32,23 +27,9 @@ import { UserAvatar } from '@/components/UserAvatar'
 import { evaluatedAmount } from '../transactions/useTransactionForm'
 import { useAccounts, useCreateAccount, useGrantAccountAccess, useRevokeAccountAccess, useUpdateAccount } from './queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
-import { countBudgetsPlanningSavings } from './savingsPlans'
-
-// Switching savings off restores the account's everyday type; an account
-// that never had one (or holds a foreign value) becomes the create default.
-function accountTypeFor(savings: boolean, account: AccountDto | undefined): AccountType {
-  if (savings) {
-    return AccountType.SAVINGS
-  }
-  if (account && (account.type === AccountType.CASH || account.type === AccountType.CREDIT_CARD)) {
-    return account.type
-  }
-  return AccountType.CREDIT_CARD
-}
 
 export function AccountDialog() {
-  const { t, i18n } = useTranslation()
-  const queryClient = useQueryClient()
+  const { t } = useTranslation()
   const params = useUiStore((s) => s.accountModal)
   const close = useUiStore((s) => s.closeAccountModal)
   const { data: user } = useUserData()
@@ -68,8 +49,6 @@ export function AccountDialog() {
   const [currencyId, setCurrencyId] = useState<string | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [icon, setIcon] = useState(defaultAccountIcon)
-  const [savings, setSavings] = useState(false)
-  const [savingsOffBudgets, setSavingsOffBudgets] = useState(0)
   const { errors, setErrors, clear: clearError, reset: resetErrors } = useFormErrors<{ name?: string; balance?: string }>()
   const [shareOpen, setShareOpen] = useState(false)
   const [levelEntry, setLevelEntry] = useState<ShareEntry | null>(null)
@@ -89,15 +68,12 @@ export function AccountDialog() {
       )
       setCurrencyId(params.account.currency.id)
       setIcon(params.account.icon || defaultAccountIcon)
-      setSavings(isSavingsAccount(params.account))
     } else {
       setName('')
       setBalance('0')
       setCurrencyId(userCurrencyId(user))
       setIcon(defaultAccountIcon)
-      setSavings(false)
     }
-    setSavingsOffBudgets(0)
     setShareOpen(false)
     setLevelEntry(null)
     resetErrors()
@@ -131,21 +107,11 @@ export function AccountDialog() {
     return Object.keys(next).length === 0
   }
 
-  const submit = async (confirmedSavingsOff = false) => {
+  const submit = async () => {
     if (!validate() || !currencyId) {
       return
     }
-    // the server drops this account's savings plans with the type change;
-    // ask first when a budget the SPA has loaded would lose one
-    if (!confirmedSavingsOff && account && isSavingsAccount(account) && !savings) {
-      const n = countBudgetsPlanningSavings(queryClient, account.id)
-      if (n > 0) {
-        setSavingsOffBudgets(n)
-        return
-      }
-    }
     const balanceAmount = evaluatedAmount(balance)
-    const type = accountTypeFor(savings, account)
     try {
       if (isNew) {
         await createAccount.mutateAsync({
@@ -155,7 +121,6 @@ export function AccountDialog() {
           balance: balanceAmount,
           icon,
           folderId: params.folderId ?? null,
-          type,
         })
       } else {
         await updateAccount.mutateAsync({
@@ -165,7 +130,6 @@ export function AccountDialog() {
           icon,
           currencyId,
           updatedAt: formatDateTime(new Date()),
-          type,
         })
       }
       close()
@@ -250,18 +214,6 @@ export function AccountDialog() {
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        <div className="flex items-center justify-between gap-3 rounded-lg bg-econumo-card px-4 py-2.5">
-          <span className="flex min-w-0 flex-col gap-0.5">
-            <label htmlFor="account-savings" className="text-sm">
-              {t('accounts.form.savings.label')}
-            </label>
-            <span id="account-savings-hint" className="text-[11px] text-muted-foreground">
-              {t('accounts.form.savings.hint')}
-            </span>
-          </span>
-          <Switch id="account-savings" aria-describedby="account-savings-hint" checked={savings} onCheckedChange={setSavings} />
-        </div>
-
         {canShare && liveAccount ? (
           <button
             type="button"
@@ -289,20 +241,6 @@ export function AccountDialog() {
           <IconPicker fill value={icon} onChange={setIcon} aria-label={t('accounts.modal.form.icon.label')} />
         </div>
       </form>
-
-      <ConfirmDialog
-        open={savingsOffBudgets > 0}
-        title={t('accounts.form.savings.confirm_title')}
-        question={pluralPick(t('accounts.form.savings.confirm_off'), savingsOffBudgets, i18n.language)}
-        confirmLabel={t('accounts.form.savings.confirm_action')}
-        cancelLabel={t('common.button.cancel.label')}
-        destructive
-        onClose={() => setSavingsOffBudgets(0)}
-        onConfirm={() => {
-          setSavingsOffBudgets(0)
-          void submit(true)
-        }}
-      />
 
       <CurrencyPickerDialog
         open={currencyOpen}

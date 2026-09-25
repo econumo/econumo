@@ -21,6 +21,8 @@ export interface CreateBudgetForm {
   startDate: string | null
   currencyId: Id
   accountIds: Id[]
+  /** must be a subset of accountIds */
+  savingsAccountIds?: Id[]
 }
 
 export interface UpdateBudgetForm {
@@ -31,6 +33,10 @@ export interface UpdateBudgetForm {
   accountIds?: Id[]
   /** absent = end month untouched; '' clears it; 'Y-m-d' sets it */
   endDate?: string
+  /** absent = flags untouched; present = replace-set over the caller's own members */
+  savingsAccountIds?: Id[]
+  /** required when the write drops a savings member that has plans or comments */
+  confirmSavingsRemoval?: boolean
 }
 
 export interface CloneBudgetForm {

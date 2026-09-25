@@ -1,6 +1,6 @@
 import { api, apiUrl } from './client'
 import type { Id } from './types'
-import type { AccountDto, AccountItemDto, AccountRole, AccountType } from './dto/account'
+import type { AccountDto, AccountItemDto, AccountRole } from './dto/account'
 import type { FolderDto } from './dto/folder'
 
 interface Envelope<T> {
@@ -14,7 +14,6 @@ export interface CreateAccountForm {
   balance: string
   icon: string
   folderId: Id | null
-  type?: AccountType
 }
 
 export interface UpdateAccountForm {
@@ -24,7 +23,6 @@ export interface UpdateAccountForm {
   icon: string
   currencyId: Id
   updatedAt: string
-  type?: AccountType
 }
 
 export interface AccountPositionChange {

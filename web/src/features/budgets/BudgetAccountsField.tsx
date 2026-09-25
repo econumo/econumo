@@ -14,6 +14,8 @@ interface BudgetAccountsFieldProps {
   selected: Set<Id>
   locked: Set<Id>
   onToggle: (id: Id, included: boolean) => void
+  savings: Set<Id>
+  onToggleSavings: (id: Id, on: boolean) => void
 }
 
 const SEARCH_THRESHOLD = 6
@@ -24,7 +26,7 @@ const SEARCH_THRESHOLD = 6
 // dialog) — those simply render no row, but stay in the set so submitting
 // still round-trips them. The included/total counter therefore counts only
 // members that HAVE a row, or a budget with deleted members reads "6 of 5".
-export function BudgetAccountsField({ accounts, selected, locked, onToggle }: BudgetAccountsFieldProps) {
+export function BudgetAccountsField({ accounts, selected, locked, onToggle, savings, onToggleSavings }: BudgetAccountsFieldProps) {
   const { t } = useTranslation()
   const { data: folders = [] } = useFolders()
   const [search, setSearch] = useState('')
@@ -42,6 +44,18 @@ export function BudgetAccountsField({ accounts, selected, locked, onToggle }: Bu
     <li key={account.id} className="flex items-center gap-2.5 py-2">
       <EntityIcon name={account.icon} className={`text-lg ${dimmed ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
       <span className={`min-w-0 flex-1 truncate text-sm ${dimmed ? 'text-muted-foreground' : ''}`}>{account.name}</span>
+      {/* the savings role is changeable even for a locked member: it never
+          removes the account from the budget */}
+      {selected.has(account.id) ? (
+        <span className="mr-2 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+          {t('budgets.modal.budget_form.savings.label')}
+          <Switch
+            aria-label={t('budgets.modal.budget_form.savings.toggle', { name: account.name })}
+            checked={savings.has(account.id)}
+            onCheckedChange={(checked) => onToggleSavings(account.id, checked === true)}
+          />
+        </span>
+      ) : null}
       <Switch
         aria-label={`include ${account.name}`}
         checked={selected.has(account.id)}
@@ -86,6 +100,7 @@ export function BudgetAccountsField({ accounts, selected, locked, onToggle }: Bu
           <li className="py-2 text-sm text-muted-foreground">{t('common.list.list_empty')}</li>
         ) : null}
       </ul>
+      <p className="text-[11px] text-muted-foreground">{t('budgets.modal.budget_form.savings.note')}</p>
       {locked.size > 0 ? (
         <p className="text-[11px] text-muted-foreground">{t('budgets.modal.budget_form.accounts_locked_hint')}</p>
       ) : null}

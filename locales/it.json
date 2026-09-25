@@ -168,8 +168,7 @@
       "default_folder": "Tutti i conti"
     },
     "account": {
-      "name_hidden": "[Conto nascosto]",
-      "savings_marker": "Risparmio"
+      "name_hidden": "[Conto nascosto]"
     },
     "switch_to_account": "Passa a",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Valuta"
-      },
-      "savings": {
-        "label": "Conto di risparmio",
-        "hint": "Pianifica nei tuoi budget quanto va su questo conto",
-        "confirm_title": "Disattivare il risparmio?",
-        "confirm_off": "I risparmi pianificati per questo conto verranno rimossi da {count} budget. Gli importi risparmiati e le transazioni non vengono modificati. | I risparmi pianificati per questo conto verranno rimossi da {count} budget. Gli importi risparmiati e le transazioni non vengono modificati.",
-        "confirm_action": "Disattiva"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Conti",
         "accounts_included": "{count} di {total} inclusi",
         "accounts_hidden": "In cartelle nascoste",
-        "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi"
+        "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
+        "savings": {
+          "label": "Risparmio",
+          "toggle": "{name} è un conto di risparmio",
+          "note": "I conti di risparmio sono mostrati per nome, con importi risparmiati e saldi, a tutti coloro che hanno accesso a questo budget.",
+          "confirm": {
+            "title": "Eliminare i risparmi pianificati?",
+            "question": "Gli importi pianificati e i commenti dei conti di risparmio disattivati o rimossi verranno eliminati da questo budget. Gli importi risparmiati e le transazioni non vengono modificati.",
+            "action": "Elimina piani"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nuovo budget"

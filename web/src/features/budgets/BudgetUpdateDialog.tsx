@@ -4,9 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
+import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import type { UpdateBudgetForm } from '@/api/budget'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
@@ -32,7 +35,11 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
+  const [savings, setSavings] = useState<Set<Id>>(new Set())
   const [error, setError] = useState<string | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null)
+  // the refused request, held while the user decides on the savings removal
+  const [unconfirmed, setUnconfirmed] = useState<UpdateBudgetForm | null>(null)
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
   // deleted members are permanent (they never disappear from filters.accounts) and
@@ -42,13 +49,17 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   // known" rather than crashing the page.
   const members = budget.filters?.accounts ?? []
   const locked = new Set(members.filter((a) => !a.removable).map((a) => a.id))
+  const initialSavings = members.filter((a) => a.isSavings === true).map((a) => a.id)
 
   useEffect(() => {
     if (open) {
       setName(budget.meta.name)
       setCurrencyId(budget.meta.currencyId)
       setSelected(new Set((budget.filters?.accounts ?? []).map((a) => a.id)))
+      setSavings(new Set((budget.filters?.accounts ?? []).filter((a) => a.isSavings === true).map((a) => a.id)))
       setError(null)
+      setServerError(null)
+      setUnconfirmed(null)
     }
   }, [open, budget])
 
@@ -67,6 +78,40 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       }
       return next
     })
+    if (!included) {
+      toggleSavings(id, false)
+    }
+  }
+
+  const toggleSavings = (id: Id, on: boolean) => {
+    setSavings((prev) => {
+      const next = new Set(prev)
+      if (on) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }
+
+  const send = (form: UpdateBudgetForm) => {
+    setServerError(null)
+    updateBudget.mutate(
+      { ...form, previousSavingsAccountIds: initialSavings },
+      {
+        onSuccess: onClose,
+        onError: (err) => {
+          // the server refuses (and writes nothing) when a savings member with
+          // plans or comments would be turned off or removed unconfirmed
+          if (!form.confirmSavingsRemoval && apiFieldErrors(err, 'confirmSavingsRemoval')) {
+            setUnconfirmed(form)
+            return
+          }
+          setServerError(apiErrorMessage(err))
+        },
+      },
+    )
   }
 
   const submit = () => {
@@ -81,10 +126,13 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
     if (!currencyId) {
       return
     }
-    updateBudget.mutate(
-      { id: budget.meta.id, name, currencyId, accountIds: [...selected] },
-      { onSuccess: onClose },
-    )
+    send({
+      id: budget.meta.id,
+      name,
+      currencyId,
+      accountIds: [...selected],
+      savingsAccountIds: [...savings].filter((id) => selected.has(id)),
+    })
   }
 
   return (
@@ -140,8 +188,39 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={locked} onToggle={toggleAccount} /> : null}
+        {ownAccounts.length > 0 ? (
+          <BudgetAccountsField
+            accounts={ownAccounts}
+            selected={selected}
+            locked={locked}
+            onToggle={toggleAccount}
+            savings={savings}
+            onToggleSavings={toggleSavings}
+          />
+        ) : null}
+        {serverError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {serverError}
+          </p>
+        ) : null}
       </form>
+
+      <ConfirmDialog
+        open={unconfirmed !== null}
+        onClose={() => setUnconfirmed(null)}
+        onConfirm={() => {
+          const form = unconfirmed
+          setUnconfirmed(null)
+          if (form) {
+            send({ ...form, confirmSavingsRemoval: true })
+          }
+        }}
+        title={t('budgets.modal.budget_form.savings.confirm.title')}
+        question={t('budgets.modal.budget_form.savings.confirm.question')}
+        confirmLabel={t('budgets.modal.budget_form.savings.confirm.action')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
 
       <CurrencyPickerDialog
         open={currencyOpen}

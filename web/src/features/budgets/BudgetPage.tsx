@@ -460,7 +460,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           onClose={() => setCreateBudgetOpen(false)}
           onSubmit={(form) => {
             createBudget.mutate(
-              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, accountIds: form.accountIds, ownerUserId: user?.id },
+              { id: uuidv7(), name: form.name, startDate: '', currencyId: form.currencyId, accountIds: form.accountIds, savingsAccountIds: form.savingsAccountIds, ownerUserId: user?.id },
               { onSuccess: () => setCreateBudgetOpen(false) },
             )
           }}

@@ -168,8 +168,7 @@
       "default_folder": "所有账户"
     },
     "account": {
-      "name_hidden": "[隐藏账户]",
-      "savings_marker": "储蓄"
+      "name_hidden": "[隐藏账户]"
     },
     "switch_to_account": "切换到",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "货币"
-      },
-      "savings": {
-        "label": "储蓄账户",
-        "hint": "在预算中规划存入此账户的金额",
-        "confirm_title": "关闭储蓄？",
-        "confirm_off": "此账户的计划储蓄将从 {count} 个预算中移除。已存金额和交易不受影响。",
-        "confirm_action": "关闭"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "账户",
         "accounts_included": "已包含 {count} 个，共 {total} 个",
         "accounts_hidden": "在隐藏文件夹中",
-        "accounts_locked_hint": "在过去月份中有交易的账户无法移除"
+        "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
+        "savings": {
+          "label": "储蓄",
+          "toggle": "{name} 是储蓄账户",
+          "note": "储蓄账户会以名称连同已存金额和余额显示给所有有权访问此预算的人。",
+          "confirm": {
+            "title": "删除计划储蓄？",
+            "question": "你关闭或移除的储蓄账户在此预算中的计划金额和备注将被删除。已存金额和交易不受影响。",
+            "action": "删除计划"
+          }
+        }
       },
       "create_budget_form": {
         "header": "新建预算"

@@ -168,8 +168,7 @@
       "default_folder": "Alle Konten"
     },
     "account": {
-      "name_hidden": "[Ausgeblendetes Konto]",
-      "savings_marker": "Sparen"
+      "name_hidden": "[Ausgeblendetes Konto]"
     },
     "switch_to_account": "Wechseln zu",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Währung"
-      },
-      "savings": {
-        "label": "Sparkonto",
-        "hint": "Planen Sie in Ihren Budgets, wie viel auf dieses Konto fließt",
-        "confirm_title": "Sparen deaktivieren?",
-        "confirm_off": "Geplante Sparbeträge für dieses Konto werden aus {count} Budget entfernt. Gesparte Beträge und Transaktionen bleiben unverändert. | Geplante Sparbeträge für dieses Konto werden aus {count} Budgets entfernt. Gesparte Beträge und Transaktionen bleiben unverändert.",
-        "confirm_action": "Deaktivieren"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Konten",
         "accounts_included": "{count} von {total} einbezogen",
         "accounts_hidden": "In ausgeblendeten Ordnern",
-        "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden"
+        "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden",
+        "savings": {
+          "label": "Sparen",
+          "toggle": "{name} ist ein Sparkonto",
+          "note": "Sparkonten werden allen mit Zugriff auf dieses Budget mit Namen, gesparten Beträgen und Salden angezeigt.",
+          "confirm": {
+            "title": "Geplante Sparbeträge löschen?",
+            "question": "Geplante Beträge und Kommentare der deaktivierten oder entfernten Sparkonten werden aus diesem Budget gelöscht. Gesparte Beträge und Transaktionen bleiben unverändert.",
+            "action": "Pläne löschen"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Neues Budget"

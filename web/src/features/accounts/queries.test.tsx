@@ -4,14 +4,7 @@ import { http, HttpResponse } from 'msw'
 import type { ReactNode } from 'react'
 import { server } from '@/test/msw'
 import { queryKeys } from '@/app/queryKeys'
-import { METRICS, trackEvent } from '@/lib/metrics'
 import { useAcceptAccountAccess, useAccounts, useCreateAccount, useDeclineAccountAccess, useDeleteAccount, useFolders, useUpdateAccount } from './queries'
-
-vi.mock('@/lib/metrics', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/lib/metrics')>()
-  return { ...actual, trackEvent: vi.fn() }
-})
-const trackEventMock = vi.mocked(trackEvent)
 
 const wireOwner = { id: 'u1', avatar: '', name: 'Ada' }
 const wireUser = { id: 'u1', name: 'Ada', email: 'ada@example.test', avatar: 'face:emerald', options: [] }
@@ -46,7 +39,6 @@ function makeWrapper() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  trackEventMock.mockClear()
 })
 
 it('create-account upserts the item and inserts the opening-balance transaction', async () => {
@@ -71,16 +63,16 @@ it('create-account upserts the item and inserts the opening-balance transaction'
 it('a balance edit that returns a correction refetches budget and plan data', async () => {
   server.use(
     http.post('*/api/v1/account/update-account', () =>
-      HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: 3 }, transaction: wireCorrection } }),
+      HttpResponse.json({ success: true, message: '', data: { item: wireAccount, transaction: wireCorrection } }),
     ),
   )
   const { queryClient, wrapper } = makeWrapper()
-  queryClient.setQueryData(queryKeys.accounts, [{ ...wireAccount, type: 3 }])
+  queryClient.setQueryData(queryKeys.accounts, [wireAccount])
   queryClient.setQueryData(queryKeys.transactions, [])
   queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], null)
   queryClient.setQueryData([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6], null)
   const { result } = renderHook(() => useUpdateAccount(), { wrapper })
-  result.current.mutate({ id: 'a-real', name: 'Cash', balance: '100.5', icon: 'wallet', currencyId: 'c1', updatedAt: '2026-09-24 10:00:00', type: 3 })
+  result.current.mutate({ id: 'a-real', name: 'Cash', balance: '100.5', icon: 'wallet', currencyId: 'c1', updatedAt: '2026-09-24 10:00:00' })
   await waitFor(() => expect(result.current.isSuccess).toBe(true))
   expect(queryClient.getQueryState([...queryKeys.budget, 'b1', '2026-09-01'])!.isInvalidated).toBe(true)
   expect(queryClient.getQueryState([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6])!.isInvalidated).toBe(true)
@@ -185,86 +177,4 @@ it('useAccounts hides an account pending my acceptance, and shows it once accept
   )
   await result.current.refetch()
   await waitFor(() => expect(result.current.data?.map((a) => a.id)).toEqual(['a-real', 'a-pending']))
-})
-
-describe('savings toggle metric', () => {
-  const savingsToggles = () => trackEventMock.mock.calls.filter(([name]) => name === METRICS.ACCOUNT_SAVINGS_TOGGLE).length
-
-  it('fires once when an account is created as savings', async () => {
-    server.use(
-      http.post('*/api/v1/account/create-account', () =>
-        HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: 3 }, transaction: null } }),
-      ),
-    )
-    const { queryClient, wrapper } = makeWrapper()
-    queryClient.setQueryData(queryKeys.accounts, [])
-    queryClient.setQueryData(queryKeys.folders, [{ id: 'f1', name: 'General', position: 0, isVisible: 1 }])
-    const { result } = renderHook(() => useCreateAccount(), { wrapper })
-    result.current.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '0', icon: 'wallet', folderId: 'f1', type: 3 })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(savingsToggles()).toBe(1)
-  })
-
-  it('does not fire when an everyday account is created', async () => {
-    server.use(
-      http.post('*/api/v1/account/create-account', () =>
-        HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: 2 }, transaction: null } }),
-      ),
-    )
-    const { queryClient, wrapper } = makeWrapper()
-    queryClient.setQueryData(queryKeys.accounts, [])
-    queryClient.setQueryData(queryKeys.folders, [{ id: 'f1', name: 'General', position: 0, isVisible: 1 }])
-    const { result } = renderHook(() => useCreateAccount(), { wrapper })
-    result.current.mutate({ id: 'op1', name: 'Cash', currencyId: 'c1', balance: '0', icon: 'wallet', folderId: 'f1', type: 2 })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(savingsToggles()).toBe(0)
-  })
-
-  async function update(prevType: number, nextType: number) {
-    server.use(
-      http.post('*/api/v1/account/update-account', () =>
-        HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: nextType }, transaction: null } }),
-      ),
-    )
-    const { queryClient, wrapper } = makeWrapper()
-    queryClient.setQueryData(queryKeys.accounts, [{ ...wireAccount, type: prevType }])
-    const { result } = renderHook(() => useUpdateAccount(), { wrapper })
-    result.current.mutate({
-      id: 'a-real', name: 'Cash', balance: '100.5', icon: 'wallet', currencyId: 'c1', updatedAt: '2026-09-24 10:00:00', type: nextType as 1 | 2 | 3,
-    })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-  }
-
-  it('fires once on an update that turns savings on', async () => {
-    await update(1, 3)
-    expect(savingsToggles()).toBe(1)
-  })
-
-  it('fires once on an update that turns savings off', async () => {
-    await update(3, 2)
-    expect(savingsToggles()).toBe(1)
-  })
-
-  it('does not fire on an update that keeps the savings state', async () => {
-    await update(3, 3)
-    await update(1, 1)
-    expect(savingsToggles()).toBe(0)
-  })
-
-  it('an update that flips the savings state refetches budget and plan data', async () => {
-    server.use(
-      http.post('*/api/v1/account/update-account', () =>
-        HttpResponse.json({ success: true, message: '', data: { item: { ...wireAccount, type: 2 }, transaction: null } }),
-      ),
-    )
-    const { queryClient, wrapper } = makeWrapper()
-    queryClient.setQueryData(queryKeys.accounts, [{ ...wireAccount, type: 3 }])
-    queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], null)
-    queryClient.setQueryData([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6], null)
-    const { result } = renderHook(() => useUpdateAccount(), { wrapper })
-    result.current.mutate({ id: 'a-real', name: 'Cash', balance: '100.5', icon: 'wallet', currencyId: 'c1', updatedAt: '2026-09-24 10:00:00', type: 2 })
-    await waitFor(() => expect(result.current.isSuccess).toBe(true))
-    expect(queryClient.getQueryState([...queryKeys.budget, 'b1', '2026-09-01'])!.isInvalidated).toBe(true)
-    expect(queryClient.getQueryState([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6])!.isInvalidated).toBe(true)
-  })
 })

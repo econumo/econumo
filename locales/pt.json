@@ -168,8 +168,7 @@
       "default_folder": "Todas as contas"
     },
     "account": {
-      "name_hidden": "[Conta oculta]",
-      "savings_marker": "Poupança"
+      "name_hidden": "[Conta oculta]"
     },
     "switch_to_account": "Mudar para",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Moeda"
-      },
-      "savings": {
-        "label": "Conta poupança",
-        "hint": "Planeie nos seus orçamentos quanto vai para esta conta",
-        "confirm_title": "Desativar a poupança?",
-        "confirm_off": "A poupança planeada para esta conta será removida de {count} orçamento. Os montantes poupados e as transações não são afetados. | A poupança planeada para esta conta será removida de {count} orçamentos. Os montantes poupados e as transações não são afetados.",
-        "confirm_action": "Desativar"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Contas",
         "accounts_included": "{count} de {total} incluídas",
         "accounts_hidden": "Em pastas ocultas",
-        "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas"
+        "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas",
+        "savings": {
+          "label": "Poupança",
+          "toggle": "{name} é uma conta poupança",
+          "note": "As contas poupança são mostradas pelo nome, com os montantes poupados e saldos, a todos os que têm acesso a este orçamento.",
+          "confirm": {
+            "title": "Eliminar a poupança planeada?",
+            "question": "Os montantes planeados e os comentários das contas poupança que desativou ou removeu serão eliminados deste orçamento. Os montantes poupados e as transações não são afetados.",
+            "action": "Eliminar planos"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Novo orçamento"

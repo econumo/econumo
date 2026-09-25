@@ -168,8 +168,7 @@
       "default_folder": "Alle rekeningen"
     },
     "account": {
-      "name_hidden": "[Verborgen rekening]",
-      "savings_marker": "Sparen"
+      "name_hidden": "[Verborgen rekening]"
     },
     "switch_to_account": "Wisselen naar",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Valuta"
-      },
-      "savings": {
-        "label": "Spaarrekening",
-        "hint": "Plan in uw budgetten hoeveel er naar deze rekening gaat",
-        "confirm_title": "Sparen uitschakelen?",
-        "confirm_off": "Gepland spaargeld voor deze rekening wordt uit {count} budget verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd. | Gepland spaargeld voor deze rekening wordt uit {count} budgetten verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd.",
-        "confirm_action": "Uitschakelen"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Rekeningen",
         "accounts_included": "{count} van {total} opgenomen",
         "accounts_hidden": "In verborgen mappen",
-        "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd"
+        "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
+        "savings": {
+          "label": "Sparen",
+          "toggle": "{name} is een spaarrekening",
+          "note": "Spaarrekeningen worden met naam, gespaarde bedragen en saldi getoond aan iedereen met toegang tot dit budget.",
+          "confirm": {
+            "title": "Gepland spaargeld verwijderen?",
+            "question": "Geplande bedragen en opmerkingen van de spaarrekeningen die je hebt uitgeschakeld of verwijderd, worden uit dit budget verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd.",
+            "action": "Plannen verwijderen"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nieuw budget"

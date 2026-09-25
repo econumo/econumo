@@ -168,8 +168,7 @@
       "default_folder": "Tous les comptes"
     },
     "account": {
-      "name_hidden": "[Compte masqué]",
-      "savings_marker": "Épargne"
+      "name_hidden": "[Compte masqué]"
     },
     "switch_to_account": "Basculer vers",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Devise"
-      },
-      "savings": {
-        "label": "Compte d'épargne",
-        "hint": "Planifiez dans vos budgets combien va sur ce compte",
-        "confirm_title": "Désactiver l'épargne ?",
-        "confirm_off": "L'épargne prévue pour ce compte sera supprimée de {count} budget. Les montants épargnés et les transactions ne sont pas affectés. | L'épargne prévue pour ce compte sera supprimée de {count} budgets. Les montants épargnés et les transactions ne sont pas affectés.",
-        "confirm_action": "Désactiver"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Comptes",
         "accounts_included": "{count} sur {total} inclus",
         "accounts_hidden": "Dans des dossiers masqués",
-        "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés"
+        "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés",
+        "savings": {
+          "label": "Épargne",
+          "toggle": "{name} est un compte d'épargne",
+          "note": "Les comptes d'épargne sont affichés par nom, avec leurs montants épargnés et leurs soldes, à toutes les personnes ayant accès à ce budget.",
+          "confirm": {
+            "title": "Supprimer l'épargne prévue ?",
+            "question": "Les montants prévus et les commentaires des comptes d'épargne désactivés ou retirés seront supprimés de ce budget. Les montants épargnés et les transactions ne sont pas affectés.",
+            "action": "Supprimer les plans"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nouveau budget"

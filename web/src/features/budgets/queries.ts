@@ -37,6 +37,7 @@ export function useBudgets() {
 
 export function useCreateBudget() {
   const queryClient = useQueryClient()
+  const invalidate = useInvalidateBudget()
   return useMutation({
     mutationFn: async (form: budgetApi.CreateBudgetForm & { ownerUserId?: Id }) => {
       // Vue guard: a same-name own budget resolves without an API call
@@ -47,7 +48,12 @@ export function useCreateBudget() {
         return existing
       }
       const { ownerUserId: _owner, ...payload } = form
-      return budgetApi.createBudget(payload)
+      const meta = await budgetApi.createBudget(payload)
+      // here, not in onSuccess: the dedupe above creates nothing
+      if ((form.savingsAccountIds?.length ?? 0) > 0) {
+        trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
+      }
+      return meta
     },
     onSuccess: (meta) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => {
@@ -55,6 +61,7 @@ export function useCreateBudget() {
         return items.some((b) => b.id === meta.id) ? items : [...items, meta]
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      invalidate()
       trackEvent(METRICS.BUDGET_CREATE)
     },
   })
@@ -402,11 +409,19 @@ export function useChangeElementCurrency() {
   })
 }
 
+function sameIdSet(a: Id[], b: Id[]): boolean {
+  const set = new Set(a)
+  return set.size === new Set(b).size && b.every((id) => set.has(id))
+}
+
 export function useUpdateBudgetDetail() {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
-    mutationFn: budgetApi.updateBudget,
+    // previousSavingsAccountIds is client-only: the set the dialog opened with,
+    // so the metric fires only when the request actually changes a flag
+    mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
+      budgetApi.updateBudget(form),
     onSuccess: (meta, variables) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
@@ -414,6 +429,9 @@ export function useUpdateBudgetDetail() {
       invalidate()
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
+      if (variables.savingsAccountIds !== undefined && !sameIdSet(variables.savingsAccountIds, variables.previousSavingsAccountIds ?? [])) {
+        trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
+      }
     },
   })
 }

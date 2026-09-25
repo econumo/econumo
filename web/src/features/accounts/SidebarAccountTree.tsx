@@ -13,7 +13,6 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { useExchange } from '@/features/currencies/useExchange'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { buildAccountsTree } from './accountsTree'
-import { SavingsMarker } from './SavingsMarker'
 import type { AccountDto } from '@/api/dto/account'
 
 // Vue marks shared accounts with the Material "group" icon in the desktop
@@ -173,11 +172,8 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
                           <span className="mb-1 mt-2 min-h-8 w-full truncate text-sm" title={account.name}>
                             {account.name}
                           </span>
-                          <span className="flex w-full items-baseline justify-between gap-2">
-                            <span className={`truncate text-sm font-medium ${selected ? 'text-white/85' : 'text-muted-foreground'}`}>
-                              {moneyFormat(account.balance, account.currency)}
-                            </span>
-                            <SavingsMarker account={account} selected={selected} />
+                          <span className={`text-sm font-medium ${selected ? 'text-white/85' : 'text-muted-foreground'}`}>
+                            {moneyFormat(account.balance, account.currency)}
                           </span>
                           <SharedAvatars account={account} />
                         </button>
@@ -202,11 +198,8 @@ export function SidebarAccountTree({ collapsed = false }: { collapsed?: boolean 
                             <span className="truncate text-sm leading-tight" title={account.name}>
                               {account.name}
                             </span>
-                            <span className="flex items-baseline gap-2">
-                              <span className={`truncate text-[13px] leading-tight ${selected ? 'text-white/85' : 'text-muted-foreground'}`}>
-                                {moneyFormat(account.balance, account.currency)}
-                              </span>
-                              <SavingsMarker account={account} selected={selected} />
+                            <span className={`text-[13px] leading-tight ${selected ? 'text-white/85' : 'text-muted-foreground'}`}>
+                              {moneyFormat(account.balance, account.currency)}
                             </span>
                           </span>
                           <SharedMark account={account} selected={selected} />

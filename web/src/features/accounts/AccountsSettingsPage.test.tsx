@@ -386,12 +386,3 @@ it('compact: the preview sheet shows a read-only access list to a non-admin memb
   expect(screen.getByRole('button', { name: 'Decline' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull()
 })
-
-it('marks savings accounts with a Savings label', async () => {
-  server.use(...coreHandlers({ accounts: fixtureAccountsForAccess.map((a) => (a.id === 'a2' ? { ...a, type: 3 } : a)) }))
-  renderPage()
-  const bank = (await screen.findByTitle('Bank')).closest('li')!
-  expect(within(bank).getByText('Savings')).toBeInTheDocument()
-  const cash = screen.getByTitle('Cash').closest('li')!
-  expect(within(cash).queryByText('Savings')).toBeNull()
-})

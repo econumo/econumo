@@ -168,8 +168,7 @@
       "default_folder": "All accounts"
     },
     "account": {
-      "name_hidden": "[Hidden account]",
-      "savings_marker": "Savings"
+      "name_hidden": "[Hidden account]"
     },
     "switch_to_account": "Switch to",
     "form": {
@@ -193,13 +192,6 @@
       },
       "currency": {
         "label": "Currency"
-      },
-      "savings": {
-        "label": "Savings account",
-        "hint": "Plan how much goes into this account in your budgets",
-        "confirm_title": "Turn off savings?",
-        "confirm_off": "Planned savings for this account will be removed from {count} budget. Saved amounts and transactions are not affected. | Planned savings for this account will be removed from {count} budgets. Saved amounts and transactions are not affected.",
-        "confirm_action": "Turn off"
       }
     },
     "page": {
@@ -1140,7 +1132,17 @@
         "accounts": "Accounts",
         "accounts_included": "{count} of {total} included",
         "accounts_hidden": "In hidden folders",
-        "accounts_locked_hint": "Accounts with transactions in past months can't be removed"
+        "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
+        "savings": {
+          "label": "Savings",
+          "toggle": "{name} is a savings account",
+          "note": "Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.",
+          "confirm": {
+            "title": "Delete planned savings?",
+            "question": "Planned amounts and comments of the savings accounts you turned off or removed will be deleted from this budget. Saved amounts and transactions are not affected.",
+            "action": "Delete plans"
+          }
+        }
       },
       "create_budget_form": {
         "header": "New budget"
