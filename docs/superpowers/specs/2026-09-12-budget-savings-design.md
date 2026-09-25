@@ -1,6 +1,7 @@
 # Budget savings: savings accounts and planned savings
 
-**Date:** 2026-09-12 · **Revised:** 2026-09-22 (design review — see "Revisions")
+**Date:** 2026-09-12 · **Revised:** 2026-09-22 (design review), 2026-09-25 (savings
+becomes a per-budget membership flag) — see "Revisions"
 **Branch:** `feature/budget-savings` · **Order:** ships **after** budget cell
 comments (#246); see "Seam with budget cell comments".
 
@@ -14,9 +15,7 @@ Today there is no way to do this. Budget math counts an explicit set of member
 accounts (`budgets_accounts`), and a transfer between two member accounts nets
 out of every figure: moving 500 from chequing into a TFSA that is also a member
 shows up nowhere — not as spending, not as a transfer, not as anything that can
-be planned. Accounts carry an `accounts.type` column (`TypeCash=1`,
-`TypeCreditCard=2`, `internal/model/account.go:22-35`) that no code path or UI
-reads.
+be planned.
 
 ## Decisions (agreed during brainstorming)
 
@@ -26,21 +25,22 @@ reads.
 | Granularity | **One row per savings account** that is a member of the budget. |
 | Effect on totals | **Savings is an outflow**: Net = Income − Expenses + Transfers − Savings; balance splits into everyday **Balance** and **Savings balance**. |
 | Views | **Both** the Plan view (`/plan`) and the monthly Budget view. |
-| Account flag | `accounts.type = 3` (`TypeSavings`) — reuse the existing column, no migration. |
+| Savings flag | *(2026-09-25)* **Per budget, on the membership**: `budgets_accounts.is_savings`. The same account can be savings in one budget and everyday in another. Set by the account's owner (who must be able to update the budget), at any time, from the budget's settings. Accounts carry no savings marker. |
 | Plan storage | New budget element type `ElementSavings = 5` (`external_id` = account id); planned amounts in `budgets_elements_limits` via the existing `set-limit`. |
 | Layout | Savings rows live in their **own collapsible section at the bottom**; they **cannot be put into folders**, only reordered. |
 | Carry-over | None: monthly Remaining = this month's planned − this month's saved. |
-| Removal | A savings row whose account leaves the budget or stops being savings is removed, with its plans, on the next element sync (same as categories). *(2026-09-22)* The SPA confirms before turning the flag off when plans would be lost. |
+| Removal | *(2026-09-25)* Turning the flag off, or removing a savings member from the budget, deletes its savings row with its plans and comment threads **in the same write**. When the row carries any plan or comment, the server refuses the write with `budget.savings_removal_unconfirmed` unless the request confirms it; the SPA asks and resends. |
+| Visibility | *(2026-09-25)* **Accepted and documented**: every participant of the budget, guests included, sees each savings row's account name, icon and amounts, and the savings balances. The budget settings say so next to the savings toggle. |
 | Comments (#246) | *(2026-09-22)* Savings cells carry comment threads like any other cell; this PR adds the marker and entry point in the Savings section. |
-| Out of scope (v1) | Drill-down from a savings row into its transactions. |
+| Out of scope (v1) | Drill-down from a savings row into its transactions. A real credit-card account type (balance shown as debt, credit limit) is a separate feature: `accounts.type` stays untouched here. |
 
 ## Definitions
 
 - **Member accounts**: `budgets_accounts` of every participant — the existing
   `filters.includedAccountIDs` (`internal/budget/builder.go:117-199`), deleted
   accounts included.
-- **Savings accounts** (of a budget): member accounts with `type = 3`.
-- **Everyday accounts**: member accounts with `type ≠ 3`.
+- **Savings accounts** (of a budget): member accounts whose `budgets_accounts.is_savings` is set.
+- **Everyday accounts**: every other member account.
 - **Actual savings** of savings account *S* in month *M* (in *S*'s currency):
 
   ```
@@ -55,29 +55,44 @@ reads.
 
 ## Backend
 
-### Accounts (`internal/model/account.go`, `internal/account`)
+### Savings flag on budget membership (`budgets_accounts`)
 
-- Add `TypeSavings AccountType = 3`; `Valid()` accepts 1, 2, 3. `Valid()` gates
-  *writes* only — reads must keep tolerating whatever is already in the column.
-  `NewAccount` has always written 2 and nothing has ever written anything else, but
-  `data:import-sqlite` copies the column verbatim from a foreign database, so a
-  hydrating repo read must never reject an unknown type: it maps through unchanged
-  and the UI treats "not 3" as everyday. Add a repo test that loads an account row
-  with `type = 0` and gets it back intact.
-- `CreateAccountRequest` and `UpdateAccountRequest`
-  (`internal/model/account_dto.go`) gain optional `type *int`. `Validate()`
-  rejects values outside {1,2,3} with a coded field error on `type`
-  (new code `account.invalid_type`, catalogued in every locale).
-  - Create: absent → `TypeCreditCard` (today's `NewAccount` default).
-  - Update: absent → unchanged. A new mutator `UpdateType(AccountType)` on the
-    entity.
-- Permission to change the type is exactly the permission to update the
-  account today.
-- The repo already writes `type` on upsert (`repo/repo.go:152`,
-  `accounts.sql` `UpsertAccount`) — no query or migration change.
-- `AccountResult.type` is already on the wire.
-- MCP (`internal/account/mcp`): `create_account` and `update_account` inputs
-  gain optional `type` with the same semantics.
+*(2026-09-25: replaces the `accounts.type = 3` design; see Revisions.)*
+
+- Migration (both engines, same version): `budgets_accounts.is_savings BOOLEAN NOT
+  NULL DEFAULT false`. Existing rows read as everyday. `model.BudgetAccount` gains
+  `IsSavings`; `MemberAccounts` returns it; `AddAccount` takes it; a new repo
+  method sets it on an existing member.
+- **Who**: the account's owner, when they can update the budget — the rule every
+  membership write already follows (`membershipPrelude`). Archived budgets refuse it
+  like every other budget write.
+- **Write paths**:
+  - `create-budget`: optional `savingsAccountIds []string`, each one of the request's
+    `accountIds` (else coded 400 `budget.savings_account_not_member`, field
+    `savingsAccountIds`).
+  - `update-budget`: optional `savingsAccountIds` — absent = untouched; present =
+    replace-set over the caller's OWN member accounts after `accountIds` is applied
+    (same semantics as `accountIds`). An id that is not then one of the caller's
+    member accounts → `budget.savings_account_not_member`.
+  - `add-account`: optional `isSavings` — absent leaves an existing member's flag
+    alone and adds a new member as everyday; present sets it.
+  - `remove-account`: unchanged, except for the confirmation guard below.
+- **Confirmation guard**: a write that turns a member's flag off or removes a savings
+  member, while that member's savings element carries at least one limit or comment,
+  is refused with coded 400 `budget.savings_removal_unconfirmed` (field
+  `savingsAccountIds`, params `{count}` = affected accounts) unless the request
+  carries `confirmSavingsRemoval: true` (`update-budget`, `add-account`,
+  `remove-account`). The check runs on the server, so it holds whatever the client
+  has loaded. Nothing is written when it refuses.
+- Every write above runs `syncElements` in its own transaction, so a savings row
+  appears or disappears together with the flag (with its limits and #246 comments,
+  by cascade) — no lazy deletion is left waiting for an unrelated write.
+- `filters.accounts` entries (the requester's own member accounts) gain
+  `isSavings` (bool, like `removable`), which the settings dialog round-trips.
+- `clone-budget` copies the flag with membership; `accept-access` seeds new
+  members as everyday.
+- MCP: `add_budget_account` gains `is_savings` and `confirm_savings_removal`;
+  `remove_budget_account` gains `confirm_savings_removal`.
 
 ### Budget element type
 
@@ -95,32 +110,26 @@ reads.
 
 ### Element sync (`internal/budget/move.go` `syncElements`)
 
-After tags, for every savings account among the budget's member accounts
-(deleted included): `ensure(accountID, ElementSavings, account.currencyId)`,
-marked live (not archived, `folder_id` NULL). Any `ElementSavings` row whose
-account is no longer a member or no longer `type = 3` is not seen and is
-deleted by the existing unseen-row deletion (cascading its limits).
+After tags, for every savings member of the budget (deleted accounts included):
+`ensure(accountID, ElementSavings, account.currencyId)`, marked live (not archived,
+`folder_id` NULL). Any `ElementSavings` row whose account is no longer a member or
+no longer flagged is not seen and is deleted by the existing unseen-row deletion
+(cascading its limits and comments).
 
 The element row's own archived flag is therefore always false and is **not** the
 source of the wire's `isArchived`: readers derive that from the account's
 `is_deleted` at build time (see the wire section). One source of truth — nothing
 ever writes `is_archived = 1` on a savings element.
 
-Deletion here is the same rule categories live under, but the trigger is different:
-a category leaves a budget through a deliberate multi-step action, whereas savings
-is a switch in the account dialog, and the deletion lands later, lazily, on whatever
-budget write happens next. The backend rule stands (consistency, no dead rows), and
-the SPA carries the warning — see "Account dialog" below.
+*(2026-09-25)* The flag and membership writes run this sync themselves (see the
+flag section), behind the server-side confirmation guard. The account currency and
+name come through the budget feature's existing account lookup port; the flag
+comes from the budget's own membership rows. No new cross-feature import.
 
-The account type and currency needed here come through the budget feature's
-existing account lookup port (the one `builder.go` uses for member accounts);
-extend its result with `Type` if it does not already carry it. No new
-cross-feature import.
-
-Sync remains lazy — it runs on budget writes (`move-element`, envelope writes,
-and the `set-limit`/`change-element-currency` self-heal), never on reads.
-Readers therefore derive savings rows from the member savings accounts and
-use the element row only for position, currency and limits (see builders).
+Sync otherwise stays lazy for the rest of the budget (it runs on budget writes,
+never on reads). Readers derive savings rows from the flagged members and use the
+element row only for position, currency and limits (see builders), so a row whose
+element was not synced yet still renders.
 
 `assignMissingKeys` must key savings elements in their **own ordering group**
 (no-folder group is split: savings vs everything else) so their sort keys
@@ -241,27 +250,28 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
 
 ### DTOs
 
-- `AccountType.SAVINGS = 3` (`web/src/api/dto/account.ts`).
 - `BudgetElementType.SAVINGS = 5` (`web/src/api/dto/budget.ts`).
 - Budget/plan structure types gain `savings`, `savingsOpeningBalances`,
-  `savingsFlows`; create/update account payloads gain optional `type`.
+  `savingsFlows`; `filters.accounts` entries gain `isSavings`; create/update
+  budget payloads gain optional `savingsAccountIds` and `confirmSavingsRemoval`.
 
-### Account dialog and lists
+### Budget settings (`BudgetUpdateDialog`, `BudgetDialog`, `BudgetAccountsField`)
 
-- `AccountDialog.tsx`: "Savings account" switch. Create sends `type: 3` when on,
-  `2` when off. Update sends `3` when on; when off, the account's previous type
-  if it was 1 or 2, else `2`.
-- **Turning the switch off is confirmed** when it would destroy plans: on save, if
-  the account was savings and is not any more, the dialog asks
-  ("Planned savings for this account will be removed from {n} budget(s). Saved
-  amounts and transactions are not affected."). The check uses data the SPA already
-  holds — the budgets the user can see, their `structure.savings` rows, and whether
-  any carries a plan — so it needs no new endpoint; when no visible budget plans
-  savings for the account, there is no dialog. A participant's plans in a budget the
-  actor cannot see are not counted; that is acceptable (the actor owns the account)
-  and is why the confirmation text says "will be removed" without a precise total.
-- Small "Savings" marker on savings accounts in `SidebarAccountTree.tsx` and
-  `AccountsSettingsPage.tsx`.
+*(2026-09-25: replaces the account-dialog switch, its cache-based confirmation and
+the account-level marker.)*
+
+- `BudgetAccountsField` (shared by the create and update budget dialogs): each
+  selected own account gets a "Savings" toggle, initialised from
+  `filters.accounts[].isSavings`. Available at any time, including for members
+  locked by the removal rule. Next to the toggles, the note: "Savings accounts are
+  shown by name, with their saved amounts and balances, to everyone with access to
+  this budget."
+- Create sends `savingsAccountIds`; update sends the full own savings set.
+- When the server answers `budget.savings_removal_unconfirmed`, the dialog asks
+  ("Planned amounts and comments for {count} savings account(s) will be deleted from
+  this budget. Saved amounts and transactions are not affected.") and resends with
+  `confirmSavingsRemoval: true`; cancelling leaves the dialog open, unchanged.
+- No account-level switch, type field or marker.
 
 ### Plan view (`PlanSheet.tsx`, `planMath.ts`, `budgetStore.ts`)
 
@@ -295,6 +305,10 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
   - **Balance** (everyday) = today's combined balance (unchanged computation)
     − Savings balance, so the two rows always sum to the former total. The Savings
     balance row carries the "includes interest and other activity" tooltip above.
+  - *(2026-09-25)* The split shows whenever the plan carries savings data — any
+    savings row, **or** any non-zero `savingsOpeningBalances` / `savingsFlows`
+    amount. A deleted savings account with a balance but no plan or activity in the
+    window renders no row, yet its money must not be counted as everyday.
 
 ### Monthly Budget view (`BudgetPage.tsx`, `budgetMath.ts`)
 
@@ -310,26 +324,31 @@ Update the `set_limit` and `move_element` descriptions to mention savings rows
 
 ### Analytics
 
-- `METRICS.appAccountSavingsToggle`, fired in the create/update account
-  mutations' `onSuccess` when the resulting savings state differs from the
-  previous one (create: when created as savings).
+- *(2026-09-25)* `METRICS.appBudgetSavingsToggle`, fired once in the create/update
+  budget mutations' `onSuccess` when the request changed any savings flag
+  (create: when any account is created as savings).
 - Planned-savings edits are covered by the existing set-limit event at its
   shared hook.
 
 ### i18n
 
-All 11 catalogues: savings switch label/hint, "Savings" marker, plan section
-title, `budgets.page.plan.totals.savings`, `…savingsBalance`, monthly block
-labels (Planned / Saved / Remaining, "Saved {saved} of {planned} planned"),
-`errors.account.invalid_type`, `errors.budget.savings_folder_not_allowed`.
+All 11 catalogues: the budget-settings savings toggle label and visibility note, the
+removal confirmation, plan section title, `budgets.page.plan.totals.savings`,
+`…savingsBalance`, monthly block labels (Planned / Saved / Remaining, "Saved
+{saved} of {planned} planned"), `errors.budget.savings_folder_not_allowed`,
+`errors.budget.savings_account_not_member`, `errors.budget.savings_removal_unconfirmed`.
 
 ## Testing
 
 - **Go unit/integration**
-  - Account: type validation on create/update; absent type defaults/keeps;
-    type persisted and returned.
-  - Sync: savings element created for a member savings account; removed (with
-    limits) when the account leaves the budget or its type changes.
+  - Flag writes: create/update-budget and add-account set the flag; absent leaves it;
+    a non-member id is refused; another user's account is refused; clone copies it.
+  - Guard: turning a planned or commented savings member off, or removing it, is
+    refused without `confirmSavingsRemoval` and writes nothing; with it, the row,
+    its limits and its comments are gone after the same request; an unplanned
+    member needs no confirmation.
+  - Sync: savings element created for a flagged member; removed (with limits) when
+    the account leaves the budget or the flag is turned off.
   - Move: folder rejected with `budget.savings_folder_not_allowed`; reorder
     within savings group; non-savings no-folder ordering unaffected.
   - `SavingsByMonth`: everyday→savings counts; savings→everyday subtracts;
@@ -342,20 +361,18 @@ labels (Planned / Saved / Remaining, "Saved {saved} of {planned} planned"),
   - Currency: a savings account in a currency other than the element's converts
     through the shared `bulkConvert` pass — one conversion, element currency on the
     row, budget currency in the section total.
-  - Account read tolerance: a stored `accounts.type` outside {1,2,3} round-trips
-    through the repo unchanged and reads as everyday.
-- **Parity**: new apiparity scenario `budget_savings` (mark savings, add to
-  budget, set-limit, transfers, get-budget, get-budget-plan, move-element
-  errors); regenerate and inspect budget/account goldens; mcpparity goldens;
+- **Parity**: new apiparity scenario `budget_savings` (flag savings through
+  update-budget, set-limit, transfers, get-budget, get-budget-plan, move-element
+  errors, the unconfirmed-removal refusal and the confirmed removal); regenerate and inspect budget/account goldens; mcpparity goldens;
   `make test-repo-pgsql` and `enginecompare` pass.
 - **SPA (vitest)**: `planMath` savings row, net, balance split; PlanSheet
-  savings section render/fold/reorder; BudgetPage savings block; AccountDialog
-  switch payloads; metrics coverage. Plus: the switch-off confirmation appears when
-  a visible budget plans savings for the account and is skipped when none does
-  (both branches), and a savings cell renders the comment marker and opens the
-  thread.
-- **Docs**: `docs/regression-test-plan.md` — savings toggle (including the
-  switch-off confirmation and the plans it removes), plan section and totals,
+  savings section render/fold/reorder; BudgetPage savings block; the settings
+  toggle payloads (create and update) and the removal confirmation round trip
+  (confirm resends, cancel sends nothing more); the balance split with no rows but
+  a savings opening balance; metrics coverage; a savings cell renders the comment
+  marker and opens the thread.
+- **Docs**: `docs/regression-test-plan.md` — the budget-settings savings toggle
+  (including the visibility note, the removal confirmation and what it deletes), plan section and totals,
   monthly block and widget line, reorder/no-folder, transfer shows as saved, clone
   keeps plans, a comment thread on a savings cell, and an item asserting that a
   Savings balance moving by more than the Saved figure (interest) is expected
@@ -399,28 +416,32 @@ otherwise independent; these are the agreed terms.
 6. **Seam with #246** recorded: savings cells carry comment threads, this branch
    owns the savings-section UI and the rebase.
 
-## Status and next steps (2026-09-24)
+**2026-09-25 — review of the implementation (PR #245).**
 
-**IMPLEMENTED.** All eleven plan tasks landed on `budget-savings-work` (rebased onto
-budget cell comments, #246, as sequenced above): the savings account type
-(`accounts.type = 3`), `ElementSavings` (type 5) sync into its own ordering group,
-the `SavingsByMonth`/`AccountsNetByMonth` read queries, `structure.savings` on both
-`get-budget` and `get-budget-plan` plus `savingsOpeningBalances`/`savingsFlows`, the
-`budget_savings` apiparity scenario, and the SPA — account dialog switch with the
-plan-removal confirmation and the "Savings" marker, the plan-view Savings section,
-the monthly Savings block and widget line, and the metric. Docs and the full gate
-suite (this task) close out the feature.
+7. **Savings is a per-budget membership flag, not an account type.** The account
+   switch deleted plans in budgets the switch could not see: its confirmation only
+   counted budgets already in the browser's cache, and the deletion landed later on
+   an unrelated write. The flag now lives on `budgets_accounts`, is edited in the
+   budget's own settings, deletes the row in the same write, and is guarded by a
+   server-side confirmation. An account can be savings in one budget and everyday in
+   another. `accounts.type` is left untouched (a credit-card type is its own
+   feature).
+8. **Visibility accepted and documented**: participants, guests included, see savings
+   rows by account name with amounts; the settings say so beside the toggle.
+9. **The balance split follows the savings data, not only the rows**: a deleted
+   savings account with a balance but no row in the window still moves its money
+   out of the everyday Balance.
+
+## Status (2026-09-25)
+
+**Revision 7 in progress.** The first implementation (account type `3`, account
+dialog switch) landed on `feature/budget-savings` and was reviewed; revision 7 moves
+the flag to budget membership. Everything below the flag — `ElementSavings`, the
+read queries, both builders' wire fields, the plan and monthly UIs — carries over
+unchanged.
 
 ### Deviations from the spec as written
 
-1. **Only `create_account`'s MCP tool gained `type`.** No `update_account` MCP tool
-   exists in this codebase to extend, so an MCP client cannot flip an existing
-   account's savings switch — that action is REST/SPA-only.
-2. **The SPA always sends `type` on account update**, never omitting it, so an
-   account whose stored type falls outside `{1,2,3}` (possible only via
-   `data:import-sqlite` from a foreign database — see the account-type section
-   above) is silently normalized to `2` (credit card) the first time its dialog is
-   saved, even when the user changed nothing else.
-3. **The plan view keeps `effectiveNet` as the combined-balance contribution only**;
+1. **The plan view keeps `effectiveNet` as the combined-balance contribution only**;
    no separate "Net" row is rendered in the UI. Net = Income − Expenses + Transfers
    − Savings is spec math backing the balance split, not a row a caller sees.
