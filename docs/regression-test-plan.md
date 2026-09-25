@@ -659,8 +659,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or
       removed will be deleted from this budget. Saved amounts and
-      transactions are not affected." Cancel closes the dialog and sends
-      nothing — the account keeps its savings flag, plans and comments,
+      transactions are not affected." Cancel closes the confirmation; the
+      settings dialog stays open with your edits and nothing is saved — the
+      account keeps its savings flag, plans and comments,
       unchanged; "Delete plans" resends the same edit and it goes through,
       deleting that budget's plans and comments for the account (its
       transactions and balance are untouched). A savings member with no plans
@@ -674,11 +675,14 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       own accounts — an account you own never appears there, so another
       participant has no switch to flag or unflag your account as savings,
       regardless of their role.
-- [ ] 📱 Delete a savings account that has a balance but no plan and no
-      activity in the visible period: it drops out of the Plan sheet's
+- [ ] 📱 Deposit into a savings account (e.g. in January), give it no plan,
+      then delete it (e.g. in June). The deletion writes a correction that
+      zeroes its balance from the deletion month on, so view a Plan window
+      that ends BEFORE the deletion month and has no activity on the account
+      (e.g. one over March): the account drops out of the Plan sheet's
       Savings section and the monthly Savings block entirely (no row), yet
       its balance still counts as Savings balance, not everyday Balance — the
-      split still sums to the pre-deletion Balance.
+      split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
       budget, a "Savings" section appears below Expenses and above Archived,
       one row per savings account in their saved order; a budget without

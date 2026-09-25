@@ -398,9 +398,9 @@ export function everydayBalanceRow(combined: string[], savings: string[]): strin
 }
 
 /** Whether the plan carries ANY savings money, independent of whether a savings row is
- *  currently on screen: a savings account removed from the budget (no plan, no activity
- *  in the fetched window) drops its row from `structure.savings`, but its pre-window
- *  balance still arrives in `savingsOpeningBalances` and must not be counted as everyday
+ *  currently on screen: a DELETED savings account (still a flagged member, but with no
+ *  plan and no activity in the fetched window) drops its row from `structure.savings`,
+ *  yet its pre-window balance still arrives in `savingsOpeningBalances` and must not be counted as everyday
  *  money. The balance split therefore keys off this — a row, or a non-zero opening
  *  balance, or a non-zero flow — while the Savings section and its totals line stay tied
  *  to rows alone (there is nothing to list or total without one). */

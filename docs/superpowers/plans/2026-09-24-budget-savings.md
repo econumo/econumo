@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Superseded in part (2026-09-25):** the account-type design (Tasks 1 and 7: savings marked by `accounts.type = 3`, set from a switch in the account dialog) was replaced by a per-budget membership flag (`budgets_accounts.is_savings`) — see `docs/superpowers/plans/2026-09-25-budget-savings-membership-flag.md`. Those two tasks are kept for the record but are NOT in the final state; the rest of this plan carried over.
+
 **Goal:** Accounts can be marked as savings; every savings account that is a member of a budget becomes a plannable budget row (`ElementSavings = 5`) whose actual is the net money moved in from the budget's everyday accounts, shown in its own section of the plan view and the monthly view.
 
 **Architecture:** `accounts.type = 3` marks a savings account (no migration). Budget element sync creates an `ElementSavings` row per member savings account (external id = account id, currency defaults to the account's), so `set-limit`, `change-element-currency`, `move-element`, clone and #246 comment threads work on it unchanged. Two new hand-built read queries (`SavingsByMonth`, `AccountsNetByMonth`) feed the monthly and plan builders, which emit savings rows in a SEPARATE `structure.savings` array (never inside `elements`, so older clients do not sum them into expenses) through the builders' existing single `BulkConvert` pass. The SPA renders savings rows by adapting them to its existing element-row components.

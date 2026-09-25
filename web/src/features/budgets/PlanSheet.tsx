@@ -1568,8 +1568,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const balance = useMemo(() => (plan && ex ? balanceRow(plan, totals, ex) : []), [plan, ex, totals])
   // The Savings section and its totals line are tied to ROWS: there is nothing to list
   // or total without one. The balance split is tied to DATA instead (planHasSavingsData):
-  // a removed savings account can leave a pre-window opening balance or flow with no row
-  // to show for it, and that money is still not everyday money.
+  // a deleted savings account (still a flagged member) can leave a pre-window opening
+  // balance or flow with no row to show for it, and that money is still not everyday money.
   const hasSavings = savingsRows.length > 0
   const hasSavingsData = plan ? planHasSavingsData(plan) : false
   const savingsBalance = useMemo(
