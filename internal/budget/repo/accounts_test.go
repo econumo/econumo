@@ -27,12 +27,12 @@ func TestBudgetAccounts_AddListRemoveAndRemoveByOwner(t *testing.T) {
 	ctx := context.Background()
 	t0 := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
 	for i, a := range []vo.Id{a2, a1, a3} {
-		if err := r.AddAccount(ctx, b, a, t0.Add(time.Duration(i)*time.Second)); err != nil {
+		if err := r.AddAccount(ctx, b, a, false, t0.Add(time.Duration(i)*time.Second)); err != nil {
 			t.Fatal(err)
 		}
 	}
 	// re-adding a member keeps its original created_at
-	if err := r.AddAccount(ctx, b, a2, t0.Add(time.Hour)); err != nil {
+	if err := r.AddAccount(ctx, b, a2, false, t0.Add(time.Hour)); err != nil {
 		t.Fatal(err)
 	}
 	got, err := r.MemberAccounts(ctx, b)
@@ -59,5 +59,57 @@ func TestBudgetAccounts_AddListRemoveAndRemoveByOwner(t *testing.T) {
 	}
 	if got, _ = r.MemberAccounts(ctx, b); len(got) != 1 || !got[0].AccountID.Equal(a2) {
 		t.Fatalf("after RemoveAccount: %+v", got)
+	}
+}
+
+func TestBudgetAccounts_SavingsFlag(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u := vo.NewId()
+	f.User(fixture.User{ID: u.String(), Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
+	b, everyday, savings := vo.NewId(), vo.NewId(), vo.NewId()
+	f.Account(fixture.Account{ID: everyday.String(), UserID: u.String()})
+	f.Account(fixture.Account{ID: savings.String(), UserID: u.String()})
+	f.Budget(fixture.Budget{ID: b.String(), UserID: u.String()})
+
+	r := budgetrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	t0 := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
+	if err := r.AddAccount(ctx, b, everyday, false, t0); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.AddAccount(ctx, b, savings, true, t0.Add(time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	flags := func() map[string]bool {
+		t.Helper()
+		got, err := r.MemberAccounts(ctx, b)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]bool{}
+		for _, m := range got {
+			out[m.AccountID.String()] = m.IsSavings
+		}
+		return out
+	}
+	if got := flags(); len(got) != 2 || got[everyday.String()] || !got[savings.String()] {
+		t.Fatalf("after AddAccount: %+v, want only the savings member flagged", got)
+	}
+	// re-adding an existing member leaves its flag alone
+	if err := r.AddAccount(ctx, b, savings, false, t0.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if got := flags(); !got[savings.String()] {
+		t.Fatalf("re-add cleared the flag: %+v", got)
+	}
+	if err := r.SetAccountSavings(ctx, b, savings, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.SetAccountSavings(ctx, b, everyday, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := flags(); !got[everyday.String()] || got[savings.String()] {
+		t.Fatalf("after SetAccountSavings: %+v, want the flags swapped", got)
 	}
 }

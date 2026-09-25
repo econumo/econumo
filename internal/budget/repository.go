@@ -22,7 +22,9 @@ type BudgetStore interface {
 	Delete(ctx context.Context, id vo.Id) error
 
 	MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.BudgetAccount, error)
-	AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error
+	// AddAccount leaves an existing member (its created_at and flag) untouched.
+	AddAccount(ctx context.Context, budgetID, accountID vo.Id, isSavings bool, now time.Time) error
+	SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id, isSavings bool) error
 	RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error
 	// RemoveAccountsOwnedBy drops every membership row for accounts owned by
 	// ownerID — a departing participant takes their accounts with them.

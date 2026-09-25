@@ -565,6 +565,7 @@ type Querier interface {
 	// touch row by row. The excepted id is the presenting token (or an id that
 	// matches nothing when everything must go).
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

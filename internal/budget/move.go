@@ -319,22 +319,22 @@ func (s *Service) syncElements(ctx context.Context, budgetID vo.Id, now time.Tim
 		}
 	}
 
-	// --- savings accounts: one row per savings member, deleted members included
-	// (their history still counts). The row is always live and folder-less; the
-	// wire's isArchived comes from the account, never from this row.
-	memberIDs := make([]vo.Id, 0, len(b.accounts))
+	// --- savings members: one row per member flagged savings, deleted members
+	// included (their history still counts). The row is always live and
+	// folder-less; the wire's isArchived comes from the account, never from
+	// this row.
+	var savingsIDs []vo.Id
 	for _, m := range b.accounts {
-		memberIDs = append(memberIDs, m.AccountID)
+		if m.IsSavings {
+			savingsIDs = append(savingsIDs, m.AccountID)
+		}
 	}
-	views, err := s.accounts.AccountsByIDs(ctx, memberIDs)
+	views, err := s.accounts.AccountsByIDs(ctx, savingsIDs)
 	if err != nil {
 		return err
 	}
 	for i, v := range views {
-		if v.Type != model.TypeSavings {
-			continue
-		}
-		e, key := ensure(memberIDs[i], model.ElementSavings)
+		e, key := ensure(savingsIDs[i], model.ElementSavings)
 		if _, isNew := created[key]; isNew && e.CurrencyID == nil {
 			cid, perr := vo.ParseId(v.CurrencyID)
 			if perr != nil {

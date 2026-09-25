@@ -29,8 +29,8 @@ type filters struct {
 	incomeCategories   map[string]model.CategoryMeta // income-only; read by the plan builder ONLY
 	tags               map[string]model.TagMeta
 	labels             map[string]model.LabelMeta
-	// savingsAccounts are the member accounts of type savings, in membership
-	// order; everydayAccountIDs is every other member.
+	// savingsAccounts are the members flagged savings in this budget, in
+	// membership order; everydayAccountIDs is every other member.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
 }
@@ -145,7 +145,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	var savings []model.AccountView
 	var everyday []vo.Id
 	for i, v := range views {
-		if v.Type == model.TypeSavings {
+		if b.accounts[i].IsSavings {
 			savings = append(savings, v)
 		} else {
 			everyday = append(everyday, memberIDs[i])

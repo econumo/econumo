@@ -137,7 +137,7 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 				if views[0].IsDeleted {
 					return model.ValidateBlank(map[string]string{"accountIds": ""})
 				}
-				if serr := s.budgets.AddAccount(txCtx, budgetID, aid, now); serr != nil {
+				if serr := s.budgets.AddAccount(txCtx, budgetID, aid, false, now); serr != nil {
 					return serr
 				}
 			}

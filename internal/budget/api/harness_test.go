@@ -58,6 +58,7 @@ const (
 type harness struct {
 	srv *httptest.Server
 	db  *sql.DB
+	tdb *dbtest.DB
 	f   *fixture.Builder
 }
 
@@ -118,7 +119,7 @@ func newHarnessWithClock(t *testing.T, clk port.Clock) *harness {
 	h := router.New(router.Deps{Cfg: cfg, DB: nil, RegisterAPI: handlerbudget.RegisterAPI(handlers, authstub.Authenticator{})})
 	srv := httptest.NewServer(h)
 	t.Cleanup(srv.Close)
-	return &harness{srv: srv, db: db, f: f}
+	return &harness{srv: srv, db: db, tdb: tdb, f: f}
 }
 
 func (h *harness) token(t *testing.T) string {

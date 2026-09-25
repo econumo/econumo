@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
 )
 
-// Savings budget elements (type 5): one row per savings-account member, kept by
+// Savings budget elements (type 5): one row per savings member, kept by
 // the lazy element sync. These tests observe the rows through budgets_elements
 // directly (get-budget/get-budget-plan's own savings surface is covered by
 // savings_budget_test.go and savings_plan_test.go) and read the expense side
@@ -49,6 +50,19 @@ func savingsRows(t *testing.T, h *harness) []savingsRow {
 	return out
 }
 
+// flagSavings sets a member's per-budget savings flag directly, standing in
+// for the write paths that own it.
+func flagSavings(t *testing.T, db *dbtest.DB, budgetID, accountID string, on bool) {
+	t.Helper()
+	res, err := db.Raw.Exec(db.Rebind(`UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?`), on, budgetID, accountID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n, _ := res.RowsAffected(); n != 1 {
+		t.Fatalf("flagSavings(%s, %s): %d membership rows updated, want 1", budgetID, accountID, n)
+	}
+}
+
 func savingsIDs(rows []savingsRow) []string {
 	out := make([]string, len(rows))
 	for i, r := range rows {
@@ -83,20 +97,24 @@ func equalIDs(a, b []string) bool {
 	return true
 }
 
-// newSavingsHarness: the seeded regular account plus the given savings
-// accounts, all members of budgetID1 (started 2026-06-01, now 2026-08-17).
+// newSavingsHarness: the seeded regular account plus the given accounts, all
+// members of budgetID1 (started 2026-06-01, now 2026-08-17) and flagged
+// savings there.
 func newSavingsHarness(t *testing.T, savingsIDs ...string) (*harness, string, string) {
 	t.Helper()
 	h := newHarnessWithClock(t, fixedAugust())
 	tok := h.token(t)
 	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
 	for _, id := range savingsIDs {
-		h.f.Account(fixture.Account{ID: id, UserID: seedUserID, CurrencyID: eur, Name: "Rainy day", Type: 3, Icon: "savings"})
+		h.f.Account(fixture.Account{ID: id, UserID: seedUserID, CurrencyID: eur, Name: "Rainy day", Icon: "savings"})
 	}
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, map[string]any{
 		"id": budgetID1, "name": "Budget", "currencyId": usdID, "startDate": "2026-06-01",
 		"accountIds": append([]string{accountID}, savingsIDs...),
 	})
+	for _, id := range savingsIDs {
+		flagSavings(t, h.tdb, budgetID1, id, true)
+	}
 	return h, tok, eur
 }
 
@@ -169,7 +187,7 @@ func TestSavingsSync_SetLimitSelfHeals(t *testing.T) {
 	}
 }
 
-func TestSavingsSync_TypeSwitchDropsRowAndLimits(t *testing.T) {
+func TestSavingsSync_FlagOffDropsRowAndLimits(t *testing.T) {
 	h, tok, _ := newSavingsHarness(t, savingsAccountID)
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/set-limit", tok, map[string]any{
 		"budgetId": budgetID1, "elementId": savingsAccountID, "period": "2026-06-01", "amount": "250",
@@ -180,13 +198,11 @@ func TestSavingsSync_TypeSwitchDropsRowAndLimits(t *testing.T) {
 	}
 	elementID := rows[0].ID
 
-	if _, err := h.db.Exec(`UPDATE accounts SET type = 2 WHERE id = ?`, savingsAccountID); err != nil {
-		t.Fatal(err)
-	}
+	flagSavings(t, h.tdb, budgetID1, savingsAccountID, false)
 	h.syncBudget(t, tok)
 
 	if rows := savingsRows(t, h); len(rows) != 0 {
-		t.Fatalf("savings rows = %+v, want none once the account is no longer savings", rows)
+		t.Fatalf("savings rows = %+v, want none once the member is no longer flagged", rows)
 	}
 	var n int
 	h.db.QueryRow(`SELECT COUNT(*) FROM budgets_elements_limits WHERE element_id = ?`, elementID).Scan(&n)

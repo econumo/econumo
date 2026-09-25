@@ -134,7 +134,7 @@ func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id
 		return err
 	}
 	for _, id := range ids {
-		if aerr := s.budgets.AddAccount(ctx, budgetID, id, now); aerr != nil {
+		if aerr := s.budgets.AddAccount(ctx, budgetID, id, false, now); aerr != nil {
 			return aerr
 		}
 	}

@@ -199,9 +199,8 @@ func TestGetBudgetPlanSavings_ElementsUnchanged(t *testing.T) {
 		}
 	}
 
-	if _, err := h.db.Exec(`UPDATE accounts SET type = 2 WHERE id IN (?, ?)`, savingsUSDID, savingsEURID); err != nil {
-		t.Fatal(err)
-	}
+	flagSavings(t, h.tdb, budgetID1, savingsUSDID, false)
+	flagSavings(t, h.tdb, budgetID1, savingsEURID, false)
 	regular, env := h.savingsPlan(t, tok, budgetID1, savingsPlanWindow)
 	if !bytes.Equal(withSavings.Item.Structure.Elements, regular.Item.Structure.Elements) {
 		t.Errorf("elements differ:\nsavings: %s\nregular: %s", withSavings.Item.Structure.Elements, regular.Item.Structure.Elements)
@@ -211,7 +210,7 @@ func TestGetBudgetPlanSavings_ElementsUnchanged(t *testing.T) {
 	}
 	for _, want := range []string{`"savings":[]`, `"savingsOpeningBalances":[]`, `"savingsFlows":[]`} {
 		if !bytes.Contains(env.raw, []byte(want)) {
-			t.Errorf("body lacks %s once no member is a savings account: %s", want, env.raw)
+			t.Errorf("body lacks %s once no member is flagged: %s", want, env.raw)
 		}
 	}
 }

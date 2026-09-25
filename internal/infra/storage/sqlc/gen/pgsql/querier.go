@@ -394,6 +394,7 @@ type Querier interface {
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

@@ -170,11 +170,14 @@ DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = ?);
 
 -- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id;
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id;
 
 -- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?;
 
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;

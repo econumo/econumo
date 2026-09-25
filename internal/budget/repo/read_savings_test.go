@@ -29,8 +29,8 @@ func TestSavingsByMonth(t *testing.T) {
 	s2 := "aaaa2222-0000-0000-0000-00000000005b"
 	x := "aaaa2222-0000-0000-0000-0000000000c1"
 	f.Account(fixture.Account{ID: e2, UserID: userA, CurrencyID: usdID, Name: "E2", Type: 2})
-	f.Account(fixture.Account{ID: s1, UserID: userA, CurrencyID: usdID, Name: "S1", Type: 3})
-	f.Account(fixture.Account{ID: s2, UserID: userA, CurrencyID: eurID, Name: "S2", Type: 3})
+	f.Account(fixture.Account{ID: s1, UserID: userA, CurrencyID: usdID, Name: "S1"})
+	f.Account(fixture.Account{ID: s2, UserID: userA, CurrencyID: eurID, Name: "S2"})
 	f.Account(fixture.Account{ID: x, UserID: userA, CurrencyID: usdID, Name: "X", Type: 2})
 
 	// S1 March: +500 (in) -120 (out) = 380

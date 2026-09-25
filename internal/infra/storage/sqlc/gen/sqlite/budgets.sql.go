@@ -11,18 +11,24 @@ import (
 )
 
 const addBudgetAccount = `-- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
 type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
 func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, addBudgetAccount,
+		arg.BudgetID,
+		arg.AccountID,
+		arg.IsSavings,
+		arg.CreatedAt,
+	)
 	return err
 }
 
@@ -398,11 +404,12 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 }
 
 const listBudgetAccounts = `-- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id
 `
 
 type ListBudgetAccountsRow struct {
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
@@ -415,7 +422,7 @@ func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]Li
 	items := []ListBudgetAccountsRow{}
 	for rows.Next() {
 		var i ListBudgetAccountsRow
-		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.AccountID, &i.IsSavings, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -981,6 +988,21 @@ type RepointBudgetElementParams struct {
 // not update external_id, hence this dedicated statement.
 func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const setBudgetAccountSavings = `-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?
+`
+
+type SetBudgetAccountSavingsParams struct {
+	IsSavings bool
+	BudgetID  string
+	AccountID string
+}
+
+func (q *Queries) SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error {
+	_, err := q.db.ExecContext(ctx, setBudgetAccountSavings, arg.IsSavings, arg.BudgetID, arg.AccountID)
 	return err
 }
 

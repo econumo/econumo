@@ -70,7 +70,7 @@ func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAcc
 			return nil, model.ValidateBlank(map[string]string{"accountId": ""})
 		}
 		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-			return s.budgets.AddAccount(txCtx, budgetID, accountID, s.clock.Now())
+			return s.budgets.AddAccount(txCtx, budgetID, accountID, false, s.clock.Now())
 		}); err != nil {
 			return nil, err
 		}

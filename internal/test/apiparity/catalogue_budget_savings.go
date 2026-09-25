@@ -58,9 +58,12 @@ func init() {
 			{Label: "create-budget", Method: "POST", Path: "/api/v1/budget/create-budget", Auth: "owner",
 				Body: map[string]any{"id": savingsBudget, "name": "Savings Budget", "currencyId": USD, "startDate": "2024-04-01",
 					"accountIds": []any{&everydayID, &savingsAID, &savingsBID}}},
-			{Label: "set-limit-savings-a", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
+			// Interim: account type 3 no longer makes a member savings (the flag
+			// is on the membership and has no write path yet), so these two find
+			// no savings element. The scenario is rewritten around the flag.
+			{Label: "err:set-limit-savings-a", Method: "POST", Path: "/api/v1/budget/set-limit", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "elementId": &savingsAID, "period": "2024-05-01", "amount": "200"}},
-			{Label: "change-savings-b-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
+			{Label: "err:change-savings-b-currency", Method: "POST", Path: "/api/v1/budget/change-element-currency", Auth: "owner",
 				Body: map[string]any{"budgetId": savingsBudget, "elementId": &savingsBID, "currencyId": USD}},
 			{Label: "transfer-to-savings-a", Method: "POST", Path: "/api/v1/transaction/create-transaction", Auth: "owner",
 				Body: map[string]any{"id": opTransferA, "accountId": &everydayID, "accountRecipientId": &savingsAID, "type": "transfer",

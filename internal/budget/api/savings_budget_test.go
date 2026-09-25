@@ -53,12 +53,14 @@ func newSavingsBudget(t *testing.T) (*harness, string, string) {
 	tok := h.token(t)
 	eur := h.f.Currency(fixture.Currency{Code: "EUR", Symbol: "€", Name: "Euro"})
 	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: usdID, Rate: augustEURRate, PublishedAt: "2026-08-10"})
-	h.f.Account(fixture.Account{ID: savingsUSDID, UserID: seedUserID, CurrencyID: usdID, Name: "Rainy day", Type: 3, Icon: "savings"})
-	h.f.Account(fixture.Account{ID: savingsEURID, UserID: seedUserID, CurrencyID: eur, Name: "Euro pot", Type: 3, Icon: "euro"})
+	h.f.Account(fixture.Account{ID: savingsUSDID, UserID: seedUserID, CurrencyID: usdID, Name: "Rainy day", Icon: "savings"})
+	h.f.Account(fixture.Account{ID: savingsEURID, UserID: seedUserID, CurrencyID: eur, Name: "Euro pot", Icon: "euro"})
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/create-budget", tok, map[string]any{
 		"id": budgetID1, "name": "Budget", "currencyId": usdID, "startDate": "2026-06-01",
 		"accountIds": []string{accountID, savingsUSDID, savingsEURID},
 	})
+	flagSavings(t, h.tdb, budgetID1, savingsUSDID, true)
+	flagSavings(t, h.tdb, budgetID1, savingsEURID, true)
 	at := func(day int) time.Time { return time.Date(2026, 8, day, 12, 0, 0, 0, time.UTC) }
 	for _, tx := range []fixture.Transaction{
 		{AccountID: accountID, AccountRecipientID: savingsUSDID, Amount: "500", AmountRecipient: "500", SpentAt: at(3)},
@@ -155,9 +157,8 @@ func TestGetBudgetSavings_ExpenseSideUnchanged(t *testing.T) {
 		}
 	}
 
-	if _, err := h.db.Exec(`UPDATE accounts SET type = 2 WHERE id IN (?, ?)`, savingsUSDID, savingsEURID); err != nil {
-		t.Fatal(err)
-	}
+	flagSavings(t, h.tdb, budgetID1, savingsUSDID, false)
+	flagSavings(t, h.tdb, budgetID1, savingsEURID, false)
 	regular, _ := h.savingsBudget(t, tok, "2026-08-15")
 	if !bytes.Equal(withSavings.Item.Structure.Elements, regular.Item.Structure.Elements) {
 		t.Errorf("elements differ:\nsavings: %s\nregular: %s", withSavings.Item.Structure.Elements, regular.Item.Structure.Elements)
@@ -166,15 +167,13 @@ func TestGetBudgetSavings_ExpenseSideUnchanged(t *testing.T) {
 		t.Errorf("balances differ:\nsavings: %s\nregular: %s", withSavings.Item.Balances, regular.Item.Balances)
 	}
 	if len(regular.Item.Structure.Savings) != 0 {
-		t.Errorf("savings = %+v, want none once no member is a savings account", regular.Item.Structure.Savings)
+		t.Errorf("savings = %+v, want none once no member is flagged", regular.Item.Structure.Savings)
 	}
 }
 
 func TestGetBudgetSavings_StaleElementRowNotRendered(t *testing.T) {
 	h, tok, _ := newSavingsBudget(t)
-	if _, err := h.db.Exec(`UPDATE accounts SET type = 2 WHERE id = ?`, savingsUSDID); err != nil {
-		t.Fatal(err)
-	}
+	flagSavings(t, h.tdb, budgetID1, savingsUSDID, false)
 	view, _ := h.savingsBudget(t, tok, "2026-08-15")
 	rows := view.Item.Structure.Savings
 	if len(rows) != 1 || rows[0].Id != savingsEURID || rows[0].Position != 0 {
