@@ -263,16 +263,6 @@ navigation (single-pane vs sidebar).
       now; account page shows it.
 - [ ] Edit account: rename, change icon; balance edit creates a correction to
       match the new balance.
-- [ ] 📱 "Savings account" switch (with its hint) in the account dialog:
-      creating with it on makes a savings account, marked "Savings" next to
-      its balance in the sidebar (desktop rows and mobile tiles) and in
-      Settings → Accounts; toggling it on and back off before saving creates
-      an account with no "Savings" marker and no savings row in any budget.
-- [ ] Turning a savings account's switch off while a budget you have opened
-      (monthly view or plan) plans savings for it asks "Turn off savings?"
-      with the number of budgets; Cancel keeps the account savings and sends
-      nothing, "Turn off" saves it as an everyday account. With no budget
-      planning it, it saves without asking.
 - [ ] Create a second currency account (e.g. EUR). On a fresh self-hosted DB
       (no OER token) there are no global currencies besides USD — create a
       custom currency in Settings → Currencies first (name, code, symbol,
@@ -658,6 +648,37 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] 📱 **Budget settings — Savings switch**: in the create and edit budget
+      dialogs, each of your own selected accounts shows a "Savings" switch
+      next to its include switch; it can be toggled on or off at any time —
+      when creating the budget, or later on an existing member account, and
+      as often as you like either way. A note beneath the account list reads
+      "Savings accounts are shown by name, with their saved amounts and
+      balances, to everyone with access to this budget."
+- [ ] 📱 Turn off (or remove) a savings member that still carries plans or
+      comments in that budget: saving asks "Delete planned savings?" —
+      "Planned amounts and comments of the savings accounts you turned off or
+      removed will be deleted from this budget. Saved amounts and
+      transactions are not affected." Cancel closes the dialog and sends
+      nothing — the account keeps its savings flag, plans and comments,
+      unchanged; "Delete plans" resends the same edit and it goes through,
+      deleting that budget's plans and comments for the account (its
+      transactions and balance are untouched). A savings member with no plans
+      or comments in the budget toggles off or removes without asking.
+- [ ] The same account can be a savings member of one budget and an everyday
+      member of another: flip it to savings in Budget A only — Budget A shows
+      its Savings row/section/block, Budget B keeps it as an ordinary budgeted
+      account, and neither budget's plans/figures affect the other.
+- [ ] In a budget shared with another participant (any role), that
+      participant's own copy of the budget settings dialog lists only their
+      own accounts — an account you own never appears there, so another
+      participant has no switch to flag or unflag your account as savings,
+      regardless of their role.
+- [ ] 📱 Delete a savings account that has a balance but no plan and no
+      activity in the visible period: it drops out of the Plan sheet's
+      Savings section and the monthly Savings block entirely (no row), yet
+      its balance still counts as Savings balance, not everyday Balance — the
+      split still sums to the pre-deletion Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
       budget, a "Savings" section appears below Expenses and above Archived,
       one row per savings account in their saved order; a budget without

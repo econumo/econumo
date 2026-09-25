@@ -170,10 +170,10 @@ Check the actual names first: `vo.NewId` (or whatever constructor the package ex
 
     ```go
     func (a *Account) UpdateType(t AccountType, now time.Time) {
-    	if a.Type != t {
-    		a.Type = t
-    		a.UpdatedAt = now
-    	}
+        if a.Type != t {
+            a.Type = t
+            a.UpdatedAt = now
+        }
     }
     ```
   - `codes.go`: `CodeAccountInvalidType = "account.invalid_type"` next to the other `CodeAccount*`, and in `AllCodes`.
@@ -181,7 +181,7 @@ Check the actual names first: `vo.NewId` (or whatever constructor the package ex
 
     ```go
     if r.Type != nil && !AccountType(*r.Type).Valid() {
-    	fields = append(fields, errs.FieldError{Key: "type", Message: "Account type must be 1, 2 or 3", Code: errs.CodeAccountInvalidType})
+        fields = append(fields, errs.FieldError{Key: "type", Message: "Account type must be 1, 2 or 3", Code: errs.CodeAccountInvalidType})
     }
     ```
     Guard the int16 conversion: values outside int16 range must also be invalid — check `*r.Type < 1 || *r.Type > 3` first, or compare as int.
@@ -234,9 +234,9 @@ Check the actual names first: `vo.NewId` (or whatever constructor the package ex
 
     ```go
     func savingsFolderNotAllowedErr() error {
-    	return errs.NewValidation("Validation failed", errs.FieldError{
-    		Key: "folderId", Message: "Savings cannot be put into a folder", Code: errs.CodeBudgetSavingsFolderNotAllowed,
-    	})
+        return errs.NewValidation("Validation failed", errs.FieldError{
+            Key: "folderId", Message: "Savings cannot be put into a folder", Code: errs.CodeBudgetSavingsFolderNotAllowed,
+        })
     }
     ```
     plus the code in `codes.go`/`AllCodes` and `errors.budget.savings_folder_not_allowed` in all 11 locales.
@@ -250,29 +250,29 @@ Check the actual names first: `vo.NewId` (or whatever constructor the package ex
     // wire's isArchived comes from the account, never from this row.
     memberIDs := make([]vo.Id, 0, len(b.accounts))
     for _, m := range b.accounts {
-    	memberIDs = append(memberIDs, m.AccountID)
+        memberIDs = append(memberIDs, m.AccountID)
     }
     views, err := s.accounts.AccountsByIDs(ctx, memberIDs)
     if err != nil {
-    	return err
+        return err
     }
     for i, v := range views {
-    	if v.Type != model.TypeSavings {
-    		continue
-    	}
-    	e, key := ensure(memberIDs[i], model.ElementSavings)
-    	if _, isNew := created[key]; isNew && e.CurrencyID == nil {
-    		cid, perr := vo.ParseId(v.CurrencyID)
-    		if perr != nil {
-    			return perr
-    		}
-    		e.UpdateCurrency(&cid, now)
-    	}
-    	if e.FolderID != nil {
-    		e.UpdateFolder(nil, now)
-    		mark(e)
-    	}
-    	live[key] = true
+        if v.Type != model.TypeSavings {
+            continue
+        }
+        e, key := ensure(memberIDs[i], model.ElementSavings)
+        if _, isNew := created[key]; isNew && e.CurrencyID == nil {
+            cid, perr := vo.ParseId(v.CurrencyID)
+            if perr != nil {
+                return perr
+            }
+            e.UpdateCurrency(&cid, now)
+        }
+        if e.FolderID != nil {
+            e.UpdateFolder(nil, now)
+            mark(e)
+        }
+        live[key] = true
     }
     ```
     (`created` entries are saved anyway, so no `mark` is needed for the currency.) Update the `syncElements` doc bullet list to mention savings rows.
@@ -281,17 +281,17 @@ Check the actual names first: `vo.NewId` (or whatever constructor the package ex
     ```go
     tails := map[bool]sortkey.Key{} // keyed by "is a savings row"
     for key, e := range byKey {
-    	if !live[key] {
-    		continue
-    	}
-    	if e.IsSortKeyUnset() {
-    		needsKey = append(needsKey, e)
-    		continue
-    	}
-    	g := e.Type == model.ElementSavings
-    	if e.FolderID == nil && e.SortKey > tails[g] {
-    		tails[g] = e.SortKey
-    	}
+        if !live[key] {
+            continue
+        }
+        if e.IsSortKeyUnset() {
+            needsKey = append(needsKey, e)
+            continue
+        }
+        g := e.Type == model.ElementSavings
+        if e.FolderID == nil && e.SortKey > tails[g] {
+            tails[g] = e.SortKey
+        }
     }
     // ... sort needsKey by ID as today, then per element:
     g := e.Type == model.ElementSavings

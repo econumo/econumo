@@ -438,11 +438,13 @@ otherwise independent; these are the agreed terms.
 
 ## Status (2026-09-25)
 
-**Revision 7 in progress.** The first implementation (account type `3`, account
-dialog switch) landed on `feature/budget-savings` and was reviewed; revision 7 moves
-the flag to budget membership. Everything below the flag — `ElementSavings`, the
-read queries, both builders' wire fields, the plan and monthly UIs — carries over
-unchanged.
+**Implemented, per Revisions 7-9.** Savings is a per-budget membership flag
+(`budgets_accounts.is_savings`), set from the budget's own settings (create/update
+budget dialogs) and guarded by the server-side `confirmSavingsRemoval` write path; the
+account-level type, switch and marker from the first implementation are gone. Everything
+below the flag — `ElementSavings`, the read queries, both builders' wire fields, the plan
+and monthly UIs, and the balance split that follows the savings data rather than only the
+visible rows — is implemented as designed.
 
 ### Deviations from the spec as written
 
