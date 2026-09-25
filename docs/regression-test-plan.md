@@ -532,17 +532,39 @@ User C sees none of it.
       TWO lines (the reassurance about financial and personal data starts a new
       line), in every UI language.
 - [ ] Analytics reach the collector for signed-in sessions only (DevTools →
-      Network, filter `t.econumo.com`): the login/register pages send no
-      request; after login every request body carries `$user_id`; a reload of
-      a signed-in page sends its page view once the user data has loaded; log
-      out — the logout event goes out, nothing after it.
-- [ ] Session facts ride the BATCH, not each event (same Network filter): the
-      request body's top-level `attributes` carries `access_state`,
-      `deployment`, `host`, `locale` and `mode` once; each entry in `events`
-      carries only `current_url` (the page that event happened on), which
-      differs between events in one batch when you navigate mid-flush.
+      Network, filter `t.econumo.com`): the login/register pages load neither
+      `twillingate.js` nor send any request; after login the SDK script loads
+      once and every `ingest/events` body carries `$user_id`, `$consent: 0`,
+      a detected `$os` and `$device` (`mobile` on a phone, `desktop` on a
+      laptop, whatever the window width), and no `$install_id`; a reload of a signed-in page
+      sends its page view once the user data has loaded; log out — the logout
+      event goes out, nothing after it. With analytics switched off in
+      Settings, a reload loads no `twillingate.js` at all. DevTools →
+      Application: no `twillingate_*` or `econumo_*` key in localStorage and no
+      cookie from it.
+- [ ] Page views are real views (same Network filter): navigating between
+      pages sends events named `$page_view` (not `page_view`) whose `$host` is
+      `app.econumo.com` on the cloud and `selfhosted_<id>` on a self-hosted
+      instance, whose `$path` has every UUID replaced by `:id`
+      (`/account/:id`), and which carry no `$referrer`.
+- [ ] System and session keys ride every event, view or product (same
+      Network filter): each entry in `events` carries `$host` (as above),
+      `$path` (the page that event happened on, UUIDs as `:id` — it differs
+      between events in one batch when you navigate mid-flush), `$app_locale` (switch the UI
+      language and the next event carries the new code), `access_state` and
+      `deployment`; none carries `host`, `locale`, `mode` or `current_url`.
+      A product event also carries its own data where it has any (merging a
+      payee sends `type: payee`). `window.dataLayer` is undefined in the
+      console.
+- [ ] Profile facts are totals (same Network filter, in each event's
+      `attributes`, once the relevant page has loaded its list): `accounts`,
+      `categories`, `payees`, `tags` and `labels` count hidden and archived
+      items too (archive one → the count does not drop), `budgets` counts
+      archived budgets but not an unaccepted invite, `months_since_signup` is
+      the whole months since registration (`0` in the first month), and no
+      `accounts_hidden`, `*_archived` or `signup_month` key is sent.
 - [ ] Auth-method flags say which sign-in methods the user HAS (same Network
-      filter, batch-level `attributes`, NOT the per-event ones):
+      filter, in each event's `attributes`):
       `auth_password`, `auth_google`, `auth_apple`, `auth_sso` are each `on`
       or `off`. A password account with Google linked sends
       `auth_password: on`, `auth_google: on`, `auth_apple: off`,

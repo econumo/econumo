@@ -17,11 +17,16 @@ function account(overrides: {
   return { owner: OWNER, sharedAccess: [], ...overrides }
 }
 
+function budget(id: string, ownerUserId: string, access: { user: { id: string }; isAccepted: 0 | 1 }[] = [], isArchived: 0 | 1 = 0) {
+  return { id, ownerUserId, access, isArchived }
+}
+
 afterEach(() => {
   setAnalyticsQueryClient(null)
+  vi.useRealTimers()
 })
 
-it('counts what the cache holds and omits what it does not', () => {
+it('counts every item the cache holds, hidden and archived included, and omits what it does not', () => {
   const qc = new QueryClient()
   qc.setQueryData(queryKeys.folders, [
     { id: 'f1', name: 'Visible', position: 0, isVisible: 1 },
@@ -43,17 +48,15 @@ it('counts what the cache holds and omits what it does not', () => {
 
   const attrs = profileAttributes()
   expect(attrs.accounts).toBe(3)
-  expect(attrs.accounts_hidden).toBe(1) // unfoldered counts as visible
-  expect(attrs.categories).toBe(1)
-  expect(attrs.categories_archived).toBe(1)
+  expect(attrs.categories).toBe(2)
   expect(attrs.signup_year).toBe(2026)
-  expect(attrs.signup_month).toBe(2)
   // Never loaded, so never guessed at.
-  expect('tags' in attrs).toBe(false)
-  expect('connections' in attrs).toBe(false)
+  for (const key of ['tags', 'labels', 'budgets', 'connections']) {
+    expect(key in attrs).toBe(false)
+  }
 })
 
-it('counts payees, tags and connections when loaded', () => {
+it('counts payees, tags, labels and connections when loaded', () => {
   const qc = new QueryClient()
   qc.setQueryData(queryKeys.payees, [
     { id: 'p1', isArchived: 0 },
@@ -61,15 +64,56 @@ it('counts payees, tags and connections when loaded', () => {
     { id: 'p3', isArchived: 1 },
   ])
   qc.setQueryData(queryKeys.tags, [{ id: 't1', isArchived: 0 }])
+  qc.setQueryData(queryKeys.labels, [
+    { id: 'l1', isArchived: 1 },
+    { id: 'l2', isArchived: 0 },
+  ])
   qc.setQueryData(queryKeys.connections, [{ user: { id: 'u2' } }, { user: { id: 'u3' } }])
   setAnalyticsQueryClient(qc)
 
   const attrs = profileAttributes()
-  expect(attrs.payees).toBe(2)
-  expect(attrs.payees_archived).toBe(1)
+  expect(attrs.payees).toBe(3)
   expect(attrs.tags).toBe(1)
-  expect(attrs.tags_archived).toBe(0)
+  expect(attrs.labels).toBe(2)
   expect(attrs.connections).toBe(2)
+})
+
+it('no longer sends the hidden and archived breakdowns', () => {
+  const qc = new QueryClient()
+  qc.setQueryData(queryKeys.folders, [{ id: 'f1', name: 'Hidden', position: 0, isVisible: 0 }])
+  qc.setQueryData(queryKeys.accounts, [account({ id: 'a1', folderId: 'f1' })])
+  qc.setQueryData(queryKeys.categories, [{ id: 'c1', isArchived: 1 }])
+  qc.setQueryData(queryKeys.payees, [{ id: 'p1', isArchived: 1 }])
+  qc.setQueryData(queryKeys.tags, [{ id: 't1', isArchived: 1 }])
+  qc.setQueryData(queryKeys.user, { id: ME, createdAt: '2026-02-17 08:30:00' })
+  setAnalyticsQueryClient(qc)
+
+  const attrs = profileAttributes()
+  for (const key of ['accounts_hidden', 'categories_archived', 'payees_archived', 'tags_archived', 'signup_month']) {
+    expect(key in attrs).toBe(false)
+  }
+})
+
+it('counts owned and accepted budgets, archived included, but not an unaccepted invite', () => {
+  const qc = new QueryClient()
+  qc.setQueryData(queryKeys.budgets, [
+    budget('b1', ME),
+    budget('b2', ME, [], 1),
+    budget('b3', 'u9', [{ user: { id: ME }, isAccepted: 1 }]),
+    budget('b4-invite', 'u9', [{ user: { id: ME }, isAccepted: 0 }]),
+  ])
+  qc.setQueryData(queryKeys.user, { id: ME })
+  setAnalyticsQueryClient(qc)
+
+  expect(profileAttributes().budgets).toBe(3)
+})
+
+it('omits budgets when the user has not loaded (invites cannot be filtered without "me")', () => {
+  const qc = new QueryClient()
+  qc.setQueryData(queryKeys.budgets, [budget('b1', ME)])
+  setAnalyticsQueryClient(qc)
+
+  expect('budgets' in profileAttributes()).toBe(false)
 })
 
 it('excludes an un-accepted pending share from accounts', () => {
@@ -86,39 +130,53 @@ it('excludes an un-accepted pending share from accounts', () => {
   qc.setQueryData(queryKeys.user, { id: ME })
   setAnalyticsQueryClient(qc)
 
-  const attrs = profileAttributes()
-  expect(attrs.accounts).toBe(1)
+  expect(profileAttributes().accounts).toBe(1)
 })
 
-it('omits accounts_hidden when folders have not loaded', () => {
+it('omits accounts when the user has not loaded (pending shares cannot be filtered without "me")', () => {
   const qc = new QueryClient()
   qc.setQueryData(queryKeys.accounts, [account({ id: 'a1', folderId: null })])
-  qc.setQueryData(queryKeys.user, { id: ME })
   setAnalyticsQueryClient(qc)
 
-  const attrs = profileAttributes()
-  expect(attrs.accounts).toBe(1)
-  expect('accounts_hidden' in attrs).toBe(false)
+  expect('accounts' in profileAttributes()).toBe(false)
 })
 
-it('omits accounts and accounts_hidden when the user has not loaded (pending shares cannot be filtered without "me")', () => {
-  const qc = new QueryClient()
-  qc.setQueryData(queryKeys.folders, [{ id: 'f1', name: 'Hidden', position: 0, isVisible: 0 }])
-  qc.setQueryData(queryKeys.accounts, [account({ id: 'a1', folderId: 'f1' })])
-  setAnalyticsQueryClient(qc)
+describe('months_since_signup', () => {
+  function monthsOn(now: string, createdAt: string): number | undefined {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(now))
+    const qc = new QueryClient()
+    qc.setQueryData(queryKeys.user, { id: ME, createdAt })
+    setAnalyticsQueryClient(qc)
+    return profileAttributes().months_since_signup
+  }
 
-  const attrs = profileAttributes()
-  expect('accounts' in attrs).toBe(false)
-  expect('accounts_hidden' in attrs).toBe(false)
-})
+  it.each([
+    ['the signup month itself', '2026-02-28T00:00:00Z', 0],
+    ['one day short of a full month', '2026-03-17T08:29:59Z', 0],
+    ['exactly one month', '2026-03-17T08:30:00Z', 1],
+    ['across a year boundary', '2027-01-20T00:00:00Z', 11],
+    ['a year and a half', '2027-08-18T00:00:00Z', 18],
+  ])('%s', (_, now, expected) => {
+    expect(monthsOn(now, '2026-02-17 08:30:00')).toBe(expected)
+  })
 
-it('omits the signup cohort when the user has not loaded', () => {
-  const qc = new QueryClient()
-  setAnalyticsQueryClient(qc)
+  // createdAt is UTC wall clock: a local-time parse would shift the boundary.
+  it('reads createdAt as UTC', () => {
+    expect(monthsOn('2026-03-31T23:30:00Z', '2026-02-28 23:59:59')).toBe(1)
+    expect(monthsOn('2026-03-28T23:59:58Z', '2026-02-28 23:59:59')).toBe(0)
+  })
 
-  const attrs = profileAttributes()
-  expect('signup_year' in attrs).toBe(false)
-  expect('signup_month' in attrs).toBe(false)
+  it('never goes negative when the clock is behind the server', () => {
+    expect(monthsOn('2026-02-17T08:00:00Z', '2026-02-17 08:30:00')).toBe(0)
+  })
+
+  it('is omitted when the user has not loaded', () => {
+    setAnalyticsQueryClient(new QueryClient())
+    const attrs = profileAttributes()
+    expect('signup_year' in attrs).toBe(false)
+    expect('months_since_signup' in attrs).toBe(false)
+  })
 })
 
 it('is empty with no client', () => {

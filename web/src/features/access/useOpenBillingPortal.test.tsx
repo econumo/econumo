@@ -4,6 +4,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { useOpenBillingPortal } from './useOpenBillingPortal'
+import { METRICS, trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } })
@@ -22,7 +28,7 @@ function mockTab() {
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  window.dataLayer = []
+  vi.mocked(trackEvent).mockClear()
 })
 
 it('mints a self link per click and points the pre-opened tab at it', async () => {
@@ -39,9 +45,7 @@ it('mints a self link per click and points the pre-opened tab at it', async () =
   result.current.open()
   await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc'))
   expect(body).toEqual({})
-  expect(window.dataLayer).toContainEqual(
-    expect.objectContaining({ event: 'appSubscriptionCtaClick', eventData: expect.objectContaining({ target: 'self' }) }),
-  )
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_CTA_CLICK, expect.objectContaining({ target: 'self' }))
 })
 
 it('sends the partner id as the for hint and fires the partner metric', async () => {
@@ -58,9 +62,7 @@ it('sends the partner id as the for hint and fires the partner metric', async ()
   result.current.open('u2')
   await waitFor(() => expect(tab.location.href).toBe('https://pay.example.test/?t=abc&for=u2'))
   expect(body).toEqual({ for: 'u2' })
-  expect(window.dataLayer).toContainEqual(
-    expect.objectContaining({ event: 'appSubscriptionCtaClick', eventData: expect.objectContaining({ target: 'partner' }) }),
-  )
+  expect(trackEvent).toHaveBeenCalledWith(METRICS.SUBSCRIPTION_CTA_CLICK, expect.objectContaining({ target: 'partner' }))
 })
 
 it('closes the pre-opened tab and fires no metric when minting fails', async () => {
@@ -74,5 +76,5 @@ it('closes the pre-opened tab and fires no metric when minting fails', async () 
   const { result } = renderHook(() => useOpenBillingPortal(), { wrapper })
   result.current.open()
   await waitFor(() => expect(tab.close).toHaveBeenCalled())
-  expect(window.dataLayer).toEqual([])
+  expect(trackEvent).not.toHaveBeenCalled()
 })

@@ -9,6 +9,12 @@ import type { TagDto } from '@/api/dto/tag'
 import type { RecurringDto } from '@/api/dto/recurring'
 import type { TransactionDto } from '@/api/dto/transaction'
 import { useArchiveLabel, useCreateLabel, useDeleteLabel, useLabels, useMoveLabel, useSortLabels, useUnarchiveLabel, useUpdateLabel } from './queries'
+import { trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/metrics')>()),
+  trackEvent: vi.fn(),
+}))
 
 function makeWrapper() {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false }, queries: { retry: false } } })
@@ -19,13 +25,13 @@ function makeWrapper() {
 }
 
 function firedEvents(name: string) {
-  return window.dataLayer.filter((e) => (e as { event?: string }).event === name)
+  return vi.mocked(trackEvent).mock.calls.filter(([metric]) => metric === name)
 }
 
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
-  window.dataLayer = []
+  vi.mocked(trackEvent).mockClear()
 })
 
 it('useLabels returns the labels from the API', async () => {
