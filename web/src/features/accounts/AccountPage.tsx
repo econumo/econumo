@@ -326,8 +326,12 @@ export function AccountPage() {
             // The whole row is one hover/tap surface (like the settings lists):
             // click opens the transaction preview; desktop keeps the kebab menu
             // as an edit/delete shortcut.
+            // A virtual row is one occurrence, not the template: posting or
+            // skipping advances nextPaymentAt, and a template-id key would MOVE
+            // the just-tapped node to the next (later) date — browser scroll
+            // anchoring then follows it to the top of the future block.
             <div
-              key={entry.transaction.id}
+              key={entry.transaction.recurring ? `${entry.transaction.id}@${entry.transaction.date}` : entry.transaction.id}
               className={`flex items-start rounded-md ${isCompact ? 'active:bg-accent' : 'hover:bg-accent cursor-pointer'}`}
               onClick={() => {
                 const rt = entry.transaction.recurring

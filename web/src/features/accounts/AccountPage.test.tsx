@@ -350,6 +350,45 @@ it('posts a due template straight from the preview, without the transaction form
   expect(screen.queryByRole('dialog')).toBeNull()
 })
 
+it('posting a future template renders the next occurrence as a new row, not the tapped one moved', async () => {
+  mockViewport(true)
+  const day = 24 * 3600 * 1000
+  const stamp = (d: Date) => `${d.toISOString().slice(0, 10)} 12:00:00`
+  const template = {
+    id: 'r1', ownerUserId: 'u1', type: 'expense', accountId: 'a1', accountRecipientId: null,
+    amount: '9.99', categoryId: 'cat-food', payeeId: null, tagId: null, description: 'sub',
+    schedule: 'monthly', nextPaymentAt: stamp(new Date(Date.now() + 5 * day)),
+  }
+  server.use(
+    ...coreHandlers({ recurring: [template], transactions: [] }),
+    http.post('*/api/v1/recurring/post-recurring-transaction', () =>
+      HttpResponse.json({
+        success: true, message: '',
+        data: {
+          item: {
+            id: 't-new', author: fixtureOwner, type: 'expense', accountId: 'a1', accountRecipientId: null,
+            amount: '9.99', amountRecipient: null, categoryId: 'cat-food', description: 'sub',
+            payeeId: null, tagId: null, date: stamp(new Date()), recurringId: 'r1',
+          },
+          accounts: fixtureAccounts,
+          nextPaymentAt: stamp(new Date(Date.now() + 35 * day)),
+        },
+      }),
+    ),
+  )
+  renderPage()
+  const user = userEvent.setup()
+  const tapped = await screen.findByTestId('tx-r1')
+  await user.click(tapped)
+  await user.click(await screen.findByRole('button', { name: 'Post' }))
+  await screen.findByTestId('tx-t-new')
+
+  // Reusing the tapped node for the next occurrence would carry it to the top
+  // of the future block, and browser scroll anchoring would follow it there.
+  expect(tapped.isConnected).toBe(false)
+  expect(screen.getByTestId('tx-r1')).not.toBe(tapped)
+})
+
 it('colours the Not posted label red only when the template is due', async () => {
   mockViewport(false)
   const day = 24 * 3600 * 1000

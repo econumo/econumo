@@ -338,6 +338,10 @@ navigation (single-pane vs sidebar).
       created transaction is dated TODAY, not at the missed date, and lands in
       today's group. The review dialog's date chip likewise pre-fills today —
       a template still ahead of schedule keeps pre-filling its scheduled date.
+- [ ] 📱 On an account with several upcoming templates, scroll up into the
+      future block, then Post (and separately Skip) a template row in view
+      from its preview: the list stays where it was — it does NOT jump to
+      the top of the future block where the next occurrence now sits.
 - [ ] Month-end clamping (31st → Feb 28 → Mar 31) is long-horizon — covered by
       unit tests; in a manual run just note the next-date math looks right.
 - [ ] Edit and delete a rule; delete asks for confirmation; posted transactions
