@@ -45,9 +45,12 @@ export function BudgetAccountsField({ accounts, selected, locked, onToggle, savi
       <EntityIcon name={account.icon} className={`text-lg ${dimmed ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
       <span className={`min-w-0 flex-1 truncate text-sm ${dimmed ? 'text-muted-foreground' : ''}`}>{account.name}</span>
       {/* the savings role is changeable even for a locked member: it never
-          removes the account from the budget */}
+          removes the account from the budget. mr-3.5 (not mr-2): each Switch widens
+          its own tap zone by 12px a side, so the visible gap to the include switch
+          must be at least 24px (14px here + the row's gap-2.5) or their hit zones
+          overlap on phones. */}
       {selected.has(account.id) ? (
-        <span className="mr-2 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
+        <span className="mr-3.5 flex shrink-0 items-center gap-1.5 text-[11px] text-muted-foreground">
           {t('budgets.modal.budget_form.savings.label')}
           <Switch
             aria-label={t('budgets.modal.budget_form.savings.toggle', { name: account.name })}

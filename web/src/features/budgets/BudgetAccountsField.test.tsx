@@ -59,6 +59,28 @@ describe('BudgetAccountsField', () => {
     await userEvent.setup().click(cashSavings)
     expect(onToggleSavings).toHaveBeenCalledWith('a1', false)
   })
+  it('keeps at least 24px between the savings switch and the include switch, so their tap zones do not overlap', () => {
+    // each Switch widens its own tap zone by 12px a side (after:-inset-x-3): with the
+    // two switches only 18px apart (the old mr-2 8px + the row's gap-2.5 10px), the tap
+    // zones overlapped on phones. The row's flex gap-2.5 (10px) is unchanged, so the
+    // savings wrapper's own right margin must contribute at least 14px on its own.
+    renderField(
+      <BudgetAccountsField
+        accounts={accounts}
+        selected={new Set(['a1'])}
+        locked={new Set()}
+        onToggle={vi.fn()}
+        savings={new Set(['a1'])}
+        onToggleSavings={vi.fn()}
+      />,
+    )
+    const savingsSwitch = screen.getByRole('switch', { name: 'Cash is a savings account' })
+    const wrapper = savingsSwitch.closest('span')
+    expect(wrapper).not.toBeNull()
+    expect(wrapper!.className).not.toMatch(/(?:^|\s)mr-2(?:\s|$)/)
+    expect(wrapper!.className).toMatch(/(?:^|\s)mr-(?:3\.5|4|5|6|7|8|9|10)(?:\s|$)/)
+  })
+
   it('shows the savings visibility note whenever the list is shown', () => {
     const note = 'Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.'
     const { unmount } = renderField(

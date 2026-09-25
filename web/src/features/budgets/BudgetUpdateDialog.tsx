@@ -36,6 +36,9 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
   const [savings, setSavings] = useState<Set<Id>>(new Set())
+  // whether the user touched the dedicated savings switch itself (not the cascade that
+  // clears a deselected account's flag) — see the isSavings-field check in submit()
+  const [savingsTouched, setSavingsTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverError, setServerError] = useState<string | null>(null)
   // the refused request, held while the user decides on the savings removal
@@ -57,6 +60,7 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       setCurrencyId(budget.meta.currencyId)
       setSelected(new Set((budget.filters?.accounts ?? []).map((a) => a.id)))
       setSavings(new Set((budget.filters?.accounts ?? []).filter((a) => a.isSavings === true).map((a) => a.id)))
+      setSavingsTouched(false)
       setError(null)
       setServerError(null)
       setUnconfirmed(null)
@@ -64,6 +68,18 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   }, [open, budget])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
+
+  const setSavingsFlag = (id: Id, on: boolean) => {
+    setSavings((prev) => {
+      const next = new Set(prev)
+      if (on) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }
 
   const toggleAccount = (id: Id, included: boolean) => {
     if (locked.has(id)) {
@@ -79,20 +95,15 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       return next
     })
     if (!included) {
-      toggleSavings(id, false)
+      // a cascade, not the user touching the savings switch itself — must not count
+      // as "touched" for the isSavings-field check in submit()
+      setSavingsFlag(id, false)
     }
   }
 
   const toggleSavings = (id: Id, on: boolean) => {
-    setSavings((prev) => {
-      const next = new Set(prev)
-      if (on) {
-        next.add(id)
-      } else {
-        next.delete(id)
-      }
-      return next
-    })
+    setSavingsTouched(true)
+    setSavingsFlag(id, on)
   }
 
   const send = (form: UpdateBudgetForm) => {
@@ -126,12 +137,20 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
     if (!currencyId) {
       return
     }
+    // A server older than the savings release (or a stale cache) omits `isSavings`
+    // from every member entry, so the toggles above are all seeded off regardless of
+    // the account's actual flag. Sending savingsAccountIds: [] in that case would
+    // silently clear real flags the client never actually knew about — omit the field
+    // entirely unless the user explicitly touched a savings switch this session.
+    const knowsSavingsFlags = members.some((a) => a.isSavings !== undefined)
     send({
       id: budget.meta.id,
       name,
       currencyId,
       accountIds: [...selected],
-      savingsAccountIds: [...savings].filter((id) => selected.has(id)),
+      ...(knowsSavingsFlags || savingsTouched
+        ? { savingsAccountIds: [...savings].filter((id) => selected.has(id)) }
+        : {}),
     })
   }
 

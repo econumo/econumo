@@ -124,6 +124,59 @@ it('renders when the server omits filters entirely', async () => {
   await waitFor(() => expect(screen.getByDisplayValue('Main budget')).toBeInTheDocument())
 })
 
+describe('savings flags omitted for a server/cache that never reported isSavings', () => {
+  // baseBudget's filters.accounts carries no isSavings field on either member, as
+  // an older server or a stale cache would report it.
+  it('omits savingsAccountIds when the user never touches a savings switch', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: baseBudget.meta } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog(baseBudget)
+    await screen.findByRole('switch', { name: 'include Cash' })
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body).not.toHaveProperty('savingsAccountIds')
+  })
+
+  it('sends the full savings set once the user touches a savings switch, even with no known isSavings field', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: baseBudget.meta } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog(baseBudget)
+    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body).toHaveProperty('savingsAccountIds', ['a1'])
+  })
+
+  it('deselecting an account (no explicit savings touch) still omits savingsAccountIds', async () => {
+    let body: Record<string, unknown> | undefined
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        body = (await request.json()) as Record<string, unknown>
+        return HttpResponse.json({ success: true, message: '', data: { item: baseBudget.meta } })
+      }),
+    )
+    const user = userEvent.setup()
+    renderDialog(baseBudget)
+    await screen.findByRole('switch', { name: 'include Cash' })
+    await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+    await user.click(screen.getByRole('button', { name: 'Update' }))
+    await waitFor(() => expect(body).toBeDefined())
+    expect(body).not.toHaveProperty('savingsAccountIds')
+  })
+})
+
 describe('savings toggles', () => {
   const savingsBudget: BudgetDto = {
     ...baseBudget,
