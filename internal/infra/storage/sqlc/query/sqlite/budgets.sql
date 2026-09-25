@@ -179,6 +179,15 @@ ON CONFLICT (budget_id, account_id) DO NOTHING;
 -- name: SetBudgetAccountSavings :exec
 UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?;
 
+-- name: SavingsElementHasData :one
+-- Whether the budget's savings element for this account carries a limit or a
+-- comment: dropping the element (flag off or member removed) deletes both.
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = ? AND e.external_id = ? AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
+
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;
 

@@ -151,8 +151,15 @@ definitions:
     properties:
       accountId:
         type: string
+      confirmSavingsRemoval:
+        type: boolean
       id:
         type: string
+      isSavings:
+        description: |-
+          IsSavings nil leaves an existing member's flag alone and adds a new
+          member as everyday.
+        type: boolean
     type: object
   model.AddAccountResult:
     properties:
@@ -234,6 +241,8 @@ definitions:
     properties:
       id:
         type: string
+      isSavings:
+        type: boolean
       removable:
         type: boolean
     type: object
@@ -568,6 +577,13 @@ definitions:
         type: string
       name:
         type: string
+      savingsAccountIds:
+        description: |-
+          SavingsAccountIds flags members as savings in this budget; each must be one
+          of AccountIds.
+        items:
+          type: string
+        type: array
       startDate:
         type: string
     type: object
@@ -2236,6 +2252,8 @@ definitions:
     properties:
       accountId:
         type: string
+      confirmSavingsRemoval:
+        type: boolean
       id:
         type: string
     type: object
@@ -2811,6 +2829,11 @@ definitions:
         items:
           type: string
         type: array
+      confirmSavingsRemoval:
+        description: |-
+          ConfirmSavingsRemoval allows a write that drops a savings row carrying
+          planned amounts or comments.
+        type: boolean
       currencyId:
         type: string
       endDate:
@@ -2822,6 +2845,13 @@ definitions:
         type: string
       name:
         type: string
+      savingsAccountIds:
+        description: |-
+          SavingsAccountIds is nil when omitted (flags untouched); a present list is
+          the caller's own savings members after AccountIds applies.
+        items:
+          type: string
+        type: array
     type: object
   model.UpdateBudgetResult:
     properties:

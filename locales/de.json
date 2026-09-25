@@ -1822,6 +1822,8 @@
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
       "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
+      "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
+      "savings_removal_unconfirmed": "Wenn du Sparen ausschaltest, werden die geplanten Beträge und Kommentare dieses Budgets für dieses Konto gelöscht; bestätige, um fortzufahren",
       "accounts_required": "Wähle mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
       "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",

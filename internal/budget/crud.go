@@ -11,8 +11,9 @@ import (
 	"github.com/econumo/econumo/internal/shared/vo"
 )
 
-// UpdateBudget updates a budget's name/currency/member-accounts and returns its
-// meta. Requires read access; a name change additionally requires update access.
+// UpdateBudget updates a budget's name/currency/member accounts/savings flags
+// and returns its meta. Requires read access; a name change additionally
+// requires update access.
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {
@@ -69,80 +70,19 @@ func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.Upda
 				}
 			}
 		}
+		// Everything is checked before the first write, so a refusal leaves the
+		// name and the membership as they were.
+		change, perr := s.planOwnMembership(txCtx, userID, b, req.AccountIds, req.SavingsAccountIds, now)
+		if perr != nil {
+			return perr
+		}
+		if gerr := s.guardSavingsRemoval(txCtx, change, req.ConfirmSavingsRemoval); gerr != nil {
+			return gerr
+		}
 		if serr := s.budgets.Save(txCtx, b.budget); serr != nil {
 			return serr
 		}
-		// accountIds absent → membership untouched (older clients, MCP). Present →
-		// replace-set over the caller's OWN accounts: add missing, remove absent
-		// ones — but a member with closed-month history is permanent, so naming
-		// a set that drops one fails the whole update.
-		if req.AccountIds != nil {
-			want := map[string]bool{}
-			for _, raw := range req.AccountIds {
-				aid, perr := vo.ParseId(raw)
-				if perr != nil {
-					return model.ValidateBlank(map[string]string{"accountIds": ""})
-				}
-				owned, oerr := s.ownsAccount(txCtx, userID, aid)
-				if oerr != nil {
-					return oerr
-				}
-				if !owned {
-					continue
-				}
-				want[aid.String()] = true
-			}
-			var ownMembers []vo.Id
-			for _, m := range b.accounts {
-				owned, oerr := s.ownsAccount(txCtx, userID, m.AccountID)
-				if oerr != nil {
-					return oerr
-				}
-				if owned {
-					ownMembers = append(ownMembers, m.AccountID)
-				}
-			}
-			removable, rerr := s.removableAccounts(txCtx, b, ownMembers, now)
-			if rerr != nil {
-				return rerr
-			}
-			for _, m := range ownMembers {
-				if want[m.String()] {
-					continue
-				}
-				if !removable[m.String()] {
-					return accountNotRemovable()
-				}
-				if serr := s.budgets.RemoveAccount(txCtx, budgetID, m); serr != nil {
-					return serr
-				}
-			}
-			for idStr := range want {
-				aid, perr := vo.ParseId(idStr)
-				if perr != nil {
-					return perr
-				}
-				// Naming an existing member again is a no-op. Deleted members stay
-				// listed in the filters block (they keep counting), so a client
-				// round-tripping that list back names them — rejecting the id would
-				// wedge every later update, since the removal rule keeps such a
-				// member forever. Only a NEW member has to be a live account.
-				if b.hasAccount(aid) {
-					continue
-				}
-				views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{aid})
-				if verr != nil {
-					return verr
-				}
-				if views[0].IsDeleted {
-					return model.ValidateBlank(map[string]string{"accountIds": ""})
-				}
-				if serr := s.budgets.AddAccount(txCtx, budgetID, aid, false, now); serr != nil {
-					return serr
-				}
-			}
-		}
-		return nil
+		return s.applyMemberChange(txCtx, change, now)
 	})
 	if err != nil {
 		return nil, err

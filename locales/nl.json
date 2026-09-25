@@ -1822,6 +1822,8 @@
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
       "savings_folder_not_allowed": "Spaargeld kan niet in een map worden geplaatst.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
+      "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
+      "savings_removal_unconfirmed": "Sparen uitschakelen verwijdert de geplande bedragen en opmerkingen van dit budget voor die rekening; bevestig om door te gaan",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
       "end_before_start": "De eindmaand ligt vóór de start van het budget",

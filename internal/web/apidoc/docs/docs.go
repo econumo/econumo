@@ -12496,8 +12496,15 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
+                "confirmSavingsRemoval": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isSavings": {
+                    "description": "IsSavings nil leaves an existing member's flag alone and adds a new\nmember as everyday.",
+                    "type": "boolean"
                 }
             }
         },
@@ -12625,6 +12632,9 @@ const docTemplate = `{
             "properties": {
                 "id": {
                     "type": "string"
+                },
+                "isSavings": {
+                    "type": "boolean"
                 },
                 "removable": {
                     "type": "boolean"
@@ -13123,6 +13133,13 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "savingsAccountIds": {
+                    "description": "SavingsAccountIds flags members as savings in this budget; each must be one\nof AccountIds.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "startDate": {
                     "type": "string"
@@ -15671,6 +15688,9 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
+                "confirmSavingsRemoval": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 }
@@ -16544,6 +16564,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "confirmSavingsRemoval": {
+                    "description": "ConfirmSavingsRemoval allows a write that drops a savings row carrying\nplanned amounts or comments.",
+                    "type": "boolean"
+                },
                 "currencyId": {
                     "type": "string"
                 },
@@ -16556,6 +16580,13 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "savingsAccountIds": {
+                    "description": "SavingsAccountIds is nil when omitted (flags untouched); a present list is\nthe caller's own savings members after AccountIds applies.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

@@ -991,6 +991,28 @@ func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetEle
 	return err
 }
 
+const savingsElementHasData = `-- name: SavingsElementHasData :one
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = ? AND e.external_id = ? AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
+`
+
+type SavingsElementHasDataParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Whether the budget's savings element for this account carries a limit or a
+// comment: dropping the element (flag off or member removed) deletes both.
+func (q *Queries) SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, savingsElementHasData, arg.BudgetID, arg.ExternalID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const setBudgetAccountSavings = `-- name: SetBudgetAccountSavings :exec
 UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?
 `

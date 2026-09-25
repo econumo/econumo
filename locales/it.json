@@ -1822,6 +1822,8 @@
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
       "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
+      "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
+      "savings_removal_unconfirmed": "Disattivare il risparmio elimina gli importi pianificati e i commenti di questo budget per quel conto; conferma per continuare",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
       "end_before_start": "Il mese finale precede l'inizio del budget",

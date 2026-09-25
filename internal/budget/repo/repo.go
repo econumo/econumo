@@ -123,6 +123,10 @@ func (r *Repo) SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id,
 	return r.q.SetBudgetAccountSavings(ctx, r.db(ctx), budgetID.String(), accountID.String(), isSavings)
 }
 
+func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error) {
+	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
+}
+
 func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {
 	return r.q.RemoveBudgetAccount(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	budgetrepo "github.com/econumo/econumo/internal/budget/repo"
+	"github.com/econumo/econumo/internal/model"
 	"github.com/econumo/econumo/internal/shared/vo"
 	"github.com/econumo/econumo/internal/test/dbtest"
 	"github.com/econumo/econumo/internal/test/fixture"
@@ -111,5 +112,64 @@ func TestBudgetAccounts_SavingsFlag(t *testing.T) {
 	}
 	if got := flags(); !got[everyday.String()] || got[savings.String()] {
 		t.Fatalf("after SetAccountSavings: %+v, want the flags swapped", got)
+	}
+}
+
+func TestSavingsElementHasData(t *testing.T) {
+	db := dbtest.New(t)
+	f := fixture.New(t, db)
+	u := vo.NewId()
+	f.User(fixture.User{ID: u.String(), Email: "has-data@e.test", Name: "U", Password: "pw", Salt: "s"})
+	b, other, s, cat := vo.NewId(), vo.NewId(), vo.NewId(), vo.NewId()
+	f.Account(fixture.Account{ID: s.String(), UserID: u.String()})
+	f.Budget(fixture.Budget{ID: b.String(), UserID: u.String()})
+	f.Budget(fixture.Budget{ID: other.String(), UserID: u.String()})
+	el := f.BudgetElement(fixture.BudgetElement{BudgetID: b.String(), ExternalID: s.String(), Type: 5, Position: 0})
+	otherEl := f.BudgetElement(fixture.BudgetElement{BudgetID: other.String(), ExternalID: s.String(), Type: 5, Position: 0})
+	catEl := f.BudgetElement(fixture.BudgetElement{BudgetID: b.String(), ExternalID: cat.String(), Type: 1, Position: 1})
+	f.BudgetLimit(fixture.BudgetLimit{ElementID: otherEl, Period: "2026-08-01 00:00:00", Amount: "10"})
+	f.BudgetLimit(fixture.BudgetLimit{ElementID: catEl, Period: "2026-08-01 00:00:00", Amount: "10"})
+
+	r := budgetrepo.NewRepo(db.Engine, db.TX)
+	ctx := context.Background()
+	has := func(budgetID, accountID vo.Id) bool {
+		t.Helper()
+		got, err := r.SavingsElementHasData(ctx, budgetID, accountID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if has(b, s) {
+		t.Fatal("an empty savings element reports data (another budget's limit leaked in?)")
+	}
+	if has(b, cat) {
+		t.Fatal("a category element's limit counts as savings data")
+	}
+	if has(b, vo.NewId()) {
+		t.Fatal("an account without an element reports data")
+	}
+
+	elID, _ := vo.ParseId(el)
+	now := time.Date(2026, 8, 1, 10, 0, 0, 0, time.UTC)
+	limit := model.NewBudgetElementLimit(vo.NewId(), elID, vo.NewDecimal("5"), time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), now)
+	if err := r.SaveLimit(ctx, limit); err != nil {
+		t.Fatal(err)
+	}
+	if !has(b, s) {
+		t.Fatal("a limit on the savings element is not reported")
+	}
+	if err := r.DeleteLimit(ctx, limit.ID); err != nil {
+		t.Fatal(err)
+	}
+	c, err := model.NewBudgetElementComment(vo.NewId(), elID, u, "note", time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.InsertComment(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	if !has(b, s) {
+		t.Fatal("a comment on the savings element is not reported")
 	}
 }

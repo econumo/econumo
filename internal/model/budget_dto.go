@@ -36,6 +36,7 @@ type MetaResult struct {
 type BudgetAccountFilter struct {
 	Id        string `json:"id"`
 	Removable bool   `json:"removable"`
+	IsSavings bool   `json:"isSavings"`
 }
 
 // FiltersResult is the budget's period + the requester's member accounts.
@@ -166,6 +167,9 @@ type CreateBudgetRequest struct {
 	// non-deleted account is required — enforced as a coded error in the use
 	// case, not here, so the wire carries the catalogue code.
 	AccountIds []string `json:"accountIds"`
+	// SavingsAccountIds flags members as savings in this budget; each must be one
+	// of AccountIds.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -189,6 +193,12 @@ type UpdateBudgetRequest struct {
 	// EndDate is nil when the client omits the field (end month untouched);
 	// "" clears it, "2006-01-02" sets it (snapped to first-of-month).
 	EndDate *string `json:"endDate"`
+	// SavingsAccountIds is nil when omitted (flags untouched); a present list is
+	// the caller's own savings members after AccountIds applies.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
+	// ConfirmSavingsRemoval allows a write that drops a savings row carrying
+	// planned amounts or comments.
+	ConfirmSavingsRemoval bool `json:"confirmSavingsRemoval"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -621,6 +631,10 @@ type RevokeAccessResult struct{}
 type AddAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
+	// IsSavings nil leaves an existing member's flag alone and adds a new
+	// member as everyday.
+	IsSavings             *bool `json:"isSavings"`
+	ConfirmSavingsRemoval bool  `json:"confirmSavingsRemoval"`
 }
 
 func (r AddAccountRequest) Validate() error {
@@ -635,8 +649,9 @@ type AddAccountResult struct {
 // RemoveAccountRequest drops an account from the budget. The budget id arrives
 // under "id" (see AddAccountRequest).
 type RemoveAccountRequest struct {
-	BudgetId  string `json:"id"`
-	AccountId string `json:"accountId"`
+	BudgetId              string `json:"id"`
+	AccountId             string `json:"accountId"`
+	ConfirmSavingsRemoval bool   `json:"confirmSavingsRemoval"`
 }
 
 func (r RemoveAccountRequest) Validate() error {

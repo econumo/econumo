@@ -142,6 +142,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	currencySet := map[string]vo.Id{}
 	var currencyIDs []vo.Id
 	var ownIDs []vo.Id
+	ownSavings := map[string]bool{}
 	var savings []model.AccountView
 	var everyday []vo.Id
 	for i, v := range views {
@@ -152,6 +153,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		}
 		if v.OwnerID == userID.String() {
 			ownIDs = append(ownIDs, memberIDs[i])
+			ownSavings[memberIDs[i].String()] = b.accounts[i].IsSavings
 		}
 		if _, seen := currencySet[v.CurrencyID]; !seen {
 			cid, cerr := vo.ParseId(v.CurrencyID)
@@ -168,7 +170,9 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	}
 	accountFilters := make([]model.BudgetAccountFilter, 0, len(ownIDs))
 	for _, id := range ownIDs {
-		accountFilters = append(accountFilters, model.BudgetAccountFilter{Id: id.String(), Removable: removable[id.String()]})
+		accountFilters = append(accountFilters, model.BudgetAccountFilter{
+			Id: id.String(), Removable: removable[id.String()], IsSavings: ownSavings[id.String()],
+		})
 	}
 
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)

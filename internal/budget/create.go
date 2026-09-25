@@ -60,11 +60,17 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 		})
 	}
 
+	savings, err := savingsSubsetOf(req.AccountIds, req.SavingsAccountIds)
+	if err != nil {
+		return nil, err
+	}
+
 	err = s.tx.WithTx(ctx, func(txCtx context.Context) error {
 		budget := model.NewBudget(budgetID, userID, req.Name, curID, startDate, now)
 		if serr := s.budgets.Save(txCtx, budget); serr != nil {
 			return serr
 		}
+		change := newMemberChange(budgetID, nil)
 		for _, raw := range req.AccountIds {
 			aid, perr := vo.ParseId(raw)
 			if perr != nil {
@@ -86,15 +92,18 @@ func (s *Service) CreateBudget(ctx context.Context, userID vo.Id, req model.Crea
 			if views[0].IsDeleted {
 				return model.ValidateBlank(map[string]string{"accountIds": ""})
 			}
-			if serr := s.budgets.AddAccount(txCtx, budgetID, aid, false, now); serr != nil {
-				return serr
-			}
+			change.addMember(aid, savings[aid.String()])
 		}
 		after, serr := s.seedCategoryElements(txCtx, userID, budgetID, "", now, nil)
 		if serr != nil {
 			return serr
 		}
 		if serr := s.seedTagElements(txCtx, userID, budgetID, after, now, nil); serr != nil {
+			return serr
+		}
+		// After seeding: the savings sync would otherwise create the category and
+		// tag rows itself, and the seed would then collide with them.
+		if serr := s.applyMemberChange(txCtx, change, now); serr != nil {
 			return serr
 		}
 		return s.users.SetActiveBudget(txCtx, userID, budgetID)

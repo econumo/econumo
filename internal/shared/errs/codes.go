@@ -44,6 +44,8 @@ const (
 	CodeBudgetFolderSideMixed           = "budget.folder_side_mixed"
 	CodeBudgetSavingsFolderNotAllowed   = "budget.savings_folder_not_allowed"
 	CodeBudgetAccountNotRemovable       = "budget.account_not_removable"
+	CodeBudgetSavingsAccountNotMember   = "budget.savings_account_not_member"
+	CodeBudgetSavingsRemovalUnconfirmed = "budget.savings_removal_unconfirmed"
 	CodeBudgetAccountsRequired          = "budget.accounts_required"
 	CodeBudgetArchived                  = "budget.archived"
 	CodeBudgetEndBeforeStart            = "budget.end_before_start"
@@ -171,6 +173,8 @@ var AllCodes = []string{
 	CodeBudgetFolderSideMixed,
 	CodeBudgetSavingsFolderNotAllowed,
 	CodeBudgetAccountNotRemovable,
+	CodeBudgetSavingsAccountNotMember,
+	CodeBudgetSavingsRemovalUnconfirmed,
 	CodeBudgetAccountsRequired,
 	CodeBudgetArchived,
 	CodeBudgetEndBeforeStart,

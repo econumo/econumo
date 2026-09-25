@@ -394,6 +394,9 @@ type Querier interface {
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	// Whether the budget's savings element for this account carries a limit or a
+	// comment: dropping the element (flag off or member removed) deletes both.
+	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error)
 	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id

@@ -1822,6 +1822,8 @@
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
       "savings_folder_not_allowed": "储蓄不能放入文件夹。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
+      "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
+      "savings_removal_unconfirmed": "关闭储蓄将删除此预算中该账户的计划金额和评论；请确认以继续",
       "accounts_required": "请至少选择一个账户",
       "archived": "此预算已归档",
       "end_before_start": "结束月份早于预算开始时间",

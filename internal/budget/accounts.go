@@ -61,6 +61,7 @@ func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAcc
 	if err != nil {
 		return nil, err
 	}
+	change := newMemberChange(budgetID, b.accounts)
 	if !b.hasAccount(accountID) {
 		views, verr := s.accounts.AccountsByIDs(ctx, []vo.Id{accountID})
 		if verr != nil {
@@ -69,11 +70,12 @@ func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAcc
 		if views[0].IsDeleted {
 			return nil, model.ValidateBlank(map[string]string{"accountId": ""})
 		}
-		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-			return s.budgets.AddAccount(txCtx, budgetID, accountID, false, s.clock.Now())
-		}); err != nil {
-			return nil, err
-		}
+		change.addMember(accountID, req.IsSavings != nil && *req.IsSavings)
+	} else if req.IsSavings != nil {
+		change.setFlag(accountID, *req.IsSavings)
+	}
+	if err := s.writeMemberChange(ctx, change, req.ConfirmSavingsRemoval); err != nil {
+		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
 	if err != nil {
@@ -89,6 +91,7 @@ func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.Rem
 	if err != nil {
 		return nil, err
 	}
+	change := newMemberChange(budgetID, b.accounts)
 	if b.hasAccount(accountID) {
 		removable, rerr := s.removableAccounts(ctx, b, []vo.Id{accountID}, s.clock.Now())
 		if rerr != nil {
@@ -97,11 +100,10 @@ func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.Rem
 		if !removable[accountID.String()] {
 			return nil, accountNotRemovable()
 		}
-		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-			return s.budgets.RemoveAccount(txCtx, budgetID, accountID)
-		}); err != nil {
-			return nil, err
-		}
+		change.removeMember(accountID)
+	}
+	if err := s.writeMemberChange(ctx, change, req.ConfirmSavingsRemoval); err != nil {
+		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
 	if err != nil {

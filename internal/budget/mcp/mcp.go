@@ -88,9 +88,17 @@ type setLimitResult struct {
 	Amount    string `json:"amount"`
 }
 
-type budgetAccountInput struct {
-	BudgetID  string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
-	AccountID string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+type addBudgetAccountInput struct {
+	BudgetID              string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	AccountID             string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+	IsSavings             *bool  `json:"is_savings,omitempty" jsonschema:"true makes the account a savings row in this budget, false an everyday account; omit to keep an existing member's setting (a new member is everyday)"`
+	ConfirmSavingsRemoval bool   `json:"confirm_savings_removal,omitempty" jsonschema:"set true to turn savings off even though the account's savings row has planned amounts or comments in this budget, which are deleted"`
+}
+
+type removeBudgetAccountInput struct {
+	BudgetID              string `json:"budget_id" jsonschema:"budget id (UUID), from list_budgets"`
+	AccountID             string `json:"account_id" jsonschema:"account id (UUID) owned by you, from list_accounts"`
+	ConfirmSavingsRemoval bool   `json:"confirm_savings_removal,omitempty" jsonschema:"set true to remove a savings account whose savings row has planned amounts or comments in this budget, which are deleted"`
 }
 
 type budgetAccountResult struct {
@@ -530,28 +538,32 @@ func Register(svc *appbudget.Service) webmcp.Register {
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "add_budget_account",
-			Description: "Add one of your accounts to a budget so its transactions and balance count. Use list_accounts for account_id."},
-			func(ctx context.Context, req *sdk.CallToolRequest, in budgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
+			Description: "Add one of your accounts to a budget so its transactions and balance count, or change whether an existing member is a savings account in this budget. Use list_accounts for account_id. A savings account gets its own savings row in the budget, where you plan how much goes into it each month; every budget participant sees that row, with the account's name and amounts. Turning savings off deletes the row's planned amounts and comments, so it is refused unless confirm_savings_removal is true."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in addBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "add_budget_account")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, budgetAccountResult{}, err
 				}
-				if _, err := svc.AddAccount(ctx, userID, model.AddAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+				if _, err := svc.AddAccount(ctx, userID, model.AddAccountRequest{
+					BudgetId: in.BudgetID, AccountId: in.AccountID, IsSavings: in.IsSavings, ConfirmSavingsRemoval: in.ConfirmSavingsRemoval,
+				}); err != nil {
 					return nil, budgetAccountResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, budgetAccountResult{BudgetID: in.BudgetID, AccountID: in.AccountID, Member: true}, nil
 			})
 
 		sdk.AddTool(s, &sdk.Tool{Name: "remove_budget_account",
-			Description: "Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget."},
-			func(ctx context.Context, req *sdk.CallToolRequest, in budgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
+			Description: "Remove one of your accounts from a budget. Only possible while the account has no transactions in past months of the budget. Removing a savings account deletes its savings row (visible to every budget participant), and when that row has planned amounts or comments the removal is refused unless confirm_savings_removal is true."},
+			func(ctx context.Context, req *sdk.CallToolRequest, in removeBudgetAccountInput) (*sdk.CallToolResult, budgetAccountResult, error) {
 				reqctx.AddLogAttr(ctx, "tool", "remove_budget_account")
 				userID, err := webmcp.UserID(ctx)
 				if err != nil {
 					return nil, budgetAccountResult{}, err
 				}
-				if _, err := svc.RemoveAccount(ctx, userID, model.RemoveAccountRequest{BudgetId: in.BudgetID, AccountId: in.AccountID}); err != nil {
+				if _, err := svc.RemoveAccount(ctx, userID, model.RemoveAccountRequest{
+					BudgetId: in.BudgetID, AccountId: in.AccountID, ConfirmSavingsRemoval: in.ConfirmSavingsRemoval,
+				}); err != nil {
 					return nil, budgetAccountResult{}, webmcp.MapErr(ctx, err)
 				}
 				return nil, budgetAccountResult{BudgetID: in.BudgetID, AccountID: in.AccountID, Member: false}, nil
