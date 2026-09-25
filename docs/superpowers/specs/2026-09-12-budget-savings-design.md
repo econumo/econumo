@@ -79,11 +79,14 @@ be planned.
   - `remove-account`: unchanged, except for the confirmation guard below.
 - **Confirmation guard**: a write that turns a member's flag off or removes a savings
   member, while that member's savings element carries at least one limit or comment,
-  is refused with coded 400 `budget.savings_removal_unconfirmed` (field
-  `savingsAccountIds`, params `{count}` = affected accounts) unless the request
+  is refused with coded 400 `budget.savings_removal_unconfirmed` on field
+  `confirmSavingsRemoval` — its own field key, because the error envelope carries
+  no catalogue code and the SPA recognises errors by field — unless the request
   carries `confirmSavingsRemoval: true` (`update-budget`, `add-account`,
   `remove-account`). The check runs on the server, so it holds whatever the client
-  has loaded. Nothing is written when it refuses.
+  has loaded. Nothing is written when it refuses. (A participant whose access is
+  revoked takes their accounts with them, as before; their savings rows go on the
+  next sync with no confirmation — revocation is already the destructive act.)
 - Every write above runs `syncElements` in its own transaction, so a savings row
   appears or disappears together with the flag (with its limits and #246 comments,
   by cascade) — no lazy deletion is left waiting for an unrelated write.
@@ -267,10 +270,11 @@ the account-level marker.)*
   shown by name, with their saved amounts and balances, to everyone with access to
   this budget."
 - Create sends `savingsAccountIds`; update sends the full own savings set.
-- When the server answers `budget.savings_removal_unconfirmed`, the dialog asks
-  ("Planned amounts and comments for {count} savings account(s) will be deleted from
-  this budget. Saved amounts and transactions are not affected.") and resends with
-  `confirmSavingsRemoval: true`; cancelling leaves the dialog open, unchanged.
+- When the server refuses with a `confirmSavingsRemoval` field error, the dialog
+  asks ("Planned amounts and comments of the savings accounts you turned off or
+  removed will be deleted from this budget. Saved amounts and transactions are not
+  affected.") and resends with `confirmSavingsRemoval: true`; cancelling leaves the
+  dialog open, unchanged.
 - No account-level switch, type field or marker.
 
 ### Plan view (`PlanSheet.tsx`, `planMath.ts`, `budgetStore.ts`)
