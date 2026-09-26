@@ -650,11 +650,15 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       tooltips.
 - [ ] 📱 **Budget settings — Savings switch**: in the create and edit budget
       dialogs, each of your own selected accounts shows a "Savings" switch
-      next to its include switch; it can be toggled on or off at any time —
+      on a second line under the account name (the include switch stays on
+      the name's line, far right); it can be toggled on or off at any time —
       when creating the budget, or later on an existing member account, and
       as often as you like either way. A note beneath the account list reads
       "Savings accounts are shown by name, with their saved amounts and
-      balances, to everyone with access to this budget."
+      balances, to everyone with access to this budget." On a 320px phone in
+      German or Ukrainian, long account names stay distinguishable (the name
+      spans the row up to the include switch), and on a tablet or desktop the
+      dialog's fields and buttons stay inside its frame.
 - [ ] 📱 Turn off (or remove) a savings member that still carries plans or
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or
@@ -737,9 +741,14 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       its totals), one row per savings account in their saved order, with
       Planned / Saved / Remaining in the account's currency (all three columns
       also on a phone). A budget without savings accounts shows no block.
-      Folding it survives a reload. On a phone (375px) account names stay
-      readable next to the three amount columns, and the column headers line
-      up with the amounts.
+      Folding it survives a reload. On a phone (320px and 375px, also in
+      German, Polish and Ukrainian) the title has its own line, the
+      Planned / Saved / Remaining headers show in full (never cut off with
+      "…"), each account name has its own full-width line above its three
+      amounts, the amounts line up under the headers (also in Edit structure
+      mode, with the grips), and a five-digit amount such as 12,345.67 fits
+      without overlapping its neighbour. From 640px wide the title, headers,
+      names and amounts share one line again.
 - [ ] 📱 Save more into a savings account than planned for the month:
       Remaining goes negative and turns red, the same over-plan style as a
       negative Available in the table.

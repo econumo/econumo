@@ -120,6 +120,15 @@ it('renders one row per savings account in position order, deleted accounts last
   expect(within(block).getByText('Remaining')).toBeInTheDocument()
 })
 
+it('below sm the column labels wrap instead of truncating; from sm up they truncate', () => {
+  renderBlock()
+  for (const label of ['Planned', 'Saved', 'Remaining']) {
+    const el = within(screen.getByTestId('budget-savings-block')).getByText(label)
+    expect(el.className).not.toMatch(/(?:^|\s)truncate(?:\s|$)/)
+    expect(el.className).toMatch(/(?:^|\s)sm:truncate(?:\s|$)/)
+  }
+})
+
 it('shows Planned / Saved / Remaining in the row currency; a negative Remaining carries the over-plan style', () => {
   renderBlock()
   const r1 = screen.getByTestId('savings-row-acc-s1')

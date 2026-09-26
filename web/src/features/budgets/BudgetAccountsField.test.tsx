@@ -1,5 +1,5 @@
 import type { ReactElement } from 'react'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { describe, expect, it, vi } from 'vitest'
@@ -79,6 +79,24 @@ describe('BudgetAccountsField', () => {
     expect(wrapper).not.toBeNull()
     expect(wrapper!.className).not.toMatch(/(?:^|\s)mr-2(?:\s|$)/)
     expect(wrapper!.className).toMatch(/(?:^|\s)mr-(?:3\.5|4|5|6|7|8|9|10)(?:\s|$)/)
+  })
+
+  it('stacks a row in a narrow list: include switch on the name line, savings switch on a second line under the name', () => {
+    renderField(
+      <BudgetAccountsField accounts={accounts} selected={new Set(['a1'])} locked={new Set()} onToggle={vi.fn()} savings={new Set()} onToggleSavings={vi.fn()} />,
+    )
+    const include = screen.getByRole('switch', { name: 'include Cash' })
+    const row = include.closest('li')!
+    expect(row.className).toMatch(/(?:^|\s)grid(?:\s|$)/)
+    expect(row.className).toMatch(/(?:^|\s)@md:flex(?:\s|$)/)
+    expect(row.parentElement!.className).toMatch(/(?:^|\s)@container(?:\s|$)/)
+    expect(include.className).toMatch(/(?:^|\s)row-start-1(?:\s|$)/)
+    const savingsWrapper = screen.getByRole('switch', { name: 'Cash is a savings account' }).closest('span')!
+    expect(savingsWrapper.className).toMatch(/(?:^|\s)col-start-2 row-start-2(?:\s|$)/)
+    expect(within(row).getByText('Cash').className).toMatch(/(?:^|\s)col-start-2 row-start-1(?:\s|$)/)
+    // an unselected account has no second line at all
+    const other = screen.getByRole('switch', { name: 'include Savings' }).closest('li')!
+    expect(within(other).queryAllByRole('switch')).toHaveLength(1)
   })
 
   it('shows the savings visibility note whenever the list is shown', () => {
