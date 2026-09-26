@@ -12496,8 +12496,15 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
+                "confirmSavingsRemoval": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
+                },
+                "isSavings": {
+                    "description": "IsSavings nil leaves an existing member's flag alone and adds a new\nmember as everyday.",
+                    "type": "boolean"
                 }
             }
         },
@@ -12626,6 +12633,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "isSavings": {
+                    "type": "boolean"
+                },
                 "removable": {
                     "type": "boolean"
                 }
@@ -12664,6 +12674,18 @@ const docTemplate = `{
                     }
                 },
                 "openingBalances": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.OpeningBalanceResult"
+                    }
+                },
+                "savingsFlows": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
+                "savingsOpeningBalances": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.OpeningBalanceResult"
@@ -13108,6 +13130,13 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "savingsAccountIds": {
+                    "description": "SavingsAccountIds flags members as savings in this budget; each must be one\nof AccountIds.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "startDate": {
                     "type": "string"
@@ -15348,6 +15377,55 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanSavingsElementResult": {
+            "type": "object",
+            "properties": {
+                "cells": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanCellResult"
+                    }
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
+        },
+        "model.PlanSavingsFlowResult": {
+            "type": "object",
+            "properties": {
+                "amount": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "month": {
+                    "type": "string"
+                }
+            }
+        },
         "model.PlanStructureResult": {
             "type": "object",
             "properties": {
@@ -15361,6 +15439,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.BudgetFolderResult"
+                    }
+                },
+                "savings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsElementResult"
                     }
                 }
             }
@@ -15601,6 +15685,9 @@ const docTemplate = `{
                 "accountId": {
                     "type": "string"
                 },
+                "confirmSavingsRemoval": {
+                    "type": "boolean"
+                },
                 "id": {
                     "type": "string"
                 }
@@ -15752,6 +15839,44 @@ const docTemplate = `{
         },
         "model.RevokeSessionResult": {
             "type": "object"
+        },
+        "model.SavingsElementResult": {
+            "type": "object",
+            "properties": {
+                "available": {
+                    "type": "string"
+                },
+                "budgeted": {
+                    "type": "string"
+                },
+                "currencyId": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "isArchived": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ownerUserId": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "integer"
+                },
+                "spent": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "integer"
+                }
+            }
         },
         "model.SessionItem": {
             "type": "object",
@@ -15993,6 +16118,12 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/model.LabelSpendResult"
+                    }
+                },
+                "savings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.SavingsElementResult"
                     }
                 }
             }
@@ -16427,6 +16558,10 @@ const docTemplate = `{
                         "type": "string"
                     }
                 },
+                "confirmSavingsRemoval": {
+                    "description": "ConfirmSavingsRemoval allows a write that drops a savings row carrying\nplanned amounts or comments.",
+                    "type": "boolean"
+                },
                 "currencyId": {
                     "type": "string"
                 },
@@ -16439,6 +16574,13 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
+                },
+                "savingsAccountIds": {
+                    "description": "SavingsAccountIds is nil when omitted (flags untouched); a present list is\nthe caller's own savings members after AccountIds applies.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

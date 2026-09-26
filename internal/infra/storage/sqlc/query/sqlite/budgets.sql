@@ -110,6 +110,12 @@ FROM budgets_elements WHERE id = ?;
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = ? AND external_id = ?;
 
+-- name: GetBudgetElementByExternalForWrite :one
+-- Plain read: SQLite serializes writers, so the row lock the PostgreSQL
+-- variant takes has nothing to order here.
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = ? AND external_id = ?;
+
 -- name: UpsertBudgetElement :exec
 INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -170,11 +176,29 @@ DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = ?);
 
 -- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id;
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id;
 
 -- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?;
+
+-- name: LockSavingsElement :many
+-- Plain read: SQLite serializes writers, so there is no concurrent limit or
+-- comment for a lock to order against.
+SELECT id FROM budgets_elements
+WHERE budget_id = ? AND external_id = ? AND type = 5;
+
+-- name: SavingsElementHasData :one
+-- Whether the budget's savings element for this account carries a limit or a
+-- comment: dropping the element (flag off or member removed) deletes both.
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = ? AND e.external_id = ? AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
 
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?;

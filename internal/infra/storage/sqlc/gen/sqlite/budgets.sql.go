@@ -11,18 +11,24 @@ import (
 )
 
 const addBudgetAccount = `-- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES (?, ?, ?)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES (?, ?, ?, ?)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
 type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
 func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, addBudgetAccount,
+		arg.BudgetID,
+		arg.AccountID,
+		arg.IsSavings,
+		arg.CreatedAt,
+	)
 	return err
 }
 
@@ -271,6 +277,35 @@ func (q *Queries) GetBudgetElementByExternal(ctx context.Context, arg GetBudgetE
 	return i, err
 }
 
+const getBudgetElementByExternalForWrite = `-- name: GetBudgetElementByExternalForWrite :one
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = ? AND external_id = ?
+`
+
+type GetBudgetElementByExternalForWriteParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Plain read: SQLite serializes writers, so the row lock the PostgreSQL
+// variant takes has nothing to order here.
+func (q *Queries) GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error) {
+	row := q.db.QueryRowContext(ctx, getBudgetElementByExternalForWrite, arg.BudgetID, arg.ExternalID)
+	var i BudgetsElement
+	err := row.Scan(
+		&i.ID,
+		&i.BudgetID,
+		&i.CurrencyID,
+		&i.FolderID,
+		&i.ExternalID,
+		&i.Type,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SortKey,
+	)
+	return i, err
+}
+
 const getBudgetEnvelope = `-- name: GetBudgetEnvelope :one
 SELECT id, budget_id, name, icon, is_archived, created_at, updated_at
 FROM budgets_envelopes WHERE id = ?
@@ -398,11 +433,12 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 }
 
 const listBudgetAccounts = `-- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = ? ORDER BY created_at, account_id
 `
 
 type ListBudgetAccountsRow struct {
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
@@ -415,7 +451,7 @@ func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]Li
 	items := []ListBudgetAccountsRow{}
 	for rows.Next() {
 		var i ListBudgetAccountsRow
-		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.AccountID, &i.IsSavings, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -908,6 +944,41 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 	return items, nil
 }
 
+const lockSavingsElement = `-- name: LockSavingsElement :many
+SELECT id FROM budgets_elements
+WHERE budget_id = ? AND external_id = ? AND type = 5
+`
+
+type LockSavingsElementParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Plain read: SQLite serializes writers, so there is no concurrent limit or
+// comment for a lock to order against.
+func (q *Queries) LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockSavingsElement, arg.BudgetID, arg.ExternalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const removeBudgetAccount = `-- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = ? AND account_id = ?
 `
@@ -981,6 +1052,43 @@ type RepointBudgetElementParams struct {
 // not update external_id, hence this dedicated statement.
 func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const savingsElementHasData = `-- name: SavingsElementHasData :one
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = ? AND e.external_id = ? AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
+`
+
+type SavingsElementHasDataParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Whether the budget's savings element for this account carries a limit or a
+// comment: dropping the element (flag off or member removed) deletes both.
+func (q *Queries) SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, savingsElementHasData, arg.BudgetID, arg.ExternalID)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const setBudgetAccountSavings = `-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?
+`
+
+type SetBudgetAccountSavingsParams struct {
+	IsSavings bool
+	BudgetID  string
+	AccountID string
+}
+
+func (q *Queries) SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error {
+	_, err := q.db.ExecContext(ctx, setBudgetAccountSavings, arg.IsSavings, arg.BudgetID, arg.AccountID)
 	return err
 }
 

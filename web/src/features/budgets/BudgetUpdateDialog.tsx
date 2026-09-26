@@ -4,9 +4,12 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { CardField, cardFieldControlClass } from '@/components/CardField'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CurrencyPickerDialog } from '@/components/CurrencyPickerDialog'
 import { ResponsiveDialog, dialogActionsClass } from '@/components/ResponsiveDialog'
 import { isNotEmpty, isValidBudgetName } from '@/lib/validation'
+import { apiErrorMessage, apiFieldErrors } from '@/lib/apiError'
+import type { UpdateBudgetForm } from '@/api/budget'
 import type { BudgetDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { useAccounts } from '@/features/accounts/queries'
@@ -32,7 +35,14 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   const [currencyId, setCurrencyId] = useState<Id | null>(null)
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [selected, setSelected] = useState<Set<Id>>(new Set())
+  const [savings, setSavings] = useState<Set<Id>>(new Set())
+  // whether the user touched the dedicated savings switch itself (not the cascade that
+  // clears a deselected account's flag) — see the isSavings-field check in submit()
+  const [savingsTouched, setSavingsTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [serverError, setServerError] = useState<string | null>(null)
+  // the refused request, held while the user decides on the savings removal
+  const [unconfirmed, setUnconfirmed] = useState<UpdateBudgetForm | null>(null)
 
   const canConfigure = canConfigureBudget(budget.meta, user?.id)
   // deleted members are permanent (they never disappear from filters.accounts) and
@@ -42,17 +52,34 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
   // known" rather than crashing the page.
   const members = budget.filters?.accounts ?? []
   const locked = new Set(members.filter((a) => !a.removable).map((a) => a.id))
+  const initialSavings = members.filter((a) => a.isSavings === true).map((a) => a.id)
 
   useEffect(() => {
     if (open) {
       setName(budget.meta.name)
       setCurrencyId(budget.meta.currencyId)
       setSelected(new Set((budget.filters?.accounts ?? []).map((a) => a.id)))
+      setSavings(new Set((budget.filters?.accounts ?? []).filter((a) => a.isSavings === true).map((a) => a.id)))
+      setSavingsTouched(false)
       setError(null)
+      setServerError(null)
+      setUnconfirmed(null)
     }
   }, [open, budget])
 
   const ownAccounts = accounts.filter((a) => !user || a.owner.id === user.id)
+
+  const setSavingsFlag = (id: Id, on: boolean) => {
+    setSavings((prev) => {
+      const next = new Set(prev)
+      if (on) {
+        next.add(id)
+      } else {
+        next.delete(id)
+      }
+      return next
+    })
+  }
 
   const toggleAccount = (id: Id, included: boolean) => {
     if (locked.has(id)) {
@@ -67,6 +94,35 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
       }
       return next
     })
+    if (!included) {
+      // a cascade, not the user touching the savings switch itself — must not count
+      // as "touched" for the isSavings-field check in submit()
+      setSavingsFlag(id, false)
+    }
+  }
+
+  const toggleSavings = (id: Id, on: boolean) => {
+    setSavingsTouched(true)
+    setSavingsFlag(id, on)
+  }
+
+  const send = (form: UpdateBudgetForm) => {
+    setServerError(null)
+    updateBudget.mutate(
+      { ...form, previousSavingsAccountIds: initialSavings },
+      {
+        onSuccess: onClose,
+        onError: (err) => {
+          // the server refuses (and writes nothing) when a savings member with
+          // plans or comments would be turned off or removed unconfirmed
+          if (!form.confirmSavingsRemoval && apiFieldErrors(err, 'confirmSavingsRemoval')) {
+            setUnconfirmed(form)
+            return
+          }
+          setServerError(apiErrorMessage(err))
+        },
+      },
+    )
   }
 
   const submit = () => {
@@ -81,10 +137,21 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
     if (!currencyId) {
       return
     }
-    updateBudget.mutate(
-      { id: budget.meta.id, name, currencyId, accountIds: [...selected] },
-      { onSuccess: onClose },
-    )
+    // A server older than the savings release (or a stale cache) omits `isSavings`
+    // from every member entry, so the toggles above are all seeded off regardless of
+    // the account's actual flag. Sending savingsAccountIds: [] in that case would
+    // silently clear real flags the client never actually knew about — omit the field
+    // entirely unless the user explicitly touched a savings switch this session.
+    const knowsSavingsFlags = members.some((a) => a.isSavings !== undefined)
+    send({
+      id: budget.meta.id,
+      name,
+      currencyId,
+      accountIds: [...selected],
+      ...(knowsSavingsFlags || savingsTouched
+        ? { savingsAccountIds: [...savings].filter((id) => selected.has(id)) }
+        : {}),
+    })
   }
 
   return (
@@ -140,8 +207,39 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
           <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
         </button>
 
-        {ownAccounts.length > 0 ? <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={locked} onToggle={toggleAccount} /> : null}
+        {ownAccounts.length > 0 ? (
+          <BudgetAccountsField
+            accounts={ownAccounts}
+            selected={selected}
+            locked={locked}
+            onToggle={toggleAccount}
+            savings={savings}
+            onToggleSavings={toggleSavings}
+          />
+        ) : null}
+        {serverError ? (
+          <p role="alert" className="text-sm text-destructive">
+            {serverError}
+          </p>
+        ) : null}
       </form>
+
+      <ConfirmDialog
+        open={unconfirmed !== null}
+        onClose={() => setUnconfirmed(null)}
+        onConfirm={() => {
+          const form = unconfirmed
+          setUnconfirmed(null)
+          if (form) {
+            send({ ...form, confirmSavingsRemoval: true })
+          }
+        }}
+        title={t('budgets.modal.budget_form.savings.confirm.title')}
+        question={t('budgets.modal.budget_form.savings.confirm.question')}
+        confirmLabel={t('budgets.modal.budget_form.savings.confirm.action')}
+        cancelLabel={t('common.button.cancel.label')}
+        destructive
+      />
 
       <CurrencyPickerDialog
         open={currencyOpen}

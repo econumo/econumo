@@ -177,3 +177,31 @@ it('edit mode hides the access row from a non-admin member', async () => {
   await screen.findByRole('button', { name: /Currency/ })
   expect(screen.queryByRole('button', { name: /Access control/ })).toBeNull()
 })
+
+// Savings is a per-budget membership role now, set in the budget settings: the
+// account dialog has no savings switch and account payloads carry no type.
+it('has no savings switch and sends no type on create or update', async () => {
+  const bodies: Record<string, unknown>[] = []
+  const echo = async ({ request }: { request: Request }) => {
+    const body = (await request.json()) as Record<string, unknown>
+    bodies.push(body)
+    return HttpResponse.json({ success: true, message: '', data: { item: { ...fixtureAccounts[0], id: body.id }, transaction: null } })
+  }
+  server.use(http.post('*/api/v1/account/create-account', echo), http.post('*/api/v1/account/update-account', echo))
+  const user = userEvent.setup()
+  renderDialog()
+  useUiStore.getState().openAccountModal({ folderId: 'f1' })
+  await screen.findByText('New account')
+  expect(screen.queryByRole('switch')).toBeNull()
+  await user.type(screen.getByLabelText('Name'), 'Wallet')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  await waitFor(() => expect(bodies).toHaveLength(1))
+  expect(bodies[0]).not.toHaveProperty('type')
+
+  useUiStore.getState().openAccountModal({ account: fixtureAccounts[0] as unknown as AccountDto })
+  await screen.findByText('Edit account')
+  expect(screen.queryByRole('switch')).toBeNull()
+  await user.click(screen.getByRole('button', { name: 'Update' }))
+  await waitFor(() => expect(bodies).toHaveLength(2))
+  expect(bodies[1]).not.toHaveProperty('type')
+})

@@ -4,12 +4,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tansta
 import { v7 as uuidv7 } from 'uuid'
 import { toast } from 'sonner'
 import * as budgetApi from '@/api/budget'
-import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto } from '@/api/dto/budget'
+import type { BudgetCommentDto, BudgetDto, BudgetMetaDto, BudgetPlanDto, PlanCellDto } from '@/api/dto/budget'
 import type { CurrentUserDto } from '@/api/dto/user'
 import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
+import { sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
@@ -36,6 +37,7 @@ export function useBudgets() {
 
 export function useCreateBudget() {
   const queryClient = useQueryClient()
+  const invalidate = useInvalidateBudget()
   return useMutation({
     mutationFn: async (form: budgetApi.CreateBudgetForm & { ownerUserId?: Id }) => {
       // Vue guard: a same-name own budget resolves without an API call
@@ -46,7 +48,12 @@ export function useCreateBudget() {
         return existing
       }
       const { ownerUserId: _owner, ...payload } = form
-      return budgetApi.createBudget(payload)
+      const meta = await budgetApi.createBudget(payload)
+      // here, not in onSuccess: the dedupe above creates nothing
+      if ((form.savingsAccountIds?.length ?? 0) > 0) {
+        trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
+      }
+      return meta
     },
     onSuccess: (meta) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) => {
@@ -54,6 +61,7 @@ export function useCreateBudget() {
         return items.some((b) => b.id === meta.id) ? items : [...items, meta]
       })
       void queryClient.invalidateQueries({ queryKey: queryKeys.user })
+      invalidate()
       trackEvent(METRICS.BUDGET_CREATE)
     },
   })
@@ -130,13 +138,17 @@ export function useSetLimit() {
         if (!prev) {
           return prev
         }
+        const budgeted = form.amount === null ? '0' : form.amount
+        const savings = prev.structure.savings
         return {
           ...prev,
           structure: {
             ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId ? { ...el, budgeted: form.amount === null ? '0' : form.amount } : el,
-            ),
+            elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted } : el)),
+            // a savings row carries no carry-over: its available is planned minus saved
+            ...(savings
+              ? { savings: savings.map((row) => (row.id === form.elementId ? { ...row, budgeted, available: sub(budgeted, row.spent) } : row)) }
+              : {}),
           },
         }
       })
@@ -179,6 +191,29 @@ export function useBudgetPlan(budgetId: Id | null, firstMonth: string, visibleMo
   return { ...query, fetchFrom: from, planKey }
 }
 
+// A plan row's id is either an element's or, for a savings row, the savings
+// account's; the two sets never collide, so one patch covers both arrays.
+function patchPlanCells(
+  plan: BudgetPlanDto | null | undefined,
+  elementId: Id,
+  patch: (cell: PlanCellDto, monthIndex: number) => PlanCellDto,
+): BudgetPlanDto | null | undefined {
+  if (!plan) {
+    return plan
+  }
+  const patchRow = <T extends { id: Id; cells: PlanCellDto[] }>(row: T): T =>
+    row.id === elementId ? { ...row, cells: row.cells.map(patch) } : row
+  const { savings } = plan.structure
+  return {
+    ...plan,
+    structure: {
+      ...plan.structure,
+      elements: plan.structure.elements.map(patchRow),
+      ...(savings ? { savings: savings.map(patchRow) } : {}),
+    },
+  }
+}
+
 export function usePlanSetLimit(planKey: readonly unknown[]) {
   const queryClient = useQueryClient()
   return useMutation({
@@ -187,27 +222,10 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
       const previous = queryClient.getQueryData<BudgetPlanDto | null>(planKey)
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
-        if (!prev) {
-          return prev
-        }
-        return {
-          ...prev,
-          structure: {
-            ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId
-                ? {
-                    ...el,
-                    cells: el.cells.map((c, i) =>
-                      i === form.monthIndex ? { ...c, planned: form.amount === null ? '' : form.amount } : c,
-                    ),
-                  }
-                : el,
-            ),
-          },
-        }
-      })
+      const planned = form.amount === null ? '' : form.amount
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
+        patchPlanCells(prev, form.elementId, (c, i) => (i === form.monthIndex ? { ...c, planned } : c)),
+      )
       return { previous }
     },
     onError: (_err, _form, context) => {
@@ -236,22 +254,9 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     onMutate: async (form) => {
       await queryClient.cancelQueries({ queryKey: planKey })
       const covered = new Set(form.targets.map((t) => t.monthIndex))
-      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) => {
-        if (!prev) {
-          return prev
-        }
-        return {
-          ...prev,
-          structure: {
-            ...prev.structure,
-            elements: prev.structure.elements.map((el) =>
-              el.id === form.elementId
-                ? { ...el, cells: el.cells.map((c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)) }
-                : el,
-            ),
-          },
-        }
-      })
+      queryClient.setQueryData<BudgetPlanDto | null>(planKey, (prev) =>
+        patchPlanCells(prev, form.elementId, (c, i) => (covered.has(i) ? { ...c, planned: form.amount } : c)),
+      )
     },
     onSuccess: () => {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
@@ -404,11 +409,19 @@ export function useChangeElementCurrency() {
   })
 }
 
+function sameIdSet(a: Id[], b: Id[]): boolean {
+  const set = new Set(a)
+  return set.size === new Set(b).size && b.every((id) => set.has(id))
+}
+
 export function useUpdateBudgetDetail() {
   const queryClient = useQueryClient()
   const invalidate = useInvalidateBudget()
   return useMutation({
-    mutationFn: budgetApi.updateBudget,
+    // previousSavingsAccountIds is client-only: the set the dialog opened with,
+    // so the metric fires only when the request actually changes a flag
+    mutationFn: ({ previousSavingsAccountIds: _prev, ...form }: budgetApi.UpdateBudgetForm & { previousSavingsAccountIds?: Id[] }) =>
+      budgetApi.updateBudget(form),
     onSuccess: (meta, variables) => {
       queryClient.setQueryData<BudgetMetaDto[]>(queryKeys.budgets, (prev) =>
         (prev ?? []).map((b) => (b.id === meta.id ? meta : b)),
@@ -416,6 +429,9 @@ export function useUpdateBudgetDetail() {
       invalidate()
       trackEvent(METRICS.BUDGET_UPDATE)
       if (variables.endDate !== undefined) trackEvent(METRICS.BUDGET_SET_END_DATE)
+      if (variables.savingsAccountIds !== undefined && !sameIdSet(variables.savingsAccountIds, variables.previousSavingsAccountIds ?? [])) {
+        trackEvent(METRICS.BUDGET_SAVINGS_TOGGLE)
+      }
     },
   })
 }

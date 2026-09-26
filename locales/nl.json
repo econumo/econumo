@@ -1132,7 +1132,17 @@
         "accounts": "Rekeningen",
         "accounts_included": "{count} van {total} opgenomen",
         "accounts_hidden": "In verborgen mappen",
-        "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd"
+        "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
+        "savings": {
+          "label": "Sparen",
+          "toggle": "{name} is een spaarrekening",
+          "note": "Spaarrekeningen worden met naam, gespaarde bedragen en saldi getoond aan iedereen met toegang tot dit budget.",
+          "confirm": {
+            "title": "Gepland spaargeld verwijderen?",
+            "question": "Geplande bedragen en opmerkingen van de spaarrekeningen die je hebt uitgeschakeld of verwijderd, worden uit dit budget verwijderd. Gespaarde bedragen en transacties blijven ongewijzigd.",
+            "action": "Plannen verwijderen"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nieuw budget"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Uitgaven",
-        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "{saved} van {planned} gepland gespaard"
       },
       "duplicate_budget_form": {
         "header": "Budget dupliceren",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Inkomsten",
           "expenses": "Uitgaven",
+          "savings": "Sparen",
           "archived": "Gearchiveerd"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "In {in} · Uit {out}",
           "show_transactions": "Transacties tonen",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Sparen",
+          "savings_balance": "Spaarsaldo",
+          "savings_balance_tooltip": "Inclusief rente en andere bewegingen op spaarrekeningen, die niet als gespaard tellen"
         },
         "density": {
           "hide_empty": "Lege rijen verbergen",
@@ -1390,6 +1405,12 @@
           "empty": "Nog geen opmerkingen.",
           "truncated": "De laatste 2000 opmerkingen worden weergegeven."
         }
+      },
+      "savings": {
+        "title": "Sparen",
+        "planned": "Gepland",
+        "saved": "Gespaard",
+        "remaining": "Resterend"
       },
       "settings": {
         "menu_item": "Budgetten & plannen",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Validatie mislukt.",
       "envelope_side_mixed": "Een envelop kan niet tegelijk inkomsten- en uitgavencategorieën bevatten.",
       "folder_side_mixed": "Een map kan niet tegelijk inkomsten en uitgaven bevatten.",
+      "savings_folder_not_allowed": "Spaargeld kan niet in een map worden geplaatst.",
       "account_not_removable": "Deze rekening heeft transacties in eerdere maanden en kan niet meer uit het budget worden verwijderd",
+      "savings_account_not_member": "Spaarrekeningen moeten je eigen rekeningen in dit budget zijn",
+      "savings_removal_unconfirmed": "Hiermee worden de geplande bedragen en opmerkingen verwijderd van de spaarrekeningen die je in dit budget hebt uitgeschakeld of eruit hebt verwijderd; bevestig om door te gaan",
       "accounts_required": "Selecteer minstens één rekening",
       "archived": "Dit budget is gearchiveerd",
       "end_before_start": "De eindmaand ligt vóór de start van het budget",
