@@ -303,8 +303,13 @@ func (s *Service) SetLimit(ctx context.Context, userID vo.Id, req model.SetLimit
 // spending/limits, not element rows). On a miss, restore the element order
 // (which creates rows for every participant entity) and retry once; an id that
 // is no participant entity at all still resolves to "BudgetElement not found".
+//
+// Every caller writes under the element, so it is read with a share lock held
+// to the end of the transaction: a savings removal that locked the row first
+// is waited out, after which the row is gone and the sync does not bring it
+// back for an account no longer flagged — the same not-found.
 func (s *Service) getElementSelfHeal(ctx context.Context, budgetID, externalID vo.Id, now time.Time) (*model.BudgetElement, error) {
-	el, err := s.elements.GetElementByExternal(ctx, budgetID, externalID)
+	el, err := s.elements.GetElementByExternalForWrite(ctx, budgetID, externalID)
 	var nf *errs.NotFoundError
 	if err == nil || !errors.As(err, &nf) {
 		return el, err
@@ -312,5 +317,5 @@ func (s *Service) getElementSelfHeal(ctx context.Context, budgetID, externalID v
 	if rerr := s.syncElements(ctx, budgetID, now); rerr != nil {
 		return nil, rerr
 	}
-	return s.elements.GetElementByExternal(ctx, budgetID, externalID)
+	return s.elements.GetElementByExternalForWrite(ctx, budgetID, externalID)
 }

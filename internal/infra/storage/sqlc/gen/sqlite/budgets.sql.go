@@ -277,6 +277,35 @@ func (q *Queries) GetBudgetElementByExternal(ctx context.Context, arg GetBudgetE
 	return i, err
 }
 
+const getBudgetElementByExternalForWrite = `-- name: GetBudgetElementByExternalForWrite :one
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = ? AND external_id = ?
+`
+
+type GetBudgetElementByExternalForWriteParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Plain read: SQLite serializes writers, so the row lock the PostgreSQL
+// variant takes has nothing to order here.
+func (q *Queries) GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error) {
+	row := q.db.QueryRowContext(ctx, getBudgetElementByExternalForWrite, arg.BudgetID, arg.ExternalID)
+	var i BudgetsElement
+	err := row.Scan(
+		&i.ID,
+		&i.BudgetID,
+		&i.CurrencyID,
+		&i.FolderID,
+		&i.ExternalID,
+		&i.Type,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.SortKey,
+	)
+	return i, err
+}
+
 const getBudgetEnvelope = `-- name: GetBudgetEnvelope :one
 SELECT id, budget_id, name, icon, is_archived, created_at, updated_at
 FROM budgets_envelopes WHERE id = ?
@@ -905,6 +934,41 @@ func (q *Queries) ListEnvelopeCategoryIDs(ctx context.Context, budgetEnvelopeID 
 			return nil, err
 		}
 		items = append(items, category_id)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockSavingsElement = `-- name: LockSavingsElement :many
+SELECT id FROM budgets_elements
+WHERE budget_id = ? AND external_id = ? AND type = 5
+`
+
+type LockSavingsElementParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Plain read: SQLite serializes writers, so there is no concurrent limit or
+// comment for a lock to order against.
+func (q *Queries) LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error) {
+	rows, err := q.db.QueryContext(ctx, lockSavingsElement, arg.BudgetID, arg.ExternalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []string{}
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Close(); err != nil {
 		return nil, err

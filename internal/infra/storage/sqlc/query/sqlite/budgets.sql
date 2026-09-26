@@ -110,6 +110,12 @@ FROM budgets_elements WHERE id = ?;
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = ? AND external_id = ?;
 
+-- name: GetBudgetElementByExternalForWrite :one
+-- Plain read: SQLite serializes writers, so the row lock the PostgreSQL
+-- variant takes has nothing to order here.
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = ? AND external_id = ?;
+
 -- name: UpsertBudgetElement :exec
 INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -178,6 +184,12 @@ ON CONFLICT (budget_id, account_id) DO NOTHING;
 
 -- name: SetBudgetAccountSavings :exec
 UPDATE budgets_accounts SET is_savings = ? WHERE budget_id = ? AND account_id = ?;
+
+-- name: LockSavingsElement :many
+-- Plain read: SQLite serializes writers, so there is no concurrent limit or
+-- comment for a lock to order against.
+SELECT id FROM budgets_elements
+WHERE budget_id = ? AND external_id = ? AND type = 5;
 
 -- name: SavingsElementHasData :one
 -- Whether the budget's savings element for this account carries a limit or a

@@ -109,6 +109,12 @@ type Querier interface {
 	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
+	// The row a limit or comment is about to be written under, share-locked so a
+	// savings removal (LockSavingsElement) cannot delete it until this write
+	// commits. KEY SHARE, not SHARE: change-element-currency upserts the same row
+	// later in its transaction, and a SHARE lock held by two such requests would
+	// deadlock on that upgrade.
+	GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
 	GetBudgetFolder(ctx context.Context, id string) (BudgetsFolder, error)
 	GetBudgetLimit(ctx context.Context, arg GetBudgetLimitParams) (GetBudgetLimitRow, error)
@@ -360,6 +366,11 @@ type Querier interface {
 	// Same LEFT JOIN + IS NULL shape as the sqlite variant (kept identical across
 	// engines even though postgresql's parser handles NOT EXISTS params fine).
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Locks the savings element a removal is about to drop, before its guard
+	// reads the element's data: a limit or comment writer that share-locked the
+	// row first has committed by the time the guard's EXISTS runs, and one that
+	// comes later waits and then finds the row gone.
+	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). FOR NO KEY UPDATE is the same lock mode the old
 	// no-op UPDATE took (it touched no key column), without writing a tuple

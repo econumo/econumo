@@ -84,7 +84,13 @@ be planned.
   no catalogue code and the SPA recognises errors by field — unless the request
   carries `confirmSavingsRemoval: true` (`update-budget`, `add-account`,
   `remove-account`). The check runs on the server, so it holds whatever the client
-  has loaded. Nothing is written when it refuses. (A participant whose access is
+  has loaded. Nothing is written when it refuses. The guard locks the leaving
+  savings rows before it reads their data (`FOR UPDATE` on PostgreSQL), and
+  `set-limit`, `create-comment` and `change-element-currency` share-lock the row
+  they write under (`FOR KEY SHARE`), so a concurrent plan or comment is either
+  committed before the check and seen by it, or waits and then gets the ordinary
+  "BudgetElement not found" — never a success the removal then cascades away.
+  (A participant whose access is
   revoked, who declines, or whose connection is deleted takes their accounts with
   them, as before; the savings rows of those accounts are removed at that moment,
   with the participant's other element rows and in the same transaction, with no
@@ -438,9 +444,19 @@ otherwise independent; these are the agreed terms.
    savings account with a balance but no row in the window still moves its money
    out of the everyday Balance.
 
+**2026-09-26 — review of the implementation.**
+
+10. **The confirmation guard is ordered against concurrent writes.** On
+    PostgreSQL (READ COMMITTED) the guard's data check and the element delete are
+    two statements, so a `set-limit` or `create-comment` committing in between got
+    a success response and then lost its row to the cascade, unconfirmed. The
+    guard now locks the leaving savings rows first and the writers share-lock the
+    row they write under; whichever request locks second waits for the other.
+    SQLite serializes writers and was never affected.
+
 ## Status (2026-09-25)
 
-**Implemented, per Revisions 7-9.** Savings is a per-budget membership flag
+**Implemented, per Revisions 7-10.** Savings is a per-budget membership flag
 (`budgets_accounts.is_savings`), set from the budget's own settings (create/update
 budget dialogs) and guarded by the server-side `confirmSavingsRemoval` write path; the
 account-level type, switch and marker from the first implementation are gone. Everything

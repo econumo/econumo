@@ -2,6 +2,8 @@ package budget
 
 import (
 	"context"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
@@ -87,11 +89,26 @@ func (c *memberChange) touchesSavings() bool {
 // guardSavingsRemoval refuses, unless confirmed, a write that would delete a
 // savings row still carrying planned amounts or comments. It runs on the
 // server so it holds whatever the client had loaded.
+//
+// The leaving rows are locked first, confirmed or not, and held until the
+// removal commits. set-limit and create-comment share-lock the row they write
+// under (getElementSelfHeal), so under READ COMMITTED a write that got there
+// first has committed before the check below reads, and one that comes later
+// waits and then finds the row gone. Checking without the lock let a write
+// land between the check and the delete and be cascaded away unconfirmed.
 func (s *Service) guardSavingsRemoval(ctx context.Context, c *memberChange, confirmed bool) error {
+	leaving := c.leaving()
+	// One lock order for every removal, so two over the same rows cannot deadlock.
+	slices.SortFunc(leaving, func(a, b vo.Id) int { return strings.Compare(a.String(), b.String()) })
+	for _, id := range leaving {
+		if err := s.budgets.LockSavingsElement(ctx, c.budgetID, id); err != nil {
+			return err
+		}
+	}
 	if confirmed {
 		return nil
 	}
-	for _, id := range c.leaving() {
+	for _, id := range leaving {
 		has, err := s.budgets.SavingsElementHasData(ctx, c.budgetID, id)
 		if err != nil {
 			return err

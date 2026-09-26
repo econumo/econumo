@@ -1089,7 +1089,10 @@ data unreadable. Most are also asserted by the test suite.
   departing participant's savings rows are deleted at revocation with their other
   element rows. Turning a savings member off, or removing one,
   while it still carries plans or comments is refused unless the write also sets
-  `confirmSavingsRemoval: true` (`update-budget`/`add-account`/`remove-account`); the
+  `confirmSavingsRemoval: true` (`update-budget`/`add-account`/`remove-account`). The
+  guard locks the leaving savings rows before it checks them and the element writers
+  share-lock theirs (`getElementSelfHeal`), so on PostgreSQL a concurrent plan or
+  comment is either seen by the guard or refused as not found, never cascaded away. The
   SPA asks first (naming what will be deleted) and resends with the flag set on
   confirm — cancel leaves the member's plans and comments untouched. "Actual saved" is
   the net of everyday↔savings transfers only — savings↔savings and transfers with a

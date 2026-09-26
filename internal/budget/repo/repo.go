@@ -123,6 +123,10 @@ func (r *Repo) SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id,
 	return r.q.SetBudgetAccountSavings(ctx, r.db(ctx), budgetID.String(), accountID.String(), isSavings)
 }
 
+func (r *Repo) LockSavingsElement(ctx context.Context, budgetID, accountID vo.Id) error {
+	return r.q.LockSavingsElement(ctx, r.db(ctx), budgetID.String(), accountID.String())
+}
+
 func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error) {
 	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
@@ -281,6 +285,14 @@ func (r *Repo) GetElement(ctx context.Context, id vo.Id) (*model.BudgetElement, 
 
 func (r *Repo) GetElementByExternal(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error) {
 	row, err := r.q.GetBudgetElementByExternal(ctx, r.db(ctx), budgetID.String(), externalID.String())
+	if err != nil {
+		return nil, mapNotFound(err, "BudgetElement not found")
+	}
+	return hydrateElement(row)
+}
+
+func (r *Repo) GetElementByExternalForWrite(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error) {
+	row, err := r.q.GetBudgetElementByExternalForWrite(ctx, r.db(ctx), budgetID.String(), externalID.String())
 	if err != nil {
 		return nil, mapNotFound(err, "BudgetElement not found")
 	}
