@@ -723,6 +723,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       shows 800 and the Savings balance rises by exactly 800 over the previous
       month (Balance drops by the same). A transfer already booked into a future
       month above that month's plan counts at its booked amount in both.
+- [ ] 📱 Book a future-dated transfer of 20 from a savings account to an
+      account that is not in the budget: from that month on the Savings
+      balance is 20 lower, and the everyday Balance is the same as before the
+      transfer.
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take the green under-plan style an expense row gets.
 - [ ] 📱 Edit a savings account's balance (the correction transaction), then

@@ -364,11 +364,15 @@ export function balanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: M
 }
 
 /** The savings side of the balance split: opening balance plus, per month, what
- *  actually happened in the past; in the current month the flows so far plus each
- *  row's own gap to plan, Σ(max(actual, planned) − actual); and the Savings line
- *  (effectiveSavings) for months not yet open. The gap is per row so an over-saved
- *  row cannot cover another row's shortfall — the balance must move by exactly
- *  what the Savings line shows. */
+ *  actually happened (savingsFlows) in the past; in the current and future months
+ *  the flows booked so far plus each row's own gap to plan,
+ *  Σ(max(actual, planned) − actual). Future months take the flows too: a future-dated
+ *  savings→outside transfer leaves the combined balance through the boundary
+ *  transfers, so it must leave the Savings balance as well, or the everyday Balance
+ *  would drop for money no everyday account sent. An everyday→savings transfer is
+ *  in both the flows and the row's actual, so it still counts once. The gap is per
+ *  row so an over-saved row cannot cover another row's shortfall — the balance must
+ *  move by exactly what the Savings line shows. */
 export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[], ex: MonthExchange, now?: Date): string[] {
   const cur = currentMonth(now)
   const flowsByMonth = new Map<string, PlanSavingsFlowDto[]>()
@@ -381,12 +385,9 @@ export function savingsBalanceRow(plan: BudgetPlanDto, totals: PlanMonthTotals[]
   return plan.months.map((month, i) => {
     const flows = (flowsByMonth.get(month) ?? []).reduce((acc, f) => add(acc, ex(f.currencyId, f.amount, i)), '0')
     const t = totals[i]
-    if (month < cur) {
-      running = add(running, flows)
-    } else if (month === cur) {
-      running = add(add(running, flows), sub(t.effectiveSavings, t.savingsActual))
-    } else {
-      running = add(running, t.effectiveSavings)
+    running = add(running, flows)
+    if (month >= cur) {
+      running = add(running, sub(t.effectiveSavings, t.savingsActual))
     }
     return running
   })

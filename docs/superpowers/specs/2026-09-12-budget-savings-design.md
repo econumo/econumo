@@ -305,11 +305,16 @@ the account-level marker.)*
   - **Net** = Income − Expenses + Transfers − Savings (actual and effective);
     planned Net = planned Income − planned Expenses − planned Savings.
   - **Savings balance** = Σ `savingsOpeningBalances` + running sum of:
-    past months → `savingsFlows`; current month → `savingsFlows` + the per-row
-    gap Σ(effective − actual) over the savings rows (never negative; a deleted
-    account's row contributes 0, its effective being its actual); future months →
-    the Savings row's effective total (= planned savings when nothing is booked, so
-    a future-dated transfer counts exactly as the Savings row shows it). The gap is
+    past months → `savingsFlows`; current and future months → `savingsFlows` + the
+    per-row gap Σ(effective − actual) over the savings rows (never negative; a
+    deleted account's row contributes 0, its effective being its actual). A month
+    with a plan and nothing booked adds the plan; a future-dated everyday→savings
+    transfer is in both the flows and the row's actual, so it counts once; a
+    future-dated savings→outside transfer lowers the Savings balance, exactly as it
+    lowers the combined balance through the boundary transfers, and leaves the
+    everyday Balance alone. *(2026-09-26: future months used the Savings row's
+    effective total alone, which ignored such a transfer and moved the everyday
+    Balance instead.)* The gap is
     per row, never the aggregate max(0, planned − actual): one account over its plan
     must not offset another's shortfall, or the balance would move by less than the
     Savings row shows (planned 500 / saved 0 next to planned 0 / saved 300 shows
@@ -453,10 +458,15 @@ otherwise independent; these are the agreed terms.
     guard now locks the leaving savings rows first and the writers share-lock the
     row they write under; whichever request locks second waits for the other.
     SQLite serializes writers and was never affected.
+11. **Future months of the Savings balance add the booked flows.** They added only
+    the Savings row's effective total, so a future-dated transfer from a savings
+    account to an account outside the budget lowered the combined balance but not
+    the Savings balance, and the everyday Balance fell instead. Future months now
+    use the current month's rule: flows + Σ(effective − actual).
 
 ## Status (2026-09-25)
 
-**Implemented, per Revisions 7-10.** Savings is a per-budget membership flag
+**Implemented, per Revisions 7-11.** Savings is a per-budget membership flag
 (`budgets_accounts.is_savings`), set from the budget's own settings (create/update
 budget dialogs) and guarded by the server-side `confirmSavingsRemoval` write path; the
 account-level type, switch and marker from the first implementation are gone. Everything

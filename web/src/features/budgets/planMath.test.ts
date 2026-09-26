@@ -745,7 +745,7 @@ describe('savings + net + balance split', () => {
     expect(totals.map((t) => t.effectiveNet)).toEqual(totalsWithoutSavings.map((t) => t.effectiveNet))
   })
 
-  it('savingsBalanceRow: opening + flows(past), + flows + (effectiveSavings - savingsActual)(current), + effectiveSavings(future)', () => {
+  it('savingsBalanceRow: opening + flows(past), + flows + (effectiveSavings - savingsActual)(current and future)', () => {
     const plan = buildPlan()
     const ex = makePlanExchange(plan, [usd, eur])
     const totals = planTotals(plan, ex, now)
@@ -757,7 +757,7 @@ describe('savings + net + balance split', () => {
     // + flows 0 + (effectiveSavings 205 - savingsActual 155) = 50 -> 1353
     // (the archived row's 5 is in both terms, so it adds nothing)
     expect(savings[1]).toBe('1353')
-    // + effectiveSavings 200 (future) -> 1553
+    // future: + flows 0 + (effectiveSavings 200 - savingsActual 0) = 200 -> 1553
     expect(savings[2]).toBe('1553')
   })
 
@@ -803,8 +803,12 @@ describe('savings + net + balance split', () => {
     expect(everydayBalanceRow(balanceRow(plan, totals, ex, now), savings)).toEqual(['1000', '200', '200'])
   })
 
-  it('savingsBalanceRow future month: a future-dated transfer above plan counts at its booked amount, like the Savings line', () => {
-    // future month: planned 50, a transfer of 120 already booked -> effective 120
+  it('savingsBalanceRow future month: a future-dated everyday->savings transfer above plan counts once, at its booked amount', () => {
+    // future month: planned 50, an everyday->savings transfer of 120 already booked.
+    // The transfer is both the row's actual (120 -> effective 120) and the account's
+    // flow (+120), so the month adds flows 120 + (effective 120 - actual 120) = 120,
+    // not 240. It moves nothing out of the budget: combined stays 1000, and the
+    // everyday Balance drops by exactly the 120 the everyday account sent.
     const fund = mkSavingsEl({
       id: 'sav-fund',
       name: 'Fund',
@@ -817,13 +821,88 @@ describe('savings + net + balance split', () => {
     })
     const plan = mkPlan({
       months,
+      openingBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
       currencyRates: months.map(eurRate),
       structure: { folders: [], elements: [], savings: [fund] },
+      savingsFlows: [{ month: '2026-08-01', currencyId: 'cur-usd', amount: '120' }],
     })
     const ex = makePlanExchange(plan, [usd, eur])
     const totals = planTotals(plan, ex, now)
     expect(totals[2].effectiveSavings).toBe('120')
-    expect(savingsBalanceRow(plan, totals, ex, now)).toEqual(['0', '0', '120'])
+    const savings = savingsBalanceRow(plan, totals, ex, now)
+    expect(savings).toEqual(['0', '0', '120'])
+    expect(everydayBalanceRow(balanceRow(plan, totals, ex, now), savings)).toEqual(['1000', '1000', '880'])
+  })
+
+  it('savingsBalanceRow future month: a planned month with no activity adds the plan', () => {
+    // future month: planned 250, nothing booked, no flow.
+    // flows 0 + (effective max(0, 250) = 250 - actual 0) = 250 on top of the opening 400.
+    const fund = mkSavingsEl({
+      id: 'sav-fund',
+      name: 'Fund',
+      currencyId: 'cur-usd',
+      cells: [
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '250' },
+      ],
+    })
+    const plan = mkPlan({
+      months,
+      openingBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
+      currencyRates: months.map(eurRate),
+      structure: { folders: [], elements: [], savings: [fund] },
+      savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '400' }],
+    })
+    const ex = makePlanExchange(plan, [usd, eur])
+    const totals = planTotals(plan, ex, now)
+    const savings = savingsBalanceRow(plan, totals, ex, now)
+    expect(savings).toEqual(['400', '400', '650'])
+    // combined 1000 throughout; everyday = 1000 - savings
+    expect(everydayBalanceRow(balanceRow(plan, totals, ex, now), savings)).toEqual(['600', '600', '350'])
+  })
+
+  it('savingsBalanceRow future month: a savings->external transfer moves the Savings balance, not the everyday Balance', () => {
+    // future month: the savings account is planned 100 and also sends 20 to an
+    // account outside the budget. That transfer is not "saved" (actual stays 0),
+    // but it leaves the budget: transfersNet -20, so combined 1000 -> 980, and the
+    // savings account's flow is -20.
+    //   savings: opening 400, future + flows -20 + (effective 100 - actual 0) = 480
+    //   everyday: 980 - 480 = 500
+    // Without the transfer: savings 400 + 100 = 500, combined 1000, everyday 500.
+    // Same everyday 500 both ways; the 20 comes off the Savings balance only.
+    const fund = mkSavingsEl({
+      id: 'sav-fund',
+      name: 'Fund',
+      currencyId: 'cur-usd',
+      cells: [
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '' },
+        { actual: '0', planned: '100' },
+      ],
+    })
+    const base = {
+      months,
+      openingBalances: [{ currencyId: 'cur-usd', amount: '1000' }],
+      currencyRates: months.map(eurRate),
+      structure: { folders: [], elements: [], savings: [fund] },
+      savingsOpeningBalances: [{ currencyId: 'cur-usd', amount: '400' }],
+    }
+    const without = mkPlan(base)
+    const withTransfer = mkPlan({
+      ...base,
+      transfers: [{ period: '2026-08-01', items: [{ currencyId: 'cur-usd', in: '0', out: '20' }] }],
+      savingsFlows: [{ month: '2026-08-01', currencyId: 'cur-usd', amount: '-20' }],
+    })
+    const split = (plan: BudgetPlanDto) => {
+      const ex = makePlanExchange(plan, [usd, eur])
+      const totals = planTotals(plan, ex, now)
+      const savings = savingsBalanceRow(plan, totals, ex, now)
+      return { savings, everyday: everydayBalanceRow(balanceRow(plan, totals, ex, now), savings) }
+    }
+
+    expect(split(without)).toEqual({ savings: ['400', '400', '500'], everyday: ['600', '600', '500'] })
+    expect(split(withTransfer)).toEqual({ savings: ['400', '400', '480'], everyday: ['600', '600', '500'] })
   })
 
   it('savingsBalanceRow converts a non-budget-currency flow with that month\'s rate', () => {
