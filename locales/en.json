@@ -1132,7 +1132,17 @@
         "accounts": "Accounts",
         "accounts_included": "{count} of {total} included",
         "accounts_hidden": "In hidden folders",
-        "accounts_locked_hint": "Accounts with transactions in past months can't be removed"
+        "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
+        "savings": {
+          "label": "Savings",
+          "toggle": "{name} is a savings account",
+          "note": "Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.",
+          "confirm": {
+            "title": "Delete planned savings?",
+            "question": "Planned amounts and comments of the savings accounts you turned off or removed will be deleted from this budget. Saved amounts and transactions are not affected.",
+            "action": "Delete plans"
+          }
+        }
       },
       "create_budget_form": {
         "header": "New budget"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Spending progress",
-        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Saved {saved} of {planned} planned"
       },
       "duplicate_budget_form": {
         "header": "Duplicate budget",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Income",
           "expenses": "Expenses",
+          "savings": "Savings",
           "archived": "Archived"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "In {in} · Out {out}",
           "show_transactions": "Show transactions",
           "net": "Net",
-          "balance": "Balance"
+          "balance": "Balance",
+          "savings": "Savings",
+          "savings_balance": "Savings balance",
+          "savings_balance_tooltip": "Includes interest and other activity on savings accounts, which is not counted as saved"
         },
         "density": {
           "hide_empty": "Hide empty rows",
@@ -1390,6 +1405,12 @@
           "empty": "No comments yet.",
           "truncated": "Showing the latest 2000 comments."
         }
+      },
+      "savings": {
+        "title": "Savings",
+        "planned": "Planned",
+        "saved": "Saved",
+        "remaining": "Remaining"
       },
       "settings": {
         "menu_item": "Budgets & Plans",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Validation failed",
       "envelope_side_mixed": "An envelope cannot contain both income and expense categories",
       "folder_side_mixed": "A folder cannot contain both income and expenses",
+      "savings_folder_not_allowed": "Savings cannot be put into a folder",
       "account_not_removable": "This account has transactions in past months and can no longer be removed from the budget",
+      "savings_account_not_member": "Savings accounts must be your own accounts in this budget",
+      "savings_removal_unconfirmed": "This deletes the planned amounts and comments of savings accounts you turned off or removed from this budget; confirm to continue",
       "accounts_required": "Select at least one account",
       "archived": "This budget is archived",
       "end_before_start": "The end month is before the budget start",

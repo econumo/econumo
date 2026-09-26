@@ -51,6 +51,15 @@ type ReadModel interface {
 	// LimitsByMonth: every element limit of the budget in [from, to) as
 	// (external_id, type, month, amount) — the plan sheet's planned cells.
 	LimitsByMonth(ctx context.Context, budgetID vo.Id, from, to time.Time) ([]model.MonthlyLimitRow, error)
+	// SavingsByMonth: per (savings account, month) net money moved in from the
+	// everyday accounts over [from, to): transfers everyday -> savings count their
+	// amount_recipient, savings -> everyday subtract their amount. Transfers with a
+	// non-member or another savings account on the other side are not rows.
+	SavingsByMonth(ctx context.Context, savingsIDs, everydayIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error)
+	// AccountsNetByMonth: per (account, month) net change over [from, to) with
+	// balanceSQL's sign rules: +income, -expense, -transfer out (amount),
+	// +transfer in (amount_recipient), every counterparty.
+	AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error)
 
 	// BudgetTransactionsByCategories returns expense transactions (type=0, tag IS
 	// NULL) in [start, end) on the given accounts, in the given categories,

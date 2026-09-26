@@ -29,6 +29,10 @@ type filters struct {
 	incomeCategories   map[string]model.CategoryMeta // income-only; read by the plan builder ONLY
 	tags               map[string]model.TagMeta
 	labels             map[string]model.LabelMeta
+	// savingsAccounts are the members flagged savings in this budget, in
+	// membership order; everydayAccountIDs is every other member.
+	savingsAccounts    []model.AccountView
+	everydayAccountIDs []vo.Id
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
@@ -138,9 +142,18 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	currencySet := map[string]vo.Id{}
 	var currencyIDs []vo.Id
 	var ownIDs []vo.Id
+	ownSavings := map[string]bool{}
+	var savings []model.AccountView
+	var everyday []vo.Id
 	for i, v := range views {
+		if b.accounts[i].IsSavings {
+			savings = append(savings, v)
+		} else {
+			everyday = append(everyday, memberIDs[i])
+		}
 		if v.OwnerID == userID.String() {
 			ownIDs = append(ownIDs, memberIDs[i])
+			ownSavings[memberIDs[i].String()] = b.accounts[i].IsSavings
 		}
 		if _, seen := currencySet[v.CurrencyID]; !seen {
 			cid, cerr := vo.ParseId(v.CurrencyID)
@@ -157,7 +170,9 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	}
 	accountFilters := make([]model.BudgetAccountFilter, 0, len(ownIDs))
 	for _, id := range ownIDs {
-		accountFilters = append(accountFilters, model.BudgetAccountFilter{Id: id.String(), Removable: removable[id.String()]})
+		accountFilters = append(accountFilters, model.BudgetAccountFilter{
+			Id: id.String(), Removable: removable[id.String()], IsSavings: ownSavings[id.String()],
+		})
 	}
 
 	cats, err := s.metadata.CategoriesByOwners(ctx, userIDs)
@@ -195,6 +210,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		userIDs: userIDs, accountFilters: accountFilters,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
 		categories: catMap, incomeCategories: incomeCatMap, tags: tagMap, labels: labels,
+		savingsAccounts: savings, everydayAccountIDs: everyday,
 	}, nil
 }
 

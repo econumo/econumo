@@ -85,7 +85,7 @@ func (s *Service) CloneBudget(ctx context.Context, userID vo.Id, req model.Clone
 			}
 		}
 		for _, m := range src.accounts {
-			if serr := s.budgets.AddAccount(txCtx, newID, m.AccountID, now); serr != nil {
+			if serr := s.budgets.AddAccount(txCtx, newID, m.AccountID, m.IsSavings, now); serr != nil {
 				return serr
 			}
 		}

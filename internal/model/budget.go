@@ -148,8 +148,11 @@ func (a *BudgetAccess) Accept(now time.Time) {
 
 // BudgetAccount is a budget membership row: the account's transactions and
 // balances count in the budget, from the budget's start, deleted or not.
+// IsSavings is the account's role in THIS budget (a savings row instead of an
+// everyday account), so one account can play different roles in two budgets.
 type BudgetAccount struct {
 	AccountID vo.Id
+	IsSavings bool
 	CreatedAt time.Time
 }
 

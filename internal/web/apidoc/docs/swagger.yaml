@@ -151,8 +151,15 @@ definitions:
     properties:
       accountId:
         type: string
+      confirmSavingsRemoval:
+        type: boolean
       id:
         type: string
+      isSavings:
+        description: |-
+          IsSavings nil leaves an existing member's flag alone and adds a new
+          member as everyday.
+        type: boolean
     type: object
   model.AddAccountResult:
     properties:
@@ -234,6 +241,8 @@ definitions:
     properties:
       id:
         type: string
+      isSavings:
+        type: boolean
       removable:
         type: boolean
     type: object
@@ -259,6 +268,14 @@ definitions:
           type: string
         type: array
       openingBalances:
+        items:
+          $ref: '#/definitions/model.OpeningBalanceResult'
+        type: array
+      savingsFlows:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
+      savingsOpeningBalances:
         items:
           $ref: '#/definitions/model.OpeningBalanceResult'
         type: array
@@ -558,6 +575,13 @@ definitions:
         type: string
       name:
         type: string
+      savingsAccountIds:
+        description: |-
+          SavingsAccountIds flags members as savings in this budget; each must be one
+          of AccountIds.
+        items:
+          type: string
+        type: array
       startDate:
         type: string
     type: object
@@ -2019,6 +2043,38 @@ definitions:
       period:
         type: string
     type: object
+  model.PlanSavingsElementResult:
+    properties:
+      cells:
+        items:
+          $ref: '#/definitions/model.PlanCellResult'
+        type: array
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      type:
+        type: integer
+    type: object
+  model.PlanSavingsFlowResult:
+    properties:
+      amount:
+        type: string
+      currencyId:
+        type: string
+      month:
+        type: string
+    type: object
   model.PlanStructureResult:
     properties:
       elements:
@@ -2028,6 +2084,10 @@ definitions:
       folders:
         items:
           $ref: '#/definitions/model.BudgetFolderResult'
+        type: array
+      savings:
+        items:
+          $ref: '#/definitions/model.PlanSavingsElementResult'
         type: array
     type: object
   model.PlanTransferResult:
@@ -2190,6 +2250,8 @@ definitions:
     properties:
       accountId:
         type: string
+      confirmSavingsRemoval:
+        type: boolean
       id:
         type: string
     type: object
@@ -2286,6 +2348,31 @@ definitions:
         type: string
     type: object
   model.RevokeSessionResult:
+    type: object
+  model.SavingsElementResult:
+    properties:
+      available:
+        type: string
+      budgeted:
+        type: string
+      currencyId:
+        type: string
+      icon:
+        type: string
+      id:
+        type: string
+      isArchived:
+        type: integer
+      name:
+        type: string
+      ownerUserId:
+        type: string
+      position:
+        type: integer
+      spent:
+        type: string
+      type:
+        type: integer
     type: object
   model.SessionItem:
     properties:
@@ -2444,6 +2531,10 @@ definitions:
       labels:
         items:
           $ref: '#/definitions/model.LabelSpendResult'
+        type: array
+      savings:
+        items:
+          $ref: '#/definitions/model.SavingsElementResult'
         type: array
     type: object
   model.SuggestImportRulesRequest:
@@ -2734,6 +2825,11 @@ definitions:
         items:
           type: string
         type: array
+      confirmSavingsRemoval:
+        description: |-
+          ConfirmSavingsRemoval allows a write that drops a savings row carrying
+          planned amounts or comments.
+        type: boolean
       currencyId:
         type: string
       endDate:
@@ -2745,6 +2841,13 @@ definitions:
         type: string
       name:
         type: string
+      savingsAccountIds:
+        description: |-
+          SavingsAccountIds is nil when omitted (flags untouched); a present list is
+          the caller's own savings members after AccountIds applies.
+        items:
+          type: string
+        type: array
     type: object
   model.UpdateBudgetResult:
     properties:

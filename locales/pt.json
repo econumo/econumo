@@ -1132,7 +1132,17 @@
         "accounts": "Contas",
         "accounts_included": "{count} de {total} incluídas",
         "accounts_hidden": "Em pastas ocultas",
-        "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas"
+        "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas",
+        "savings": {
+          "label": "Poupança",
+          "toggle": "{name} é uma conta poupança",
+          "note": "As contas poupança são mostradas pelo nome, com os montantes poupados e saldos, a todos os que têm acesso a este orçamento.",
+          "confirm": {
+            "title": "Eliminar a poupança planeada?",
+            "question": "Os montantes planeados e os comentários das contas poupança que desativou ou removeu serão eliminados deste orçamento. Os montantes poupados e as transações não são afetados.",
+            "action": "Eliminar planos"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Novo orçamento"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Progresso das despesas",
-        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Poupado {saved} de {planned} planeados"
       },
       "duplicate_budget_form": {
         "header": "Duplicar orçamento",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Receitas",
           "expenses": "Despesas",
+          "savings": "Poupança",
           "archived": "Em arquivo"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "Entradas {in} · Saídas {out}",
           "show_transactions": "Mostrar transações",
           "net": "Líquido",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Poupança",
+          "savings_balance": "Saldo da poupança",
+          "savings_balance_tooltip": "Inclui juros e outros movimentos nas contas poupança, que não contam como poupado"
         },
         "density": {
           "hide_empty": "Ocultar linhas vazias",
@@ -1390,6 +1405,12 @@
           "empty": "Ainda não há comentários.",
           "truncated": "A mostrar os 2000 comentários mais recentes."
         }
+      },
+      "savings": {
+        "title": "Poupança",
+        "planned": "Planeado",
+        "saved": "Poupado",
+        "remaining": "Restante"
       },
       "settings": {
         "menu_item": "Orçamentos e planos",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Falha na validação.",
       "envelope_side_mixed": "Um envelope não pode conter ao mesmo tempo categorias de receita e despesa.",
       "folder_side_mixed": "Uma pasta não pode conter ao mesmo tempo receitas e despesas.",
+      "savings_folder_not_allowed": "As poupanças não podem ser colocadas numa pasta.",
       "account_not_removable": "Esta conta tem transações em meses anteriores e já não pode ser removida do orçamento",
+      "savings_account_not_member": "As contas poupança têm de ser contas suas neste orçamento",
+      "savings_removal_unconfirmed": "Isto elimina os montantes planeados e os comentários das contas poupança que desativou ou removeu deste orçamento; confirme para continuar",
       "accounts_required": "Selecione pelo menos uma conta",
       "archived": "Este orçamento está arquivado",
       "end_before_start": "O mês final é anterior ao início do orçamento",

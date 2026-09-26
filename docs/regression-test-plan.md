@@ -648,6 +648,132 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
+- [ ] 📱 **Budget settings — Savings switch**: in the create and edit budget
+      dialogs, each of your own selected accounts shows a "Savings" switch
+      on a second line under the account name (the include switch stays on
+      the name's line, far right); it can be toggled on or off at any time —
+      when creating the budget, or later on an existing member account, and
+      as often as you like either way. A note beneath the account list reads
+      "Savings accounts are shown by name, with their saved amounts and
+      balances, to everyone with access to this budget." On a 320px phone in
+      German or Ukrainian, long account names stay distinguishable (the name
+      spans the row up to the include switch), and on a tablet or desktop the
+      dialog's fields and buttons stay inside its frame.
+- [ ] 📱 Turn off (or remove) a savings member that still carries plans or
+      comments in that budget: saving asks "Delete planned savings?" —
+      "Planned amounts and comments of the savings accounts you turned off or
+      removed will be deleted from this budget. Saved amounts and
+      transactions are not affected." Cancel closes the confirmation; the
+      settings dialog stays open with your edits and nothing is saved — the
+      account keeps its savings flag, plans and comments,
+      unchanged; "Delete plans" resends the same edit and it goes through,
+      deleting that budget's plans and comments for the account (its
+      transactions and balance are untouched). A savings member with no plans
+      or comments in the budget toggles off or removes without asking.
+- [ ] The same account can be a savings member of one budget and an everyday
+      member of another: flip it to savings in Budget A only — Budget A shows
+      its Savings row/section/block, Budget B keeps it as an ordinary budgeted
+      account, and neither budget's plans/figures affect the other.
+- [ ] In a budget shared with another participant (any role), that
+      participant's own copy of the budget settings dialog lists only their
+      own accounts — an account you own never appears there, so another
+      participant has no switch to flag or unflag your account as savings,
+      regardless of their role.
+- [ ] 📱 Deposit into a savings account (e.g. in January), give it no plan,
+      then delete it (e.g. in June). The deletion writes a correction that
+      zeroes its balance from the deletion month on, so view a Plan window
+      that ends BEFORE the deletion month and has no activity on the account
+      (e.g. one over March): the account drops out of the Plan sheet's
+      Savings section and the monthly Savings block entirely (no row), yet
+      its balance still counts as Savings balance, not everyday Balance — the
+      split still sums to the Balance.
+- [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
+      budget, a "Savings" section appears below Expenses and above Archived,
+      one row per savings account in their saved order; a budget without
+      savings accounts shows no such section.
+- [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
+      reload; unfold brings them back.
+- [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
+      first savings row, and from the last savings row on the first archived
+      row; with Savings folded it skips straight to Archived.
+- [ ] 📱 Edit a savings row's planned amount (popover on desktop, dialog on a
+      phone): the new value shows at once and survives a reload.
+- [ ] Fill-right a savings planned amount (drag handle and Shift+Arrow): every
+      covered month gets the value.
+- [ ] 📱 Edit structure mode: savings rows reorder by drag among themselves
+      only (the order survives a reload); a savings row cannot be dropped
+      into a folder or the Income/Expenses area, and its row menu has no
+      "Move to folder…" (Change currency is still there).
+- [ ] 📱 A deleted savings account stays in the Savings section, read-only (no
+      amount editor, no drag grip), only while it still has a plan or actual
+      activity in the visible period; once neither remains it drops out.
+- [ ] An everyday→savings transfer counts toward "Saved" (the savings row's
+      Actual, and the monthly block's Saved column); a savings↔savings
+      transfer and a transfer with an account that is not a budget member do
+      not move it either way.
+- [ ] 📱 Totals: a "Savings" line appears below Transfers (actual for past
+      months, the larger of actual and planned for the current and future
+      months); without savings accounts the line is absent.
+- [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
+      "Savings balance"; for every month the two add up to the single
+      Balance the same budget showed before its savings account was marked
+      savings. Without savings accounts only "Balance" shows, unchanged.
+- [ ] 📱 Two savings accounts in the current month, one planned 500 with
+      nothing saved yet, the other planned 0 with 300 saved: the Savings line
+      shows 800 and the Savings balance rises by exactly 800 over the previous
+      month (Balance drops by the same). A transfer already booked into a future
+      month above that month's plan counts at its booked amount in both.
+- [ ] 📱 A past month where a savings account saved less than planned: the
+      cell does NOT take the green under-plan style an expense row gets.
+- [ ] 📱 Edit a savings account's balance (the correction transaction), then
+      switch to the Plan view in the same tab: the Savings balance updates
+      without a manual reload.
+- [ ] 📱 "Savings balance" carries an info note (hover on desktop, tap the
+      info icon on a phone): "Includes interest and other activity on savings
+      accounts, which is not counted as saved". Record interest on a savings
+      account: the Savings balance rises by it while the Savings line does
+      not — intended, not a bug.
+- [ ] 📱 A savings cell carries comment threads like any other cell: the
+      corner marker shows on a commented cell, and Shift+Enter (desktop) or a
+      tap on the marker opens its thread.
+- [ ] 📱 **Monthly view — Savings block**: with a savings account in the
+      budget, a foldable "Savings" block appears below the budget table (and
+      its totals), one row per savings account in their saved order, with
+      Planned / Saved / Remaining in the account's currency (all three columns
+      also on a phone). A budget without savings accounts shows no block.
+      Folding it survives a reload. On a phone (320px and 375px, also in
+      German, Polish and Ukrainian) the title has its own line, the
+      Planned / Saved / Remaining headers show in full (never cut off with
+      "…"), each account name has its own full-width line above its three
+      amounts, the amounts line up under the headers (also in Edit structure
+      mode, with the grips), and a five-digit amount such as 12,345.67 fits
+      without overlapping its neighbour. From 640px wide the title, headers,
+      names and amounts share one line again.
+- [ ] 📱 Save more into a savings account than planned for the month:
+      Remaining goes negative and turns red, the same over-plan style as a
+      negative Available in the table.
+- [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
+      on desktop a click opens the inline editor popover (with its comments
+      disclosure), on a phone a tap opens the set-limit dialog with the
+      cell's comments; either way the current value is prefilled and saving shows the new
+      Planned and Remaining at once, and they survive a reload (the Plan view
+      shows the same amount for that month). As a guest, on a month before
+      the budget start, or on a deleted account's row, Planned opens the
+      comments instead and the amount cannot be changed.
+- [ ] 📱 Edit structure mode: savings rows show drag grips (a deleted
+      account's row has none) and reorder among themselves only; the order
+      survives a reload and matches the Plan view's Savings section. Dragging
+      a savings row onto a folder or a table row does nothing, and a table
+      row cannot be dropped into the Savings block.
+- [ ] 📱 A commented savings Planned cell carries the corner marker; clicking
+      (tapping) it opens that cell's thread. A comment posted there shows in
+      the Plan view on the same month's savings cell.
+- [ ] 📱 Expense widget (select a currency chip): with savings accounts it
+      shows "Saved X of Y planned" for the month in the budget currency, a
+      savings account in another currency converted at the month's rate;
+      a deleted savings account's plan is left out of "planned" while what it
+      saved still counts in "Saved"; without savings accounts the line is
+      absent.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
@@ -710,8 +836,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       current month cannot be removed (clear error); hidden-accounts note and
       included counter are correct (never "N of M" with N>M).
 - [ ] **Duplicate** (clone): name pre-fills with a localized "(copy)" suffix;
-      deep copy with/without plans from a chosen start month; copy starts
-      unarchived/open-ended; structure and sharing carried.
+      deep copy with/without plans from a chosen start month (a savings
+      account's Savings row carries over, and its planned limits carry over
+      too when plans are copied); copy starts unarchived/open-ended;
+      structure and sharing carried.
 - [ ] **Duplicate/Complete as shared admin** ("Full control", not owner): both
       actions are offered and succeed; the cloner owns the copy, the former
       owner appears in its sharing set as an accepted "Full control"

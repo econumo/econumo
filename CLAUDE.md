@@ -1076,6 +1076,33 @@ data unreadable. Most are also asserted by the test suite.
   cloner; when an admin clones, their own grant is dropped (they own the copy) and the former
   owner joins the copy's sharing set as an accepted admin, so every member account keeps a
   participant backing it.
+- **Budget savings**: savings is a per-budget MEMBERSHIP flag
+  (`budgets_accounts.is_savings`), not an account type — the same account can be a
+  savings member of one budget and an everyday member of another, and `accounts.type`
+  is untouched. The owning member sets it from the budget's own settings (the
+  create/update budget dialogs' per-account "Savings" switch, visible next to every
+  own selected account, plus `add-account`'s `isSavings`) — never from the account
+  dialog, and never by another participant (only the account's owner may flag it).
+  A flagged member gets an `ElementSavings` (type 5) row per budget, in its own
+  ordering group (never a folder); the flag or membership write that adds or drops
+  the savings member creates or deletes the row in the same transaction, and a
+  departing participant's savings rows are deleted at revocation with their other
+  element rows. Turning a savings member off, or removing one,
+  while it still carries plans or comments is refused unless the write also sets
+  `confirmSavingsRemoval: true` (`update-budget`/`add-account`/`remove-account`); the
+  SPA asks first (naming what will be deleted) and resends with the flag set on
+  confirm — cancel leaves the member's plans and comments untouched. "Actual saved" is
+  the net of everyday↔savings transfers only — savings↔savings and transfers with a
+  non-member account don't count, and neither does interest — so the Savings balance
+  can rise by more than what shows as saved. These rows stay out of `structure.elements`
+  on the wire (unknown-field-safe for old clients): `get-budget` carries
+  `structure.savings`, `get-budget-plan` adds `savingsOpeningBalances`/`savingsFlows`
+  alongside it, and both are visible to every participant, guests included (the
+  settings note says so beside the toggle). A deleted savings account's row stays
+  visible only while it still has a plan or actual activity in the period; the plan's
+  Balance/Savings-balance split follows the savings DATA rather than only the visible
+  rows, so a deleted savings account with a balance but no row in the window still
+  moves its money out of the everyday Balance.
 - **Transaction import (Apple Wallet)**: one `import_sources` row per user per
   provider (`create-source` is idempotent on the pair); a Wallet card is keyed by its
   normalized name and starts `unmapped` — its events queue (`import_transaction_links`

@@ -108,13 +108,23 @@ func (r *Repo) MemberAccounts(ctx context.Context, budgetID vo.Id) ([]model.Budg
 		if perr != nil {
 			return nil, perr
 		}
-		out = append(out, model.BudgetAccount{AccountID: id, CreatedAt: row.CreatedAt})
+		out = append(out, model.BudgetAccount{AccountID: id, IsSavings: row.IsSavings, CreatedAt: row.CreatedAt})
 	}
 	return out, nil
 }
 
-func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, now time.Time) error {
-	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{BudgetID: budgetID.String(), AccountID: accountID.String(), CreatedAt: now})
+func (r *Repo) AddAccount(ctx context.Context, budgetID, accountID vo.Id, isSavings bool, now time.Time) error {
+	return r.q.AddBudgetAccount(ctx, r.db(ctx), sqlitegen.AddBudgetAccountParams{
+		BudgetID: budgetID.String(), AccountID: accountID.String(), IsSavings: isSavings, CreatedAt: now,
+	})
+}
+
+func (r *Repo) SetAccountSavings(ctx context.Context, budgetID, accountID vo.Id, isSavings bool) error {
+	return r.q.SetBudgetAccountSavings(ctx, r.db(ctx), budgetID.String(), accountID.String(), isSavings)
+}
+
+func (r *Repo) SavingsElementHasData(ctx context.Context, budgetID, accountID vo.Id) (bool, error) {
+	return r.q.SavingsElementHasData(ctx, r.db(ctx), budgetID.String(), accountID.String())
 }
 
 func (r *Repo) RemoveAccount(ctx context.Context, budgetID, accountID vo.Id) error {

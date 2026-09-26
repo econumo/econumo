@@ -72,7 +72,7 @@ func TestBudgetAccountLookup_AccountsByIDs_IncludesDeletedInInputOrder(t *testin
 	u := vo.NewId().String()
 	f.User(fixture.User{ID: u, Email: "u@e.test", Name: "U", Password: "pw", Salt: "s"})
 	live, dead := vo.NewId(), vo.NewId()
-	f.Account(fixture.Account{ID: live.String(), UserID: u})
+	f.Account(fixture.Account{ID: live.String(), UserID: u, Name: "Rainy day", Icon: "savings"})
 	f.Account(fixture.Account{ID: dead.String(), UserID: u, Deleted: true})
 	l := server.NewBudgetAccountLookup(accountrepo.NewRepo(db.Engine, db.TX))
 	got, err := l.AccountsByIDs(context.Background(), []vo.Id{dead, live})
@@ -81,6 +81,12 @@ func TestBudgetAccountLookup_AccountsByIDs_IncludesDeletedInInputOrder(t *testin
 	}
 	if len(got) != 2 || got[0].ID != dead.String() || !got[0].IsDeleted || got[1].ID != live.String() || got[1].IsDeleted || got[0].OwnerID != u {
 		t.Fatalf("got %+v", got)
+	}
+	if got[1].Name != "Rainy day" || got[1].Icon != "savings" {
+		t.Fatalf("member view = %+v, want name/icon carried through", got[1])
+	}
+	if got[0].Name != "Account" || got[0].Icon != "wallet" {
+		t.Fatalf("regular member view = %+v, want the fixture defaults", got[0])
 	}
 	if _, err := l.AccountsByIDs(context.Background(), []vo.Id{vo.NewId()}); err == nil {
 		t.Fatal("unknown id must error")

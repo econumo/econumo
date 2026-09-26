@@ -1132,7 +1132,17 @@
         "accounts": "Konta",
         "accounts_included": "Uwzględniono {count} z {total}",
         "accounts_hidden": "W ukrytych folderach",
-        "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć"
+        "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć",
+        "savings": {
+          "label": "Oszczędności",
+          "toggle": "{name} to konto oszczędnościowe",
+          "note": "Konta oszczędnościowe są widoczne z nazwy, wraz z zaoszczędzonymi kwotami i saldami, dla wszystkich z dostępem do tego budżetu.",
+          "confirm": {
+            "title": "Usunąć zaplanowane oszczędności?",
+            "question": "Zaplanowane kwoty i komentarze wyłączonych lub usuniętych kont oszczędnościowych zostaną usunięte z tego budżetu. Zaoszczędzone kwoty i transakcje pozostaną bez zmian.",
+            "action": "Usuń plany"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nowy budżet"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Postęp wydatków",
-        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Zaoszczędzono {saved} z {planned} zaplanowanych"
       },
       "duplicate_budget_form": {
         "header": "Duplikuj budżet",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Przychody",
           "expenses": "Wydatki",
+          "savings": "Oszczędności",
           "archived": "W archiwum"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "Przychodzące {in} · Wychodzące {out}",
           "show_transactions": "Pokaż transakcje",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Oszczędności",
+          "savings_balance": "Saldo oszczędności",
+          "savings_balance_tooltip": "Obejmuje odsetki i inne operacje na kontach oszczędnościowych, które nie są liczone jako zaoszczędzone"
         },
         "density": {
           "hide_empty": "Ukryj puste wiersze",
@@ -1390,6 +1405,12 @@
           "empty": "Brak komentarzy.",
           "truncated": "Wyświetlono 2000 najnowszych komentarzy."
         }
+      },
+      "savings": {
+        "title": "Oszczędności",
+        "planned": "Zaplanowano",
+        "saved": "Zaoszczędzono",
+        "remaining": "Pozostało"
       },
       "settings": {
         "menu_item": "Budżety i plany",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Weryfikacja nie powiodła się.",
       "envelope_side_mixed": "Koperta nie może jednocześnie zawierać kategorii przychodów i wydatków.",
       "folder_side_mixed": "Folder nie może jednocześnie zawierać przychodów i wydatków.",
+      "savings_folder_not_allowed": "Oszczędności nie można umieścić w folderze.",
       "account_not_removable": "To konto ma transakcje w poprzednich miesiącach i nie można go już usunąć z budżetu",
+      "savings_account_not_member": "Konta oszczędnościowe muszą być Twoimi kontami w tym budżecie",
+      "savings_removal_unconfirmed": "Spowoduje to usunięcie zaplanowanych kwot i komentarzy kont oszczędnościowych, które wyłączono lub usunięto z tego budżetu; potwierdź, aby kontynuować",
       "accounts_required": "Wybierz co najmniej jedno konto",
       "archived": "Ten budżet jest zarchiwizowany",
       "end_before_start": "Miesiąc końcowy jest wcześniejszy niż początek budżetu",

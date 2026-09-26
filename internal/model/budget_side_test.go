@@ -12,6 +12,20 @@ func TestElementTypeIncomeValues(t *testing.T) {
 	}
 }
 
+func TestElementTypeSavings(t *testing.T) {
+	if ElementSavings != 5 {
+		t.Fatalf("savings element type value is frozen at 5, got %d", ElementSavings)
+	}
+	if ElementSavings.Alias() != "savings" {
+		t.Fatalf("alias: got %q", ElementSavings.Alias())
+	}
+	// Wire input stays envelope/category/tag: savings rows are never a
+	// drill-down target.
+	if _, err := ElementTypeFromAlias("savings"); err == nil {
+		t.Fatal(`alias "savings" must stay invalid on the wire`)
+	}
+}
+
 func TestElementTypeFromAlias_RejectsIncomeAliases(t *testing.T) {
 	// The income aliases are internal-only; the wire parser keeps rejecting them
 	// so existing drill-down validation output is unchanged.
@@ -31,6 +45,7 @@ func TestIsIncomeSide(t *testing.T) {
 	want := map[ElementType]bool{
 		ElementEnvelope: false, ElementCategory: false, ElementTag: false,
 		ElementIncomeCategory: true, ElementIncomeEnvelope: true,
+		ElementSavings: false,
 	}
 	for typ, w := range want {
 		if typ.IsIncomeSide() != w {

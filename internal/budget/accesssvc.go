@@ -134,7 +134,7 @@ func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id
 		return err
 	}
 	for _, id := range ids {
-		if aerr := s.budgets.AddAccount(ctx, budgetID, id, now); aerr != nil {
+		if aerr := s.budgets.AddAccount(ctx, budgetID, id, false, now); aerr != nil {
 			return aerr
 		}
 	}
@@ -142,10 +142,10 @@ func (s *Service) seedMemberAccounts(ctx context.Context, userID, budgetID vo.Id
 }
 
 // removeMemberRecords deletes a departing member's seeded records from the
-// budget: their category/tag elements (limits cascade via FK), their member
-// accounts, and their categories' envelope assignments. Runs in the caller's
-// transaction; revoke is deliberate, so the member's limit history goes with
-// them.
+// budget: their category/tag elements and the savings elements of their
+// accounts (limits and comments cascade via FK), their member accounts, and
+// their categories' envelope assignments. Runs in the caller's transaction;
+// revoke is deliberate, so the member's limit history goes with them.
 func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, memberID vo.Id) error {
 	owned := map[vo.Id]bool{}
 	cats, err := s.metadata.CategoriesByOwners(ctx, []vo.Id{memberID})
@@ -178,6 +178,9 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 			return derr
 		}
 	}
+	if err := s.removeMemberSavingsElements(ctx, b.budget.ID, memberID); err != nil {
+		return err
+	}
 	// A departing participant takes their accounts with them, locked or not:
 	// their balances and spending must stop counting in a budget they left.
 	if err := s.budgets.RemoveAccountsOwnedBy(ctx, b.budget.ID, memberID); err != nil {
@@ -195,6 +198,43 @@ func (s *Service) removeMemberRecords(ctx context.Context, b *budgetAggregate, m
 			if rerr := s.envelopes.RemoveEnvelopeCategory(ctx, env.ID, catID); rerr != nil {
 				return rerr
 			}
+		}
+	}
+	return nil
+}
+
+// removeMemberSavingsElements deletes the savings rows of the departing
+// member's accounts. Left behind, a row would be adopted again if they rejoin
+// and flag the account, bringing back the plans and comments of before. No
+// confirmation: the revocation itself is the destructive act. Members are read
+// here, inside the transaction, so an account flagged after the aggregate was
+// loaded still goes.
+func (s *Service) removeMemberSavingsElements(ctx context.Context, budgetID, memberID vo.Id) error {
+	members, err := s.budgets.MemberAccounts(ctx, budgetID)
+	if err != nil {
+		return err
+	}
+	for _, m := range members {
+		owned, err := s.ownsAccount(ctx, memberID, m.AccountID)
+		if err != nil {
+			return err
+		}
+		if !owned {
+			continue
+		}
+		el, err := s.elements.GetElementByExternal(ctx, budgetID, m.AccountID)
+		if err != nil {
+			var nf *errs.NotFoundError
+			if errors.As(err, &nf) {
+				continue
+			}
+			return err
+		}
+		if el.Type != model.ElementSavings {
+			continue
+		}
+		if err := s.elements.DeleteElement(ctx, el.ID); err != nil {
+			return err
 		}
 	}
 	return nil

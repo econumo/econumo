@@ -52,28 +52,35 @@ func accountNotRemovable() error {
 	})
 }
 
-// AddAccount makes an account the caller owns a member of the budget. Adding an
-// account that is already a member is a no-op — deleted members stay listed in
-// the filters block (they keep counting), so a client may well name one again;
-// only a NEW member has to be a live account.
+// AddAccount makes an account the caller owns a member of the budget. Re-adding
+// an existing member only updates its savings flag (turning it off, behind
+// ConfirmSavingsRemoval, drops the savings row) — deleted members stay listed
+// in the filters block (they keep counting), so a client may well name one
+// again; only a NEW member has to be a live account.
 func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error) {
-	budgetID, accountID, b, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
+	budgetID, accountID, _, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
 	if err != nil {
 		return nil, err
 	}
-	if !b.hasAccount(accountID) {
-		views, verr := s.accounts.AccountsByIDs(ctx, []vo.Id{accountID})
+	err = s.writeMemberChange(ctx, budgetID, req.ConfirmSavingsRemoval, func(txCtx context.Context, c *memberChange) error {
+		if c.isMember(accountID) {
+			if req.IsSavings != nil {
+				c.setFlag(accountID, *req.IsSavings)
+			}
+			return nil
+		}
+		views, verr := s.accounts.AccountsByIDs(txCtx, []vo.Id{accountID})
 		if verr != nil {
-			return nil, verr
+			return verr
 		}
 		if views[0].IsDeleted {
-			return nil, model.ValidateBlank(map[string]string{"accountId": ""})
+			return model.ValidateBlank(map[string]string{"accountId": ""})
 		}
-		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-			return s.budgets.AddAccount(txCtx, budgetID, accountID, s.clock.Now())
-		}); err != nil {
-			return nil, err
-		}
+		c.addMember(accountID, req.IsSavings != nil && *req.IsSavings)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
 	if err != nil {
@@ -89,19 +96,22 @@ func (s *Service) RemoveAccount(ctx context.Context, userID vo.Id, req model.Rem
 	if err != nil {
 		return nil, err
 	}
-	if b.hasAccount(accountID) {
-		removable, rerr := s.removableAccounts(ctx, b, []vo.Id{accountID}, s.clock.Now())
+	err = s.writeMemberChange(ctx, budgetID, req.ConfirmSavingsRemoval, func(txCtx context.Context, c *memberChange) error {
+		if !c.isMember(accountID) {
+			return nil
+		}
+		removable, rerr := s.removableAccounts(txCtx, b, []vo.Id{accountID}, s.clock.Now())
 		if rerr != nil {
-			return nil, rerr
+			return rerr
 		}
 		if !removable[accountID.String()] {
-			return nil, accountNotRemovable()
+			return accountNotRemovable()
 		}
-		if err := s.tx.WithTx(ctx, func(txCtx context.Context) error {
-			return s.budgets.RemoveAccount(txCtx, budgetID, accountID)
-		}); err != nil {
-			return nil, err
-		}
+		c.removeMember(accountID)
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	meta, err := s.reloadMeta(ctx, budgetID)
 	if err != nil {

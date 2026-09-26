@@ -22,7 +22,7 @@ export interface BudgetMetaDto {
   access: BudgetAccessDto[]
 }
 
-export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4 } as const
+export const BudgetElementType = { ENVELOPE: 0, CATEGORY: 1, TAG: 2, INCOME_CATEGORY: 3, INCOME_ENVELOPE: 4, SAVINGS: 5 } as const
 export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetElementType]
 
 export const isIncomeType = (t: BudgetElementType): boolean =>
@@ -131,16 +131,46 @@ export interface BudgetCommentDto {
   updatedAt: string
 }
 
+/** a savings account's monthly row; id is the account id */
+export interface BudgetSavingsElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  isArchived: 0 | 1
+  position: number
+  /** decimal strings (wire format, kept verbatim) */
+  budgeted: string
+  spent: string
+  available: string
+}
+
+/** one of the requester's own member accounts */
+export interface BudgetAccountFilterDto {
+  id: Id
+  removable: boolean
+  /** optional: servers older than the savings release omit it */
+  isSavings?: boolean
+}
+
 export interface BudgetDto {
   meta: BudgetMetaDto
   /** accounts is optional on the wire: servers older than the budget-membership
    *  release — still accepted by the app's compat floor — omit it. */
-  filters: { periodStart: string; periodEnd: string; accounts?: { id: Id; removable: boolean }[] }
+  filters: { periodStart: string; periodEnd: string; accounts?: BudgetAccountFilterDto[] }
   balances: BudgetBalanceDto[]
   currencyRates: BudgetRateDto[]
   /** labels is optional on the wire: servers older than the labels release —
    *  still accepted by the app's compat floor — omit it. */
-  structure: { folders: BudgetFolderDto[]; elements: BudgetElementDto[]; labels?: LabelSpendDto[] }
+  structure: {
+    folders: BudgetFolderDto[]
+    elements: BudgetElementDto[]
+    labels?: LabelSpendDto[]
+    /** optional: cached data from a server older than the savings release lacks it */
+    savings?: BudgetSavingsElementDto[]
+  }
 }
 
 /** per-month cell on a plan-view parent row. planned '' = no limit set that month. */
@@ -196,13 +226,50 @@ export interface PlanMonthTransfersDto {
   items: PlanTransferDto[]
 }
 
+/** a savings account's plan-view row; id is the account id */
+export interface PlanSavingsElementDto {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  currencyId: Id
+  ownerUserId: Id
+  isArchived: 0 | 1
+  position: number
+  cells: PlanCellDto[]
+}
+
+export interface PlanOpeningBalanceDto {
+  currencyId: Id
+  amount: string
+}
+
+/** one (month, account currency) net change of the savings accounts: every
+ *  transaction on them, interest included, so it exceeds the savings rows,
+ *  which count only what moved in from everyday accounts. Only pairs with
+ *  activity are listed; amounts are unconverted. */
+export interface PlanSavingsFlowDto {
+  /** date-only Y-m-d, first of the month */
+  month: string
+  currencyId: Id
+  amount: string
+}
+
 export interface BudgetPlanDto {
   meta: BudgetMetaDto
   /** date-only Y-m-d, first of each month in the fetched window */
   months: string[]
-  openingBalances: { currencyId: Id; amount: string }[]
+  openingBalances: PlanOpeningBalanceDto[]
   currencyRates: PlanMonthRatesDto[]
   /** one entry per months[i] */
   transfers: PlanMonthTransfersDto[]
-  structure: { folders: BudgetFolderDto[]; elements: PlanElementDto[] }
+  structure: {
+    folders: BudgetFolderDto[]
+    elements: PlanElementDto[]
+    /** optional: cached data from a server older than the savings release lacks it */
+    savings?: PlanSavingsElementDto[]
+  }
+  /** optional for the same reason as structure.savings */
+  savingsOpeningBalances?: PlanOpeningBalanceDto[]
+  savingsFlows?: PlanSavingsFlowDto[]
 }

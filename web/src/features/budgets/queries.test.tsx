@@ -337,3 +337,126 @@ it('useUpdateBudgetDetail fires the end-date metric only when endDate is sent', 
   result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', endDate: '2026-09-01' })
   await waitFor(() => expect(trackEventMock).toHaveBeenCalledWith(METRICS.BUDGET_SET_END_DATE))
 })
+
+describe('budget savings toggle metric', () => {
+  const savingsToggles = () => trackEventMock.mock.calls.filter(([name]) => name === METRICS.BUDGET_SAVINGS_TOGGLE).length
+
+  function createHandler() {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/budget/create-budget', async ({ request }) => {
+        const body = (await request.json()) as Record<string, unknown>
+        bodies.push(body)
+        return HttpResponse.json({
+          success: true, message: '',
+          data: {
+            item: {
+              meta: {
+                id: body.id, ownerUserId: 'u1', name: body.name, startedAt: '2026-07-01 00:00:00',
+                currencyId: body.currencyId, access: [{ user: fixtureOwner, role: 'owner', isAccepted: 1 }],
+              },
+            },
+          },
+        })
+      }),
+    )
+    return bodies
+  }
+
+  it('fires once when a budget is created with savings accounts, and sends them', async () => {
+    const bodies = createHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+    const { result } = renderHook(() => useCreateBudget(), { wrapper })
+    result.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1', 'a2'], savingsAccountIds: ['a2'], ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(bodies[0].savingsAccountIds).toEqual(['a2'])
+    expect(savingsToggles()).toBe(1)
+  })
+
+  it('does not fire on a create without savings accounts, nor on a deduped create', async () => {
+    createHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    queryClient.setQueryData(queryKeys.budgets, fixtureBudgets)
+    const { result } = renderHook(() => useCreateBudget(), { wrapper })
+    result.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], savingsAccountIds: [], ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    result.current.mutate({ id: 'x', name: 'main BUDGET', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], savingsAccountIds: ['a1'], ownerUserId: 'u1' })
+    await waitFor(() => expect(result.current.data?.id).toBe('b1'))
+    expect(savingsToggles()).toBe(0)
+  })
+
+  function updateHandler(status = 200) {
+    const bodies: Record<string, unknown>[] = []
+    server.use(
+      http.post('*/api/v1/budget/update-budget', async ({ request }) => {
+        bodies.push((await request.json()) as Record<string, unknown>)
+        return status === 200
+          ? HttpResponse.json({ success: true, message: '', data: { item: fixtureBudgets[0] } })
+          : HttpResponse.json(
+              { success: false, message: 'Form validation error', code: 400, errors: { confirmSavingsRemoval: ['confirm'] } },
+              { status },
+            )
+      }),
+    )
+    return bodies
+  }
+
+  it('fires once on an update that changes the savings set; the previous set is not sent', async () => {
+    const bodies = updateHandler()
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    result.current.mutate({
+      id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1', 'a2'],
+      savingsAccountIds: ['a2', 'a1'], previousSavingsAccountIds: ['a1'],
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(savingsToggles()).toBe(1)
+    expect(bodies[0]).not.toHaveProperty('previousSavingsAccountIds')
+  })
+
+  it('does not fire when the savings set is unchanged, absent, or the update fails', async () => {
+    updateHandler()
+    const { wrapper } = makeWrapper()
+    const { result } = renderHook(() => useUpdateBudgetDetail(), { wrapper })
+    result.current.mutate({
+      id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1', 'a2'],
+      savingsAccountIds: ['a2', 'a1'], previousSavingsAccountIds: ['a1', 'a2'],
+    })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    result.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd' })
+    await waitFor(() => expect(trackEventMock.mock.calls.filter(([n]) => n === METRICS.BUDGET_UPDATE)).toHaveLength(2))
+
+    updateHandler(400)
+    result.current.mutate({
+      id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1'], savingsAccountIds: [], previousSavingsAccountIds: ['a1'],
+    })
+    await waitFor(() => expect(result.current.isError).toBe(true))
+    expect(savingsToggles()).toBe(0)
+  })
+
+  it('create and update both invalidate the budget and plan caches', async () => {
+    createHandler()
+    updateHandler()
+    const { queryClient, wrapper } = makeWrapper()
+    const budgetKey = [...queryKeys.budget, 'b1', '2026-09-01']
+    const planKey = [...queryKeys.budgetPlan, 'b1', '2026-07-01', 6]
+    const reset = () => {
+      queryClient.setQueryData(budgetKey, null)
+      queryClient.setQueryData(planKey, null)
+    }
+    reset()
+    const create = renderHook(() => useCreateBudget(), { wrapper }).result
+    create.current.mutate({ id: 'b-new', name: 'Vacation', startDate: '', currencyId: 'cur-usd', accountIds: ['a1'], savingsAccountIds: ['a1'] })
+    await waitFor(() => expect(create.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(budgetKey)!.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(planKey)!.isInvalidated).toBe(true)
+
+    reset()
+    const update = renderHook(() => useUpdateBudgetDetail(), { wrapper }).result
+    update.current.mutate({ id: 'b1', name: 'Main budget', currencyId: 'cur-usd', accountIds: ['a1'], savingsAccountIds: [], confirmSavingsRemoval: true })
+    await waitFor(() => expect(update.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryState(budgetKey)!.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(planKey)!.isInvalidated).toBe(true)
+  })
+})

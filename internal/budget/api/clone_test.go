@@ -235,3 +235,33 @@ func TestCloneBudget_EditorDenied_ArchivedSourceAllowed(t *testing.T) {
 	h.mustDo(t, http.MethodPost, "/api/v1/budget/clone-budget", tok,
 		map[string]any{"id": cloneSrcID, "newId": cloneDstID, "name": "Copy", "withLimits": false})
 }
+
+func TestCloneBudget_SavingsRowsInPlan(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/clone-budget", tok,
+		map[string]any{"id": budgetID1, "newId": cloneDstID, "name": "Copy", "withLimits": true})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/clone-budget", tok,
+		map[string]any{"id": budgetID1, "newId": cloneDstID2, "name": "Bare", "withLimits": false})
+
+	for _, tc := range []struct {
+		budgetID string
+		planned  []string
+	}{
+		{cloneDstID, []string{"", "400", ""}},
+		{cloneDstID2, []string{"", "", ""}},
+	} {
+		view, _ := h.savingsPlan(t, tok, tc.budgetID, savingsPlanWindow)
+		s1, ok := planSavingsByID(view.Item.Structure.Savings)[savingsUSDID]
+		if !ok {
+			t.Fatalf("copy %s savings = %+v, want S1 listed", tc.budgetID, view.Item.Structure.Savings)
+		}
+		if len(s1.Cells) != len(tc.planned) {
+			t.Fatalf("copy %s S1 cells = %+v", tc.budgetID, s1.Cells)
+		}
+		for i, p := range tc.planned {
+			if s1.Cells[i].Planned != p {
+				t.Errorf("copy %s S1 cell %d planned = %q, want %q", tc.budgetID, i, s1.Cells[i].Planned, p)
+			}
+		}
+	}
+}

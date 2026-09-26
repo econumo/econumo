@@ -52,6 +52,7 @@ export function useAccountItemEffects() {
     if (result.transaction) {
       queryClient.setQueryData<TransactionDto[]>(queryKeys.transactions, (prev) => [result.transaction as TransactionDto, ...(prev ?? [])])
       void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     }
     if (opts.checkFirstFolder) {
       const folders = queryClient.getQueryData<FolderDto[]>(queryKeys.folders)

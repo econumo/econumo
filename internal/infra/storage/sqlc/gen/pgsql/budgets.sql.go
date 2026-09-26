@@ -11,18 +11,24 @@ import (
 )
 
 const addBudgetAccount = `-- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES ($1, $2, $3, $4)
 ON CONFLICT (budget_id, account_id) DO NOTHING
 `
 
 type AddBudgetAccountParams struct {
 	BudgetID  string
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
 func (q *Queries) AddBudgetAccount(ctx context.Context, arg AddBudgetAccountParams) error {
-	_, err := q.db.ExecContext(ctx, addBudgetAccount, arg.BudgetID, arg.AccountID, arg.CreatedAt)
+	_, err := q.db.ExecContext(ctx, addBudgetAccount,
+		arg.BudgetID,
+		arg.AccountID,
+		arg.IsSavings,
+		arg.CreatedAt,
+	)
 	return err
 }
 
@@ -405,11 +411,12 @@ func (q *Queries) ListBudgetAccess(ctx context.Context, budgetID string) ([]Budg
 }
 
 const listBudgetAccounts = `-- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id
 `
 
 type ListBudgetAccountsRow struct {
 	AccountID string
+	IsSavings bool
 	CreatedAt time.Time
 }
 
@@ -422,7 +429,7 @@ func (q *Queries) ListBudgetAccounts(ctx context.Context, budgetID string) ([]Li
 	items := []ListBudgetAccountsRow{}
 	for rows.Next() {
 		var i ListBudgetAccountsRow
-		if err := rows.Scan(&i.AccountID, &i.CreatedAt); err != nil {
+		if err := rows.Scan(&i.AccountID, &i.IsSavings, &i.CreatedAt); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -993,6 +1000,43 @@ type RepointBudgetElementParams struct {
 
 func (q *Queries) RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error {
 	_, err := q.db.ExecContext(ctx, repointBudgetElement, arg.ExternalID, arg.UpdatedAt, arg.ID)
+	return err
+}
+
+const savingsElementHasData = `-- name: SavingsElementHasData :one
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = $1 AND e.external_id = $2 AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)))
+`
+
+type SavingsElementHasDataParams struct {
+	BudgetID   string
+	ExternalID string
+}
+
+// Whether the budget's savings element for this account carries a limit or a
+// comment: dropping the element (flag off or member removed) deletes both.
+func (q *Queries) SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, savingsElementHasData, arg.BudgetID, arg.ExternalID)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
+const setBudgetAccountSavings = `-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = $1 WHERE budget_id = $2 AND account_id = $3
+`
+
+type SetBudgetAccountSavingsParams struct {
+	IsSavings bool
+	BudgetID  string
+	AccountID string
+}
+
+func (q *Queries) SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error {
+	_, err := q.db.ExecContext(ctx, setBudgetAccountSavings, arg.IsSavings, arg.BudgetID, arg.AccountID)
 	return err
 }
 

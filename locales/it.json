@@ -1132,7 +1132,17 @@
         "accounts": "Conti",
         "accounts_included": "{count} di {total} inclusi",
         "accounts_hidden": "In cartelle nascoste",
-        "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi"
+        "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
+        "savings": {
+          "label": "Risparmio",
+          "toggle": "{name} è un conto di risparmio",
+          "note": "I conti di risparmio sono mostrati per nome, con importi risparmiati e saldi, a tutti coloro che hanno accesso a questo budget.",
+          "confirm": {
+            "title": "Eliminare i risparmi pianificati?",
+            "question": "Gli importi pianificati e i commenti dei conti di risparmio disattivati o rimossi verranno eliminati da questo budget. Gli importi risparmiati e le transazioni non vengono modificati.",
+            "action": "Elimina piani"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nuovo budget"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Andamento delle spese",
-        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Risparmiati {saved} su {planned} previsti"
       },
       "duplicate_budget_form": {
         "header": "Duplica budget",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Entrate",
           "expenses": "Uscite",
+          "savings": "Risparmi",
           "archived": "In archivio"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "Entrate {in} · Uscite {out}",
           "show_transactions": "Mostra le transazioni",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Risparmi",
+          "savings_balance": "Saldo risparmi",
+          "savings_balance_tooltip": "Include interessi e altri movimenti sui conti di risparmio, che non vengono contati come risparmiati"
         },
         "density": {
           "hide_empty": "Nascondi righe vuote",
@@ -1390,6 +1405,12 @@
           "empty": "Nessun commento ancora.",
           "truncated": "Vengono mostrati i 2000 commenti più recenti."
         }
+      },
+      "savings": {
+        "title": "Risparmi",
+        "planned": "Previsto",
+        "saved": "Risparmiato",
+        "remaining": "Rimanente"
       },
       "settings": {
         "menu_item": "Budget e piani",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Convalida non riuscita",
       "envelope_side_mixed": "Una busta non può contenere contemporaneamente categorie di entrata e di uscita",
       "folder_side_mixed": "Una cartella non può contenere contemporaneamente entrate e uscite",
+      "savings_folder_not_allowed": "I risparmi non possono essere inseriti in una cartella",
       "account_not_removable": "Questo conto ha transazioni nei mesi passati e non può più essere rimosso dal budget",
+      "savings_account_not_member": "I conti di risparmio devono essere tuoi conti in questo budget",
+      "savings_removal_unconfirmed": "Questo elimina gli importi pianificati e i commenti dei conti di risparmio che hai disattivato o rimosso da questo budget; conferma per continuare",
       "accounts_required": "Seleziona almeno un conto",
       "archived": "Questo budget è archiviato",
       "end_before_start": "Il mese finale precede l'inizio del budget",

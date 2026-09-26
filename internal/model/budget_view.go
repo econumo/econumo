@@ -89,6 +89,14 @@ type MonthlyLimitRow struct {
 	Amount     string
 }
 
+// SavingsMonthRow is one account's amount in one month ("YYYY-MM-01"), in the
+// account's own currency.
+type SavingsMonthRow struct {
+	AccountID string
+	Month     string
+	Amount    string
+}
+
 // BudgetTransactionRow is one transaction in the budget transaction list, with
 // the account's currency joined and the optional category/payee/tag ids.
 type BudgetTransactionRow struct {
@@ -132,14 +140,17 @@ type LabelMeta struct {
 	IsArchived bool
 }
 
-// AccountView is an account as the budget filters builder needs it: id +
-// currency + owner. IsDeleted is carried through so a soft-deleted member
-// account still counts (see AccountLookup.AccountsByIDs).
+// AccountView is a member account as the budget needs it: the filters
+// builder reads id + currency + owner, the savings rows read name + icon.
+// IsDeleted is carried through so a soft-deleted member account still counts
+// (see AccountLookup.AccountsByIDs).
 type AccountView struct {
 	ID         string
 	CurrencyID string
 	OwnerID    string
 	IsDeleted  bool
+	Name       string
+	Icon       string
 }
 
 // CategoryMeta is a category's display metadata for the budget structure.

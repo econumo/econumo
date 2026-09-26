@@ -1132,7 +1132,17 @@
         "accounts": "Cuentas",
         "accounts_included": "{count} de {total} incluidas",
         "accounts_hidden": "En carpetas ocultas",
-        "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar"
+        "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar",
+        "savings": {
+          "label": "Ahorro",
+          "toggle": "{name} es una cuenta de ahorro",
+          "note": "Las cuentas de ahorro se muestran por nombre, con sus importes ahorrados y saldos, a todas las personas con acceso a este presupuesto.",
+          "confirm": {
+            "title": "¿Eliminar el ahorro planificado?",
+            "question": "Los importes planificados y los comentarios de las cuentas de ahorro que desactivaste o quitaste se eliminarán de este presupuesto. Los importes ahorrados y las transacciones no se verán afectados.",
+            "action": "Eliminar planes"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Nuevo presupuesto"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Progreso de los gastos",
-        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "Ahorrado {saved} de {planned} previstos"
       },
       "duplicate_budget_form": {
         "header": "Duplicar presupuesto",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Ingresos",
           "expenses": "Gastos",
+          "savings": "Ahorros",
           "archived": "Archivado"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "Entradas {in} · Salidas {out}",
           "show_transactions": "Mostrar las transacciones",
           "net": "Neto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Ahorros",
+          "savings_balance": "Saldo de ahorros",
+          "savings_balance_tooltip": "Incluye intereses y otros movimientos de las cuentas de ahorro, que no cuentan como ahorrado"
         },
         "density": {
           "hide_empty": "Ocultar filas vacías",
@@ -1390,6 +1405,12 @@
           "empty": "Aún no hay comentarios.",
           "truncated": "Mostrando los 2000 comentarios más recientes."
         }
+      },
+      "savings": {
+        "title": "Ahorros",
+        "planned": "Previsto",
+        "saved": "Ahorrado",
+        "remaining": "Restante"
       },
       "settings": {
         "menu_item": "Presupuestos y planes",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "La validación falló.",
       "envelope_side_mixed": "Un sobre no puede contener a la vez categorías de ingresos y gastos.",
       "folder_side_mixed": "Una carpeta no puede contener a la vez ingresos y gastos.",
+      "savings_folder_not_allowed": "Los ahorros no se pueden colocar en una carpeta.",
       "account_not_removable": "Esta cuenta tiene transacciones en meses anteriores y ya no se puede quitar del presupuesto",
+      "savings_account_not_member": "Las cuentas de ahorro deben ser tus propias cuentas en este presupuesto",
+      "savings_removal_unconfirmed": "Esto elimina los importes planificados y los comentarios de las cuentas de ahorro que desactivaste o quitaste de este presupuesto; confirma para continuar",
       "accounts_required": "Selecciona al menos una cuenta",
       "archived": "Este presupuesto está archivado",
       "end_before_start": "El mes final es anterior al inicio del presupuesto",
