@@ -43,8 +43,9 @@ export function BudgetAccountsField({ accounts, selected, locked, onToggle, savi
   // A row stacks — icon, name and the include switch on the first line, the
   // savings switch on a second line under the name — so the name keeps the row's
   // width. Only a list at least @md (28rem) wide puts it all on one flex line in
-  // DOM order: the width that matters is the list's, and the budget dialogs stay
-  // max-w-sm on every viewport, where one line left a name ~115px.
+  // DOM order: the width that matters is the list's, not the viewport's. The
+  // desktop dialog stays max-w-sm, where one line left a name ~115px; the phone
+  // drawer spans the viewport, so it only goes single-line when that is wide.
   const row = (account: AccountDto, dimmed: boolean) => (
     <li
       key={account.id}
