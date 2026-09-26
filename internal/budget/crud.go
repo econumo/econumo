@@ -12,8 +12,7 @@ import (
 )
 
 // UpdateBudget updates a budget's name/currency/member accounts/savings flags
-// and returns its meta. Requires read access; a name change additionally
-// requires update access.
+// and returns its meta. Requires update access.
 func (s *Service) UpdateBudget(ctx context.Context, userID vo.Id, req model.UpdateBudgetRequest) (*model.UpdateBudgetResult, error) {
 	budgetID, err := vo.ParseId(req.Id)
 	if err != nil {

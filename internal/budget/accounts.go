@@ -52,10 +52,11 @@ func accountNotRemovable() error {
 	})
 }
 
-// AddAccount makes an account the caller owns a member of the budget. Adding an
-// account that is already a member is a no-op — deleted members stay listed in
-// the filters block (they keep counting), so a client may well name one again;
-// only a NEW member has to be a live account.
+// AddAccount makes an account the caller owns a member of the budget. Re-adding
+// an existing member only updates its savings flag (turning it off, behind
+// ConfirmSavingsRemoval, drops the savings row) — deleted members stay listed
+// in the filters block (they keep counting), so a client may well name one
+// again; only a NEW member has to be a live account.
 func (s *Service) AddAccount(ctx context.Context, userID vo.Id, req model.AddAccountRequest) (*model.AddAccountResult, error) {
 	budgetID, accountID, _, err := s.membershipPrelude(ctx, userID, req.BudgetId, req.AccountId)
 	if err != nil {

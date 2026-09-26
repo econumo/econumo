@@ -54,6 +54,29 @@ it('create-transaction replaces the accounts cache and prepends the item', async
   expect(txs.map((t) => t.id)).toEqual(['t-created', 't-existing'])
 })
 
+it('create-transaction invalidates the budget and budget plan caches', async () => {
+  server.use(
+    http.post('*/api/v1/transaction/create-transaction', () =>
+      HttpResponse.json({ success: true, message: '', data: { item: wireTx, accounts: [wireAccount] } }),
+    ),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.transactions, [])
+  queryClient.setQueryData(queryKeys.accounts, [])
+  queryClient.setQueryData([...queryKeys.budget, 'b1', '2026-09-01'], null)
+  queryClient.setQueryData([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6], null)
+
+  const { result } = renderHook(() => useCreateTransaction(), { wrapper })
+  result.current.mutate({
+    id: 'op1', type: 'expense', accountId: 'a1', accountRecipientId: null, amount: '9.99',
+    amountRecipient: null, categoryId: 'cat1', description: '', payeeId: null, tagId: null, labelIds: [], date: '2026-07-01 09:30:00',
+  })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+
+  expect(queryClient.getQueryState([...queryKeys.budget, 'b1', '2026-09-01'])!.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState([...queryKeys.budgetPlan, 'b1', '2026-07-01', 6])!.isInvalidated).toBe(true)
+})
+
 it('delete-transaction removes the item and refreshes accounts', async () => {
   server.use(
     http.post('*/api/v1/transaction/delete-transaction', () =>

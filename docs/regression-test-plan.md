@@ -725,8 +725,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       month above that month's plan counts at its booked amount in both.
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take the green under-plan style an expense row gets.
-- [ ] 📱 Edit a savings account's balance (the correction transaction) with the
-      Plan view open in another tab or route: the Savings balance updates
+- [ ] 📱 Edit a savings account's balance (the correction transaction), then
+      switch to the Plan view in the same tab: the Savings balance updates
       without a manual reload.
 - [ ] 📱 "Savings balance" carries an info note (hover on desktop, tap the
       info icon on a phone): "Includes interest and other activity on savings

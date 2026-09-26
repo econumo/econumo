@@ -29,6 +29,7 @@ export function useApplyTransactionItem() {
       return items.filter((t) => t.id !== result.item.id)
     })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budget })
+    void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
     void queryClient.invalidateQueries({ queryKey: queryKeys.budgetTransactions })
   }
 }
