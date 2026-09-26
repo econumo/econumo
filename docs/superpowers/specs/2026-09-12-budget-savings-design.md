@@ -464,7 +464,7 @@ otherwise independent; these are the agreed terms.
     the Savings balance, and the everyday Balance fell instead. Future months now
     use the current month's rule: flows + Σ(effective − actual).
 
-## Status (2026-09-25)
+## Status (2026-09-26)
 
 **Implemented, per Revisions 7-11.** Savings is a per-budget membership flag
 (`budgets_accounts.is_savings`), set from the budget's own settings (create/update
