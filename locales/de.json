@@ -1132,7 +1132,17 @@
         "accounts": "Konten",
         "accounts_included": "{count} von {total} einbezogen",
         "accounts_hidden": "In ausgeblendeten Ordnern",
-        "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden"
+        "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden",
+        "savings": {
+          "label": "Sparen",
+          "toggle": "{name} ist ein Sparkonto",
+          "note": "Sparkonten werden allen mit Zugriff auf dieses Budget mit Namen, gesparten Beträgen und Salden angezeigt.",
+          "confirm": {
+            "title": "Geplante Sparbeträge löschen?",
+            "question": "Geplante Beträge und Kommentare der deaktivierten oder entfernten Sparkonten werden aus diesem Budget gelöscht. Gesparte Beträge und Transaktionen bleiben unverändert.",
+            "action": "Pläne löschen"
+          }
+        }
       },
       "create_budget_form": {
         "header": "Neues Budget"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "Ausgaben",
-        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}"
+        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "{saved} von {planned} geplant gespart"
       },
       "duplicate_budget_form": {
         "header": "Budget duplizieren",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "Einnahmen",
           "expenses": "Ausgaben",
+          "savings": "Sparen",
           "archived": "Archiviert"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "Eingang {in} · Ausgang {out}",
           "show_transactions": "Transaktionen anzeigen",
           "net": "Netto",
-          "balance": "Saldo"
+          "balance": "Saldo",
+          "savings": "Sparen",
+          "savings_balance": "Sparguthaben",
+          "savings_balance_tooltip": "Enthält Zinsen und andere Bewegungen auf Sparkonten, die nicht als gespart zählen"
         },
         "density": {
           "hide_empty": "Leere Zeilen ausblenden",
@@ -1390,6 +1405,12 @@
           "empty": "Noch keine Kommentare.",
           "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
         }
+      },
+      "savings": {
+        "title": "Sparen",
+        "planned": "Geplant",
+        "saved": "Gespart",
+        "remaining": "Verbleibend"
       },
       "settings": {
         "menu_item": "Budgets & Pläne",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "Validierung fehlgeschlagen",
       "envelope_side_mixed": "Ein Umschlag kann nicht gleichzeitig Einnahmen- und Ausgabenkategorien enthalten",
       "folder_side_mixed": "Ein Ordner kann nicht gleichzeitig Einnahmen und Ausgaben enthalten",
+      "savings_folder_not_allowed": "Ersparnisse können nicht in einen Ordner verschoben werden",
       "account_not_removable": "Dieses Konto hat Buchungen in vergangenen Monaten und kann nicht mehr aus dem Budget entfernt werden",
+      "savings_account_not_member": "Sparkonten müssen deine eigenen Konten in diesem Budget sein",
+      "savings_removal_unconfirmed": "Dadurch werden die geplanten Beträge und Kommentare der Sparkonten gelöscht, die du in diesem Budget ausgeschaltet oder daraus entfernt hast; bestätige, um fortzufahren",
       "accounts_required": "Wähle mindestens ein Konto",
       "archived": "Dieses Budget ist archiviert",
       "end_before_start": "Der Endmonat liegt vor dem Budgetbeginn",

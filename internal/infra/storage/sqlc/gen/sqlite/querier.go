@@ -164,6 +164,9 @@ type Querier interface {
 	GetBudgetComment(ctx context.Context, id string) (GetBudgetCommentRow, error)
 	GetBudgetElement(ctx context.Context, id string) (BudgetsElement, error)
 	GetBudgetElementByExternal(ctx context.Context, arg GetBudgetElementByExternalParams) (BudgetsElement, error)
+	// Plain read: SQLite serializes writers, so the row lock the PostgreSQL
+	// variant takes has nothing to order here.
+	GetBudgetElementByExternalForWrite(ctx context.Context, arg GetBudgetElementByExternalForWriteParams) (BudgetsElement, error)
 	GetBudgetEnvelope(ctx context.Context, id string) (BudgetsEnvelope, error)
 	GetBudgetFolder(ctx context.Context, id string) (BudgetsFolder, error)
 	GetBudgetLimit(ctx context.Context, arg GetBudgetLimitParams) (BudgetsElementsLimit, error)
@@ -516,6 +519,9 @@ type Querier interface {
 	// generated function signature while leaving it in the SQL text), so the join
 	// form is used to keep the parameter visible to codegen.
 	ListUserIDsMissingOption(ctx context.Context, name string) ([]string, error)
+	// Plain read: SQLite serializes writers, so there is no concurrent limit or
+	// comment for a lock to order against.
+	LockSavingsElement(ctx context.Context, arg LockSavingsElementParams) ([]string, error)
 	// The row lock behind every existing-row write and credential mint (see
 	// user.Repository.LockRow). SQLite has no row-level lock modes, so this stays
 	// a no-op UPDATE to take the row's write lock; the single-writer pool already
@@ -565,6 +571,10 @@ type Querier interface {
 	// touch row by row. The excepted id is the presenting token (or an id that
 	// matches nothing when everything must go).
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error
+	// Whether the budget's savings element for this account carries a limit or a
+	// comment: dropping the element (flag off or member removed) deletes both.
+	SavingsElementHasData(ctx context.Context, arg SavingsElementHasDataParams) (int64, error)
+	SetBudgetAccountSavings(ctx context.Context, arg SetBudgetAccountSavingsParams) error
 	ShowGlobalCurrencies(ctx context.Context, userID string) error
 	// Currencies are never removed: accounts.currency_id and transactions.account_id
 	// both cascade, so a DELETE would destroy account and transaction history.

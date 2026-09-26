@@ -1132,7 +1132,17 @@
         "accounts": "账户",
         "accounts_included": "已包含 {count} 个，共 {total} 个",
         "accounts_hidden": "在隐藏文件夹中",
-        "accounts_locked_hint": "在过去月份中有交易的账户无法移除"
+        "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
+        "savings": {
+          "label": "储蓄",
+          "toggle": "{name} 是储蓄账户",
+          "note": "储蓄账户会以名称连同已存金额和余额显示给所有有权访问此预算的人。",
+          "confirm": {
+            "title": "删除计划储蓄？",
+            "question": "你关闭或移除的储蓄账户在此预算中的计划金额和备注将被删除。已存金额和交易不受影响。",
+            "action": "删除计划"
+          }
+        }
       },
       "create_budget_form": {
         "header": "新建预算"
@@ -1176,7 +1186,8 @@
       },
       "expense_widget": {
         "header": "支出进度",
-        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}",
+        "saved_of_planned": "已储蓄 {saved}，计划 {planned}"
       },
       "duplicate_budget_form": {
         "header": "复制预算",
@@ -1334,6 +1345,7 @@
         "section": {
           "income": "收入",
           "expenses": "支出",
+          "savings": "储蓄",
           "archived": "已归档"
         },
         "nav": {
@@ -1357,7 +1369,10 @@
           "transfers_tooltip": "转入 {in} · 转出 {out}",
           "show_transactions": "显示交易",
           "net": "净额",
-          "balance": "余额"
+          "balance": "余额",
+          "savings": "储蓄",
+          "savings_balance": "储蓄余额",
+          "savings_balance_tooltip": "包含储蓄账户的利息和其他变动，这些不计入已储蓄金额"
         },
         "density": {
           "hide_empty": "隐藏空行",
@@ -1390,6 +1405,12 @@
           "empty": "暂无评论。",
           "truncated": "仅显示最新的 2000 条评论。"
         }
+      },
+      "savings": {
+        "title": "储蓄",
+        "planned": "计划",
+        "saved": "已储蓄",
+        "remaining": "剩余"
       },
       "settings": {
         "menu_item": "预算与计划",
@@ -1800,7 +1821,10 @@
       "transaction_filter_required": "校验未通过。",
       "envelope_side_mixed": "信封中不能同时包含收入和支出分类。",
       "folder_side_mixed": "文件夹中不能同时包含收入和支出。",
+      "savings_folder_not_allowed": "储蓄不能放入文件夹。",
       "account_not_removable": "此账户在过去的月份中有交易，无法再从预算中移除",
+      "savings_account_not_member": "储蓄账户必须是您在此预算中的账户",
+      "savings_removal_unconfirmed": "这将删除你在此预算中关闭或移除的储蓄账户的计划金额和评论；请确认以继续",
       "accounts_required": "请至少选择一个账户",
       "archived": "此预算已归档",
       "end_before_start": "结束月份早于预算开始时间",

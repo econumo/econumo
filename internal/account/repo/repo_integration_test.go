@@ -237,3 +237,36 @@ func TestAccountRepo_SaveCorrection(t *testing.T) {
 		t.Errorf("want amount 12.34, got %q", amount)
 	}
 }
+
+// A stored type outside the known set (e.g. 0) must round-trip unchanged:
+// reads tolerate any stored value, and AccountType.Valid gates writes only.
+func TestAccountRepo_UnknownTypeValue_RoundTrips(t *testing.T) {
+	repo, db, f := newAccountRepo(t)
+	ctx := context.Background()
+	seedUser(t, f, userA, "A")
+	seedAccount(t, f, acctCash, userA, "Cash")
+	id := vo.MustParseId(acctCash)
+
+	if _, err := db.Raw.ExecContext(ctx, db.Rebind(`UPDATE accounts SET type = ? WHERE id = ?`), 0, acctCash); err != nil {
+		t.Fatalf("seed unknown type: %v", err)
+	}
+
+	got, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID: %v", err)
+	}
+	if got.Type != model.AccountType(0) {
+		t.Fatalf("Type = %d, want 0", got.Type)
+	}
+
+	if err := repo.Save(ctx, got); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got2, err := repo.GetByID(ctx, id)
+	if err != nil {
+		t.Fatalf("GetByID after save: %v", err)
+	}
+	if got2.Type != model.AccountType(0) {
+		t.Fatalf("Type after unchanged save = %d, want 0", got2.Type)
+	}
+}

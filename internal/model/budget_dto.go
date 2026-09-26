@@ -36,6 +36,7 @@ type MetaResult struct {
 type BudgetAccountFilter struct {
 	Id        string `json:"id"`
 	Removable bool   `json:"removable"`
+	IsSavings bool   `json:"isSavings"`
 }
 
 // FiltersResult is the budget's period + the requester's member accounts.
@@ -120,11 +121,31 @@ type LabelSpendResult struct {
 	Children    []ChildElementResult `json:"children"`
 }
 
-// StructureResult is the budget's folders + ordered elements + labels.
+// SavingsElementResult is one savings account's row in get-budget's
+// structure.savings. Kept out of elements so older clients do not sum it into
+// expenses. Amounts are in CurrencyId (the element currency); there is no
+// carry-over: Available = Budgeted - Spent for this month only.
+type SavingsElementResult struct {
+	Id          string `json:"id"`
+	Type        int    `json:"type"`
+	Name        string `json:"name"`
+	Icon        string `json:"icon"`
+	CurrencyId  string `json:"currencyId"`
+	OwnerUserId string `json:"ownerUserId"`
+	IsArchived  int    `json:"isArchived"`
+	Position    int    `json:"position"`
+	Budgeted    string `json:"budgeted"`
+	Spent       string `json:"spent"`
+	Available   string `json:"available"`
+}
+
+// StructureResult is the budget's folders + ordered elements + labels +
+// savings rows.
 type StructureResult struct {
-	Folders  []BudgetFolderResult  `json:"folders"`
-	Elements []ParentElementResult `json:"elements"`
-	Labels   []LabelSpendResult    `json:"labels"`
+	Folders  []BudgetFolderResult   `json:"folders"`
+	Elements []ParentElementResult  `json:"elements"`
+	Labels   []LabelSpendResult     `json:"labels"`
+	Savings  []SavingsElementResult `json:"savings"`
 }
 
 // BudgetResult is the full get-budget shape.
@@ -146,6 +167,9 @@ type CreateBudgetRequest struct {
 	// non-deleted account is required — enforced as a coded error in the use
 	// case, not here, so the wire carries the catalogue code.
 	AccountIds []string `json:"accountIds"`
+	// SavingsAccountIds flags members as savings in this budget; each must be one
+	// of AccountIds.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
 }
 
 // Validate enforces id + name NotBlank.
@@ -169,6 +193,12 @@ type UpdateBudgetRequest struct {
 	// EndDate is nil when the client omits the field (end month untouched);
 	// "" clears it, "2006-01-02" sets it (snapped to first-of-month).
 	EndDate *string `json:"endDate"`
+	// SavingsAccountIds is nil when omitted (flags untouched); a present list is
+	// the caller's own savings members after AccountIds applies.
+	SavingsAccountIds []string `json:"savingsAccountIds"`
+	// ConfirmSavingsRemoval allows a write that drops a savings row carrying
+	// planned amounts or comments.
+	ConfirmSavingsRemoval bool `json:"confirmSavingsRemoval"`
 }
 
 // Validate enforces id, name, currencyId NotBlank.
@@ -358,21 +388,51 @@ type PlanMonthRatesResult struct {
 	Rates  []AverageCurrencyRateResult `json:"rates"`
 }
 
-// PlanStructureResult is all folders (income-, expense-sided and neutral) +
-// all plan rows.
-type PlanStructureResult struct {
-	Folders  []BudgetFolderResult `json:"folders"`
-	Elements []PlanElementResult  `json:"elements"`
+// PlanSavingsElementResult is one savings account's plan row. Cells align with
+// BudgetPlanResult.Months; Actual is money moved in from the everyday accounts,
+// in CurrencyId (the element currency); Planned is "" with no limit.
+type PlanSavingsElementResult struct {
+	Id          string           `json:"id"`
+	Type        int              `json:"type"`
+	Name        string           `json:"name"`
+	Icon        string           `json:"icon"`
+	CurrencyId  string           `json:"currencyId"`
+	OwnerUserId string           `json:"ownerUserId"`
+	IsArchived  int              `json:"isArchived"`
+	Position    int              `json:"position"`
+	Cells       []PlanCellResult `json:"cells"`
 }
 
-// BudgetPlanResult is the full get-budget-plan shape.
+// PlanSavingsFlowResult is one (month, account currency) net change of the
+// savings accounts: every transaction on them, interest and boundary transfers
+// included, so it deliberately exceeds the Savings row, which counts only what
+// was moved in from the everyday accounts.
+type PlanSavingsFlowResult struct {
+	Month      string `json:"month"`
+	CurrencyId string `json:"currencyId"`
+	Amount     string `json:"amount"`
+}
+
+// PlanStructureResult is all folders (income-, expense-sided and neutral) +
+// all plan rows; savings rows are listed apart from the elements.
+type PlanStructureResult struct {
+	Folders  []BudgetFolderResult       `json:"folders"`
+	Elements []PlanElementResult        `json:"elements"`
+	Savings  []PlanSavingsElementResult `json:"savings"`
+}
+
+// BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
+// is OpeningBalances over the savings accounts only, per savings-account
+// currency; SavingsFlows lists only (month, currency) pairs with activity.
 type BudgetPlanResult struct {
-	Meta            MetaResult                 `json:"meta"`
-	Months          []string                   `json:"months"`
-	OpeningBalances []OpeningBalanceResult     `json:"openingBalances"`
-	CurrencyRates   []PlanMonthRatesResult     `json:"currencyRates"`
-	Transfers       []PlanMonthTransfersResult `json:"transfers"`
-	Structure       PlanStructureResult        `json:"structure"`
+	Meta                   MetaResult                 `json:"meta"`
+	Months                 []string                   `json:"months"`
+	OpeningBalances        []OpeningBalanceResult     `json:"openingBalances"`
+	SavingsOpeningBalances []OpeningBalanceResult     `json:"savingsOpeningBalances"`
+	CurrencyRates          []PlanMonthRatesResult     `json:"currencyRates"`
+	Transfers              []PlanMonthTransfersResult `json:"transfers"`
+	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
+	Structure              PlanStructureResult        `json:"structure"`
 }
 
 // GetBudgetPlanResult is {item: BudgetPlanResult}.
@@ -571,6 +631,10 @@ type RevokeAccessResult struct{}
 type AddAccountRequest struct {
 	BudgetId  string `json:"id"`
 	AccountId string `json:"accountId"`
+	// IsSavings nil leaves an existing member's flag alone and adds a new
+	// member as everyday.
+	IsSavings             *bool `json:"isSavings"`
+	ConfirmSavingsRemoval bool  `json:"confirmSavingsRemoval"`
 }
 
 func (r AddAccountRequest) Validate() error {
@@ -585,8 +649,9 @@ type AddAccountResult struct {
 // RemoveAccountRequest drops an account from the budget. The budget id arrives
 // under "id" (see AddAccountRequest).
 type RemoveAccountRequest struct {
-	BudgetId  string `json:"id"`
-	AccountId string `json:"accountId"`
+	BudgetId              string `json:"id"`
+	AccountId             string `json:"accountId"`
+	ConfirmSavingsRemoval bool   `json:"confirmSavingsRemoval"`
 }
 
 func (r RemoveAccountRequest) Validate() error {

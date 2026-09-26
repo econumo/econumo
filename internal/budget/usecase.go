@@ -109,16 +109,6 @@ func (s *Service) loadAggregate(ctx context.Context, budgetID vo.Id) (*budgetAgg
 	return &budgetAggregate{budget: b, access: access, accounts: accounts, folders: folders, envelopes: envelopes, elements: elements}, nil
 }
 
-// hasAccount reports whether accountID is already a member of this budget.
-func (a *budgetAggregate) hasAccount(accountID vo.Id) bool {
-	for _, m := range a.accounts {
-		if m.AccountID.Equal(accountID) {
-			return true
-		}
-	}
-	return false
-}
-
 // hasFolder reports whether folderID is one of this budget's folders. Child
 // mutators role-check the request's budget, then reach a folder by its own id;
 // this guards against reaching a folder that belongs to a DIFFERENT budget

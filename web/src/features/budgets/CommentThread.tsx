@@ -42,6 +42,28 @@ function parseServerDateTime(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
 }
 
+// The corner triangle on a commented amount cell. The visible triangle is drawn on
+// an inner span so the button carries a real hit area (a touch tap on the 6x6px
+// border-only box used to land on the cell behind it) without taking any layout
+// space or changing column width; the cell must be `relative`.
+export function CommentMarker({ count, onOpen }: { count: number; onOpen: () => void }) {
+  const { t, i18n } = useTranslation()
+  return (
+    <button
+      type="button"
+      data-testid="comment-marker"
+      aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)}
+      className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
+      onClick={(e) => {
+        e.stopPropagation()
+        onOpen()
+      }}
+    >
+      <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
+    </button>
+  )
+}
+
 export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
   const createComment = useCreateComment(budgetId)

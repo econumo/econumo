@@ -66,6 +66,10 @@ func (f *fakeElements) GetElementByExternal(ctx context.Context, budgetID, exter
 	return nil, errs.NewNotFound("BudgetElement not found")
 }
 
+func (f *fakeElements) GetElementByExternalForWrite(ctx context.Context, budgetID, externalID vo.Id) (*model.BudgetElement, error) {
+	return f.GetElementByExternal(ctx, budgetID, externalID)
+}
+
 func (f *fakeElements) SaveElement(ctx context.Context, e *model.BudgetElement) error {
 	f.byID[e.ID] = e
 	return nil

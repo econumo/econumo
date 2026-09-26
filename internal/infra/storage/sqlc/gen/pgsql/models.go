@@ -83,6 +83,7 @@ type BudgetsAccount struct {
 	BudgetID  string
 	AccountID string
 	CreatedAt time.Time
+	IsSavings bool
 }
 
 type BudgetsElement struct {

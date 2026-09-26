@@ -42,6 +42,7 @@ type querier interface {
 	ListBudgetElementsByExternal(ctx context.Context, db backend.DBTX, externalID string) ([]elementRow, error)
 	GetBudgetElement(ctx context.Context, db backend.DBTX, id string) (elementRow, error)
 	GetBudgetElementByExternal(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error)
+	GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error)
 	UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error
 	RepointBudgetElement(ctx context.Context, db backend.DBTX, id, externalID string, updatedAt time.Time) error
 	DeleteBudgetElement(ctx context.Context, db backend.DBTX, id string) error
@@ -56,6 +57,9 @@ type querier interface {
 
 	ListBudgetAccounts(ctx context.Context, db backend.DBTX, budgetID string) ([]sqlitegen.ListBudgetAccountsRow, error)
 	AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error
+	SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error
+	LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
+	SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error)
 	RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error
 	RemoveBudgetAccountsOwnedBy(ctx context.Context, db backend.DBTX, budgetID, userID string) error
 
@@ -148,6 +152,9 @@ func (sqliteQuerier) GetBudgetElement(ctx context.Context, db backend.DBTX, id s
 func (sqliteQuerier) GetBudgetElementByExternal(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
 	return sqlitegen.New(db).GetBudgetElementByExternal(ctx, sqlitegen.GetBudgetElementByExternalParams{BudgetID: budgetID, ExternalID: externalID})
 }
+func (sqliteQuerier) GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
+	return sqlitegen.New(db).GetBudgetElementByExternalForWrite(ctx, sqlitegen.GetBudgetElementByExternalForWriteParams{BudgetID: budgetID, ExternalID: externalID})
+}
 func (sqliteQuerier) UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error {
 	return sqlitegen.New(db).UpsertBudgetElement(ctx, p)
 }
@@ -196,6 +203,17 @@ func (sqliteQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, bu
 }
 func (sqliteQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
 	return sqlitegen.New(db).AddBudgetAccount(ctx, p)
+}
+func (sqliteQuerier) SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error {
+	return sqlitegen.New(db).SetBudgetAccountSavings(ctx, sqlitegen.SetBudgetAccountSavingsParams{IsSavings: isSavings, BudgetID: budgetID, AccountID: accountID})
+}
+func (sqliteQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	_, err := sqlitegen.New(db).LockSavingsElement(ctx, sqlitegen.LockSavingsElementParams{BudgetID: budgetID, ExternalID: accountID})
+	return err
+}
+func (sqliteQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
+	n, err := sqlitegen.New(db).SavingsElementHasData(ctx, sqlitegen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
+	return n != 0, err
 }
 func (sqliteQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return sqlitegen.New(db).RemoveBudgetAccount(ctx, sqlitegen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})
@@ -391,6 +409,10 @@ func (pgsqlQuerier) GetBudgetElementByExternal(ctx context.Context, db backend.D
 	v, err := pgsqlgen.New(db).GetBudgetElementByExternal(ctx, pgsqlgen.GetBudgetElementByExternalParams{BudgetID: budgetID, ExternalID: externalID})
 	return elementRow(v), err
 }
+func (pgsqlQuerier) GetBudgetElementByExternalForWrite(ctx context.Context, db backend.DBTX, budgetID, externalID string) (elementRow, error) {
+	v, err := pgsqlgen.New(db).GetBudgetElementByExternalForWrite(ctx, pgsqlgen.GetBudgetElementByExternalForWriteParams{BudgetID: budgetID, ExternalID: externalID})
+	return elementRow(v), err
+}
 func (pgsqlQuerier) UpsertBudgetElement(ctx context.Context, db backend.DBTX, p upElementP) error {
 	return pgsqlgen.New(db).UpsertBudgetElement(ctx, pgsqlgen.UpsertBudgetElementParams(p))
 }
@@ -444,12 +466,22 @@ func (pgsqlQuerier) ListBudgetAccounts(ctx context.Context, db backend.DBTX, bud
 	}
 	out := make([]sqlitegen.ListBudgetAccountsRow, len(rows))
 	for i, v := range rows {
-		out[i] = sqlitegen.ListBudgetAccountsRow{AccountID: v.AccountID, CreatedAt: v.CreatedAt}
+		out[i] = sqlitegen.ListBudgetAccountsRow{AccountID: v.AccountID, IsSavings: v.IsSavings, CreatedAt: v.CreatedAt}
 	}
 	return out, nil
 }
 func (pgsqlQuerier) AddBudgetAccount(ctx context.Context, db backend.DBTX, p sqlitegen.AddBudgetAccountParams) error {
-	return pgsqlgen.New(db).AddBudgetAccount(ctx, pgsqlgen.AddBudgetAccountParams{BudgetID: p.BudgetID, AccountID: p.AccountID, CreatedAt: p.CreatedAt})
+	return pgsqlgen.New(db).AddBudgetAccount(ctx, pgsqlgen.AddBudgetAccountParams{BudgetID: p.BudgetID, AccountID: p.AccountID, IsSavings: p.IsSavings, CreatedAt: p.CreatedAt})
+}
+func (pgsqlQuerier) SetBudgetAccountSavings(ctx context.Context, db backend.DBTX, budgetID, accountID string, isSavings bool) error {
+	return pgsqlgen.New(db).SetBudgetAccountSavings(ctx, pgsqlgen.SetBudgetAccountSavingsParams{IsSavings: isSavings, BudgetID: budgetID, AccountID: accountID})
+}
+func (pgsqlQuerier) LockSavingsElement(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
+	_, err := pgsqlgen.New(db).LockSavingsElement(ctx, pgsqlgen.LockSavingsElementParams{BudgetID: budgetID, ExternalID: accountID})
+	return err
+}
+func (pgsqlQuerier) SavingsElementHasData(ctx context.Context, db backend.DBTX, budgetID, accountID string) (bool, error) {
+	return pgsqlgen.New(db).SavingsElementHasData(ctx, pgsqlgen.SavingsElementHasDataParams{BudgetID: budgetID, ExternalID: accountID})
 }
 func (pgsqlQuerier) RemoveBudgetAccount(ctx context.Context, db backend.DBTX, budgetID, accountID string) error {
 	return pgsqlgen.New(db).RemoveBudgetAccount(ctx, pgsqlgen.RemoveBudgetAccountParams{BudgetID: budgetID, AccountID: accountID})

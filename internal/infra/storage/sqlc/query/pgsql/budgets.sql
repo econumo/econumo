@@ -106,6 +106,16 @@ FROM budgets_elements WHERE id = $1;
 SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
 FROM budgets_elements WHERE budget_id = $1 AND external_id = $2;
 
+-- name: GetBudgetElementByExternalForWrite :one
+-- The row a limit or comment is about to be written under, share-locked so a
+-- savings removal (LockSavingsElement) cannot delete it until this write
+-- commits. KEY SHARE, not SHARE: change-element-currency upserts the same row
+-- later in its transaction, and a SHARE lock held by two such requests would
+-- deadlock on that upgrade.
+SELECT id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key
+FROM budgets_elements WHERE budget_id = $1 AND external_id = $2
+FOR KEY SHARE;
+
 -- name: UpsertBudgetElement :exec
 INSERT INTO budgets_elements (id, budget_id, currency_id, folder_id, external_id, type, created_at, updated_at, sort_key)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
@@ -155,11 +165,32 @@ DELETE FROM budgets_elements_limits
 WHERE element_id IN (SELECT e.id FROM budgets_elements e WHERE e.budget_id = $1);
 
 -- name: ListBudgetAccounts :many
-SELECT account_id, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id;
+SELECT account_id, is_savings, created_at FROM budgets_accounts WHERE budget_id = $1 ORDER BY created_at, account_id;
 
 -- name: AddBudgetAccount :exec
-INSERT INTO budgets_accounts (budget_id, account_id, created_at) VALUES ($1, $2, $3)
+INSERT INTO budgets_accounts (budget_id, account_id, is_savings, created_at) VALUES ($1, $2, $3, $4)
 ON CONFLICT (budget_id, account_id) DO NOTHING;
+
+-- name: SetBudgetAccountSavings :exec
+UPDATE budgets_accounts SET is_savings = $1 WHERE budget_id = $2 AND account_id = $3;
+
+-- name: LockSavingsElement :many
+-- Locks the savings element a removal is about to drop, before its guard
+-- reads the element's data: a limit or comment writer that share-locked the
+-- row first has committed by the time the guard's EXISTS runs, and one that
+-- comes later waits and then finds the row gone.
+SELECT id FROM budgets_elements
+WHERE budget_id = $1 AND external_id = $2 AND type = 5
+FOR UPDATE;
+
+-- name: SavingsElementHasData :one
+-- Whether the budget's savings element for this account carries a limit or a
+-- comment: dropping the element (flag off or member removed) deletes both.
+SELECT EXISTS(
+  SELECT 1 FROM budgets_elements e
+  WHERE e.budget_id = $1 AND e.external_id = $2 AND e.type = 5
+    AND (EXISTS (SELECT 1 FROM budgets_elements_limits l WHERE l.element_id = e.id)
+      OR EXISTS (SELECT 1 FROM budgets_elements_comments c WHERE c.element_id = e.id)));
 
 -- name: RemoveBudgetAccount :exec
 DELETE FROM budgets_accounts WHERE budget_id = $1 AND account_id = $2;
