@@ -29,7 +29,10 @@ func init() {
 
 	register(Scenario{Name: "import_account_links", Calls: func() []Call {
 		return []Call{
-			{Label: "err:link-account-currency-mismatch", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+			// An Apple Wallet tap carries the merchant's currency, so an all-EUR card
+			// still maps onto the USD account; with no EUR rate seeded its tap stays
+			// queued (reason no_rate).
+			{Label: "link-account-foreign-currency-card", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard", "accountId": OwnerAccount}},
 			// Guest-owned SharedAccount is shared with Owner but not OWNED by Owner: not mappable.
 			{Label: "err:link-account-not-owned", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
@@ -48,8 +51,8 @@ func init() {
 			{Label: "get-transaction-import-list-no-provenance", Method: "GET", Path: "/api/v1/import/get-transaction-import-list?transactionId=" + Txn1, Auth: "owner"},
 			{Label: "ignore-account", Method: "POST", Path: "/api/v1/import/ignore-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard"}},
-			// "map instead" over an ignored card is allowed; currency still has to agree, so it stays refused for eurocard.
-			{Label: "err:link-ignored-card-currency-mismatch", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
+			// "map instead" over an ignored card is allowed.
+			{Label: "link-ignored-card-map-instead", Method: "POST", Path: "/api/v1/import/link-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "eurocard", "accountId": OwnerAccount}},
 			{Label: "unlink-account", Method: "POST", Path: "/api/v1/import/unlink-account", Auth: "owner",
 				Body: map[string]any{"sourceId": ImportSourcePhone, "externalAccountId": "wallet"}},

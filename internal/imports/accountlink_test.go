@@ -63,12 +63,6 @@ func TestLinkAccount_Rejections(t *testing.T) {
 		t.Errorf("deleted account = %v", err)
 	}
 	h.accounts.deleted = false
-	// currency mismatch: the card's ledger is EUR, the account is USD
-	ingest(t, h, `{"account":"Euro Card","amount":"5","currency":"EUR","eventId":"e1"}`)
-	_, err = h.svc.LinkAccount(ctx, uA, model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Euro Card", AccountId: acct1})
-	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeImportCurrencyMismatch {
-		t.Errorf("currency mismatch = %v", err)
-	}
 	// duplicate (case-insensitive)
 	if _, err := h.svc.LinkAccount(ctx, uA, model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Apple Card", AccountId: acct1}); err != nil {
 		t.Fatalf("first link: %v", err)
@@ -137,5 +131,53 @@ func TestIgnoreAndUnlinkAccount(t *testing.T) {
 	un, _ = h.svc.UnlinkAccount(ctx, uA, model.ImportAccountActionRequest{SourceId: source, ExternalAccountId: "Apple Card"})
 	if c := cardByID(un, "Apple Card"); c.State != "unmapped" || c.TapCount != 2 {
 		t.Errorf("unlink keeps seen rows: %+v", c)
+	}
+}
+
+// Apple Wallet reports the merchant's currency, not the card's: a card whose
+// first taps were all abroad maps onto the home-currency account and its taps
+// convert at the day's rate, keeping the original amount on the ledger.
+func TestLinkAccount_AppleWalletForeignTapsConvert(t *testing.T) {
+	h := setup(t)
+	ctx := context.Background()
+	ingest(t, h, `{"account":"Travel Card","payee":"Diner","amount":"5","currency":"EUR","occurredAt":"2026-08-19T09:00:00Z","eventId":"e1"}`)
+	ingest(t, h, `{"account":"Travel Card","payee":"Pub","amount":"3","currency":"EUR","occurredAt":"2026-08-19T10:00:00Z","eventId":"e2"}`)
+	res, err := h.svc.LinkAccount(ctx, vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: source, ExternalAccountId: "Travel Card", AccountId: acct1})
+	if err != nil {
+		t.Fatalf("LinkAccount: %v", err)
+	}
+	if res.Run == nil || res.Run.Status != model.ImportRunStatusCompleted || res.Run.ImportedCount != 2 {
+		t.Fatalf("run = %+v", res.Run)
+	}
+	amounts := map[string]bool{}
+	for _, c := range h.txns.created {
+		amounts[c.Amount.String()] = true
+	}
+	if len(h.txns.created) != 2 || !amounts["5.5"] || !amounts["3.3"] {
+		t.Fatalf("taps must convert at the day's rate: %+v", h.txns.created)
+	}
+	if c := cardByID(res, "Travel Card"); c.State != "mapped" || c.ExternalCurrency != "" || c.QueuedCount != 0 {
+		t.Errorf("card after link = %+v", c)
+	}
+	links, _ := h.repo.ListLinksBySource(ctx, vo.MustParseId(source))
+	for _, l := range links {
+		if l.ExternalTransactionID == "e1" && (l.Status != model.ImportLinkStatusLinked || l.ExternalAmount != "5" || l.ExternalCurrency == nil || *l.ExternalCurrency != "EUR") {
+			t.Errorf("converted tap must keep its original amount: %+v", l)
+		}
+	}
+}
+
+// SimpleFIN reports the bank account's own currency, so a mismatch there is a
+// wrong mapping, not a conversion job.
+func TestLinkAccount_SimpleFINCurrencyMismatchRefused(t *testing.T) {
+	h, p := bankHarness(t)
+	p.accounts = []model.ExternalAccount{{ID: "ACT-EUR", Name: "Euro Checking", Currency: "EUR"}}
+	p.txs = []model.ExternalTransaction{extTx("ACT-EUR", "T1", "-5", 1755900000, "Cafe")}
+	if _, err := h.svc.Sync(context.Background(), vo.MustParseId(userA), syncReq()); err != nil {
+		t.Fatal(err)
+	}
+	_, err := h.svc.LinkAccount(context.Background(), vo.MustParseId(userA), model.LinkImportAccountRequest{SourceId: bankSource, ExternalAccountId: "ACT-EUR", AccountId: acct1})
+	if v, ok := errs.AsValidation(err); !ok || v.MsgCode != errs.CodeImportCurrencyMismatch {
+		t.Errorf("currency mismatch = %v", err)
 	}
 }

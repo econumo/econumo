@@ -9,7 +9,7 @@ import (
 // LinkAccount handles POST /api/v1/import/link-account (auth).
 //
 // @Summary     Map a card to an account
-// @Description Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. Refuses a card whose reported currency differs from the account's.
+// @Description Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. A foreign-currency Apple Wallet tap converts at the day's rate; a bank account (SimpleFIN) whose currency differs from the account's is refused.
 // @Tags        Import
 // @Accept      json
 // @Produce     json

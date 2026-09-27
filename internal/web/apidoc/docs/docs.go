@@ -6207,7 +6207,7 @@ const docTemplate = `{
                         "Bearer": []
                     }
                 ],
-                "description": "Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. Refuses a card whose reported currency differs from the account's.",
+                "description": "Maps an external account (card) of a source onto one of the caller's accounts and converts every queued event of that card in one run. A foreign-currency Apple Wallet tap converts at the day's rate; a bank account (SimpleFIN) whose currency differs from the account's is refused.",
                 "consumes": [
                     "application/json"
                 ],

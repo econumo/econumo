@@ -240,8 +240,8 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkQueued, SourceID: ImportSourcePhone, EventID: ImportEventQueued,
 		ExternalAccountID: "wallet", ExternalTransactionID: "tap-2", Status: model.ImportLinkStatusQueued,
 		ExternalPayee: "Shop", ExternalAmount: "12.50000000", ExternalCurrency: "USD", ExternalPostedAt: ClockTime})
-	// A card that only ever reported EUR: mapping it onto the USD OwnerAccount
-	// is the currency-mismatch refusal.
+	// A card that only ever reported EUR: it maps onto the USD OwnerAccount, and
+	// with no EUR rate seeded its tap stays queued.
 	f.ImportTransactionLink(fixture.ImportTransactionLink{ID: ImportLinkEuro, SourceID: ImportSourcePhone,
 		ExternalAccountID: "eurocard", ExternalTransactionID: "tap-9", Status: model.ImportLinkStatusQueued,
 		ExternalPayee: "Bakery", ExternalAmount: "3.00000000", ExternalCurrency: "EUR", ExternalPostedAt: ClockTime})

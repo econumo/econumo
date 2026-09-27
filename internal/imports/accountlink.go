@@ -45,11 +45,15 @@ func (s *Service) LinkAccount(ctx context.Context, userID vo.Id, req model.LinkI
 		if err != nil {
 			return err
 		}
-		// A card that only ever reports one currency is IN that currency; mapping it
-		// onto an account in another one is a misconfiguration, not a conversion job.
-		cardCode := uniformCurrency(ledger, ext)
-		if cardCode != "" && cardCode != accountCode {
-			return &errs.ValidationError{Msg: "Card currency does not match the account", MsgCode: errs.CodeImportCurrencyMismatch}
+		// A bank account's rows carry the account's own currency, so a mismatch is
+		// a wrong mapping. An Apple Wallet tap carries the merchant's currency: a
+		// card first used abroad reports only that one, and its taps convert.
+		cardCode := ""
+		if src.Provider != model.ImportProviderAppleWallet {
+			cardCode = uniformCurrency(ledger, ext)
+			if cardCode != "" && cardCode != accountCode {
+				return &errs.ValidationError{Msg: "Card currency does not match the account", MsgCode: errs.CodeImportCurrencyMismatch}
+			}
 		}
 		links, err := s.repo.ListAccountLinksBySource(ctx, src.ID)
 		if err != nil {
