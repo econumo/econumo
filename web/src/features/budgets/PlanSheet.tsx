@@ -95,6 +95,7 @@ import {
   makePlanExchange,
   monthDate,
   planHasSavingsData,
+  projectSavingsOpenings,
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
@@ -676,6 +677,15 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   plannedText
                 )}
               </span>
+              {el.type === BudgetElementType.SAVINGS && cell?.openingBalance !== undefined ? (
+                <span
+                  data-testid="cell-opening"
+                  className="text-[10px] tabular-nums text-muted-foreground"
+                  title={t('budgets.page.savings.opening_balance_hint')}
+                >
+                  {moneyFormat(cell.openingBalance, currency, { showCurrency: false, useNativePrecision: false })}
+                </span>
+              ) : null}
               {commentCount > 0 && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={() => ctx.openComments({ el, month: m, monthIndex: idx })} />
               ) : null}
@@ -1522,7 +1532,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!plan) {
       return []
     }
-    const all = (plan.structure.savings ?? []).map(savingsAsPlanElement)
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsOpenings(row, plan.months)))
     const placed = dragArrangement ? placeElements(all, dragArrangement) : all
     const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
     return [

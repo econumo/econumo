@@ -82,6 +82,7 @@ function SavingsRow({
   onOpenComments: (row: BudgetSavingsElementDto) => void
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
 }) {
+  const { t } = useTranslation()
   const opts = { showCurrency: false, useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 }
   const planned = moneyFormat(row.budgeted, currency, opts)
   const deleted = row.isArchived === 1
@@ -93,8 +94,19 @@ function SavingsRow({
       <span className="flex min-w-0 items-center gap-2 sm:flex-1">
         <span className="hidden w-3.5 shrink-0 sm:block" />
         <EntityIcon name={row.icon} className="text-lg text-muted-foreground" />
-        <span className={`truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
-          {row.name}
+        <span className="flex min-w-0 flex-col">
+          <span className={`truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
+            {row.name}
+          </span>
+          {row.openingBalance !== undefined ? (
+            <span
+              className="truncate text-[11px] tabular-nums text-muted-foreground"
+              data-testid="savings-opening"
+              title={t('budgets.page.savings.opening_balance_hint')}
+            >
+              {t('budgets.page.savings.opening_balance', { amount: moneyFormat(row.openingBalance, currency, { ...opts, showCurrency: true }) })}
+            </span>
+          ) : null}
         </span>
       </span>
       <span className={AMOUNT_ROW}>
@@ -199,7 +211,7 @@ export function SavingsBlock({
   const open = !folded
   return (
     <Collapsible open={open} onOpenChange={() => togglePlanFold(FOLD_KEY)}>
-      <section className="mb-[max(env(safe-area-inset-bottom),0.75rem)] mt-3 rounded-md border p-1.5 sm:p-2" data-testid="budget-savings-block">
+      <section className="rounded-md border p-1.5 sm:p-2" data-testid="budget-savings-block">
         <div className="flex flex-col gap-1.5 px-1.5 pb-1 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
           <CollapsibleTrigger asChild>
             <button

@@ -306,3 +306,75 @@ func TestGetBudgetSavings_DeletedAccountWithPlanOnly(t *testing.T) {
 		t.Errorf("S1 = %+v, want isArchived 1, budgeted 70, spent 0", s1)
 	}
 }
+
+// withSavingsHistory adds, on top of newSavingsBudget, a June deposit of 1000 on
+// S1 and an August S1->S2 move of 55 USD / 50 EUR: a savings<->savings transfer
+// is not saved money, so it moves only the opening balances.
+func withSavingsHistory(t *testing.T, h *harness) {
+	t.Helper()
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, Type: 1, Amount: "1000",
+		SpentAt: time.Date(2026, 6, 15, 12, 0, 0, 0, time.UTC)})
+	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, AccountRecipientID: savingsEURID,
+		Type: 2, Amount: "55", AmountRecipient: "50", SpentAt: time.Date(2026, 8, 20, 12, 0, 0, 0, time.UTC)})
+}
+
+type savingsOpeningView struct {
+	Item struct {
+		Structure struct {
+			Savings []struct {
+				Id             string `json:"id"`
+				Spent          string `json:"spent"`
+				OpeningBalance string `json:"openingBalance"`
+			} `json:"savings"`
+		} `json:"structure"`
+	} `json:"item"`
+}
+
+func (h *harness) savingsOpenings(t *testing.T, tok, date string) map[string][2]string {
+	t.Helper()
+	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget?id="+budgetID1+"&date="+date, tok, nil)
+	out := map[string][2]string{}
+	for _, r := range mustUnmarshal[savingsOpeningView](t, env.Data).Item.Structure.Savings {
+		out[r.Id] = [2]string{r.OpeningBalance, r.Spent}
+	}
+	return out
+}
+
+func TestGetBudgetSavings_OpeningBalance(t *testing.T) {
+	h, tok, _ := newSavingsBudget(t)
+	withSavingsHistory(t, h)
+
+	for _, tc := range []struct {
+		date     string
+		s1, s2   string
+		s1S, s2S string
+	}{
+		{"2026-07-15", "1000", "0", "0", "0"},
+		// August's S1->S2 move is not saved: spent stays the everyday transfers only.
+		{"2026-08-15", "1000", "0", "300", "100"},
+		{"2026-09-15", "1245", "150", "0", "0"},
+	} {
+		got := h.savingsOpenings(t, tok, tc.date)
+		if !decEq(got[savingsUSDID][0], tc.s1) || !decEq(got[savingsEURID][0], tc.s2) {
+			t.Errorf("%s openings = S1 %s, S2 %s; want %s, %s", tc.date, got[savingsUSDID][0], got[savingsEURID][0], tc.s1, tc.s2)
+		}
+		if !decEq(got[savingsUSDID][1], tc.s1S) || !decEq(got[savingsEURID][1], tc.s2S) {
+			t.Errorf("%s spent = S1 %s, S2 %s; want %s, %s", tc.date, got[savingsUSDID][1], got[savingsEURID][1], tc.s1S, tc.s2S)
+		}
+	}
+}
+
+func TestGetBudgetSavings_OpeningBalanceConvertsToElementCurrency(t *testing.T) {
+	h, tok, eur := newSavingsBudget(t)
+	withSavingsHistory(t, h)
+	const septEURRate = "0.87"
+	h.f.Rate(fixture.Rate{CurrencyID: eur, BaseCurrencyID: usdID, Rate: septEURRate, PublishedAt: "2026-09-05"})
+	h.mustDo(t, http.MethodPost, "/api/v1/budget/change-element-currency", tok, map[string]any{
+		"budgetId": budgetID1, "elementId": savingsEURID, "currencyId": usdID,
+	})
+	got := h.savingsOpenings(t, tok, "2026-09-15")
+	want := vo.NewDecimal("150").Div(vo.NewDecimal(septEURRate)).Round(2)
+	if !decEq(got[savingsEURID][0], want.String()) {
+		t.Fatalf("S2 September opening = %s, want %s (150 EUR at %s)", got[savingsEURID][0], want, septEURRate)
+	}
+}

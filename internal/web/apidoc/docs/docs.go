@@ -15377,13 +15377,27 @@ const docTemplate = `{
                 }
             }
         },
+        "model.PlanSavingsCellResult": {
+            "type": "object",
+            "properties": {
+                "actual": {
+                    "type": "string"
+                },
+                "openingBalance": {
+                    "type": "string"
+                },
+                "planned": {
+                    "type": "string"
+                }
+            }
+        },
         "model.PlanSavingsElementResult": {
             "type": "object",
             "properties": {
                 "cells": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/model.PlanCellResult"
+                        "$ref": "#/definitions/model.PlanSavingsCellResult"
                     }
                 },
                 "currencyId": {
@@ -15862,6 +15876,9 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
+                    "type": "string"
+                },
+                "openingBalance": {
                     "type": "string"
                 },
                 "ownerUserId": {
