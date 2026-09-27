@@ -502,7 +502,6 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
   const actionsColumn = !!extras.renderActions
-  const opts = cellOpts(budgetCurrency)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
   const realFolders = buckets.withFolder
