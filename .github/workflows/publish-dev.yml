@@ -1,0 +1,147 @@
+name: Publish Dev
+
+# Publishes the "dev" channel from any branch without cutting a release: the
+# ghcr.io/econumo/econumo:dev image plus the dev/ linux binaries in the private
+# R2 bucket. The CI counterpart of `make publish-dev` — no git tag, no release
+# branch, no GitHub release. Both the image and the binaries report version
+# "dev", exactly like the local target.
+# The code that gets built comes from the "branch" input; left empty, it is the
+# branch the workflow was dispatched from.
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Source branch to publish as dev (empty = the dispatch branch)"
+        required: false
+        default: ""
+
+# A newer dev publish supersedes an in-flight one; shares no group with the
+# release workflow, whose "Publish Dev" checkbox can also move the dev channel.
+concurrency:
+  group: "publish-dev"
+  cancel-in-progress: true
+
+env:
+  IMAGE: ghcr.io/econumo/econumo
+  VERSION: dev
+
+jobs:
+  resolve:
+    name: Resolve Source Commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      sha: ${{ steps.sha.outputs.sha }}
+    steps:
+      - name: Checkout source branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref_name }}
+
+      # Pin one commit so the image and the binaries are built from the same
+      # code even if the branch moves while the jobs run.
+      - name: Record commit
+        id: sha
+        env:
+          BRANCH: ${{ github.event.inputs.branch || github.ref_name }}
+        run: |
+          SHA="$(git rev-parse HEAD)"
+          echo "sha=${SHA}" >> "$GITHUB_OUTPUT"
+          echo "Publishing dev from ${BRANCH} @ ${SHA}" | tee -a "$GITHUB_STEP_SUMMARY"
+
+  publish-image:
+    name: Build and Publish Dev Image
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      # No QEMU: both build stages run on $BUILDPLATFORM (Go cross-compiles,
+      # the SPA is platform-independent) and the distroless stage only COPYs.
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: deployment/docker/Dockerfile
+          target: prod
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:dev
+          build-args: |
+            ECONUMO_VERSION=${{ env.VERSION }}
+
+  publish-binaries:
+    name: Build and Mirror Dev Binaries
+    needs: resolve
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.resolve.outputs.sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+
+      # The SPA build lands in web/dist, where web/embed.go embeds it into the
+      # Go binaries below.
+      - name: Build SPA
+        env:
+          ECONUMO_VERSION: ${{ env.VERSION }}
+        run: |
+          npm install -g pnpm@11
+          cd web
+          pnpm install --frozen-lockfile
+          pnpm run build
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build binaries
+        run: |
+          mkdir -p release-out
+          for arch in amd64 arm64; do
+            CGO_ENABLED=0 GOOS=linux GOARCH="$arch" \
+              go build -trimpath \
+              -ldflags "-s -w -X github.com/econumo/econumo/internal/version.Version=${VERSION}" \
+              -o "release-out/econumo-linux-${arch}" ./cmd/econumo
+          done
+          cd release-out && sha256sum econumo-linux-amd64 econumo-linux-arm64 > SHA256SUMS
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-binaries
+          path: release-out/
+          if-no-files-found: error
+
+      - name: Mirror binaries to R2
+        env:
+          ECONUMO_R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          ECONUMO_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          ECONUMO_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+        run: make cdn-upload CHANNEL=dev
