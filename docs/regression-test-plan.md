@@ -394,8 +394,10 @@ navigation (single-pane vs sidebar).
       imported transactions appear on the account with the glyph; a same-amount
       hand-entered transaction within ±3 days is adopted (no duplicate) and shows
       the provenance card.
-- [ ] Currency mismatch (card USD → EUR account) is refused with the "Card
-      currency does not match the account" error; an ignored card offers
+- [ ] A new card whose first taps were all in a foreign currency (USD taps →
+      CAD account) maps without error; its queued taps import converted at the
+      day's rate (a tap with no stored rate stays queued), and the provenance
+      line keeps the original "… USD" amount. An ignored card offers
       "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
       new taps queue again.
 - [ ] Review banner 📱: with queued rows, every page except the queue shows
@@ -447,6 +449,9 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       toasts "{n} imported, {m} matched, {s} skipped"; the imported transactions
       carry the Imported badge and their provenance sheet names the SimpleFIN
       source.
+- [ ] Mapping a bridge account onto an account in another currency (USD bank →
+      EUR account) is refused with the "The card's currency does not match the
+      account's currency." error.
 - [ ] "Sync now" pulls new transactions for a mapped account; a fully completed
       run toasts "{n} imported, {m} matched" (a partial or failed run shows no
       toast — the run summary card is the only record of it).
