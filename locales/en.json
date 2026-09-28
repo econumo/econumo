@@ -1410,7 +1410,9 @@
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "remaining": "Remaining"
+        "remaining": "Remaining",
+        "opening_balance": "Balance on the 1st: {amount}",
+        "opening_balance_hint": "Balance on the 1st of the month. Transfers between savings accounts change it but are not counted as saved."
       },
       "settings": {
         "menu_item": "Budgets & Plans",

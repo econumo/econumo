@@ -124,19 +124,21 @@ type LabelSpendResult struct {
 // SavingsElementResult is one savings account's row in get-budget's
 // structure.savings. Kept out of elements so older clients do not sum it into
 // expenses. Amounts are in CurrencyId (the element currency); there is no
-// carry-over: Available = Budgeted - Spent for this month only.
+// carry-over: Available = Budgeted - Spent for this month only. OpeningBalance
+// is the account's balance before the 1st of the month.
 type SavingsElementResult struct {
-	Id          string `json:"id"`
-	Type        int    `json:"type"`
-	Name        string `json:"name"`
-	Icon        string `json:"icon"`
-	CurrencyId  string `json:"currencyId"`
-	OwnerUserId string `json:"ownerUserId"`
-	IsArchived  int    `json:"isArchived"`
-	Position    int    `json:"position"`
-	Budgeted    string `json:"budgeted"`
-	Spent       string `json:"spent"`
-	Available   string `json:"available"`
+	Id             string `json:"id"`
+	Type           int    `json:"type"`
+	Name           string `json:"name"`
+	Icon           string `json:"icon"`
+	CurrencyId     string `json:"currencyId"`
+	OwnerUserId    string `json:"ownerUserId"`
+	IsArchived     int    `json:"isArchived"`
+	Position       int    `json:"position"`
+	Budgeted       string `json:"budgeted"`
+	Spent          string `json:"spent"`
+	Available      string `json:"available"`
+	OpeningBalance string `json:"openingBalance"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels +
@@ -392,15 +394,23 @@ type PlanMonthRatesResult struct {
 // BudgetPlanResult.Months; Actual is money moved in from the everyday accounts,
 // in CurrencyId (the element currency); Planned is "" with no limit.
 type PlanSavingsElementResult struct {
-	Id          string           `json:"id"`
-	Type        int              `json:"type"`
-	Name        string           `json:"name"`
-	Icon        string           `json:"icon"`
-	CurrencyId  string           `json:"currencyId"`
-	OwnerUserId string           `json:"ownerUserId"`
-	IsArchived  int              `json:"isArchived"`
-	Position    int              `json:"position"`
-	Cells       []PlanCellResult `json:"cells"`
+	Id          string                  `json:"id"`
+	Type        int                     `json:"type"`
+	Name        string                  `json:"name"`
+	Icon        string                  `json:"icon"`
+	CurrencyId  string                  `json:"currencyId"`
+	OwnerUserId string                  `json:"ownerUserId"`
+	IsArchived  int                     `json:"isArchived"`
+	Position    int                     `json:"position"`
+	Cells       []PlanSavingsCellResult `json:"cells"`
+}
+
+// PlanSavingsCellResult is a savings row's month: OpeningBalance is the
+// account's booked balance before the 1st of that month, in the element currency.
+type PlanSavingsCellResult struct {
+	Actual         string `json:"actual"`
+	Planned        string `json:"planned"`
+	OpeningBalance string `json:"openingBalance"`
 }
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the

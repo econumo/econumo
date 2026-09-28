@@ -41,6 +41,8 @@ export interface ElementRowExtras {
 interface BudgetTableProps extends ElementRowExtras {
   budget: BudgetDto
   buckets: BudgetBuckets
+  /** the caller renders BudgetTotals itself (below the Savings block) */
+  hideTotals?: boolean
   renderFolderActions?: (bucket: FolderBucket, index: number, total: number) => ReactNode
   /** wraps folder/no-folder sections (dnd droppables in edit mode) */
   sectionWrapper?: (bucket: FolderBucket, sectionKey: string, node: ReactNode) => ReactNode
@@ -494,13 +496,12 @@ function ReportingTagsFolder({
   )
 }
 
-export function BudgetTable({ budget, buckets, renderFolderActions, renderFolderHandle, sectionWrapper, hideChildren, hideContents, ...extras }: BudgetTableProps) {
+export function BudgetTable({ budget, buckets, renderFolderActions, renderFolderHandle, sectionWrapper, hideChildren, hideContents, hideTotals, ...extras }: BudgetTableProps) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
   const actionsColumn = !!extras.renderActions
-  const opts = cellOpts(budgetCurrency)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
   const realFolders = buckets.withFolder
@@ -636,6 +637,20 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         ]
       })}
 
+      {hideTotals ? null : <BudgetTotals budget={budget} totals={totals} actionsColumn={actionsColumn} />}
+    </div>
+  )
+}
+
+/** The Total row (desktop) and its phone card. The budget page renders it itself,
+ *  below the Savings block, with the savings rows added in. */
+export function BudgetTotals({ budget, totals, actionsColumn }: { budget: BudgetDto; totals: BucketStats; actionsColumn: boolean }) {
+  const { t } = useTranslation()
+  const { data: currencies = [] } = useCurrencies()
+  const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
+  const opts = cellOpts(budgetCurrency)
+  return (
+    <>
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
         <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
@@ -669,6 +684,6 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
       </div>
-    </div>
+    </>
   )
 }

@@ -1410,7 +1410,9 @@
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "remaining": "Restante"
+        "remaining": "Restante",
+        "opening_balance": "Saldo no dia 1: {amount}",
+        "opening_balance_hint": "Saldo no dia 1 do mês. As transferências entre contas de poupança alteram-no, mas não contam como poupado."
       },
       "settings": {
         "menu_item": "Orçamentos e planos",

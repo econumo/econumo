@@ -65,9 +65,9 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { bucketElements, elementDisplayName, makeBudgetExchange } from './budgetMath'
+import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { BudgetTable } from './BudgetTable'
+import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
 import { ExpenseWidget } from './ExpenseWidget'
@@ -382,6 +382,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     }
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
+
+  const totals = useMemo(
+    () => (budget && buckets ? totalsWithSavings(budgetTotals(buckets), budget, makeBudgetExchange(budget, currencies)) : null),
+    [budget, buckets, currencies],
+  )
 
   // An archived budget is read-only regardless of role: archived wins over
   // whatever the caller's grant would otherwise allow (the server enforces the
@@ -822,6 +827,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   <BudgetTable
                     budget={budget}
                     buckets={buckets}
+                    hideTotals
                     hideChildren={dragInProgress}
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
@@ -898,19 +904,22 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   />
                   </SortableContext>
                 </DndContext>
-                {/* its own DndContext: a savings row reorders within the block only */}
-                <SavingsBlock
-                  budget={budget}
-                  currencies={currencies}
-                  selectedDate={selectedDate}
-                  canEdit={limitsEditable && !editMode}
-                  editMode={editMode}
-                  commentsByCell={commentsByCell}
-                  onEditPlanned={setLimitTarget}
-                  onOpenComments={setCommentsTarget}
-                  renderPlannedEditor={inlineLimitEditor}
-                  onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
-                />
+                <div className="mt-3 flex flex-col gap-3">
+                  {/* its own DndContext: a savings row reorders within the block only */}
+                  <SavingsBlock
+                    budget={budget}
+                    currencies={currencies}
+                    selectedDate={selectedDate}
+                    canEdit={limitsEditable && !editMode}
+                    editMode={editMode}
+                    commentsByCell={commentsByCell}
+                    onEditPlanned={setLimitTarget}
+                    onOpenComments={setCommentsTarget}
+                    renderPlannedEditor={inlineLimitEditor}
+                    onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
+                  />
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
+                </div>
               </div>
             </>
           )}

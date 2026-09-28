@@ -1410,7 +1410,9 @@
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "remaining": "Pozostało"
+        "remaining": "Pozostało",
+        "opening_balance": "Saldo na 1. dzień: {amount}",
+        "opening_balance_hint": "Saldo na 1. dzień miesiąca. Przelewy między kontami oszczędnościowymi je zmieniają, ale nie liczą się jako zaoszczędzone."
       },
       "settings": {
         "menu_item": "Budżety i plany",

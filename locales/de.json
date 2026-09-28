@@ -1410,7 +1410,9 @@
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "remaining": "Verbleibend"
+        "remaining": "Verbleibend",
+        "opening_balance": "Stand am 1.: {amount}",
+        "opening_balance_hint": "Kontostand am 1. des Monats. Überweisungen zwischen Sparkonten verändern ihn, zählen aber nicht als gespart."
       },
       "settings": {
         "menu_item": "Budgets & Pläne",
