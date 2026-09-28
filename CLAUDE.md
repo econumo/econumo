@@ -1114,8 +1114,18 @@ data unreadable. Most are also asserted by the test suite.
   can rise by more than what shows as saved. These rows stay out of `structure.elements`
   on the wire (unknown-field-safe for old clients): `get-budget` carries
   `structure.savings`, `get-budget-plan` adds `savingsOpeningBalances`/`savingsFlows`
-  alongside it, and both are visible to every participant, guests included (the
-  settings note says so beside the toggle). A deleted savings account's row stays
+  alongside it. Each savings row carries `closingBalance`, the account's balance at
+  the END of the month (element currency): on `get-budget` it is booked for a month
+  before the caller's current one and, from the current month on, projected by the
+  server — booked plus each month's plan not yet met by its saved amount, from the
+  current month through the selected one, per month and per row (an over-saved month
+  covers nothing); a plan cell's `closingBalance` is booked only and the SPA adds the
+  same gaps (`projectSavingsClosings`) the Savings balance line adds, so the two
+  agree. The monthly block's columns are Planned / Saved / Balance (that figure).
+  Savings rows and balances are visible to every participant, guests included (the
+  budget settings' "Savings accounts" card says so). In the settings dialogs the
+  account list is one include switch per account; the savings role is a separate
+  chip picker over the included accounts (`BudgetSavingsField`). A deleted savings account's row stays
   visible only while it still has a plan or actual activity in the period; the plan's
   Balance/Savings-balance split follows the savings DATA rather than only the visible
   rows, so a deleted savings account with a balance but no row in the window still

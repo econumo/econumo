@@ -1134,7 +1134,9 @@
         "accounts_hidden": "In cartelle nascoste",
         "accounts_locked_hint": "I conti con transazioni nei mesi passati non possono essere rimossi",
         "savings": {
-          "label": "Risparmio",
+          "label": "Conti di risparmio",
+          "description": "Il denaro trasferito su questi conti conta come risparmiato, non come speso.",
+          "empty": "Includi un conto qui sopra per contrassegnarlo come conto di risparmio.",
           "toggle": "{name} è un conto di risparmio",
           "note": "I conti di risparmio sono mostrati per nome, con importi risparmiati e saldi, a tutti coloro che hanno accesso a questo budget.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Risparmi",
-          "savings_balance": "Saldo risparmi",
-          "savings_balance_tooltip": "Include interessi e altri movimenti sui conti di risparmio, che non vengono contati come risparmiati"
+          "savings_balance": "Saldo risparmi"
         },
         "density": {
           "hide_empty": "Nascondi righe vuote",
@@ -1410,9 +1411,8 @@
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "remaining": "Rimanente",
-        "opening_balance": "Saldo al 1°: {amount}",
-        "opening_balance_hint": "Saldo al 1° del mese. I trasferimenti tra conti di risparmio lo modificano, ma non contano come risparmiato."
+        "balance": "Saldo",
+        "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
       },
       "settings": {
         "menu_item": "Budget e piani",

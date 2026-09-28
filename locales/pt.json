@@ -1134,7 +1134,9 @@
         "accounts_hidden": "Em pastas ocultas",
         "accounts_locked_hint": "Contas com transações em meses anteriores não podem ser removidas",
         "savings": {
-          "label": "Poupança",
+          "label": "Contas poupança",
+          "description": "O dinheiro transferido para estas contas conta como poupado, não como gasto.",
+          "empty": "Inclua uma conta acima para a marcar como poupança.",
           "toggle": "{name} é uma conta poupança",
           "note": "As contas poupança são mostradas pelo nome, com os montantes poupados e saldos, a todos os que têm acesso a este orçamento.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Líquido",
           "balance": "Saldo",
           "savings": "Poupança",
-          "savings_balance": "Saldo da poupança",
-          "savings_balance_tooltip": "Inclui juros e outros movimentos nas contas poupança, que não contam como poupado"
+          "savings_balance": "Saldo da poupança"
         },
         "density": {
           "hide_empty": "Ocultar linhas vazias",
@@ -1410,9 +1411,8 @@
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "remaining": "Restante",
-        "opening_balance": "Saldo no dia 1: {amount}",
-        "opening_balance_hint": "Saldo no dia 1 do mês. As transferências entre contas de poupança alteram-no, mas não contam como poupado."
+        "balance": "Saldo",
+        "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
       },
       "settings": {
         "menu_item": "Orçamentos e planos",

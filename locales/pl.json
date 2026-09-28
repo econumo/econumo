@@ -1134,7 +1134,9 @@
         "accounts_hidden": "W ukrytych folderach",
         "accounts_locked_hint": "Kont z transakcjami w poprzednich miesiącach nie można usunąć",
         "savings": {
-          "label": "Oszczędności",
+          "label": "Konta oszczędnościowe",
+          "description": "Pieniądze przelane na te konta liczą się jako zaoszczędzone, a nie wydane.",
+          "empty": "Uwzględnij konto powyżej, aby oznaczyć je jako oszczędnościowe.",
           "toggle": "{name} to konto oszczędnościowe",
           "note": "Konta oszczędnościowe są widoczne z nazwy, wraz z zaoszczędzonymi kwotami i saldami, dla wszystkich z dostępem do tego budżetu.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Oszczędności",
-          "savings_balance": "Saldo oszczędności",
-          "savings_balance_tooltip": "Obejmuje odsetki i inne operacje na kontach oszczędnościowych, które nie są liczone jako zaoszczędzone"
+          "savings_balance": "Saldo oszczędności"
         },
         "density": {
           "hide_empty": "Ukryj puste wiersze",
@@ -1410,9 +1411,8 @@
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "remaining": "Pozostało",
-        "opening_balance": "Saldo na 1. dzień: {amount}",
-        "opening_balance_hint": "Saldo na 1. dzień miesiąca. Przelewy między kontami oszczędnościowymi je zmieniają, ale nie liczą się jako zaoszczędzone."
+        "balance": "Saldo",
+        "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
       },
       "settings": {
         "menu_item": "Budżety i plany",

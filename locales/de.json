@@ -1134,7 +1134,9 @@
         "accounts_hidden": "In ausgeblendeten Ordnern",
         "accounts_locked_hint": "Konten mit Buchungen in vergangenen Monaten können nicht entfernt werden",
         "savings": {
-          "label": "Sparen",
+          "label": "Sparkonten",
+          "description": "Geld, das auf diese Konten fließt, gilt als gespart, nicht als ausgegeben.",
+          "empty": "Nimm oben ein Konto auf, um es als Sparkonto zu markieren.",
           "toggle": "{name} ist ein Sparkonto",
           "note": "Sparkonten werden allen mit Zugriff auf dieses Budget mit Namen, gesparten Beträgen und Salden angezeigt.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Sparen",
-          "savings_balance": "Sparguthaben",
-          "savings_balance_tooltip": "Enthält Zinsen und andere Bewegungen auf Sparkonten, die nicht als gespart zählen"
+          "savings_balance": "Sparguthaben"
         },
         "density": {
           "hide_empty": "Leere Zeilen ausblenden",
@@ -1410,9 +1411,8 @@
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "remaining": "Verbleibend",
-        "opening_balance": "Stand am 1.: {amount}",
-        "opening_balance_hint": "Kontostand am 1. des Monats. Überweisungen zwischen Sparkonten verändern ihn, zählen aber nicht als gespart."
+        "balance": "Saldo",
+        "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
       },
       "settings": {
         "menu_item": "Budgets & Pläne",

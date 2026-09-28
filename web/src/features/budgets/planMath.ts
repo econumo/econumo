@@ -117,26 +117,26 @@ export function savingsAsPlanElement(s: PlanSavingsElementDto): PlanElementDto {
   return { ...s, folderId: null, children: [] }
 }
 
-/** A savings row's opening balances as the plan expects them. The server sends what
+/** A savings row's closing balances as the plan shows them. The server sends what
  *  is booked; from the current month on, each month's plan not yet met by its actual
- *  is still expected to arrive, so it opens every later month higher. That is the
- *  per-row gap the Savings balance row adds, so the rows' openings chain the same way.
- *  A deleted account plans nothing, and a server that sends no openings is left alone. */
-export function projectSavingsOpenings(s: PlanSavingsElementDto, months: string[], now?: Date): PlanSavingsElementDto {
-  if (s.isArchived !== 0 || s.cells.some((c) => c.openingBalance === undefined)) {
+ *  is still expected to arrive, so it closes that month and every later one higher.
+ *  That is the per-row gap the Savings balance row adds, so the rows and that row
+ *  agree. A deleted account plans nothing, and a server that sends no balances is
+ *  left alone. */
+export function projectSavingsClosings(s: PlanSavingsElementDto, months: string[], now?: Date): PlanSavingsElementDto {
+  if (s.isArchived !== 0 || s.cells.some((c) => c.closingBalance === undefined)) {
     return s
   }
   const cur = currentMonth(now)
   let expected = '0'
   const cells = s.cells.map((cell, i) => {
-    const out = { ...cell, openingBalance: add(cell.openingBalance ?? '0', expected) }
     if ((months[i] ?? '') >= cur) {
       const planned = cell.planned === '' ? '0' : cell.planned
       if (cmp(planned, cell.actual) > 0) {
         expected = add(expected, sub(planned, cell.actual))
       }
     }
-    return out
+    return { ...cell, closingBalance: add(cell.closingBalance ?? '0', expected) }
   })
   return { ...s, cells }
 }

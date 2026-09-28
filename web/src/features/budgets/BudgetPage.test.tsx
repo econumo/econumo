@@ -506,7 +506,7 @@ describe('monthly Savings block', () => {
       savings: [
         {
           id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-          budgeted: '100', spent: '120', available: '-20',
+          budgeted: '100', spent: '120', available: '-20', closingBalance: '900',
         },
       ],
     },
@@ -566,7 +566,8 @@ describe('monthly Savings block', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
     await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-    expect(within(row).getByTestId('savings-remaining')).toHaveTextContent('130.00')
+    // July 2026 is a past month: its balance is booked, so a plan edit leaves it alone
+    expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
   })
 
   it('compact: Planned opens the set-limit dialog with the cell thread', async () => {
@@ -615,7 +616,7 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-      budgeted: '100', spent: '120', available: '-20', openingBalance: '0' },
+      budgeted: '100', spent: '120', available: '-20', closingBalance: '0' },
   ]
   server.use(
     ...coreHandlers({ user: userWithBudget }),

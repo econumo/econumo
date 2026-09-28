@@ -1134,7 +1134,9 @@
         "accounts_hidden": "In verborgen mappen",
         "accounts_locked_hint": "Rekeningen met transacties in eerdere maanden kunnen niet worden verwijderd",
         "savings": {
-          "label": "Sparen",
+          "label": "Spaarrekeningen",
+          "description": "Geld dat naar deze rekeningen gaat, telt als gespaard, niet als uitgegeven.",
+          "empty": "Neem hierboven een rekening op om die als spaarrekening te markeren.",
           "toggle": "{name} is een spaarrekening",
           "note": "Spaarrekeningen worden met naam, gespaarde bedragen en saldi getoond aan iedereen met toegang tot dit budget.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Sparen",
-          "savings_balance": "Spaarsaldo",
-          "savings_balance_tooltip": "Inclusief rente en andere bewegingen op spaarrekeningen, die niet als gespaard tellen"
+          "savings_balance": "Spaarsaldo"
         },
         "density": {
           "hide_empty": "Lege rijen verbergen",
@@ -1410,9 +1411,8 @@
         "title": "Sparen",
         "planned": "Gepland",
         "saved": "Gespaard",
-        "remaining": "Resterend",
-        "opening_balance": "Saldo op de 1e: {amount}",
-        "opening_balance_hint": "Saldo op de 1e van de maand. Overboekingen tussen spaarrekeningen veranderen het, maar tellen niet als gespaard."
+        "balance": "Saldo",
+        "balance_hint": "Saldo aan het einde van de maand. Voor de huidige en latere maanden telt het geplande sparen dat nog moet komen mee."
       },
       "settings": {
         "menu_item": "Budgetten & plannen",

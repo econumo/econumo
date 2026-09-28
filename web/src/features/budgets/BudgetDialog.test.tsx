@@ -30,8 +30,8 @@ it('sends savingsAccountIds as a subset of accountIds', async () => {
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   await user.click(await screen.findByRole('switch', { name: 'include Cash' }))
   await user.click(screen.getByRole('switch', { name: 'include Bank' }))
-  await user.click(screen.getByRole('switch', { name: 'Cash is a savings account' }))
-  await user.click(screen.getByRole('switch', { name: 'Bank is a savings account' }))
+  await user.click(screen.getByRole('button', { name: 'Cash is a savings account' }))
+  await user.click(screen.getByRole('button', { name: 'Bank is a savings account' }))
   // excluding a savings account drops it from the savings set too
   await user.click(screen.getByRole('switch', { name: 'include Cash' }))
   await user.click(screen.getByRole('button', { name: 'Create' }))

@@ -1134,7 +1134,9 @@
         "accounts_hidden": "In hidden folders",
         "accounts_locked_hint": "Accounts with transactions in past months can't be removed",
         "savings": {
-          "label": "Savings",
+          "label": "Savings accounts",
+          "description": "Money moved into these accounts counts as saved, not spent.",
+          "empty": "Include an account above to mark it as savings.",
           "toggle": "{name} is a savings account",
           "note": "Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Net",
           "balance": "Balance",
           "savings": "Savings",
-          "savings_balance": "Savings balance",
-          "savings_balance_tooltip": "Includes interest and other activity on savings accounts, which is not counted as saved"
+          "savings_balance": "Savings balance"
         },
         "density": {
           "hide_empty": "Hide empty rows",
@@ -1410,9 +1411,8 @@
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "remaining": "Remaining",
-        "opening_balance": "Balance on the 1st: {amount}",
-        "opening_balance_hint": "Balance on the 1st of the month. Transfers between savings accounts change it but are not counted as saved."
+        "balance": "Balance",
+        "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
       },
       "settings": {
         "menu_item": "Budgets & Plans",

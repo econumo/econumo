@@ -13,7 +13,6 @@ import { moneyFormat } from '@/lib/money'
 import type { BudgetCommentDto, BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { AvailablePill } from './BudgetTable'
 import { CommentMarker } from './CommentThread'
 import { useBudgetPeriodStore } from './budgetStore'
 import { commentCellKey } from './queries'
@@ -94,19 +93,8 @@ function SavingsRow({
       <span className="flex min-w-0 items-center gap-2 sm:flex-1">
         <span className="hidden w-3.5 shrink-0 sm:block" />
         <EntityIcon name={row.icon} className="text-lg text-muted-foreground" />
-        <span className="flex min-w-0 flex-col">
-          <span className={`truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
-            {row.name}
-          </span>
-          {row.openingBalance !== undefined ? (
-            <span
-              className="truncate text-[11px] tabular-nums text-muted-foreground"
-              data-testid="savings-opening"
-              title={t('budgets.page.savings.opening_balance_hint')}
-            >
-              {t('budgets.page.savings.opening_balance', { amount: moneyFormat(row.openingBalance, currency, { ...opts, showCurrency: true }) })}
-            </span>
-          ) : null}
+        <span className={`min-w-0 truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
+          {row.name}
         </span>
       </span>
       <span className={AMOUNT_ROW}>
@@ -132,8 +120,12 @@ function SavingsRow({
         <span className={`${AMOUNT_COL} text-center text-xs tabular-nums text-muted-foreground sm:text-[15px]`} data-testid="savings-saved">
           {moneyFormat(row.spent, currency, opts)}
         </span>
-        <span className={`flex ${AMOUNT_COL} justify-center`}>
-          <AvailablePill available={row.available} currency={currency} testId="savings-remaining" />
+        <span
+          className={`${AMOUNT_COL} text-center text-xs tabular-nums sm:text-[15px]`}
+          data-testid="savings-balance"
+          title={t('budgets.page.savings.balance_hint')}
+        >
+          {row.closingBalance !== undefined ? moneyFormat(row.closingBalance, currency, opts) : '—'}
         </span>
       </span>
       <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
@@ -226,11 +218,13 @@ export function SavingsBlock({
           </CollapsibleTrigger>
           {/* below sm the labels get their own line, offset like the rows under
               them (a grip's width in edit mode); a label that still outgrows its
-              third wraps rather than truncating. sm+ keeps one truncating line. */}
-          <span className="flex items-center gap-1 sm:contents">
+              third wraps rather than truncating. sm+ keeps one truncating line.
+              Folded, the labels would read as the header of the Total row under
+              the block, so they go with the rows. */}
+          <span className={open ? 'flex items-center gap-1 sm:contents' : 'hidden'}>
             {editMode ? <span className="w-4 shrink-0 sm:hidden" /> : null}
             <span className={AMOUNT_ROW}>
-              {(['planned', 'saved', 'remaining'] as const).map((col) => (
+              {(['planned', 'saved', 'balance'] as const).map((col) => (
                 <span
                   key={col}
                   title={t(`budgets.page.savings.${col}`)}

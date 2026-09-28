@@ -10,14 +10,14 @@ import type { Id } from '@/api/types'
 import { queryKeys, TEN_MINUTES } from '@/app/queryKeys'
 import { apiErrorMessage } from '@/lib/apiError'
 import { compareNames } from '@/lib/collate'
-import { sub } from '@/lib/decimal'
+import { add, cmp, sub } from '@/lib/decimal'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { applyMove } from '@/lib/ordering'
 import type { ElementMoveItem } from './elementMove'
 import { UserOptions } from '@/api/dto/user'
 import { useUserData, userOption } from '@/features/user/queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { addMonths } from './planMath'
+import { addMonths, currentMonth } from './planMath'
 
 export function useBudgets() {
   const { i18n } = useTranslation()
@@ -140,6 +140,10 @@ export function useSetLimit() {
         }
         const budgeted = form.amount === null ? '0' : form.amount
         const savings = prev.structure.savings
+        // from the current month on a savings row's closing balance still expects
+        // its unmet plan, so the edit moves it by the change in that gap
+        const projected = form.period >= currentMonth()
+        const gap = (planned: string, spent: string) => (cmp(planned, spent) > 0 ? sub(planned, spent) : '0')
         return {
           ...prev,
           structure: {
@@ -147,24 +151,42 @@ export function useSetLimit() {
             elements: prev.structure.elements.map((el) => (el.id === form.elementId ? { ...el, budgeted } : el)),
             // a savings row carries no carry-over: its available is planned minus saved
             ...(savings
-              ? { savings: savings.map((row) => (row.id === form.elementId ? { ...row, budgeted, available: sub(budgeted, row.spent) } : row)) }
+              ? {
+                  savings: savings.map((row) =>
+                    row.id === form.elementId
+                      ? {
+                          ...row,
+                          budgeted,
+                          available: sub(budgeted, row.spent),
+                          ...(projected && row.isArchived === 0 && row.closingBalance !== undefined
+                            ? { closingBalance: add(sub(row.closingBalance, gap(row.budgeted, row.spent)), gap(budgeted, row.spent)) }
+                            : {}),
+                        }
+                      : row,
+                  ),
+                }
               : {}),
           },
         }
       })
-      return { previous, key }
+      const isSavings = !!previous?.structure.savings?.some((row) => row.id === form.elementId)
+      return { previous, key, isSavings }
     },
     onError: (_err, _form, context) => {
       if (context) {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, form, context) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
       // budget-mode edits patch only the budget-page cache above; the plan cache
       // (a different window/query key) must be invalidated too or the plan sheet
       // keeps showing the pre-edit limit until something else happens to refetch it
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
+      // a savings plan also moves the projected closing balance of every later month
+      if (context?.isSavings) {
+        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
+      }
     },
   })
 }
@@ -235,8 +257,9 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     },
     onSuccess: (_res, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
-      // the budget-page cache for that month is now stale; the plan cache resyncs too
-      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, form.period] })
+      // the budget-page cache is now stale: that month's figures, and for a savings
+      // row the projected closing balance of every later month; the plan resyncs too
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: planKey })
     },
   })
@@ -262,14 +285,13 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
       trackEvent(METRICS.BUDGET_PLAN_FILL_RIGHT)
     },
     // No partial rollback: any failure means some months may have landed, so both a
-    // success and a failure need the same resync — the budget-page caches for every
-    // target month plus the plan cache — from the server rather than trusting the
+    // success and a failure need the same resync — the budget-page caches (every
+    // month: a savings plan moves the projected balance of the months after it too)
+    // plus the plan cache — from the server rather than trusting the
     // optimistic patch. Invalidating here (not split across onSuccess/onError) also
     // means it happens exactly once regardless of outcome.
     onSettled: (_res, _err, form) => {
-      for (const t of form.targets) {
-        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId, t.period] })
-      }
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
       void queryClient.invalidateQueries({ queryKey: planKey })
     },
   })

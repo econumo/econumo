@@ -124,8 +124,11 @@ type LabelSpendResult struct {
 // SavingsElementResult is one savings account's row in get-budget's
 // structure.savings. Kept out of elements so older clients do not sum it into
 // expenses. Amounts are in CurrencyId (the element currency); there is no
-// carry-over: Available = Budgeted - Spent for this month only. OpeningBalance
-// is the account's balance before the 1st of the month.
+// carry-over: Available = Budgeted - Spent for this month only.
+// ClosingBalance is the account's balance at the end of the month: what is
+// booked for a month before the caller's current one; from the current month
+// on, the booked balance plus each month's plan not yet met by its saved
+// amount, from the current month through this one.
 type SavingsElementResult struct {
 	Id             string `json:"id"`
 	Type           int    `json:"type"`
@@ -138,7 +141,7 @@ type SavingsElementResult struct {
 	Budgeted       string `json:"budgeted"`
 	Spent          string `json:"spent"`
 	Available      string `json:"available"`
-	OpeningBalance string `json:"openingBalance"`
+	ClosingBalance string `json:"closingBalance"`
 }
 
 // StructureResult is the budget's folders + ordered elements + labels +
@@ -405,12 +408,12 @@ type PlanSavingsElementResult struct {
 	Cells       []PlanSavingsCellResult `json:"cells"`
 }
 
-// PlanSavingsCellResult is a savings row's month: OpeningBalance is the
-// account's booked balance before the 1st of that month, in the element currency.
+// PlanSavingsCellResult is a savings row's month: ClosingBalance is the
+// account's booked balance at the end of that month, in the element currency.
 type PlanSavingsCellResult struct {
 	Actual         string `json:"actual"`
 	Planned        string `json:"planned"`
-	OpeningBalance string `json:"openingBalance"`
+	ClosingBalance string `json:"closingBalance"`
 }
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the

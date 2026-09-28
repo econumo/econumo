@@ -15376,7 +15376,7 @@
                 "actual": {
                     "type": "string"
                 },
-                "openingBalance": {
+                "closingBalance": {
                     "type": "string"
                 },
                 "planned": {
@@ -15856,6 +15856,9 @@
                 "budgeted": {
                     "type": "string"
                 },
+                "closingBalance": {
+                    "type": "string"
+                },
                 "currencyId": {
                     "type": "string"
                 },
@@ -15869,9 +15872,6 @@
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "openingBalance": {
                     "type": "string"
                 },
                 "ownerUserId": {

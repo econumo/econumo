@@ -1134,7 +1134,9 @@
         "accounts_hidden": "在隐藏文件夹中",
         "accounts_locked_hint": "在过去月份中有交易的账户无法移除",
         "savings": {
-          "label": "储蓄",
+          "label": "储蓄账户",
+          "description": "转入这些账户的钱计为储蓄，而不是支出。",
+          "empty": "先在上方包含一个账户，才能将其标记为储蓄账户。",
           "toggle": "{name} 是储蓄账户",
           "note": "储蓄账户会以名称连同已存金额和余额显示给所有有权访问此预算的人。",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "净额",
           "balance": "余额",
           "savings": "储蓄",
-          "savings_balance": "储蓄余额",
-          "savings_balance_tooltip": "包含储蓄账户的利息和其他变动，这些不计入已储蓄金额"
+          "savings_balance": "储蓄余额"
         },
         "density": {
           "hide_empty": "隐藏空行",
@@ -1410,9 +1411,8 @@
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "remaining": "剩余",
-        "opening_balance": "1日余额：{amount}",
-        "opening_balance_hint": "每月1日的余额。储蓄账户之间的转账会改变余额，但不计入已储蓄。"
+        "balance": "余额",
+        "balance_hint": "月末余额。当前及之后的月份包含尚未存入的计划储蓄。"
       },
       "settings": {
         "menu_item": "预算与计划",

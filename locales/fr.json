@@ -1134,7 +1134,9 @@
         "accounts_hidden": "Dans des dossiers masqués",
         "accounts_locked_hint": "Les comptes ayant des transactions dans des mois passés ne peuvent pas être retirés",
         "savings": {
-          "label": "Épargne",
+          "label": "Comptes d'épargne",
+          "description": "L'argent versé sur ces comptes compte comme épargné, pas comme dépensé.",
+          "empty": "Incluez un compte ci-dessus pour le marquer comme compte d'épargne.",
           "toggle": "{name} est un compte d'épargne",
           "note": "Les comptes d'épargne sont affichés par nom, avec leurs montants épargnés et leurs soldes, à toutes les personnes ayant accès à ce budget.",
           "confirm": {
@@ -1371,8 +1373,7 @@
           "net": "Net",
           "balance": "Solde",
           "savings": "Épargne",
-          "savings_balance": "Solde épargne",
-          "savings_balance_tooltip": "Inclut les intérêts et les autres mouvements des comptes d’épargne, qui ne comptent pas comme épargnés"
+          "savings_balance": "Solde épargne"
         },
         "density": {
           "hide_empty": "Masquer les lignes vides",
@@ -1410,9 +1411,8 @@
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "remaining": "Restant",
-        "opening_balance": "Solde au 1er : {amount}",
-        "opening_balance_hint": "Solde au 1er du mois. Les virements entre comptes d'épargne le modifient mais ne comptent pas comme épargnés."
+        "balance": "Solde",
+        "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
       },
       "settings": {
         "menu_item": "Budgets et plans",
