@@ -1410,7 +1410,9 @@
         "title": "Ahorros",
         "planned": "Previsto",
         "saved": "Ahorrado",
-        "remaining": "Restante"
+        "remaining": "Restante",
+        "opening_balance": "Saldo el día 1: {amount}",
+        "opening_balance_hint": "Saldo el día 1 del mes. Las transferencias entre cuentas de ahorro lo modifican, pero no cuentan como ahorrado."
       },
       "settings": {
         "menu_item": "Presupuestos y planes",

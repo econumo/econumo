@@ -749,9 +749,19 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
+- [ ] 📱 Each savings cell shows, under the planned amount, the account's
+      balance on the 1st of that month (hover: "Balance on the 1st of the
+      month…"), in the row's currency. Past and current months show the
+      booked balance; a later month also adds each earlier month's plan not yet
+      met from the current month on (current month planned 200, saved 50: next
+      month opens 150 higher). Expense and income cells carry no such line.
+- [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
+      savings accounts in the budget): neither row's Saved / Actual moves, the
+      Savings balance is unchanged, and from the next month the TFSA row
+      opens that much lower and the RRSP row that much higher.
 - [ ] 📱 **Monthly view — Savings block**: with a savings account in the
-      budget, a foldable "Savings" block appears below the budget table (and
-      its totals), one row per savings account in their saved order, with
+      budget, a foldable "Savings" block appears below the budget table and
+      above Total, one row per savings account in their saved order, with
       Planned / Saved / Remaining in the account's currency (all three columns
       also on a phone). A budget without savings accounts shows no block.
       Folding it survives a reload. On a phone (320px and 375px, also in
@@ -762,6 +772,14 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       mode, with the grips), and a five-digit amount such as 12,345.67 fits
       without overlapping its neighbour. From 640px wide the title, headers,
       names and amounts share one line again.
+- [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
+      and includes it, in the budget currency: Budget + Planned, Spent +
+      Saved, Available + Remaining. A budget without savings accounts shows
+      the same Total as before.
+- [ ] 📱 Under each savings account's name the block shows "Balance on the
+      1st: <amount>" — the account's balance before the selected month, in the
+      row's currency; switching months updates it, and on a phone the line
+      fits under the name without pushing the amounts.
 - [ ] 📱 Save more into a savings account than planned for the month:
       Remaining goes negative and turns red, the same over-plan style as a
       negative Available in the table.

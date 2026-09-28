@@ -1410,7 +1410,9 @@
         "title": "Sparen",
         "planned": "Gepland",
         "saved": "Gespaard",
-        "remaining": "Resterend"
+        "remaining": "Resterend",
+        "opening_balance": "Saldo op de 1e: {amount}",
+        "opening_balance_hint": "Saldo op de 1e van de maand. Overboekingen tussen spaarrekeningen veranderen het, maar tellen niet als gespaard."
       },
       "settings": {
         "menu_item": "Budgetten & plannen",

@@ -104,6 +104,21 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   return { ...totals, spent: add(totals.spent, buckets.uncategorized.stats.spent) }
 }
 
+/** The Total row with the savings rows added in, in the budget currency: saving is
+ *  money leaving the everyday accounts like spending, so planned joins budgeted,
+ *  saved joins spent and remaining joins available — the figures the block shows. */
+export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
+  const base = budget.meta.currencyId
+  return (budget.structure.savings ?? []).reduce(
+    (acc, row) => ({
+      budgeted: add(acc.budgeted, exchangeFn(row.currencyId, base, row.budgeted)),
+      spent: add(acc.spent, exchangeFn(row.currencyId, base, row.spent)),
+      available: add(acc.available, exchangeFn(row.currencyId, base, row.available)),
+    }),
+    totals,
+  )
+}
+
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
 
 // The wire name for the Uncategorized element is the English literal

@@ -464,6 +464,24 @@ otherwise independent; these are the agreed terms.
     the Savings balance, and the everyday Balance fell instead. Future months now
     use the current month's rule: flows + Σ(effective − actual).
 
+**2026-09-27 — opening balances and the monthly Total.**
+
+12. **Savings rows show the account's balance on the 1st of the month.** Monthly
+    `structure.savings[].openingBalance` and plan `structure.savings[].cells[].openingBalance`
+    (element currency, converted at that month's rate) carry the booked balance before
+    the month. The plan view adds, from the current month on, each month's unmet plan
+    (per row, the same gap the Savings balance row adds), so later months open where
+    the plan expects. The Savings balance and Balance totals rows stay end-of-month.
+13. **Savings↔savings transfers stay out of Saved.** Moving a TFSA's money to an RRSP
+    is not new saving; the opening balances show the move (TFSA opens lower, RRSP
+    higher, the next month), and the balance line's hint says so. Planning such a move
+    on the receiving row would count it as new saving and lower the projected everyday
+    Balance, so plans are for money coming in from everyday accounts only.
+14. **The monthly Savings block sits above Total, and Total includes it**: Planned
+    joins Budget, Saved joins Spent, Remaining joins Available (budget currency). Under
+    the Total row the block read as outside the budget, while saving is an outflow like
+    spending — the plan view already placed its Savings section above its totals.
+
 ## Status (2026-09-26)
 
 **Implemented, per Revisions 7-11.** Savings is a per-budget membership flag

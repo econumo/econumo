@@ -2043,11 +2043,20 @@ definitions:
       period:
         type: string
     type: object
+  model.PlanSavingsCellResult:
+    properties:
+      actual:
+        type: string
+      openingBalance:
+        type: string
+      planned:
+        type: string
+    type: object
   model.PlanSavingsElementResult:
     properties:
       cells:
         items:
-          $ref: '#/definitions/model.PlanCellResult'
+          $ref: '#/definitions/model.PlanSavingsCellResult'
         type: array
       currencyId:
         type: string
@@ -2364,6 +2373,8 @@ definitions:
       isArchived:
         type: integer
       name:
+        type: string
+      openingBalance:
         type: string
       ownerUserId:
         type: string

@@ -1410,7 +1410,9 @@
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "remaining": "Restant"
+        "remaining": "Restant",
+        "opening_balance": "Solde au 1er : {amount}",
+        "opening_balance_hint": "Solde au 1er du mois. Les virements entre comptes d'épargne le modifient mais ne comptent pas comme épargnés."
       },
       "settings": {
         "menu_item": "Budgets et plans",

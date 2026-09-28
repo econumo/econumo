@@ -1410,7 +1410,9 @@
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "remaining": "剩余"
+        "remaining": "剩余",
+        "opening_balance": "1日余额：{amount}",
+        "opening_balance_hint": "每月1日的余额。储蓄账户之间的转账会改变余额，但不计入已储蓄。"
       },
       "settings": {
         "menu_item": "预算与计划",

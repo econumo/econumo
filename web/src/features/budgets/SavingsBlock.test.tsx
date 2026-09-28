@@ -307,3 +307,17 @@ describe('BudgetPage wiring', () => {
     await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'acc-s2', folderId: null, afterId: null }))
   })
 })
+
+it('shows each account\'s balance on the 1st of the month under its name', () => {
+  renderBlock({ budget: budgetWith([{ ...s1, openingBalance: '1234.5' }, { ...s2, openingBalance: '0' }]) })
+  const r1 = screen.getByTestId('savings-row-acc-s1')
+  const opening = within(r1).getByTestId('savings-opening')
+  expect(opening).toHaveTextContent('Balance on the 1st:')
+  expect(opening).toHaveTextContent('1,234.50')
+  expect(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('savings-opening')).toHaveTextContent('0.00')
+})
+
+it('omits the balance line when the server sends no opening balance', () => {
+  renderBlock({ budget: budgetWith([s1]) })
+  expect(screen.queryByTestId('savings-opening')).toBeNull()
+})

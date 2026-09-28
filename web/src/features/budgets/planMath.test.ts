@@ -25,6 +25,7 @@ import {
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
+  projectSavingsOpenings,
   savingsBalanceRow,
 } from './planMath'
 
@@ -1066,5 +1067,45 @@ describe('isUnderspent', () => {
 
   it('never flags a savings row: saving less than planned is not a good outcome', () => {
     expect(isUnderspent(BudgetElementType.SAVINGS, { actual: '0', planned: '500' }, '2026-05-01', cur)).toBe(false)
+  })
+})
+
+describe('projectSavingsOpenings', () => {
+  const months = ['2026-06-01', '2026-07-01', '2026-08-01', '2026-09-01']
+  const now = new Date(2026, 6, 15) // current month July
+
+  it('keeps the booked openings up to the current month, then adds each month\'s unmet plan from the current month on', () => {
+    const row = mkSavingsEl({
+      id: 'sav',
+      name: 'TFSA',
+      cells: [
+        { actual: '100', planned: '150', openingBalance: '1000' }, // past: a missed plan never arrives
+        { actual: '300', planned: '400', openingBalance: '1100' }, // current: 100 still expected
+        { actual: '0', planned: '400', openingBalance: '1400' }, // future: 400 expected
+        { actual: '0', planned: '', openingBalance: '1400' },
+      ],
+    })
+    const got = projectSavingsOpenings(row, months, now).cells.map((c) => c.openingBalance)
+    expect(got.map(Number)).toEqual([1000, 1100, 1500, 1900])
+  })
+
+  it('an over-met plan adds nothing; a deleted account and a server without openings are left as sent', () => {
+    const over = mkSavingsEl({
+      id: 'over',
+      name: 'Over',
+      cells: months.map(() => ({ actual: '500', planned: '100', openingBalance: '10' })),
+    })
+    expect(projectSavingsOpenings(over, months, now).cells.map((c) => Number(c.openingBalance))).toEqual([10, 10, 10, 10])
+
+    const deleted = mkSavingsEl({
+      id: 'gone',
+      name: 'Gone',
+      isArchived: 1,
+      cells: months.map(() => ({ actual: '0', planned: '100', openingBalance: '5' })),
+    })
+    expect(projectSavingsOpenings(deleted, months, now)).toEqual(deleted)
+
+    const legacy = mkSavingsEl({ id: 'old', name: 'Old', cells: months.map(() => ({ actual: '0', planned: '100' })) })
+    expect(projectSavingsOpenings(legacy, months, now)).toEqual(legacy)
   })
 })

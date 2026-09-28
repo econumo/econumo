@@ -1410,7 +1410,9 @@
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "remaining": "Rimanente"
+        "remaining": "Rimanente",
+        "opening_balance": "Saldo al 1°: {amount}",
+        "opening_balance_hint": "Saldo al 1° del mese. I trasferimenti tra conti di risparmio lo modificano, ma non contano come risparmiato."
       },
       "settings": {
         "menu_item": "Budget e piani",

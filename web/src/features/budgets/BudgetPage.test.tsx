@@ -610,3 +610,25 @@ describe('monthly Savings block', () => {
     expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
   })
 })
+
+it('the savings block sits above Total, and Total adds the savings rows', async () => {
+  const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
+  budget.structure.savings = [
+    { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
+      budgeted: '100', spent: '120', available: '-20', openingBalance: '0' },
+  ]
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+  )
+  renderPage()
+  const block = await screen.findByTestId('budget-savings-block')
+  const totals = screen.getByTestId('budget-totals')
+  expect(block.compareDocumentPosition(totals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.getByTestId('budget-table').compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  // the table alone totals 300.00 / 45.50 / 554.50 (BudgetTable.test)
+  await waitFor(() => expect(totals).toHaveTextContent('400.00'))
+  expect(totals).toHaveTextContent('165.50')
+  expect(totals).toHaveTextContent('534.50')
+  expect(screen.getByTestId('budget-totals-mobile')).toHaveTextContent('534.50')
+})

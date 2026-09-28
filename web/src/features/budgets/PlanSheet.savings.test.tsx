@@ -429,3 +429,25 @@ it('a deleted savings account with only an opening balance splits the balance wi
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
   }
 })
+
+it('each savings cell shows the balance on the 1st; a future month adds the unmet plan of the months before it', async () => {
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August future
+  const openings = ['1000', '1100', '1200', '1250']
+  const plan = {
+    ...savingsPlan,
+    structure: {
+      ...savingsPlan.structure,
+      savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, openingBalance: openings[i] })) }],
+    },
+  }
+  useHandlers(plan)
+  renderPage()
+  await screen.findByTestId('plan-cell-acc-s1:0')
+  // columns start in June: 0 = June, 1 = July, 2 = August
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-opening')).toHaveTextContent('1,100.00')
+  expect(within(screen.getByTestId('plan-cell-acc-s1:1')).getByTestId('cell-opening')).toHaveTextContent('1,200.00')
+  // July planned 200, saved 50: the 150 still to come opens August at 1,400
+  expect(within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-opening')).toHaveTextContent('1,400.00')
+  // expense rows carry no balance line
+  expect(document.querySelectorAll('[data-testid="cell-opening"]')).toHaveLength(3)
+})
