@@ -87,8 +87,8 @@ importers:
         specifier: ^7.87.0
         version: 7.87.0(react@19.3.0)
       react-i18next:
-        specifier: ^17.0.11
-        version: 17.0.11(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)
+        specifier: ^17.0.15
+        version: 17.0.15(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2)
       react-resizable-panels:
         specifier: ^4.12.4
         version: 4.12.4(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
@@ -3469,8 +3469,8 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
 
-  react-i18next@17.0.11:
-    resolution: {integrity: sha512-cDtkXgxjuFTWUH6V+aQn1Ve5vDiUztCNPWW5GtSHDccsgRXO1nE6QFWCEmc1KAutrb3OUv87wFShJL5RhUwPXg==}
+  react-i18next@17.0.15:
+    resolution: {integrity: sha512-7uYpx/oBkesLto7cOzOmfITlUBaXHCAcFahmgETMfWr8nbbWRRnVGvz8wsH/xpbNcyoH+NpCcnOQEqWPMO6/hw==}
     peerDependencies:
       i18next: '>= 26.2.0'
       react: '>= 16.8.0'
@@ -4351,7 +4351,7 @@ snapshots:
       react: 19.3.0
       react-dom: 19.3.0(react@19.3.0)
       reselect: 5.2.0
-      use-sync-external-store: 1.6.0(react@19.3.0)
+      use-sync-external-store: 1.7.0(react@19.3.0)
     optionalDependencies:
       '@types/react': 19.3.0
 
@@ -7169,13 +7169,13 @@ snapshots:
     dependencies:
       react: 19.3.0
 
-  react-i18next@17.0.11(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2):
+  react-i18next@17.0.15(i18next@26.3.6(typescript@7.0.2))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(typescript@7.0.2):
     dependencies:
       '@babel/runtime': 7.29.7
       html-parse-stringify: 4.0.1
       i18next: 26.3.6(typescript@7.0.2)
       react: 19.3.0
-      use-sync-external-store: 1.6.0(react@19.3.0)
+      use-sync-external-store: 1.7.0(react@19.3.0)
     optionalDependencies:
       react-dom: 19.3.0(react@19.3.0)
       typescript: 7.0.2
