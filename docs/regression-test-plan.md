@@ -657,21 +657,27 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
-- [ ] 📱 **Budget settings — Savings accounts**: in the create and edit
-      budget dialogs, the Accounts list has exactly one switch per account
-      (include), and a separate "Savings accounts" card below it ("Money moved
-      into these accounts counts as saved, not spent.") offers one chip per
-      included account — tap a chip to mark it savings (check mark, tinted),
-      tap again to unmark. With no account included the card reads "Include an
-      account above to mark it as savings."; including an account adds its
-      chip at once, excluding it removes the chip and its savings mark. The
-      role can be changed at any time — when creating the budget, or later on
-      an existing (even locked) member, as often as you like. The card ends
-      with "Savings accounts are shown by name, with their saved amounts and
-      balances, to everyone with access to this budget." On a 320px phone in
-      German or Ukrainian, long account names stay distinguishable in both
-      cards (chips wrap to new lines), and on a tablet or desktop the
-      dialog's fields and buttons stay inside its frame.
+- [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
+      create and edit budget dialogs show Name, Currency, then two picker rows
+      (styled like Currency): "Accounts" (the included accounts' names, and
+      "N of M included") and "Savings accounts" (the savings accounts' names,
+      or "None"). The dialog stays that size with 30 accounts. Tapping
+      Accounts opens a searchable checklist (search from six accounts up;
+      accounts in hidden folders last, under "In hidden folders"): tapping an
+      account checks/unchecks it, OK closes and the row updates. A member with
+      past transactions shows checked with a lock icon, cannot be unchecked,
+      and the list ends with "Accounts with transactions in past months can't
+      be removed". Tapping Savings accounts opens the same kind of checklist
+      over the INCLUDED accounts only ("Money moved into these accounts counts
+      as saved, not spent." above, "Savings accounts are shown by name, with
+      their saved amounts and balances, to everyone with access to this
+      budget." below). With nothing included the Savings row is disabled and
+      reads "Include an account above to mark it as savings."; excluding a
+      savings account also drops it from Savings accounts. The savings role
+      can be changed at any time — when creating the budget, or later on an
+      existing (even locked) member. Escape (desktop) closes only the picker,
+      not the budget dialog. On a 320px phone in German or Ukrainian the rows
+      truncate long name lists with "…" and the pickers open as bottom sheets.
 - [ ] 📱 Turn off (or remove) a savings member that still carries plans or
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or
@@ -767,18 +773,19 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 **Monthly view — Savings block**: with a savings account in the
       budget, a foldable "Savings" block appears below the budget table and
       above Total, one row per savings account in their saved order, with
-      Planned / Saved / Balance in the account's currency (all three columns
-      also on a phone). A budget without savings accounts shows no block.
+      Planned / Saved / Balance in the account's currency. On a phone it
+      follows the budget table's two-figure layout: name, Planned and Saved on
+      one line, lined up under the table's Spent / Available columns, and no
+      Balance column. A budget without savings accounts shows no block.
       Folding it survives a reload, and folded it shows only its title — the
       Planned / Saved / Balance labels hide with the rows, so nothing reads
       as a header for the Total row below. On a phone (320px and 375px, also in
-      German, Polish and Ukrainian) the title has its own line, the
-      Planned / Saved / Balance headers show in full (never cut off with
-      "…"), each account name has its own full-width line above its three
-      amounts, the amounts line up under the headers (also in Edit structure
-      mode, with the grips), and a five-digit amount such as 12,345.67 fits
-      without overlapping its neighbour. From 640px wide the title, headers,
-      names and amounts share one line again.
+      German, Polish and Ukrainian) the Planned / Saved headers show in full
+      (a long one wraps, never cut off with "…"), a long account name
+      truncates rather than pushing the amounts, the amounts line up under
+      the headers (also in Edit structure mode, with the grips), and a
+      five-digit amount such as 12,345.67 fits without overlapping its
+      neighbour.
 - [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
       and includes it, in the budget currency: Budget + Planned, Spent +
       Saved, Available + (Planned − Saved). A budget without savings accounts shows

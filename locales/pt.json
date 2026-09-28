@@ -1137,6 +1137,7 @@
           "label": "Contas poupança",
           "description": "O dinheiro transferido para estas contas conta como poupado, não como gasto.",
           "empty": "Inclua uma conta acima para a marcar como poupança.",
+          "none": "Nenhuma",
           "toggle": "{name} é uma conta poupança",
           "note": "As contas poupança são mostradas pelo nome, com os montantes poupados e saldos, a todos os que têm acesso a este orçamento.",
           "confirm": {

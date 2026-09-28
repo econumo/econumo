@@ -155,16 +155,30 @@ it('shows a dash for the balance when the server sends none', () => {
 it('folds and persists the fold under planFolds["monthly-savings"]', async () => {
   const user = userEvent.setup()
   renderBlock()
-  const labels = () => screen.getByText('Planned').parentElement!.parentElement!
-  expect(labels().className).not.toMatch(/(?:^|\s)hidden(?:\s|$)/)
+  expect(screen.getByText('Planned')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /Savings/ }))
   expect(screen.queryByTestId('savings-row-acc-s1')).not.toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().planFolds['monthly-savings']).toBe(true)
-  // folded, the column labels would read as the Total row's header: they hide too
-  expect(labels().className).toMatch(/(?:^|\s)hidden(?:\s|$)/)
+  // folded, the column labels would read as the Total row's header: they go too
+  expect(screen.queryByText('Planned')).toBeNull()
+  expect(screen.queryByText('Balance')).toBeNull()
   await user.click(screen.getByRole('button', { name: /Savings/ }))
   expect(screen.getByTestId('savings-row-acc-s1')).toBeInTheDocument()
-  expect(labels().className).not.toMatch(/(?:^|\s)hidden(?:\s|$)/)
+  expect(screen.getByText('Planned')).toBeInTheDocument()
+})
+
+it('a phone shows two figures like the budget table (Planned, Saved); Balance joins from sm up', () => {
+  renderBlock({ budget: budgetWith([{ ...s1, closingBalance: '5' }]) })
+  const row = screen.getByTestId('savings-row-acc-s1')
+  const phoneOnlyHidden = /(?:^|\s)hidden(?:\s|$)/
+  expect(within(row).getByTestId('savings-balance').className).toMatch(phoneOnlyHidden)
+  expect(within(row).getByTestId('savings-balance').className).toMatch(/(?:^|\s)sm:block(?:\s|$)/)
+  expect(screen.getByText('Balance').className).toMatch(phoneOnlyHidden)
+  for (const id of ['savings-planned', 'savings-saved']) {
+    expect(within(row).getByTestId(id).className).not.toMatch(phoneOnlyHidden)
+    // the table's phone column width, so the figures line up under Spent / Available
+    expect(within(row).getByTestId(id).className).toMatch(/(?:^|\s)w-20(?:\s|$)/)
+  }
 })
 
 it('clicking Planned opens the planned editor when the cell is editable', async () => {

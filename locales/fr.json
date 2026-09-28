@@ -1137,6 +1137,7 @@
           "label": "Comptes d'épargne",
           "description": "L'argent versé sur ces comptes compte comme épargné, pas comme dépensé.",
           "empty": "Incluez un compte ci-dessus pour le marquer comme compte d'épargne.",
+          "none": "Aucun",
           "toggle": "{name} est un compte d'épargne",
           "note": "Les comptes d'épargne sont affichés par nom, avec leurs montants épargnés et leurs soldes, à toutes les personnes ayant accès à ce budget.",
           "confirm": {

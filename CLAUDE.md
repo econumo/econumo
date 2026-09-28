@@ -1123,9 +1123,12 @@ data unreadable. Most are also asserted by the test suite.
   same gaps (`projectSavingsClosings`) the Savings balance line adds, so the two
   agree. The monthly block's columns are Planned / Saved / Balance (that figure).
   Savings rows and balances are visible to every participant, guests included (the
-  budget settings' "Savings accounts" card says so). In the settings dialogs the
-  account list is one include switch per account; the savings role is a separate
-  chip picker over the included accounts (`BudgetSavingsField`). A deleted savings account's row stays
+  budget settings' "Savings accounts" card says so). In the settings dialogs both
+  choices sit behind picker rows (`BudgetAccountsField` / `BudgetSavingsField`: a row
+  naming the picks, opening a searchable checklist), so the dialog does not grow with
+  the account count; the savings picker lists the included accounts only. On a phone
+  the monthly block keeps the table's two figures (Planned, Saved); Balance shows
+  from `sm` up. A deleted savings account's row stays
   visible only while it still has a plan or actual activity in the period; the plan's
   Balance/Savings-balance split follows the savings DATA rather than only the visible
   rows, so a deleted savings account with a balance but no row in the window still

@@ -1137,6 +1137,7 @@
           "label": "Konta oszczędnościowe",
           "description": "Pieniądze przelane na te konta liczą się jako zaoszczędzone, a nie wydane.",
           "empty": "Uwzględnij konto powyżej, aby oznaczyć je jako oszczędnościowe.",
+          "none": "Brak",
           "toggle": "{name} to konto oszczędnościowe",
           "note": "Konta oszczędnościowe są widoczne z nazwy, wraz z zaoszczędzonymi kwotami i saldami, dla wszystkich z dostępem do tego budżetu.",
           "confirm": {

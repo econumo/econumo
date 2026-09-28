@@ -1137,6 +1137,7 @@
           "label": "Cuentas de ahorro",
           "description": "El dinero que pasa a estas cuentas cuenta como ahorrado, no como gastado.",
           "empty": "Incluye arriba una cuenta para marcarla como de ahorro.",
+          "none": "Ninguna",
           "toggle": "{name} es una cuenta de ahorro",
           "note": "Las cuentas de ahorro se muestran por nombre, con sus importes ahorrados y saldos, a todas las personas con acceso a este presupuesto.",
           "confirm": {

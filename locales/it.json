@@ -1137,6 +1137,7 @@
           "label": "Conti di risparmio",
           "description": "Il denaro trasferito su questi conti conta come risparmiato, non come speso.",
           "empty": "Includi un conto qui sopra per contrassegnarlo come conto di risparmio.",
+          "none": "Nessuno",
           "toggle": "{name} è un conto di risparmio",
           "note": "I conti di risparmio sono mostrati per nome, con importi risparmiati e saldi, a tutti coloro che hanno accesso a questo budget.",
           "confirm": {

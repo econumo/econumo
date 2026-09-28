@@ -1137,6 +1137,7 @@
           "label": "Sparkonten",
           "description": "Geld, das auf diese Konten fließt, gilt als gespart, nicht als ausgegeben.",
           "empty": "Nimm oben ein Konto auf, um es als Sparkonto zu markieren.",
+          "none": "Keine",
           "toggle": "{name} ist ein Sparkonto",
           "note": "Sparkonten werden allen mit Zugriff auf dieses Budget mit Namen, gesparten Beträgen und Salden angezeigt.",
           "confirm": {

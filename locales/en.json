@@ -1137,6 +1137,7 @@
           "label": "Savings accounts",
           "description": "Money moved into these accounts counts as saved, not spent.",
           "empty": "Include an account above to mark it as savings.",
+          "none": "None",
           "toggle": "{name} is a savings account",
           "note": "Savings accounts are shown by name, with their saved amounts and balances, to everyone with access to this budget.",
           "confirm": {

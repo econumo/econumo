@@ -1137,6 +1137,7 @@
           "label": "Spaarrekeningen",
           "description": "Geld dat naar deze rekeningen gaat, telt als gespaard, niet als uitgegeven.",
           "empty": "Neem hierboven een rekening op om die als spaarrekening te markeren.",
+          "none": "Geen",
           "toggle": "{name} is een spaarrekening",
           "note": "Spaarrekeningen worden met naam, gespaarde bedragen en saldi getoond aan iedereen met toegang tot dit budget.",
           "confirm": {
