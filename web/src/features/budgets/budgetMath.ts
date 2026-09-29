@@ -119,15 +119,31 @@ export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchan
   )
 }
 
-/** The savings rows' end-of-month balance summed in the budget currency, for the
- *  phone Total card (the phone rows leave the Balance column out). null when the
- *  budget has no savings rows or the server sends no balance. */
-export function savingsBalanceTotal(budget: BudgetDto, exchangeFn: ExchangeFn): string | null {
+export interface SavingsTotals {
+  /** what the month saves: actual for a past month; from the current month on,
+   *  each live row's larger of planned and saved (the Plan view's Savings line) */
+  savings: string
+  /** end-of-month balance; null when the server sends no balance */
+  balance: string | null
+}
+
+/** The phone Total card's savings lines, in the budget currency (the phone rows
+ *  leave the Balance column out). null when the budget has no savings rows.
+ *  `projected`: the month is the caller's current one or later. */
+export function savingsTotals(budget: BudgetDto, exchangeFn: ExchangeFn, projected: boolean): SavingsTotals | null {
   const rows = budget.structure.savings ?? []
-  if (rows.length === 0 || rows.some((row) => row.closingBalance === undefined)) {
+  if (rows.length === 0) {
     return null
   }
-  return rows.reduce((acc, row) => add(acc, exchangeFn(row.currencyId, budget.meta.currencyId, row.closingBalance ?? '0')), '0')
+  const base = budget.meta.currencyId
+  const savings = rows.reduce((acc, row) => {
+    const amount = projected && row.isArchived === 0 && cmp(row.budgeted, row.spent) > 0 ? row.budgeted : row.spent
+    return add(acc, exchangeFn(row.currencyId, base, amount))
+  }, '0')
+  const balance = rows.some((row) => row.closingBalance === undefined)
+    ? null
+    : rows.reduce((acc, row) => add(acc, exchangeFn(row.currencyId, base, row.closingBalance ?? '0')), '0')
+  return { savings, balance }
 }
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
