@@ -1,5 +1,6 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, makeBudgetExchange, displayAvailable } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, makeBudgetExchange, displayAvailable, savingsBalanceTotal } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
+import { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
@@ -107,6 +108,27 @@ it('totals large amounts exactly', () => {
   })
   const stats = bucketStats([bigEl('big-1'), bigEl('big-2')], budget, (_f, _t, a) => a)
   expect(stats.budgeted).toBe('18014398509481986')
+})
+
+it('savingsBalanceTotal sums the savings rows\' closing balances in the budget currency', () => {
+  const row = { type: BudgetElementType.SAVINGS, icon: 'savings', ownerUserId: 'u1', isArchived: 0 as const, position: 0, budgeted: '0', spent: '0', available: '0' }
+  const withSavings = (savings: BudgetDto['structure']['savings']): BudgetDto => ({ ...budget, structure: { ...budget.structure, savings } })
+  // a fake exchange that doubles anything not already in the budget currency
+  const ex = (from: string, to: string, amount: string) => (from === to ? amount : String(Number(amount) * 2))
+  const cur = budget.meta.currencyId
+  expect(
+    savingsBalanceTotal(
+      withSavings([
+        { ...row, id: 's1', name: 'A', currencyId: cur, closingBalance: '100.5' },
+        { ...row, id: 's2', name: 'B', currencyId: 'other', closingBalance: '10' },
+      ]),
+      ex,
+    ),
+  ).toBe('120.5')
+  // no savings rows, or a server that sends no balance: no line at all
+  expect(savingsBalanceTotal(withSavings([]), ex)).toBeNull()
+  expect(savingsBalanceTotal(withSavings(undefined), ex)).toBeNull()
+  expect(savingsBalanceTotal(withSavings([{ ...row, id: 's1', name: 'A', currencyId: cur }]), ex)).toBeNull()
 })
 
 it('displayAvailable adds budgeted to available', () => {

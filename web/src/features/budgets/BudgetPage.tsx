@@ -65,7 +65,7 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, totalsWithSavings } from './budgetMath'
+import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, savingsBalanceTotal, totalsWithSavings } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
@@ -383,6 +383,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
+  const savingsBalance = useMemo(() => (budget ? savingsBalanceTotal(budget, makeBudgetExchange(budget, currencies)) : null), [budget, currencies])
   const totals = useMemo(
     () => (budget && buckets ? totalsWithSavings(budgetTotals(buckets), budget, makeBudgetExchange(budget, currencies)) : null),
     [budget, buckets, currencies],
@@ -918,7 +919,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderPlannedEditor={inlineLimitEditor}
                     onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
                   />
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} savingsBalance={savingsBalance} /> : null}
                 </div>
               </div>
             </>

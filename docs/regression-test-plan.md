@@ -788,8 +788,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       neighbour.
 - [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
       and includes it, in the budget currency: Budget + Planned, Spent +
-      Saved, Available + (Planned − Saved). A budget without savings accounts shows
-      the same Total as before.
+      Saved, Available + (Planned − Saved). On a phone the Total card adds a
+      last line, "Savings balance": the savings accounts' end-of-month balance
+      summed in the budget currency (the same figure as that month's Savings
+      balance in the Plan view), since the phone rows leave the Balance column
+      out. A budget without savings accounts shows the same Total as before,
+      with no Savings balance line.
 - [ ] 📱 The Balance column is the account's balance at the end of the
       selected month (no extra line under the account name): a past month
       shows the actual booked end-of-month balance; the current month shows

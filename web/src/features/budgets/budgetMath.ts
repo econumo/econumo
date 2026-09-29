@@ -119,6 +119,17 @@ export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchan
   )
 }
 
+/** The savings rows' end-of-month balance summed in the budget currency, for the
+ *  phone Total card (the phone rows leave the Balance column out). null when the
+ *  budget has no savings rows or the server sends no balance. */
+export function savingsBalanceTotal(budget: BudgetDto, exchangeFn: ExchangeFn): string | null {
+  const rows = budget.structure.savings ?? []
+  if (rows.length === 0 || rows.some((row) => row.closingBalance === undefined)) {
+    return null
+  }
+  return rows.reduce((acc, row) => add(acc, exchangeFn(row.currencyId, budget.meta.currencyId, row.closingBalance ?? '0')), '0')
+}
+
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
 
 // The wire name for the Uncategorized element is the English literal

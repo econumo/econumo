@@ -644,7 +644,18 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
 
 /** The Total row (desktop) and its phone card. The budget page renders it itself,
  *  below the Savings block, with the savings rows added in. */
-export function BudgetTotals({ budget, totals, actionsColumn }: { budget: BudgetDto; totals: BucketStats; actionsColumn: boolean }) {
+export function BudgetTotals({
+  budget,
+  totals,
+  actionsColumn,
+  savingsBalance = null,
+}: {
+  budget: BudgetDto
+  totals: BucketStats
+  actionsColumn: boolean
+  /** phone card only: the desktop row has the Savings block's Balance column above it */
+  savingsBalance?: string | null
+}) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
@@ -683,6 +694,12 @@ export function BudgetTotals({ budget, totals, actionsColumn }: { budget: Budget
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
+        {savingsBalance !== null ? (
+          <span className="flex items-baseline justify-between border-t pt-2" data-testid="budget-totals-mobile-savings">
+            <span className="text-[13px] text-muted-foreground">{t('budgets.page.plan.totals.savings_balance')}</span>
+            <span className="text-[15px] font-medium tabular-nums">{moneyFormat(savingsBalance, budgetCurrency, opts)}</span>
+          </span>
+        ) : null}
       </div>
     </>
   )

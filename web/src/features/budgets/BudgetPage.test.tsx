@@ -609,6 +609,8 @@ describe('monthly Savings block', () => {
     renderPage()
     expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
     expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
+    // nor a Savings balance line in the phone Total card
+    expect(screen.queryByTestId('budget-totals-mobile-savings')).not.toBeInTheDocument()
   })
 })
 
@@ -616,7 +618,7 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-      budgeted: '100', spent: '120', available: '-20', closingBalance: '0' },
+      budgeted: '100', spent: '120', available: '-20', closingBalance: '2500' },
   ]
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -632,4 +634,8 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   expect(totals).toHaveTextContent('165.50')
   expect(totals).toHaveTextContent('534.50')
   expect(screen.getByTestId('budget-totals-mobile')).toHaveTextContent('534.50')
+  // the phone rows leave Balance out, so the phone Total card carries it
+  const savingsLine = screen.getByTestId('budget-totals-mobile-savings')
+  expect(savingsLine).toHaveTextContent('Savings balance')
+  expect(savingsLine).toHaveTextContent('2,500.00')
 })
