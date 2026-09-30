@@ -1188,9 +1188,7 @@
         "description": "You need to accept the invitation before accessing this budget."
       },
       "expense_widget": {
-        "header": "Spending progress",
-        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Saved {saved} of {planned} planned"
+        "conversion_rate": "Average rate for {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplicate budget",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Comments here can be read but not changed.",
           "empty": "No comments yet.",
-          "truncated": "Showing the latest 2000 comments."
+          "truncated": "Showing the latest 2000 comments.",
+          "add": "Add comment",
+          "more": "+{count} more"
         }
       },
       "savings": {

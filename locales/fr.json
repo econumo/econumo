@@ -1188,9 +1188,7 @@
         "description": "Vous devez accepter l’invitation avant d’accéder à ce budget."
       },
       "expense_widget": {
-        "header": "Suivi des dépenses",
-        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Épargné {saved} sur {planned} prévus"
+        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Dupliquer le budget",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Les commentaires ici peuvent être lus, mais pas modifiés.",
           "empty": "Aucun commentaire pour le moment.",
-          "truncated": "Affichage des 2000 commentaires les plus récents."
+          "truncated": "Affichage des 2000 commentaires les plus récents.",
+          "add": "Ajouter un commentaire",
+          "more": "+{count} de plus"
         }
       },
       "savings": {

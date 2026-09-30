@@ -7,7 +7,6 @@ import { coreHandlers, fixtureEur, fixtureUsd, fixtureWireBudget } from '@/test/
 import type { BudgetCommentDto, BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { SavingsBlock } from './SavingsBlock'
-import { ExpenseWidget } from './ExpenseWidget'
 import { useBudgetPeriodStore } from './budgetStore'
 import { commentCellKey } from './queries'
 
@@ -210,7 +209,7 @@ it('a non-editable Planned cell never opens the editor: it falls back to the com
   const { props } = renderBlock({ canEdit: false })
   await user.click(within(screen.getByTestId('savings-row-acc-s1')).getByRole('button', { name: 'comments Rainy day' }))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
-  expect(props.onOpenComments).toHaveBeenCalledWith(s1)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s1, expect.any(HTMLElement))
   expect(screen.queryByRole('button', { name: /^planned / })).not.toBeInTheDocument()
 })
 
@@ -221,7 +220,7 @@ it('a deleted account row is never editable, even when limits are', async () => 
   expect(within(row).queryByRole('button', { name: 'planned Closed deposit' })).not.toBeInTheDocument()
   await user.click(within(row).getByRole('button', { name: 'comments Closed deposit' }))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
-  expect(props.onOpenComments).toHaveBeenCalledWith(s3)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s3, expect.any(HTMLElement))
 })
 
 it('a row with comments shows the marker; clicking it opens the thread', async () => {
@@ -229,7 +228,7 @@ it('a row with comments shows the marker; clicking it opens the thread', async (
   const { props } = renderBlock({ commentsByCell: new Map([[commentCellKey('acc-s2', '2026-07-01'), [comment]]]) })
   expect(within(screen.getByTestId('savings-row-acc-s1')).queryByTestId('comment-marker')).not.toBeInTheDocument()
   await user.click(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('comment-marker'))
-  expect(props.onOpenComments).toHaveBeenCalledWith(s2)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s2, expect.any(HTMLElement))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
 })
 
@@ -259,36 +258,6 @@ it('edit mode: dropping S2 above S1 moves it first; the block has its own DndCon
 
   onDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } })
   expect(props.onMove).toHaveBeenCalledWith('acc-s2', null)
-})
-
-describe('ExpenseWidget savings line', () => {
-  function renderWidget(budget: BudgetDto) {
-    server.use(...coreHandlers())
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <ExpenseWidget budget={budget} currencyId="cur-usd" />
-      </QueryClientProvider>,
-    )
-  }
-
-  it('shows "Saved X of Y planned" in the budget currency, converting a EUR row', async () => {
-    // USD budget, EUR rate 0.9: s1 100/120 USD + s2 90/45 EUR (= 100/50 USD) + s3 0/10 USD
-    renderWidget(budgetWith([s1, s2, s3]))
-    expect(await screen.findByText('Saved 180.00 $ of 200.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
-  })
-
-  it('leaves a deleted account\'s plan out of "planned" but keeps its saved amount', async () => {
-    // s1 100/120 USD + a deleted account's row planned 50, saved 10 -> planned 100, saved 130
-    renderWidget(budgetWith([s1, { ...s3, budgeted: '50', available: '40' }]))
-    expect(await screen.findByText('Saved 130.00 $ of 100.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
-  })
-
-  it('omits the line without savings rows', async () => {
-    renderWidget(budgetWith([]))
-    expect(await screen.findByText('Spending progress')).toBeInTheDocument()
-    expect(await screen.findByText('45.50 $')).toBeInTheDocument()
-    expect(screen.queryByTestId('expense-widget-savings')).not.toBeInTheDocument()
-  })
 })
 
 describe('BudgetPage wiring', () => {

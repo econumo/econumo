@@ -1188,9 +1188,7 @@
         "description": "Чтобы получить доступ к этому бюджету, сначала примите приглашение."
       },
       "expense_widget": {
-        "header": "Расходы",
-        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Отложено {saved} из {planned} запланированных"
+        "conversion_rate": "Средний курс за {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Дублировать бюджет",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Комментарии здесь можно читать, но нельзя изменять.",
           "empty": "Пока нет комментариев.",
-          "truncated": "Показаны последние 2000 комментариев."
+          "truncated": "Показаны последние 2000 комментариев.",
+          "add": "Добавить комментарий",
+          "more": "ещё {count}"
         }
       },
       "savings": {

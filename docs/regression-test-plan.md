@@ -614,9 +614,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       it becomes usable for accounts; edit it; delete it (soft delete —
       accounts/transactions in it keep resolving symbol and rate).
 - [ ] Rates caption shows the rate and the SPA converts non-base balances in
-      totals (sidebar total, budget expense widget note).
-- [ ] Change profile default currency (Settings → Profile) → totals and budget
-      default currency chips update.
+      totals (sidebar total).
+- [ ] Change profile default currency (Settings → Profile) → totals update.
 
 ## 9. Budgets — table & plan
 
@@ -642,7 +641,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       where the strip scrolls by touch): they PAN the strip only — the
       selected month and the table below never change; panning to either
       edge keeps extending the window (past months included).
-- [ ] Currency filter chips (multi-currency data) filter rows/totals.
+- [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
+      no "Spending progress" widget appears anywhere on the page.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
       envelope), delete folder; leaving the mode persists the layout.
@@ -806,9 +806,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Balance moves by the change at once; then open a later month — its
       Balance reflects the new plan too (no manual reload).
 - [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
-      on desktop a click opens the inline editor popover (with its comments
-      disclosure), on a phone a tap opens the set-limit dialog with a
-      "Comments (N)" button; either way the current value is prefilled and saving shows the new
+      on desktop a click opens the inline amount popover (no comments in it),
+      on a phone a tap opens the set-limit dialog with a "Comments (N)"
+      button; either way the current value is prefilled and saving shows the new
       Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the
@@ -821,31 +821,65 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A commented savings Planned cell carries the corner marker; clicking
       (tapping) it opens that cell's thread. A comment posted there shows in
       the Plan view on the same month's savings cell.
-- [ ] 📱 Expense widget (select a currency chip): with savings accounts it
-      shows "Saved X of Y planned" for the month in the budget currency, a
-      savings account in another currency converted at the month's rate;
-      a deleted savings account's plan is left out of "planned" while what it
-      saved still counts in "Saved"; without savings accounts the line is
-      absent.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
       there (cross-view sync).
 - [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Desktop: a comment's pencil (edit) and bin (delete) icons appear only
+      while the pointer is over that comment (or it has keyboard focus); 📱 on a
+      phone or tablet they are always visible.
 - [ ] Another participant cannot edit your comment; the budget owner can
       delete it.
 - [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
-- [ ] A cell with comments shows the corner marker; a cell without shows none;
-      the uncategorized row never shows one.
-- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
-      thread opens (expanded in the amount popover, or the standalone dialog
-      on a non-editable/compact cell); plain Enter on the same cell instead
-      opens the amount editor, unaffected.
+- [ ] A cell with comments shows the purple corner marker; a cell without
+      shows none (only the faint hover corner below); the uncategorized row
+      never shows one.
+- [ ] Desktop: click a cell's corner marker (Budget view, Plan view, a
+      savings Planned cell): the thread opens in a popover beside that cell.
+      Clicking another cell's marker switches to that cell's thread.
+      Opening a thread from the keyboard (Tab to the marker, Enter) and
+      pressing Esc closes it and puts focus back on the marker.
+- [ ] Desktop: rest the pointer on a commented cell: after a moment a card
+      previews its latest two comments (plus "+N more"); it disappears when
+      the pointer leaves (it stays while the pointer is on the card itself),
+      and never shows while the thread or the amount editor is open — not even
+      when the pointer drifts off the open amount editor and back over the
+      cell. Tabbing onto a cell's amount shows no card.
+- [ ] Desktop: hover a cell with no comments (Budget view budgeted amount,
+      Archive rows included; savings Planned cell; Plan view month cell): a
+      faint grey triangle appears at its top-right, where the purple marker
+      would be, and disappears when the pointer leaves. Clicking it opens the
+      empty thread in a popover beside the cell (the amount editor does not
+      open). A guest gets it too. It never appears on the uncategorized row,
+      in edit-structure mode, on an archived budget or a month outside the
+      budget's range, or on phones and tablets. Right-clicking a cell shows
+      the browser's normal context menu.
+- [ ] Desktop, monthly view: Tab to a budgeted amount (or a savings Planned
+      amount) with no comments yet and press Shift+F2: that cell's thread
+      opens in a popover beside it, ready for a first comment.
+- [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
+      text — editors reach comments through the corner marker (opens the
+      thread popover) or a long-press, which opens a modal titled with the
+      item's name and the cell's actions (Set budget, Comments (N) or Add
+      comment, Show transactions — a guest gets no Set budget, a savings cell
+      no Show transactions); for a guest or an archived row, tapping the
+      amount opens the thread instead. Lifting the finger does not also open
+      the set-limit dialog, and a quick tap still behaves as before. No hover
+      preview on a tablet, and the set-limit dialog (Budget and Plan views)
+      has no "Comments (N)" button there.
+- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
+      comments through the set-limit sheet's "Comments (N)" button or the
+      comments sheet; the comments sheet keeps its composer pinned above the
+      keyboard.
+- [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
+      its thread opens in a popover beside the cell; Esc closes it and the
+      arrow keys keep moving the selection. Plain Enter on the same cell opens
+      the amount editor, which has no comments section.
 - [ ] On desktop, a non-editable cell (guest role, an archived element —
-      even on a budget you can edit — or a month outside the budget's range)
-      shows its own "comments" link in
-      place of the amount, so a thread can be started even where there is no
-      amount popover to hang the disclosure off of.
+      even on a budget you can edit — or a month outside the budget's range):
+      clicking its amount opens that cell's thread in a popover beside the
+      cell, so a thread can be started there too.
 - [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open
       "Set budget": the sheet holds only the amount, a "Comments (N)" button
       and the actions, and the amount stays visible above the keyboard.
@@ -868,7 +902,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Revoke a participant: their comments on surviving cells still render
       their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
-      correct; expense widget shows the conversion note.
+      correct.
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
       applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
       account in a budget-currency category counts in the category's spent at

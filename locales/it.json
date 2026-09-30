@@ -1188,9 +1188,7 @@
         "description": "Devi accettare l'invito prima di poter accedere a questo budget."
       },
       "expense_widget": {
-        "header": "Andamento delle spese",
-        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Risparmiati {saved} su {planned} previsti"
+        "conversion_rate": "Tasso medio per {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplica budget",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "I commenti qui possono essere letti, ma non modificati.",
           "empty": "Nessun commento ancora.",
-          "truncated": "Vengono mostrati i 2000 commenti più recenti."
+          "truncated": "Vengono mostrati i 2000 commenti più recenti.",
+          "add": "Aggiungi commento",
+          "more": "+{count} altri"
         }
       },
       "savings": {
