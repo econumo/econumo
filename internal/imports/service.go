@@ -214,9 +214,25 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 			cards[i].LastSeenAt = l.ExternalPostedAt.Format(datetime.Layout)
 		}
 	}
+	runs, err := s.repo.ListRunsByUser(ctx, src.UserID, &src.ID, 1)
+	if err != nil {
+		return nil, err
+	}
+	var lastStatus, lastAt, lastErr string
+	if len(runs) > 0 {
+		r := runs[0]
+		lastStatus, lastAt = r.Status, r.StartedAt.UTC().Format(datetime.Layout)
+		if r.FinishedAt != nil {
+			lastAt = r.FinishedAt.UTC().Format(datetime.Layout)
+		}
+		if len(r.Errors) > 0 {
+			lastErr = r.Errors[0].Message
+		}
+	}
 	return &model.ImportSourceResult{
 		Id: src.ID.String(), Provider: src.Provider, Name: src.Name, Status: src.Status,
 		CreatedAt: src.CreatedAt.Format(datetime.Layout), LastSyncedAt: optionalTime(src.LastSyncedAt),
+		LastRunStatus: lastStatus, LastRunAt: lastAt, LastRunError: lastErr,
 		CredentialCiphertext: derefString(src.CredentialCiphertext), Cards: cards,
 	}, nil
 }

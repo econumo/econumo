@@ -207,6 +207,9 @@ type ImportSourceResult struct {
 	Status               string             `json:"status"`
 	CreatedAt            string             `json:"createdAt"`
 	LastSyncedAt         string             `json:"lastSyncedAt"`
+	LastRunStatus        string             `json:"lastRunStatus"`
+	LastRunAt            string             `json:"lastRunAt"`
+	LastRunError         string             `json:"lastRunError"`
 	CredentialCiphertext string             `json:"credentialCiphertext"`
 	Cards                []ImportCardResult `json:"cards"`
 }
