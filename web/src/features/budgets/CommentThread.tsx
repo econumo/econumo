@@ -9,6 +9,7 @@ import type { BudgetCommentDto } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { v7 as uuidv7 } from 'uuid'
 import { pluralPick } from '@/lib/plural'
+import { commentAnchorOf } from './cellDom'
 import { useCreateComment, useDeleteComment, useUpdateComment } from './queries'
 
 export interface CommentThreadProps {
@@ -45,24 +46,33 @@ function parseServerDateTime(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
 }
 
-// The corner triangle on a commented amount cell. The visible triangle is drawn on
-// an inner span so the button carries a real hit area (a touch tap on the 6x6px
-// border-only box used to land on the cell behind it) without taking any layout
-// space or changing column width; the cell must be `relative`.
-export function CommentMarker({ count, onOpen }: { count: number; onOpen: () => void }) {
+export function formatCommentTime(createdAt: string, lang: string): string {
+  return parseServerDateTime(createdAt).toLocaleString(lang)
+}
+
+// createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
+// ordinal comparison, not locale-aware collation, is what sorts it correctly.
+export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[] {
+  return [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+}
+
+// The corner triangle on a commented amount cell. The 8px triangle is drawn on an
+// inner span so the button keeps a 20px hit area without taking layout space or
+// changing column width; the cell must be `relative`.
+export function CommentMarker({ count, onOpen }: { count: number; onOpen: (anchor: HTMLElement) => void }) {
   const { t, i18n } = useTranslation()
   return (
     <button
       type="button"
       data-testid="comment-marker"
       aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)}
-      className="absolute right-0 top-0 flex h-4 w-4 items-start justify-end"
+      className="absolute right-0 top-0 flex size-5 items-start justify-end"
       onClick={(e) => {
         e.stopPropagation()
-        onOpen()
+        onOpen(commentAnchorOf(e.currentTarget))
       }}
     >
-      <span className="h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-primary" />
+      <span className="h-0 w-0 border-l-[8px] border-t-[8px] border-l-transparent border-t-primary" />
     </button>
   )
 }
@@ -95,9 +105,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
     }
   }, [readOnly])
 
-  // createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain
-  // ordinal comparison, not locale-aware collation, is what sorts it correctly.
-  const sorted = [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
+  const sorted = sortByCreatedAt(comments)
 
   function post() {
     const value = draft.trim()
@@ -159,7 +167,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-baseline gap-1.5">
                     <span className="truncate text-sm font-medium">{c.author.name}</span>
-                    <span className="text-xs text-muted-foreground">{parseServerDateTime(c.createdAt).toLocaleString(i18n.language)}</span>
+                    <span className="text-xs text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
                     {c.updatedAt !== c.createdAt ? (
                       <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.edited')}</span>
                     ) : null}

@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import type { BudgetCommentDto } from '@/api/dto/budget'
-import { CommentThread, type CommentThreadProps } from './CommentThread'
+import { CommentMarker, CommentThread, type CommentThreadProps } from './CommentThread'
 
 const ada = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 const bob = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
@@ -298,4 +298,16 @@ it('drops an in-flight edit box and delete confirm when readOnly turns on mid-mo
   expect(within(items[0]).queryByRole('textbox', { name: 'Comment' })).toBeNull()
   expect(within(items[0]).queryByRole('button', { name: 'Save' })).toBeNull()
   expect(screen.queryByText('Delete this comment?')).toBeNull()
+})
+
+it('the marker reports the cell it sits in as the anchor', async () => {
+  const user = userEvent.setup()
+  const onOpen = vi.fn()
+  render(
+    <div data-comment-anchor="" data-testid="cell">
+      <CommentMarker count={2} onOpen={onOpen} />
+    </div>,
+  )
+  await user.click(screen.getByTestId('comment-marker'))
+  expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
 })

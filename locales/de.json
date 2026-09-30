@@ -1403,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Kommentare können hier gelesen, aber nicht geändert werden.",
           "empty": "Noch keine Kommentare.",
-          "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
+          "truncated": "Die neuesten 2000 Kommentare werden angezeigt.",
+          "add": "Kommentar hinzufügen",
+          "more": "+{count} weitere"
         }
       },
       "savings": {

@@ -29,9 +29,12 @@ interface ResponsiveDialogProps {
   fullScreen?: boolean
   /** action row rendered outside the scroll area — pinned to the sheet bottom on mobile */
   footer?: ReactNode
+  /** runs as the dialog hands focus back on close; preventDefault() keeps focus
+   *  where an action started from the dialog put it */
+  onCloseAutoFocus?: (e: Event) => void
 }
 
-export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer }: ResponsiveDialogProps) {
+export function ResponsiveDialog({ open, onOpenChange, title, description, children, dismissible = true, caps = false, hideHeader = false, showClose = false, fullScreen = false, footer, onCloseAutoFocus }: ResponsiveDialogProps) {
   // full-screen / bottom-sheet layouts kick in only below sm (640px); at 640px
   // and up dialogs stay centred like on desktop
   const isMobile = useIsPhone()
@@ -107,7 +110,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange} dismissible={dismissible}>
-        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown}>
+        <DrawerContent ref={contentRef} onInteractOutside={onInteractOutside} onEscapeKeyDown={onEscapeKeyDown} onCloseAutoFocus={onCloseAutoFocus}>
           {/* the drawer has no corner X, so it never needs the pr-8 clearance */}
           <DrawerHeader className={hideHeader ? 'sr-only' : undefined}>
             <DrawerTitle className={titleClass}>{title}</DrawerTitle>
@@ -128,6 +131,7 @@ export function ResponsiveDialog({ open, onOpenChange, title, description, child
         ref={contentRef}
         onInteractOutside={onInteractOutside}
         onEscapeKeyDown={onEscapeKeyDown}
+        onCloseAutoFocus={onCloseAutoFocus}
         // a floating X with no header row to anchor it looks stray — unless asked for
         showCloseButton={showCloseButton}
       >
