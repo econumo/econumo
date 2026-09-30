@@ -127,6 +127,27 @@ it('shows the Inbox link in the full sidebar, and between the avatar and Budget 
   expect(budgetIndex).toBeGreaterThan(inboxIndex)
 })
 
+it('puts Inbox above the onboarding link in the icon rail when onboarding is incomplete', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  server.use(...coreHandlers({ user: { ...fixtureUser, options: [...fixtureUser.options.filter((o) => o.name !== 'onboarding'), { name: 'onboarding', value: 'started' }] } }))
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  const railLinks = screen.getAllByRole('link')
+  const avatarIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/settings/profile')
+  const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
+  const onboardingIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/onboarding')
+  const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
+  expect(avatarIndex).toBeGreaterThanOrEqual(0)
+  expect(onboardingIndex).toBeGreaterThanOrEqual(0)
+  expect(inboxIndex).toBeGreaterThan(avatarIndex)
+  expect(onboardingIndex).toBeGreaterThan(inboxIndex)
+  expect(budgetIndex).toBeGreaterThan(onboardingIndex)
+})
+
 it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
   mockViewport(false)
   let accountFetches = 0

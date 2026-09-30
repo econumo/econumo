@@ -168,6 +168,7 @@ export function ApplicationLayout() {
                 {user && isCompact ? userBlock : null}
                 {rail ? (
                   <div className="flex flex-col items-center gap-1 py-1">
+                    <InboxButton variant="rail" />
                     {!isOnboardingCompleted(user) ? (
                       <Link
                         to={RouterPage.ONBOARDING}
@@ -177,7 +178,6 @@ export function ApplicationLayout() {
                         <Rocket className="size-5" />
                       </Link>
                     ) : null}
-                    <InboxButton variant="rail" />
                     <Link
                       to={RouterPage.BUDGET}
                       title={t('common.nav.budget')}
