@@ -333,7 +333,7 @@ navigation (single-pane vs sidebar).
 
 - [ ] Settings → Data group has two rows 📱: "Import & export" (only the CSV
       import/export rows; dialogs open as before) and "Apple Wallet" (its own page:
-      setup, cards, "Import queue" link; back returns to Settings).
+      setup, cards, "Inbox" link; back returns to Settings).
 - [ ] "Set up Apple Wallet" creates the source (idempotent: a second click or a
       second device does not create a second source); the section flips to
       "Connected" with a seven-step checklist (Install econumo-wallet-v1, Install
@@ -366,8 +366,8 @@ navigation (single-pane vs sidebar).
 - [ ] Step 4 📱 iOS only: "Run econumo-wallet-v1" opens
       `shortcuts://run-shortcut?name=econumo-wallet-v1`; after allowing the
       prompts on the phone, "Check" ticks step 4 (folded to its title) and the
-      `account is required` row disappears from the queue's "Needs attention"
-      list; "Check" with nothing received reports "Nothing received yet…" and
+      `account is required` row disappears from the Inbox's Failed imports
+      section; "Check" with nothing received reports "Nothing received yet…" and
       leaves the box unticked.
 - [ ] Step 5 text walks through Automation → + → Wallet → cards & categories →
       Run After Confirmation → econumo-wallet-v1; step 6 text says to tap Run
@@ -386,9 +386,9 @@ navigation (single-pane vs sidebar).
       `full` PAT / session token is accepted too; an `ingest` PAT on any other route
       is 401.
 - [ ] Same payload twice → `duplicate`, no second row; a body without `account`
-      or with a bad currency → `status: failed`, row in "Needs attention" with the
-      error text and the raw payload; Retry re-parses (toast with the outcome),
-      Discard removes it.
+      or with a bad currency → `status: failed`, row in the Inbox's Failed
+      imports section with the error text and the raw payload; Retry re-parses
+      (toast with the outcome), Discard removes it.
 - [ ] Map card → account (owned accounts only in the picker; shared accounts
       absent): the queue replays — toast "N imported, N matched, N skipped";
       imported transactions appear on the account with the glyph; a same-amount
@@ -400,15 +400,31 @@ navigation (single-pane vs sidebar).
       line keeps the original "… USD" amount. An ignored card offers
       "Map instead"; "Unmap" (confirmation) returns the card to unmapped and
       new taps queue again.
-- [ ] Review banner 📱: with queued rows, every page except the queue shows
-      "N imported transactions are waiting for review" + "Review"; the banner
-      disappears when the queue empties.
-- [ ] Queue page 📱: rows grouped by card, unmapped cards carry "Map to account"
-      (→ Apple Wallet page) and "Ignore"; tapping a row opens the add-transaction
-      dialog prefilled (account, amount, merchant as description, posted date);
-      saving posts `import-queued-event` — the row leaves the queue and the
-      transaction is created with the glyph; Skip moves a row to "Skipped",
-      Restore brings it back.
+- [ ] Inbox button 📱: the sidebar identity row shows avatar + name (no email), an
+      Inbox button and the Settings gear; the Inbox button is visible with nothing
+      pending (no badge) and shows the pending count (99+ above 99); in the
+      collapsed desktop rail it sits between the avatar and Budget.
+- [ ] Inbox count 📱: the badge equals pending invites + sources whose last sync
+      failed/partially failed + failed imports + queued imports; skipped rows are
+      not counted.
+- [ ] Inbox page 📱: sections appear in order Sharing, Sync problems, Failed
+      imports, To review, Skipped (collapsed); empty sections are hidden; with
+      nothing pending it reads "All caught up".
+- [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
+      every queued row, and a successful re-sync each remove the item and lower
+      the badge without a reload.
+- [ ] Sync problem 📱: a SimpleFIN sync that fails shows "<source> sync failed",
+      the time and the error in the Inbox; tapping it opens the SimpleFIN
+      settings page.
+- [ ] No banners for attention items 📱: only the subscription banner and the
+      server-version notice ever appear above the app; pending imports never
+      show a top banner.
+- [ ] Inbox's To review section 📱: rows grouped by card, unmapped cards carry
+      "Map to account" (→ Apple Wallet page) and "Ignore"; tapping a row opens
+      the add-transaction dialog prefilled (account, amount, merchant as
+      description, posted date); saving posts `import-queued-event` — the row
+      leaves the Inbox and the transaction is created with the glyph; Skip moves
+      a row to the Inbox's collapsed Skipped section, Restore brings it back.
 - [ ] A second tap with the same amount on the same card within ±3 days of a
       hand-entered transaction of that amount is adopted (no duplicate); a tap
       already linked from this source is never adopted twice.
@@ -470,9 +486,9 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
 - [ ] A hand-entered transaction with the exact same amount as an incoming
       bridge row, dated within a few days of it, is adopted (matched count)
       rather than duplicated.
-- [ ] Unmapped bridge account with transactions: sync queues them (queue page
-      shows them with "Card not mapped" reason); mapping the account replays
-      the queue.
+- [ ] Unmapped bridge account with transactions: sync queues them (the Inbox's
+      To review section shows them with "Card not mapped" reason); mapping the
+      account replays the queue.
 - [ ] Per-account failure (one linked account's transaction write errors
       mid-sync while another account succeeds — not triggered by a missing
       rate or a deleted account, both of which queue their events instead):
@@ -486,8 +502,7 @@ Preconditions: a SimpleFIN Bridge account with at least one linked bank and a fr
       than the unreachable one, so the user reconnects instead of retrying.
 - [ ] A run where some bridge rows cannot be parsed reports "Completed with
       errors" with a non-zero failed count and no success toast (never a clean
-      "Completed"); the rows are listed on the queue page's needs-attention
-      list.
+      "Completed"); the rows are listed in the Inbox's Failed imports section.
 - [ ] Run detail names each row's bank account the way the run summary does
       (the bank's own account name, falling back to the bridge id) — never a
       bare `ACT-…` id when the source's accounts are known. 📱
@@ -921,7 +936,7 @@ User C sees none of it.
 
 **Account sharing**
 - [ ] A shares an account with B (`guest`, then upgrade to `user`, `admin`):
-      B gets a sharing-request badge; the requests dialog lists the invite
+      B's Inbox badge increments; the Inbox Sharing section lists the invite
       with folder selection; Accept places the account in the chosen folder
       and A's categories/payees/tags resolve on B's side immediately (no
       "Uncategorized" rows, no stale caches).
@@ -940,8 +955,8 @@ User C sees none of it.
 
 **Budget sharing**
 - [ ] A shares a budget with B (reader and admin roles): B accepts via the
-      requests dialog; accepted budget becomes B's default; B sees elements,
-      figures, and A's shared accounts inside the budget.
+      Inbox Sharing section; accepted budget becomes B's default; B sees
+      elements, figures, and A's shared accounts inside the budget.
 - [ ] Budget roles: reader cannot change limits/structure (entry points
       disabled, not just failing); admin can set limits and edit structure.
 - [ ] A participant leaving (decline after accept / revoke) removes their
@@ -1111,6 +1126,9 @@ A dedicated pass on Mobile (375×812) and Tablet (768×1024):
 
 - [ ] Navigation: `/` shows the sidebar-as-home; entering any page shows a
       back-button header; back always returns to the logical origin.
+- [ ] Identity row 📱: tapping the avatar or name opens Profile; the gear opens
+      Settings and carries the update dot when an update is available; the
+      sidebar footer no longer has a Settings link.
 - [ ] Every dialog used in the suites above renders as a bottom-sheet drawer
       (short content: previews, action lists, confirms) or a full-screen sheet
       (long forms, e.g. Add transaction) on mobile (<640px), and a centered
