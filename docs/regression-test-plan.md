@@ -807,8 +807,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Balance reflects the new plan too (no manual reload).
 - [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
       on desktop a click opens the inline editor popover (with its comments
-      disclosure), on a phone a tap opens the set-limit dialog with the
-      cell's comments; either way the current value is prefilled and saving shows the new
+      disclosure), on a phone a tap opens the set-limit dialog with a
+      "Comments (N)" button; either way the current value is prefilled and saving shows the new
       Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the
@@ -846,6 +846,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       shows its own "comments" link in
       place of the amount, so a thread can be started even where there is no
       amount popover to hang the disclosure off of.
+- [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open
+      "Set budget": the sheet holds only the amount, a "Comments (N)" button
+      and the actions, and the amount stays visible above the keyboard.
+      Tapping "Comments (N)" closes the sheet and opens that cell's thread as
+      its own dialog (monthly view and Plan view alike).
 - [ ] 📱 On a phone, tap the Available pill of an individually-archived
       element (in the Archive section, on a budget you can edit): its comment
       thread opens and accepts a new comment.
