@@ -263,9 +263,11 @@ it('opens the actions modal from a long-press on a plan cell on a tablet', async
   await user.pointer({ keys: '[TouchA>]', target: cell })
   const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
   await user.pointer({ keys: '[/TouchA]', target: cell })
+  // the release's click is swallowed: no amount dialog under the modal
+  expect(screen.queryByLabelText('Budget')).toBeNull()
   expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
   await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
@@ -276,4 +278,17 @@ it('opens the thread as a popover from a marker tap on a tablet', async () => {
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+})
+
+it('opens the thread as a dialog, not a popover, from the amount dialog on a tablet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByLabelText(/^limit /))
+  await user.click(await screen.findByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.queryByTestId('comments-popover')).toBeNull()
 })

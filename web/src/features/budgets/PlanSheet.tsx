@@ -239,7 +239,8 @@ interface GridCtx {
   commentsTruncated: boolean
   /** `fromGrid` marks a keyboard-originated open (Shift+Enter / Shift+F2) so the
    *  grid reclaims focus when the thread closes; `anchor` is the cell to pin the
-   *  popover to (looked up from the grid when omitted) */
+   *  popover to: undefined = look it up from the grid; null = no anchor, open as a
+   *  sheet/dialog */
   openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
   openTransactions: (el: PlanElementDto, month: string) => void
   /** a thread is open: hover previews stay shut */
@@ -1189,6 +1190,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<BudgetFolderDto | null>(null)
   // the open comment thread: anchored to its cell on desktop/tablet, a sheet on a phone
   const [commentsDialogTarget, setCommentsDialogTarget] = useState<(PlanLimitTarget & { anchor: HTMLElement | null }) | null>(null)
+  const commentsOpen = commentsDialogTarget !== null
   // A modal opened from the keyboard (Enter on the name cell) has no trigger for
   // Radix to hand focus back to, so on close focus would fall to <body> and the
   // arrow keys go dead. Remember that the grid opened it and reclaim focus once it
@@ -1346,7 +1348,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         return
       }
       const col = visibleMonths.indexOf(target.month)
-      const anchor = opts.anchor ?? (col >= 0 ? document.getElementById(cellDomId(`${target.el.id}:${target.el.type}`, col)) : null)
+      const anchor =
+        opts.anchor !== undefined ? opts.anchor : col >= 0 ? document.getElementById(cellDomId(`${target.el.id}:${target.el.type}`, col)) : null
       if (opts.fromGrid) {
         editorFromGrid.current = true
       }
@@ -1543,7 +1546,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       commentsTruncated,
       openComments,
       openTransactions,
-      commentsOpen: commentsDialogTarget !== null,
+      commentsOpen,
       isPhone,
       canEdit,
       selection,
@@ -1581,7 +1584,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     commentsTruncated,
     openComments,
     openTransactions,
-    commentsDialogTarget,
+    commentsOpen,
     isPhone,
     canEdit,
     selection,
@@ -2388,7 +2391,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         commentCount={planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
         onOpenComments={() => {
           if (planLimitTarget) {
-            openComments(planLimitTarget)
+            openComments(planLimitTarget, { anchor: null })
           }
           setPlanLimitTarget(null)
         }}

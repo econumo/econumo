@@ -126,3 +126,15 @@ it('lets a guest start a thread on a cell with no existing comments, on compact 
   await user.click(within(cell).getByLabelText(/^comments /))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
+
+it("offers a guest's plan cell comments but no set budget in the cell menu", async () => {
+  useGuestPlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:0')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  expect(await screen.findByRole('menuitem', { name: 'Add comment' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Set budget' })).toBeNull()
+})
