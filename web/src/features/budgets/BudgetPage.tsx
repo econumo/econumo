@@ -808,7 +808,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                       if (cellComments.length === 0) {
                         return null
                       }
-                      return <CommentMarker count={cellComments.length} onOpen={(anchor) => openComments(element, anchor)} />
+                      return <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(element, anchor)} />
                     }}
                     renderRowWrapper={
                       editMode

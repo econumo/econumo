@@ -105,7 +105,7 @@ function SavingsRow({
           {planned}
         </button>
       )}
-      {comments.length > 0 ? <CommentMarker count={comments.length} onOpen={(anchor) => onOpenComments(row, anchor)} /> : null}
+      {comments.length > 0 ? <CommentMarker count={comments.length} placement="outset" onOpen={(anchor) => onOpenComments(row, anchor)} /> : null}
     </span>
   )
   return (

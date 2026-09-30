@@ -56,23 +56,33 @@ export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[
   return [...comments].sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : 0))
 }
 
-// The corner triangle on a commented amount cell. The 8px triangle is drawn on an
-// inner span so the button keeps a 20px hit area without taking layout space or
-// changing column width; the cell must be `relative`.
-export function CommentMarker({ count, onOpen }: { count: number; onOpen: (anchor: HTMLElement) => void }) {
+// The corner triangle on a commented amount cell. The triangle is drawn on an inner
+// span so the button keeps a 24px hit area without taking layout space or changing
+// column width; the cell must be `relative`. `outset` is for cells whose number is
+// flush with the cell's right edge (the monthly table and the savings block): the
+// mark then sits in the gap after the number instead of on top of its last digit.
+export function CommentMarker({
+  count,
+  onOpen,
+  placement = 'inset',
+}: {
+  count: number
+  onOpen: (anchor: HTMLElement) => void
+  placement?: 'inset' | 'outset'
+}) {
   const { t, i18n } = useTranslation()
   return (
     <button
       type="button"
       data-testid="comment-marker"
       aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)}
-      className="absolute right-0 top-0 flex size-5 items-start justify-end"
+      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(commentAnchorOf(e.currentTarget))
       }}
     >
-      <span className="h-0 w-0 border-l-[8px] border-t-[8px] border-l-transparent border-t-primary" />
+      <span className="h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent border-t-primary" />
     </button>
   )
 }
