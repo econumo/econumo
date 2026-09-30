@@ -843,7 +843,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Desktop: right-click a cell: Set budget / Comments (N) or Add comment /
       Show transactions. A guest sees no Set budget; the uncategorized row
       offers no comment item; savings cells offer no Show transactions.
-- [ ] Tablet (640–1023px): an editable cell's budgeted amount stays plain
+- [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
       text — editors reach comments through the corner marker (opens the
       thread popover) or a long-press, which opens a modal titled with the
       item's name and the same actions as right-click (Set budget / Comments
@@ -860,10 +860,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       arrow keys keep moving the selection. Plain Enter on the same cell opens
       the amount editor, which has no comments section.
 - [ ] On desktop, a non-editable cell (guest role, an archived element —
-      even on a budget you can edit — or a month outside the budget's range)
-      shows its own "comments" link in
-      place of the amount, so a thread can be started even where there is no
-      amount popover to hang the disclosure off of.
+      even on a budget you can edit — or a month outside the budget's range):
+      clicking its amount opens that cell's thread in a popover beside the
+      cell, so a thread can be started there too.
 - [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open
       "Set budget": the sheet holds only the amount, a "Comments (N)" button
       and the actions, and the amount stays visible above the keyboard.
