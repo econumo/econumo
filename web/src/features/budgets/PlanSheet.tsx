@@ -68,7 +68,7 @@ import {
 } from './queries'
 import { arrangementItem, moveElementInArrangement, placeElements } from './elementMove'
 import type { ElementContainer } from './elementMove'
-import { CommentsDialog } from './CommentsDialog'
+import { CommentsPanel } from './CommentsPanel'
 import { CommentMarker, CommentThread } from './CommentThread'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
@@ -2448,10 +2448,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
         }}
       />
 
-      <CommentsDialog
+      <CommentsPanel
         open={commentsDialogTarget !== null}
         onClose={() => setCommentsDialogTarget(null)}
         title={commentsDialogTarget ? elementDisplayName(commentsDialogTarget.el.id, commentsDialogTarget.el.name, t) : ''}
+        anchor={null}
         budgetId={budget.meta.id}
         elementId={commentsDialogTarget?.el.id ?? ''}
         period={commentsDialogTarget?.month ?? ''}

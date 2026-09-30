@@ -75,7 +75,7 @@ import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
 import { CommentMarker, CommentThread } from './CommentThread'
-import { CommentsDialog } from './CommentsDialog'
+import { CommentsPanel } from './CommentsPanel'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
@@ -1049,10 +1049,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         }}
       />
 
-      <CommentsDialog
+      <CommentsPanel
         open={commentsTarget !== null}
         onClose={() => setCommentsTarget(null)}
         title={commentsTarget ? elementDisplayName(commentsTarget.id, commentsTarget.name, t) : ''}
+        anchor={null}
         budgetId={budget.meta.id}
         elementId={commentsTarget?.id ?? ''}
         period={selectedDate}

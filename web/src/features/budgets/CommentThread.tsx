@@ -24,6 +24,9 @@ export interface CommentThreadProps {
   readOnly: boolean
   /** the fetch behind `comments` hit the 2000-item server cap and dropped the oldest */
   truncated: boolean
+  /** 'sheet' pins the composer to the bottom of the scrolling sheet body so the
+   *  on-screen keyboard never pushes the thread out of view */
+  layout?: 'popover' | 'sheet'
 }
 
 const MAX_COMMENT_RUNES = 500
@@ -64,7 +67,7 @@ export function CommentMarker({ count, onOpen }: { count: number; onOpen: () => 
   )
 }
 
-export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated }: CommentThreadProps) {
+export function CommentThread({ budgetId, elementId, period, comments, currentUserId, canModerate, readOnly, truncated, layout = 'popover' }: CommentThreadProps) {
   const { t, i18n } = useTranslation()
   const createComment = useCreateComment(budgetId)
   const updateComment = useUpdateComment(budgetId)
@@ -141,7 +144,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       <p className="text-sm font-medium">{t('budgets.page.plan.comments.title')}</p>
       {truncated ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.truncated')}</p> : null}
       <ul
-        className="flex max-h-64 flex-col gap-3 overflow-y-auto"
+        className={`flex flex-col gap-3 ${layout === 'popover' ? 'max-h-64 overflow-y-auto' : ''}`}
         aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), sorted.length, i18n.language)}
       >
         {sorted.length === 0 ? (
@@ -219,7 +222,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
       {readOnly ? (
         <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.read_only')}</p>
       ) : (
-        <div className="flex flex-col gap-1.5">
+        <div className={`flex flex-col gap-1.5 ${layout === 'sheet' ? 'sticky bottom-0 bg-background pt-2' : ''}`} data-testid="comment-composer">
           <CardField label={t('budgets.page.plan.comments.comment_label')} htmlFor="ct-composer">
             <Textarea
               id="ct-composer"
