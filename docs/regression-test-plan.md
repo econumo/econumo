@@ -825,6 +825,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
       there (cross-view sync).
+- [ ] 📱 A comment's time reads short, like "Sep 29, 6:42 PM" (no seconds),
+      in the thread and in the hover preview; a comment from an earlier year
+      also names the year.
 - [ ] Edit your own comment: the text updates and "(edited)" appears.
 - [ ] Desktop: a comment's pencil (edit) and bin (delete) icons appear only
       while the pointer is over that comment (or it has keyboard focus); 📱 on a

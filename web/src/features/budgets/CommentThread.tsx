@@ -47,8 +47,16 @@ function parseServerDateTime(s: string): Date {
   return new Date(Date.UTC(y, m - 1, d, hh, mm, ss))
 }
 
-export function formatCommentTime(createdAt: string, lang: string): string {
-  return parseServerDateTime(createdAt).toLocaleString(lang)
+// "Sep 29, 6:42 PM": no seconds, and the year only when it is not the current one
+export function formatCommentTime(createdAt: string, lang: string, now: Date = new Date()): string {
+  const date = parseServerDateTime(createdAt)
+  return date.toLocaleString(lang, {
+    year: date.getFullYear() === now.getFullYear() ? undefined : 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
 }
 
 // createdAt is the server's fixed-width "Y-m-d H:i:s" wire format: plain

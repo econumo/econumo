@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import type { BudgetCommentDto } from '@/api/dto/budget'
-import { CommentMarker, CommentThread, type CommentThreadProps } from './CommentThread'
+import { CommentMarker, CommentThread, formatCommentTime, type CommentThreadProps } from './CommentThread'
 
 const ada = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 const bob = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
@@ -345,4 +345,24 @@ it('with no comments, the marker is a hover-only "Add comment" corner that opens
 it('a marker with comments is always visible', () => {
   render(<CommentMarker count={2} onOpen={vi.fn()} />)
   expect(screen.getByTestId('comment-marker')).not.toHaveClass('invisible')
+})
+
+describe('formatCommentTime', () => {
+  // the wire value is UTC; build the expectation from the same instant so the
+  // test holds in any timezone the suite runs in
+  const at = '2026-09-29 18:42:24'
+  const instant = new Date(Date.UTC(2026, 8, 29, 18, 42, 24))
+  const short = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } as const
+
+  it('drops the seconds and the year within the current year', () => {
+    const text = formatCommentTime(at, 'en', new Date(2026, 11, 31))
+    expect(text).toBe(instant.toLocaleString('en', short))
+    expect(text).not.toContain('2026')
+  })
+
+  it('names the year for an earlier year', () => {
+    expect(formatCommentTime(at, 'en', new Date(2027, 5, 1))).toBe(
+      instant.toLocaleString('en', { ...short, year: 'numeric' }),
+    )
+  })
 })
