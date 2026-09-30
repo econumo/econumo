@@ -15,7 +15,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import type { BudgetBuckets, BucketStats, FolderBucket, SavingsTotals } from './budgetMath'
 import { budgetTotals, displayAvailable, elementDisplayName } from './budgetMath'
-import { useBudgetPeriodStore } from './budgetStore'
+import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
 export interface ElementRowExtras {
@@ -313,11 +313,6 @@ function ElementRow({
 
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
-
-/** the reporting-tags folder exists only in rendering: it has no folder row
- *  behind it, so it is keyed by a reserved literal that no real element id
- *  (a UUID) can collide with, and both fold levels persist like real ones */
-const REPORTING_TAGS_FOLD_ID = '__reporting_tags__'
 
 /** one reporting tag: the same [name flex-1][budgeted w-24][spent w-20/24][available w-20/24][symbol w-6]
  *  geometry as ElementRow, so the amount lands under the Spent header and gets
