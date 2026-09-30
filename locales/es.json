@@ -1415,6 +1415,22 @@
         "balance": "Saldo",
         "balance_hint": "Saldo al final del mes. Para el mes actual y los siguientes incluye los ahorros previstos que aún faltan."
       },
+      "phone": {
+        "income_summary": "Ingresos · {received} de {planned}",
+        "of": "{value} de {total}",
+        "row_aria": "{name}, presupuesto {budget}, gastado {spent}",
+        "income_row_aria": "{name}, previsto {planned}, recibido {received}",
+        "savings_row_aria": "{name}, previsto {planned}, ahorrado {saved}",
+        "balance": "Saldo a fin de mes"
+      },
+      "sheet": {
+        "received": "Recibido",
+        "covered": "Superado por {over} — cubierto con {carry} sobrante de meses anteriores",
+        "overspent": "Superado por {amount}",
+        "transactions": "Transacciones",
+        "set_plan": "Definir el plan",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Presupuestos y planes",
         "header": "Presupuestos y planes",

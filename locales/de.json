@@ -1415,6 +1415,22 @@
         "balance": "Saldo",
         "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
       },
+      "phone": {
+        "income_summary": "Einnahmen · {received} von {planned}",
+        "of": "{value} von {total}",
+        "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
+        "income_row_aria": "{name}, geplant {planned}, empfangen {received}",
+        "savings_row_aria": "{name}, geplant {planned}, gespart {saved}",
+        "balance": "Saldo am Monatsende"
+      },
+      "sheet": {
+        "received": "Empfangen",
+        "covered": "Um {over} überzogen — gedeckt durch {carry}, die noch aus früheren Monaten übrig sind",
+        "overspent": "Um {amount} überzogen",
+        "transactions": "Transaktionen",
+        "set_plan": "Plan festlegen",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Budgets & Pläne",
         "header": "Budgets & Pläne",

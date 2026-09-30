@@ -1415,6 +1415,22 @@
         "balance": "Saldo",
         "balance_hint": "Saldo aan het einde van de maand. Voor de huidige en latere maanden telt het geplande sparen dat nog moet komen mee."
       },
+      "phone": {
+        "income_summary": "Inkomsten · {received} van {planned}",
+        "of": "{value} van {total}",
+        "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
+        "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
+        "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
+        "balance": "Saldo aan het einde van de maand"
+      },
+      "sheet": {
+        "received": "Ontvangen",
+        "covered": "{over} overschreden — gedekt door {carry} die over is van eerdere maanden",
+        "overspent": "{amount} overschreden",
+        "transactions": "Transacties",
+        "set_plan": "Plan instellen",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Budgetten & plannen",
         "header": "Budgetten & plannen",

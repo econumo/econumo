@@ -1415,6 +1415,22 @@
         "balance": "Balance",
         "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
       },
+      "phone": {
+        "income_summary": "Income · {received} of {planned}",
+        "of": "{value} of {total}",
+        "row_aria": "{name}, budget {budget}, spent {spent}",
+        "income_row_aria": "{name}, planned {planned}, received {received}",
+        "savings_row_aria": "{name}, planned {planned}, saved {saved}",
+        "balance": "Balance at month end"
+      },
+      "sheet": {
+        "received": "Received",
+        "covered": "Over by {over} — covered by {carry} left from earlier months",
+        "overspent": "Overspent by {amount}",
+        "transactions": "Transactions",
+        "set_plan": "Set plan",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Budgets & Plans",
         "header": "Budgets & Plans",

@@ -1415,6 +1415,22 @@
         "balance": "Баланс",
         "balance_hint": "Баланс на конец месяца. Для текущего и следующих месяцев включает запланированные сбережения, которые ещё не отложены."
       },
+      "phone": {
+        "income_summary": "Доходы · {received} из {planned}",
+        "of": "{value} из {total}",
+        "row_aria": "{name}, бюджет {budget}, потрачено {spent}",
+        "income_row_aria": "{name}, запланировано {planned}, получено {received}",
+        "savings_row_aria": "{name}, запланировано {planned}, отложено {saved}",
+        "balance": "Баланс на конец месяца"
+      },
+      "sheet": {
+        "received": "Получено",
+        "covered": "Превышение на {over} — покрыто за счёт {carry}, оставшихся с прошлых месяцев",
+        "overspent": "Превышение на {amount}",
+        "transactions": "Транзакции",
+        "set_plan": "Задать план",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Бюджеты и планы",
         "header": "Бюджеты и планы",

@@ -1415,6 +1415,22 @@
         "balance": "Баланс",
         "balance_hint": "Баланс на кінець місяця. Для поточного й наступних місяців включає заплановані заощадження, які ще не відкладено."
       },
+      "phone": {
+        "income_summary": "Доходи · {received} з {planned}",
+        "of": "{value} з {total}",
+        "row_aria": "{name}, бюджет {budget}, витрачено {spent}",
+        "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
+        "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
+        "balance": "Баланс на кінець місяця"
+      },
+      "sheet": {
+        "received": "Отримано",
+        "covered": "Перевищення на {over} — покрито за рахунок {carry}, що залишилися з попередніх місяців",
+        "overspent": "Перевищення на {amount}",
+        "transactions": "Транзакції",
+        "set_plan": "Задати план",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Бюджети й плани",
         "header": "Бюджети й плани",

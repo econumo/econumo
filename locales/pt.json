@@ -1415,6 +1415,22 @@
         "balance": "Saldo",
         "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
       },
+      "phone": {
+        "income_summary": "Receitas · {received} de {planned}",
+        "of": "{value} de {total}",
+        "row_aria": "{name}, orçamento {budget}, gasto {spent}",
+        "income_row_aria": "{name}, planeado {planned}, recebido {received}",
+        "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
+        "balance": "Saldo no fim do mês"
+      },
+      "sheet": {
+        "received": "Recebido",
+        "covered": "Ultrapassado em {over} — coberto por {carry} restantes de meses anteriores",
+        "overspent": "Ultrapassado em {amount}",
+        "transactions": "Transações",
+        "set_plan": "Definir plano",
+        "converted": "≈ {amount} {currency}"
+      },
       "settings": {
         "menu_item": "Orçamentos e planos",
         "header": "Orçamentos e planos",
