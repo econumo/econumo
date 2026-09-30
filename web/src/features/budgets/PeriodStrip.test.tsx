@@ -1,12 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { server } from '@/test/msw'
-import { coreHandlers, fixtureWireBudget } from '@/test/fixtures'
 import { PeriodStrip } from './PeriodStrip'
-import { ExpenseWidget } from './ExpenseWidget'
 import { useBudgetPeriodStore } from './budgetStore'
-import type { BudgetDto } from '@/api/dto/budget'
 
 beforeEach(() => {
   localStorage.clear()
@@ -98,31 +93,4 @@ it('mouse wheel scrolls the strip horizontally (the scrollbar is hidden)', () =>
   expect(strip.scrollLeft).toBe(1240)
   fireEvent.wheel(strip, { deltaX: -100, deltaY: 0 })
   expect(strip.scrollLeft).toBe(1140)
-})
-
-it('widget renders spent/total, progress and the conversion hint', async () => {
-  server.use(...coreHandlers())
-  const budget = JSON.parse(JSON.stringify(fixtureWireBudget)) as BudgetDto
-  budget.balances[0] = { currencyId: 'cur-usd', startBalance: '100', endBalance: null, income: '400', expenses: '-450', exchanges: '-25', holdings: '30' }
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ExpenseWidget budget={budget} currencyId="cur-usd" />
-    </QueryClientProvider>,
-  )
-  expect(screen.getByText('Spending progress')).toBeInTheDocument()
-  expect(await screen.findByText('475.00 $')).toBeInTheDocument()
-  expect(screen.getByText('530.00 $')).toBeInTheDocument()
-  // budget currency = usd, selected = usd -> no conversion hint
-  expect(screen.queryByText(/average rate/)).not.toBeInTheDocument()
-})
-
-it('widget shows the conversion hint for a non-base currency', async () => {
-  server.use(...coreHandlers())
-  const budget = JSON.parse(JSON.stringify(fixtureWireBudget)) as BudgetDto
-  render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      <ExpenseWidget budget={budget} currencyId="cur-eur" />
-    </QueryClientProvider>,
-  )
-  expect(await screen.findByText(/Average rate for Jul 2026: 1 USD = 0.9/)).toBeInTheDocument()
 })

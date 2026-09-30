@@ -1188,9 +1188,7 @@
         "description": "U moet de uitnodiging accepteren voordat u toegang krijgt tot dit budget."
       },
       "expense_widget": {
-        "header": "Uitgaven",
-        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "{saved} van {planned} gepland gespaard"
+        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Budget dupliceren",

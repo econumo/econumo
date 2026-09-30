@@ -1188,9 +1188,7 @@
         "description": "Tienes que aceptar la invitación antes de acceder a este presupuesto."
       },
       "expense_widget": {
-        "header": "Progreso de los gastos",
-        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Ahorrado {saved} de {planned} previstos"
+        "conversion_rate": "Tipo de cambio promedio de {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplicar presupuesto",

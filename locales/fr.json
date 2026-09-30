@@ -1188,9 +1188,7 @@
         "description": "Vous devez accepter l’invitation avant d’accéder à ce budget."
       },
       "expense_widget": {
-        "header": "Suivi des dépenses",
-        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Épargné {saved} sur {planned} prévus"
+        "conversion_rate": "Taux moyen pour {period} : 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Dupliquer le budget",

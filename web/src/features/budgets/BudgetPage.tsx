@@ -71,7 +71,6 @@ import { currentMonth } from './planMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
-import { ExpenseWidget } from './ExpenseWidget'
 import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
@@ -310,7 +309,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       navigate(BUDGET_MODE_ROUTE[m])
     }
   }
-  const [selectedCurrencyId, setSelectedCurrencyId] = useState<Id | null>(null)
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
@@ -488,8 +486,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       </div>
     ) : null
   }
-
-  const budgetCurrencyIds = budget.balances.map((b) => b.currencyId)
 
   const handleDragStart = (event: { active: { id: string | number } }) => {
     const activeId = String(event.active.id)
@@ -702,26 +698,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             ))}
           </div>
         )}
-        {/* both views: the pills toggle the period widget above the table / the sheet */}
-        <span className="flex shrink-0 items-center gap-1">
-          {budgetCurrencyIds.map((currencyId) => {
-            const currency = currencies.find((c) => c.id === currencyId)
-            const active = selectedCurrencyId === currencyId
-            return (
-              <button
-                key={currencyId}
-                type="button"
-                aria-label={`currency ${currency?.code ?? currencyId}`}
-                aria-pressed={active}
-                title={currency?.name}
-                className={`flex size-7 items-center justify-center rounded-full border text-xs ${active ? 'border-econumo-magenta bg-econumo-magenta text-white' : 'text-muted-foreground hover:bg-accent'}`}
-                onClick={() => setSelectedCurrencyId(active ? null : currencyId)}
-              >
-                {currency?.symbol ?? '?'}
-              </button>
-            )
-          })}
-        </span>
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -779,8 +755,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
       {mode === 'plan' ? (
         <>
-          {/* the same period widget as the budget view, for the page's selected period */}
-          {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
           <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
         </>
       ) : (
@@ -805,8 +779,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             </div>
           ) : (
             <>
-              {selectedCurrencyId ? <ExpenseWidget budget={budget} currencyId={selectedCurrencyId} /> : null}
-
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
                 <DndContext
                   sensors={sensors}

@@ -1188,9 +1188,7 @@
         "description": "Precisa de aceitar o convite antes de aceder a este orçamento."
       },
       "expense_widget": {
-        "header": "Progresso das despesas",
-        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Poupado {saved} de {planned} planeados"
+        "conversion_rate": "Taxa média de {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplicar orçamento",

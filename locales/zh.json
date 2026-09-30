@@ -1188,9 +1188,7 @@
         "description": "访问此预算前，请先接受邀请。"
       },
       "expense_widget": {
-        "header": "支出进度",
-        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "已储蓄 {saved}，计划 {planned}"
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "复制预算",

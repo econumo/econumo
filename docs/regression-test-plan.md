@@ -614,7 +614,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       it becomes usable for accounts; edit it; delete it (soft delete —
       accounts/transactions in it keep resolving symbol and rate).
 - [ ] Rates caption shows the rate and the SPA converts non-base balances in
-      totals (sidebar total, budget expense widget note).
+      totals (sidebar total).
 - [ ] Change profile default currency (Settings → Profile) → totals and budget
       default currency chips update.
 
@@ -642,6 +642,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       where the strip scrolls by touch): they PAN the strip only — the
       selected month and the table below never change; panning to either
       edge keeps extending the window (past months included).
+- [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
+      no "Spending progress" widget appears anywhere on the page.
 - [ ] Currency filter chips (multi-currency data) filter rows/totals.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
@@ -821,12 +823,6 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A commented savings Planned cell carries the corner marker; clicking
       (tapping) it opens that cell's thread. A comment posted there shows in
       the Plan view on the same month's savings cell.
-- [ ] 📱 Expense widget (select a currency chip): with savings accounts it
-      shows "Saved X of Y planned" for the month in the budget currency, a
-      savings account in another currency converted at the month's rate;
-      a deleted savings account's plan is left out of "planned" while what it
-      saved still counts in "Saved"; without savings accounts the line is
-      absent.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
@@ -868,7 +864,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Revoke a participant: their comments on surviving cells still render
       their name.
 - [ ] Budget with accounts in two currencies: per-currency balances section is
-      correct; expense widget shows the conversion note.
+      correct.
 - [ ] Rates loaded by `currency:update-rates` (or the in-process updater) are
       applied, on SQLite AND PostgreSQL: an expense from a foreign-currency
       account in a budget-currency category counts in the category's spent at

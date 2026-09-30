@@ -7,7 +7,6 @@ import { coreHandlers, fixtureEur, fixtureUsd, fixtureWireBudget } from '@/test/
 import type { BudgetCommentDto, BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { SavingsBlock } from './SavingsBlock'
-import { ExpenseWidget } from './ExpenseWidget'
 import { useBudgetPeriodStore } from './budgetStore'
 import { commentCellKey } from './queries'
 
@@ -259,36 +258,6 @@ it('edit mode: dropping S2 above S1 moves it first; the block has its own DndCon
 
   onDragEnd({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } })
   expect(props.onMove).toHaveBeenCalledWith('acc-s2', null)
-})
-
-describe('ExpenseWidget savings line', () => {
-  function renderWidget(budget: BudgetDto) {
-    server.use(...coreHandlers())
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <ExpenseWidget budget={budget} currencyId="cur-usd" />
-      </QueryClientProvider>,
-    )
-  }
-
-  it('shows "Saved X of Y planned" in the budget currency, converting a EUR row', async () => {
-    // USD budget, EUR rate 0.9: s1 100/120 USD + s2 90/45 EUR (= 100/50 USD) + s3 0/10 USD
-    renderWidget(budgetWith([s1, s2, s3]))
-    expect(await screen.findByText('Saved 180.00 $ of 200.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
-  })
-
-  it('leaves a deleted account\'s plan out of "planned" but keeps its saved amount', async () => {
-    // s1 100/120 USD + a deleted account's row planned 50, saved 10 -> planned 100, saved 130
-    renderWidget(budgetWith([s1, { ...s3, budgeted: '50', available: '40' }]))
-    expect(await screen.findByText('Saved 130.00 $ of 100.00 $ planned')).toHaveAttribute('data-testid', 'expense-widget-savings')
-  })
-
-  it('omits the line without savings rows', async () => {
-    renderWidget(budgetWith([]))
-    expect(await screen.findByText('Spending progress')).toBeInTheDocument()
-    expect(await screen.findByText('45.50 $')).toBeInTheDocument()
-    expect(screen.queryByTestId('expense-widget-savings')).not.toBeInTheDocument()
-  })
 })
 
 describe('BudgetPage wiring', () => {
