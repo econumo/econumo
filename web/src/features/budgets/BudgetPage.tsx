@@ -35,7 +35,7 @@ import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetElementDto, BudgetSavingsElementDto } from '@/api/dto/budget'
-import { BudgetElementType } from '@/api/dto/budget'
+import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
 import { useUiStore } from '@/app/uiStore'
@@ -539,13 +539,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const setBudgetFor = (target: CellTarget) => (anchor: HTMLElement) =>
     isCompact ? setLimitTarget(target) : openLimitEditorIn(anchor)
   // phones keep stage 1's tap/long-press paths; edit mode owns the pointer for dragging
-  const cellMenuDisabled = isPhone || editMode
+  const cellActionsDisabled = isPhone || editMode
+  // the hover-only corner that starts a thread on a cell with none yet
+  const canAddComment = !cellActionsDisabled && !commentsReadOnly(budget.meta, selectedDate)
   const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement, { readOnly }: { readOnly: boolean }) => (
     <CellShell
       title={elementDisplayName(element.id, element.name, t)}
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
       previewDisabled={commentsTarget !== null || editMode}
-      menuDisabled={cellMenuDisabled}
+      actionsDisabled={cellActionsDisabled}
       onSetBudget={limitsEditable && !readOnly ? setBudgetFor(element) : undefined}
       onOpenComments={(anchor) => openComments(element, anchor)}
       onShowTransactions={() => setTransactionsTarget(transactionsTargetOf(element))}
@@ -558,7 +560,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       title={row.name}
       comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
       previewDisabled={commentsTarget !== null || editMode}
-      menuDisabled={cellMenuDisabled}
+      actionsDisabled={cellActionsDisabled}
       onSetBudget={limitsEditable && row.isArchived === 0 ? setBudgetFor(row) : undefined}
       onOpenComments={(anchor) => openComments(row, anchor)}
     >
@@ -805,7 +807,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     wrapBudgetCell={wrapBudgetCell}
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
-                      if (cellComments.length === 0) {
+                      if (cellComments.length === 0 && (!canAddComment || element.id === UNCATEGORIZED_ID)) {
                         return null
                       }
                       return <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(element, anchor)} />
@@ -867,6 +869,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     onOpenComments={(row, anchor) => openComments(row, anchor ?? null)}
                     renderPlannedEditor={inlineLimitEditor}
                     wrapPlannedCell={wrapPlannedCell}
+                    canAddComment={canAddComment}
                     onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
                   />
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} savings={phoneSavings} /> : null}

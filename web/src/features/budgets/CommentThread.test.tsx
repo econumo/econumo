@@ -311,3 +311,27 @@ it('the marker reports the cell it sits in as the anchor', async () => {
   await user.click(screen.getByTestId('comment-marker'))
   expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
 })
+
+// jsdom applies no stylesheet, so the classes are the honest check: `invisible`
+// until a mouse hovers the enclosing `group/cell` (Tailwind emits that variant
+// under `@media (hover: hover)` only, so touch screens never reveal it)
+it('with no comments, the marker is a hover-only "Add comment" corner that opens the thread', async () => {
+  const user = userEvent.setup()
+  const onOpen = vi.fn()
+  render(
+    <div data-comment-anchor="" data-testid="cell" className="group/cell">
+      <CommentMarker count={0} placement="outset" onOpen={onOpen} />
+    </div>,
+  )
+  expect(screen.queryByTestId('comment-marker')).toBeNull()
+  const add = screen.getByTestId('comment-marker-add')
+  expect(add).toHaveAccessibleName('Add comment')
+  expect(add).toHaveClass('invisible', 'group-hover/cell:visible', '-right-3', '-top-1')
+  await user.click(add)
+  expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
+})
+
+it('a marker with comments is always visible', () => {
+  render(<CommentMarker count={2} onOpen={vi.fn()} />)
+  expect(screen.getByTestId('comment-marker')).not.toHaveClass('invisible')
+})

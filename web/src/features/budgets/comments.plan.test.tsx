@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -226,45 +226,77 @@ it('opens the thread with Shift+F2', async () => {
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
-it('offers set budget, comments and transactions on a right-clicked plan cell', async () => {
+it('leaves a right-click on a plan cell to the browser: no app menu', async () => {
+  usePlanHandlers()
+  mockViewport()
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  // fireEvent returns false when a handler called preventDefault
+  expect(fireEvent.contextMenu(cell)).toBe(true)
+  await new Promise((r) => setTimeout(r, 100))
+  expect(screen.queryByRole('menu')).toBeNull()
+})
+
+it('offers a hover-only "Add comment" corner on a plan cell without comments, opening an empty thread beside it', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage('/plan')
 
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  expect(await screen.findByRole('menuitem', { name: 'Set budget' })).toBeInTheDocument()
-  expect(screen.getByRole('menuitem', { name: 'Show transactions' })).toBeInTheDocument()
-  await user.click(screen.getByRole('menuitem', { name: 'Comments (1)' }))
-  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+  expect(within(await screen.findByTestId('plan-cell-pe1:1')).queryByTestId('comment-marker-add')).toBeNull()
+  const cell = screen.getByTestId('plan-cell-pe1:0')
+  expect(cell).toHaveClass('group/cell')
+  const add = within(cell).getByTestId('comment-marker-add')
+  expect(add).toHaveAccessibleName('Add comment')
+  expect(add).toHaveClass('invisible', 'group-hover/cell:visible')
+  await user.click(add)
+  const popover = await screen.findByTestId('comments-popover')
+  expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()
+  expect(within(popover).getByRole('button', { name: 'Post' })).toBeInTheDocument()
+  expect(screen.queryByLabelText('Budget')).toBeNull()
 })
 
-it('keeps the grid selection while the arrow keys walk the cell menu', async () => {
+it('offers no add-comment corner on the uncategorized row', async () => {
   usePlanHandlers()
   mockViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
-
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(cell)
-  expect(cell).toHaveAttribute('aria-selected', 'true')
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  await screen.findByRole('menu')
-  await user.keyboard('{ArrowDown}{ArrowDown}')
-  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
-  expect(screen.getByTestId('plan-cell-pe1:2')).toHaveAttribute('aria-selected', 'false')
-})
-
-it('offers no comment item on the uncategorized row', async () => {
-  usePlanHandlers()
-  mockViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
   renderPage('/plan')
 
   const cell = await screen.findByTestId('plan-cell-uncategorized:1')
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  expect(screen.queryByRole('menuitem', { name: /comment/i })).toBeNull()
+  expect(within(cell).queryByTestId('comment-marker-add')).toBeNull()
+})
+
+it('offers no add-comment corner in edit-structure mode', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await waitFor(() => expect(within(screen.getByTestId('plan-cell-pe1:0')).queryByTestId('comment-marker-add')).toBeNull())
+})
+
+it('offers no add-comment corner on a month after the budget ends (its thread is read-only)', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, endedAt: '2026-08-01 00:00:00' } } },
+      }),
+    ),
+    planHandler(),
+    http.get('*/api/v1/budget/get-comment-list', () => HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })),
+  )
+  mockViewport()
+  renderPage('/plan')
+
+  // column 0 = July, inside the range; column 2 = September, after the end month
+  expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-cell-pe1:2')).queryByTestId('comment-marker-add')).toBeNull()
 })
 
 it('opens the actions modal from a long-press on a plan cell on a tablet', async () => {

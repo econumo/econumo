@@ -7,11 +7,9 @@ import type {
   Ref,
   RefObject,
 } from 'react'
-import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { TFunction } from 'i18next'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
@@ -42,8 +40,8 @@ interface CellShellProps {
   comments: BudgetCommentDto[]
   /** no hover preview while a thread is open (touch viewports never preview) */
   previewDisabled?: boolean
-  /** no menu / actions modal / Shift+F2: phones (stage 2 gives them the item sheet) and edit-structure mode */
-  menuDisabled?: boolean
+  /** no actions modal / Shift+F2: phones (stage 2 gives them the item sheet) and edit-structure mode */
+  actionsDisabled?: boolean
   onSetBudget?: (anchor: HTMLElement) => void
   /** omitted for the uncategorized row */
   onOpenComments?: (anchor: HTMLElement) => void
@@ -75,7 +73,7 @@ function assignRef<T>(ref: Ref<T> | undefined, value: T | null) {
 }
 
 // A grid re-renders every cell on each selection move, so the shell stays a bare
-// set of handlers on the cell itself: the Radix preview, menu and modal (and
+// set of handlers on the cell itself: the Radix preview and modal (and
 // their translated labels) mount as siblings only while open. Wrapping the cell
 // in their triggers instead cost several times the grid's own render and one
 // document listener per cell.
@@ -84,7 +82,7 @@ export function CellShell({
   title,
   comments,
   previewDisabled = false,
-  menuDisabled = false,
+  actionsDisabled = false,
   onSetBudget,
   onOpenComments,
   onShowTransactions,
@@ -92,19 +90,15 @@ export function CellShell({
   const isTouch = useIsCompact()
   const cellRef = useRef<HTMLElement | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
-  // the desktop menu's pointer position; kept after close until the menu has handed focus back
-  const [menu, setMenu] = useState<{ x: number; y: number; open: boolean } | null>(null)
   const [actionsModal, setActionsModal] = useState<'open' | 'closing' | null>(null)
   // a press means the user is acting on the cell (amount editor, selection): the
   // preview stays shut until the pointer leaves, or its pending open timer would
   // pop it over the editor the press just opened
   const pressed = useRef(false)
   const previewTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  // The menu/modal runs its action only after it has closed and handed focus back,
+  // The modal runs its action only after it has closed and handed focus back,
   // or the returning focus would steal it from the popover/dialog the action opens.
   const pending = useRef<ActionRun | null>(null)
-  // what had focus when the menu opened; a menu dismissed without an action returns it there
-  const menuOpener = useRef<Element | null>(null)
   const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pressStart = useRef<{ x: number; y: number } | null>(null)
   // the finger's release after a long-press fires a click on the cell underneath;
@@ -138,10 +132,8 @@ export function CellShell({
     [],
   )
 
-  const hasActions = !menuDisabled && !!(onSetBudget || onOpenComments || onShowTransactions)
   const previewable = !isTouch && !previewDisabled && comments.length > 0
-  const touchActions = isTouch && hasActions
-  const desktopMenu = !isTouch && hasActions
+  const touchActions = isTouch && !actionsDisabled && !!(onSetBudget || onOpenComments || onShowTransactions)
 
   const buildActions = (t: TFunction): CellAction[] => {
     const list: CellAction[] = []
@@ -190,21 +182,6 @@ export function CellShell({
     if (action && cellRef.current) {
       e.preventDefault()
       action(commentAnchorOf(cellRef.current))
-    }
-  }
-  const onMenuCloseAutoFocus = (e: Event) => {
-    const opener = menuOpener.current
-    menuOpener.current = null
-    setMenu(null)
-    runPending(e)
-    if (e.defaultPrevented) {
-      return
-    }
-    // Radix would focus the menu's trigger, an invisible stand-in at the pointer;
-    // a dismissed menu hands focus back to whatever had it before instead
-    e.preventDefault()
-    if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) {
-      opener.focus()
     }
   }
   const cancelLongPress = () => {
@@ -273,37 +250,23 @@ export function CellShell({
     },
     onContextMenu: (e: ReactMouseEvent<HTMLElement>) => {
       childProps.onContextMenu?.(e)
+      // the long-press is ours: no native callout / selection menu on touch.
+      // A mouse keeps the browser's own menu.
       if (touchActions) {
-        // the long-press is ours: no native callout / selection menu on touch
         e.preventDefault()
-        return
       }
-      if (!desktopMenu) {
-        return
-      }
-      e.preventDefault()
-      closePreview()
-      let { clientX: x, clientY: y } = e
-      // the keyboard's context-menu key reports no pointer position
-      if (x === 0 && y === 0) {
-        const rect = e.currentTarget.getBoundingClientRect()
-        x = rect.left
-        y = rect.bottom
-      }
-      menuOpener.current = document.activeElement
-      setMenu({ x, y, open: true })
     },
     onKeyDown: (e: ReactKeyboardEvent<HTMLElement>) => {
       childProps.onKeyDown?.(e)
       // Shift+F2 starts or opens the thread from any focused control in the cell:
-      // the marker exists only once a thread does, and not every keyboard has a
-      // context-menu key. Handled here so an enclosing grid does not open its own
-      // selected cell's thread as well.
+      // the add-comment corner shows only under a hovering mouse and never takes
+      // focus. Handled here so an enclosing grid does not open its own selected
+      // cell's thread as well.
       if (
         e.key === 'F2' &&
         e.shiftKey &&
         onOpenComments &&
-        !menuDisabled &&
+        !actionsDisabled &&
         !e.defaultPrevented &&
         e.currentTarget.contains(e.target as Node)
       ) {
@@ -324,17 +287,6 @@ export function CellShell({
           onClose={closePreview}
           onPointerEnter={clearPreviewTimer}
           onPointerLeave={() => schedulePreview(false)}
-        />
-      ) : null}
-      {desktopMenu && menu ? (
-        <CellMenu
-          at={menu}
-          buildActions={buildActions}
-          onPick={(run) => {
-            pending.current = run
-          }}
-          onDismiss={() => setMenu((m) => (m ? { ...m, open: false } : m))}
-          onCloseAutoFocus={onMenuCloseAutoFocus}
         />
       ) : null}
       {touchActions && actionsModal ? (
@@ -403,41 +355,6 @@ function CommentPreview({
         </div>
       </PopoverContent>
     </Popover>
-  )
-}
-
-function CellMenu({
-  at,
-  buildActions,
-  onPick,
-  onDismiss,
-  onCloseAutoFocus,
-}: {
-  at: { x: number; y: number; open: boolean }
-  buildActions: BuildActions
-  onPick: (run: ActionRun) => void
-  onDismiss: () => void
-  onCloseAutoFocus: (e: Event) => void
-}) {
-  const { t } = useTranslation()
-  return (
-    <DropdownMenu open={at.open} onOpenChange={(o) => !o && onDismiss()}>
-      {/* the menu positions against its trigger: a zero-size stand-in at the pointer,
-          portalled so it never lands inside a table row or a grid track */}
-      {createPortal(
-        <DropdownMenuTrigger asChild>
-          <span aria-hidden className="pointer-events-none fixed size-0" style={{ left: at.x, top: at.y }} />
-        </DropdownMenuTrigger>,
-        document.body,
-      )}
-      <DropdownMenuContent className="w-52" onCloseAutoFocus={onCloseAutoFocus}>
-        {buildActions(t).map((a) => (
-          <DropdownMenuItem key={a.key} onSelect={() => onPick(a.run)}>
-            {a.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }
 

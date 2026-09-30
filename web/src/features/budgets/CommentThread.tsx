@@ -61,6 +61,11 @@ export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[
 // column width; the cell must be `relative`. `outset` is for cells whose number is
 // flush with the cell's right edge (the monthly table and the savings block): the
 // mark then sits in the gap after the number instead of on top of its last digit.
+//
+// With no comments it is the add-comment corner: a faint triangle shown only while a
+// mouse hovers the enclosing `group/cell`. It is hidden with `visibility`, not
+// opacity, so it cannot be tapped or tabbed to while unseen; Tailwind's hover
+// variants apply only under `(hover: hover)`, so touch screens never show it.
 export function CommentMarker({
   count,
   onOpen,
@@ -71,18 +76,23 @@ export function CommentMarker({
   placement?: 'inset' | 'outset'
 }) {
   const { t, i18n } = useTranslation()
+  const add = count === 0
+  const label = add ? t('budgets.page.plan.comments.add') : pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)
   return (
     <button
       type="button"
-      data-testid="comment-marker"
-      aria-label={pluralPick(t('budgets.page.plan.comments.marker_aria'), count, i18n.language)}
-      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}`}
+      data-testid={add ? 'comment-marker-add' : 'comment-marker'}
+      aria-label={label}
+      title={add ? label : undefined}
+      className={`absolute z-10 flex size-6 items-start justify-end ${placement === 'outset' ? '-right-3 -top-1' : 'right-0 top-0'}${add ? ' group/add invisible group-hover/cell:visible' : ''}`}
       onClick={(e) => {
         e.stopPropagation()
         onOpen(commentAnchorOf(e.currentTarget))
       }}
     >
-      <span className="h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent border-t-primary" />
+      <span
+        className={`h-0 w-0 border-l-[10px] border-t-[10px] border-l-transparent ${add ? 'border-t-muted-foreground/40 group-hover/add:border-t-muted-foreground' : 'border-t-primary'}`}
+      />
     </button>
   )
 }

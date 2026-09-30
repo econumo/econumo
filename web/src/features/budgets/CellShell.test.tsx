@@ -140,62 +140,13 @@ it('never previews from keyboard focus', () => {
   expect(screen.queryByTestId('comment-preview')).toBeNull()
 })
 
-it('offers set budget, comments and transactions on right-click and runs the picked action with the cell', async () => {
-  const user = userEvent.setup()
-  const onSetBudget = vi.fn()
-  const onOpenComments = vi.fn()
-  const onShowTransactions = vi.fn()
-  const cell = renderShell({ onSetBudget, onOpenComments, onShowTransactions })
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  expect(await screen.findByRole('menuitem', { name: 'Set budget' })).toBeInTheDocument()
-  expect(screen.getByRole('menuitem', { name: 'Comments (3)' })).toBeInTheDocument()
-  expect(screen.getByRole('menuitem', { name: 'Show transactions' })).toBeInTheDocument()
-  await user.click(screen.getByRole('menuitem', { name: 'Comments (3)' }))
-  await waitFor(() => expect(onOpenComments).toHaveBeenCalledWith(cell))
-  expect(onSetBudget).not.toHaveBeenCalled()
-})
-
-it('omits the items the caller cannot use, and names an empty thread "Add comment"', async () => {
-  const user = userEvent.setup()
-  const cell = renderShell({ comments: [], onOpenComments: vi.fn() })
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  expect(await screen.findByRole('menuitem', { name: 'Add comment' })).toBeInTheDocument()
-  expect(screen.queryByRole('menuitem', { name: 'Set budget' })).toBeNull()
-  expect(screen.queryByRole('menuitem', { name: 'Show transactions' })).toBeNull()
-})
-
-it('opens the menu from the keyboard context-menu key too', async () => {
-  const cell = renderShell({ onOpenComments: vi.fn() })
-  // Shift+F10 / the ContextMenu key fire `contextmenu` with no pointer position
-  fireEvent.contextMenu(cell, { clientX: 0, clientY: 0 })
-  expect(await screen.findByRole('menuitem', { name: 'Comments (3)' })).toBeInTheDocument()
-})
-
-it('hands focus back to what had it when the menu is dismissed without an action', async () => {
-  const user = userEvent.setup()
-  const onOpenComments = vi.fn()
-  render(
-    <CellShell title="Groceries" comments={three} onOpenComments={onOpenComments}>
-      <div data-testid="cell" data-comment-anchor="">
-        <button type="button">700.00</button>
-      </div>
-    </CellShell>,
-  )
-  const amount = screen.getByRole('button', { name: '700.00' })
-  act(() => amount.focus())
-  await user.pointer({ keys: '[MouseRight]', target: amount })
-  await screen.findByRole('menu')
-  await user.keyboard('{Escape}')
-  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
-  await waitFor(() => expect(amount).toHaveFocus())
-  expect(onOpenComments).not.toHaveBeenCalled()
-})
-
-it('opens no menu when disabled', async () => {
-  const user = userEvent.setup()
-  const cell = renderShell({ menuDisabled: true, onOpenComments: vi.fn() })
-  await user.pointer({ keys: '[MouseRight]', target: cell })
+it('leaves a mouse right-click to the browser: no app menu, native menu not suppressed', async () => {
+  const cell = renderShell({ onSetBudget: vi.fn(), onOpenComments: vi.fn(), onShowTransactions: vi.fn() })
+  // fireEvent returns false when a handler called preventDefault
+  expect(fireEvent.contextMenu(cell)).toBe(true)
+  await new Promise((r) => setTimeout(r, 100))
   expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.queryByTestId('cell-actions')).toBeNull()
 })
 
 it('on a tablet, a long-press opens the actions modal and its release does not also tap the cell', async () => {
@@ -239,7 +190,7 @@ it('on a tablet, a long-press opens the actions modal and its release does not a
   expect(screen.queryByTestId('cell-actions')).toBeNull()
 })
 
-it('on a tablet, a quick tap still taps the cell, and there is no hover preview or context menu', async () => {
+it('on a tablet, a quick tap still taps the cell, and there is no hover preview or native context menu', async () => {
   tablet()
   const user = userEvent.setup()
   const onCellClick = vi.fn()
@@ -248,9 +199,10 @@ it('on a tablet, a quick tap still taps the cell, and there is no hover preview 
   expect(onCellClick).toHaveBeenCalledTimes(1)
   expect(screen.queryByTestId('cell-actions')).toBeNull()
   await user.hover(cell)
-  await user.pointer({ keys: '[MouseRight]', target: cell })
   await new Promise((r) => setTimeout(r, 500))
   expect(screen.queryByTestId('comment-preview')).toBeNull()
+  // the long-press is ours: no native callout on touch
+  expect(fireEvent.contextMenu(cell)).toBe(false)
   expect(screen.queryByRole('menu')).toBeNull()
   // the quick tap's release must not have started (and left pending) a long press
   expect(screen.queryByTestId('cell-actions')).toBeNull()
@@ -263,28 +215,28 @@ it('never remounts the cell: previewDisabled toggling and comments arriving/leav
     </div>
   )
   const { rerender } = render(
-    <CellShell title="Groceries" comments={three} menuDisabled>
+    <CellShell title="Groceries" comments={three} actionsDisabled>
       {cellChild}
     </CellShell>,
   )
   const before = screen.getByTestId('cell')
 
   rerender(
-    <CellShell title="Groceries" comments={three} menuDisabled previewDisabled>
+    <CellShell title="Groceries" comments={three} actionsDisabled previewDisabled>
       {cellChild}
     </CellShell>,
   )
   expect(screen.getByTestId('cell')).toBe(before)
 
   rerender(
-    <CellShell title="Groceries" comments={[]} menuDisabled previewDisabled>
+    <CellShell title="Groceries" comments={[]} actionsDisabled previewDisabled>
       {cellChild}
     </CellShell>,
   )
   expect(screen.getByTestId('cell')).toBe(before)
 
   rerender(
-    <CellShell title="Groceries" comments={[three[0]]} menuDisabled previewDisabled={false}>
+    <CellShell title="Groceries" comments={[three[0]]} actionsDisabled previewDisabled={false}>
       {cellChild}
     </CellShell>,
   )
@@ -310,11 +262,6 @@ it('mounts nothing but the cell itself while closed, and keeps the cell node thr
   expect(screen.getByTestId('comment-preview')).toBeInTheDocument()
   expect(screen.getByTestId('cell')).toBe(cell)
 
-  await user.pointer({ keys: '[MouseRight]', target: cell })
-  await screen.findByRole('menu')
-  expect(screen.getByTestId('cell')).toBe(cell)
-  await user.keyboard('{Escape}')
-  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull())
   await user.unhover(cell)
   tick(100)
   await waitFor(() => expect(document.body.childNodes).toHaveLength(1))
@@ -339,8 +286,7 @@ it('keeps the cell\'s own handlers and ref', async () => {
   await user.pointer({ keys: '[MouseRight]', target: cell })
   expect(onPointerDown).toHaveBeenCalled()
   expect(onContextMenu).toHaveBeenCalled()
-  expect(await screen.findByRole('menu')).toBeInTheDocument()
-  fireEvent.keyDown(screen.getByRole('button', { name: '700.00', hidden: true }), { key: 'a' })
+  fireEvent.keyDown(screen.getByRole('button', { name: '700.00' }), { key: 'a' })
   expect(onKeyDown).toHaveBeenCalled()
 })
 
@@ -370,7 +316,7 @@ describe('Shift+F2', () => {
     expect(onParentKeyDown.mock.calls.filter(([e]) => e.key === 'F2')).toHaveLength(0)
   })
 
-  it('leaves the key alone where the cell has no thread or no menu', async () => {
+  it('leaves the key alone where the cell has no thread', async () => {
     const user = userEvent.setup()
     const onParentKeyDown = vi.fn()
     renderKeyboardShell({}, onParentKeyDown)
@@ -378,10 +324,10 @@ describe('Shift+F2', () => {
     expect(onParentKeyDown.mock.calls.filter(([e]) => e.key === 'F2')).toHaveLength(1)
   })
 
-  it('does nothing when the menu is disabled (phones, edit mode)', async () => {
+  it('does nothing when the cell actions are disabled (phones, edit mode)', async () => {
     const user = userEvent.setup()
     const onOpenComments = vi.fn()
-    renderKeyboardShell({ onOpenComments, menuDisabled: true })
+    renderKeyboardShell({ onOpenComments, actionsDisabled: true })
     await user.keyboard('{Shift>}{F2}{/Shift}')
     expect(onOpenComments).not.toHaveBeenCalled()
   })

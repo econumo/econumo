@@ -42,8 +42,10 @@ interface SavingsBlockProps {
   /** desktop: the inline editor the table's budgeted cells use; replaces the
    *  onEditPlanned button on editable cells */
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
-  /** wraps the planned cell (hover preview + cell menu), mirroring the table's `wrapBudgetCell` */
+  /** wraps the planned cell (hover preview + touch actions), mirroring the table's `wrapBudgetCell` */
   wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
+  /** a cell with no comments shows the hover-only add-comment corner */
+  canAddComment?: boolean
 }
 
 function SortableSavingsRow({ id, children }: { id: string; children: ReactNode }) {
@@ -72,6 +74,7 @@ function SavingsRow({
   onOpenComments,
   renderPlannedEditor,
   wrapPlannedCell,
+  canAddComment,
 }: {
   row: BudgetSavingsElementDto
   currency: CurrencyDto | undefined
@@ -82,13 +85,14 @@ function SavingsRow({
   onOpenComments: (row: BudgetSavingsElementDto, anchor?: HTMLElement) => void
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
   wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
+  canAddComment: boolean
 }) {
   const { t } = useTranslation()
   const opts = { showCurrency: false, useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 }
   const planned = moneyFormat(row.budgeted, currency, opts)
   const deleted = row.isArchived === 1
   const cell = (
-    <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
+    <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`group/cell relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
       {editMode ? (
         planned
       ) : editable && renderPlannedEditor ? (
@@ -105,7 +109,7 @@ function SavingsRow({
           {planned}
         </button>
       )}
-      {comments.length > 0 ? <CommentMarker count={comments.length} placement="outset" onOpen={(anchor) => onOpenComments(row, anchor)} /> : null}
+      {comments.length > 0 || canAddComment ? <CommentMarker count={comments.length} placement="outset" onOpen={(anchor) => onOpenComments(row, anchor)} /> : null}
     </span>
   )
   return (
@@ -141,6 +145,7 @@ export function SavingsBlock({
   onMove,
   renderPlannedEditor,
   wrapPlannedCell,
+  canAddComment = false,
 }: SavingsBlockProps) {
   const { t } = useTranslation()
   const folded = useBudgetPeriodStore((s) => !!s.planFolds[FOLD_KEY])
@@ -195,6 +200,7 @@ export function SavingsBlock({
       onOpenComments={onOpenComments}
       renderPlannedEditor={renderPlannedEditor}
       wrapPlannedCell={wrapPlannedCell}
+      canAddComment={canAddComment}
     />
   )
 

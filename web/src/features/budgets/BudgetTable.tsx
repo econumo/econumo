@@ -25,7 +25,7 @@ export interface ElementRowExtras {
    *  here (non-editable role, an archived element, or a read-only section): the
    *  plain budgeted value opens the cell's thread */
   onBudgetCellComments?: (element: BudgetElementDto, anchor: HTMLElement) => void
-  /** wraps the budgeted cell (hover preview + cell menu); `readOnly` marks a row
+  /** wraps the budgeted cell (hover preview + touch actions); `readOnly` marks a row
    *  whose limit can never be set here (the Archive section) */
   wrapBudgetCell?: (element: BudgetElementDto, cell: ReactElement, opts: { readOnly: boolean }) => ReactNode
   /** the comment-marker overlay for the budgeted cell — absolutely positioned by
@@ -230,7 +230,7 @@ function ElementRow({
           const cell = (
             <span
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
-              className="relative hidden w-24 text-right text-[15px] tabular-nums sm:block"
+              className="group/cell relative hidden w-24 text-right text-[15px] tabular-nums sm:block"
               data-testid="cell-budgeted"
             >
               {isUncategorized ? (

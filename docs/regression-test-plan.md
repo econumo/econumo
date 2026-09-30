@@ -829,8 +829,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Another participant cannot edit your comment; the budget owner can
       delete it.
 - [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
-- [ ] A cell with comments shows the corner marker; a cell without shows none;
-      the uncategorized row never shows one.
+- [ ] A cell with comments shows the purple corner marker; a cell without
+      shows none (only the faint hover corner below); the uncategorized row
+      never shows one.
 - [ ] Desktop: click a cell's corner marker (Budget view, Plan view, a
       savings Planned cell): the thread opens in a popover beside that cell.
       Clicking another cell's marker switches to that cell's thread.
@@ -842,19 +843,24 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       and never shows while the thread or the amount editor is open — not even
       when the pointer drifts off the open amount editor and back over the
       cell. Tabbing onto a cell's amount shows no card.
-- [ ] Desktop: right-click a cell: Set budget / Comments (N) or Add comment /
-      Show transactions. A guest sees no Set budget; the uncategorized row
-      offers no comment item; savings cells offer no Show transactions.
-      On the plan grid, the arrow keys move through the open menu and leave
-      the grid's selected cell where it was.
+- [ ] Desktop: hover a cell with no comments (Budget view budgeted amount,
+      Archive rows included; savings Planned cell; Plan view month cell): a
+      faint grey triangle appears at its top-right, where the purple marker
+      would be, and disappears when the pointer leaves. Clicking it opens the
+      empty thread in a popover beside the cell (the amount editor does not
+      open). A guest gets it too. It never appears on the uncategorized row,
+      in edit-structure mode, on an archived budget or a month outside the
+      budget's range, or on phones and tablets. Right-clicking a cell shows
+      the browser's normal context menu.
 - [ ] Desktop, monthly view: Tab to a budgeted amount (or a savings Planned
       amount) with no comments yet and press Shift+F2: that cell's thread
       opens in a popover beside it, ready for a first comment.
 - [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
       text — editors reach comments through the corner marker (opens the
       thread popover) or a long-press, which opens a modal titled with the
-      item's name and the same actions as right-click (Set budget / Comments
-      / Show transactions); for a guest or an archived row, tapping the
+      item's name and the cell's actions (Set budget, Comments (N) or Add
+      comment, Show transactions — a guest gets no Set budget, a savings cell
+      no Show transactions); for a guest or an archived row, tapping the
       amount opens the thread instead. Lifting the finger does not also open
       the set-limit dialog, and a quick tap still behaves as before. No hover
       preview on a tablet, and the set-limit dialog (Budget and Plan views)

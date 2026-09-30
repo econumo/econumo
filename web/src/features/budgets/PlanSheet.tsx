@@ -579,7 +579,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
               onClick={(e) => ctx.select(rk, i, e)}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
@@ -634,7 +634,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
                 </span>
               ) : null}
-              {commentCount > 0 && !isUncategorized ? (
+              {(commentCount > 0 || (!ctx.isPhone && !ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (
@@ -658,7 +658,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               title={displayName}
               comments={isUncategorized ? [] : cellComments}
               previewDisabled={ctx.commentsOpen || ctx.editMode}
-              menuDisabled={ctx.isPhone || ctx.editMode}
+              actionsDisabled={ctx.isPhone || ctx.editMode}
               onSetBudget={editable ? (anchor) => (ctx.isCompact ? ctx.openDialog(target) : openLimitEditorIn(anchor)) : undefined}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
               onShowTransactions={

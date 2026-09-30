@@ -525,15 +525,32 @@ describe('monthly Savings block', () => {
     expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
   })
 
-  it('desktop: the planned cell menu offers comments alongside set budget', async () => {
+  it('desktop: a planned cell without comments offers the hover-only "Add comment" corner, opening an empty thread', async () => {
     useSavingsHandlers()
+    server.use(
+      http.get('*/api/v1/budget/get-comment-list', () => HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })),
+    )
     const user = userEvent.setup()
     renderPage()
     const row = await screen.findByTestId('savings-row-acc-s1')
     const cell = within(row).getByTestId('savings-planned')
-    await user.pointer({ keys: '[MouseRight]', target: cell })
-    await user.click(await screen.findByRole('menuitem', { name: 'Comments (1)' }))
-    expect(await screen.findByText('Bonus goes here')).toBeInTheDocument()
+    expect(cell).toHaveClass('group/cell')
+    expect(within(cell).queryByTestId('comment-marker')).toBeNull()
+    const add = await within(cell).findByTestId('comment-marker-add')
+    expect(add).toHaveAccessibleName('Add comment')
+    expect(add).toHaveClass('invisible', 'group-hover/cell:visible')
+    await user.click(add)
+    const popover = await screen.findByTestId('comments-popover')
+    expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()
+    expect(within(popover).getByRole('button', { name: 'Post' })).toBeInTheDocument()
+  })
+
+  it('desktop: a commented planned cell shows its marker and no add corner', async () => {
+    useSavingsHandlers()
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    await within(row).findByTestId('comment-marker')
+    expect(within(row).queryByTestId('comment-marker-add')).toBeNull()
   })
 
   it('compact: Planned opens the set-limit dialog with a button to the cell thread', async () => {
