@@ -22,7 +22,9 @@ export function InboxPage() {
   const { t } = useTranslation()
   const inbox = useInbox()
   const [skippedOpen, setSkippedOpen] = useState(false)
-  const empty = inbox.isLoaded && inbox.count === 0 && inbox.skipped.length === 0
+  // React Query v5 keeps stale data on a failed background refetch, so an
+  // empty cached queue + a failed refetch must not still read "All caught up".
+  const empty = inbox.isLoaded && !inbox.importsError && inbox.count === 0 && inbox.skipped.length === 0
 
   return (
     <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME}>

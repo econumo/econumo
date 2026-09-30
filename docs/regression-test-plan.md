@@ -416,6 +416,9 @@ navigation (single-pane vs sidebar).
 - [ ] Sync problem 📱: a SimpleFIN sync that fails shows "<source> sync failed",
       the time and the error in the Inbox; tapping it opens the SimpleFIN
       settings page.
+- [ ] Remap is not a sync problem 📱: mapping an Apple Wallet card in a
+      currency with no stored rate leaves its taps under To review and adds
+      nothing to Sync problems or the badge beyond those rows.
 - [ ] No banners for attention items 📱: only the subscription banner and the
       server-version notice ever appear above the app; pending imports never
       show a top banner.

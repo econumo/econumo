@@ -2,10 +2,11 @@ import type { ReactElement } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { createMemoryRouter, RouterProvider } from 'react-router'
+import { createMemoryRouter, Outlet, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
+import { InboxButton } from './InboxButton'
 import { InboxPage } from './InboxPage'
 
 vi.mock('@/hooks/useIsCompact', () => ({ useIsCompact: () => false }))
@@ -95,6 +96,25 @@ it('keeps the skipped list collapsed until its header is toggled', async () => {
   expect(await screen.findByRole('button', { name: 'Restore Blue Bottle' })).toBeInTheDocument()
 })
 
+it('does not show All caught up next to the error when a background refetch fails on an empty cached queue', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] } }))
+  const router = createMemoryRouter([{ path: '/inbox', element: <InboxPage /> }], { initialEntries: ['/inbox'] })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('All caught up')).toBeInTheDocument()
+
+  server.use(http.get('*/api/v1/import/get-queued-event-list', () =>
+    HttpResponse.json({ success: false, message: 'Something went wrong. Please try again.', code: 500, errors: {} }, { status: 500 })))
+  await queryClient.refetchQueries({ queryKey: ['importQueue'] })
+
+  await screen.findByText('Something went wrong. Please try again.')
+  expect(screen.queryByText('All caught up')).toBeNull()
+})
+
 it('shows the generic error with a working retry when the queue fails to load', async () => {
   let calls = 0
   server.use(...coreHandlers())
@@ -125,7 +145,7 @@ it('a partial sync problem is worded differently', async () => {
   expect(await screen.findByText('Bank synced with errors')).toBeInTheDocument()
 })
 
-it('puts Sharing before To review, and accepting a budget invite drops it and navigates to the budget page', async () => {
+it('puts Sharing before To review, and accepting a budget invite drops it, navigates to the budget page, and lowers the Inbox count', async () => {
   let budgetListCalls = 0
   server.use(...coreHandlers({ importQueue: { queued: [queued()], skipped: [], failed: [] } }))
   server.use(
@@ -140,17 +160,46 @@ it('puts Sharing before To review, and accepting a budget invite drops it and na
       HttpResponse.json({ success: true, message: '', data: { user: { id: 'u1', name: 'Ada', avatar: 'face:emerald', options: [] } } }),
     ),
   )
-  renderInbox([{ path: '/budget', element: <div>BUDGET PAGE</div> }])
+  // InboxButton is mounted in a layout wrapping both routes so it survives
+  // the post-accept navigation away from InboxPage, letting the badge count
+  // be observed both before and after the mutation clears the invite.
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const router = createMemoryRouter(
+    [
+      {
+        element: (
+          <div>
+            <InboxButton variant="row" />
+            <Outlet />
+          </div>
+        ),
+        children: [
+          { path: '/inbox', element: <InboxPage /> },
+          { path: '/budget', element: <div>BUDGET PAGE</div> },
+        ],
+      },
+    ],
+    { initialEntries: ['/inbox'] },
+  )
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
 
   await screen.findByText('Blue Bottle')
   await screen.findByText('Partner invited you')
   const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
   expect(headings.indexOf('Sharing')).toBeGreaterThanOrEqual(0)
   expect(headings.indexOf('Sharing')).toBeLessThan(headings.indexOf('To review'))
+  await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('2'))
 
   const user = userEvent.setup()
   await user.click(screen.getByRole('button', { name: 'Accept' }))
   expect(await screen.findByText('BUDGET PAGE')).toBeInTheDocument()
+
+  expect(screen.queryByText('Partner invited you')).toBeNull()
+  await waitFor(() => expect(screen.getByTestId('inbox-badge')).toHaveTextContent('1'))
 })
 
 it('shows only the Sharing section when there is a pending invite and no imports', async () => {

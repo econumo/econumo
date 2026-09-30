@@ -18,6 +18,11 @@ export interface Inbox {
 }
 
 export function isSyncProblem(source: ImportSourceDto): boolean {
+  // Only SimpleFIN sources pull on a schedule; a push provider's (Apple
+  // Wallet) only run is a card remap that leaves taps queued (e.g. no stored
+  // exchange rate) and marks itself "partial" — those taps already surface
+  // under To review, and the Apple Wallet page has no sync action to retry.
+  if (source.provider !== 'simplefin') return false
   return source.lastRunStatus === 'failed' || source.lastRunStatus === 'partial'
 }
 

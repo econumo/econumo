@@ -470,7 +470,7 @@
   },
   "inbox": {
     "title": "Caixa de entrada",
-    "open": "Caixa de entrada, {count} pendentes",
+    "open": "Caixa de entrada: {count} por rever",
     "empty": "Tudo em dia",
     "sections": {
       "sharing": "Partilhas",

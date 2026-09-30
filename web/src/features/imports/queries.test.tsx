@@ -123,6 +123,19 @@ it('useSyncImportSource refreshes ledger caches only when the run wrote somethin
   expect(trackEventMock).toHaveBeenCalledWith(METRICS.IMPORT_SYNC, { trigger: 'manual', imported: 2, matched: 1 })
 })
 
+it('useSyncImportSource invalidates the source list on a failed sync (a failed run still recorded on the source)', async () => {
+  server.use(http.post('*/api/v1/import/sync-source', () =>
+    HttpResponse.json({ success: false, message: 'boom', code: 0, errors: {} }, { status: 500 })))
+  const { queryClient, wrapper } = makeWrapper()
+  queryClient.setQueryData(queryKeys.importSources, [wireSource])
+  const { result } = renderHook(() => useSyncImportSource(), { wrapper })
+  await act(() =>
+    result.current.mutateAsync({ sourceId: 's1', accessUrl: 'https://u:p@b/x', startDate: '2026-08-01' }).catch(() => {}),
+  )
+  await waitFor(() => expect(result.current.isError).toBe(true))
+  expect(queryClient.getQueryState(queryKeys.importSources)?.isInvalidated).toBe(true)
+})
+
 it('getImportCredentialKey maps the empty no-key-yet payload to null', async () => {
   const { wrapper } = makeWrapper()
   const { result } = renderHook(() => useImportCredentialKey(), { wrapper })

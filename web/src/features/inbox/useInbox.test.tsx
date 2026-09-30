@@ -38,8 +38,14 @@ beforeEach(() => {
 
 it.each([
   ['failed', true], ['partial', true], ['running', false], ['completed', false], ['', false],
-])('isSyncProblem(%s) = %s', (status, expected) => {
+])('isSyncProblem(simplefin, %s) = %s', (status, expected) => {
   expect(isSyncProblem(src({ lastRunStatus: status }) as never)).toBe(expected)
+})
+
+it.each([
+  ['partial', false], ['failed', false],
+])('isSyncProblem(apple-wallet, %s) = %s', (status, expected) => {
+  expect(isSyncProblem(src({ provider: 'apple-wallet', lastRunStatus: status }) as never)).toBe(expected)
 })
 
 it('formats the badge count', () => {
