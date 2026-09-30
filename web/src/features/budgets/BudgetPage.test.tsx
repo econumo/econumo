@@ -570,7 +570,7 @@ describe('monthly Savings block', () => {
     expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
   })
 
-  it('compact: Planned opens the set-limit dialog with the cell thread', async () => {
+  it('compact: Planned opens the set-limit dialog with a button to the cell thread', async () => {
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({
       matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     }))
@@ -582,7 +582,8 @@ describe('monthly Savings block', () => {
     expect(within(row).queryByRole('button', { name: 'limit Rainy day' })).not.toBeInTheDocument()
     await user.click(within(row).getByRole('button', { name: 'planned Rainy day' }))
     const input = await screen.findByLabelText('Budget')
-    expect(screen.getByText('Bonus goes here')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
+    expect(screen.queryByText('Bonus goes here')).not.toBeInTheDocument()
     await user.clear(input)
     await user.type(input, '250')
     await user.click(screen.getByRole('button', { name: 'Save' }))

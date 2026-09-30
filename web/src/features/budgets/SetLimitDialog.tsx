@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/CalculatorInput'
@@ -13,14 +12,16 @@ interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
   onClose: () => void
   onCommit: (elementId: string, amount: string | null) => void
-  /** the comments thread for this cell — rendered under the amount card, always
-   *  expanded (unlike the desktop popover's disclosure): there is no room here
-   *  for a second collapsed layer on top of a full-screen dialog. */
-  comments?: ReactNode
+  /** the cell's comment count, shown on the button that opens its thread */
+  commentCount?: number
+  /** hands the cell over to the standalone comments dialog. The thread is never
+   *  rendered inside this sheet: on a phone the composer pushed the amount card
+   *  out of view above the on-screen keyboard. */
+  onOpenComments?: () => void
 }
 
 // Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit, comments }: SetLimitDialogProps) {
+export function SetLimitDialog({ target, onClose, onCommit, commentCount = 0, onOpenComments }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +67,11 @@ export function SetLimitDialog({ target, onClose, onCommit, comments }: SetLimit
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
+        {onOpenComments ? (
+          <button type="button" className="self-start text-sm font-medium text-muted-foreground hover:underline" onClick={onOpenComments}>
+            {t('budgets.page.plan.comments.disclosure', { count: commentCount })}
+          </button>
+        ) : null}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}
@@ -73,7 +79,6 @@ export function SetLimitDialog({ target, onClose, onCommit, comments }: SetLimit
           <Button type="submit">{t('common.button.save.label')}</Button>
         </div>
       </form>
-      {comments ? <div className="mt-2 border-t pt-4">{comments}</div> : null}
     </ResponsiveDialog>
   )
 }
