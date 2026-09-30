@@ -35,7 +35,7 @@ contract changes.
 | Row colour | Driven by Available: neutral / amber (over this month, covered by carry-over) / red (Available < 0) |
 | Income on phone | One collapsed summary row at the top, expands to income rows |
 | Comments | Fully separate from the amount editor, both views, all viewports |
-| Starting a thread | Right-click (desktop) / long-press (tablet) cell menu; item sheet on phone |
+| Starting a thread | Right-click menu (desktop); long-press actions modal (tablet); item sheet (phone) |
 | Desktop density | One emphasised number per view, colour only for problems, drop repeated chrome |
 | Currency | No symbol on budget-currency amounts; budget currency named once in the column-heading row; foreign-currency items get a tag next to the name |
 | Header currency chips + "Spending progress" widget | **Removed**; the average-rate note moves into the item sheet |
@@ -202,7 +202,11 @@ is unchanged.
 
 - No hover preview.
 - Tap marker → `CommentsPopover`.
-- Long-press a cell → the same menu as right-click.
+- Long-press a cell → a **modal** titled with the item's name, listing the same
+  actions as the desktop right-click menu (Set budget, Comments (N) / Add
+  comment, Show transactions) as full-width buttons — the phone's item-sheet
+  pattern rather than a small popup menu. The finger's release must not also
+  trigger the cell's tap action.
 
 ### Phone
 

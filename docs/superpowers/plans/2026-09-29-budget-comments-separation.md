@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Take budget-cell comments out of the amount editor everywhere and give them their own Excel-style entry points (corner marker → anchored thread popover, hover preview, right-click / long-press cell menu, Shift+F2), and remove the header currency chips and the "Spending progress" widget.
+**Goal:** Take budget-cell comments out of the amount editor everywhere and give them their own Excel-style entry points (corner marker → anchored thread popover, hover preview, right-click cell menu on desktop, long-press actions modal on tablets, Shift+F2), and remove the header currency chips and the "Spending progress" widget.
 
-**Architecture:** Frontend only (`web/`). One page-level "open thread" state per view now carries an optional DOM anchor; a new `CommentsPanel` renders it as a popover anchored to that cell (desktop/tablet) or as a bottom sheet (phone, or no anchor). A new `CellShell` wraps a budget cell with the hover preview and the context menu, so the monthly table, the savings block and the plan grid share one implementation. `LimitEditor` becomes amount-only.
+**Architecture:** Frontend only (`web/`). One page-level "open thread" state per view now carries an optional DOM anchor; a new `CommentsPanel` renders it as a popover anchored to that cell (desktop/tablet) or as a bottom sheet (phone, or no anchor). A new `CellShell` wraps a budget cell with the hover preview and the cell actions (right-click menu on desktop, long-press modal on tablets), so the monthly table, the savings block and the plan grid share one implementation. `LimitEditor` becomes amount-only.
 
 **Tech Stack:** React 19, TypeScript, Radix primitives via shadcn (`popover`, `hover-card`, `context-menu` in `web/src/components/ui/`), TanStack Query, react-i18next, vitest + Testing Library + MSW, pnpm.
 
@@ -23,7 +23,7 @@
 
 ## Review Focus
 
-1. **Long-press on a tablet cell opens only the menu** — the release after a 700 ms touch hold must not also fire the cell's tap action (set-limit dialog / select). Test: Task 3 Step 1 (`suppresses the click that ends a touch long-press`).
+1. **Long-press on a tablet cell opens only the actions modal** — the release after the 500 ms touch hold must not also fire the cell's tap action (set-limit dialog / select), and a quick tap must still work. Test: Task 3 Step 1 (`on a tablet, a long-press opens the actions modal…` and `…a quick tap still taps the cell…`).
 2. **Clicking another cell's marker while a thread popover is open switches to that cell's thread** (outside-press closes the first, the click opens the second) — it must not end with nothing open. Test: Task 4 Step 1 (`switches the thread when another marker is clicked`).
 3. **A phone never gets an anchored popover**, even when the caller passes an anchor (marker taps on savings/plan cells do) — it gets the bottom sheet. Test: Task 2 Step 1 (`ignores the anchor on a phone`).
 4. **The hover preview never sits on top of an open amount editor or thread** — a pointer press on the cell closes it and blocks it until the pointer leaves; it is disabled while a thread is open. Test: Task 3 Step 1 (`closes the preview on press and keeps it closed until the pointer leaves`).
@@ -37,7 +37,8 @@
 |---|---|
 | `web/src/features/budgets/cellDom.ts` (create) | DOM helpers shared by all three surfaces: find a cell's comment anchor, open the inline amount editor inside a cell |
 | `web/src/features/budgets/CommentsPanel.tsx` (create; replaces `CommentsDialog.tsx`) | Presents one thread: popover anchored to a cell, or a bottom sheet |
-| `web/src/features/budgets/CellShell.tsx` (create) | Wraps one budget cell with the hover preview and the right-click / long-press menu |
+| `web/src/features/budgets/CellShell.tsx` (create) | Wraps one budget cell with the hover preview (desktop), the right-click menu (desktop) and the long-press actions modal (tablet) |
+| `web/src/components/ResponsiveDialog.tsx` (modify) | Passes `onCloseAutoFocus` through |
 | `web/src/features/budgets/CommentThread.tsx` (modify) | `layout` prop (pinned composer in a sheet); exported date/sort helpers; bigger `CommentMarker` that reports its anchor |
 | `web/src/features/budgets/LimitEditor.tsx` (modify) | Amount-only: `footer` prop removed; trigger tagged `data-limit-trigger` |
 | `web/src/features/budgets/BudgetTable.tsx` (modify) | Budgeted cell becomes a comment anchor; `renderBudgetCellComments` popover → `onBudgetCellComments` callback; `wrapBudgetCell` extra |
@@ -370,11 +371,12 @@ git commit -m "feat: CommentsPanel presents a thread as an anchored popover or a
 
 ---
 
-### Task 3: `CellShell` — hover preview and cell menu; bigger marker
+### Task 3: `CellShell` — hover preview, desktop menu, tablet actions modal; bigger marker
 
 **Files:**
 - Create: `web/src/features/budgets/CellShell.tsx`
 - Create: `web/src/features/budgets/CellShell.test.tsx`
+- Modify: `web/src/components/ResponsiveDialog.tsx` (pass `onCloseAutoFocus` through)
 - Modify: `web/src/features/budgets/CommentThread.tsx` (export helpers, `CommentMarker`)
 - Modify: `web/src/features/budgets/CommentThread.test.tsx` (marker test)
 - Modify: `locales/*.json` ×11 (two new keys)
@@ -382,6 +384,7 @@ git commit -m "feat: CommentsPanel presents a thread as an anchored popover or a
 **Interfaces:**
 - Consumes: `commentAnchorOf` (Task 2).
 - Produces:
+  - `ResponsiveDialogProps` gains `onCloseAutoFocus?: (e: Event) => void`, passed to both `DialogContent` and `DrawerContent`.
   - `CommentThread.tsx`: `export function sortByCreatedAt(comments: BudgetCommentDto[]): BudgetCommentDto[]`; `export function formatCommentTime(createdAt: string, lang: string): string`; `CommentMarker` props become `{ count: number; onOpen: (anchor: HTMLElement) => void }`.
   - `CellShell` props:
 
@@ -389,10 +392,12 @@ git commit -m "feat: CommentsPanel presents a thread as an anchored popover or a
 interface CellShellProps {
   /** the cell element: must be a single DOM element that accepts a ref and props */
   children: ReactElement
+  /** heading of the touch actions modal: the element's display name */
+  title: string
   comments: BudgetCommentDto[]
-  /** no hover preview: touch viewports, or while a thread is open */
+  /** no hover preview while a thread is open (touch viewports never preview) */
   previewDisabled?: boolean
-  /** no menu: phones (stage 2 gives them the item sheet) and edit-structure mode */
+  /** no menu / actions modal: phones (stage 2 gives them the item sheet) and edit-structure mode */
   menuDisabled?: boolean
   onSetBudget?: (anchor: HTMLElement) => void
   /** omitted for the uncategorized row */
@@ -401,12 +406,14 @@ interface CellShellProps {
 }
 ```
 
+  Behaviour by viewport: **desktop** (`useIsCompact()` false) — hover preview + right-click `ContextMenu`; **touch** (`useIsCompact()` true, i.e. tablet; phones pass `menuDisabled`) — no preview, no context menu; a 500 ms long-press opens a `ResponsiveDialog` (`data-testid="cell-actions"`, titled `title`) with one full-width button per action, the same actions as the desktop menu.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `web/src/features/budgets/CellShell.test.tsx`:
 
 ```tsx
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { CellShell } from './CellShell'
 
@@ -425,9 +432,17 @@ const three = [
   c('d', 'Third note', '2026-07-03 09:00:00'),
 ]
 
+function mockMatchMedia(matches: (q: string) => boolean) {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: matches(q), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+const desktop = () => mockMatchMedia(() => false)
+const tablet = () => mockMatchMedia((q) => q.includes('1023'))
+
 function renderShell(props: Partial<Parameters<typeof CellShell>[0]> = {}, onCellClick = vi.fn()) {
   render(
-    <CellShell comments={three} {...props}>
+    <CellShell title="Groceries" comments={three} {...props}>
       <div data-testid="cell" data-comment-anchor="" onClick={onCellClick}>
         700.00
       </div>
@@ -436,11 +451,7 @@ function renderShell(props: Partial<Parameters<typeof CellShell>[0]> = {}, onCel
   return screen.getByTestId('cell')
 }
 
-beforeEach(() => {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-})
+beforeEach(desktop)
 
 afterEach(() => {
   vi.useRealTimers()
@@ -457,7 +468,7 @@ it('previews the latest two comments on hover, with a count of the rest', async 
   expect(preview).toHaveTextContent('+1 more')
 })
 
-it('shows no preview when disabled or when the cell has no comments', async () => {
+it('shows no preview when disabled', async () => {
   const user = userEvent.setup()
   const cell = renderShell({ previewDisabled: true })
   await user.hover(cell)
@@ -507,18 +518,45 @@ it('opens no menu when disabled', async () => {
   expect(screen.queryByRole('menu')).toBeNull()
 })
 
-it('opens the menu on a touch long-press and suppresses the click that ends it', async () => {
+it('on a tablet, a long-press opens the actions modal and its release does not also tap the cell', async () => {
+  tablet()
   vi.useFakeTimers()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  const fakeUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  const onCellClick = vi.fn()
+  const onOpenComments = vi.fn()
+  const cell = renderShell({ onSetBudget: vi.fn(), onOpenComments, onShowTransactions: vi.fn() }, onCellClick)
+
+  await fakeUser.pointer({ keys: '[TouchA>]', target: cell })
+  act(() => {
+    vi.advanceTimersByTime(550)
+  })
+  const modal = screen.getByTestId('cell-actions')
+  expect(screen.getByRole('dialog', { name: 'Groceries' })).toBeInTheDocument()
+  expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
+  expect(within(modal).getByRole('button', { name: 'Show transactions' })).toBeInTheDocument()
+  await fakeUser.pointer({ keys: '[/TouchA]', target: cell })
+  expect(onCellClick).not.toHaveBeenCalled()
+
+  vi.useRealTimers()
+  const user = userEvent.setup()
+  await user.click(within(modal).getByRole('button', { name: 'Comments (3)' }))
+  await waitFor(() => expect(onOpenComments).toHaveBeenCalledWith(cell))
+  expect(screen.queryByTestId('cell-actions')).toBeNull()
+})
+
+it('on a tablet, a quick tap still taps the cell, and there is no hover preview or context menu', async () => {
+  tablet()
+  const user = userEvent.setup()
   const onCellClick = vi.fn()
   const cell = renderShell({ onOpenComments: vi.fn() }, onCellClick)
-  await user.pointer({ keys: '[TouchA>]', target: cell })
-  act(() => {
-    vi.advanceTimersByTime(750)
-  })
-  expect(screen.getByRole('menu')).toBeInTheDocument()
-  await user.pointer({ keys: '[/TouchA]', target: cell })
-  expect(onCellClick).not.toHaveBeenCalled()
+  await user.pointer({ keys: '[TouchA]', target: cell })
+  expect(onCellClick).toHaveBeenCalledTimes(1)
+  expect(screen.queryByTestId('cell-actions')).toBeNull()
+  await user.hover(cell)
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  await new Promise((r) => setTimeout(r, 500))
+  expect(screen.queryByTestId('comment-preview')).toBeNull()
+  expect(screen.queryByRole('menu')).toBeNull()
 })
 ```
 
@@ -577,6 +615,16 @@ Expected: 11 files, +2 lines each.
 
 - [ ] **Step 4: Implement**
 
+In `web/src/components/ResponsiveDialog.tsx`: add to `ResponsiveDialogProps`
+
+```ts
+  /** runs as the dialog hands focus back on close; preventDefault() keeps focus
+   *  where an action started from the dialog put it */
+  onCloseAutoFocus?: (e: Event) => void
+```
+
+add `onCloseAutoFocus` to the destructured props, and pass `onCloseAutoFocus={onCloseAutoFocus}` to both the `<DialogContent …>` and the `<DrawerContent …>` elements.
+
 In `CommentThread.tsx`, add `import { commentAnchorOf } from './cellDom'`, then export the helpers (keep `parseServerDateTime` where it is):
 
 ```tsx
@@ -622,16 +670,20 @@ Create `web/src/features/budgets/CellShell.tsx`:
 
 ```tsx
 import { useRef, useState } from 'react'
-import type { ReactElement } from 'react'
+import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
 import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from '@/components/ui/context-menu'
+import { Button } from '@/components/ui/button'
+import { ResponsiveDialog } from '@/components/ResponsiveDialog'
+import { useIsCompact } from '@/hooks/useIsCompact'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import { commentAnchorOf } from './cellDom'
 import { formatCommentTime, sortByCreatedAt } from './CommentThread'
 
 interface CellShellProps {
   children: ReactElement
+  title: string
   comments: BudgetCommentDto[]
   previewDisabled?: boolean
   menuDisabled?: boolean
@@ -640,10 +692,20 @@ interface CellShellProps {
   onShowTransactions?: () => void
 }
 
+interface CellAction {
+  key: string
+  label: string
+  run: (anchor: HTMLElement) => void
+}
+
 const PREVIEW_COUNT = 2
+const LONG_PRESS_MS = 500
+// a finger drifting further than this is a scroll, not a press
+const LONG_PRESS_SLOP_PX = 10
 
 export function CellShell({
   children,
+  title,
   comments,
   previewDisabled = false,
   menuDisabled = false,
@@ -652,132 +714,185 @@ export function CellShell({
   onShowTransactions,
 }: CellShellProps) {
   const { t, i18n } = useTranslation()
+  const isTouch = useIsCompact()
   const cellRef = useRef<HTMLElement | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [actionsOpen, setActionsOpen] = useState(false)
   // a press means the user is acting on the cell (amount editor, selection): the
   // preview stays shut until the pointer leaves, or its pending open timer would
   // pop it over the editor the press just opened
   const pressed = useRef(false)
-  // The menu runs its action only after it has closed and handed focus back, or
-  // the returning focus would steal it from the popover/dialog the action opens.
+  // The menu/modal runs its action only after it has closed and handed focus back,
+  // or the returning focus would steal it from the popover/dialog the action opens.
   const pending = useRef<((anchor: HTMLElement) => void) | null>(null)
-  // A touch long-press opens the menu, and the finger's release then fires a click
-  // on the cell underneath; swallow that one click so the tap action (set-limit
-  // dialog, selection) does not run on top of the menu.
-  const lastPointerType = useRef<string>('mouse')
-  const swallowClickUntil = useRef(0)
+  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pressStart = useRef<{ x: number; y: number } | null>(null)
+  // the finger's release after a long-press fires a click on the cell underneath;
+  // swallow that one click so the tap action (set-limit dialog, selection) does not
+  // run under the modal. Reset by the next press, so a browser that never sends
+  // that click cannot make a later, genuine tap disappear.
+  const swallowClick = useRef(false)
 
-  const previewable = !previewDisabled && comments.length > 0
-  const hasMenu = !menuDisabled && (onSetBudget || onOpenComments || onShowTransactions)
-  if (!previewable && !hasMenu) {
+  const actions: CellAction[] = []
+  if (!menuDisabled) {
+    if (onSetBudget) {
+      actions.push({ key: 'set-budget', label: t('budgets.modal.set_limit_form.header'), run: onSetBudget })
+    }
+    if (onOpenComments) {
+      actions.push({
+        key: 'comments',
+        label: comments.length > 0 ? t('budgets.page.plan.comments.disclosure', { count: comments.length }) : t('budgets.page.plan.comments.add'),
+        run: onOpenComments,
+      })
+    }
+    if (onShowTransactions) {
+      actions.push({ key: 'transactions', label: t('budgets.page.budget.structure.element.action.show_transactions'), run: () => onShowTransactions() })
+    }
+  }
+  const previewable = !isTouch && !previewDisabled && comments.length > 0
+  const touchActions = isTouch && actions.length > 0
+  const desktopMenu = !isTouch && actions.length > 0
+  if (!previewable && actions.length === 0) {
     return children
+  }
+
+  const runPending = (e: Event) => {
+    const action = pending.current
+    pending.current = null
+    if (action && cellRef.current) {
+      e.preventDefault()
+      action(commentAnchorOf(cellRef.current))
+    }
+  }
+  const cancelLongPress = () => {
+    if (pressTimer.current) {
+      clearTimeout(pressTimer.current)
+      pressTimer.current = null
+    }
+    pressStart.current = null
   }
 
   const latest = sortByCreatedAt(comments).slice(-PREVIEW_COUNT)
   const rest = comments.length - latest.length
 
   return (
-    <HoverCard
-      open={previewable && previewOpen}
-      onOpenChange={(open) => setPreviewOpen(open && !pressed.current)}
-      openDelay={300}
-      closeDelay={100}
-    >
-      <ContextMenu
-        onOpenChange={(open) => {
-          if (open && lastPointerType.current !== 'mouse') {
-            swallowClickUntil.current = Date.now() + 700
-          }
-        }}
+    <>
+      <HoverCard
+        open={previewable && previewOpen}
+        onOpenChange={(open) => setPreviewOpen(open && !pressed.current)}
+        openDelay={300}
+        closeDelay={100}
       >
-        <ContextMenuTrigger asChild disabled={!hasMenu}>
-          <HoverCardTrigger
-            asChild
-            ref={cellRef}
-            onPointerDown={(e) => {
-              lastPointerType.current = e.pointerType || 'mouse'
-              pressed.current = true
-              setPreviewOpen(false)
-            }}
-            onPointerLeave={() => {
-              pressed.current = false
-            }}
-            onClickCapture={(e) => {
-              if (Date.now() < swallowClickUntil.current) {
-                swallowClickUntil.current = 0
-                e.preventDefault()
-                e.stopPropagation()
-              }
-            }}
-          >
-            {children}
-          </HoverCardTrigger>
-        </ContextMenuTrigger>
-        {hasMenu ? (
-          <ContextMenuContent
-            className="w-52"
-            onCloseAutoFocus={(e) => {
-              const action = pending.current
-              pending.current = null
-              if (action && cellRef.current) {
-                e.preventDefault()
-                action(commentAnchorOf(cellRef.current))
-              }
-            }}
-          >
-            {onSetBudget ? (
-              <ContextMenuItem onSelect={() => (pending.current = onSetBudget)}>{t('budgets.modal.set_limit_form.header')}</ContextMenuItem>
-            ) : null}
-            {onOpenComments ? (
-              <ContextMenuItem onSelect={() => (pending.current = onOpenComments)}>
-                {comments.length > 0
-                  ? t('budgets.page.plan.comments.disclosure', { count: comments.length })
-                  : t('budgets.page.plan.comments.add')}
-              </ContextMenuItem>
-            ) : null}
-            {onShowTransactions ? (
-              <ContextMenuItem onSelect={() => (pending.current = () => onShowTransactions())}>
-                {t('budgets.page.budget.structure.element.action.show_transactions')}
-              </ContextMenuItem>
-            ) : null}
-          </ContextMenuContent>
-        ) : null}
-      </ContextMenu>
-      {previewable ? (
-        <HoverCardContent align="end" className="w-72" data-testid="comment-preview">
-          <div className="flex flex-col gap-2">
-            {latest.map((c) => (
-              <div key={c.id} className="flex flex-col gap-0.5">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="truncate text-xs font-medium">{c.author.name}</span>
-                  <span className="text-[11px] text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
+        <ContextMenu>
+          <ContextMenuTrigger asChild disabled={!desktopMenu}>
+            <HoverCardTrigger
+              asChild
+              ref={cellRef}
+              onPointerDown={(e: ReactPointerEvent) => {
+                pressed.current = true
+                swallowClick.current = false
+                setPreviewOpen(false)
+                if (touchActions && e.pointerType !== 'mouse') {
+                  cancelLongPress()
+                  pressStart.current = { x: e.clientX, y: e.clientY }
+                  pressTimer.current = setTimeout(() => {
+                    pressTimer.current = null
+                    swallowClick.current = true
+                    setActionsOpen(true)
+                  }, LONG_PRESS_MS)
+                }
+              }}
+              onPointerMove={(e: ReactPointerEvent) => {
+                const start = pressStart.current
+                if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) > LONG_PRESS_SLOP_PX) {
+                  cancelLongPress()
+                }
+              }}
+              onPointerUp={cancelLongPress}
+              onPointerCancel={cancelLongPress}
+              onPointerLeave={() => {
+                pressed.current = false
+                cancelLongPress()
+              }}
+              onClickCapture={(e) => {
+                if (swallowClick.current) {
+                  swallowClick.current = false
+                  e.preventDefault()
+                  e.stopPropagation()
+                }
+              }}
+              // the long-press is ours: no native callout / selection menu on touch
+              onContextMenu={touchActions ? (e) => e.preventDefault() : undefined}
+            >
+              {children}
+            </HoverCardTrigger>
+          </ContextMenuTrigger>
+          {desktopMenu ? (
+            <ContextMenuContent className="w-52" onCloseAutoFocus={runPending}>
+              {actions.map((a) => (
+                <ContextMenuItem key={a.key} onSelect={() => (pending.current = a.run)}>
+                  {a.label}
+                </ContextMenuItem>
+              ))}
+            </ContextMenuContent>
+          ) : null}
+        </ContextMenu>
+        {previewable ? (
+          <HoverCardContent align="end" className="w-72" data-testid="comment-preview">
+            <div className="flex flex-col gap-2">
+              {latest.map((c) => (
+                <div key={c.id} className="flex flex-col gap-0.5">
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="truncate text-xs font-medium">{c.author.name}</span>
+                    <span className="text-[11px] text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
+                  </div>
+                  <p className="line-clamp-3 whitespace-pre-wrap text-sm">{c.comment}</p>
                 </div>
-                <p className="line-clamp-3 whitespace-pre-wrap text-sm">{c.comment}</p>
-              </div>
+              ))}
+              {rest > 0 ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.more', { count: rest })}</p> : null}
+            </div>
+          </HoverCardContent>
+        ) : null}
+      </HoverCard>
+      {touchActions ? (
+        <ResponsiveDialog open={actionsOpen} onOpenChange={setActionsOpen} title={title} onCloseAutoFocus={runPending}>
+          <div className="flex flex-col gap-2" data-testid="cell-actions">
+            {actions.map((a) => (
+              <Button
+                key={a.key}
+                type="button"
+                variant="secondary"
+                className="h-11 justify-start"
+                onClick={() => {
+                  pending.current = a.run
+                  setActionsOpen(false)
+                }}
+              >
+                {a.label}
+              </Button>
             ))}
-            {rest > 0 ? <p className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.more', { count: rest })}</p> : null}
           </div>
-        </HoverCardContent>
+        </ResponsiveDialog>
       ) : null}
-    </HoverCard>
+    </>
   )
 }
 ```
 
-Note for the implementer: `HoverCardTrigger` in `web/src/components/ui/hover-card.tsx` spreads `...props` onto the Radix trigger, so `ref`, `onPointerDown`, `onPointerLeave` and `onClickCapture` reach the cell through both `asChild` slots (React 19 passes `ref` as a prop). If `tsc` rejects `ref` on `HoverCardTrigger`, type `cellRef` as `useRef<HTMLDivElement | null>(null)` — the cells are `div`/`span` elements and `commentAnchorOf` only needs `Element`.
+Note for the implementer: `HoverCardTrigger` in `web/src/components/ui/hover-card.tsx` spreads `...props` onto the Radix trigger, so `ref` and the pointer/click handlers reach the cell through both `asChild` slots (React 19 passes `ref` as a prop, and Radix's `Slot` composes handlers with the cell's own). If `tsc` rejects `ref` on `HoverCardTrigger`, type `cellRef` as `useRef<HTMLDivElement | null>(null)` — `commentAnchorOf` only needs an `Element`.
 
 The existing `CommentMarker` call sites (`BudgetPage.tsx`, `SavingsBlock.tsx`, `PlanSheet.tsx`) need no change in this task: their `() => …` handlers are assignable to `(anchor: HTMLElement) => void`. Tasks 4 and 5 make them use the anchor.
 
 - [ ] **Step 5: Run the tests**
 
-Run: `cd web && pnpm exec vitest run src/features/budgets/CellShell.test.tsx src/features/budgets/CommentThread.test.tsx && pnpm exec tsc -b --noEmit && cd .. && PATH=/usr/local/go/bin:$PATH GOTOOLCHAIN=go1.27.1 go test ./internal/test/i18ntest/`
-Expected: PASS (user-event's `TouchA` pointer reports `pointerType: 'touch'`, which is what arms the click swallow).
+Run: `cd web && pnpm exec vitest run src/features/budgets/CellShell.test.tsx src/features/budgets/CommentThread.test.tsx src/components && pnpm exec tsc -b --noEmit && cd .. && PATH=/usr/local/go/bin:$PATH GOTOOLCHAIN=go1.27.1 go test ./internal/test/i18ntest/`
+Expected: PASS.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add -A web/src/features/budgets locales
-git commit -m "feat: CellShell adds the comment hover preview and the cell menu"
+git add -A web/src/features/budgets web/src/components/ResponsiveDialog.tsx locales
+git commit -m "feat: CellShell adds the comment preview, the cell menu and the tablet actions modal"
 ```
 
 ---
@@ -881,6 +996,21 @@ it('lets a guest comment from the menu but not set a budget', async () => {
   await user.pointer({ keys: '[MouseRight]', target: cell })
   expect(await screen.findByRole('menuitem', { name: 'Add comment' })).toBeInTheDocument()
   expect(screen.queryByRole('menuitem', { name: 'Set budget' })).toBeNull()
+})
+
+it('opens the actions modal from a long-press on a tablet and goes on to the thread', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[TouchA>]', target: cell })
+  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
+  await user.pointer({ keys: '[/TouchA]', target: cell })
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
 })
 
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
@@ -1026,8 +1156,9 @@ In `BudgetPage.tsx`:
   const cellMenuDisabled = isPhone || editMode
   const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement, { readOnly }: { readOnly: boolean }) => (
     <CellShell
+      title={elementDisplayName(element.id, element.name, t)}
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
-      previewDisabled={isCompact || commentsTarget !== null}
+      previewDisabled={commentsTarget !== null}
       menuDisabled={cellMenuDisabled}
       onSetBudget={limitsEditable && !readOnly ? setBudgetFor(element) : undefined}
       onOpenComments={(anchor) => openComments(element, anchor)}
@@ -1038,8 +1169,9 @@ In `BudgetPage.tsx`:
   )
   const wrapPlannedCell = (row: BudgetSavingsElementDto, cell: ReactElement) => (
     <CellShell
+      title={row.name}
       comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
-      previewDisabled={isCompact || commentsTarget !== null}
+      previewDisabled={commentsTarget !== null}
       menuDisabled={cellMenuDisabled}
       onSetBudget={limitsEditable && row.isArchived === 0 ? setBudgetFor(row) : undefined}
       onOpenComments={(anchor) => openComments(row, anchor)}
@@ -1198,6 +1330,21 @@ it('offers no comment item on the uncategorized row', async () => {
   expect(screen.queryByRole('menuitem', { name: /comment/i })).toBeNull()
 })
 
+it('opens the actions modal from a long-press on a plan cell on a tablet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.pointer({ keys: '[TouchA>]', target: cell })
+  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
+  await user.pointer({ keys: '[/TouchA]', target: cell })
+  expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
+  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+})
+
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
   usePlanHandlers()
   mockTabletViewport()
@@ -1310,8 +1457,9 @@ Move the `transactionsTarget` `useState` above this block if it is declared late
           return (
             <CellShell
               key={m}
+              title={displayName}
               comments={isUncategorized ? [] : cellComments}
-              previewDisabled={ctx.isCompact || ctx.commentsOpen}
+              previewDisabled={ctx.commentsOpen}
               menuDisabled={ctx.isPhone || ctx.editMode}
               onSetBudget={editable ? (anchor) => (ctx.isCompact ? ctx.openDialog(target) : openLimitEditorIn(anchor)) : undefined}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
@@ -1399,8 +1547,10 @@ In `docs/regression-test-plan.md`:
       Show transactions. A guest sees no Set budget; the uncategorized row
       offers no comment item; savings cells offer no Show transactions.
 - [ ] Tablet (640–1023px): tapping a marker opens the thread popover;
-      long-pressing a cell opens the same menu as right-click, and lifting the
-      finger does not also open the set-limit dialog.
+      long-pressing a cell opens a modal titled with the item's name and the
+      same actions as right-click (Set budget / Comments / Show transactions);
+      lifting the finger does not also open the set-limit dialog, and a quick
+      tap still behaves as before. No hover preview on a tablet.
 - [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
       comments through the set-limit sheet's "Comments (N)" button or the
       comments sheet; the comments sheet keeps its composer pinned above the
@@ -1434,7 +1584,7 @@ Stage 1 of the Budget & Plan UX redesign (spec: `docs/superpowers/specs/2026-09-
 - The amount editor is amount-only in both views; comments have their own entry points.
 - Corner marker (larger, 20px hit area) opens the thread in a popover beside the cell on desktop and tablet; a phone gets the bottom sheet with the composer pinned above the keyboard.
 - Hover preview of the latest two comments on desktop.
-- Right-click (desktop) / long-press (tablet) cell menu: Set budget, Comments (N) / Add comment, Show transactions.
+- Right-click cell menu on desktop and a long-press actions modal on tablets: Set budget, Comments (N) / Add comment, Show transactions.
 - Shift+F2 opens a plan cell's thread (Shift+Enter still works).
 - Removed the header currency chips and the "Spending progress" widget.
 - Phones keep today's paths (set-limit sheet's "Comments (N)" button, tap-Available, long-press) until stage 2's item sheet.
