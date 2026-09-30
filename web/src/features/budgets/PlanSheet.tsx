@@ -2441,20 +2441,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        comments={
-          planLimitTarget ? (
-            <CommentThread
-              budgetId={budget.meta.id}
-              elementId={planLimitTarget.el.id}
-              period={planLimitTarget.month}
-              comments={commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []}
-              currentUserId={userId}
-              canModerate={canConfigureBudget(budget.meta, userId)}
-              readOnly={commentsReadOnly(budget.meta, planLimitTarget.month)}
-              truncated={commentsTruncated}
-            />
-          ) : undefined
-        }
+        commentCount={planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
+        onOpenComments={() => {
+          setCommentsDialogTarget(planLimitTarget)
+          setPlanLimitTarget(null)
+        }}
       />
 
       <CommentsDialog

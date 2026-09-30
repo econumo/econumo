@@ -1070,20 +1070,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
-        comments={
-          limitTarget ? (
-            <CommentThread
-              budgetId={budget.meta.id}
-              elementId={limitTarget.id}
-              period={selectedDate}
-              comments={commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []}
-              currentUserId={user?.id}
-              canModerate={canConfigureBudget(budget.meta, user?.id)}
-              readOnly={commentsReadOnly(budget.meta, selectedDate)}
-              truncated={commentsTruncated}
-            />
-          ) : undefined
-        }
+        commentCount={limitTarget ? (commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []).length : 0}
+        onOpenComments={() => {
+          setCommentsTarget(limitTarget)
+          setLimitTarget(null)
+        }}
       />
 
       <CommentsDialog

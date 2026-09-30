@@ -99,7 +99,9 @@ it('marks the budgeted cell and opens the thread from the limit popover', async 
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
 })
 
-it('offers the thread inside SetLimitDialog on compact viewports', async () => {
+// the thread is its own dialog, reached from a button: rendered inside the set-limit
+// sheet, the composer pushed the amount out of view above a phone's keyboard
+it('opens the thread from SetLimitDialog as its own dialog on compact viewports', async () => {
   registerMonthlyHandlers()
   mockCompactViewport()
   const user = userEvent.setup()
@@ -107,7 +109,12 @@ it('offers the thread inside SetLimitDialog on compact viewports', async () => {
 
   const row = await screen.findByTestId('element-cat-food')
   await user.click(within(row).getByTestId('cell-available'))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByText('Trip to Lisbon')).toBeNull()
+
+  await user.click(screen.getByRole('button', { name: 'Comments (1)' }))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Budget')).toBeNull()
 })
 
 it('lets a guest open a read-only thread on a cell they cannot edit', async () => {
