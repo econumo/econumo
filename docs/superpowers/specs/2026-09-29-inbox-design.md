@@ -114,9 +114,10 @@ With only skipped rows, the collapsed Skipped section is shown on its own.
 | `lastRunAt` | that run's `finished_at`, or `started_at` while running; `""` when none |
 | `lastRunError` | first entry of that run's `errors` message list; `""` when none |
 
-- New sqlc query in both `query/sqlite` and `query/pgsql`: latest run per source for
-  one user (served by the existing `(user_id, started_at)` index). The service merges
-  it into the source list; `lastSyncedAt` (last non-failed sync) is unchanged.
+- No new SQL: the service reads each source's latest run through the existing
+  `ListRunsByUser(ctx, userID, &sourceID, 1)` repo method (`ORDER BY started_at DESC,
+  id DESC LIMIT 1`) and merges it into the source list; `lastSyncedAt` (last
+  non-failed sync) is unchanged.
 - No new endpoint, no cross-feature glue. Imports has no MCP surface, so no MCP
   change.
 - Regenerate swagger (`make swagger`) and the `get-source-list` apiparity golden;
@@ -189,7 +190,7 @@ appears on the next refetch (window focus, the sync button, or 10-minute stalene
 
 Go:
 
-- Repo test for the latest-run-per-source query: several runs per source, a source
+- Service test for the latest run per source: several runs per source, a source
   with no runs, another user's runs ignored — on SQLite and, via
   `make test-repo-pgsql`, PostgreSQL.
 - Service test: source list carries `lastRunStatus` / `lastRunAt` / `lastRunError`.
