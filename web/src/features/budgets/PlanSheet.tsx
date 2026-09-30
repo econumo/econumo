@@ -235,7 +235,6 @@ interface GridCtx {
   isCompact: boolean
   monthLabel: (m: string) => string
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
-  openDialog: (target: PlanLimitTarget) => void
   /** touch viewports: a cell tap opens the item sheet */
   openSheet: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
@@ -246,7 +245,6 @@ interface GridCtx {
    *  popover to: undefined = look it up from the grid; null = no anchor, open as a
    *  sheet/dialog */
   openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
-  openTransactions: (el: PlanElementDto, month: string) => void
   /** a thread is open: hover previews stay shut */
   commentsOpen: boolean
   canEdit: boolean
@@ -1537,12 +1535,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       isCompact,
       monthLabel,
       commit,
-      openDialog: setPlanLimitTarget,
       openSheet,
       commentsByCell,
       commentsTruncated,
       openComments,
-      openTransactions,
       commentsOpen,
       canEdit,
       selection,
@@ -1579,7 +1575,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     commentsByCell,
     commentsTruncated,
     openComments,
-    openTransactions,
     commentsOpen,
     canEdit,
     selection,
@@ -1785,11 +1780,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const idx = monthIndex(month)
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+    if (isCompact) {
+      // touch: Enter opens the same item sheet a tap would — any non-uncategorized
+      // cell outside edit-structure mode, editable or not.
+      if (!editMode && entry.el.id !== UNCATEGORIZED_ID && idx >= 0) {
+        openSheet({ el: entry.el, month, monthIndex: idx })
+      }
       return
     }
-    if (isCompact) {
-      setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
       return
     }
     const trigger = containerRef.current?.querySelector<HTMLButtonElement>(

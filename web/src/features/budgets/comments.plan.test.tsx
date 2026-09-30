@@ -304,6 +304,25 @@ it('a tablet tap on a plan cell opens the item sheet for that month', async () =
   expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
 })
 
+it('a tablet Enter on a selected plan cell opens the item sheet, not the amount dialog', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  // the tap selects the cell and opens the sheet; close it and reuse that
+  // selection to drive the grid's own Enter handling
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await screen.findByTestId('element-sheet')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByTestId('element-sheet')).toBeNull())
+
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{Enter}')
+  expect(await screen.findByTestId('element-sheet')).toBeInTheDocument()
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+})
+
 it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {
   usePlanHandlers()
   mockTabletViewport()
