@@ -1,19 +1,36 @@
-# Phone Single Month View Implementation Plan (redesign stage 2)
+# Phone Single Month View + Tablet Item Sheet Implementation Plan (redesign stage 2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Below 640 px, `/budget` and `/plan` both render one single-month view: rows show Budget and Spent, a tap opens an item sheet, and every stage-1 phone-only path (tap-Available, long-press, the set-limit sheet's "Comments (N)" button) is gone.
+**Goal:**
+- **Phone (below 640 px):** `/budget` and `/plan` both render one single-month view. Rows show Budget and Spent, and a tap opens an item sheet.
+- **Tablet (640–1023 px):** tapping an amount cell opens the same item sheet.
+- **Both:** no long-press remains anywhere. Every stage-1 touch path (tap-Available, long-press, the actions modal, the set-limit sheet's "Comments (N)" button) is gone.
 
-**Architecture:** Two new pure modules hold the maths: `rowState`/`rowProgress`/`carryOver` in `budgetMath.ts`, and `phoneMonth.ts` for the month's income, balance and savings-balance figures drawn from `get-budget-plan`. Two new presentational components render the screen: `PhoneMonthView.tsx` (the list) and `ElementSheet.tsx` (the bottom sheet). `BudgetPage.tsx` picks the phone view when `useIsPhone()` is true and edit-structure mode is off, and routes the sheet's actions to the existing `SetLimitDialog`, `CommentsPanel` and `BudgetTransactionsDialog`.
+**Architecture:**
+- **Pure maths:** `rowState`/`rowProgress`/`carryOver` go in `budgetMath.ts`. A new `phoneMonth.ts` holds the month's income, balance and savings-balance figures from `get-budget-plan`, and the sheet's target type.
+- **Components:** `ElementSheet.tsx` (the item sheet) is shared by the phone view and the tablet tables. `PhoneMonthView.tsx` is the phone list.
+- **Wiring:**
+  - `BudgetPage.tsx` hosts the sheet for the Budget view and the phone view.
+  - `PlanSheet.tsx` hosts it for the Plan grid.
+  - Both route the sheet's actions to the existing `SetLimitDialog`, `CommentsPanel` and `BudgetTransactionsDialog`.
+  - `CellShell` loses its touch half (long-press and the actions modal) and keeps the desktop hover preview and Shift+F2.
 
 **Tech Stack:** React 19, TypeScript, Tailwind v4, shadcn/Radix + vaul (`ResponsiveDialog`), TanStack Query, react-i18next, vitest + Testing Library + MSW, pnpm, oxlint.
 
-**Spec:** `docs/superpowers/specs/2026-09-29-budget-ux-redesign-design.md`. This plan implements Part 1 (phone single month view), the Row state rule, the phone half of the Currency display rule, and the phone items of Removals, i18n and Testing. Parts 2 (done in stage 1) and 3 (stage 3) are out of scope.
+**Spec:** `docs/superpowers/specs/2026-09-29-budget-ux-redesign-design.md`. This plan implements:
+- Part 1 (phone single month view)
+- Part 2's "Tablet" section, as revised on 2026-09-30: a tap opens the item sheet, with no long taps
+- the Row state rule
+- the phone half of the Currency display rule
+- the matching items of Removals, i18n and Testing
+
+Part 3 (desktop/tablet density and the currency column) is stage 3.
 
 ## Global Constraints
 
 - Frontend only. No endpoint, DTO, permission or analytics contract changes. Add no `METRICS` keys: opening a sheet is navigation, and set limit and comment writes keep their existing events at the same choke points.
-- Phone = `useIsPhone()` (`(max-width: 639px)`). Tablet (640–1023 px) and desktop keep the Budget and Plan table layouts. Stage 2 changes them in one place only: tapping a budgeted/planned amount on a tablet opens `SetLimitDialog` (Task 4).
+- Phone = `useIsPhone()` (`(max-width: 639px)`); touch/tablet = `useIsCompact()` (`(max-width: 1023px)`) and not a phone. Tablet and desktop keep the Budget and Plan table layouts; on a tablet a tap on an amount cell opens the item sheet (Tasks 5–6). **No long-press anywhere** (Dmitry, 2026-09-30).
 - Base branch `v1.6-dev`. Work on `feature/budget-phone-month-view`.
 - Row state rule, verbatim from the spec: none = `budget` zero and `spent` zero; ok = `available ≥ 0` and `spent ≤ budget`; covered = `available ≥ 0` and `spent > budget` (amber); over = `available < 0` (red). Progress = `min(spent / budget, 1)`, hidden when `budget` is zero. Future months (after the current month) have no Spent: shown as `—`, no bar, state `none`. Carry-over = `available − (budget − spent)`. Income and savings rows never use amber/red.
 - Currency, phone: no currency symbol on any amount; the budget currency code appears once, at the left of the heading row; an element whose currency differs from the budget's gets a small code tag next to its name, and its row amounts are in that currency; the item sheet repeats the code beside each amount.
@@ -37,20 +54,37 @@
     - desktop: `matches: false`
 - Commit message style: `feat: <Sentence case summary>` (or `refactor:`/`test:`/`docs:`), ending with the trailer `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 
+
 ## Rulings made while writing this plan
 
 These go to the SDD ledger as given decisions:
 
-1. **`widgetMath` is not reused.** Stage 1 deleted its only caller (`ExpenseWidget`). The rate note needs a period rate, which `makeBudgetExchange` gives, as the old widget did. Task 1 deletes the dead `widgetMath`.
-2. **Plan window.** The phone view calls `useBudgetPlan(budgetId, selectedDate, 1)`. Its built-in ±2-month buffer fetches 5 months around the selected one instead of the spec's `months=1`. The spec's point was "one month on screen", not the request size; the buffer makes neighbouring months instant and shares the cache and mutation invalidation with the Plan view. The month's column is found by `plan.months.indexOf(selectedDate)`. Placeholder data from another window counts as "not loaded".
-3. **Sheets replace one another directly.** The sheet closes and the next dialog opens in the same state update. This is the stage-1 phone path (`SetLimitDialog` → comments) that is in daily use on the iOS PWA. There is no pending-action-in-`onCloseAutoFocus` machinery.
-4. **Edit-structure mode on a phone** keeps rendering the route's existing editor (`BudgetTable` on `/budget`, `PlanSheet` on `/plan`), unchanged. The phone view is the non-edit view only. Moving structure editing out of the tables belongs to the separate budget-configuration design.
-5. **Tablet set budget.** Removing tap-Available (spec Removals) would leave a tablet's only way to set a budget as the long-press modal. So on compact non-phone viewports the budgeted and planned amounts become tap targets that open `SetLimitDialog`. This matches desktop's "click amount → amount editor" from spec Part 2.
-6. **Rows that have one action skip the sheet.** Reporting-tag rows and the children of an expanded envelope/tag open `BudgetTransactionsDialog` directly. A sheet would be a one-button detour.
-7. **Income on a phone** shows active income rows plus the income "Uncategorized" row when non-zero. Archived income rows are not listed, but their money stays in the summary totals, as in the Plan view. Setting an income plan uses `usePlanSetLimit`, and the sheet button and dialog title read "Set plan".
-8. **Income fold state** uses the existing persisted `unfoldedElements` store under the reserved key `__phone_income__`, the same pattern as the reporting-tags folder. The spec asks for the state to be "kept for the session"; persisting it satisfies that.
-9. **Foreign-currency sheet line.** The `≈ {converted} {budgetCode}` line converts the row's actual figure: Spent (the server's `budgetSpent` for expenses), Received (income) or Saved (savings). The rate note is `1 {budgetCode} = {rate} {code}` for the selected month.
+1. **`widgetMath` is not reused.** Stage 1 deleted its only caller (`ExpenseWidget`), and Task 1 deletes the dead code. The sheet's rate note needs the month's rate:
+   - the Budget view and the phone view pass `makeBudgetExchange(budget, currencies)`, as the old widget did;
+   - the Plan grid passes the rates of the tapped column's month (`planMonthExchange`, Task 2).
+2. **Plan window.** The phone view calls `useBudgetPlan(budgetId, selectedDate, 1)`. Its built-in ±2-month buffer fetches 5 months instead of the spec's `months=1`. The spec's point was "one month on screen", not the request size. The buffer makes neighbouring months instant and shares the cache and mutation invalidation with the Plan view. The month's column is found by `plan.months.indexOf(selectedDate)`, and placeholder data from another window counts as "not loaded".
+3. **Sheets replace one another directly.** The sheet closes and the next dialog opens in the same state update. This is the stage-1 phone path (`SetLimitDialog` → comments) in daily use on the iOS PWA. There is no pending-action-in-`onCloseAutoFocus` machinery.
+4. **Edit-structure mode on a phone** keeps rendering the route's existing editor (`BudgetTable` on `/budget`, `PlanSheet` on `/plan`), unchanged. The phone view is the non-edit view only.
+5. **Tablet tap opens the item sheet.** Dmitry, 2026-09-30: "it should show the same details popup on tap as on the mobile. Let's avoid long taps."
+   - **Budget view:** a tap on the budgeted amount opens the sheet. This applies to every non-uncategorized row, editable or not, the Archive section included.
+   - **Savings block:** a tap on the planned amount opens the sheet.
+   - **Plan grid:** a tap anywhere on a month cell (except the uncategorized row, and in edit mode) selects it and opens the sheet for that element and month. The sheet shows Planned and Actual (Budget/Spent, Planned/Received or Planned/Saved/Balance by type).
+   - **Kept:** the comment marker's tap still opens the anchored popover, and a tablet's Spent tap still opens transactions.
+   - **Removed:** long-press, the actions modal, and tap-Available.
+6. **Rows that have one action skip the sheet.** On the phone, reporting-tag rows and the children of an expanded envelope/tag open `BudgetTransactionsDialog` directly. A sheet would be a one-button detour.
+7. **One sheet target for plan data.** The target is `{ kind: 'plan', cell: PlanCellFigures }` and serves two callers:
+   - the phone's income rows;
+   - every Plan grid cell on a tablet.
+
+   Income sheets say "Set plan", and the dialog title matches. Setting from a `plan` target uses the plan mutation: `usePlanSetLimit` on the phone, `PlanSheet`'s own `commit` on the tablet.
+
+   On the phone, income lists active rows plus the income "Uncategorized" row when it is non-zero. Archived income rows are not listed, but their money stays in the totals, as in the Plan view.
+8. **Income fold state** uses the persisted `unfoldedElements` store under the reserved key `__phone_income__`, the same pattern as the reporting-tags folder.
+9. **Foreign-currency sheet line.**
+   - The `≈ {converted} {budgetCode}` line converts the actual figure: Spent (the server's `budgetSpent` for monthly expense rows), Received or Saved.
+   - The rate note is `1 {budgetCode} = {rate} {code}` for the sheet's month.
 10. **Empty real folders are hidden on the phone view**, because it cannot create envelopes. The "No folder" header is shown only when real folders exist.
+11. **The accessible name of the tablet sheet button** is `details {name}`. It follows the untranslated `limit {name}` / `comments {name}` convention these cells already use.
 
 ## Review Focus
 
@@ -59,24 +93,28 @@ These are the failure modes most likely to bite a person, most likely first. Eac
 1. **Foreign-currency elements.**
    - The row shows the code tag and amounts in the element's own currency, never converted and never with a symbol.
    - The sheet shows the code beside every amount, plus the `≈` line and the rate note.
-   - Tests: Task 5, Task 6.
+   - The rate note uses the sheet's month. That matters for a Plan grid column that is not the Budget view's month.
+   - Tests: Task 4, Task 6, Task 7.
 2. **Future months.**
    - Spent/Received/Saved read `—`, with no bar, no amber/red and no state sentence, even when the server sends a non-zero figure.
-   - Tests: Task 1, Task 5, Task 6.
-3. **`get-budget-plan` still loading, failed, or holding another window's placeholder data.**
+   - Tests: Task 1, Task 4, Task 7.
+3. **`get-budget-plan` still loading, failed, or holding another window's placeholder data (phone).**
    - The expense list, savings and the Expenses/Available totals render normally.
    - The income summary, Balance at month end, Total savings and Transfers lines are absent. They are never stale and never another month's.
-   - Tests: Task 2, Task 7.
+   - Tests: Task 2, Task 8.
 4. **Read-only callers.** This covers a guest, `readonly` access, an archived budget, a month before the start or after the end, an archived element, a deleted savings account, and the uncategorized row.
-   - The sheet has no Set budget / Set plan button.
+   - The sheet has no Set budget / Set plan.
    - A read-only thread with no comments shows no comments link.
-   - The uncategorized row never shows a comments link.
-   - Tests: Task 5, Task 7.
-5. **Month switch while a sheet is open, and sheet-to-dialog handover.**
-   - Choosing Set budget, Comments or Transactions leaves exactly one dialog open.
-   - Closing it returns to the list, not to the sheet.
-   - The committed amount goes to the selected month (and, for income, to the right plan column).
-   - Tests: Task 7.
+   - Uncategorized never shows one.
+   - On a tablet the sheet is still reachable by tap, so a guest can reach comments.
+   - Tests: Task 4, Task 5, Task 6, Task 8.
+5. **Touch without long-press.**
+   - A tablet tap opens exactly one sheet.
+   - Holding a finger on a cell opens nothing extra and never suppresses the tap.
+   - The comment marker's tap opens the popover, not the sheet as well.
+   - Choosing Set budget, Comments or Transactions replaces the sheet; closing that returns to the table or list.
+   - The committed amount lands on the sheet's month.
+   - Tests: Task 5, Task 6, Task 8.
 
 ---
 
@@ -204,37 +242,68 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 2: The month's plan figures (`phoneMonth.ts`)
+### Task 2: Plan month figures and the sheet target (`phoneMonth.ts`)
 
 **Files:**
 - Create: `web/src/features/budgets/phoneMonth.ts`
 - Test: `web/src/features/budgets/phoneMonth.test.ts`
+- Modify: `web/src/features/budgets/planMath.ts` (add `planMonthExchange`)
+- Test: `web/src/features/budgets/planMath.test.ts`
 
 **Interfaces:**
 - Consumes (`planMath.ts`, unchanged): `bucketPlanRows`, `planTotals`, `balanceRow`, `savingsBalanceRow`, `everydayBalanceRow`, `planHasSavingsData`, `makePlanExchange`.
-- Produces:
+- Produces in `planMath.ts`:
 
 ```ts
-export interface IncomeRowFigures { element: PlanElementDto; planned: string; received: string }
-export interface PlanMonthFigures {
-  month: string        // 'YYYY-MM-01'
-  index: number        // the month's column in plan.months
-  income: { rows: IncomeRowFigures[]; planned: string; received: string }  // totals in budget currency
-  balance: string      // Balance at month end, as the Plan view's Balance line (everyday side when savings data exist)
-  savingsBalance: string | null  // Total savings; null when the plan carries no savings data
-  transfersNet: string // budget currency
+/** exchange between any two currencies at one plan month's rates (the sheet's rate note needs base -> element) */
+export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[], monthIndex: number): (from: Id, to: Id, amount: string) => string
+```
+
+- Produces in `phoneMonth.ts`:
+
+```ts
+/** one element's figures in one plan month */
+export interface PlanCellFigures {
+  element: PlanElementDto
+  planned: string          // '0' when the cell has no plan
+  actual: string
+  closingBalance?: string  // savings rows only
 }
+export interface PlanMonthFigures {
+  month: string            // 'YYYY-MM-01'
+  index: number            // the month's column in plan.months
+  income: { rows: PlanCellFigures[]; planned: string; received: string }  // totals in budget currency
+  balance: string          // Balance at month end: the Plan view's Balance line (the everyday side when savings data exist)
+  savingsBalance: string | null  // Total savings; null when the plan carries no savings data
+  transfersNet: string     // budget currency
+}
+export function planCellFigures(element: PlanElementDto, index: number): PlanCellFigures
 export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[], month: string, now?: Date): PlanMonthFigures | null
 
 export type SheetTarget =
-  | { kind: 'expense'; element: BudgetElementDto }
-  | { kind: 'income'; row: IncomeRowFigures }
-  | { kind: 'savings'; row: BudgetSavingsElementDto }
+  | { kind: 'expense'; element: BudgetElementDto }      // a Budget-view element (get-budget)
+  | { kind: 'savings'; row: BudgetSavingsElementDto }   // a Budget-view savings row (get-budget)
+  | { kind: 'plan'; cell: PlanCellFigures }             // any plan row in one month (income on the phone; every Plan grid cell on a tablet)
 export interface SheetCell { id: Id; name: string; currencyId: Id; amount: string }
 export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell
 ```
 
 - [ ] **Step 1: Write the failing tests**
+
+Append to `planMath.test.ts`. Use its existing imports; add `planMonthExchange` to the `./planMath` import, and import `fixtureWirePlan` from `@/test/fixtures` if it is not already imported:
+
+```ts
+it('planMonthExchange converts at the given month’s rates', () => {
+  const plan = JSON.parse(JSON.stringify(fixtureWirePlan)) as BudgetPlanDto
+  const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+  const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
+  const may = planMonthExchange(plan, [usd, eur], 0)
+  const aug = planMonthExchange(plan, [usd, eur], 3)
+  // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
+  expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
+  expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
+})
+```
 
 Create `phoneMonth.test.ts`:
 
@@ -243,7 +312,7 @@ import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget, fixtureWirePlan } from '@/test/fixtures'
 import type { BudgetPlanDto } from '@/api/dto/budget'
 import { cmp } from '@/lib/decimal'
-import { planMonthFigures, sheetCell } from './phoneMonth'
+import { planCellFigures, planMonthFigures, sheetCell } from './phoneMonth'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
 const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
@@ -254,11 +323,12 @@ function usdPlan(): BudgetPlanDto {
   plan.structure.elements = plan.structure.elements.filter((el) => el.id !== 'env-eur')
   return plan
 }
+const past = new Date(2026, 11, 1)
 
 it('reads the income rows and totals of the selected month', () => {
-  const f = planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', new Date(2026, 11, 1))!
+  const f = planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!
   expect(f.index).toBe(2)
-  expect(f.income.rows.map((r) => [r.element.id, r.planned, r.received])).toEqual([
+  expect(f.income.rows.map((r) => [r.element.id, r.planned, r.actual])).toEqual([
     ['ie1', '2000', '0'],
     ['cat-freelance', '500', '400'],
   ])
@@ -267,25 +337,29 @@ it('reads the income rows and totals of the selected month', () => {
 })
 
 it('lists the income Uncategorized row only in a month it received something', () => {
-  const june = planMonthFigures(usdPlan(), [usd, eur], '2026-06-01', new Date(2026, 11, 1))!
-  expect(june.income.rows.map((r) => r.element.id)).toContain('uncategorized')
-  const july = planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', new Date(2026, 11, 1))!
-  expect(july.income.rows.map((r) => r.element.id)).not.toContain('uncategorized')
+  expect(planMonthFigures(usdPlan(), [usd, eur], '2026-06-01', past)!.income.rows.map((r) => r.element.id)).toContain('uncategorized')
+  expect(planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!.income.rows.map((r) => r.element.id)).not.toContain('uncategorized')
 })
 
 it('an unplanned cell counts as a zero plan', () => {
-  const f = planMonthFigures(usdPlan(), [usd, eur], '2026-05-01', new Date(2026, 11, 1))!
-  expect(f.income.rows.find((r) => r.element.id === 'ie1')!.planned).toBe('0')
+  const ie1 = usdPlan().structure.elements.find((el) => el.id === 'ie1')!
+  expect(planCellFigures(ie1, 0)).toEqual({ element: ie1, planned: '0', actual: '2000' })
+  expect(planCellFigures(ie1, 9)).toEqual({ element: ie1, planned: '0', actual: '0' })
+})
+
+it('carries a savings cell’s closing balance', () => {
+  const row = { id: 'acc-s1', type: 0, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 0, ownerUserId: 'u1',
+    cells: [{ actual: '40', planned: '100', closingBalance: '1040' }], children: [] } as unknown as Parameters<typeof planCellFigures>[0]
+  expect(planCellFigures(row, 0).closingBalance).toBe('1040')
 })
 
 it('chains Balance at month end from the opening balance, past months at actuals', () => {
   // opening 500; May +2300 -200; June +2050 -215 -100 transfers; July +400 -190
-  const f = planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', new Date(2026, 11, 1))!
+  const f = planMonthFigures(usdPlan(), [usd, eur], '2026-07-01', past)!
   expect(cmp(f.balance, '4545')).toBe(0)
   expect(f.savingsBalance).toBeNull()
   expect(cmp(f.transfersNet, '0')).toBe(0)
-  const june = planMonthFigures(usdPlan(), [usd, eur], '2026-06-01', new Date(2026, 11, 1))!
-  expect(cmp(june.transfersNet, '-100')).toBe(0)
+  expect(cmp(planMonthFigures(usdPlan(), [usd, eur], '2026-06-01', past)!.transfersNet, '-100')).toBe(0)
 })
 
 it('projects the current month at the larger of plan and actual, as the Plan view does', () => {
@@ -308,7 +382,7 @@ it('splits Total savings off Balance when the plan carries savings data', () => 
   ]
   plan.savingsOpeningBalances = [{ currencyId: 'cur-usd', amount: '1000' }]
   plan.openingBalances = [{ currencyId: 'cur-usd', amount: '1500' }]
-  const f = planMonthFigures(plan, [usd, eur], '2026-07-01', new Date(2026, 11, 1))!
+  const f = planMonthFigures(plan, [usd, eur], '2026-07-01', past)!
   expect(cmp(f.savingsBalance!, '1000')).toBe(0)
   // combined 1500 + 4045 of activity, minus the 1000 held in savings
   expect(cmp(f.balance, '4545')).toBe(0)
@@ -318,9 +392,8 @@ it('sheetCell names the id, currency and settable amount of each target kind', (
   const budget = coerceBudgetFixture(fixtureWireBudget)
   const food = budget.structure.elements.find((el) => el.id === 'cat-food')!
   expect(sheetCell({ kind: 'expense', element: food }, 'cur-usd')).toEqual({ id: 'cat-food', name: 'Food', currencyId: 'cur-usd', amount: '200' })
-  const plan = usdPlan()
-  const ie1 = plan.structure.elements.find((el) => el.id === 'ie1')!
-  expect(sheetCell({ kind: 'income', row: { element: ie1, planned: '2000', received: '0' } }, 'cur-usd')).toEqual({
+  const ie1 = usdPlan().structure.elements.find((el) => el.id === 'ie1')!
+  expect(sheetCell({ kind: 'plan', cell: { element: ie1, planned: '2000', actual: '0' } }, 'cur-usd')).toEqual({
     id: 'ie1', name: 'Salaries', currencyId: 'cur-usd', amount: '2000',
   })
   const saving = { id: 'acc-s1', type: 5 as const, name: 'Rainy day', icon: 'savings', currencyId: 'cur-eur', ownerUserId: 'u1', isArchived: 0 as const, position: 0, budgeted: '50', spent: '0', available: '50' }
@@ -328,14 +401,23 @@ it('sheetCell names the id, currency and settable amount of each target kind', (
 })
 ```
 
-In the savings test, the combined balance through July is 500 + 4045 = 4545 with opening 500. With opening 1500 the combined balance is 5545; the savings side is 1000 (no flows, nothing planned); the everyday side is 5545 − 1000 = 4545. If `savingsBalanceRow` behaves differently, run the Plan view's own functions on the same plan to find the true figure and fix the expectation, not the implementation. The rule is "same numbers as the Plan view's Balance and Total savings lines".
+About the savings-split expectation: through July, the combined balance is 1500 + 4045 = 5545. The savings side is 1000 (no flows, nothing planned). The everyday side is 5545 − 1000 = 4545. If the Plan view's own functions give a different figure on this input, fix the expectation, not the implementation. The rule is "same numbers as the Plan view's Balance and Total savings lines".
 
 - [ ] **Step 2: Run the tests and check that they fail**
 
-Run: `pnpm vitest run src/features/budgets/phoneMonth.test.ts --maxWorkers=2`
-Expected: FAIL, because the module `./phoneMonth` does not exist.
+Run: `pnpm vitest run src/features/budgets/phoneMonth.test.ts src/features/budgets/planMath.test.ts --maxWorkers=2`
+Expected: FAIL. The module is missing, and `planMonthExchange` is not exported.
 
 - [ ] **Step 3: Implement**
+
+In `planMath.ts`, add after `makePlanExchange` (`Id` is already imported there):
+
+```ts
+export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[], monthIndex: number): (from: Id, to: Id, amount: string) => string {
+  const rates = (plan.currencyRates[monthIndex]?.rates ?? []).map((r) => ({ ...r, updatedAt: r.periodStart }))
+  return (from, to, amount) => exchange(from, to, amount, rates, currencies)
+}
+```
 
 Create `phoneMonth.ts`:
 
@@ -354,19 +436,30 @@ import {
   savingsBalanceRow,
 } from './planMath'
 
-export interface IncomeRowFigures {
+export interface PlanCellFigures {
   element: PlanElementDto
   planned: string
-  received: string
+  actual: string
+  closingBalance?: string
 }
 
 export interface PlanMonthFigures {
   month: string
   index: number
-  income: { rows: IncomeRowFigures[]; planned: string; received: string }
+  income: { rows: PlanCellFigures[]; planned: string; received: string }
   balance: string
   savingsBalance: string | null
   transfersNet: string
+}
+
+export function planCellFigures(element: PlanElementDto, index: number): PlanCellFigures {
+  const cell = element.cells[index]
+  return {
+    element,
+    planned: cell && cell.planned !== '' ? cell.planned : '0',
+    actual: cell?.actual ?? '0',
+    ...(cell?.closingBalance !== undefined ? { closingBalance: cell.closingBalance } : {}),
+  }
 }
 
 /** One month of the Plan view's figures for the phone view: the same functions, so
@@ -382,15 +475,11 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const savings = planHasSavingsData(plan) ? savingsBalanceRow(plan, totals, ex, now) : null
   const balance = savings ? everydayBalanceRow(combined, savings) : combined
 
-  const figures = (element: PlanElementDto): IncomeRowFigures => {
-    const cell = element.cells[index]
-    return { element, planned: cell && cell.planned !== '' ? cell.planned : '0', received: cell?.actual ?? '0' }
-  }
   const income = bucketPlanRows(plan, false).income
-  const rows = [...income.folders.flatMap((f) => f.rows), ...income.loose].map((r) => figures(r.element))
+  const rows = [...income.folders.flatMap((f) => f.rows), ...income.loose].map((r) => planCellFigures(r.element, index))
   const uncategorized = income.uncategorized?.element
   if (uncategorized && !isZero(uncategorized.cells[index]?.actual ?? '0')) {
-    rows.push(figures(uncategorized))
+    rows.push(planCellFigures(uncategorized, index))
   }
 
   return {
@@ -405,8 +494,8 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
 
 export type SheetTarget =
   | { kind: 'expense'; element: BudgetElementDto }
-  | { kind: 'income'; row: IncomeRowFigures }
   | { kind: 'savings'; row: BudgetSavingsElementDto }
+  | { kind: 'plan'; cell: PlanCellFigures }
 
 export interface SheetCell {
   id: Id
@@ -421,24 +510,24 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
   switch (target.kind) {
     case 'expense':
       return { id: target.element.id, name: target.element.name, currencyId: target.element.currencyId ?? baseCurrencyId, amount: target.element.budgeted }
-    case 'income':
-      return { id: target.row.element.id, name: target.row.element.name, currencyId: target.row.element.currencyId, amount: target.row.planned }
     case 'savings':
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
+    case 'plan':
+      return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
   }
 }
 ```
 
 - [ ] **Step 4: Run the tests and check that they pass**
 
-Run: `pnpm vitest run src/features/budgets/phoneMonth.test.ts --maxWorkers=2`, then `pnpm exec tsc -b`.
+Run: `pnpm vitest run src/features/budgets/phoneMonth.test.ts src/features/budgets/planMath.test.ts --maxWorkers=2`, then `pnpm exec tsc -b`.
 Expected: PASS; tsc clean.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add web/src/features/budgets/phoneMonth.ts web/src/features/budgets/phoneMonth.test.ts
-git commit -m "feat: One month of plan figures for the phone view
+git add web/src/features/budgets/phoneMonth.ts web/src/features/budgets/phoneMonth.test.ts web/src/features/budgets/planMath.ts web/src/features/budgets/planMath.test.ts
+git commit -m "feat: Plan month figures and the item sheet's target
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
@@ -451,7 +540,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Modify: `locales/de.json`, `locales/en.json`, `locales/es.json`, `locales/fr.json`, `locales/it.json`, `locales/nl.json`, `locales/pl.json`, `locales/pt.json`, `locales/ru.json`, `locales/uk.json`, `locales/zh.json`
 
 **Interfaces:**
-- Produces these keys, used by Tasks 5–7. The `en` values are verbatim:
+- Produces these keys, used by Tasks 4–8. The `en` values are verbatim:
 
 | Key | en |
 |---|---|
@@ -503,245 +592,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 4: Remove the stage-1 phone paths; tablet amounts open Set budget
-
-This task removes every phone-only entry point stage 1 kept. After it, a phone in non-edit mode still shows the old table (Task 7 replaces it), with no tap-Available, no long-press and no comments button in the set-limit sheet. Tablets gain tap-to-set-budget on the budgeted/planned amounts.
-
-**Files:**
-- Modify: `web/src/features/budgets/BudgetPage.tsx`
-- Modify: `web/src/features/budgets/BudgetTable.tsx`
-- Modify: `web/src/features/budgets/SetLimitDialog.tsx`
-- Modify: `web/src/features/budgets/PlanSheet.tsx`
-- Delete: `web/src/hooks/useLongPress.ts` (its only importer is `BudgetPage.tsx`)
-- Tests:
-  - `web/src/features/budgets/comments.monthly.test.tsx`
-  - `web/src/features/budgets/comments.plan.test.tsx`
-  - `web/src/features/budgets/comments.plan.guest.test.tsx`
-  - `web/src/features/budgets/BudgetPage.test.tsx`
-  - `web/src/features/budgets/BudgetTable.test.tsx`
-- Docs: `docs/regression-test-plan.md`
-
-**Interfaces:**
-- `SetLimitDialog` props become exactly `{ target, onClose, onCommit }`: `commentCount` and `onOpenComments` are removed.
-- `ElementRowExtras` loses `onAvailableClick` and `onAvailableCommentsClick`.
-- `PlanSheet`'s internal context loses `isPhone`.
-
-- [ ] **Step 1: Rewrite the tests that assert removed paths (they fail after Step 3)**
-
-`comments.monthly.test.tsx`:
-- Delete `it('opens the thread from SetLimitDialog as its own dialog on compact viewports', …)`, together with the two comment lines above it.
-- Delete `it('lets a guest reach the thread from the Available cell on compact viewports', …)`, together with its comment block.
-- Delete `it('lets a phone user open the thread of an individually-archived element from the Available cell', …)`, together with its comment block.
-- Delete `it('offers no add-comment corner on a phone', …)`. Task 7 covers the phone view.
-- Replace `it('keeps the tablet amount plain text for an editable cell (no comments button)', …)`, and its comment block, with:
-
-```ts
-it('opens Set budget from a tap on the tablet amount of an editable cell', async () => {
-  registerMonthlyHandlers()
-  mockTabletViewport()
-  const user = userEvent.setup()
-  renderPage('/budget')
-
-  const row = await screen.findByTestId('element-cat-food')
-  expect(within(row).queryByLabelText(/^comments /)).toBeNull()
-  await user.click(within(row).getByRole('button', { name: 'limit Food' }))
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
-})
-
-it('a tablet long-press on the amount opens the actions modal, not Set budget', async () => {
-  registerMonthlyHandlers()
-  mockTabletViewport()
-  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/budget')
-
-  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
-  await user.pointer({ keys: '[TouchA>]', target: cell })
-  await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await user.pointer({ keys: '[/TouchA]', target: cell })
-  expect(screen.queryByLabelText('Budget')).toBeNull()
-})
-
-it('the tablet Available pill is plain text', async () => {
-  registerMonthlyHandlers()
-  mockTabletViewport()
-  renderPage('/budget')
-  const row = await screen.findByTestId('element-cat-food')
-  expect(within(row).getByTestId('cell-available').closest('button')).toBeNull()
-})
-```
-
-`comments.plan.test.tsx`:
-- Delete `it('opens the thread in a sheet on a phone', …)`.
-- Delete `it('opens the thread as a sheet, not a popover, from the amount dialog on a phone', …)`.
-
-`comments.plan.guest.test.tsx`: in `it('lets a guest start a thread on a cell with no existing comments, on compact viewports', …)`, change `mockCompactViewport()` to a tablet mock and rename the test `…, on a tablet`. If the file has no tablet helper, add one next to `mockCompactViewport`:
-
-```ts
-function mockTabletViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-```
-
-If `mockCompactViewport` ends up unused in that file, delete it.
-
-`BudgetPage.test.tsx`:
-- In `it('compact viewport: the mode switch sits in the settings menu …', …)`, switch the matchMedia mock to the tablet form (`matches: q.includes('1023')`) and rename it `tablet viewport: …`. Phones lose the switch in Task 7.
-- Replace `it('compact: Planned opens the set-limit dialog with a button to the cell thread', …)` with:
-
-```ts
-  it('tablet: tapping Planned opens the set-limit dialog, with no comments button', async () => {
-    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-      matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-    }))
-    let body: unknown
-    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
-    const user = userEvent.setup()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    await user.click(within(row).getByRole('button', { name: 'limit Rainy day' }))
-    const input = await screen.findByLabelText('Budget')
-    expect(screen.queryByRole('button', { name: /Comments \(/ })).not.toBeInTheDocument()
-    await user.clear(input)
-    await user.type(input, '250')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
-    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-  })
-```
-
-`BudgetTable.test.tsx`: delete every test that passes `onAvailableClick` or `onAvailableCommentsClick` (`grep -n "onAvailable" BudgetTable.test.tsx`). Those props no longer exist.
-
-- [ ] **Step 2: Run the changed files and check that the new tablet tests fail**
-
-Run: `pnpm vitest run src/features/budgets/comments.monthly.test.tsx src/features/budgets/BudgetPage.test.tsx --maxWorkers=2`
-Expected: FAIL. `limit Food` / `limit Rainy day` are not found on a tablet, and the Available pill is still a button.
-
-- [ ] **Step 3: Implement the removals**
-
-`SetLimitDialog.tsx`:
-1. Delete the `commentCount` and `onOpenComments` props and their JSDoc.
-2. Delete the `{onOpenComments ? (<button …>) : null}` block.
-3. Change the component comment to `// Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.`
-4. The signature becomes `export function SetLimitDialog({ target, onClose, onCommit }: SetLimitDialogProps)`.
-
-`BudgetTable.tsx`:
-1. Remove `onAvailableClick` and `onAvailableCommentsClick` from `ElementRowExtras`, with their JSDoc.
-2. In `ElementRow`, the Available cell becomes:
-
-```tsx
-        <span className="flex w-20 justify-center sm:w-24">
-          {isUncategorized ? (
-            <span data-testid="cell-available" className="text-[15px] tabular-nums text-muted-foreground">
-              {EMPTY_CELL}
-            </span>
-          ) : (
-            <AvailablePill available={available} currency={currency} testId="cell-available" />
-          )}
-        </span>
-```
-
-3. In the Archive section's read-only `extras`, delete the `onAvailableCommentsClick` line and the two comment lines above it.
-4. The `wrapBudgetCell` JSDoc stays.
-
-`BudgetPage.tsx`:
-1. Delete `ElementLongPress` and the `useLongPress` import.
-2. `renderRowWrapper` becomes:
-
-```tsx
-                    renderRowWrapper={
-                      editMode
-                        ? (element, _bucket, row) => (
-                            <DraggableElement key={element.id} id={element.id}>
-                              {row}
-                            </DraggableElement>
-                          )
-                        : undefined
-                    }
-```
-
-3. Delete the `onAvailableClick={…}` and `onAvailableCommentsClick={…}` props on `<BudgetTable>`, with their comment lines.
-4. On `<SetLimitDialog>`, delete `commentCount` and `onOpenComments`, with their comment line.
-5. Replace `inlineLimitEditor` with the version below. It adds the compact tap target, and its comment replaces the old one:
-
-```tsx
-  // Limit editing shared by the table's budgeted cells and the Savings block's planned
-  // cells: desktop edits inline; a tablet's tap opens SetLimitDialog, the touch
-  // counterpart of clicking the amount (long-press stays with the cell's actions modal)
-  const inlineLimitEditor =
-    limitsEditable && !editMode
-      ? (cell: Pick<BudgetElementDto, 'id' | 'name' | 'budgeted' | 'currencyId'>) => {
-          const currency = currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))
-          return isCompact ? (
-            <button
-              type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
-              aria-label={`limit ${cell.name}`}
-              onClick={() => setLimitTarget(cell)}
-            >
-              {moneyFormat(cell.budgeted, currency, { showCurrency: false, useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 })}
-            </button>
-          ) : (
-            <LimitEditor
-              id={cell.id}
-              name={cell.name}
-              value={cell.budgeted}
-              currency={currency}
-              onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
-            />
-          )
-        }
-      : undefined
-```
-
-   Add `import { moneyFormat } from '@/lib/money'`. The existing `onBudgetCellComments` gate `!editMode && !(isCompact && limitsEditable)` stays as it is: an editable tablet cell is now the Set budget button, not a comments button.
-
-`PlanSheet.tsx`:
-1. Delete `import { useIsPhone } from '@/hooks/useIsPhone'`, the `isPhone: boolean` context field (~line 248), `const isPhone = useIsPhone()` (~line 1178), and both `isPhone,` entries in the context value and deps (~lines 1550, 1588).
-2. Marker condition (~line 637): change `(commentCount > 0 || (!ctx.isPhone && !ctx.editMode && !commentsReadOnly(ctx.meta, m)))` to `(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m)))`.
-3. Change `actionsDisabled={ctx.isPhone || ctx.editMode}` to `actionsDisabled={ctx.editMode}`.
-4. On its `<SetLimitDialog>` (~line 2391), delete `commentCount`, `onOpenComments` and their comment line.
-
-Delete `web/src/hooks/useLongPress.ts`.
-
-- [ ] **Step 4: Update the regression checklist**
-
-In `docs/regression-test-plan.md` §9:
-- Delete the item that begins `- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach` (~line 871).
-- Delete the item that begins `- [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open` (~line 883).
-- Delete the item that begins `- [ ] 📱 On a phone, tap the Available pill of an individually-archived` (~line 888).
-- In the item around line 810 (`on a phone a tap opens the set-limit dialog with a "Comments (N)"`), drop the phone clause; the phone view gets its own items in Task 7.
-- Add:
-
-```markdown
-- [ ] 📱 Tablet (640–1023 px): tap a budgeted amount (Budget view) or a planned
-      savings amount: "Set budget" opens with only the amount (no comments
-      button); saving updates the cell. The Available pill is not a button.
-- [ ] 📱 Tablet: long-press an amount: the actions modal opens and the finger's
-      release does not also open "Set budget".
-```
-
-   Wrap the lines like the neighbouring items do.
-
-- [ ] **Step 5: Run the budgets suite, typecheck and lint**
-
-Run: `pnpm vitest run src/features/budgets --maxWorkers=2 && pnpm exec tsc -b && pnpm lint`
-Expected: all pass, with lint at 0 errors. Any remaining failure is a test that asserted a removed path. Fix it the same way: delete it if the path is gone for good; switch it to the tablet mock if the behaviour still exists on tablets.
-
-- [ ] **Step 6: Commit**
-
-```bash
-git add -A web/src docs/regression-test-plan.md
-git commit -m "feat: Drop the stage-1 phone comment paths; tablet amounts open Set budget
-
-Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
-```
-
----
-
-### Task 5: The item sheet (`ElementSheet`)
+### Task 4: The item sheet (`ElementSheet`)
 
 **Files:**
 - Create: `web/src/features/budgets/ElementSheet.tsx`
@@ -749,34 +600,49 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 **Interfaces:**
 - Consumes:
-  - Task 1: `rowState`, `carryOver` (plus the existing `displayAvailable`, `elementDisplayName`, `makeBudgetExchange`).
+  - Task 1: `rowState`, `carryOver` (plus the existing `displayAvailable`, `elementDisplayName`).
   - Task 2: `SheetTarget`, `sheetCell`.
   - Task 3 keys.
   - `sortByCreatedAt` from `./CommentThread`.
   - `currentMonth`, `formatPlanMonth` from `./planMath`.
+  - `isIncomeType`, `BudgetElementType`, `UNCATEGORIZED_ID` from `@/api/dto/budget`.
 - Produces:
 
 ```ts
 export interface ElementSheetProps {
   target: SheetTarget | null
-  budget: BudgetDto
+  /** the month the sheet describes, 'YYYY-MM-01' (a Plan grid cell's column month; else the selected month) */
+  month: string
+  baseCurrencyId: Id
   currencies: CurrencyDto[]
-  selectedDate: string          // 'YYYY-MM-01'
-  comments: BudgetCommentDto[]  // the target cell's thread for selectedDate
+  /** converts at `month`'s rates */
+  exchange: (from: Id, to: Id, amount: string) => string
+  comments: BudgetCommentDto[]   // the target cell's thread for `month`
   commentsReadOnly: boolean
   canSetAmount: boolean
   onClose: () => void
   onSetAmount: () => void
   onOpenComments: () => void
-  /** absent: no transaction list for this target (income, savings) */
+  /** absent: no transaction list for this target */
   onShowTransactions?: () => void
 }
 export function ElementSheet(props: ElementSheetProps): JSX.Element | null
 ```
 
+- Figures by target:
+
+| Target | Figures | State sentence | Set label |
+|---|---|---|---|
+| `expense` | Budget, Spent, Available (Uncategorized: Spent only) | covered / over per `rowState` | Set budget |
+| `savings` | Planned, Saved, Balance at month end (`closingBalance`, `—` when absent) | none | Set budget |
+| `plan` with an income type | Planned, Received | none | Set plan |
+| `plan` with type `SAVINGS` | Planned, Saved, Balance at month end | none | Set budget |
+| `plan` of any other type | Budget (= planned), Spent (= actual) | none (the plan has no Available) | Set budget |
+
+  Actual figures (Spent/Received/Saved) read `—` in a month after the current one.
 - Test ids:
   - `element-sheet` (the sheet body)
-  - `sheet-figure-{key}` where key ∈ `budget|spent|available|planned|received|saved|balance`
+  - `sheet-figure-{budget|spent|available|planned|received|saved|balance}`
   - `sheet-state`
   - `sheet-converted`
   - `sheet-rate`
@@ -787,11 +653,12 @@ export function ElementSheet(props: ElementSheetProps): JSX.Element | null
 Create `ElementSheet.test.tsx`:
 
 ```tsx
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { coerceBudgetFixture } from '@/test/coerceBudget'
 import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetCommentDto, BudgetElementDto, PlanElementDto } from '@/api/dto/budget'
+import { makeBudgetExchange } from './budgetMath'
 import { ElementSheet } from './ElementSheet'
 import type { ElementSheetProps } from './ElementSheet'
 import { formatPlanMonth } from './planMath'
@@ -808,13 +675,16 @@ const comment = (id: string, text: string, createdAt: string): BudgetCommentDto 
   id, elementId: 'cat-food', period: '2026-07-01', comment: text,
   author: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, createdAt, updatedAt: createdAt,
 })
+const planElement = (over: Partial<PlanElementDto>): PlanElementDto =>
+  ({ id: 'x', type: 1, name: 'X', icon: 'tag', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 0, ownerUserId: null, cells: [], children: [], ...over }) as PlanElementDto
 
 function renderSheet(overrides: Partial<ElementSheetProps> = {}) {
   const props: ElementSheetProps = {
     target: { kind: 'expense', element: food },
-    budget,
+    month: '2026-07-01',
+    baseCurrencyId: 'cur-usd',
     currencies: [usd, eur],
-    selectedDate: '2026-07-01',
+    exchange: makeBudgetExchange(budget, [usd, eur]),
     comments: [],
     commentsReadOnly: false,
     canSetAmount: true,
@@ -858,7 +728,7 @@ it('names the overspend when Available is negative', () => {
 
 it('shows a dash for Spent and no state sentence in a future month', () => {
   const over: BudgetElementDto = { ...food, budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' }
-  renderSheet({ target: { kind: 'expense', element: over }, selectedDate: '2099-01-01' })
+  renderSheet({ target: { kind: 'expense', element: over }, month: '2099-01-01' })
   expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent—')
   expect(screen.queryByTestId('sheet-state')).toBeNull()
 })
@@ -870,6 +740,16 @@ it('tags every amount of a foreign-currency item and adds the converted line and
   expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('10.00 EUR')
   expect(screen.getByTestId('sheet-converted')).toHaveTextContent('≈ 11.11 USD')
   expect(screen.getByTestId('sheet-rate')).toHaveTextContent(new RegExp(`^Average rate for ${july}: 1 USD = [\\d.,]+ EUR$`))
+})
+
+it('takes the rate note from the exchange it is given (a Plan column month)', () => {
+  const eurRow = planElement({ id: 'env-eur', type: 0, name: 'Euro Stash', currencyId: 'cur-eur' })
+  renderSheet({
+    target: { kind: 'plan', cell: { element: eurRow, planned: '100', actual: '35' } },
+    month: '2026-05-01',
+    exchange: (from, to, amount) => (from === 'cur-usd' && to === 'cur-eur' ? '0.5' : amount),
+  })
+  expect(screen.getByTestId('sheet-rate')).toHaveTextContent(`Average rate for ${formatPlanMonth('2026-05-01', 'en')}: 1 USD = 0.5 EUR`)
 })
 
 it('previews the latest comment and links to the thread', async () => {
@@ -914,17 +794,26 @@ it('shows the uncategorized row as Spent only, with no comments link', () => {
   expect(screen.queryByRole('button', { name: /comment/i })).toBeNull()
 })
 
-it('an income row shows Planned and Received and offers Set plan', () => {
-  const salaries = { id: 'ie1', type: 4, name: 'Salaries', icon: 'payments', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 3, ownerUserId: null, cells: [], children: [] } as PlanElementDto
-  renderSheet({ target: { kind: 'income', row: { element: salaries, planned: '2000', received: '400' } }, onShowTransactions: undefined })
+it('an income plan cell shows Planned and Received and offers Set plan', () => {
+  const salaries = planElement({ id: 'ie1', type: 4, name: 'Salaries' })
+  renderSheet({ target: { kind: 'plan', cell: { element: salaries, planned: '2000', actual: '400' } }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).toHaveTextContent('Planned2,000.00')
   expect(screen.getByTestId('sheet-figure-received')).toHaveTextContent('Received400.00')
   expect(screen.getByRole('button', { name: 'Set plan' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Transactions' })).toBeNull()
-  expect(screen.queryByTestId('sheet-state')).toBeNull()
 })
 
-it('a savings row shows Planned, Saved and the month-end Balance', () => {
+it('an expense plan cell shows Budget and Spent, without Available or a state sentence', () => {
+  const pe1 = planElement({ id: 'pe1', type: 0, name: 'Living' })
+  renderSheet({ target: { kind: 'plan', cell: { element: pe1, planned: '100', actual: '150' } } })
+  expect(screen.getByTestId('sheet-figure-budget')).toHaveTextContent('100.00')
+  expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('150.00')
+  expect(screen.queryByTestId('sheet-figure-available')).toBeNull()
+  expect(screen.queryByTestId('sheet-state')).toBeNull()
+  expect(screen.getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
+})
+
+it('a savings row (monthly or plan cell) shows Planned, Saved and the month-end Balance', () => {
   const saving = { id: 'acc-s1', type: 5 as const, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0 as const, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' }
   renderSheet({ target: { kind: 'savings', row: saving }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).toHaveTextContent('100.00')
@@ -932,13 +821,18 @@ it('a savings row shows Planned, Saved and the month-end Balance', () => {
   expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('Balance at month end1,040.00')
 })
 
+it('a savings plan cell shows its closing balance too', () => {
+  const s = planElement({ id: 'acc-s1', type: 5, name: 'Rainy day' })
+  renderSheet({ target: { kind: 'plan', cell: { element: s, planned: '100', actual: '40', closingBalance: '1040' } }, onShowTransactions: undefined })
+  expect(screen.getByTestId('sheet-figure-saved')).toHaveTextContent('40.00')
+  expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('1,040.00')
+})
+
 it('renders nothing without a target', () => {
   renderSheet({ target: null })
   expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 ```
-
-The month label is built with `formatPlanMonth`, the same rule the sheet uses, so the tests hold in any year.
 
 - [ ] **Step 2: Run the tests and check that they fail**
 
@@ -955,10 +849,11 @@ import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
 import { abs, cmp, sub } from '@/lib/decimal'
-import type { BudgetCommentDto, BudgetDto } from '@/api/dto/budget'
-import { UNCATEGORIZED_ID } from '@/api/dto/budget'
+import type { BudgetCommentDto } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
-import { carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, rowState } from './budgetMath'
+import type { Id } from '@/api/types'
+import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
 import { sheetCell } from './phoneMonth'
@@ -968,16 +863,19 @@ const EMPTY = '—'
 
 export interface ElementSheetProps {
   target: SheetTarget | null
-  budget: BudgetDto
+  /** the month the sheet describes, 'YYYY-MM-01' */
+  month: string
+  baseCurrencyId: Id
   currencies: CurrencyDto[]
-  selectedDate: string
+  /** converts at `month`'s rates */
+  exchange: (from: Id, to: Id, amount: string) => string
   comments: BudgetCommentDto[]
   commentsReadOnly: boolean
   canSetAmount: boolean
   onClose: () => void
   onSetAmount: () => void
   onOpenComments: () => void
-  /** absent: no transaction list for this target (income, savings) */
+  /** absent: no transaction list for this target */
   onShowTransactions?: () => void
 }
 
@@ -990,9 +888,10 @@ interface Figure {
 
 export function ElementSheet({
   target,
-  budget,
+  month,
+  baseCurrencyId,
   currencies,
-  selectedDate,
+  exchange,
   comments,
   commentsReadOnly,
   canSetAmount,
@@ -1005,34 +904,42 @@ export function ElementSheet({
   if (!target) {
     return null
   }
-  const base = budget.meta.currencyId
-  const cell = sheetCell(target, base)
+  const cell = sheetCell(target, baseCurrencyId)
   const name = elementDisplayName(cell.id, cell.name, t)
-  const month = formatPlanMonth(selectedDate, i18n.language)
+  const monthLabel = formatPlanMonth(month, i18n.language)
   const currency = currencies.find((c) => c.id === cell.currencyId)
-  const baseCurrency = currencies.find((c) => c.id === base)
-  const foreign = cell.currencyId !== base
-  const future = selectedDate > currentMonth()
+  const baseCurrency = currencies.find((c) => c.id === baseCurrencyId)
+  const foreign = cell.currencyId !== baseCurrencyId
+  const future = month > currentMonth()
   const isUncategorized = cell.id === UNCATEGORIZED_ID
   const fmtIn = (amount: string, c: CurrencyDto | undefined) =>
     moneyFormat(amount, c, { showCurrency: false, useNativePrecision: false, maxPrecision: c?.fractionDigits ?? 2 })
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
   const fmt = (amount: string) => `${fmtIn(amount, currency)}${foreign && currency ? ` ${currency.code}` : ''}`
   const actual = (amount: string) => (future ? EMPTY : fmt(amount))
+  const label = {
+    budget: t('budgets.page.budget.structure.tab.budgeted'),
+    spent: t('budgets.page.budget.structure.tab.spent'),
+    available: t('budgets.page.budget.structure.tab.available'),
+    planned: t('budgets.page.savings.planned'),
+    received: t('budgets.page.sheet.received'),
+    saved: t('budgets.page.savings.saved'),
+    balance: t('budgets.page.phone.balance'),
+  }
 
   const figures: Figure[] = []
   let stateSentence: string | null = null
-  let convertedActual: string | null = null
-  const exchangeFn = makeBudgetExchange(budget, currencies)
+  let actualInBase: string
+  let income = false
   if (target.kind === 'expense') {
     const el = target.element
     const available = displayAvailable(el)
     if (!isUncategorized) {
-      figures.push({ key: 'budget', label: t('budgets.page.budget.structure.tab.budgeted'), value: fmt(el.budgeted) })
+      figures.push({ key: 'budget', label: label.budget, value: fmt(el.budgeted) })
     }
-    figures.push({ key: 'spent', label: t('budgets.page.budget.structure.tab.spent'), value: actual(el.spent) })
+    figures.push({ key: 'spent', label: label.spent, value: actual(el.spent) })
     if (!isUncategorized) {
-      figures.push({ key: 'available', label: t('budgets.page.budget.structure.tab.available'), value: fmt(available), negative: cmp(available, '0') < 0 })
+      figures.push({ key: 'available', label: label.available, value: fmt(available), negative: cmp(available, '0') < 0 })
       const state = rowState({ budgeted: el.budgeted, spent: el.spent, available }, future)
       if (state === 'covered') {
         stateSentence = t('budgets.page.sheet.covered', { over: fmt(sub(el.spent, el.budgeted)), carry: fmt(carryOver(el)) })
@@ -1040,25 +947,33 @@ export function ElementSheet({
         stateSentence = t('budgets.page.sheet.overspent', { amount: fmt(abs(available)) })
       }
     }
-    convertedActual = el.budgetSpent
-  } else if (target.kind === 'income') {
-    figures.push({ key: 'planned', label: t('budgets.page.savings.planned'), value: fmt(target.row.planned) })
-    figures.push({ key: 'received', label: t('budgets.page.sheet.received'), value: actual(target.row.received) })
-    convertedActual = exchangeFn(cell.currencyId, base, target.row.received)
+    actualInBase = el.budgetSpent
   } else {
-    const row = target.row
-    figures.push({ key: 'planned', label: t('budgets.page.savings.planned'), value: fmt(row.budgeted) })
-    figures.push({ key: 'saved', label: t('budgets.page.savings.saved'), value: actual(row.spent) })
-    figures.push({ key: 'balance', label: t('budgets.page.phone.balance'), value: row.closingBalance !== undefined ? fmt(row.closingBalance) : EMPTY })
-    convertedActual = exchangeFn(cell.currencyId, base, row.spent)
+    const planned = target.kind === 'savings' ? target.row.budgeted : target.cell.planned
+    const done = target.kind === 'savings' ? target.row.spent : target.cell.actual
+    const closing = target.kind === 'savings' ? target.row.closingBalance : target.cell.closingBalance
+    const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
+    income = isIncomeType(type)
+    if (type === BudgetElementType.SAVINGS) {
+      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
+      figures.push({ key: 'saved', label: label.saved, value: actual(done) })
+      figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
+    } else if (income) {
+      figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
+      figures.push({ key: 'received', label: label.received, value: actual(done) })
+    } else {
+      figures.push({ key: 'budget', label: label.budget, value: fmt(planned) })
+      figures.push({ key: 'spent', label: label.spent, value: actual(done) })
+    }
+    actualInBase = foreign ? exchange(cell.currencyId, baseCurrencyId, done) : done
   }
 
   const latest = sortByCreatedAt(comments).at(-1)
   const showCommentsLink = !isUncategorized && !(commentsReadOnly && comments.length === 0)
-  const rate = foreign ? exchangeFn(base, cell.currencyId, '1') : null
+  const rate = foreign ? exchange(baseCurrencyId, cell.currencyId, '1') : null
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={`${name} · ${month}`}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={`${name} · ${monthLabel}`}>
       <div className="flex flex-col gap-4" data-testid="element-sheet">
         <div className={`grid gap-2 ${figures.length === 1 ? 'grid-cols-1' : figures.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {figures.map((f) => (
@@ -1075,17 +990,17 @@ export function ElementSheet({
         ) : null}
         {foreign && baseCurrency ? (
           <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-            {!future && convertedActual !== null ? (
+            {!future ? (
               <span data-testid="sheet-converted">
-                {t('budgets.page.sheet.converted', { amount: fmtIn(convertedActual, baseCurrency), currency: baseCurrency.code })}
+                {t('budgets.page.sheet.converted', { amount: fmtIn(actualInBase, baseCurrency), currency: baseCurrency.code })}
               </span>
             ) : null}
             {rate !== null && currency ? (
               <span data-testid="sheet-rate">
                 {t('budgets.modal.expense_widget.conversion_rate', {
-                  period: month,
+                  period: monthLabel,
                   defaultCurrency: baseCurrency.code,
-                  rate: `${moneyFormat(rate, undefined, { showCurrency: false, useNativePrecision: false, maxPrecision: 4 })} ${currency.code}`,
+                  rate: `${moneyFormat(rate, null, { showCurrency: false, useNativePrecision: false, maxPrecision: 4 })} ${currency.code}`,
                 })}
               </span>
             ) : null}
@@ -1109,7 +1024,7 @@ export function ElementSheet({
           <div className="flex gap-3 [&>button]:h-11 [&>button]:flex-1">
             {canSetAmount ? (
               <Button type="button" onClick={onSetAmount}>
-                {target.kind === 'income' ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
+                {income ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
               </Button>
             ) : null}
             {onShowTransactions ? (
@@ -1125,27 +1040,688 @@ export function ElementSheet({
 }
 ```
 
-The early `return null` comes before any hook other than `useTranslation`, which is called unconditionally, so the rules of hooks hold. If `moneyFormat(rate, undefined, …)` does not accept `undefined`, pass `null`: its signature is `currency?: CurrencyLike | null`.
+`useTranslation` is called unconditionally before the early `return null`, so the rules of hooks hold. On a tablet (`useIsPhone()` false), `ResponsiveDialog` renders a centred dialog rather than a bottom sheet. That is intended: the same content in the platform's dialog shell.
 
 - [ ] **Step 4: Run the tests and check that they pass**
 
 Run: `pnpm vitest run src/features/budgets/ElementSheet.test.tsx --maxWorkers=2`, then `pnpm exec tsc -b && pnpm lint`.
-Expected: PASS; tsc clean; lint 0 errors.
-
-If the vaul Drawer does not render its children in jsdom on the first frame, `findBy…` instead of `getBy…` fixes it. `CommentsPanel.test.tsx` renders the phone sheet the same way, so copy its setup if needed.
+Expected: PASS; tsc clean; lint 0 errors. If the vaul Drawer mounts its content a frame late in jsdom, switch the first query of each test to `findBy…`; `CommentsPanel.test.tsx` renders the phone sheet the same way.
 
 - [ ] **Step 5: Commit**
 
 ```bash
 git add web/src/features/budgets/ElementSheet.tsx web/src/features/budgets/ElementSheet.test.tsx
-git commit -m "feat: Item sheet for the phone month view
+git commit -m "feat: Item sheet for budget rows and plan cells
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ```
 
 ---
 
-### Task 6: The phone month list (`PhoneMonthView`)
+### Task 5: Tablet Budget view: a tap opens the item sheet; long-press and the stage-1 phone paths go
+
+**Files:**
+- Modify:
+  - `web/src/features/budgets/CellShell.tsx` (drop the touch half)
+  - `web/src/features/budgets/BudgetTable.tsx`
+  - `web/src/features/budgets/SavingsBlock.tsx`
+  - `web/src/features/budgets/BudgetPage.tsx`
+  - `web/src/features/budgets/SetLimitDialog.tsx`
+  - `web/src/features/budgets/PlanSheet.tsx`: only the `CellShell` props, `isPhone`, and its `SetLimitDialog` comments props. The Plan grid's tap-to-sheet is Task 6.
+- Delete: `web/src/hooks/useLongPress.ts` (only `BudgetPage.tsx` imports it)
+- Tests:
+  - `CellShell.test.tsx`
+  - `BudgetTable.test.tsx`
+  - `SavingsBlock.test.tsx`
+  - `BudgetPage.test.tsx`
+  - `comments.monthly.test.tsx`
+  - `comments.plan.test.tsx`
+  - `comments.plan.guest.test.tsx`
+
+  All are under `web/src/features/budgets/`.
+- Docs: `docs/regression-test-plan.md`
+
+**Interfaces:**
+- `CellShell` props become exactly:
+
+```ts
+interface CellShellProps {
+  children: ReactElement
+  comments: BudgetCommentDto[]
+  /** no hover preview while a thread is open (touch viewports never preview) */
+  previewDisabled?: boolean
+  /** no Shift+F2: edit-structure mode */
+  shortcutDisabled?: boolean
+  /** omitted for the uncategorized row */
+  onOpenComments?: (anchor: HTMLElement) => void
+}
+```
+
+  `title`, `onSetBudget`, `onShowTransactions` and `actionsDisabled` go.
+- `ElementRowExtras` (BudgetTable):
+  - Adds `onBudgetCellDetails?: (element: BudgetElementDto) => void`, documented as "touch viewports: the budgeted amount opens the item sheet; wins over `renderBudgetCell` and `onBudgetCellComments`".
+  - Loses `onAvailableClick` and `onAvailableCommentsClick`.
+  - `wrapBudgetCell` becomes `(element, cell) => ReactNode`, dropping the `{ readOnly }` options that only fed `onSetBudget`.
+- `SavingsBlock` props:
+  - `onEditPlanned` is replaced by `onOpenDetails?: (row: BudgetSavingsElementDto) => void`, documented as "touch viewports: the planned amount opens the item sheet".
+  - `wrapPlannedCell` keeps its signature.
+- `SetLimitDialog` props become `{ target, onClose, onCommit, title?: string }`. `commentCount` and `onOpenComments` go, and `title` defaults to `t('budgets.modal.set_limit_form.header')`.
+- `BudgetPage` gains `sheetTarget: SheetTarget | null` state and hosts `<ElementSheet>` (expense and savings kinds here; Task 8 adds the `plan` kind for phone income).
+
+- [ ] **Step 1: Rewrite the tests for the new behaviour**
+
+**`CellShell.test.tsx`**
+- Delete these tests:
+  - `on a tablet, a long-press opens the actions modal and its release does not also tap the cell`
+  - `on a tablet, a quick tap still taps the cell, and there is no hover preview or native context menu`
+- Add:
+
+```tsx
+it('on a tablet, a press held past half a second opens nothing and the tap still reaches the cell', async () => {
+  tablet()
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  try {
+    const onClick = vi.fn()
+    render(
+      <CellShell comments={[comment]} onOpenComments={vi.fn()}>
+        <button type="button" onClick={onClick}>cell</button>
+      </CellShell>,
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const cell = screen.getByRole('button', { name: 'cell' })
+    await user.pointer({ keys: '[TouchA>]', target: cell })
+    await vi.advanceTimersByTimeAsync(800)
+    await user.pointer({ keys: '[/TouchA]', target: cell })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByTestId('comment-preview')).toBeNull()
+    expect(onClick).toHaveBeenCalledTimes(1)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+```
+
+  Use the file's existing `comment` fixture and `tablet()` helper names. If they differ, adapt; `tablet()` is at line ~27.
+- In every remaining test:
+  - drop the `title`, `onSetBudget` and `onShowTransactions` props;
+  - rename `actionsDisabled` to `shortcutDisabled`;
+  - rename the Shift+F2 test `does nothing when the cell actions are disabled (phones, edit mode)` to `does nothing when the shortcut is disabled (edit mode)`.
+- The right-click test stays: a mouse right-click still gets the browser's own menu.
+
+**`BudgetTable.test.tsx`**
+- Delete every test that passes `onAvailableClick` or `onAvailableCommentsClick`.
+- Where a test passes `wrapBudgetCell` with three parameters, drop the third.
+- Add:
+
+```tsx
+it('onBudgetCellDetails turns the budgeted amount into the item-sheet button, Archive rows included', async () => {
+  const onDetails = vi.fn()
+  renderTable((b) => {
+    const old = b.structure.elements.find((el) => el.id === 'tag-old')!
+    Object.assign(old, { budgeted: '50', available: '50' })
+  }, { onBudgetCellDetails: onDetails, renderBudgetCell: () => 'editor', onBudgetCellComments: vi.fn() })
+  await userEvent.click(within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+  await userEvent.click(within(screen.getByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'tag-old' }))
+  expect(screen.queryByText('editor')).toBeNull()
+})
+```
+
+**`SavingsBlock.test.tsx`**
+- Replace every `onEditPlanned={…}` prop with `onOpenDetails={…}`, or drop it where the test is about desktop.
+- Where a test tapped the planned amount on a compact viewport and expected `onEditPlanned`, assert `onOpenDetails` receives the row and that the button is named `details {row name}`.
+
+**`BudgetPage.test.tsx`**
+- Replace `it('compact: Planned opens the set-limit dialog with a button to the cell thread', …)` with:
+
+```ts
+  it('tablet: tapping Planned opens the item sheet; its Set budget saves the plan', async () => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+    let body: unknown
+    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    await user.click(within(row).getByRole('button', { name: 'details Rainy day' }))
+    const sheet = await screen.findByTestId('element-sheet')
+    expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
+    await user.click(within(sheet).getByRole('button', { name: 'Set budget' }))
+    const input = await screen.findByLabelText('Budget')
+    expect(screen.queryByTestId('element-sheet')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Comments \(/ })).not.toBeInTheDocument()
+    await user.clear(input)
+    await user.type(input, '250')
+    await user.click(screen.getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
+    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
+  })
+```
+
+  Import `PointerEventsCheckLevel` from `@testing-library/user-event` if the file does not already.
+
+**`comments.monthly.test.tsx`**
+- Delete these tests, together with any comment block above them:
+  - `opens the thread from SetLimitDialog as its own dialog on compact viewports`
+  - `lets a guest reach the thread from the Available cell on compact viewports`
+  - `lets a phone user open the thread of an individually-archived element from the Available cell`
+  - `offers no add-comment corner on a phone` (Task 8 covers the phone view)
+  - `opens the actions modal from a long-press on a tablet and goes on to the thread`
+  - `keeps the tablet amount dialog free of comments (the actions modal reaches the thread)`
+  - `keeps the tablet amount plain text for an editable cell (no comments button)`
+- In `lets a guest add a comment from the corner, and their tablet actions modal has no set budget`, keep the desktop corner half and delete the tablet long-press half. Rename it `lets a guest add a comment from the corner`.
+- Add:
+
+```tsx
+it('a tablet tap on the budgeted amount opens the item sheet, whose Comments opens the thread', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-cat-food')
+  expect(within(row).queryByLabelText(/^comments /)).toBeNull()
+  await user.click(within(row).getByRole('button', { name: 'details Food' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByTestId('sheet-latest-comment')).toHaveTextContent('Trip to Lisbon')
+  await user.click(within(sheet).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon', { selector: 'p' })).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
+it('a guest’s tablet sheet has no Set budget but reaches the thread', async () => {
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderGuestPage('/budget')
+
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+
+it('a tablet tap on an archived element’s amount opens its sheet without Set budget', async () => {
+  const archivedElementBudget = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'tag-old' ? { ...el, budgeted: '50', available: '50' } : el)),
+    },
+  }
+  registerMonthlyHandlers(archivedElementBudget)
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+  await user.click(within(await screen.findByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  expect(within(sheet).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
+})
+
+it('the tablet Available pill is plain text', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  renderPage('/budget')
+  const row = await screen.findByTestId('element-cat-food')
+  expect(within(row).getByTestId('cell-available').closest('button')).toBeNull()
+})
+```
+
+  The tablet marker test `opens the thread as a popover from a marker tap on a tablet` stays. It proves the marker tap still opens the popover; add `expect(screen.queryByTestId('element-sheet')).toBeNull()` to it. The `Trip to Lisbon` selector above assumes the thread renders comment text in a `<p>`; drop the selector if `findByText` finds a single match without it.
+
+**`comments.plan.test.tsx`**
+- Delete these tests:
+  - `opens the thread in a sheet on a phone`
+  - `opens the thread as a sheet, not a popover, from the amount dialog on a phone`
+  - `opens the actions modal from a long-press on a plan cell on a tablet`
+- Leave `keeps the amount dialog free of comments on a tablet` as it is; Task 6 rewrites it.
+
+**`comments.plan.guest.test.tsx`**
+- In `lets a guest add a comment from a plan cell's corner, and their tablet actions modal has no set budget`, keep the desktop corner half and delete the tablet long-press half. Rename it `lets a guest add a comment from a plan cell's corner`.
+- Leave the `compact viewports` test for Task 6.
+
+- [ ] **Step 2: Run the changed files and check that the new tests fail**
+
+Run: `pnpm vitest run src/features/budgets/comments.monthly.test.tsx src/features/budgets/BudgetTable.test.tsx src/features/budgets/BudgetPage.test.tsx src/features/budgets/CellShell.test.tsx --maxWorkers=2`
+Expected: FAIL. There is no `details …` button and no `element-sheet`, and the CellShell long-press still opens a dialog.
+
+- [ ] **Step 3: `CellShell.tsx`: remove the touch half**
+
+1. Delete:
+   - `LONG_PRESS_MS`, `LONG_PRESS_SLOP_PX`, `ActionRun`, `CellAction`, `BuildActions` and `CellActionsModal`;
+   - the `actionsModal` state, and the `pending`, `pressTimer`, `pressStart` and `swallowClick` refs;
+   - `touchActions`, `buildActions`, `runPending` and `cancelLongPress`.
+2. Remove the imports only they used: `Button`, `ResponsiveDialog`, `TFunction`, and `MouseEvent` if unused.
+3. Props: apply the interface above. `actionsDisabled` becomes `shortcutDisabled`, used only in the Shift+F2 guard.
+4. Handlers kept on the clone:
+   - `onPointerEnter`: unchanged.
+   - `onPointerLeave`: `pressed.current = false` and the preview close; no long-press cancel.
+   - `onPointerDown`: `pressed.current = true; closePreview()`.
+   - `onKeyDown`: the Shift+F2 block, guarded by `!shortcutDisabled`.
+5. Delete the `onPointerMove`, `onPointerUp`, `onPointerCancel`, `onClickCapture` and `onContextMenu` wrappers. The cell's own handlers pass through untouched, because `cloneElement` keeps any prop not overridden. Trim `CellProps` to the handlers still overridden (`ref`, `onPointerEnter`, `onPointerLeave`, `onPointerDown`, `onKeyDown`).
+6. The unmount cleanup keeps only the preview timer.
+7. Update the top-of-component comment to the new shape: "the Radix preview mounts as a sibling only while open".
+
+- [ ] **Step 4: `BudgetTable.tsx`**
+
+1. Apply the `ElementRowExtras` changes above.
+2. In `ElementRow`'s budgeted cell, pick the content in this order: uncategorized dash, `onBudgetCellDetails` button, `renderBudgetCell`, `onBudgetCellComments` button, plain value. The new branch:
+
+```tsx
+              ) : extras.onBudgetCellDetails ? (
+                <button
+                  type="button"
+                  className="w-full text-right underline-offset-2 hover:underline"
+                  aria-label={`details ${displayName}`}
+                  onClick={() => extras.onBudgetCellDetails!(element)}
+                >
+                  {moneyFormat(element.budgeted, currency, opts)}
+                </button>
+```
+
+3. Change the wrap call to `extras.wrapBudgetCell(element, cell)`.
+4. The Available cell renders `<AvailablePill …/>` (or the uncategorized dash) with no button branches.
+5. In the Archive section's read-only `extras`:
+   - add `onBudgetCellDetails: extras.onBudgetCellDetails`;
+   - pass `wrapBudgetCell: extras.wrapBudgetCell`;
+   - delete the `onAvailableCommentsClick` line and its comment.
+
+- [ ] **Step 5: `SavingsBlock.tsx`**
+
+1. Replace `onEditPlanned` with the optional `onOpenDetails` in `SavingsBlockProps` and `SavingsRow`, and fix the doc comment on `renderPlannedEditor`.
+2. The planned cell's content becomes:
+
+```tsx
+      {editMode ? (
+        planned
+      ) : onOpenDetails ? (
+        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${row.name}`} onClick={() => onOpenDetails(row)}>
+          {planned}
+        </button>
+      ) : editable && renderPlannedEditor ? (
+        renderPlannedEditor(row)
+      ) : (
+        // a cell that cannot be edited (guest, pre-start month, deleted account) still opens its thread
+        <button
+          type="button"
+          className="w-full text-right underline-offset-2 hover:underline"
+          aria-label={`comments ${row.name}`}
+          onClick={(e) => onOpenComments(row, commentAnchorOf(e.currentTarget))}
+        >
+          {planned}
+        </button>
+      )}
+```
+
+- [ ] **Step 6: `SetLimitDialog.tsx`**
+
+1. Props become `{ target, onClose, onCommit, title?: string }`.
+2. Delete the comments button block.
+3. Set `title={title ?? t('budgets.modal.set_limit_form.header')}`.
+4. Change the component comment to `// Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.`
+
+- [ ] **Step 7: `BudgetPage.tsx`**
+
+1. Delete `ElementLongPress` and the `useLongPress` import. Make `renderRowWrapper` edit-mode only:
+
+```tsx
+                    renderRowWrapper={
+                      editMode
+                        ? (element, _bucket, row) => (
+                            <DraggableElement key={element.id} id={element.id}>
+                              {row}
+                            </DraggableElement>
+                          )
+                        : undefined
+                    }
+```
+
+2. Delete the `onAvailableClick` and `onAvailableCommentsClick` props on `<BudgetTable>`, with their comments.
+3. Add the imports `import { ElementSheet } from './ElementSheet'` and `import { sheetCell, type SheetTarget } from './phoneMonth'`. Add the state `const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)` next to `transactionsTarget`.
+4. Touch viewports open the sheet from the amount; desktop keeps the inline editor and the comments button:
+
+```tsx
+                    onBudgetCellDetails={isCompact && !editMode ? (element) => setSheetTarget({ kind: 'expense', element }) : undefined}
+                    onBudgetCellComments={!editMode && !isCompact ? (element, anchor) => openComments(element, anchor) : undefined}
+```
+
+   Replace the old comment block above `onBudgetCellComments` with one line: `// touch viewports reach set budget, comments and transactions through the item sheet`.
+5. `<SavingsBlock>`: replace `onEditPlanned={setLimitTarget}` with `onOpenDetails={isCompact && !editMode ? (row) => setSheetTarget({ kind: 'savings', row }) : undefined}`.
+6. `wrapBudgetCell` and `wrapPlannedCell` build `CellShell` with only `comments`, `previewDisabled={commentsTarget !== null || editMode}`, `shortcutDisabled={editMode}` and `onOpenComments`. `wrapBudgetCell`'s signature drops the `{ readOnly }` parameter. Delete `setBudgetFor` and `openLimitEditorIn` if nothing else uses them. `cellActionsDisabled` becomes `const cellActionsDisabled = isPhone || editMode`, used only by `canAddComment`.
+7. `<SetLimitDialog>`: delete `commentCount`, `onOpenComments` and their comment line.
+8. Sheet helpers, after `transactionsTargetOf`:
+
+```tsx
+  const sheetCanSetAmount = (target: SheetTarget): boolean => {
+    if (!limitsEditable) {
+      return false
+    }
+    switch (target.kind) {
+      case 'expense':
+        return target.element.isArchived === 0 && target.element.id !== UNCATEGORIZED_ID
+      case 'savings':
+        return target.row.isArchived === 0
+      case 'plan':
+        // the monthly page has no plan column to write to; the phone view wires this (stage 2, Task 8)
+        return false
+    }
+  }
+  const sheetCellTarget = (target: SheetTarget): CellTarget => {
+    const cell = sheetCell(target, budget.meta.currencyId)
+    return { id: cell.id, name: cell.name, budgeted: cell.amount }
+  }
+  const expenseSheetTarget = sheetTarget?.kind === 'expense' ? sheetTarget : null
+```
+
+9. Host the sheet next to `<CommentsPanel>`. Each action closes the sheet in the same update that opens the next dialog, so the two never stack:
+
+```tsx
+      <ElementSheet
+        target={sheetTarget}
+        month={selectedDate}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={makeBudgetExchange(budget, currencies)}
+        comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, budget.meta.currencyId).id, selectedDate)) ?? [] : []}
+        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
+        canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
+        onClose={() => setSheetTarget(null)}
+        onSetAmount={() => {
+          if (sheetTarget) {
+            setLimitTarget(sheetCellTarget(sheetTarget))
+            setSheetTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetTarget) {
+            openComments(sheetCellTarget(sheetTarget))
+            setSheetTarget(null)
+          }
+        }}
+        onShowTransactions={
+          expenseSheetTarget
+            ? () => {
+                setTransactionsTarget(transactionsTargetOf(expenseSheetTarget.element))
+                setSheetTarget(null)
+              }
+            : undefined
+        }
+      />
+```
+
+- [ ] **Step 8: `PlanSheet.tsx` (props only)**
+
+1. Delete `useIsPhone`: its import, the `isPhone` context field, `const isPhone = useIsPhone()`, and both `isPhone` entries in the context object and its deps.
+2. Marker condition: change `(!ctx.isPhone && !ctx.editMode && …)` to `(!ctx.editMode && …)`.
+3. The cell's `<CellShell>` keeps only `comments`, `previewDisabled`, `shortcutDisabled={ctx.editMode}` and `onOpenComments`.
+4. Its `<SetLimitDialog>` loses `commentCount`, `onOpenComments` and their comment line.
+
+- [ ] **Step 9: Delete `web/src/hooks/useLongPress.ts`**
+
+- [ ] **Step 10: Regression checklist**
+
+In `docs/regression-test-plan.md` §9:
+1. Delete these items, and any other item describing the long-press actions modal or the "Comments (N)" button inside the set-limit sheet (`grep -n "long-press\|Comments (N)\|Available pill" docs/regression-test-plan.md`):
+   - the one beginning `- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach`
+   - the one beginning `- [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open`
+   - the one beginning `- [ ] 📱 On a phone, tap the Available pill of an individually-archived`
+   - the tablet long-press item (it begins with the long-press that "opens a modal titled with the item's name")
+2. In the item that says `on a phone a tap opens the set-limit dialog with a "Comments (N)"`, drop the phone clause.
+3. Add, wrapped like the neighbouring items:
+
+```markdown
+- [ ] 📱 Tablet (640–1023 px), Budget view: tap a budgeted amount (editable or
+      not, Archive rows included) or a Savings planned amount: the item sheet
+      opens ("Food · July": Budget, Spent, Available, latest comment,
+      "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
+      budget" replaces the sheet with the amount dialog (no comments in it);
+      "Comments" replaces it with the thread. A guest's sheet has no "Set
+      budget". The Available pill is not a button; tapping Spent still lists
+      the transactions; the corner marker still opens the thread beside the cell.
+- [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
+      menu, no text-selection callout from the app) and the tap still works.
+```
+
+- [ ] **Step 11: Run the budgets suite, typecheck and lint**
+
+Run: `pnpm vitest run src/features/budgets --maxWorkers=2 && pnpm exec tsc -b && pnpm lint`
+Expected: all pass, lint 0 errors. Any other failure is a test asserting a removed path (long-press, actions modal, tap-Available, set-limit "Comments (N)"): delete it, or re-point it to the sheet if the behaviour moved there. List each one in your report.
+
+- [ ] **Step 12: Commit**
+
+```bash
+git add -A web/src docs/regression-test-plan.md
+git commit -m "feat: Tablet taps open the item sheet; no long-press anywhere
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 6: Tablet Plan grid: a tap on a month cell opens the item sheet
+
+**Files:**
+- Modify: `web/src/features/budgets/PlanSheet.tsx`
+- Tests: `web/src/features/budgets/comments.plan.test.tsx`, `web/src/features/budgets/comments.plan.guest.test.tsx`, `web/src/features/budgets/PlanSheet.test.tsx`
+- Docs: `docs/regression-test-plan.md`
+
+**Interfaces:**
+- Consumes:
+  - Task 2: `planCellFigures`, `planMonthExchange`.
+  - Task 4: `ElementSheet`.
+  - Task 5: `SetLimitDialog`'s `title`.
+- Adds `openSheet: (target: PlanLimitTarget) => void` to the grid context. `PlanLimitTarget` is the existing `{ el, month, monthIndex }`.
+
+- [ ] **Step 1: Write the failing tests**
+
+`comments.plan.test.tsx`: replace `it('keeps the amount dialog free of comments on a tablet', …)` with the tests below. Use the file's tablet helper; add one as in Task 5 if the file has none. `PointerEventsCheckLevel` is imported from `@testing-library/user-event`.
+
+```tsx
+it('a tablet tap on a plan cell opens the item sheet for that month', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByTestId('sheet-figure-budget')).toBeInTheDocument()
+  expect(within(sheet).getByTestId('sheet-figure-spent')).toBeInTheDocument()
+  expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
+})
+
+it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
+it('a tablet sheet’s Comments opens the thread', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('a tablet marker tap opens only the thread, not the sheet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup()
+  renderPage('/plan')
+
+  await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
+  expect(await screen.findByTestId('comments-popover')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+```
+
+`comments.plan.guest.test.tsx`: replace `it('lets a guest start a thread on a cell with no existing comments, on compact viewports', …)` with:
+
+```tsx
+it('a guest’s tablet tap opens the sheet without Set budget, and Add comment starts a thread', async () => {
+  useGuestPlanHandlers()
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:0'))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Add comment' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+```
+
+If `mockCompactViewport` ends up unused in either file, delete it.
+
+`PlanSheet.test.tsx`: `grep -n "limit \|matches: true\|1023" PlanSheet.test.tsx`. Rewrite any test that clicks the compact `limit {name}` button so that it taps the cell and chooses "Set budget" in the sheet (`element-sheet`). A test that only checks desktop inline editing stays.
+
+- [ ] **Step 2: Run the tests and check that they fail**
+
+Run: `pnpm vitest run src/features/budgets/comments.plan.test.tsx src/features/budgets/comments.plan.guest.test.tsx --maxWorkers=2`
+Expected: FAIL, with no `element-sheet` after a cell tap.
+
+- [ ] **Step 3: Implement in `PlanSheet.tsx`**
+
+1. Imports: `ElementSheet` from `./ElementSheet`; `planCellFigures` from `./phoneMonth`; `planMonthExchange` added to the `./planMath` import list.
+2. Grid context: add `openSheet: (target: PlanLimitTarget) => void`, documented as "touch viewports: a cell tap opens the item sheet". Wire it into the context object and its deps exactly as `openDialog` is wired.
+3. State in `PlanSheet`, next to `planLimitTarget`:
+
+```ts
+  const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
+  const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
+```
+
+4. The month cell's `onClick` becomes:
+
+```tsx
+              onClick={(e) => {
+                ctx.select(rk, i, e)
+                // touch: the whole cell opens the item sheet; the marker stops its own click
+                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
+                  ctx.openSheet(target)
+                }
+              }}
+```
+
+5. The `cell-planned` span no longer nests a button on touch. `ctx.isCompact` renders plain text, `editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText`. Desktop keeps the `LimitEditor` for editable cells and the `comments {name}` button for the others:
+
+```tsx
+              <span data-testid="cell-planned" className="text-sm">
+                {ctx.isCompact ? (
+                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
+                ) : editable ? (
+                  <LimitEditor … unchanged … />
+                ) : !isUncategorized ? (
+                  … the existing `comments {displayName}` button, unchanged …
+                ) : (
+                  plannedText
+                )}
+              </span>
+```
+
+6. Host the sheet next to `<CommentsPanel>`, using the same `plan`, `budget.meta` / `meta`, `userId`, `commentsByCell`, `openDialog`, `openComments` and `openTransactions` values the grid context already receives. Use whatever names those carry in this component:
+
+```tsx
+      <ElementSheet
+        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        month={sheetCellTarget?.month ?? ''}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
+        comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
+        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
+        onClose={() => setSheetCellTarget(null)}
+        onSetAmount={() => {
+          if (sheetCellTarget) {
+            openDialog(sheetCellTarget)
+            setSheetCellTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetCellTarget) {
+            openComments(sheetCellTarget, { anchor: null })
+            setSheetCellTarget(null)
+          }
+        }}
+        onShowTransactions={
+          sheetCellTarget &&
+          sheetCellTarget.el.id !== UNCATEGORIZED_ID &&
+          !isIncomeType(sheetCellTarget.el.type) &&
+          sheetCellTarget.el.type !== BudgetElementType.SAVINGS
+            ? () => {
+                openTransactions(sheetCellTarget.el, sheetCellTarget.month)
+                setSheetCellTarget(null)
+              }
+            : undefined
+        }
+      />
+```
+
+   The `el` stored in the target is the rendered row element. For a savings row that is `savingsAsPlanElement(projectSavingsClosings(row, plan.months))`, so the sheet's month-end Balance is the projected one the grid shows.
+7. On `PlanSheet`'s own `<SetLimitDialog>`, pass `title={planLimitTarget && isIncomeType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}`.
+
+- [ ] **Step 4: Regression checklist**
+
+Add to §9, next to the Task 5 tablet items:
+
+```markdown
+- [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
+      the cell is selected and the item sheet opens for that element and
+      month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
+      for savings), latest comment, "Set budget" ("Set plan" for income),
+      "Comments", and "Transactions" for expense rows. The sheet's month and
+      any foreign-currency rate are the tapped column's. The corner marker still
+      opens only the thread.
+```
+
+- [ ] **Step 5: Run the budgets suite, typecheck and lint**
+
+Run: `pnpm vitest run src/features/budgets --maxWorkers=2 && pnpm exec tsc -b && pnpm lint`
+Expected: all pass.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add -A web/src docs/regression-test-plan.md
+git commit -m "feat: Tablet taps on a plan cell open the item sheet
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+---
+
+### Task 7: The phone month list (`PhoneMonthView`)
 
 **Files:**
 - Create: `web/src/features/budgets/PhoneMonthView.tsx`
@@ -1156,7 +1732,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 **Interfaces:**
 - Consumes:
   - Task 1: `rowState`, `rowProgress`, `RowState`.
-  - Task 2: `PlanMonthFigures`, `IncomeRowFigures`, `SheetTarget`.
+  - Task 2: `PlanMonthFigures`, `PlanCellFigures`, `SheetTarget`.
   - Task 3 keys.
   - Existing: `BudgetBuckets`, `budgetTotals`, `displayAvailable`, `elementDisplayName`, `makeBudgetExchange`, `totalsWithSavings`, `commentCellKey`, `currentMonth`, `BudgetTransactionsTarget`, `useBudgetPeriodStore`.
 - Produces:
@@ -1235,7 +1811,7 @@ const salaries = { id: 'ie1', type: 4, name: 'Salaries', icon: 'payments', curre
 const planMonth: PlanMonthFigures = {
   month: '2026-07-01',
   index: 2,
-  income: { rows: [{ element: salaries, planned: '2000', received: '400' }], planned: '2000', received: '400' },
+  income: { rows: [{ element: salaries, planned: '2000', actual: '400' }], planned: '2000', received: '400' },
   balance: '4545',
   savingsBalance: null,
   transfersNet: '0',
@@ -1350,7 +1926,7 @@ it('collapses income into one summary row that unfolds into income rows', async 
   expect(screen.queryByTestId('phone-income-row-ie1')).toBeNull()
   await userEvent.click(summary)
   await userEvent.click(screen.getByRole('button', { name: 'Salaries, planned 2,000.00, received 400.00' }))
-  expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'income', row: planMonth.income.rows[0] })
+  expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'plan', cell: planMonth.income.rows[0] })
 })
 
 it('leaves income and the plan lines out while the plan is not loaded', () => {
@@ -1429,7 +2005,7 @@ import type { BudgetBuckets, FolderBucket, RowState } from './budgetMath'
 import { budgetTotals, displayAvailable, elementDisplayName, makeBudgetExchange, rowProgress, rowState, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
-import type { IncomeRowFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
+import type { PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
 import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 
@@ -1645,11 +2221,11 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     </Card>
   )
 
-  const incomeRow = (row: IncomeRowFigures) => {
+  const incomeRow = (row: PlanCellFigures) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
     const planned = fmt(row.planned, el.currencyId)
-    const received = future ? EMPTY : fmt(row.received, el.currencyId)
+    const received = future ? EMPTY : fmt(row.actual, el.currencyId)
     return (
       <PhoneRow
         key={`${el.id}:${el.type}`}
@@ -1661,7 +2237,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         second={received}
         commented={commented(el.id)}
         ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
-        onOpen={() => onOpenSheet({ kind: 'income', row })}
+        onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
       />
     )
   }
@@ -1820,21 +2396,20 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
-### Task 7: Phone view in `BudgetPage` (both routes) and the sheet's routing
+### Task 8: Phone view in `BudgetPage` (both routes) and phone income plans
 
 **Files:**
 - Modify: `web/src/features/budgets/BudgetPage.tsx`
-- Modify: `web/src/features/budgets/SetLimitDialog.tsx` (optional `title`)
+- Test: `web/src/features/budgets/BudgetPage.test.tsx` (the mode-switch test moves to a tablet)
 - Test: `web/src/features/budgets/BudgetPage.phone.test.tsx` (new)
 - Docs: `docs/regression-test-plan.md`
 
 **Interfaces:**
 - Consumes:
-  - Task 2: `planMonthFigures`, `sheetCell`, `SheetTarget`.
-  - Task 5: `ElementSheet`.
-  - Task 6: `PhoneMonthView`.
-  - Existing: `useBudgetPlan`, `usePlanSetLimit`, `commentsReadOnly` (from `./PlanSheet`).
-- `SetLimitDialog` gains `title?: string`, defaulting to `t('budgets.modal.set_limit_form.header')`.
+  - Task 2: `planMonthFigures`, `SheetTarget`.
+  - Task 5: the `ElementSheet` host already in `BudgetPage` (with `sheetTarget`, `sheetCanSetAmount`, `sheetCellTarget`) and `SetLimitDialog`'s `title`.
+  - Task 7: `PhoneMonthView`.
+  - Existing: `useBudgetPlan`, `usePlanSetLimit`.
 
 - [ ] **Step 1: Write the failing page tests**
 
@@ -2045,16 +2620,11 @@ Notes for the implementer:
 Run: `pnpm vitest run src/features/budgets/BudgetPage.phone.test.tsx --maxWorkers=2`
 Expected: FAIL. `phone-month-view` is not found, because the page still renders the table on phones.
 
-- [ ] **Step 3: `SetLimitDialog` title**
-
-Add `title?: string` to `SetLimitDialogProps` and destructure it. On the dialog, set `title={title ?? t('budgets.modal.set_limit_form.header')}`.
-
-- [ ] **Step 4: Wire the phone view into `BudgetPage.tsx`**
+- [ ] **Step 3: Wire the phone view into `BudgetPage.tsx`**
 
 Imports to add:
-- `ElementSheet` from `./ElementSheet`
 - `PhoneMonthView` from `./PhoneMonthView`
-- `planMonthFigures`, `sheetCell` and `type SheetTarget` from `./phoneMonth`
+- `planMonthFigures` added to the `./phoneMonth` import
 - `useBudgetPlan`, `usePlanSetLimit` added to the `./queries` import list
 
 State and hooks. Every hook stays above the early returns.
@@ -2080,7 +2650,6 @@ State and hooks. Every hook stays above the early returns.
     () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
     [phonePlan.data, phonePlan.isPlaceholderData, currencies, selectedDate],
   )
-  const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 ```
 
 5. Widen `limitTarget` so an income plan goes through the plan mutation:
@@ -2091,27 +2660,11 @@ State and hooks. Every hook stays above the early returns.
 
    `budgetId` is `userOption(...)`; if its type is not `Id | null`, coerce with `?? null`, as the comments call already expects.
 
-Sheet helpers. Place these after `transactionsTargetOf`:
+Sheet helpers (Task 5 added them): the `plan` case of `sheetCanSetAmount` now allows phone income plans:
 
 ```ts
-  const baseCurrencyId = budget.meta.currencyId
-  const sheetCanSetAmount = (target: SheetTarget): boolean => {
-    if (!limitsEditable) {
-      return false
-    }
-    switch (target.kind) {
-      case 'expense':
-        return target.element.isArchived === 0 && target.element.id !== UNCATEGORIZED_ID
-      case 'income':
-        return target.row.element.isArchived === 0 && target.row.element.id !== UNCATEGORIZED_ID && planMonth !== null
-      case 'savings':
-        return target.row.isArchived === 0
-    }
-  }
-  const sheetCellTarget = (target: SheetTarget): CellTarget => {
-    const cell = sheetCell(target, baseCurrencyId)
-    return { id: cell.id, name: cell.name, budgeted: cell.amount }
-  }
+      case 'plan':
+        return target.cell.element.isArchived === 0 && target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
 ```
 
 Header:
@@ -2174,44 +2727,20 @@ Dialogs:
       />
 ```
 
-2. Next to `CommentsPanel`, add the sheet. It closes before the next dialog opens, in the same update, so the two never stack:
+2. In the `<ElementSheet>` Task 5 added, `onSetAmount` marks a plan target so its commit goes through the plan mutation:
 
 ```tsx
-      <ElementSheet
-        target={sheetTarget}
-        budget={budget}
-        currencies={currencies}
-        selectedDate={selectedDate}
-        comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, baseCurrencyId).id, selectedDate)) ?? [] : []}
-        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
-        canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
-        onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'income' })
+            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan' })
             setSheetTarget(null)
           }
         }}
-        onOpenComments={() => {
-          if (sheetTarget) {
-            openComments(sheetCellTarget(sheetTarget))
-            setSheetTarget(null)
-          }
-        }}
-        onShowTransactions={
-          sheetTarget?.kind === 'expense'
-            ? () => {
-                setTransactionsTarget(transactionsTargetOf(sheetTarget.element))
-                setSheetTarget(null)
-              }
-            : undefined
-        }
-      />
 ```
 
-If TypeScript does not narrow `sheetTarget.element` inside the closure, capture it first: `const expenseTarget = sheetTarget?.kind === 'expense' ? sheetTarget : null`, then use `expenseTarget.element`.
+   Everything else on the sheet stays as Task 5 left it. `month={selectedDate}` and `exchange={makeBudgetExchange(budget, currencies)}` are right for the phone view, because income rows are the selected month.
 
-- [ ] **Step 5: Run the phone tests, then the whole budgets suite**
+- [ ] **Step 4: Run the phone tests, then the whole budgets suite**
 
 Run: `pnpm vitest run src/features/budgets/BudgetPage.phone.test.tsx --maxWorkers=2`
 Expected: PASS.
@@ -2221,15 +2750,17 @@ Expected: PASS. Existing tests that mock a phone (`matches: true`) and expect th
 - If such a test is about table/plan behaviour that tablets still have, switch it to the tablet mock (`matches: q.includes('1023')`).
 - If it asserts the old phone table itself (for example the `budget-totals-mobile` card lines), drop those phone-only assertions; `PhoneMonthView.test.tsx` covers the phone totals.
 
-List every test you changed in the report.
+List every test you changed in the report. Known ones:
+- `BudgetPage.test.tsx`'s `compact viewport: the mode switch sits in the settings menu …` now meets a phone. Switch its mock to the tablet form (`matches: q.includes('1023')`) and rename it `tablet viewport: …`. Tablets keep the switch in the menu.
+- `BudgetPage.test.tsx`'s `a budget without savings rows renders no block` asserts the old phone Total card test ids. Those still exist for desktop/tablet markup (the card is `sm:hidden`), so leave it unless it fails.
 
-- [ ] **Step 6: Typecheck, lint, i18n guard, metrics coverage**
+- [ ] **Step 5: Typecheck, lint, i18n guard, metrics coverage**
 
 Run from `web/`: `pnpm exec tsc -b && pnpm lint && pnpm vitest run src/lib/metrics-coverage.test.ts --maxWorkers=2`
 Run from the repo root: `GOTOOLCHAIN=go1.27.1 /usr/local/go/bin/go test ./internal/test/i18ntest/`
 Expected: all green. The i18n guard now also sees the new keys used from `t()` calls.
 
-- [ ] **Step 7: Regression checklist**
+- [ ] **Step 6: Regression checklist**
 
 In `docs/regression-test-plan.md` §9:
 1. Rewrite the comment and savings items that still describe a phone table: the Savings block item's "On a phone it …" sentences (~lines 776–795) and the Total-card phone sentences. On a phone they now refer to the month view's Savings card and Totals card.
@@ -2278,7 +2809,7 @@ In `docs/regression-test-plan.md` §9:
       reorder, folder menus); "Done" returns to the month view.
 ```
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add -A web/src docs/regression-test-plan.md
@@ -2289,24 +2820,31 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 
 ---
 
+
 ## Self-review notes
 
-Spec coverage, Part 1, item by item:
-- Header (normal-case name, settings, no switch, no chips): Task 7.
-- Month strip: Task 7, which reuses `PeriodStrip`.
-- Heading row with the currency code: Task 6.
-- Income summary row, collapsed, expanding into rows, Uncategorized only when non-zero: Tasks 2 and 6.
-- Expense folder cards with sums and "No folder": Task 6.
-- Savings card and its sheet Balance: Tasks 5 and 6.
-- Totals card: Task 6.
-- Expense row (bar, colour, indicator, chevron vs. row, one button with an accessible name, ≥ 44 px): Task 6.
-- Item sheet (state sentences, latest comment, Comments/Add comment, Set budget visibility, Transactions, foreign-currency lines, income/savings figure sets): Task 5.
-- Sheets replace one another: Task 7.
-- Removed on phone (tap-Available, tap-Spent, long-press, mode radio): Task 4 and Task 7 (radio).
-- Data sources (`get-budget`, a one-month `get-budget-plan` window, comments for the month): Task 7.
-- Row state rule: Task 1. Currency rule on the phone: Tasks 5 and 6.
-- Removals (`ElementLongPress`, `onAvailableClick`, `onAvailableCommentsClick`, phone `renderRowWrapper`, `SetLimitDialog` comments): Task 4.
-- i18n: Task 3. Testing: every task. Regression plan: Tasks 4 and 7.
+Spec coverage:
+- **Part 1, the phone single month view:**
+  - Header (normal-case name, no switch): Task 8.
+  - Month strip: Task 8.
+  - Heading row with the currency code: Task 7.
+  - Income summary row: Tasks 2 and 7.
+  - Folder cards and "No folder": Task 7.
+  - Savings card: Task 7.
+  - Totals card: Task 7.
+  - Expense row (bar, colour, indicator, chevron vs. row, one button with an accessible name, ≥ 44 px): Task 7.
+  - Item sheet: Task 4.
+  - Sheets replace one another: Tasks 5 and 8.
+  - Removed on phone (tap-Available, tap-Spent, long-press, the mode radio): Tasks 5 and 8.
+  - Data (`get-budget`, the plan window, comments): Task 8.
+- **Part 2, tablet (revised 2026-09-30):**
+  - A tap on an amount opens the item sheet: Budget view and Savings in Task 5, Plan grid in Task 6.
+  - The long-press actions modal is removed: Task 5.
+  - The marker tap still opens the popover: Tasks 5 and 6.
+- **Row state rule:** Task 1.
+- **Currency rule on the phone and in the sheet:** Tasks 4 and 7.
+- **Removals:** `ElementLongPress`, `onAvailableClick`, `onAvailableCommentsClick`, the phone `renderRowWrapper`, the `SetLimitDialog` comments and `useLongPress`, all in Task 5.
+- **i18n:** Task 3. **Testing:** every task. **Regression plan:** Tasks 5, 6 and 8.
 
 Deliberately not in this plan:
 - Part 3: desktop density, the currency symbol column on desktop/tablet, "No folder" on desktop, and the uncategorized "Show transactions" on desktop.

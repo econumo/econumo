@@ -35,7 +35,7 @@ contract changes.
 | Row colour | Driven by Available: neutral / amber (over this month, covered by carry-over) / red (Available < 0) |
 | Income on phone | One collapsed summary row at the top, expands to income rows |
 | Comments | Fully separate from the amount editor, both views, all viewports |
-| Starting a thread | Faint corner triangle on hover (desktop); long-press actions modal (tablet); item sheet (phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions)* |
+| Starting a thread | Faint corner triangle on hover (desktop); item sheet (tablet and phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions; tablet long-press modal replaced by the item sheet on tap — no long taps anywhere)* |
 | Desktop density | One emphasised number per view, colour only for problems, drop repeated chrome |
 | Currency | No symbol on budget-currency amounts; budget currency named once in the column-heading row; foreign-currency items get a tag next to the name |
 | Header currency chips + "Spending progress" widget | **Removed**; the average-rate note moves into the item sheet |
@@ -206,13 +206,15 @@ is unchanged.
 
 ### Tablet (touch, 640–1023 px)
 
+*(Revised 2026-09-30: stage 1 shipped a long-press actions modal here; stage 2
+replaces it with a tap that opens the phone's item sheet — no long taps anywhere.)*
+
 - No hover preview.
 - Tap marker → `CommentsPopover`.
-- Long-press a cell → a **modal** titled with the item's name, listing the same
-  cell actions (Set budget, Comments (N) / Add comment, Show transactions) as
-  full-width buttons — the phone's item-sheet
-  pattern rather than a small popup menu. The finger's release must not also
-  trigger the cell's tap action.
+- Tap an amount cell (Budget view budgeted amount, Savings planned amount, Plan grid
+  cell) → the item sheet (`ElementSheet`, Part 1) for that element and month, with
+  Set budget / Comments / Transactions. A Plan grid cell's sheet shows that
+  month's planned and actual figures.
 
 ### Phone
 
@@ -281,8 +283,8 @@ navigation, not an action. `metrics-coverage.test.ts` must stay green.
   income row collapses/expands; `/plan` renders the same view.
 - Comments: amount popover has no comments UI; marker opens `CommentsPopover`;
   hover preview appears after the delay and not while a popover is open;
-  context menu items per role; Shift+F2 and Shift+Enter open the thread; tablet
-  long-press opens the menu.
+  Shift+F2 and Shift+Enter open the thread; a tablet tap on an amount opens the
+  item sheet.
 - Plan view: future cells show no actual; empty plan cells render blank; current
   month tinted.
 - Existing comment/savings suites updated where they assert removed entry points
