@@ -615,8 +615,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       accounts/transactions in it keep resolving symbol and rate).
 - [ ] Rates caption shows the rate and the SPA converts non-base balances in
       totals (sidebar total).
-- [ ] Change profile default currency (Settings → Profile) → totals and budget
-      default currency chips update.
+- [ ] Change profile default currency (Settings → Profile) → totals update.
 
 ## 9. Budgets — table & plan
 
@@ -644,7 +643,6 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
-- [ ] Currency filter chips (multi-currency data) filter rows/totals.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
       envelope), delete folder; leaving the mode persists the layout.
@@ -836,13 +834,22 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Desktop: click a cell's corner marker (Budget view, Plan view, a
       savings Planned cell): the thread opens in a popover beside that cell.
       Clicking another cell's marker switches to that cell's thread.
+      Opening a thread from the keyboard (Tab to the marker, Enter) and
+      pressing Esc closes it and puts focus back on the marker.
 - [ ] Desktop: rest the pointer on a commented cell: after a moment a card
       previews its latest two comments (plus "+N more"); it disappears when
-      the pointer leaves, and never shows while the thread or the amount
-      editor is open.
+      the pointer leaves (it stays while the pointer is on the card itself),
+      and never shows while the thread or the amount editor is open — not even
+      when the pointer drifts off the open amount editor and back over the
+      cell. Tabbing onto a cell's amount shows no card.
 - [ ] Desktop: right-click a cell: Set budget / Comments (N) or Add comment /
       Show transactions. A guest sees no Set budget; the uncategorized row
       offers no comment item; savings cells offer no Show transactions.
+      On the plan grid, the arrow keys move through the open menu and leave
+      the grid's selected cell where it was.
+- [ ] Desktop, monthly view: Tab to a budgeted amount (or a savings Planned
+      amount) with no comments yet and press Shift+F2: that cell's thread
+      opens in a popover beside it, ready for a first comment.
 - [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
       text — editors reach comments through the corner marker (opens the
       thread popover) or a long-press, which opens a modal titled with the
@@ -850,7 +857,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       / Show transactions); for a guest or an archived row, tapping the
       amount opens the thread instead. Lifting the finger does not also open
       the set-limit dialog, and a quick tap still behaves as before. No hover
-      preview on a tablet.
+      preview on a tablet, and the set-limit dialog (Budget and Plan views)
+      has no "Comments (N)" button there.
 - [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
       comments through the set-limit sheet's "Comments (N)" button or the
       comments sheet; the comments sheet keeps its composer pinned above the
