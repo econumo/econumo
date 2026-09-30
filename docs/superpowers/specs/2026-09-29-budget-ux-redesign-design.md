@@ -296,3 +296,11 @@ Stage 1 closes the original bug (amount hidden by the thread) on its own.
 Server changes; changing what Available means (carry-over semantics); a
 multi-month plan editor on phones; hiding decimals; comment features
 (mentions, reactions, notifications).
+
+**Budget configuration** (budget details, edit-structure mode, folder/envelope
+management, the income/expense sides, lifecycle and sharing on
+`/settings/budgets`, a budget switcher) is a separate design, brainstormed on its
+own. This redesign leaves edit-structure mode and the Configure menu working as
+they are (minus the mode radio and currency chips it removes), and invests
+nothing new in them, since that design may move structure editing out of the
+tables.
