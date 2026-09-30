@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Pencil, Trash2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -182,7 +183,7 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
             const isAuthor = currentUserId !== undefined && c.author.id === currentUserId
             const isEditing = !readOnly && editingId === c.id
             return (
-              <li key={c.id} className="flex items-start gap-2">
+              <li key={c.id} className="group/comment flex items-start gap-2">
                 <UserAvatar avatar={c.author.avatar} size="xs" />
                 <div className="flex min-w-0 flex-1 flex-col gap-1">
                   <div className="flex flex-wrap items-baseline gap-1.5">
@@ -190,6 +191,35 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                     <span className="text-xs text-muted-foreground">{formatCommentTime(c.createdAt, i18n.language)}</span>
                     {c.updatedAt !== c.createdAt ? (
                       <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.edited')}</span>
+                    ) : null}
+                    {!readOnly && !isEditing && (isAuthor || canModerate) ? (
+                      // revealed on hover where there is a mouse; always shown on touch
+                      // screens, which have no hover to reveal them with
+                      <span className="ml-auto flex gap-0.5 self-center transition-opacity [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
+                        {isAuthor ? (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            aria-label={t('budgets.page.plan.comments.edit')}
+                            title={t('budgets.page.plan.comments.edit')}
+                            onClick={() => startEdit(c)}
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                        ) : null}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-destructive hover:text-destructive"
+                          aria-label={t('budgets.page.plan.comments.delete')}
+                          title={t('budgets.page.plan.comments.delete')}
+                          onClick={() => setDeleteTarget(c.id)}
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </span>
                     ) : null}
                   </div>
                   {isEditing ? (
@@ -223,24 +253,6 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                   ) : (
                     <p className="whitespace-pre-wrap text-sm">{c.comment}</p>
                   )}
-                  {!readOnly && !isEditing && (isAuthor || canModerate) ? (
-                    <div className="flex gap-3">
-                      {isAuthor ? (
-                        <Button type="button" variant="link" size="sm" className="h-auto p-0 text-xs" onClick={() => startEdit(c)}>
-                          {t('budgets.page.plan.comments.edit')}
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 text-xs text-destructive"
-                        onClick={() => setDeleteTarget(c.id)}
-                      >
-                        {t('budgets.page.plan.comments.delete')}
-                      </Button>
-                    </div>
-                  ) : null}
                 </div>
               </li>
             )

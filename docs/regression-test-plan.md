@@ -826,6 +826,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
       there (cross-view sync).
 - [ ] Edit your own comment: the text updates and "(edited)" appears.
+- [ ] Desktop: a comment's pencil (edit) and bin (delete) icons appear only
+      while the pointer is over that comment (or it has keyboard focus); 📱 on a
+      phone or tablet they are always visible.
 - [ ] Another participant cannot edit your comment; the budget owner can
       delete it.
 - [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.

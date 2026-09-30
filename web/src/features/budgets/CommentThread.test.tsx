@@ -94,6 +94,17 @@ it('own comment offers Edit and Delete; another author\'s offers neither when ca
   expect(within(items[1]).queryByRole('button', { name: 'Delete' })).toBeNull()
 })
 
+// jsdom has no CSS: the classes are the honest check that the icons hide until the
+// comment is hovered or focused, and only on devices that can hover at all
+it('edit and delete are icon buttons revealed on hover or focus where a mouse exists', () => {
+  renderThread({ comments: [commentByAda], currentUserId: 'u1', canModerate: false })
+  const item = screen.getByRole('listitem')
+  expect(item).toHaveClass('group/comment')
+  const actions = within(item).getByRole('button', { name: 'Edit' }).parentElement!
+  expect(actions).toHaveClass('[@media(hover:hover)]:opacity-0', 'group-hover/comment:opacity-100', 'group-focus-within/comment:opacity-100')
+  expect(within(item).getByRole('button', { name: 'Delete' }).querySelector('svg')).not.toBeNull()
+})
+
 it('another author\'s comment offers Delete but not Edit when canModerate is true', () => {
   renderThread({ comments: [commentByAda, commentByBob], currentUserId: 'u1', canModerate: true })
   const items = screen.getAllByRole('listitem')
