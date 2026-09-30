@@ -351,9 +351,9 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('compact viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+it('tablet viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   server.use(
     ...coreHandlers({ user: userWithBudget }),

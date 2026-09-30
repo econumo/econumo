@@ -48,6 +48,8 @@ import {
   useBudget,
   useBudgets,
   useBudgetComments,
+  useBudgetPlan,
+  usePlanSetLimit,
   useSetLimit,
   useCreateEnvelope,
   useUpdateEnvelope,
@@ -78,7 +80,8 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { sheetCell, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, type SheetTarget } from './phoneMonth'
+import { PhoneMonthView } from './PhoneMonthView'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
@@ -220,18 +223,20 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const planHideEmpty = useBudgetPeriodStore((s) => s.planHideEmpty)
   const togglePlanHideEmpty = useBudgetPeriodStore((s) => s.togglePlanHideEmpty)
   const openAccountModal = useUiStore((s) => s.openAccountModal)
-  // the monthly view's own one-month window; PlanSheet fetches its own — passing
-  // null on that route skips the fetch instead of duplicating it. Keyed off the
-  // user's stored default budget id, not `budget.meta.id`: waiting on the budget
-  // fetch to resolve first would chain the comments fetch behind it instead of
-  // firing both together.
+  const [editMode, setEditMode] = useState(false)
+  const phoneView = isPhone && !editMode
+  // the monthly view's own one-month window (also the phone view's, on both
+  // routes); PlanSheet fetches its own — passing null on that route skips the
+  // fetch instead of duplicating it. Keyed off the user's stored default budget
+  // id, not `budget.meta.id`: waiting on the budget fetch to resolve first would
+  // chain the comments fetch behind it instead of firing both together.
   // Latent coupling: every comment writer and CommentThread key off `budget.meta.id`
   // (and budgetCommentsFilter matches the query cache on that same id), not this
   // option-derived value. The two cannot diverge today only because useBudget() reads
   // this identical option internally — if it ever gains a non-option budget source,
   // this derivation must follow, or the markers below silently stop tracking writes.
   const budgetId = userOption(user, UserOptions.BUDGET)
-  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
+  const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' || phoneView ? budgetId : null, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
   const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
   const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
@@ -247,8 +252,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
+  // the phone view's income, Balance and Total savings: the Plan view's own figures
+  // for the selected month; null until that month's window has really loaded
+  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, selectedDate, 1)
+  const planSetLimit = usePlanSetLimit(phonePlan.planKey)
+  const planMonth = useMemo(
+    () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
+    [phonePlan.data, phonePlan.isPlaceholderData, currencies, selectedDate],
+  )
 
-  const [editMode, setEditMode] = useState(false)
   useEffect(() => {
     if (mode === 'plan') {
       trackEvent(METRICS.BUDGET_PLAN_OPEN)
@@ -269,7 +281,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
-  const [limitTarget, setLimitTarget] = useState<CellTarget | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 
@@ -542,8 +554,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       case 'savings':
         return target.row.isArchived === 0
       case 'plan':
-        // outside the phone view there is no plan column to write to
-        return false
+        // an income row exists only while its plan window is loaded
+        return target.cell.element.isArchived === 0 && target.cell.element.id !== UNCATEGORIZED_ID && planMonth !== null
     }
   }
   const sheetCellTarget = (target: SheetTarget): CellTarget => {
@@ -670,12 +682,15 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
-        <h1 className="min-w-0 shrink truncate text-[22px] uppercase tracking-wide" title={budget.meta.name}>
+        <h1
+          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-[22px] uppercase tracking-wide'}
+          title={budget.meta.name}
+        >
           {budget.meta.name}
         </h1>
         {isCompact ? null : (
-          // single-pane headers have no room for the tablist — the mode
-          // switch lives in the settings menu there instead
+          // single-pane headers have no room for the tablist: tablets keep the
+          // mode switch in the settings menu, phones have one view for both routes
           <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
             {BUDGET_MODES.map((m) => (
               <button
@@ -712,7 +727,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isCompact ? (
+              {isCompact && !isPhone ? (
                 <>
                   <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
                     {BUDGET_MODES.map((m) => (
@@ -730,7 +745,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               <DropdownMenuItem disabled={!configure} onSelect={() => setEditMode(true)}>
                 {t('budgets.page.budget.settings.menu.edit_structure')}
               </DropdownMenuItem>
-              {mode === 'plan' ? (
+              {mode === 'plan' && !phoneView ? (
                 <>
                   <DropdownMenuCheckboxItem checked={planHideEmpty} onCheckedChange={() => togglePlanHideEmpty()}>
                     {t('budgets.page.plan.density.hide_empty')}
@@ -746,10 +761,31 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         )}
       </header>
 
-      {mode === 'plan' ? (
+      {phoneView ? (
         <>
-          <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+          {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
+          {isPlaceholderData || periodSwitching ? (
+            <div className="flex flex-1 items-center justify-center" data-testid="budget-loading">
+              <CoinLoader label={t('common.app.modal.loading.data_loading')} />
+            </div>
+          ) : (
+            <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+              <PhoneMonthView
+                budget={budget}
+                buckets={buckets}
+                currencies={currencies}
+                selectedDate={selectedDate}
+                planMonth={planMonth}
+                commentsByCell={commentsByCell}
+                onOpenSheet={setSheetTarget}
+                onShowTransactions={setTransactionsTarget}
+              />
+            </div>
+          )}
         </>
+      ) : mode === 'plan' ? (
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
@@ -1006,9 +1042,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       ) : null}
 
       <SetLimitDialog
-        target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
+        target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
+        title={limitTarget?.viaPlan ? t('budgets.page.sheet.set_plan') : undefined}
         onClose={() => setLimitTarget(null)}
-        onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
+        onCommit={(elementId, amount) => {
+          // an income plan lives only in the plan window, so it patches that cache;
+          // the plain write (which also refreshes the plan) covers a window gone meanwhile
+          if (limitTarget?.viaPlan && planMonth) {
+            planSetLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount, monthIndex: planMonth.index })
+            return
+          }
+          setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
+        }}
       />
 
       <ElementSheet
@@ -1023,7 +1068,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget(sheetCellTarget(sheetTarget))
+            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan' })
             setSheetTarget(null)
           }
         }}

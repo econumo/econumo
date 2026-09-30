@@ -715,8 +715,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
       first savings row, and from the last savings row on the first archived
       row; with Savings folded it skips straight to Archived.
-- [ ] 📱 Edit a savings row's planned amount (popover on desktop, dialog on a
-      phone): the new value shows at once and survives a reload.
+- [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
+      or phone the item sheet's "Set budget"): the new value shows at once and
+      survives a reload.
 - [ ] Fill-right a savings planned amount (drag handle and Shift+Arrow): every
       covered month gets the value.
 - [ ] 📱 Edit structure mode: savings rows reorder by drag among themselves
@@ -773,28 +774,26 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 **Monthly view — Savings block**: with a savings account in the
       budget, a foldable "Savings" block appears below the budget table and
       above Total, one row per savings account in their saved order, with
-      Planned / Saved / Balance in the account's currency. On a phone it
-      follows the budget table's two-figure layout: name, Planned and Saved on
-      one line, lined up under the table's Spent / Available columns, and no
-      Balance column. A budget without savings accounts shows no block.
-      Folding it survives a reload, and folded it shows only its title — the
-      Planned / Saved / Balance labels hide with the rows, so nothing reads
-      as a header for the Total row below. On a phone (320px and 375px, also in
-      German, Polish and Ukrainian) the Planned / Saved headers show in full
-      (a long one wraps, never cut off with "…"), a long account name
-      truncates rather than pushing the amounts, the amounts line up under
-      the headers (also in Edit structure mode, with the grips), and a
+      Planned / Saved / Balance in the account's currency. A budget without
+      savings accounts shows no block. Folding it survives a reload, and
+      folded it shows only its title — the Planned / Saved / Balance labels
+      hide with the rows, so nothing reads as a header for the Total row
+      below. On a phone the month view shows a "Savings" card instead: one row
+      per savings account with Planned and Saved under the card's Planned /
+      Saved header, no Balance column (the row's item sheet shows it). On a
+      phone (320px and 375px, also in German, Polish and Ukrainian) a long
+      account name truncates rather than pushing the amounts, and a
       five-digit amount such as 12,345.67 fits without overlapping its
-      neighbour.
-- [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
-      and includes it, in the budget currency: Budget + Planned, Spent +
-      Saved, Available + (Planned − Saved). On a phone the Total card adds two
-      last lines, in the budget currency, matching the same month's Plan view
-      totals: "Savings" (a past month: what was saved; the current and later
-      months: each account's larger of planned and saved) and "Savings
-      balance" (the savings accounts' end-of-month balance) — the phone rows
-      leave the Balance column out. A budget without savings accounts shows
-      the same Total as before, with neither line.
+      neighbour; in Edit structure mode the table's block keeps the headers
+      in full and the amounts line up under them, with the grips.
+- [ ] 📱 Total (the desktop/tablet row) sits below the Savings block and
+      includes it, in the budget currency: Budget + Planned, Spent + Saved,
+      Available + (Planned − Saved). On a phone the month view's Totals card
+      sits below the Savings card and lists, in the budget currency,
+      "Savings" (saved of planned) and "Total savings" (the savings accounts'
+      end-of-month balance, matching the same month's Plan view line); the
+      phone's Savings rows leave the Balance column out. A budget without
+      savings accounts shows the same Total as before, with neither line.
 - [ ] 📱 The Balance column is the account's balance at the end of the
       selected month (no extra line under the account name): a past month
       shows the actual booked end-of-month balance; the current month shows
@@ -914,6 +913,49 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+
+### Phone month view 📱
+
+- [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
+      `/plan` show the same single month view: header with the budget name in
+      normal case, the month strip, a heading row naming the budget currency
+      (e.g. `USD`) above Budget and Spent, no Budget/Plan switch in the
+      settings menu.
+- [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
+      thin bar under the name; Spent is neutral within budget, amber when this
+      month is over budget but carry-over still covers it, red when Available
+      is negative. A future month shows `—` for Spent, with no bar and no colour.
+- [ ] 📱 A category/envelope in another currency carries a small code tag
+      (`Travel EUR`) and its amounts are in that currency.
+- [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds
+      the income rows (Planned / Received), and the fold state survives a
+      month switch. The income Uncategorized row appears only in a month that
+      received something.
+- [ ] 📱 Tapping a row opens its item sheet ("Food · July"): Budget, Spent,
+      Available; "Over by … — covered by … left from earlier months" when
+      carry-over covers an overspend, "Overspent by …" when Available is
+      negative; the latest comment and "Comments (N)" (or "Add comment");
+      "Set budget" and "Transactions". A foreign-currency item adds its code to
+      every amount, the amount in the budget currency, and the month's average
+      rate.
+- [ ] 📱 From the sheet, "Set budget", "Comments" and "Transactions" each
+      replace the sheet (never stacked); closing them returns to the list.
+      Saving a budget updates the row at once and survives a reload.
+- [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
+      savings row's sheet shows Planned, Saved and Balance at month end.
+- [ ] 📱 A guest, a read-only account, an archived budget, a month outside the
+      budget's range, an archived element and the Uncategorized row get no
+      "Set budget" in the sheet; Uncategorized has no comments link, and an
+      empty read-only thread shows none.
+- [ ] 📱 The Totals card lists Expenses (spent of budget), Savings (saved of
+      planned, only with savings accounts), Available, Balance at month end,
+      Total savings (with savings accounts), and Transfers only when money
+      crossed the budget boundary that month. Balance and Total savings match
+      the Plan view's figures for the same month on a desktop.
+- [ ] 📱 Children of an envelope/tag unfold from the chevron; tapping a child
+      or a reporting tag opens its transactions directly.
+- [ ] 📱 "Edit structure" on a phone still shows the table editor (drag to
+      reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list
 
