@@ -1016,13 +1016,18 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
-        commentCount={limitTarget ? (commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []).length : 0}
-        onOpenComments={() => {
-          if (limitTarget) {
-            openComments(limitTarget)
-          }
-          setLimitTarget(null)
-        }}
+        // phones only: a tablet reaches the thread from the marker or the actions modal
+        commentCount={isPhone && limitTarget ? (commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []).length : 0}
+        onOpenComments={
+          isPhone
+            ? () => {
+                if (limitTarget) {
+                  openComments(limitTarget)
+                }
+                setLimitTarget(null)
+              }
+            : undefined
+        }
       />
 
       <CommentsPanel

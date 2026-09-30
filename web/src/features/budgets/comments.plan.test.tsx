@@ -296,7 +296,7 @@ it('opens the thread as a popover from a marker tap on a tablet', async () => {
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
-it('opens the thread as a dialog, not a popover, from the amount dialog on a tablet', async () => {
+it('keeps the amount dialog free of comments on a tablet', async () => {
   usePlanHandlers()
   mockTabletViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -304,7 +304,20 @@ it('opens the thread as a dialog, not a popover, from the amount dialog on a tab
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(within(cell).getByLabelText(/^limit /))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
+it('opens the thread as a sheet, not a popover, from the amount dialog on a phone', async () => {
+  usePlanHandlers()
+  mockCompactViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByLabelText(/^limit /))
   await user.click(await screen.findByRole('button', { name: 'Comments (1)' }))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.getByTestId('comments-sheet')).toBeInTheDocument()
   expect(screen.queryByTestId('comments-popover')).toBeNull()
 })

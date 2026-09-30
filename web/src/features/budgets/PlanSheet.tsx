@@ -2388,13 +2388,18 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        commentCount={planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
-        onOpenComments={() => {
-          if (planLimitTarget) {
-            openComments(planLimitTarget, { anchor: null })
-          }
-          setPlanLimitTarget(null)
-        }}
+        // phones only: a tablet reaches the thread from the marker or the actions modal
+        commentCount={isPhone && planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
+        onOpenComments={
+          isPhone
+            ? () => {
+                if (planLimitTarget) {
+                  openComments(planLimitTarget, { anchor: null })
+                }
+                setPlanLimitTarget(null)
+              }
+            : undefined
+        }
       />
 
       <CommentsPanel

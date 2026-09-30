@@ -257,6 +257,21 @@ it('opens the actions modal from a long-press on a tablet and goes on to the thr
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
 })
 
+it('keeps the tablet amount dialog free of comments (the actions modal reaches the thread)', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[TouchA>]', target: cell })
+  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
+  await user.pointer({ keys: '[/TouchA]', target: cell })
+  await user.click(within(modal).getByRole('button', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
   registerMonthlyHandlers()
   mockTabletViewport()
