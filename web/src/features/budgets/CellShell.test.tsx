@@ -157,4 +157,41 @@ it('on a tablet, a quick tap still taps the cell, and there is no hover preview 
   await new Promise((r) => setTimeout(r, 500))
   expect(screen.queryByTestId('comment-preview')).toBeNull()
   expect(screen.queryByRole('menu')).toBeNull()
+  // the quick tap's release must not have started (and left pending) a long press
+  expect(screen.queryByTestId('cell-actions')).toBeNull()
+})
+
+it('never remounts the cell: previewDisabled toggling and comments arriving/leaving keep the same DOM node (an open thread popover is anchored to it)', () => {
+  const cellChild = (
+    <div data-testid="cell" data-comment-anchor="">
+      700.00
+    </div>
+  )
+  const { rerender } = render(
+    <CellShell title="Groceries" comments={three} menuDisabled>
+      {cellChild}
+    </CellShell>,
+  )
+  const before = screen.getByTestId('cell')
+
+  rerender(
+    <CellShell title="Groceries" comments={three} menuDisabled previewDisabled>
+      {cellChild}
+    </CellShell>,
+  )
+  expect(screen.getByTestId('cell')).toBe(before)
+
+  rerender(
+    <CellShell title="Groceries" comments={[]} menuDisabled previewDisabled>
+      {cellChild}
+    </CellShell>,
+  )
+  expect(screen.getByTestId('cell')).toBe(before)
+
+  rerender(
+    <CellShell title="Groceries" comments={[three[0]]} menuDisabled previewDisabled={false}>
+      {cellChild}
+    </CellShell>,
+  )
+  expect(screen.getByTestId('cell')).toBe(before)
 })

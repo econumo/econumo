@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card'
@@ -72,6 +72,17 @@ export function CellShell({
   // that click cannot make a later, genuine tap disappear.
   const swallowClick = useRef(false)
 
+  // Unmounting mid-press (the row's data reloads, the column scrolls out) must
+  // not fire the modal after the fact.
+  useEffect(
+    () => () => {
+      if (pressTimer.current) {
+        clearTimeout(pressTimer.current)
+      }
+    },
+    [],
+  )
+
   const actions: CellAction[] = []
   if (!menuDisabled) {
     if (onSetBudget) {
@@ -91,9 +102,6 @@ export function CellShell({
   const previewable = !isTouch && !previewDisabled && comments.length > 0
   const touchActions = isTouch && actions.length > 0
   const desktopMenu = !isTouch && actions.length > 0
-  if (!previewable && actions.length === 0) {
-    return children
-  }
 
   const runPending = (e: Event) => {
     const action = pending.current
@@ -169,7 +177,12 @@ export function CellShell({
           {desktopMenu ? (
             <ContextMenuContent className="w-52" onCloseAutoFocus={runPending}>
               {actions.map((a) => (
-                <ContextMenuItem key={a.key} onSelect={() => (pending.current = a.run)}>
+                <ContextMenuItem
+                  key={a.key}
+                  onSelect={() => {
+                    pending.current = a.run
+                  }}
+                >
                   {a.label}
                 </ContextMenuItem>
               ))}
