@@ -110,6 +110,21 @@ it('opens the thread from the marker as a popover beside the cell, and keeps the
   expect(within(popover).getByText('Trip to Lisbon')).toBeInTheDocument()
 })
 
+it('returns focus to the marker when Escape closes a thread opened from it', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const marker = within(await screen.findByTestId('element-cat-food')).getByTestId('comment-marker')
+  act(() => marker.focus())
+  await user.keyboard('{Enter}')
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByTestId('comments-popover')).toBeNull())
+  await waitFor(() => expect(marker).toHaveFocus())
+})
+
 it('opens the thread with Shift+F2 from the focused amount of a budgeted cell', async () => {
   registerMonthlyHandlers()
   mockViewport()
