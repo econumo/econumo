@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next'
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
-import { UserCard } from '@/components/UserCard'
 import { UserAvatar } from '@/components/UserAvatar'
 import { UpdateNotice } from '@/components/UpdateNotice'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
@@ -22,6 +21,7 @@ import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { useSidebarStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
+import { InboxButton } from '@/features/inbox/InboxButton'
 import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
@@ -122,9 +122,22 @@ export function ApplicationLayout() {
         <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
       </Link>
     ) : (
-      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
-        <UserCard user={user} />
-      </Link>
+      <div className={`flex items-center gap-1 px-3 py-3 ${isCompact ? '' : 'mt-3'}`}>
+        <Link to={RouterPage.SETTINGS_PROFILE} className="flex min-w-0 flex-1 items-center gap-3 rounded-lg p-1 hover:bg-accent">
+          <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
+          <span className="truncate text-lg leading-5">{user.name}</span>
+        </Link>
+        <InboxButton variant="row" />
+        <Link
+          to={RouterPage.SETTINGS}
+          aria-label={t('settings.page.menu_item')}
+          title={t('settings.page.menu_item')}
+          className="relative grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Settings className="size-5" />
+          {update ? <span className="absolute top-1 right-1 size-2 rounded-full bg-primary" data-testid="update-dot" /> : null}
+        </Link>
+      </div>
     )
   ) : null
 
@@ -164,6 +177,7 @@ export function ApplicationLayout() {
                         <Rocket className="size-5" />
                       </Link>
                     ) : null}
+                    <InboxButton variant="rail" />
                     <Link
                       to={RouterPage.BUDGET}
                       title={t('common.nav.budget')}
@@ -217,15 +231,9 @@ export function ApplicationLayout() {
               </footer>
             ) : (
               <footer className="flex items-center justify-between border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-0.5">
-                    <img src={grayLogo} width={125} height={20} alt="" />
-                    <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
-                  </div>
-                  <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                    {t('settings.page.menu_item')}
-                    {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
-                  </Link>
+                <div className="flex items-center gap-0.5">
+                  <img src={grayLogo} width={125} height={20} alt="" />
+                  <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
                 </div>
                 <button
                   type="button"

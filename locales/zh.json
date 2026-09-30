@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "收件箱",
+    "open": "收件箱，{count} 项待处理",
     "empty": "全部处理完毕",
     "sections": {
       "sharing": "共享",

@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Boîte de réception",
+    "open": "Boîte de réception, {count} en attente",
     "empty": "Tout est à jour",
     "sections": {
       "sharing": "Partages",

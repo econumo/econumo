@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Bandeja de entrada",
+    "open": "Bandeja de entrada, {count} pendientes",
     "empty": "Todo al día",
     "sections": {
       "sharing": "Compartidos",

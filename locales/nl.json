@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Postvak IN",
+    "open": "Postvak IN, {count} wachtend",
     "empty": "Alles is bijgewerkt",
     "sections": {
       "sharing": "Gedeeld",

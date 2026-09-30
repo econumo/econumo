@@ -104,8 +104,27 @@ it('shows the loading gate, then the sidebar tree with folder totals', async () 
   expect(screen.getAllByText('100.50 $').length).toBeGreaterThanOrEqual(2)
   // user block + nav
   expect(screen.getByText('Ada')).toBeInTheDocument()
+  expect(screen.queryByText(fixtureUser.email)).not.toBeInTheDocument()
   expect(screen.getByText('Budget & Plan')).toBeInTheDocument()
-  expect(screen.getByText('Settings')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument()
+})
+
+it('shows the Inbox link in the full sidebar, and between the avatar and Budget links in the icon rail', async () => {
+  mockViewport(false)
+  const user = userEvent.setup()
+  renderShell('/account/a1')
+  expect(await screen.findByText('Cash')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Inbox' })).toBeInTheDocument()
+
+  await user.click(screen.getByRole('button', { name: 'toggle sidebar' }))
+  expect(screen.queryByText('Cash')).not.toBeInTheDocument()
+  const railLinks = screen.getAllByRole('link')
+  const avatarIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/settings/profile')
+  const inboxIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/inbox')
+  const budgetIndex = railLinks.findIndex((link) => link.getAttribute('href') === '/budget')
+  expect(avatarIndex).toBeGreaterThanOrEqual(0)
+  expect(inboxIndex).toBeGreaterThan(avatarIndex)
+  expect(budgetIndex).toBeGreaterThan(inboxIndex)
 })
 
 it('a reload with a persisted cache skips the boot loader and refreshes in the background', async () => {
@@ -230,21 +249,21 @@ it('compact viewport hides the sidebar on content routes', async () => {
   expect(screen.queryByTestId('sidebar')).not.toBeInTheDocument()
 })
 
-it('shows an update dot on the full-footer Settings link when an update is available', async () => {
+it('shows an update dot on the identity-row Settings gear when an update is available', async () => {
   mockViewport(false)
   mockUpdate.value = { version: 'v9.9.9', url: 'https://econumo.com/releases/v9.9.9/' }
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  const settingsLink = screen.getByText('Settings').closest('a')
-  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
+  const settingsLink = screen.getByRole('link', { name: 'Settings' })
+  expect(settingsLink.querySelector('[data-testid="update-dot"]')).toBeInTheDocument()
 })
 
-it('shows no update dot on the full-footer Settings link when no update is available', async () => {
+it('shows no update dot on the identity-row Settings gear when no update is available', async () => {
   mockViewport(false)
   renderShell('/')
   expect(await screen.findByText('Cash')).toBeInTheDocument()
-  const settingsLink = screen.getByText('Settings').closest('a')
-  expect(settingsLink?.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
+  const settingsLink = screen.getByRole('link', { name: 'Settings' })
+  expect(settingsLink.querySelector('[data-testid="update-dot"]')).not.toBeInTheDocument()
 })
 
 it('shows an update dot on the icon-rail Settings gear when an update is available', async () => {

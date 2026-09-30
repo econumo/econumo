@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Posteingang",
+    "open": "Posteingang, {count} ausstehend",
     "empty": "Alles erledigt",
     "sections": {
       "sharing": "Freigaben",

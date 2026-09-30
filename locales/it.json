@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Posta in arrivo",
+    "open": "Posta in arrivo, {count} in attesa",
     "empty": "Tutto aggiornato",
     "sections": {
       "sharing": "Condivisioni",

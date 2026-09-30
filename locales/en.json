@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Inbox",
+    "open": "Inbox, {count} waiting",
     "empty": "All caught up",
     "sections": {
       "sharing": "Sharing",

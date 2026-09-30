@@ -141,6 +141,7 @@ export const METRICS = {
   IMPORT_RULE_CREATE: 'appImportRuleCreate',
   IMPORT_RULE_APPLY: 'appImportRuleApply',
   IMPORT_RULES_SUGGEST: 'appImportRulesSuggest',
+  INBOX_OPEN: 'appInboxOpen',
 } as const
 export type Metric = (typeof METRICS)[keyof typeof METRICS]
 

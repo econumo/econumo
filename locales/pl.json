@@ -470,6 +470,7 @@
   },
   "inbox": {
     "title": "Skrzynka odbiorcza",
+    "open": "Skrzynka odbiorcza, {count} oczekujących",
     "empty": "Wszystko na bieżąco",
     "sections": {
       "sharing": "Udostępnianie",
