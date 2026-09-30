@@ -255,6 +255,34 @@ it('usePlanSetLimit patches the cell and clears on null', async () => {
   expect(plan?.structure.elements.find((e) => e.id === 'pe1')?.cells[2]?.planned).toBe('400')
 })
 
+// every month switch caches a new plan window; a plan written in one moves the
+// cumulative balances every other window of the same budget shows
+it('usePlanSetLimit invalidates every cached plan window of the budget, not only its own', async () => {
+  server.use(http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { result, queryClient } = renderPlanSetLimitHarness(fixtureWirePlan)
+  const otherWindow = [...queryKeys.budgetPlan, 'b1', '2026-06-01', 5] as const
+  const otherBudget = [...queryKeys.budgetPlan, 'b2', '2026-05-01', 10] as const
+  queryClient.setQueryData(otherWindow, fixtureWirePlan)
+  queryClient.setQueryData(otherBudget, fixtureWirePlan)
+  result.current.mutate({ budgetId: 'b1', elementId: 'pe1', period: '2026-07-01', amount: '400', monthIndex: 2 })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(otherWindow)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(otherBudget)?.isInvalidated).toBe(false)
+})
+
+it('useFillPlannedCells invalidates every cached plan window of the budget, not only its own', async () => {
+  server.use(http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  const { result, queryClient } = renderFillHarness(fixtureWirePlan)
+  const otherWindow = [...queryKeys.budgetPlan, 'b1', '2026-06-01', 5] as const
+  const otherBudget = [...queryKeys.budgetPlan, 'b2', '2026-05-01', 10] as const
+  queryClient.setQueryData(otherWindow, fixtureWirePlan)
+  queryClient.setQueryData(otherBudget, fixtureWirePlan)
+  result.current.mutate({ budgetId: 'b1', elementId: 'pe1', amount: '250', targets: [{ period: '2026-07-01', monthIndex: 2 }] })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  await waitFor(() => expect(queryClient.getQueryState(otherWindow)?.isInvalidated).toBe(true))
+  expect(queryClient.getQueryState(otherBudget)?.isInvalidated).toBe(false)
+})
+
 it('useFillPlannedCells posts one set-limit per target, patches all cells, fires the metric once', async () => {
   const sent: Record<string, unknown>[] = []
   server.use(
@@ -297,7 +325,7 @@ it('useFillPlannedCells invalidates the plan AND the budget\'s budget-month cach
       HttpResponse.json({ success: false, message: 'boom', code: 400, errors: {} }, { status: 400 }),
     ),
   )
-  const { result, queryClient, planKey } = renderFillHarness(fixtureWirePlan)
+  const { result, queryClient } = renderFillHarness(fixtureWirePlan)
   const spy = vi.spyOn(queryClient, 'invalidateQueries')
   result.current.mutate({
     budgetId: 'b1',
@@ -310,9 +338,9 @@ it('useFillPlannedCells invalidates the plan AND the budget\'s budget-month cach
   })
   await waitFor(() => expect(result.current.isError).toBe(true))
   // onSettled resyncs even on a partial/total failure: every budget-month cache of the
-  // budget (a savings plan moves later months' balances too), not just the plan cache.
+  // budget (a savings plan moves later months' balances too) and every plan window of it.
   expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1'] })
-  expect(spy).toHaveBeenCalledWith({ queryKey: planKey })
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budgetPlan, 'b1'] })
 })
 
 it('useArchiveBudget posts {id}, updates the cache and fires the metric', async () => {

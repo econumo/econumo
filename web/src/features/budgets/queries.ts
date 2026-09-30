@@ -258,9 +258,11 @@ export function usePlanSetLimit(planKey: readonly unknown[]) {
     onSuccess: (_res, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
       // the budget-page cache is now stale: that month's figures, and for a savings
-      // row the projected closing balance of every later month; the plan resyncs too
+      // row the projected closing balance of every later month. Every cached plan
+      // window of the budget resyncs too, not just this one: later months' balances
+      // are cumulative, and each phone month switch caches a window of its own
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: planKey })
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
   })
 }
@@ -287,12 +289,12 @@ export function useFillPlannedCells(planKey: readonly unknown[]) {
     // No partial rollback: any failure means some months may have landed, so both a
     // success and a failure need the same resync — the budget-page caches (every
     // month: a savings plan moves the projected balance of the months after it too)
-    // plus the plan cache — from the server rather than trusting the
+    // plus every cached plan window of the budget — from the server rather than trusting the
     // optimistic patch. Invalidating here (not split across onSuccess/onError) also
     // means it happens exactly once regardless of outcome.
     onSettled: (_res, _err, form) => {
       void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      void queryClient.invalidateQueries({ queryKey: planKey })
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budgetPlan, form.budgetId] })
     },
   })
 }

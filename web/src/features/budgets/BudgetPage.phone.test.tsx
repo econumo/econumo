@@ -6,6 +6,7 @@ import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
+import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
 
@@ -75,11 +76,13 @@ function renderPage(path: '/budget' | '/plan' = '/budget') {
     ],
     { initialEntries: [path] },
   )
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })}>
+    <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
     </QueryClientProvider>,
   )
+  return { queryClient }
 }
 
 beforeEach(() => {
@@ -186,6 +189,8 @@ it('an income row’s Set plan writes that month’s plan', async () => {
   await user.type(input, '650')
   await user.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() => expect(api.setLimitBody()).toEqual({ budgetId: 'b1', elementId: 'cat-freelance', period: '2026-07-01', amount: '650' }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: /Set plan/ })).toBeNull())
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 
 it('an income row’s sheet reaches its comment thread', async () => {
@@ -231,14 +236,24 @@ it('keeps the expense list while get-budget-plan is still loading', async () => 
 })
 
 it('leaves the plan lines out when get-budget-plan fails', async () => {
+  let planRequests = 0
   handlers({
-    plan: http.get('*/api/v1/budget/get-budget-plan', () =>
-      HttpResponse.json({ success: false, message: 'x', code: 0, errors: {} }, { status: 500 }),
-    ),
+    plan: http.get('*/api/v1/budget/get-budget-plan', () => {
+      planRequests += 1
+      return HttpResponse.json({ success: false, message: 'x', code: 0, errors: {} }, { status: 500 })
+    }),
   })
-  renderPage()
+  const { queryClient } = renderPage()
   expect(await screen.findByTestId('phone-row-cat-food')).toBeInTheDocument()
-  await waitFor(() => expect(screen.queryByTestId('phone-income')).toBeNull())
+  // only once the 500 has landed in the plan query does its absence prove anything
+  await waitFor(() => {
+    const [plan] = queryClient.getQueryCache().findAll({ queryKey: [...queryKeys.budgetPlan, 'b1'] })
+    expect(plan?.state.status).toBe('error')
+  })
+  expect(planRequests).toBeGreaterThan(0)
+  expect(screen.queryByTestId('phone-income')).toBeNull()
+  expect(screen.queryByTestId('phone-total-balance')).toBeNull()
+  expect(screen.getByTestId('phone-row-cat-food')).toBeInTheDocument()
 })
 
 it('edit structure on a phone still shows the table editor', async () => {
