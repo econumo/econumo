@@ -469,12 +469,24 @@
     "make_recurring": "Terugkerend maken",
     "not_posted": "Niet geboekt"
   },
+  "inbox": {
+    "title": "Postvak IN",
+    "empty": "Alles is bijgewerkt",
+    "sections": {
+      "sharing": "Gedeeld",
+      "sync": "Synchronisatieproblemen",
+      "failed": "Mislukte imports",
+      "to_review": "Te beoordelen",
+      "skipped": "Overgeslagen ({count})"
+    },
+    "sync": {
+      "failed": "Synchronisatie van {source} mislukt",
+      "partial": "{source} gesynchroniseerd met fouten",
+      "when": "Laatste poging {date}"
+    }
+  },
   "imports": {
     "badge": "Geïmporteerd",
-    "banner": {
-      "text": "{count} geïmporteerde transactie wacht op controle | {count} geïmporteerde transacties wachten op controle",
-      "cta": "Controleren"
-    },
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
@@ -650,12 +662,7 @@
       }
     },
     "queue": {
-      "header": "Importwachtrij",
-      "empty": "Niets te controleren.",
       "card_amount": "Kaartbedrag: {amount} {currency}",
-      "queued": "Wacht op controle",
-      "skipped": "Overgeslagen",
-      "failed": "Aandacht nodig",
       "reason": {
         "unmapped": "Kaart niet gekoppeld",
         "account_deleted": "Rekening verwijderd",

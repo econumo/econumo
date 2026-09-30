@@ -469,12 +469,24 @@
     "make_recurring": "Als wiederkehrend festlegen",
     "not_posted": "Nicht gebucht"
   },
+  "inbox": {
+    "title": "Posteingang",
+    "empty": "Alles erledigt",
+    "sections": {
+      "sharing": "Freigaben",
+      "sync": "Synchronisierungsprobleme",
+      "failed": "Fehlgeschlagene Importe",
+      "to_review": "Zu prüfen",
+      "skipped": "Übersprungen ({count})"
+    },
+    "sync": {
+      "failed": "{source}-Synchronisierung fehlgeschlagen",
+      "partial": "{source} mit Fehlern synchronisiert",
+      "when": "Letzter Versuch {date}"
+    }
+  },
   "imports": {
     "badge": "Importiert",
-    "banner": {
-      "text": "{count} importierte Transaktion wartet auf Prüfung | {count} importierte Transaktionen warten auf Prüfung",
-      "cta": "Prüfen"
-    },
     "data_page": {
       "menu_item": "Import & Export",
       "header": "Import & Export",
@@ -650,12 +662,7 @@
       }
     },
     "queue": {
-      "header": "Importwarteschlange",
-      "empty": "Nichts zu prüfen.",
       "card_amount": "Kartenbetrag: {amount} {currency}",
-      "queued": "Wartet auf Prüfung",
-      "skipped": "Übersprungen",
-      "failed": "Braucht Aufmerksamkeit",
       "reason": {
         "unmapped": "Karte nicht zugeordnet",
         "account_deleted": "Konto gelöscht",

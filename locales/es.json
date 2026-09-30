@@ -469,12 +469,24 @@
     "make_recurring": "Hacer recurrente",
     "not_posted": "Sin registrar"
   },
+  "inbox": {
+    "title": "Bandeja de entrada",
+    "empty": "Todo al día",
+    "sections": {
+      "sharing": "Compartidos",
+      "sync": "Problemas de sincronización",
+      "failed": "Importaciones fallidas",
+      "to_review": "Para revisar",
+      "skipped": "Omitidos ({count})"
+    },
+    "sync": {
+      "failed": "Fallo al sincronizar {source}",
+      "partial": "{source} sincronizado con errores",
+      "when": "Último intento {date}"
+    }
+  },
   "imports": {
     "badge": "Importada",
-    "banner": {
-      "text": "{count} transacción importada espera revisión | {count} transacciones importadas esperan revisión",
-      "cta": "Revisar"
-    },
     "data_page": {
       "menu_item": "Importar y exportar",
       "header": "Importar y exportar",
@@ -650,12 +662,7 @@
       }
     },
     "queue": {
-      "header": "Cola de importación",
-      "empty": "Nada que revisar.",
       "card_amount": "Importe de la tarjeta: {amount} {currency}",
-      "queued": "Esperando revisión",
-      "skipped": "Omitidas",
-      "failed": "Requieren atención",
       "reason": {
         "unmapped": "Tarjeta sin asignar",
         "account_deleted": "Cuenta eliminada",

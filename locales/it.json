@@ -469,12 +469,24 @@
     "make_recurring": "Rendi ricorrente",
     "not_posted": "Non registrata"
   },
+  "inbox": {
+    "title": "Posta in arrivo",
+    "empty": "Tutto aggiornato",
+    "sections": {
+      "sharing": "Condivisioni",
+      "sync": "Problemi di sincronizzazione",
+      "failed": "Importazioni non riuscite",
+      "to_review": "Da rivedere",
+      "skipped": "Saltati ({count})"
+    },
+    "sync": {
+      "failed": "Sincronizzazione di {source} non riuscita",
+      "partial": "{source} sincronizzato con errori",
+      "when": "Ultimo tentativo {date}"
+    }
+  },
   "imports": {
     "badge": "Importata",
-    "banner": {
-      "text": "{count} transazione importata in attesa di revisione | {count} transazioni importate in attesa di revisione",
-      "cta": "Rivedi"
-    },
     "data_page": {
       "menu_item": "Importa ed esporta",
       "header": "Importa ed esporta",
@@ -650,12 +662,7 @@
       }
     },
     "queue": {
-      "header": "Coda di importazione",
-      "empty": "Niente da rivedere.",
       "card_amount": "Importo della carta: {amount} {currency}",
-      "queued": "In attesa di revisione",
-      "skipped": "Saltate",
-      "failed": "Richiedono attenzione",
       "reason": {
         "unmapped": "Carta non associata",
         "account_deleted": "Conto eliminato",
