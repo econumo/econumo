@@ -808,9 +808,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Balance moves by the change at once; then open a later month — its
       Balance reflects the new plan too (no manual reload).
 - [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
-      on desktop a click opens the inline editor popover (with its comments
-      disclosure), on a phone a tap opens the set-limit dialog with a
-      "Comments (N)" button; either way the current value is prefilled and saving shows the new
+      on desktop a click opens the inline amount popover (no comments in it),
+      on a phone a tap opens the set-limit dialog with a "Comments (N)"
+      button; either way the current value is prefilled and saving shows the new
       Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the
@@ -833,10 +833,32 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A guest (read-only role) can post, edit and delete their own comment.
 - [ ] A cell with comments shows the corner marker; a cell without shows none;
       the uncategorized row never shows one.
-- [ ] On the plan grid, select a cell and press Shift+Enter: its comment
-      thread opens (expanded in the amount popover, or the standalone dialog
-      on a non-editable/compact cell); plain Enter on the same cell instead
-      opens the amount editor, unaffected.
+- [ ] Desktop: click a cell's corner marker (Budget view, Plan view, a
+      savings Planned cell): the thread opens in a popover beside that cell.
+      Clicking another cell's marker switches to that cell's thread.
+- [ ] Desktop: rest the pointer on a commented cell: after a moment a card
+      previews its latest two comments (plus "+N more"); it disappears when
+      the pointer leaves, and never shows while the thread or the amount
+      editor is open.
+- [ ] Desktop: right-click a cell: Set budget / Comments (N) or Add comment /
+      Show transactions. A guest sees no Set budget; the uncategorized row
+      offers no comment item; savings cells offer no Show transactions.
+- [ ] Tablet (640–1023px): an editable cell's budgeted amount stays plain
+      text — editors reach comments through the corner marker (opens the
+      thread popover) or a long-press, which opens a modal titled with the
+      item's name and the same actions as right-click (Set budget / Comments
+      / Show transactions); for a guest or an archived row, tapping the
+      amount opens the thread instead. Lifting the finger does not also open
+      the set-limit dialog, and a quick tap still behaves as before. No hover
+      preview on a tablet.
+- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
+      comments through the set-limit sheet's "Comments (N)" button or the
+      comments sheet; the comments sheet keeps its composer pinned above the
+      keyboard.
+- [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
+      its thread opens in a popover beside the cell; Esc closes it and the
+      arrow keys keep moving the selection. Plain Enter on the same cell opens
+      the amount editor, which has no comments section.
 - [ ] On desktop, a non-editable cell (guest role, an archived element —
       even on a budget you can edit — or a month outside the budget's range)
       shows its own "comments" link in
