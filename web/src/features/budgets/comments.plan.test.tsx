@@ -281,16 +281,6 @@ it('offers no add-comment corner on a month after the budget ends (its thread is
   expect(within(screen.getByTestId('plan-cell-pe1:2')).queryByTestId('comment-marker-add')).toBeNull()
 })
 
-it('opens the thread as a popover from a marker tap on a tablet', async () => {
-  usePlanHandlers()
-  mockTabletViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
-
-  await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
-  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
-})
-
 it('a tablet tap on a plan cell opens the item sheet for that month', async () => {
   usePlanHandlers()
   mockTabletViewport()
@@ -355,7 +345,7 @@ it('a tablet marker tap opens only the thread, not the sheet', async () => {
   renderPage('/plan')
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
-  expect(await screen.findByTestId('comments-popover')).toBeInTheDocument()
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
   expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 

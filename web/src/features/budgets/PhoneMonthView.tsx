@@ -104,7 +104,7 @@ function PhoneRow({ testId, icon, name, tag, first, second, secondClass = '', pr
           aria-expanded={toggle.open}
           aria-label={toggle.label}
           onClick={toggle.onToggle}
-          className="absolute top-0 left-0 flex h-11 w-10 items-center justify-center text-muted-foreground"
+          className="absolute top-0 -left-1 flex size-11 items-center justify-center text-muted-foreground"
         >
           <Chevron className="size-4.5" />
         </button>

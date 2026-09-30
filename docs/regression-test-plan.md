@@ -626,8 +626,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       info notes when relevant.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
-- [ ] Set a limit via the available cell / set-limit dialog; formula input;
-      limit shows immediately and carries into the next period per rules.
+- [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
+      item sheet's "Set budget" (tablet and phone); formula input; limit shows
+      immediately and carries into the next period per rules.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
 - [ ] Period strip: navigate previous/next months; figures change. Months
@@ -861,8 +862,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       opens ("Food · July": Budget, Spent, Available, latest comment,
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
-      "Comments" replaces it with the thread. A guest's sheet has no "Set
-      budget". The Available pill is not a button; tapping Spent still lists
+      "Comments" replaces it with the thread. A savings row's sheet has no
+      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
@@ -929,8 +930,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       (`Travel EUR`) and its amounts are in that currency.
 - [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds
       the income rows (Planned / Received), and the fold state survives a
-      month switch. The income Uncategorized row appears only in a month that
-      received something.
+      month switch. The income Uncategorized row, and an archived income
+      category, appear only in a month that received something, so the rows
+      always add up to the received total; an archived row's sheet has no
+      "Set plan".
 - [ ] 📱 Tapping a row opens its item sheet ("Food · July"): Budget, Spent,
       Available; "Over by … — covered by … left from earlier months" when
       carry-over covers an overspend, "Overspent by …" when Available is
@@ -943,7 +946,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Saving a budget updates the row at once and survives a reload.
 - [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
       savings row's sheet shows Planned, Saved and Balance at month end.
-- [ ] 📱 A guest, a read-only account, an archived budget, a month outside the
+- [ ] 📱 A guest, an archived budget, a month outside the
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an
       empty read-only thread shows none.
@@ -951,10 +954,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       planned, only with savings accounts), Available, Balance at month end,
       Total savings (with savings accounts), and Transfers only when money
       crossed the budget boundary that month. Balance and Total savings match
-      the Plan view's figures for the same month on a desktop.
+      the Plan view's figures for the same month on a desktop, including a
+      month several months ahead of the current one whose earlier months
+      carry unmet plans.
 - [ ] 📱 Children of an envelope/tag unfold from the chevron; tapping a child
       or a reporting tag opens its transactions directly.
-- [ ] 📱 "Edit structure" on a phone still shows the table editor (drag to
+- [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
+      budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list
