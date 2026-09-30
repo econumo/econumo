@@ -16,8 +16,7 @@
       "onboarding": "快速入门",
       "create_account": "添加账户",
       "collapse_menu": "收起菜单",
-      "expand_menu": "展开菜单",
-      "sharing_requests": "共享请求"
+      "expand_menu": "展开菜单"
     },
     "econumo": {
       "label": "Econumo"
@@ -478,6 +477,14 @@
       "failed": "导入失败",
       "to_review": "待审核",
       "skipped": "已跳过（{count}）"
+    },
+    "sharing": {
+      "invited_you": "{name} 邀请了您",
+      "account": "账户",
+      "budget": "预算",
+      "choose_folder": "为此账户选择文件夹",
+      "general_folder_hint": "General（将自动创建）",
+      "decline_question": "拒绝“{name}”的访问权限吗？"
     },
     "sync": {
       "failed": "{source} 同步失败",
@@ -1754,16 +1761,6 @@
           "required_field": "必填项"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "共享请求",
-      "empty": "没有待处理的请求",
-      "invited_you": "{name} 邀请了您",
-      "account": "账户",
-      "budget": "预算",
-      "choose_folder": "为此账户选择文件夹",
-      "general_folder_hint": "General（将自动创建）",
-      "decline_question": "拒绝“{name}”的访问权限吗？"
     }
   },
   "subscription": {

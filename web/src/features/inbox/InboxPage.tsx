@@ -5,6 +5,7 @@ import { RouterPage } from '@/app/router-pages'
 import { Button } from '@/components/ui/button'
 import { SettingsShell } from '@/features/settings/SettingsShell'
 import { FailedImportsSection, SkippedSection, ToReviewSection } from '@/features/imports/QueueSections'
+import { SharingSection } from './SharingSection'
 import { SyncProblemsSection } from './SyncProblemsSection'
 import { useInbox } from './useInbox'
 
@@ -27,6 +28,9 @@ export function InboxPage() {
     <SettingsShell title={t('inbox.title')} backTo={RouterPage.HOME}>
       <div className="mx-auto flex w-full max-w-xl flex-col gap-6">
         {empty ? <p className="px-1 text-sm text-muted-foreground">{t('inbox.empty')}</p> : null}
+        {inbox.invites.length > 0 ? (
+          <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
+        ) : null}
         {inbox.syncProblems.length > 0 ? (
           <InboxSection title={t('inbox.sections.sync')}><SyncProblemsSection sources={inbox.syncProblems} /></InboxSection>
         ) : null}

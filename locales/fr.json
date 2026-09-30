@@ -16,8 +16,7 @@
       "onboarding": "Premiers pas",
       "create_account": "Ajouter un compte",
       "collapse_menu": "Réduire le menu",
-      "expand_menu": "Déployer le menu",
-      "sharing_requests": "Demandes de partage reçues"
+      "expand_menu": "Déployer le menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -478,6 +477,14 @@
       "failed": "Importations échouées",
       "to_review": "À vérifier",
       "skipped": "Ignorés ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} vous invite",
+      "account": "Compte",
+      "budget": "Budget",
+      "choose_folder": "Choisissez un dossier pour ce compte",
+      "general_folder_hint": "General (sera créé)",
+      "decline_question": "Refuser l’accès à « {name} » ?"
     },
     "sync": {
       "failed": "Échec de la synchronisation de {source}",
@@ -1754,16 +1761,6 @@
           "required_field": "Champ obligatoire"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Demandes de partage reçues",
-      "empty": "Aucune demande en attente",
-      "invited_you": "{name} vous invite",
-      "account": "Compte",
-      "budget": "Budget",
-      "choose_folder": "Choisissez un dossier pour ce compte",
-      "general_folder_hint": "General (sera créé)",
-      "decline_question": "Refuser l’accès à « {name} » ?"
     }
   },
   "subscription": {

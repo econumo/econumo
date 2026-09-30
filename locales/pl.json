@@ -16,8 +16,7 @@
       "onboarding": "Pierwsze kroki",
       "create_account": "Dodaj konto",
       "collapse_menu": "Zwiń menu",
-      "expand_menu": "Rozwiń menu",
-      "sharing_requests": "Zaproszenia"
+      "expand_menu": "Rozwiń menu"
     },
     "econumo": {
       "label": "Econumo"
@@ -478,6 +477,14 @@
       "failed": "Nieudane importy",
       "to_review": "Do przejrzenia",
       "skipped": "Pominięte ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} zaprasza Cię",
+      "account": "Konto",
+      "budget": "Budżet",
+      "choose_folder": "Wybierz folder dla tego konta",
+      "general_folder_hint": "General (zostanie utworzony)",
+      "decline_question": "Odrzucić dostęp do „{name}”?"
     },
     "sync": {
       "failed": "Synchronizacja {source} nie powiodła się",
@@ -1754,16 +1761,6 @@
           "required_field": "Pole wymagane"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Zaproszenia",
-      "empty": "Brak oczekujących zaproszeń",
-      "invited_you": "{name} zaprasza Cię",
-      "account": "Konto",
-      "budget": "Budżet",
-      "choose_folder": "Wybierz folder dla tego konta",
-      "general_folder_hint": "General (zostanie utworzony)",
-      "decline_question": "Odrzucić dostęp do „{name}”?"
     }
   },
   "subscription": {

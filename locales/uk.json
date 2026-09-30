@@ -16,8 +16,7 @@
       "onboarding": "Початок роботи",
       "create_account": "Додати рахунок",
       "collapse_menu": "Згорнути меню",
-      "expand_menu": "Розгорнути меню",
-      "sharing_requests": "Вхідні запити"
+      "expand_menu": "Розгорнути меню"
     },
     "econumo": {
       "label": "Econumo"
@@ -478,6 +477,14 @@
       "failed": "Невдалі імпорти",
       "to_review": "На перевірку",
       "skipped": "Пропущено ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} запрошує вас",
+      "account": "Рахунок",
+      "budget": "Бюджет",
+      "choose_folder": "Виберіть папку для цього рахунку",
+      "general_folder_hint": "General (буде створена)",
+      "decline_question": "Відхилити доступ до «{name}»?"
     },
     "sync": {
       "failed": "Синхронізація {source} не вдалася",
@@ -1754,16 +1761,6 @@
           "required_field": "Обов’язкове поле"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Вхідні запити",
-      "empty": "Немає запитів, що очікують",
-      "invited_you": "{name} запрошує вас",
-      "account": "Рахунок",
-      "budget": "Бюджет",
-      "choose_folder": "Виберіть папку для цього рахунку",
-      "general_folder_hint": "General (буде створена)",
-      "decline_question": "Відхилити доступ до «{name}»?"
     }
   },
   "subscription": {

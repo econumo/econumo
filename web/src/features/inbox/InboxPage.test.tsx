@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -20,9 +21,12 @@ const syncProblemSource = (over: Record<string, unknown> = {}) => ({
   credentialCiphertext: '', cards: [], ...over,
 })
 
-function renderInbox() {
+function renderInbox(extraRoutes: { path: string; element: ReactElement }[] = []) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
-  const router = createMemoryRouter([{ path: '/inbox', element: <InboxPage /> }], { initialEntries: ['/inbox'] })
+  const router = createMemoryRouter(
+    [{ path: '/inbox', element: <InboxPage /> }, ...extraRoutes],
+    { initialEntries: ['/inbox'] },
+  )
   render(
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
@@ -30,9 +34,25 @@ function renderInbox() {
   )
 }
 
+const pendingOwner = { id: 'u2', avatar: 'pets:sky', name: 'Partner' }
+const pendingBudget = {
+  id: 'b-pending', ownerUserId: 'u2', name: 'Shared budget', startedAt: '2026-01-01 00:00:00', currencyId: 'cur-usd',
+  access: [
+    { user: pendingOwner, role: 'owner', isAccepted: 1 },
+    { user: { id: 'u1', avatar: 'face:emerald', name: 'Ada' }, role: 'admin', isAccepted: 0 },
+  ],
+}
+const acceptedBudget = {
+  ...pendingBudget,
+  access: [pendingBudget.access[0], { ...pendingBudget.access[1], isAccepted: 1 }],
+}
+
 beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
 })
 
 it('renders the sections in a fixed order: Sync problems, Failed imports, To review, Skipped', async () => {
@@ -103,4 +123,42 @@ it('a partial sync problem is worded differently', async () => {
   server.use(...coreHandlers({ importSources: [syncProblemSource({ lastRunStatus: 'partial' })] }))
   renderInbox()
   expect(await screen.findByText('Bank synced with errors')).toBeInTheDocument()
+})
+
+it('puts Sharing before To review, and accepting a budget invite drops it and navigates to the budget page', async () => {
+  let budgetListCalls = 0
+  server.use(...coreHandlers({ importQueue: { queued: [queued()], skipped: [], failed: [] } }))
+  server.use(
+    http.get('*/api/v1/budget/get-budget-list', () => {
+      budgetListCalls += 1
+      return HttpResponse.json({ success: true, message: '', data: { items: [budgetListCalls === 1 ? pendingBudget : acceptedBudget] } })
+    }),
+    http.post('*/api/v1/budget/accept-access', async () =>
+      HttpResponse.json({ success: true, message: '', data: { items: [acceptedBudget] } }),
+    ),
+    http.post('*/api/v1/user/update-budget', async () =>
+      HttpResponse.json({ success: true, message: '', data: { user: { id: 'u1', name: 'Ada', avatar: 'face:emerald', options: [] } } }),
+    ),
+  )
+  renderInbox([{ path: '/budget', element: <div>BUDGET PAGE</div> }])
+
+  await screen.findByText('Blue Bottle')
+  await screen.findByText('Partner invited you')
+  const headings = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  expect(headings.indexOf('Sharing')).toBeGreaterThanOrEqual(0)
+  expect(headings.indexOf('Sharing')).toBeLessThan(headings.indexOf('To review'))
+
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Accept' }))
+  expect(await screen.findByText('BUDGET PAGE')).toBeInTheDocument()
+})
+
+it('shows only the Sharing section when there is a pending invite and no imports', async () => {
+  server.use(...coreHandlers({ budgets: [pendingBudget] }))
+  renderInbox()
+  expect(await screen.findByText('Partner invited you')).toBeInTheDocument()
+  expect(screen.queryByText('To review')).toBeNull()
+  expect(screen.queryByText('Failed imports')).toBeNull()
+  expect(screen.queryByText('Sync problems')).toBeNull()
+  expect(screen.queryByText('All caught up')).toBeNull()
 })

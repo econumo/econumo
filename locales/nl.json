@@ -16,8 +16,7 @@
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
-      "expand_menu": "Menu uitklappen",
-      "sharing_requests": "Deelverzoeken"
+      "expand_menu": "Menu uitklappen"
     },
     "econumo": {
       "label": "Econumo"
@@ -478,6 +477,14 @@
       "failed": "Mislukte imports",
       "to_review": "Te beoordelen",
       "skipped": "Overgeslagen ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} heeft u uitgenodigd",
+      "account": "Rekening",
+      "budget": "Budget",
+      "choose_folder": "Kies een map voor deze rekening",
+      "general_folder_hint": "General (wordt aangemaakt)",
+      "decline_question": "Toegang tot “{name}” weigeren?"
     },
     "sync": {
       "failed": "Synchronisatie van {source} mislukt",
@@ -1754,16 +1761,6 @@
           "required_field": "Verplicht veld"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Deelverzoeken",
-      "empty": "Geen openstaande verzoeken",
-      "invited_you": "{name} heeft u uitgenodigd",
-      "account": "Rekening",
-      "budget": "Budget",
-      "choose_folder": "Kies een map voor deze rekening",
-      "general_folder_hint": "General (wordt aangemaakt)",
-      "decline_question": "Toegang tot “{name}” weigeren?"
     }
   },
   "subscription": {
