@@ -1374,7 +1374,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Sparen",
-          "savings_balance": "Spaarsaldo"
+          "savings_balance": "Totaal spaargeld"
         },
         "density": {
           "hide_empty": "Lege rijen verbergen",

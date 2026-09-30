@@ -704,7 +704,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       that ends BEFORE the deletion month and has no activity on the account
       (e.g. one over March): the account drops out of the Plan sheet's
       Savings section and the monthly Savings block entirely (no row), yet
-      its balance still counts as Savings balance, not everyday Balance — the
+      its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
       budget, a "Savings" section appears below Expenses and above Archived,
@@ -734,12 +734,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       months, the larger of actual and planned for the current and future
       months); without savings accounts the line is absent.
 - [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
-      "Savings balance"; for every month the two add up to the single
+      "Total savings"; for every month the two add up to the single
       Balance the same budget showed before its savings account was marked
       savings. Without savings accounts only "Balance" shows, unchanged.
 - [ ] 📱 Two savings accounts in the current month, one planned 500 with
       nothing saved yet, the other planned 0 with 300 saved: the Savings line
-      shows 800 and the Savings balance rises by exactly 800 over the previous
+      shows 800 and the Total savings rises by exactly 800 over the previous
       month (Balance drops by the same). A transfer already booked into a future
       month above that month's plan counts at its booked amount in both.
 - [ ] 📱 Book a future-dated transfer of 20 from a savings account to an
@@ -749,10 +749,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take the green under-plan style an expense row gets.
 - [ ] 📱 Edit a savings account's balance (the correction transaction), then
-      switch to the Plan view in the same tab: the Savings balance updates
+      switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
-- [ ] 📱 "Savings balance" is a plain label with no info icon. Record
-      interest on a savings account: the Savings balance rises by it while the
+- [ ] 📱 "Total savings" is a plain label with no info icon. Record
+      interest on a savings account: the Total savings rises by it while the
       Savings line does not — intended, not a bug.
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
@@ -768,7 +768,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
       savings accounts in the budget): neither row's Saved / Actual moves, the
-      Savings balance is unchanged, and from that month on the TFSA row's
+      Total savings is unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
 - [ ] 📱 **Monthly view — Savings block**: with a savings account in the
       budget, a foldable "Savings" block appears below the budget table and

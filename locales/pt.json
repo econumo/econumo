@@ -1374,7 +1374,7 @@
           "net": "Líquido",
           "balance": "Saldo",
           "savings": "Poupança",
-          "savings_balance": "Saldo da poupança"
+          "savings_balance": "Poupança total"
         },
         "density": {
           "hide_empty": "Ocultar linhas vazias",

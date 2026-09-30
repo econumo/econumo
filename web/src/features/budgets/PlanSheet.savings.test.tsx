@@ -314,7 +314,7 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
   await waitFor(() => expect(rowIds(screen.getByTestId('plan-section-savings'))).toEqual(['acc-s2:5', 'acc-s1:5', 'acc-s3:5']))
 })
 
-it('totals gain a Savings line below Transfers; the balance splits into Balance and Savings balance', async () => {
+it('totals gain a Savings line below Transfers; the balance splits into Balance and Total savings', async () => {
   useHandlers()
   renderPage()
   await screen.findByTestId('plan-section-savings')
@@ -340,7 +340,7 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
   // a plain label: no info note beside it
-  expect(within(balanceArea).getByText('Savings balance')).toBeInTheDocument()
+  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
   expect(within(balanceArea).queryByRole('button', { name: 'About' })).toBeNull()
   expect(screen.queryByTestId('plan-savings-balance-info')).toBeNull()
 })
@@ -383,7 +383,7 @@ it('without savings rows: no Savings section, totals line or balance row, and Ba
   const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
   expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
   expect(screen.queryByTestId('plan-savings-balance-0')).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Savings balance')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Total savings')).not.toBeInTheDocument()
 
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
@@ -421,7 +421,7 @@ it('a deleted savings account with only an opening balance splits the balance wi
 
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
-  expect(within(balanceArea).getByText('Savings balance')).toBeInTheDocument()
+  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-balance-${col}`)).toHaveTextContent(fmt(everyday[col + 1]))
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))

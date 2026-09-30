@@ -609,7 +609,7 @@ describe('monthly Savings block', () => {
     renderPage()
     expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
     expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
-    // nor Savings / Savings balance lines in the phone Total card
+    // nor Savings / Total savings lines in the phone Total card
     expect(screen.queryByTestId('budget-totals-mobile-savings')).not.toBeInTheDocument()
     expect(screen.queryByTestId('budget-totals-mobile-savings-balance')).not.toBeInTheDocument()
   })
@@ -641,6 +641,6 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   expect(savingsLine).toHaveTextContent('Savings')
   expect(savingsLine).toHaveTextContent('120.00')
   const balanceLine = screen.getByTestId('budget-totals-mobile-savings-balance')
-  expect(balanceLine).toHaveTextContent('Savings balance')
+  expect(balanceLine).toHaveTextContent('Total savings')
   expect(balanceLine).toHaveTextContent('2,500.00')
 })

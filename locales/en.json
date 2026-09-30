@@ -1374,7 +1374,7 @@
           "net": "Net",
           "balance": "Balance",
           "savings": "Savings",
-          "savings_balance": "Savings balance"
+          "savings_balance": "Total savings"
         },
         "density": {
           "hide_empty": "Hide empty rows",

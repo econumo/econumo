@@ -1374,7 +1374,7 @@
           "net": "Net",
           "balance": "Solde",
           "savings": "Épargne",
-          "savings_balance": "Solde épargne"
+          "savings_balance": "Épargne totale"
         },
         "density": {
           "hide_empty": "Masquer les lignes vides",

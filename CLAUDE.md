@@ -1110,7 +1110,7 @@ data unreadable. Most are also asserted by the test suite.
   SPA asks first (naming what will be deleted) and resends with the flag set on
   confirm — cancel leaves the member's plans and comments untouched. "Actual saved" is
   the net of everyday↔savings transfers only — savings↔savings and transfers with a
-  non-member account don't count, and neither does interest — so the Savings balance
+  non-member account don't count, and neither does interest — so the Total savings
   can rise by more than what shows as saved. These rows stay out of `structure.elements`
   on the wire (unknown-field-safe for old clients): `get-budget` carries
   `structure.savings`, `get-budget-plan` adds `savingsOpeningBalances`/`savingsFlows`
@@ -1120,7 +1120,7 @@ data unreadable. Most are also asserted by the test suite.
   server — booked plus each month's plan not yet met by its saved amount, from the
   current month through the selected one, per month and per row (an over-saved month
   covers nothing); a plan cell's `closingBalance` is booked only and the SPA adds the
-  same gaps (`projectSavingsClosings`) the Savings balance line adds, so the two
+  same gaps (`projectSavingsClosings`) the Total savings line adds, so the two
   agree. The monthly block's columns are Planned / Saved / Balance (that figure).
   Savings rows and balances are visible to every participant, guests included (the
   budget settings' "Savings accounts" card says so). In the settings dialogs both

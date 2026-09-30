@@ -1374,7 +1374,7 @@
           "net": "Нетто",
           "balance": "Баланс",
           "savings": "Сбережения",
-          "savings_balance": "Баланс сбережений"
+          "savings_balance": "Всего сбережений"
         },
         "density": {
           "hide_empty": "Скрывать пустые строки",

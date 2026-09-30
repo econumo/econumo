@@ -1374,7 +1374,7 @@
           "net": "净额",
           "balance": "余额",
           "savings": "储蓄",
-          "savings_balance": "储蓄余额"
+          "savings_balance": "储蓄总额"
         },
         "density": {
           "hide_empty": "隐藏空行",

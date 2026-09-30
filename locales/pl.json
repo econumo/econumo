@@ -1374,7 +1374,7 @@
           "net": "Netto",
           "balance": "Saldo",
           "savings": "Oszczędności",
-          "savings_balance": "Saldo oszczędności"
+          "savings_balance": "Oszczędności łącznie"
         },
         "density": {
           "hide_empty": "Ukryj puste wiersze",
