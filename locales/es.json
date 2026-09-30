@@ -1134,7 +1134,10 @@
         "accounts_hidden": "En carpetas ocultas",
         "accounts_locked_hint": "Las cuentas con transacciones en meses anteriores no se pueden quitar",
         "savings": {
-          "label": "Ahorro",
+          "label": "Cuentas de ahorro",
+          "description": "El dinero que pasa a estas cuentas cuenta como ahorrado, no como gastado.",
+          "empty": "Incluye arriba una cuenta para marcarla como de ahorro.",
+          "none": "Ninguna",
           "toggle": "{name} es una cuenta de ahorro",
           "note": "Las cuentas de ahorro se muestran por nombre, con sus importes ahorrados y saldos, a todas las personas con acceso a este presupuesto.",
           "confirm": {
@@ -1371,8 +1374,7 @@
           "net": "Neto",
           "balance": "Saldo",
           "savings": "Ahorros",
-          "savings_balance": "Saldo de ahorros",
-          "savings_balance_tooltip": "Incluye intereses y otros movimientos de las cuentas de ahorro, que no cuentan como ahorrado"
+          "savings_balance": "Ahorro total"
         },
         "density": {
           "hide_empty": "Ocultar filas vacías",
@@ -1410,9 +1412,8 @@
         "title": "Ahorros",
         "planned": "Previsto",
         "saved": "Ahorrado",
-        "remaining": "Restante",
-        "opening_balance": "Saldo el día 1: {amount}",
-        "opening_balance_hint": "Saldo el día 1 del mes. Las transferencias entre cuentas de ahorro lo modifican, pero no cuentan como ahorrado."
+        "balance": "Saldo",
+        "balance_hint": "Saldo al final del mes. Para el mes actual y los siguientes incluye los ahorros previstos que aún faltan."
       },
       "settings": {
         "menu_item": "Presupuestos y planes",

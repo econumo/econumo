@@ -1,5 +1,6 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, makeBudgetExchange, displayAvailable } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
+import { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
 const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
@@ -107,6 +108,28 @@ it('totals large amounts exactly', () => {
   })
   const stats = bucketStats([bigEl('big-1'), bigEl('big-2')], budget, (_f, _t, a) => a)
   expect(stats.budgeted).toBe('18014398509481986')
+})
+
+it('savingsTotals: savings is actual for a past month, max(planned, saved) per live row from the current month; balance sums closing balances', () => {
+  const row = { type: BudgetElementType.SAVINGS, icon: 'savings', ownerUserId: 'u1', isArchived: 0 as const, position: 0, available: '0' }
+  const withSavings = (savings: BudgetDto['structure']['savings']): BudgetDto => ({ ...budget, structure: { ...budget.structure, savings } })
+  // a fake exchange that doubles anything not already in the budget currency
+  const ex = (from: string, to: string, amount: string) => (from === to ? amount : String(Number(amount) * 2))
+  const cur = budget.meta.currencyId
+  const b = withSavings([
+    // under plan: 500 planned, 200 saved
+    { ...row, id: 's1', name: 'A', currencyId: cur, budgeted: '500', spent: '200', closingBalance: '100.5' },
+    // over plan, other currency: 5 planned, 30 saved
+    { ...row, id: 's2', name: 'B', currencyId: 'other', budgeted: '5', spent: '30', closingBalance: '10' },
+    // a deleted account never expects its plan
+    { ...row, id: 's3', name: 'C', currencyId: cur, isArchived: 1, budgeted: '70', spent: '0', closingBalance: '0' },
+  ])
+  expect(savingsTotals(b, ex, false)).toEqual({ savings: '260', balance: '120.5' })
+  expect(savingsTotals(b, ex, true)).toEqual({ savings: '560', balance: '120.5' })
+  // no savings rows: no lines; a server without balances: the savings line only
+  expect(savingsTotals(withSavings([]), ex, true)).toBeNull()
+  expect(savingsTotals(withSavings(undefined), ex, true)).toBeNull()
+  expect(savingsTotals(withSavings([{ ...row, id: 's1', name: 'A', currencyId: cur, budgeted: '1', spent: '2' }]), ex, false)).toEqual({ savings: '2', balance: null })
 })
 
 it('displayAvailable adds budgeted to available', () => {

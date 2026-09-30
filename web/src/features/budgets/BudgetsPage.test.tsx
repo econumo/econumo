@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers, fixtureBudgets, fixtureOwner, fixtureUser } from '@/test/fixtures'
 import { BudgetsPage } from './BudgetsPage'
+import { toggleInPicker } from './budgetFormTestUtils'
 
 const UUID_V7 = /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
 
@@ -96,7 +97,7 @@ it('creates a budget with the selected accounts and appends the row', async () =
   // the currency picker row seeds from the user's default currency
   await waitFor(() => expect(screen.getByRole('button', { name: /^Currency/ })).toHaveTextContent('USD'))
   // every account starts OFF; at least one must be toggled on to submit
-  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+  await toggleInPicker(user, 'accounts', 'include Bank')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.id).toMatch(UUID_V7)
@@ -143,7 +144,7 @@ it('retracts each validation error as soon as its own field is fixed', async () 
   await user.type(screen.getByLabelText('Name'), 'Vacation')
   expect(screen.queryByText('Required field')).toBeNull()
   expect(screen.getByText('Select at least one account')).toBeInTheDocument()
-  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+  await toggleInPicker(user, 'accounts', 'include Bank')
   expect(screen.queryByText('Select at least one account')).toBeNull()
 })
 

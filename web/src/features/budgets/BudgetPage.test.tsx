@@ -506,7 +506,7 @@ describe('monthly Savings block', () => {
       savings: [
         {
           id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-          budgeted: '100', spent: '120', available: '-20',
+          budgeted: '100', spent: '120', available: '-20', closingBalance: '900',
         },
       ],
     },
@@ -566,7 +566,8 @@ describe('monthly Savings block', () => {
     await user.click(screen.getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
     await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-    expect(within(row).getByTestId('savings-remaining')).toHaveTextContent('130.00')
+    // July 2026 is a past month: its balance is booked, so a plan edit leaves it alone
+    expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
   })
 
   it('compact: Planned opens the set-limit dialog with the cell thread', async () => {
@@ -608,6 +609,9 @@ describe('monthly Savings block', () => {
     renderPage()
     expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
     expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
+    // nor Savings / Total savings lines in the phone Total card
+    expect(screen.queryByTestId('budget-totals-mobile-savings')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('budget-totals-mobile-savings-balance')).not.toBeInTheDocument()
   })
 })
 
@@ -615,7 +619,7 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-      budgeted: '100', spent: '120', available: '-20', openingBalance: '0' },
+      budgeted: '100', spent: '120', available: '-20', closingBalance: '2500' },
   ]
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -631,4 +635,12 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
   expect(totals).toHaveTextContent('165.50')
   expect(totals).toHaveTextContent('534.50')
   expect(screen.getByTestId('budget-totals-mobile')).toHaveTextContent('534.50')
+  // the phone rows leave Balance out, so the phone Total card carries both savings lines:
+  // a past month (July 2026) counts what was saved, 120 over the 100 planned
+  const savingsLine = screen.getByTestId('budget-totals-mobile-savings')
+  expect(savingsLine).toHaveTextContent('Savings')
+  expect(savingsLine).toHaveTextContent('120.00')
+  const balanceLine = screen.getByTestId('budget-totals-mobile-savings-balance')
+  expect(balanceLine).toHaveTextContent('Total savings')
+  expect(balanceLine).toHaveTextContent('2,500.00')
 })

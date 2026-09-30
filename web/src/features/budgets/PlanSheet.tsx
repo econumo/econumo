@@ -45,7 +45,6 @@ import { useUpdateCategory } from '@/features/classifications/queries'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
-import { InfoNote } from './BudgetTable'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
   canConfigureBudget,
@@ -95,7 +94,7 @@ import {
   makePlanExchange,
   monthDate,
   planHasSavingsData,
-  projectSavingsOpenings,
+  projectSavingsClosings,
   planInitialFirstMonth,
   planTotals,
   planVisibleCount,
@@ -677,13 +676,13 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   plannedText
                 )}
               </span>
-              {el.type === BudgetElementType.SAVINGS && cell?.openingBalance !== undefined ? (
+              {el.type === BudgetElementType.SAVINGS && cell?.closingBalance !== undefined ? (
                 <span
-                  data-testid="cell-opening"
+                  data-testid="cell-closing"
                   className="text-[10px] tabular-nums text-muted-foreground"
-                  title={t('budgets.page.savings.opening_balance_hint')}
+                  title={t('budgets.page.savings.balance_hint')}
                 >
-                  {moneyFormat(cell.openingBalance, currency, { showCurrency: false, useNativePrecision: false })}
+                  {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
                 </span>
               ) : null}
               {commentCount > 0 && !isUncategorized ? (
@@ -1032,7 +1031,6 @@ function PlanTotals({
 
 function PlanBalanceLine({
   label,
-  info,
   testIdPrefix,
   values,
   visibleMonths,
@@ -1042,9 +1040,6 @@ function PlanBalanceLine({
   cur,
 }: {
   label: string
-  /** the savings balance moves with interest too, which the Savings line never
-   *  counts — without the note the two read as disagreeing */
-  info?: string
   testIdPrefix: string
   values: string[]
   visibleMonths: string[]
@@ -1055,12 +1050,7 @@ function PlanBalanceLine({
 }) {
   return (
     <div role="row" className="grid items-center gap-1 px-2 py-1.5" style={{ gridTemplateColumns: gridCols }}>
-      <span className="flex min-w-0 items-center gap-1">
-        <span className="truncate text-xs font-semibold" title={info}>
-          {label}
-        </span>
-        {info ? <InfoNote text={info} testId={`${testIdPrefix}-info`} /> : null}
-      </span>
+      <span className="truncate text-xs font-semibold">{label}</span>
       {visibleMonths.map((m, i) => {
         const idx = monthIndex(m)
         const value = idx >= 0 ? values[idx] : undefined
@@ -1113,7 +1103,6 @@ function PlanBalanceRow({
       {savingsBalance ? (
         <PlanBalanceLine
           label={t('budgets.page.plan.totals.savings_balance')}
-          info={t('budgets.page.plan.totals.savings_balance_tooltip')}
           testIdPrefix="plan-savings-balance"
           values={savingsBalance}
           {...shared}
@@ -1532,7 +1521,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     if (!plan) {
       return []
     }
-    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsOpenings(row, plan.months)))
+    const all = (plan.structure.savings ?? []).map((row) => savingsAsPlanElement(projectSavingsClosings(row, plan.months)))
     const placed = dragArrangement ? placeElements(all, dragArrangement) : all
     const byPosition = (a: PlanElementDto, b: PlanElementDto) => a.position - b.position
     return [

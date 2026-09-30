@@ -270,7 +270,7 @@ func (s *Service) buildStructure(ctx context.Context, b *budgetAggregate, f filt
 		}
 	}
 
-	savings, err := s.addMonthlySavings(ctx, f, options, toConvert)
+	savings, err := s.addMonthlySavings(ctx, b, f, options, toConvert)
 	if err != nil {
 		return model.StructureResult{}, err
 	}

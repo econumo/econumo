@@ -177,6 +177,60 @@ it('useSetLimit (budget mode) also invalidates the plan cache so the plan sheet 
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budgetPlan })
 })
 
+describe('useSetLimit on a savings row', () => {
+  const withSavings = (closingBalance: string) => ({
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      savings: [
+        { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0 as const, position: 0,
+          budgeted: '100', spent: '40', available: '60', closingBalance },
+      ],
+    },
+  })
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] })
+    vi.setSystemTime(new Date(2026, 8, 15))
+    server.use(http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })))
+  })
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('from the current month on, moves the projected closing balance by the change in the unmet plan, and resyncs every month', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    const key = [...queryKeys.budget, 'b1', '2026-09-01']
+    // 1000 booked + 60 still expected
+    queryClient.setQueryData(key, withSavings('1060'))
+    const spy = vi.spyOn(queryClient, 'invalidateQueries')
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-09-01', amount: '250' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.savings?.[0]?.closingBalance).toBe('1210')
+    expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1'] })
+  })
+
+  it('a plan already met expects nothing more', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    const key = [...queryKeys.budget, 'b1', '2026-10-01']
+    queryClient.setQueryData(key, withSavings('1060'))
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-10-01', amount: '30' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.savings?.[0]?.closingBalance).toBe('1000')
+  })
+
+  it('a past month keeps its booked balance', async () => {
+    const { queryClient, wrapper } = makeWrapper()
+    const key = [...queryKeys.budget, 'b1', '2026-08-01']
+    queryClient.setQueryData(key, withSavings('1000'))
+    const { result } = renderHook(() => useSetLimit(), { wrapper })
+    result.current.mutate({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-08-01', amount: '250' })
+    await waitFor(() => expect(result.current.isSuccess).toBe(true))
+    expect(queryClient.getQueryData<BudgetDto>(key)?.structure.savings?.[0]?.closingBalance).toBe('1000')
+  })
+})
+
 it('useBudgetPlan fetches a buffered window and keeps previous data across shifts', async () => {
   const calls: string[] = []
   server.use(
@@ -237,7 +291,7 @@ it('useFillPlannedCells posts one set-limit per target, patches all cells, fires
   expect(trackEventMock.mock.calls.filter((c) => c[0] === METRICS.BUDGET_PLAN_FILL_RIGHT)).toHaveLength(1)
 })
 
-it('useFillPlannedCells invalidates the plan AND every target budget-month cache on any failure (server truth resyncs)', async () => {
+it('useFillPlannedCells invalidates the plan AND the budget\'s budget-month caches on any failure (server truth resyncs)', async () => {
   server.use(
     http.post('*/api/v1/budget/set-limit', () =>
       HttpResponse.json({ success: false, message: 'boom', code: 400, errors: {} }, { status: 400 }),
@@ -255,10 +309,9 @@ it('useFillPlannedCells invalidates the plan AND every target budget-month cache
     ],
   })
   await waitFor(() => expect(result.current.isError).toBe(true))
-  // onSettled resyncs even on a partial/total failure: both target months' budget-page
-  // caches, not just the plan cache.
-  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-06-01'] })
-  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1', '2026-07-01'] })
+  // onSettled resyncs even on a partial/total failure: every budget-month cache of the
+  // budget (a savings plan moves later months' balances too), not just the plan cache.
+  expect(spy).toHaveBeenCalledWith({ queryKey: [...queryKeys.budget, 'b1'] })
   expect(spy).toHaveBeenCalledWith({ queryKey: planKey })
 })
 

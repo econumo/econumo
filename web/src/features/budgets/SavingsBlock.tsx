@@ -13,20 +13,16 @@ import { moneyFormat } from '@/lib/money'
 import type { BudgetCommentDto, BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import { AvailablePill } from './BudgetTable'
 import { CommentMarker } from './CommentThread'
 import { useBudgetPeriodStore } from './budgetStore'
 import { commentCellKey } from './queries'
 
 const FOLD_KEY = 'monthly-savings'
 
-// Below sm the name (and the block title) take their own line and the three
-// amount columns split the line under it into equal thirds, so neither a long
-// name nor a long translation has to share a phone's width with three columns.
-// The header labels use the same classes so the columns stay aligned; from sm up
-// every column is a fixed w-24 on one line with the name.
-const AMOUNT_COL = 'min-w-0 flex-1 basis-0 sm:w-24 sm:flex-none sm:shrink-0'
-const AMOUNT_ROW = 'flex min-w-0 flex-1 items-center gap-1.5 sm:contents'
+// The budget table's geometry: a phone shows the name and two figures (Planned,
+// Saved) in its w-20 columns; Balance joins from sm up, where every column is w-24.
+const AMOUNT_COL = 'w-20 shrink-0 sm:w-24'
+const BALANCE_COL = 'hidden w-24 shrink-0 sm:block'
 
 interface SavingsBlockProps {
   budget: BudgetDto
@@ -87,30 +83,15 @@ function SavingsRow({
   const planned = moneyFormat(row.budgeted, currency, opts)
   const deleted = row.isArchived === 1
   return (
-    <div
-      className="flex flex-col gap-1 rounded-md px-1.5 py-2 hover:bg-accent/50 sm:flex-row sm:items-center sm:gap-2 sm:px-2 sm:py-2.5"
-      data-testid={`savings-row-${row.id}`}
-    >
-      <span className="flex min-w-0 items-center gap-2 sm:flex-1">
+    <div className="flex items-center gap-1.5 rounded-md px-1.5 py-2.5 hover:bg-accent/50 sm:gap-2 sm:px-2" data-testid={`savings-row-${row.id}`}>
+      <span className="flex min-w-0 flex-1 items-center gap-2">
         <span className="hidden w-3.5 shrink-0 sm:block" />
         <EntityIcon name={row.icon} className="text-lg text-muted-foreground" />
-        <span className="flex min-w-0 flex-col">
-          <span className={`truncate text-sm sm:text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
-            {row.name}
-          </span>
-          {row.openingBalance !== undefined ? (
-            <span
-              className="truncate text-[11px] tabular-nums text-muted-foreground"
-              data-testid="savings-opening"
-              title={t('budgets.page.savings.opening_balance_hint')}
-            >
-              {t('budgets.page.savings.opening_balance', { amount: moneyFormat(row.openingBalance, currency, { ...opts, showCurrency: true }) })}
-            </span>
-          ) : null}
+        <span className={`min-w-0 truncate text-[15px] ${deleted ? 'text-muted-foreground' : ''}`} title={row.name}>
+          {row.name}
         </span>
       </span>
-      <span className={AMOUNT_ROW}>
-        <span className={`relative ${AMOUNT_COL} text-right text-xs tabular-nums sm:text-[15px]`} data-testid="savings-planned">
+      <span className={`relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
           {editMode ? (
             planned
           ) : editable && renderPlannedEditor ? (
@@ -128,13 +109,12 @@ function SavingsRow({
             </button>
           )}
           {comments.length > 0 ? <CommentMarker count={comments.length} onOpen={() => onOpenComments(row)} /> : null}
-        </span>
-        <span className={`${AMOUNT_COL} text-center text-xs tabular-nums text-muted-foreground sm:text-[15px]`} data-testid="savings-saved">
-          {moneyFormat(row.spent, currency, opts)}
-        </span>
-        <span className={`flex ${AMOUNT_COL} justify-center`}>
-          <AvailablePill available={row.available} currency={currency} testId="savings-remaining" />
-        </span>
+      </span>
+      <span className={`${AMOUNT_COL} text-center text-[15px] tabular-nums text-muted-foreground`} data-testid="savings-saved">
+        {moneyFormat(row.spent, currency, opts)}
+      </span>
+      <span className={`${BALANCE_COL} text-center text-[15px] tabular-nums`} data-testid="savings-balance" title={t('budgets.page.savings.balance_hint')}>
+        {row.closingBalance !== undefined ? moneyFormat(row.closingBalance, currency, opts) : '—'}
       </span>
       <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
     </div>
@@ -212,11 +192,11 @@ export function SavingsBlock({
   return (
     <Collapsible open={open} onOpenChange={() => togglePlanFold(FOLD_KEY)}>
       <section className="rounded-md border p-1.5 sm:p-2" data-testid="budget-savings-block">
-        <div className="flex flex-col gap-1.5 px-1.5 pb-1 sm:flex-row sm:items-center sm:gap-2 sm:px-2">
+        <div className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 items-center gap-1.5 text-left sm:flex-1 sm:gap-2"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left sm:gap-2"
               aria-expanded={open}
               title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
             >
@@ -224,23 +204,20 @@ export function SavingsBlock({
               <span className="min-w-0 truncate text-sm font-medium">{t('budgets.page.savings.title')}</span>
             </button>
           </CollapsibleTrigger>
-          {/* below sm the labels get their own line, offset like the rows under
-              them (a grip's width in edit mode); a label that still outgrows its
-              third wraps rather than truncating. sm+ keeps one truncating line. */}
-          <span className="flex items-center gap-1 sm:contents">
-            {editMode ? <span className="w-4 shrink-0 sm:hidden" /> : null}
-            <span className={AMOUNT_ROW}>
-              {(['planned', 'saved', 'remaining'] as const).map((col) => (
+          {/* Folded, the labels would read as the header of the Total row under the
+              block, so they go with the rows. On a phone a label that outgrows its
+              column wraps rather than truncating. */}
+          {open
+            ? (['planned', 'saved', 'balance'] as const).map((col) => (
                 <span
                   key={col}
                   title={t(`budgets.page.savings.${col}`)}
-                  className={`${AMOUNT_COL} text-[10px] uppercase text-muted-foreground max-sm:leading-tight sm:truncate sm:text-[11px] sm:tracking-wide ${col === 'planned' ? 'text-right' : 'text-center'}`}
+                  className={`${col === 'balance' ? BALANCE_COL : AMOUNT_COL} text-[10px] uppercase text-muted-foreground max-sm:leading-tight max-sm:break-words sm:truncate sm:text-[11px] sm:tracking-wide ${col === 'planned' ? 'text-right' : 'text-center'}`}
                 >
                   {t(`budgets.page.savings.${col}`)}
                 </span>
-              ))}
-            </span>
-          </span>
+              ))
+            : null}
           <span className="hidden w-6 sm:block" />
         </div>
         <CollapsibleContent>

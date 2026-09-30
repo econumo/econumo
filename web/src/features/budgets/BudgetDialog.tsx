@@ -12,7 +12,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData, userCurrencyId } from '@/features/user/queries'
 import { useFormErrors } from '@/hooks/useFormErrors'
-import { BudgetAccountsField } from './BudgetAccountsField'
+import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
 
 interface BudgetDialogProps {
   open: boolean
@@ -149,15 +149,9 @@ export function BudgetDialog({ open, onClose, onSubmit }: BudgetDialogProps) {
 
         {ownAccounts.length > 0 ? (
           <>
-            <BudgetAccountsField
-              accounts={ownAccounts}
-              selected={selected}
-              locked={new Set()}
-              onToggle={toggleAccount}
-              savings={savings}
-              onToggleSavings={toggleSavings}
-            />
+            <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={new Set()} onToggle={toggleAccount} />
             {errors.accounts ? <p className="text-sm text-destructive">{errors.accounts}</p> : null}
+            <BudgetSavingsField accounts={ownAccounts} selected={selected} savings={savings} onToggle={toggleSavings} />
           </>
         ) : null}
       </form>
