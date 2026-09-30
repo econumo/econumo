@@ -291,6 +291,11 @@ export function makePlanExchange(plan: BudgetPlanDto, currencies: CurrencyDto[])
   }
 }
 
+export function planMonthExchange(plan: BudgetPlanDto, currencies: CurrencyDto[], monthIndex: number): (from: Id, to: Id, amount: string) => string {
+  const rates = (plan.currencyRates[monthIndex]?.rates ?? []).map((r) => ({ ...r, updatedAt: r.periodStart }))
+  return (from, to, amount) => exchange(from, to, amount, rates, currencies)
+}
+
 export function planTotals(plan: BudgetPlanDto, ex: MonthExchange, now?: Date): PlanMonthTotals[] {
   const cur = currentMonth(now)
   const rows = plan.structure.elements

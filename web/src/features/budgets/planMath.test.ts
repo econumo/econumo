@@ -3,6 +3,7 @@ import type { BudgetFolderDto, BudgetPlanDto, PlanElementDto, PlanSavingsElement
 import { BudgetElementType } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { sub } from '@/lib/decimal'
+import { fixtureWirePlan } from '@/test/fixtures'
 import {
   PLAN_ACTIONS_COL_PX,
   PLAN_CURRENCY_COL_PX,
@@ -23,6 +24,7 @@ import {
   monthDiff,
   planHasSavingsData,
   planInitialFirstMonth,
+  planMonthExchange,
   planTotals,
   planVisibleCount,
   projectSavingsClosings,
@@ -1108,4 +1110,15 @@ describe('projectSavingsClosings', () => {
     const legacy = mkSavingsEl({ id: 'old', name: 'Old', cells: months.map(() => ({ actual: '0', planned: '100' })) })
     expect(projectSavingsClosings(legacy, months, now)).toEqual(legacy)
   })
+})
+
+it('planMonthExchange converts at the given month\'s rates', () => {
+  const plan = JSON.parse(JSON.stringify(fixtureWirePlan)) as BudgetPlanDto
+  const usd = { id: 'cur-usd', code: 'USD', name: 'US Dollar', symbol: '$', fractionDigits: 2 }
+  const eur = { id: 'cur-eur', code: 'EUR', name: 'Euro', symbol: '€', fractionDigits: 2 }
+  const may = planMonthExchange(plan, [usd, eur], 0)
+  const aug = planMonthExchange(plan, [usd, eur], 3)
+  // the fixture's EUR rate moves from 0.90 (May) to 0.93 (Aug): the two months must differ
+  expect(may('cur-eur', 'cur-usd', '100')).not.toBe(aug('cur-eur', 'cur-usd', '100'))
+  expect(may('cur-usd', 'cur-usd', '100')).toBe('100')
 })
