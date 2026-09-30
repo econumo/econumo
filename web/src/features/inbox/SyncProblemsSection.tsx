@@ -4,6 +4,13 @@ import type { ImportSourceDto } from '@/api/dto/imports'
 import { RouterPage } from '@/app/router-pages'
 import { formatDateTime, parseDateTime } from '@/lib/datetime'
 
+function runErrorText(s: ImportSourceDto): string {
+  if (!s.lastRunError) return ''
+  if (!s.lastRunErrorAccountId) return s.lastRunError
+  const card = s.cards.find((c) => c.externalAccountId.toLowerCase() === s.lastRunErrorAccountId.toLowerCase())
+  return `${card?.externalName || s.lastRunErrorAccountId}: ${s.lastRunError}`
+}
+
 export function SyncProblemsSection({ sources }: { sources: ImportSourceDto[] }) {
   const { t } = useTranslation()
   return (
@@ -16,7 +23,7 @@ export function SyncProblemsSection({ sources }: { sources: ImportSourceDto[] })
         >
           <span className="font-medium">{t(s.lastRunStatus === 'partial' ? 'inbox.sync.partial' : 'inbox.sync.failed', { source: s.name })}</span>
           {s.lastRunAt ? <span className="text-xs text-muted-foreground">{t('inbox.sync.when', { date: formatDateTime(parseDateTime(s.lastRunAt)) })}</span> : null}
-          {s.lastRunError ? <span className="text-xs text-destructive">{s.lastRunError}</span> : null}
+          {s.lastRunError ? <span className="text-xs text-destructive">{runErrorText(s)}</span> : null}
         </Link>
       ))}
     </div>

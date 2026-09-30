@@ -78,7 +78,7 @@ func TestGetSourceList_CarriesLatestRun(t *testing.T) {
 	if err != nil || len(res.Items) != 1 {
 		t.Fatalf("list = %+v, %v", res, err)
 	}
-	if it := res.Items[0]; it.LastRunStatus != "" || it.LastRunAt != "" || it.LastRunError != "" {
+	if it := res.Items[0]; it.LastRunStatus != "" || it.LastRunAt != "" || it.LastRunError != "" || it.LastRunErrorAccountId != "" {
 		t.Fatalf("a source that never ran must carry empty lastRun*: %+v", it)
 	}
 
@@ -88,16 +88,27 @@ func TestGetSourceList_CarriesLatestRun(t *testing.T) {
 		Status: model.ImportRunStatusFailed, Errors: `[{"externalAccountId":"","message":"bridge down"},{"externalAccountId":"x","message":"second"}]`,
 		StartedAt: started, FinishedAt: &finished})
 	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
-	if it := res.Items[0]; it.LastRunStatus != "failed" || it.LastRunAt != finished.UTC().Format(datetime.Layout) || it.LastRunError != "bridge down" {
+	if it := res.Items[0]; it.LastRunStatus != "failed" || it.LastRunAt != finished.UTC().Format(datetime.Layout) || it.LastRunError != "bridge down" || it.LastRunErrorAccountId != "" {
 		t.Fatalf("failed run not surfaced: %+v", it)
 	}
 
-	// A newer run still in flight wins over the older failure; no finish time yet -> started_at.
+	// A newer, still-older-than-"running" per-account failure names the account.
+	partialStarted := started.Add(30 * time.Minute)
+	partialFinished := partialStarted.Add(time.Minute)
+	h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet,
+		Status: model.ImportRunStatusPartial, Errors: `[{"externalAccountId":"acct-9","message":"Import failed for this account"}]`,
+		StartedAt: partialStarted, FinishedAt: &partialFinished})
+	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
+	if it := res.Items[0]; it.LastRunStatus != "partial" || it.LastRunError != "Import failed for this account" || it.LastRunErrorAccountId != "acct-9" {
+		t.Fatalf("per-account failure not surfaced: %+v", it)
+	}
+
+	// A newer run still in flight wins over the older failures; no finish time yet -> started_at.
 	running := now.Add(-time.Minute)
 	h.f.ImportRun(fixture.ImportRun{UserID: userA, SourceID: source, Provider: model.ImportProviderAppleWallet,
 		Status: model.ImportRunStatusRunning, StartedAt: running})
 	res, _ = h.svc.GetSourceList(ctx, vo.MustParseId(userA))
-	if it := res.Items[0]; it.LastRunStatus != "running" || it.LastRunAt != running.UTC().Format(datetime.Layout) || it.LastRunError != "" {
+	if it := res.Items[0]; it.LastRunStatus != "running" || it.LastRunAt != running.UTC().Format(datetime.Layout) || it.LastRunError != "" || it.LastRunErrorAccountId != "" {
 		t.Fatalf("latest run must win: %+v", it)
 	}
 

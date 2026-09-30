@@ -218,7 +218,7 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 	if err != nil {
 		return nil, err
 	}
-	var lastStatus, lastAt, lastErr string
+	var lastStatus, lastAt, lastErr, lastErrAccountId string
 	if len(runs) > 0 {
 		r := runs[0]
 		lastStatus, lastAt = r.Status, r.StartedAt.UTC().Format(datetime.Layout)
@@ -227,12 +227,13 @@ func (s *Service) sourceResult(ctx context.Context, src *model.ImportSource) (*m
 		}
 		if len(r.Errors) > 0 {
 			lastErr = r.Errors[0].Message
+			lastErrAccountId = r.Errors[0].ExternalAccountId
 		}
 	}
 	return &model.ImportSourceResult{
 		Id: src.ID.String(), Provider: src.Provider, Name: src.Name, Status: src.Status,
 		CreatedAt: src.CreatedAt.Format(datetime.Layout), LastSyncedAt: optionalTime(src.LastSyncedAt),
-		LastRunStatus: lastStatus, LastRunAt: lastAt, LastRunError: lastErr,
+		LastRunStatus: lastStatus, LastRunAt: lastAt, LastRunError: lastErr, LastRunErrorAccountId: lastErrAccountId,
 		CredentialCiphertext: derefString(src.CredentialCiphertext), Cards: cards,
 	}, nil
 }

@@ -201,17 +201,18 @@ type ImportCardResult struct {
 }
 
 type ImportSourceResult struct {
-	Id                   string             `json:"id"`
-	Provider             string             `json:"provider"`
-	Name                 string             `json:"name"`
-	Status               string             `json:"status"`
-	CreatedAt            string             `json:"createdAt"`
-	LastSyncedAt         string             `json:"lastSyncedAt"`
-	LastRunStatus        string             `json:"lastRunStatus"`
-	LastRunAt            string             `json:"lastRunAt"`
-	LastRunError         string             `json:"lastRunError"`
-	CredentialCiphertext string             `json:"credentialCiphertext"`
-	Cards                []ImportCardResult `json:"cards"`
+	Id                    string             `json:"id"`
+	Provider              string             `json:"provider"`
+	Name                  string             `json:"name"`
+	Status                string             `json:"status"`
+	CreatedAt             string             `json:"createdAt"`
+	LastSyncedAt          string             `json:"lastSyncedAt"`
+	LastRunStatus         string             `json:"lastRunStatus"`
+	LastRunAt             string             `json:"lastRunAt"`
+	LastRunError          string             `json:"lastRunError"`
+	LastRunErrorAccountId string             `json:"lastRunErrorAccountId"`
+	CredentialCiphertext  string             `json:"credentialCiphertext"`
+	Cards                 []ImportCardResult `json:"cards"`
 }
 
 type CreateImportSourceResult struct {

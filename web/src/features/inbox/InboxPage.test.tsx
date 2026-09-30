@@ -19,7 +19,7 @@ const failedEvent = { eventId: 'e9', sourceId: 's1', receivedAt: '2026-08-21 08:
 const syncProblemSource = (over: Record<string, unknown> = {}) => ({
   id: 's2', provider: 'simplefin', name: 'Bank', status: 'active', createdAt: '2026-08-01 00:00:00',
   lastSyncedAt: '', lastRunStatus: 'failed', lastRunAt: '2026-09-29 09:14:00', lastRunError: 'token expired',
-  credentialCiphertext: '', cards: [], ...over,
+  lastRunErrorAccountId: '', credentialCiphertext: '', cards: [], ...over,
 })
 
 function renderInbox(extraRoutes: { path: string; element: ReactElement }[] = []) {
@@ -179,6 +179,26 @@ it('a failed sync problem links to SimpleFIN settings and shows the run error', 
   expect(await screen.findByText('Bank sync failed')).toBeInTheDocument()
   expect(screen.getByText('token expired')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /Bank sync failed/ })).toHaveAttribute('href', '/settings/simplefin')
+})
+
+it('a per-account run error names the card by its external name', async () => {
+  server.use(...coreHandlers({
+    importSources: [syncProblemSource({
+      lastRunError: 'Import failed for this account',
+      lastRunErrorAccountId: 'acct-9',
+      cards: [{ externalAccountId: 'acct-9', externalName: 'Chase Checking', externalCurrency: '', state: 'mapped', accountId: 'a1', queuedCount: 0, tapCount: 1, lastSeenAt: '' }],
+    })],
+  }))
+  renderInbox()
+  expect(await screen.findByText('Chase Checking: Import failed for this account')).toBeInTheDocument()
+})
+
+it('a per-account run error falls back to the raw external id when the card is unknown', async () => {
+  server.use(...coreHandlers({
+    importSources: [syncProblemSource({ lastRunError: 'Import failed for this account', lastRunErrorAccountId: 'acct-9', cards: [] })],
+  }))
+  renderInbox()
+  expect(await screen.findByText('acct-9: Import failed for this account')).toBeInTheDocument()
 })
 
 it('a partial sync problem is worded differently', async () => {

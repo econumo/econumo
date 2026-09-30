@@ -28,7 +28,7 @@ vi.mock('@/lib/metrics', async (importOriginal) => {
 const trackEventMock = vi.mocked(trackEvent)
 
 const card = { externalAccountId: 'wallet', externalName: 'Apple Card', externalCurrency: 'USD', state: 'unmapped' as const, accountId: '', queuedCount: 1, tapCount: 1, lastSeenAt: '2026-08-20 17:42:03' }
-const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', credentialCiphertext: '', cards: [card] }
+const wireSource: ImportSourceDto = { id: 's1', provider: 'apple-wallet', name: 'iPhone', status: 'active', createdAt: '2026-08-01 00:00:00', lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', lastRunErrorAccountId: '', credentialCiphertext: '', cards: [card] }
 const queued = { linkId: 'l1', sourceId: 's1', externalAccountId: 'wallet', accountId: '', payee: 'Blue Bottle', amount: '4.75', currency: 'USD', type: 'expense' as const, postedAt: '2026-08-20 17:42:03', reason: 'unmapped' as const }
 const wireQueue: ImportQueueDto = { queued: [queued], skipped: [], failed: [] }
 

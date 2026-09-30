@@ -14722,6 +14722,9 @@ const docTemplate = `{
                 "lastRunError": {
                     "type": "string"
                 },
+                "lastRunErrorAccountId": {
+                    "type": "string"
+                },
                 "lastRunStatus": {
                     "type": "string"
                 },

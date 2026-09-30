@@ -35,6 +35,8 @@ export interface ImportSourceDto {
   lastRunAt: string
   /** first error message of the newest run; '' when none */
   lastRunError: string
+  /** external account id of the first error; '' for a run-level error or no error */
+  lastRunErrorAccountId: string
   /** opaque to the server; '' for push providers */
   credentialCiphertext: string
   cards: ImportCardDto[]
