@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, widgetMath, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
@@ -148,22 +148,6 @@ it('periodRange spans 47 months with year-aware labels and start marking', () =>
   expect(inside.outsideBudget).toBe(false)
 })
 
-it('widget math folds signed exchanges/holdings and clamps progress', () => {
-  const m = widgetMath({ currencyId: 'x', startBalance: '100', endBalance: null, income: '400', expenses: '-450', exchanges: '-25', holdings: '30' })
-  expect(m.spent).toBe('475')
-  expect(m.total).toBe('530')
-  expect(m.progress).toBeCloseTo(475 / 530)
-  expect(m.overspent).toBe(false)
-
-  const nulls = widgetMath({ currencyId: 'x', startBalance: null, endBalance: null, income: null, expenses: null, exchanges: null, holdings: '10' })
-  expect(nulls.spent).toBe('0')
-  expect(nulls.total).toBe('10')
-  expect(nulls.progress).toBe(0)
-
-  const over = widgetMath({ currencyId: 'x', startBalance: '0', endBalance: null, income: '100', expenses: '-150', exchanges: '0', holdings: '0' })
-  expect(over.overspent).toBe(true)
-  expect(over.progress).toBe(1)
-})
 
 it('periodRange marks months after the budget end month with afterEnd', () => {
   const range = periodRange('2026-07-01', '2026-01-01 00:00:00', 6, 6, 'en', '2026-08-01 00:00:00')
@@ -180,4 +164,48 @@ it('periodRange without an end month leaves later months inside', () => {
   const range = periodRange('2026-07-01', '2026-01-01 00:00:00', 6, 6, 'en', '')
   expect(range.find((i) => i.value === '2026-12-01')!.afterEnd).toBe(false)
   expect(range.find((i) => i.value === '2026-12-01')!.outsideBudget).toBe(false)
+})
+
+describe('rowState', () => {
+  it('is none with no budget and no spending', () => {
+    expect(rowState({ budgeted: '0', spent: '0', available: '0' })).toBe('none')
+    // even with a carried-over balance: the spec's table checks this row first
+    expect(rowState({ budgeted: '0', spent: '0', available: '-20' })).toBe('none')
+  })
+  it('is ok within budget', () => {
+    expect(rowState({ budgeted: '700', spent: '650', available: '50' })).toBe('ok')
+    expect(rowState({ budgeted: '700', spent: '700', available: '0' })).toBe('ok')
+  })
+  it('is covered when over this month but carry-over keeps Available non-negative', () => {
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '649.32' })).toBe('covered')
+    expect(rowState({ budgeted: '0', spent: '10', available: '5' })).toBe('covered')
+  })
+  it('is over when Available is negative', () => {
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' })).toBe('over')
+    expect(rowState({ budgeted: '100', spent: '50', available: '-1' })).toBe('over')
+  })
+  it('is none for a future month whatever the figures', () => {
+    expect(rowState({ budgeted: '700', spent: '801.37', available: '-101.37' }, true)).toBe('none')
+  })
+})
+
+describe('rowProgress', () => {
+  it('is spent over budget, capped at 1', () => {
+    expect(rowProgress({ budgeted: '200', spent: '50' })).toBe(0.25)
+    expect(rowProgress({ budgeted: '200', spent: '500' })).toBe(1)
+  })
+  it('is null with no budget or in a future month', () => {
+    expect(rowProgress({ budgeted: '0', spent: '50' })).toBeNull()
+    expect(rowProgress({ budgeted: '200', spent: '50' }, true)).toBeNull()
+  })
+  it('never goes below zero (refunds)', () => {
+    expect(rowProgress({ budgeted: '200', spent: '-30' })).toBe(0)
+  })
+})
+
+it('carryOver is what earlier months left: displayed Available less this months budget less spent', () => {
+  // the spec's worked example: Budget 700, Spent 801.37, Available 649.32 -> 750.69
+  const el = { budgeted: '700', spent: '801.37', available: '-50.68' }
+  expect(displayAvailable(el)).toBe('649.32')
+  expect(carryOver(el)).toBe('750.69')
 })

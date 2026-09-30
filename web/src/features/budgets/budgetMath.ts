@@ -1,8 +1,8 @@
-import type { BudgetBalanceDto, BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
+import type { BudgetDto, BudgetElementDto, BudgetFolderDto } from '@/api/dto/budget'
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import { compareNames } from '@/lib/collate'
-import { abs, add, cmp, div } from '@/lib/decimal'
+import { add, cmp, div, isZero } from '@/lib/decimal'
 import { exchange } from '@/lib/exchange'
 
 export interface BucketStats {
@@ -203,31 +203,27 @@ export function periodRange(
   return items
 }
 
-export interface WidgetMath {
-  spent: string
-  total: string
-  /** ratio for the progress bar; float precision is fine for a CSS width */
-  progress: number
-  overspent: boolean
+export type RowState = 'none' | 'ok' | 'covered' | 'over'
+
+/** The one colour rule for an expense row. `available` is the displayed Available
+ *  (`displayAvailable`); a future month has no spending yet, so it has no state. */
+export function rowState(row: { budgeted: string; spent: string; available: string }, future = false): RowState {
+  if (future || (isZero(row.budgeted) && isZero(row.spent))) {
+    return 'none'
+  }
+  if (cmp(row.available, '0') < 0) {
+    return 'over'
+  }
+  return cmp(row.spent, row.budgeted) > 0 ? 'covered' : 'ok'
 }
 
-// nulls count as zero; negative exchange/holdings fold into spent, positive into total.
-export function widgetMath(balance: BudgetBalanceDto | undefined): WidgetMath {
-  const n = (v: string | null | undefined) => v ?? '0'
-  const expenses = n(balance?.expenses)
-  const exchanges = n(balance?.exchanges)
-  const holdings = n(balance?.holdings)
-  const startBalance = n(balance?.startBalance)
-  const income = n(balance?.income)
-
-  let spent = abs(expenses)
-  if (cmp(exchanges, '0') < 0) spent = add(spent, abs(exchanges))
-  if (cmp(holdings, '0') < 0) spent = add(spent, abs(holdings))
-
-  let total = abs(add(startBalance, income))
-  if (cmp(exchanges, '0') > 0) total = add(total, exchanges)
-  if (cmp(holdings, '0') > 0) total = add(total, holdings)
-
-  const progress = cmp(total, '0') <= 0 ? 0 : Math.max(0, Math.min(Number(div(spent, total)), 1))
-  return { spent, total, progress, overspent: cmp(spent, total) > 0 }
+export function rowProgress(row: { budgeted: string; spent: string }, future = false): number | null {
+  if (future || cmp(row.budgeted, '0') <= 0) {
+    return null
+  }
+  return Math.max(0, Math.min(Number(div(row.spent, row.budgeted)), 1))
 }
+
+// the wire `available` already nets this month's spending against what earlier
+// months left, so adding the spending back leaves the carry-over alone
+export const carryOver = (el: { available: string; spent: string }): string => add(el.available, el.spent)
