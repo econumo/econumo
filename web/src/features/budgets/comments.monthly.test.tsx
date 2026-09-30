@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
@@ -108,6 +108,51 @@ it('opens the thread from the marker as a popover beside the cell, and keeps the
   await user.click(within(row).getByTestId('comment-marker'))
   const popover = await screen.findByTestId('comments-popover')
   expect(within(popover).getByText('Trip to Lisbon')).toBeInTheDocument()
+})
+
+it('opens the thread with Shift+F2 from the focused amount of a budgeted cell', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-env-1')
+  expect(within(row).queryByTestId('comment-marker')).toBeNull()
+  act(() => within(row).getByLabelText(/^limit /).focus())
+  await user.keyboard('{Shift>}{F2}{/Shift}')
+  expect(await screen.findByTestId('comments-popover')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+})
+
+it('opens the hover preview from the mouse only, not from keyboard focus on the amount', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  act(() => within(cell).getByLabelText(/^limit /).focus())
+  await new Promise((r) => setTimeout(r, 500))
+  expect(screen.queryByTestId('comment-preview')).toBeNull()
+  await user.hover(cell)
+  expect(await screen.findByTestId('comment-preview', {}, { timeout: 1500 })).toHaveTextContent('Trip to Lisbon')
+})
+
+it('shows no hover preview over an open amount editor when the pointer drifts back over the cell', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.click(within(cell).getByLabelText(/^limit /))
+  const input = await screen.findByLabelText('Budget')
+  await user.hover(input)
+  await user.hover(cell)
+  await new Promise((r) => setTimeout(r, 500))
+  expect(screen.queryByTestId('comment-preview')).toBeNull()
+  expect(screen.getByLabelText('Budget')).toBeInTheDocument()
 })
 
 it('switches the thread when another marker is clicked', async () => {

@@ -240,6 +240,22 @@ it('offers set budget, comments and transactions on a right-clicked plan cell', 
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
+it('keeps the grid selection while the arrow keys walk the cell menu', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(cell)
+  expect(cell).toHaveAttribute('aria-selected', 'true')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  await screen.findByRole('menu')
+  await user.keyboard('{ArrowDown}{ArrowDown}')
+  expect(screen.getByTestId('plan-cell-pe1:1')).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByTestId('plan-cell-pe1:2')).toHaveAttribute('aria-selected', 'false')
+})
+
 it('offers no comment item on the uncategorized row', async () => {
   usePlanHandlers()
   mockViewport()
