@@ -242,8 +242,8 @@ grid, fill handle, drag-and-drop, edit-structure mode.
   progress is covered by the rows and totals, "saved of planned" by the totals
   card, and the average-rate note moves to the item sheet. Delete
   `ExpenseWidget.tsx`, `selectedCurrencyId` state, and the
-  `budgets.page.budget.expense_widget.*` catalogue keys in all 11 locales except
-  `conversion_rate`, which is moved under the item-sheet namespace.
+  `budgets.modal.expense_widget.*` catalogue keys in all 11 locales except
+  `conversion_rate`, which stage 2's item sheet reuses.
 - `ElementLongPress` in `BudgetPage.tsx`, `onAvailableClick`,
   `onAvailableCommentsClick`, and the phone-only `renderRowWrapper` branch.
 
@@ -286,6 +286,9 @@ navigation, not an action. `metrics-coverage.test.ts` must stay green.
 Three stages, each a reviewable PR into `v1.6-dev`:
 
 1. **Comments separation** (Part 2) + removal of the currency chips/widget.
+   Phones keep today's comment paths (the set-limit sheet's "Comments (N)"
+   button, tap-Available, long-press) until stage 2 gives them the item sheet;
+   long-press becomes phone-only so it cannot clash with the tablet menu.
 2. **Phone single month view** (Part 1), including the item sheet.
 3. **Desktop/tablet density** (Part 3) + the currency display rule.
 
