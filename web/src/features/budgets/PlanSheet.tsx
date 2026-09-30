@@ -38,7 +38,6 @@ import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import { useIsPhone } from '@/hooks/useIsPhone'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
@@ -72,7 +71,7 @@ import type { ElementContainer } from './elementMove'
 import { CommentsPanel } from './CommentsPanel'
 import { CommentMarker } from './CommentThread'
 import { CellShell } from './CellShell'
-import { COMMENT_ANCHOR_ATTR, commentAnchorOf, openLimitEditorIn } from './cellDom'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -245,7 +244,6 @@ interface GridCtx {
   openTransactions: (el: PlanElementDto, month: string) => void
   /** a thread is open: hover previews stay shut */
   commentsOpen: boolean
-  isPhone: boolean
   canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
@@ -634,7 +632,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
                 </span>
               ) : null}
-              {(commentCount > 0 || (!ctx.isPhone && !ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (
@@ -655,17 +653,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           return (
             <CellShell
               key={m}
-              title={displayName}
               comments={isUncategorized ? [] : cellComments}
               previewDisabled={ctx.commentsOpen || ctx.editMode}
-              actionsDisabled={ctx.isPhone || ctx.editMode}
-              onSetBudget={editable ? (anchor) => (ctx.isCompact ? ctx.openDialog(target) : openLimitEditorIn(anchor)) : undefined}
+              shortcutDisabled={ctx.editMode}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
-              onShowTransactions={
-                !isUncategorized && !isIncomeType(el.type) && el.type !== BudgetElementType.SAVINGS
-                  ? () => ctx.openTransactions(el, m)
-                  : undefined
-              }
             >
               {cellNode}
             </CellShell>
@@ -1175,7 +1166,6 @@ function PlanBand({
 export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
-  const isPhone = useIsPhone()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [draggingFolder, setDraggingFolder] = useState(false)
@@ -1547,7 +1537,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       openComments,
       openTransactions,
       commentsOpen,
-      isPhone,
       canEdit,
       selection,
       select,
@@ -1585,7 +1574,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     openComments,
     openTransactions,
     commentsOpen,
-    isPhone,
     canEdit,
     selection,
     select,
@@ -2388,18 +2376,6 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        // phones only: a tablet reaches the thread from the marker or the actions modal
-        commentCount={isPhone && planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
-        onOpenComments={
-          isPhone
-            ? () => {
-                if (planLimitTarget) {
-                  openComments(planLimitTarget, { anchor: null })
-                }
-                setPlanLimitTarget(null)
-              }
-            : undefined
-        }
       />
 
       <CommentsPanel

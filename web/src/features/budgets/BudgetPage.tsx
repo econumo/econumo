@@ -31,7 +31,6 @@ import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
-import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
 import type { BudgetElementDto, BudgetSavingsElementDto } from '@/api/dto/budget'
@@ -78,7 +77,8 @@ import { SetLimitDialog } from './SetLimitDialog'
 import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
-import { openLimitEditorIn } from './cellDom'
+import { ElementSheet } from './ElementSheet'
+import { sheetCell, type SheetTarget } from './phoneMonth'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
@@ -201,11 +201,6 @@ function SortableSection({
 }
 
 
-function ElementLongPress({ element, onLongPress, children }: { element: BudgetElementDto; onLongPress: (el: BudgetElementDto) => void; children: ReactNode }) {
-  const handlers = useLongPress(() => onLongPress(element))
-  return <div {...handlers}>{children}</div>
-}
-
 export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
@@ -276,6 +271,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
   const [limitTarget, setLimitTarget] = useState<CellTarget | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
+  const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }))
@@ -536,32 +532,44 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     icon: element.icon,
     currencyId: element.currencyId,
   })
-  const setBudgetFor = (target: CellTarget) => (anchor: HTMLElement) =>
-    isCompact ? setLimitTarget(target) : openLimitEditorIn(anchor)
-  // phones keep stage 1's tap/long-press paths; edit mode owns the pointer for dragging
+  const sheetCanSetAmount = (target: SheetTarget): boolean => {
+    if (!limitsEditable) {
+      return false
+    }
+    switch (target.kind) {
+      case 'expense':
+        return target.element.isArchived === 0 && target.element.id !== UNCATEGORIZED_ID
+      case 'savings':
+        return target.row.isArchived === 0
+      case 'plan':
+        // outside the phone view there is no plan column to write to
+        return false
+    }
+  }
+  const sheetCellTarget = (target: SheetTarget): CellTarget => {
+    const cell = sheetCell(target, budget.meta.currencyId)
+    return { id: cell.id, name: cell.name, budgeted: cell.amount }
+  }
+  const expenseSheetTarget = sheetTarget?.kind === 'expense' ? sheetTarget : null
+  // phones get no hover corner; edit mode owns the pointer for dragging
   const cellActionsDisabled = isPhone || editMode
   // the hover-only corner that starts a thread on a cell with none yet
   const canAddComment = !cellActionsDisabled && !commentsReadOnly(budget.meta, selectedDate)
-  const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement, { readOnly }: { readOnly: boolean }) => (
+  const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement) => (
     <CellShell
-      title={elementDisplayName(element.id, element.name, t)}
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
       previewDisabled={commentsTarget !== null || editMode}
-      actionsDisabled={cellActionsDisabled}
-      onSetBudget={limitsEditable && !readOnly ? setBudgetFor(element) : undefined}
+      shortcutDisabled={editMode}
       onOpenComments={(anchor) => openComments(element, anchor)}
-      onShowTransactions={() => setTransactionsTarget(transactionsTargetOf(element))}
     >
       {cell}
     </CellShell>
   )
   const wrapPlannedCell = (row: BudgetSavingsElementDto, cell: ReactElement) => (
     <CellShell
-      title={row.name}
       comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
       previewDisabled={commentsTarget !== null || editMode}
-      actionsDisabled={cellActionsDisabled}
-      onSetBudget={limitsEditable && row.isArchived === 0 ? setBudgetFor(row) : undefined}
+      shortcutDisabled={editMode}
       onOpenComments={(anchor) => openComments(row, anchor)}
     >
       {cell}
@@ -797,13 +805,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
-                    // an editable cell on a tablet has no `renderBudgetCell` (the inline
-                    // editor is desktop-only) but must still read as a plain amount, not a
-                    // comments button: the marker and the long-press actions modal are its
-                    // entry points there, matching desktop's separation of amount vs. thread
-                    onBudgetCellComments={
-                      !editMode && !(isCompact && limitsEditable) ? (element, anchor) => openComments(element, anchor) : undefined
-                    }
+                    // touch viewports reach set budget, comments and transactions through the item sheet
+                    onBudgetCellDetails={isCompact && !editMode ? (element) => setSheetTarget({ kind: 'expense', element }) : undefined}
+                    onBudgetCellComments={!editMode && !isCompact ? (element, anchor) => openComments(element, anchor) : undefined}
                     wrapBudgetCell={wrapBudgetCell}
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
@@ -819,17 +823,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               {row}
                             </DraggableElement>
                           )
-                        : isPhone
-                          // phone-only: a non-editable cell (guest role, readonly access,
-                          // archived budget, out-of-range month) still gets the long-press —
-                          // it opens the comments dialog instead of the limit editor, so a
-                          // guest on a real phone has a way to reach the thread at all
-                          ? (element, _bucket, row) => (
-                              <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : (el) => openComments(el)}>
-                                {row}
-                              </ElementLongPress>
-                            )
-                          : undefined
+                        : undefined
                     }
                     sectionWrapper={
                       editMode
@@ -849,10 +843,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                         : undefined
                     }
                     onSpentClick={editMode ? undefined : setTransactionsTarget}
-                    onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
-                    // a fallback behind onAvailableClick, so passed even when limits are
-                    // editable: the Archive section keeps only this one of the two
-                    onAvailableCommentsClick={isCompact && !editMode ? (el) => openComments(el) : undefined}
                   />
                   </SortableContext>
                 </DndContext>
@@ -865,7 +855,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     canEdit={limitsEditable && !editMode}
                     editMode={editMode}
                     commentsByCell={commentsByCell}
-                    onEditPlanned={setLimitTarget}
+                    onOpenDetails={isCompact && !editMode ? (row) => setSheetTarget({ kind: 'savings', row }) : undefined}
                     onOpenComments={(row, anchor) => openComments(row, anchor ?? null)}
                     renderPlannedEditor={inlineLimitEditor}
                     wrapPlannedCell={wrapPlannedCell}
@@ -1019,15 +1009,35 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         target={limitTarget ? { id: limitTarget.id, name: limitTarget.name, value: limitTarget.budgeted } : null}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
-        // phones only: a tablet reaches the thread from the marker or the actions modal
-        commentCount={isPhone && limitTarget ? (commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []).length : 0}
-        onOpenComments={
-          isPhone
+      />
+
+      <ElementSheet
+        target={sheetTarget}
+        month={selectedDate}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={makeBudgetExchange(budget, currencies)}
+        comments={sheetTarget ? commentsByCell.get(commentCellKey(sheetCell(sheetTarget, budget.meta.currencyId).id, selectedDate)) ?? [] : []}
+        commentsReadOnly={commentsReadOnly(budget.meta, selectedDate)}
+        canSetAmount={sheetTarget ? sheetCanSetAmount(sheetTarget) : false}
+        onClose={() => setSheetTarget(null)}
+        onSetAmount={() => {
+          if (sheetTarget) {
+            setLimitTarget(sheetCellTarget(sheetTarget))
+            setSheetTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetTarget) {
+            openComments(sheetCellTarget(sheetTarget))
+            setSheetTarget(null)
+          }
+        }}
+        onShowTransactions={
+          expenseSheetTarget
             ? () => {
-                if (limitTarget) {
-                  openComments(limitTarget)
-                }
-                setLimitTarget(null)
+                setTransactionsTarget(transactionsTargetOf(expenseSheetTarget.element))
+                setSheetTarget(null)
               }
             : undefined
         }

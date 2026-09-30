@@ -25,9 +25,11 @@ export interface ElementRowExtras {
    *  here (non-editable role, an archived element, or a read-only section): the
    *  plain budgeted value opens the cell's thread */
   onBudgetCellComments?: (element: BudgetElementDto, anchor: HTMLElement) => void
-  /** wraps the budgeted cell (hover preview + touch actions); `readOnly` marks a row
-   *  whose limit can never be set here (the Archive section) */
-  wrapBudgetCell?: (element: BudgetElementDto, cell: ReactElement, opts: { readOnly: boolean }) => ReactNode
+  /** touch viewports: the budgeted amount opens the item sheet; wins over
+   *  `renderBudgetCell` and `onBudgetCellComments` */
+  onBudgetCellDetails?: (element: BudgetElementDto) => void
+  /** wraps the budgeted cell (hover preview, Shift+F2) */
+  wrapBudgetCell?: (element: BudgetElementDto, cell: ReactElement) => ReactNode
   /** the comment-marker overlay for the budgeted cell — absolutely positioned by
    *  the caller; returns null/undefined for a cell with no comments */
   renderBudgetCellMarker?: (element: BudgetElementDto) => ReactNode
@@ -35,11 +37,6 @@ export interface ElementRowExtras {
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
-  /** compact screens hide the budget column — tapping Available opens the set-limit dialog instead */
-  onAvailableClick?: (element: BudgetElementDto) => void
-  /** compact screens: tapping Available opens the comments dialog on a cell
-   *  without `onAvailableClick` (non-editable, or an archived element's row) */
-  onAvailableCommentsClick?: (element: BudgetElementDto) => void
 }
 
 interface BudgetTableProps extends ElementRowExtras {
@@ -235,6 +232,15 @@ function ElementRow({
             >
               {isUncategorized ? (
                 EMPTY_CELL
+              ) : extras.onBudgetCellDetails ? (
+                <button
+                  type="button"
+                  className="w-full text-right underline-offset-2 hover:underline"
+                  aria-label={`details ${displayName}`}
+                  onClick={() => extras.onBudgetCellDetails!(element)}
+                >
+                  {moneyFormat(element.budgeted, currency, opts)}
+                </button>
               ) : extras.renderBudgetCell ? (
                 extras.renderBudgetCell(element)
               ) : extras.onBudgetCellComments ? (
@@ -252,7 +258,7 @@ function ElementRow({
               {extras.renderBudgetCellMarker?.(element)}
             </span>
           )
-          return !isUncategorized && extras.wrapBudgetCell ? extras.wrapBudgetCell(element, cell, { readOnly: false }) : cell
+          return !isUncategorized && extras.wrapBudgetCell ? extras.wrapBudgetCell(element, cell) : cell
         })()}
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(
@@ -265,24 +271,6 @@ function ElementRow({
             <span data-testid="cell-available" className="text-[15px] tabular-nums text-muted-foreground">
               {EMPTY_CELL}
             </span>
-          ) : extras.onAvailableClick ? (
-            <button
-              type="button"
-              title={t('budgets.modal.set_limit_form.header')}
-              aria-label={`limit ${displayName}`}
-              onClick={() => extras.onAvailableClick!(element)}
-            >
-              <AvailablePill available={available} currency={currency} testId="cell-available" />
-            </button>
-          ) : extras.onAvailableCommentsClick ? (
-            <button
-              type="button"
-              title={t('budgets.page.plan.comments.title')}
-              aria-label={`comments ${displayName}`}
-              onClick={() => extras.onAvailableCommentsClick!(element)}
-            >
-              <AvailablePill available={available} currency={currency} testId="cell-available" />
-            </button>
           ) : (
             <AvailablePill available={available} currency={currency} testId="cell-available" />
           )}
@@ -626,12 +614,8 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                           // earlier, above, with its own fixed extras)
                           renderBudgetCellMarker: extras.renderBudgetCellMarker,
                           onBudgetCellComments: extras.onBudgetCellComments,
-                          wrapBudgetCell: extras.wrapBudgetCell
-                            ? (el, node) => extras.wrapBudgetCell!(el, node, { readOnly: true })
-                            : undefined,
-                          // the marker and thread sit in the phone-hidden budgeted
-                          // column, so this tap is the thread's only way in on a phone
-                          onAvailableCommentsClick: extras.onAvailableCommentsClick,
+                          onBudgetCellDetails: extras.onBudgetCellDetails,
+                          wrapBudgetCell: extras.wrapBudgetCell,
                         }
                       : extras
                   }

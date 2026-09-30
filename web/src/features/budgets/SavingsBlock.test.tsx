@@ -82,7 +82,6 @@ function renderBlock(overrides: Partial<Parameters<typeof SavingsBlock>[0]> = {}
     canEdit: true,
     editMode: false,
     commentsByCell: new Map<string, BudgetCommentDto[]>(),
-    onEditPlanned: vi.fn(),
     onOpenComments: vi.fn(),
     onMove: vi.fn(),
     ...overrides,
@@ -180,11 +179,16 @@ it('a phone shows two figures like the budget table (Planned, Saved); Balance jo
   }
 })
 
-it('clicking Planned opens the planned editor when the cell is editable', async () => {
+it('on a touch viewport the Planned amount opens the item sheet, over the inline editor and on read-only rows too', async () => {
   const user = userEvent.setup()
-  const { props } = renderBlock()
-  await user.click(within(screen.getByTestId('savings-row-acc-s2')).getByRole('button', { name: 'planned Holiday fund' }))
-  expect(props.onEditPlanned).toHaveBeenCalledWith(s2)
+  const onOpenDetails = vi.fn()
+  const renderPlannedEditor = vi.fn(() => <span data-testid="inline-editor" />)
+  const { props } = renderBlock({ onOpenDetails, renderPlannedEditor })
+  expect(screen.queryByTestId('inline-editor')).not.toBeInTheDocument()
+  await user.click(within(screen.getByTestId('savings-row-acc-s2')).getByRole('button', { name: 'details Holiday fund' }))
+  expect(onOpenDetails).toHaveBeenCalledWith(s2)
+  await user.click(within(screen.getByTestId('savings-row-acc-s3')).getByRole('button', { name: 'details Closed deposit' }))
+  expect(onOpenDetails).toHaveBeenCalledWith(s3)
   expect(props.onOpenComments).not.toHaveBeenCalled()
 })
 
@@ -193,7 +197,7 @@ it('with an inline editor supplied, editable Planned cells render it; read-only 
   const view = renderBlock({ renderPlannedEditor })
   expect(within(screen.getByTestId('savings-row-acc-s1')).getByTestId('inline-editor')).toHaveTextContent('acc-s1')
   expect(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('inline-editor')).toHaveTextContent('acc-s2')
-  expect(screen.queryByRole('button', { name: /^planned / })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^details / })).not.toBeInTheDocument()
   // a deleted account's row never gets the editor
   expect(within(screen.getByTestId('savings-row-acc-s3')).queryByTestId('inline-editor')).not.toBeInTheDocument()
   expect(within(screen.getByTestId('savings-row-acc-s3')).getByRole('button', { name: 'comments Closed deposit' })).toBeInTheDocument()
@@ -208,28 +212,26 @@ it('a non-editable Planned cell never opens the editor: it falls back to the com
   const user = userEvent.setup()
   const { props } = renderBlock({ canEdit: false })
   await user.click(within(screen.getByTestId('savings-row-acc-s1')).getByRole('button', { name: 'comments Rainy day' }))
-  expect(props.onEditPlanned).not.toHaveBeenCalled()
   expect(props.onOpenComments).toHaveBeenCalledWith(s1, expect.any(HTMLElement))
-  expect(screen.queryByRole('button', { name: /^planned / })).not.toBeInTheDocument()
 })
 
 it('a deleted account row is never editable, even when limits are', async () => {
   const user = userEvent.setup()
-  const { props } = renderBlock()
+  const { props } = renderBlock({ renderPlannedEditor: () => <span data-testid="inline-editor" /> })
   const row = screen.getByTestId('savings-row-acc-s3')
-  expect(within(row).queryByRole('button', { name: 'planned Closed deposit' })).not.toBeInTheDocument()
+  expect(within(row).queryByTestId('inline-editor')).not.toBeInTheDocument()
   await user.click(within(row).getByRole('button', { name: 'comments Closed deposit' }))
-  expect(props.onEditPlanned).not.toHaveBeenCalled()
   expect(props.onOpenComments).toHaveBeenCalledWith(s3, expect.any(HTMLElement))
 })
 
 it('a row with comments shows the marker; clicking it opens the thread', async () => {
   const user = userEvent.setup()
-  const { props } = renderBlock({ commentsByCell: new Map([[commentCellKey('acc-s2', '2026-07-01'), [comment]]]) })
+  const onOpenDetails = vi.fn()
+  const { props } = renderBlock({ onOpenDetails, commentsByCell: new Map([[commentCellKey('acc-s2', '2026-07-01'), [comment]]]) })
   expect(within(screen.getByTestId('savings-row-acc-s1')).queryByTestId('comment-marker')).not.toBeInTheDocument()
   await user.click(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('comment-marker'))
   expect(props.onOpenComments).toHaveBeenCalledWith(s2, expect.any(HTMLElement))
-  expect(props.onEditPlanned).not.toHaveBeenCalled()
+  expect(onOpenDetails).not.toHaveBeenCalled()
 })
 
 it('drag handles appear only in edit mode, never on a deleted row', () => {

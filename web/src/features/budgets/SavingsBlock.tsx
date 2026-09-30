@@ -35,14 +35,13 @@ interface SavingsBlockProps {
   /** drag handles show only here */
   editMode: boolean
   commentsByCell: Map<string, BudgetCommentDto[]>
-  /** compact viewports: opens the page's set-limit dialog */
-  onEditPlanned: (row: BudgetSavingsElementDto) => void
+  /** touch viewports: the planned amount opens the item sheet */
+  onOpenDetails?: (row: BudgetSavingsElementDto) => void
   onOpenComments: (row: BudgetSavingsElementDto, anchor?: HTMLElement) => void
   onMove: (id: Id, afterId: Id | null) => void
-  /** desktop: the inline editor the table's budgeted cells use; replaces the
-   *  onEditPlanned button on editable cells */
+  /** desktop: the inline editor the table's budgeted cells use on editable cells */
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
-  /** wraps the planned cell (hover preview + touch actions), mirroring the table's `wrapBudgetCell` */
+  /** wraps the planned cell (hover preview, Shift+F2), mirroring the table's `wrapBudgetCell` */
   wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
   /** a cell with no comments shows the hover-only add-comment corner */
   canAddComment?: boolean
@@ -70,7 +69,7 @@ function SavingsRow({
   editable,
   comments,
   editMode,
-  onEditPlanned,
+  onOpenDetails,
   onOpenComments,
   renderPlannedEditor,
   wrapPlannedCell,
@@ -81,7 +80,7 @@ function SavingsRow({
   editable: boolean
   comments: BudgetCommentDto[]
   editMode: boolean
-  onEditPlanned: (row: BudgetSavingsElementDto) => void
+  onOpenDetails?: (row: BudgetSavingsElementDto) => void
   onOpenComments: (row: BudgetSavingsElementDto, anchor?: HTMLElement) => void
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
   wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
@@ -95,16 +94,19 @@ function SavingsRow({
     <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`group/cell relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
       {editMode ? (
         planned
+      ) : onOpenDetails ? (
+        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${row.name}`} onClick={() => onOpenDetails(row)}>
+          {planned}
+        </button>
       ) : editable && renderPlannedEditor ? (
         renderPlannedEditor(row)
       ) : (
-        // a cell that cannot be edited (guest, pre-start month, deleted account)
-        // still opens its thread, like a non-editable budgeted cell in the table
+        // a cell that cannot be edited (guest, pre-start month, deleted account) still opens its thread
         <button
           type="button"
           className="w-full text-right underline-offset-2 hover:underline"
-          aria-label={`${editable ? 'planned' : 'comments'} ${row.name}`}
-          onClick={(e) => (editable ? onEditPlanned(row) : onOpenComments(row, commentAnchorOf(e.currentTarget)))}
+          aria-label={`comments ${row.name}`}
+          onClick={(e) => onOpenComments(row, commentAnchorOf(e.currentTarget))}
         >
           {planned}
         </button>
@@ -140,7 +142,7 @@ export function SavingsBlock({
   canEdit,
   editMode,
   commentsByCell,
-  onEditPlanned,
+  onOpenDetails,
   onOpenComments,
   onMove,
   renderPlannedEditor,
@@ -196,7 +198,7 @@ export function SavingsBlock({
       editable={canEdit && row.isArchived === 0}
       comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
       editMode={editMode}
-      onEditPlanned={onEditPlanned}
+      onOpenDetails={onOpenDetails}
       onOpenComments={onOpenComments}
       renderPlannedEditor={renderPlannedEditor}
       wrapPlannedCell={wrapPlannedCell}

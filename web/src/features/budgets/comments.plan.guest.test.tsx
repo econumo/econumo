@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { render, screen, within } from '@testing-library/react'
-import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -48,12 +48,6 @@ function mockViewport() {
 function mockCompactViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
-function mockTabletViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -133,24 +127,12 @@ it('lets a guest start a thread on a cell with no existing comments, on compact 
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
-it("lets a guest add a comment from a plan cell's corner, and their tablet actions modal has no set budget", async () => {
+it("lets a guest add a comment from a plan cell's corner", async () => {
   useGuestPlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const { unmount } = renderPage('/plan')
+  renderPage('/plan')
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
-  unmount()
-
-  mockTabletViewport()
-  // the modal's open Radix dialog sets pointer-events:none on the body, and the touch release lands after that
-  const touch = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
-  const cell = await screen.findByTestId('plan-cell-pe1:0')
-  await touch.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await touch.pointer({ keys: '[/TouchA]', target: cell })
-  expect(within(modal).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
-  expect(within(modal).queryByRole('button', { name: 'Set budget' })).toBeNull()
 })

@@ -211,19 +211,23 @@ it('children hide the owner badge in a single-user budget', async () => {
   expect(within(child).queryByText('Ada')).not.toBeInTheDocument()
 })
 
-it('tapping the available pill reports the element when onAvailableClick is wired (compact set-limit path)', async () => {
-  const user = userEvent.setup()
-  const onAvailableClick = vi.fn()
-  renderTable(undefined, { onAvailableClick })
-  const food = await screen.findByTestId('element-cat-food')
-  await user.click(within(food).getByRole('button', { name: 'limit Food' }))
-  expect(onAvailableClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+it('onBudgetCellDetails turns the budgeted amount into the item-sheet button, Archive rows included', async () => {
+  const onDetails = vi.fn()
+  renderTable((b) => {
+    const old = b.structure.elements.find((el) => el.id === 'tag-old')!
+    Object.assign(old, { budgeted: '50', available: '50' })
+  }, { onBudgetCellDetails: onDetails, renderBudgetCell: () => 'editor', onBudgetCellComments: vi.fn() })
+  await userEvent.click(within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+  await userEvent.click(within(screen.getByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'tag-old' }))
+  expect(screen.queryByText('editor')).toBeNull()
 })
 
-it('the available pill is not a button without onAvailableClick', async () => {
-  renderTable()
+it('the available pill is never a button', async () => {
+  renderTable(undefined, { onBudgetCellDetails: vi.fn(), onBudgetCellComments: vi.fn() })
   const food = await screen.findByTestId('element-cat-food')
-  expect(within(food).queryByRole('button', { name: 'limit Food' })).not.toBeInTheDocument()
+  expect(within(food).getByTestId('cell-available').closest('button')).toBeNull()
 })
 
 it('edit mode reserves the actions column on headers, children, archive rows and totals', async () => {
@@ -304,12 +308,12 @@ it('the Uncategorized row is read-only, mirroring an archive row', async () => {
   renderTable(pushUncategorized, {
     renderBudgetCell: () => <span data-testid="editor-marker">edit</span>,
     renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
-    onAvailableClick: vi.fn(),
+    onBudgetCellDetails: vi.fn(),
   })
   const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
   expect(within(row).queryByTestId('editor-marker')).not.toBeInTheDocument()
   expect(within(row).queryByRole('button', { name: /^element actions /i })).not.toBeInTheDocument()
-  expect(within(row).queryByRole('button', { name: /^limit /i })).not.toBeInTheDocument()
+  expect(within(row).queryByRole('button', { name: /^details /i })).not.toBeInTheDocument()
 })
 
 it('the Uncategorized row spent amount is still clickable', async () => {

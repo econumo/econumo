@@ -1,6 +1,6 @@
 import { createRef } from 'react'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { CellShell } from './CellShell'
 
 const c = (id: string, text: string, at: string) => ({
@@ -28,7 +28,7 @@ const tablet = () => mockMatchMedia((q) => q.includes('1023'))
 
 function renderShell(props: Partial<Parameters<typeof CellShell>[0]> = {}, onCellClick = vi.fn()) {
   render(
-    <CellShell title="Groceries" comments={three} {...props}>
+    <CellShell comments={three} {...props}>
       <div data-testid="cell" data-comment-anchor="" onClick={onCellClick}>
         700.00
       </div>
@@ -44,7 +44,7 @@ afterEach(() => {
 })
 
 // The preview's open/close delays are CellShell's own timers: a fake clock that
-// still ticks in real time (see the tablet long-press test below for why plain
+// still ticks in real time (see the tablet press test below for why plain
 // fake timers are not an option) lets the tests step over them deterministically.
 function previewClock() {
   vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -108,7 +108,7 @@ it('closes the preview on press and keeps it closed until the pointer leaves', a
 it('shows no preview over an open amount editor, even after the pointer left and came back', async () => {
   const user = previewClock()
   render(
-    <CellShell title="Groceries" comments={three}>
+    <CellShell comments={three}>
       <div data-testid="cell" data-comment-anchor="">
         <button type="button" data-limit-trigger="" data-state="open">
           700.00
@@ -129,7 +129,7 @@ it('shows no preview over an open amount editor, even after the pointer left and
 it('never previews from keyboard focus', () => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
   render(
-    <CellShell title="Groceries" comments={three}>
+    <CellShell comments={three}>
       <div data-testid="cell" data-comment-anchor="">
         <button type="button">700.00</button>
       </div>
@@ -141,71 +141,38 @@ it('never previews from keyboard focus', () => {
 })
 
 it('leaves a mouse right-click to the browser: no app menu, native menu not suppressed', async () => {
-  const cell = renderShell({ onSetBudget: vi.fn(), onOpenComments: vi.fn(), onShowTransactions: vi.fn() })
+  const cell = renderShell({ onOpenComments: vi.fn() })
   // fireEvent returns false when a handler called preventDefault
   expect(fireEvent.contextMenu(cell)).toBe(true)
   await new Promise((r) => setTimeout(r, 100))
   expect(screen.queryByRole('menu')).toBeNull()
-  expect(screen.queryByTestId('cell-actions')).toBeNull()
+  expect(screen.queryByRole('dialog')).toBeNull()
 })
 
-it('on a tablet, a long-press opens the actions modal and its release does not also tap the cell', async () => {
+it('on a tablet, a press held past half a second opens nothing and the tap still reaches the cell', async () => {
   tablet()
   // plain vi.useFakeTimers() deadlocks userEvent.pointer() in this jsdom/vitest
-  // combination (reproduced with a bare <div>, no Radix involved): something
-  // React's scheduler relies on never fires unless the fake clock also ticks in
-  // real time. shouldAdvanceTime keeps that ticking while advanceTimersByTime
-  // below still deterministically fires our own long-press timer.
+  // combination: something React's scheduler relies on never fires unless the
+  // fake clock also ticks in real time
   vi.useFakeTimers({ shouldAdvanceTime: true })
-  // The actions modal is a real Radix Dialog, which disables `pointer-events`
-  // on the rest of the page (document.body) the instant it opens — including
-  // the cell, which is now covered by its overlay. On a real touch screen the
-  // release still targets the cell: touch pointers get implicit capture at
-  // pointerdown, bypassing hit-testing entirely, so CSS on the covered element
-  // is irrelevant. jsdom/user-event don't model that capture and instead
-  // re-check the CSS on every call, so the release below would otherwise throw
-  // "Unable to perform pointer interaction … pointer-events: none" even though
-  // a real device delivers it fine; PointerEventsCheckLevel.Never turns that
-  // simulation-only check off for this touch sequence.
-  const fakeUser = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, pointerEventsCheck: PointerEventsCheckLevel.Never })
-  const onCellClick = vi.fn()
-  const onOpenComments = vi.fn()
-  const cell = renderShell({ onSetBudget: vi.fn(), onOpenComments, onShowTransactions: vi.fn() }, onCellClick)
-
-  await fakeUser.pointer({ keys: '[TouchA>]', target: cell })
-  act(() => {
-    vi.advanceTimersByTime(550)
-  })
-  const modal = screen.getByTestId('cell-actions')
-  expect(screen.getByRole('dialog', { name: 'Groceries' })).toBeInTheDocument()
-  expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
-  expect(within(modal).getByRole('button', { name: 'Show transactions' })).toBeInTheDocument()
-  await fakeUser.pointer({ keys: '[/TouchA]', target: cell })
-  expect(onCellClick).not.toHaveBeenCalled()
-
-  vi.useRealTimers()
-  const user = userEvent.setup()
-  await user.click(within(modal).getByRole('button', { name: 'Comments (3)' }))
-  await waitFor(() => expect(onOpenComments).toHaveBeenCalledWith(cell))
-  expect(screen.queryByTestId('cell-actions')).toBeNull()
-})
-
-it('on a tablet, a quick tap still taps the cell, and there is no hover preview or native context menu', async () => {
-  tablet()
-  const user = userEvent.setup()
-  const onCellClick = vi.fn()
-  const cell = renderShell({ onOpenComments: vi.fn() }, onCellClick)
-  await user.pointer({ keys: '[TouchA]', target: cell })
-  expect(onCellClick).toHaveBeenCalledTimes(1)
-  expect(screen.queryByTestId('cell-actions')).toBeNull()
-  await user.hover(cell)
-  await new Promise((r) => setTimeout(r, 500))
-  expect(screen.queryByTestId('comment-preview')).toBeNull()
-  // the long-press is ours: no native callout on touch
-  expect(fireEvent.contextMenu(cell)).toBe(false)
-  expect(screen.queryByRole('menu')).toBeNull()
-  // the quick tap's release must not have started (and left pending) a long press
-  expect(screen.queryByTestId('cell-actions')).toBeNull()
+  try {
+    const onClick = vi.fn()
+    render(
+      <CellShell comments={three} onOpenComments={vi.fn()}>
+        <button type="button" onClick={onClick}>cell</button>
+      </CellShell>,
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const cell = screen.getByRole('button', { name: 'cell' })
+    await user.pointer({ keys: '[TouchA>]', target: cell })
+    await vi.advanceTimersByTimeAsync(800)
+    await user.pointer({ keys: '[/TouchA]', target: cell })
+    expect(screen.queryByRole('dialog')).toBeNull()
+    expect(screen.queryByTestId('comment-preview')).toBeNull()
+    expect(onClick).toHaveBeenCalledTimes(1)
+  } finally {
+    vi.useRealTimers()
+  }
 })
 
 it('never remounts the cell: previewDisabled toggling and comments arriving/leaving keep the same DOM node (an open thread popover is anchored to it)', () => {
@@ -215,28 +182,28 @@ it('never remounts the cell: previewDisabled toggling and comments arriving/leav
     </div>
   )
   const { rerender } = render(
-    <CellShell title="Groceries" comments={three} actionsDisabled>
+    <CellShell comments={three} shortcutDisabled>
       {cellChild}
     </CellShell>,
   )
   const before = screen.getByTestId('cell')
 
   rerender(
-    <CellShell title="Groceries" comments={three} actionsDisabled previewDisabled>
+    <CellShell comments={three} shortcutDisabled previewDisabled>
       {cellChild}
     </CellShell>,
   )
   expect(screen.getByTestId('cell')).toBe(before)
 
   rerender(
-    <CellShell title="Groceries" comments={[]} actionsDisabled previewDisabled>
+    <CellShell comments={[]} shortcutDisabled previewDisabled>
       {cellChild}
     </CellShell>,
   )
   expect(screen.getByTestId('cell')).toBe(before)
 
   rerender(
-    <CellShell title="Groceries" comments={[three[0]]} actionsDisabled previewDisabled={false}>
+    <CellShell comments={[three[0]]} shortcutDisabled previewDisabled={false}>
       {cellChild}
     </CellShell>,
   )
@@ -246,7 +213,7 @@ it('never remounts the cell: previewDisabled toggling and comments arriving/leav
 it('mounts nothing but the cell itself while closed, and keeps the cell node through every open state', async () => {
   const user = previewClock()
   const { container } = render(
-    <CellShell title="Groceries" comments={three} onOpenComments={vi.fn()} onShowTransactions={vi.fn()}>
+    <CellShell comments={three} onOpenComments={vi.fn()}>
       <div data-testid="cell" data-comment-anchor="">
         700.00
       </div>
@@ -275,7 +242,7 @@ it('keeps the cell\'s own handlers and ref', async () => {
   const onContextMenu = vi.fn()
   const onKeyDown = vi.fn()
   render(
-    <CellShell title="Groceries" comments={three} onOpenComments={vi.fn()}>
+    <CellShell comments={three} onOpenComments={vi.fn()}>
       <div ref={ref} data-testid="cell" data-comment-anchor="" onPointerDown={onPointerDown} onContextMenu={onContextMenu} onKeyDown={onKeyDown}>
         <button type="button">700.00</button>
       </div>
@@ -294,7 +261,7 @@ describe('Shift+F2', () => {
   function renderKeyboardShell(props: Partial<Parameters<typeof CellShell>[0]>, onParentKeyDown = vi.fn()) {
     render(
       <div onKeyDown={onParentKeyDown}>
-        <CellShell title="Groceries" comments={[]} {...props}>
+        <CellShell comments={[]} {...props}>
           <div data-testid="cell" data-comment-anchor="">
             <button type="button">700.00</button>
           </div>
@@ -324,10 +291,10 @@ describe('Shift+F2', () => {
     expect(onParentKeyDown.mock.calls.filter(([e]) => e.key === 'F2')).toHaveLength(1)
   })
 
-  it('does nothing when the cell actions are disabled (phones, edit mode)', async () => {
+  it('does nothing when the shortcut is disabled (edit mode)', async () => {
     const user = userEvent.setup()
     const onOpenComments = vi.fn()
-    renderKeyboardShell({ onOpenComments, actionsDisabled: true })
+    renderKeyboardShell({ onOpenComments, shortcutDisabled: true })
     await user.keyboard('{Shift>}{F2}{/Shift}')
     expect(onOpenComments).not.toHaveBeenCalled()
   })

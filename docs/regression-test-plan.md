@@ -805,10 +805,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Change a savings row's Planned amount in the current month: its
       Balance moves by the change at once; then open a later month — its
       Balance reflects the new plan too (no manual reload).
-- [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
-      on desktop a click opens the inline amount popover (no comments in it),
-      on a phone a tap opens the set-limit dialog with a "Comments (N)"
-      button; either way the current value is prefilled and saving shows the new
+- [ ] Desktop: edit a savings row's Planned amount exactly like a budgeted
+      cell: a click opens the inline amount popover (no comments in it); the
+      current value is prefilled and saving shows the new
       Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the
@@ -858,20 +857,18 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Desktop, monthly view: Tab to a budgeted amount (or a savings Planned
       amount) with no comments yet and press Shift+F2: that cell's thread
       opens in a popover beside it, ready for a first comment.
-- [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
-      text — editors reach comments through the corner marker (opens the
-      thread popover) or a long-press, which opens a modal titled with the
-      item's name and the cell's actions (Set budget, Comments (N) or Add
-      comment, Show transactions — a guest gets no Set budget, a savings cell
-      no Show transactions); for a guest or an archived row, tapping the
-      amount opens the thread instead. Lifting the finger does not also open
-      the set-limit dialog, and a quick tap still behaves as before. No hover
-      preview on a tablet, and the set-limit dialog (Budget and Plan views)
-      has no "Comments (N)" button there.
-- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
-      comments through the set-limit sheet's "Comments (N)" button or the
-      comments sheet; the comments sheet keeps its composer pinned above the
-      keyboard.
+- [ ] 📱 Tablet (640–1023 px), Budget view: tap a budgeted amount (editable or
+      not, Archive rows included) or a Savings planned amount: the item sheet
+      opens ("Food · July": Budget, Spent, Available, latest comment,
+      "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
+      budget" replaces the sheet with the amount dialog (no comments in it);
+      "Comments" replaces it with the thread. A guest's sheet has no "Set
+      budget". The Available pill is not a button; tapping Spent still lists
+      the transactions; the corner marker still opens the thread beside the cell.
+- [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
+      menu, no text-selection callout from the app) and the tap still works.
+- [ ] 📱 Phone: a comment thread opens as a sheet whose composer stays pinned
+      above the keyboard.
 - [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
       its thread opens in a popover beside the cell; Esc closes it and the
       arrow keys keep moving the selection. Plain Enter on the same cell opens
@@ -880,14 +877,6 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       even on a budget you can edit — or a month outside the budget's range):
       clicking its amount opens that cell's thread in a popover beside the
       cell, so a thread can be started there too.
-- [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open
-      "Set budget": the sheet holds only the amount, a "Comments (N)" button
-      and the actions, and the amount stays visible above the keyboard.
-      Tapping "Comments (N)" closes the sheet and opens that cell's thread as
-      its own dialog (monthly view and Plan view alike).
-- [ ] 📱 On a phone, tap the Available pill of an individually-archived
-      element (in the Archive section, on a budget you can edit): its comment
-      thread opens and accepts a new comment.
 - [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
       one comment is created, and Post stays disabled until it lands.
 - [ ] Post a comment, then start typing the next one before the first lands:

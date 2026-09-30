@@ -1,5 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
@@ -553,20 +553,22 @@ describe('monthly Savings block', () => {
     expect(within(row).queryByTestId('comment-marker-add')).toBeNull()
   })
 
-  it('compact: Planned opens the set-limit dialog with a button to the cell thread', async () => {
+  it('tablet: tapping Planned opens the item sheet; its Set budget saves the plan', async () => {
     window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-      matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+      matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
     }))
     let body: unknown
     useSavingsHandlers([hangingSetLimit((b) => (body = b))])
-    const user = userEvent.setup()
+    const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
     renderPage()
     const row = await screen.findByTestId('savings-row-acc-s1')
-    expect(within(row).queryByRole('button', { name: 'limit Rainy day' })).not.toBeInTheDocument()
-    await user.click(within(row).getByRole('button', { name: 'planned Rainy day' }))
+    await user.click(within(row).getByRole('button', { name: 'details Rainy day' }))
+    const sheet = await screen.findByTestId('element-sheet')
+    expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
+    await user.click(within(sheet).getByRole('button', { name: 'Set budget' }))
     const input = await screen.findByLabelText('Budget')
-    expect(screen.getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
-    expect(screen.queryByText('Bonus goes here')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('element-sheet')).toBeNull()
+    expect(screen.queryByRole('button', { name: /Comments \(/ })).not.toBeInTheDocument()
     await user.clear(input)
     await user.type(input, '250')
     await user.click(screen.getByRole('button', { name: 'Save' }))

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -28,12 +28,6 @@ const userWithBudget = {
 function mockViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: false, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
-function mockCompactViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -174,18 +168,6 @@ it('opens the thread with Shift+Enter and leaves Enter editing the amount', asyn
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
 })
 
-it('opens the thread in a sheet on a phone', async () => {
-  usePlanHandlers()
-  mockCompactViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
-
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByTestId('comment-marker'))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.getByTestId('comments-sheet')).toBeInTheDocument()
-})
-
 it('does not steal focus from a later mouse-opened dialog after a keyboard-opened thread closes', async () => {
   usePlanHandlers()
   mockViewport()
@@ -299,25 +281,6 @@ it('offers no add-comment corner on a month after the budget ends (its thread is
   expect(within(screen.getByTestId('plan-cell-pe1:2')).queryByTestId('comment-marker-add')).toBeNull()
 })
 
-it('opens the actions modal from a long-press on a plan cell on a tablet', async () => {
-  usePlanHandlers()
-  mockTabletViewport()
-  // the modal's open Radix dialog sets pointer-events:none on the body, and the
-  // touch release lands after that
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
-
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await user.pointer({ keys: '[/TouchA]', target: cell })
-  // the release's click is swallowed: no amount dialog under the modal
-  expect(screen.queryByLabelText('Budget')).toBeNull()
-  expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
-  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
-  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
-})
-
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
   usePlanHandlers()
   mockTabletViewport()
@@ -340,16 +303,3 @@ it('keeps the amount dialog free of comments on a tablet', async () => {
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
 })
 
-it('opens the thread as a sheet, not a popover, from the amount dialog on a phone', async () => {
-  usePlanHandlers()
-  mockCompactViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
-
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByLabelText(/^limit /))
-  await user.click(await screen.findByRole('button', { name: 'Comments (1)' }))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.getByTestId('comments-sheet')).toBeInTheDocument()
-  expect(screen.queryByTestId('comments-popover')).toBeNull()
-})
