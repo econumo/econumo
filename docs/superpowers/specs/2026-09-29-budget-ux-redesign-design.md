@@ -35,7 +35,7 @@ contract changes.
 | Row colour | Driven by Available: neutral / amber (over this month, covered by carry-over) / red (Available < 0) |
 | Income on phone | One collapsed summary row at the top, expands to income rows |
 | Comments | Fully separate from the amount editor, both views, all viewports |
-| Starting a thread | Right-click menu (desktop); long-press actions modal (tablet); item sheet (phone) |
+| Starting a thread | Faint corner triangle on hover (desktop); long-press actions modal (tablet); item sheet (phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions)* |
 | Desktop density | One emphasised number per view, colour only for problems, drop repeated chrome |
 | Currency | No symbol on budget-currency amounts; budget currency named once in the column-heading row; foreign-currency items get a tag next to the name |
 | Header currency chips + "Spending progress" widget | **Removed**; the average-rate note moves into the item sheet |
@@ -182,18 +182,24 @@ is unchanged.
 
 ### Desktop (mouse) — Budget and Plan views
 
-- **Corner marker:** kept on commented cells; visible triangle 8 px, hit area
-  20 px.
+- **Corner marker:** kept on commented cells; visible triangle 10 px, hit area
+  24 px, drawn just after the number's top-right (in the monthly table and the
+  savings block the number is flush with the cell edge, so the mark sits in the
+  gap rather than on the last digit).
+- **Add-comment corner:** hovering any cell that can take a comment shows a faint
+  grey triangle in the same spot; clicking it opens the (empty) thread. Hidden on
+  cells with a read-only thread, the uncategorized row, in edit-structure mode,
+  and on devices without hover.
 - **Hover preview:** pointer resting ~300 ms on a commented cell shows a
   read-only `HoverCard`: latest two comments (author, date, text) and "N more".
   Closes on leave. Not shown while the amount popover or thread popover is open.
 - **Click marker:** opens `CommentsPopover` anchored to the cell. Esc closes and
   returns focus to the cell.
 - **Click amount:** amount editor only.
-- **Right-click cell:** `ContextMenu` with Set budget, Add comment /
-  Comments (N), Show transactions. Items the caller cannot use are omitted
-  (guest: Comments + Transactions only; uncategorized: Transactions only).
-- **Plan grid keyboard:** Shift+F2 opens the thread for the selected cell;
+- **Right-click:** no custom menu (the browser's own). Set budget = click the
+  amount; transactions = click Spent; comments = the corner.
+- **Keyboard:** Shift+F2 opens the thread for the selected plan cell or the
+  focused monthly/savings cell;
   Shift+Enter kept as an alias; plain Enter unchanged.
 - **Non-editable cells:** clicking the amount opens `CommentsPopover` (replacing
   today's mix of popover and dialog).
@@ -203,8 +209,8 @@ is unchanged.
 - No hover preview.
 - Tap marker → `CommentsPopover`.
 - Long-press a cell → a **modal** titled with the item's name, listing the same
-  actions as the desktop right-click menu (Set budget, Comments (N) / Add
-  comment, Show transactions) as full-width buttons — the phone's item-sheet
+  cell actions (Set budget, Comments (N) / Add comment, Show transactions) as
+  full-width buttons — the phone's item-sheet
   pattern rather than a small popup menu. The finger's release must not also
   trigger the cell's tap action.
 
