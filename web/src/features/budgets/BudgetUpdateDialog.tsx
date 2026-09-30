@@ -16,7 +16,7 @@ import { useAccounts } from '@/features/accounts/queries'
 import { useCurrencies } from '@/features/currencies/queries'
 import { useUserData } from '@/features/user/queries'
 import { useUpdateBudgetDetail, canConfigureBudget } from './queries'
-import { BudgetAccountsField } from './BudgetAccountsField'
+import { BudgetAccountsField, BudgetSavingsField } from './BudgetAccountsField'
 
 interface BudgetUpdateDialogProps {
   open: boolean
@@ -208,14 +208,10 @@ export function BudgetUpdateDialog({ open, budget, onClose }: BudgetUpdateDialog
         </button>
 
         {ownAccounts.length > 0 ? (
-          <BudgetAccountsField
-            accounts={ownAccounts}
-            selected={selected}
-            locked={locked}
-            onToggle={toggleAccount}
-            savings={savings}
-            onToggleSavings={toggleSavings}
-          />
+          <>
+            <BudgetAccountsField accounts={ownAccounts} selected={selected} locked={locked} onToggle={toggleAccount} />
+            <BudgetSavingsField accounts={ownAccounts} selected={selected} savings={savings} onToggle={toggleSavings} />
+          </>
         ) : null}
         {serverError ? (
           <p role="alert" className="text-sm text-destructive">

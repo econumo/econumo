@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import { BudgetDialog } from './BudgetDialog'
+import { toggleInPicker } from './budgetFormTestUtils'
 
 function renderDialog(onSubmit = vi.fn()) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
@@ -28,12 +29,12 @@ it('sends savingsAccountIds as a subset of accountIds', async () => {
   const user = userEvent.setup()
   const onSubmit = renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Vacation')
-  await user.click(await screen.findByRole('switch', { name: 'include Cash' }))
-  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
-  await user.click(screen.getByRole('switch', { name: 'Cash is a savings account' }))
-  await user.click(screen.getByRole('switch', { name: 'Bank is a savings account' }))
+  await toggleInPicker(user, 'accounts', 'include Cash')
+  await toggleInPicker(user, 'accounts', 'include Bank')
+  await toggleInPicker(user, 'savings', 'Cash is a savings account')
+  await toggleInPicker(user, 'savings', 'Bank is a savings account')
   // excluding a savings account drops it from the savings set too
-  await user.click(screen.getByRole('switch', { name: 'include Cash' }))
+  await toggleInPicker(user, 'accounts', 'include Cash')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
   const form = onSubmit.mock.calls[0][0]
@@ -45,7 +46,7 @@ it('sends an empty savings set when no account is marked savings', async () => {
   const user = userEvent.setup()
   const onSubmit = renderDialog()
   await user.type(screen.getByLabelText('Name'), 'Vacation')
-  await user.click(await screen.findByRole('switch', { name: 'include Cash' }))
+  await toggleInPicker(user, 'accounts', 'include Cash')
   await user.click(screen.getByRole('button', { name: 'Create' }))
   await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1))
   expect(onSubmit.mock.calls[0][0].savingsAccountIds).toEqual([])

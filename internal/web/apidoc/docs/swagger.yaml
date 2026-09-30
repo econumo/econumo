@@ -2047,7 +2047,7 @@ definitions:
     properties:
       actual:
         type: string
-      openingBalance:
+      closingBalance:
         type: string
       planned:
         type: string
@@ -2364,6 +2364,8 @@ definitions:
         type: string
       budgeted:
         type: string
+      closingBalance:
+        type: string
       currencyId:
         type: string
       icon:
@@ -2373,8 +2375,6 @@ definitions:
       isArchived:
         type: integer
       name:
-        type: string
-      openingBalance:
         type: string
       ownerUserId:
         type: string

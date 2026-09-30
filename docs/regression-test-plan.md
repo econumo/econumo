@@ -657,17 +657,27 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       fill-right by drag handle (desktop) and Shift+Arrow; month window
       scrolling; hide-empty-rows toggle; transfers/balance totals rows show
       tooltips.
-- [ ] 📱 **Budget settings — Savings switch**: in the create and edit budget
-      dialogs, each of your own selected accounts shows a "Savings" switch
-      on a second line under the account name (the include switch stays on
-      the name's line, far right); it can be toggled on or off at any time —
-      when creating the budget, or later on an existing member account, and
-      as often as you like either way. A note beneath the account list reads
-      "Savings accounts are shown by name, with their saved amounts and
-      balances, to everyone with access to this budget." On a 320px phone in
-      German or Ukrainian, long account names stay distinguishable (the name
-      spans the row up to the include switch), and on a tablet or desktop the
-      dialog's fields and buttons stay inside its frame.
+- [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
+      create and edit budget dialogs show Name, Currency, then two picker rows
+      (styled like Currency): "Accounts" (the included accounts' names, and
+      "N of M included") and "Savings accounts" (the savings accounts' names,
+      or "None"). The dialog stays that size with 30 accounts. Tapping
+      Accounts opens a searchable checklist (search from six accounts up;
+      accounts in hidden folders last, under "In hidden folders"): tapping an
+      account checks/unchecks it, OK closes and the row updates. A member with
+      past transactions shows checked with a lock icon, cannot be unchecked,
+      and the list ends with "Accounts with transactions in past months can't
+      be removed". Tapping Savings accounts opens the same kind of checklist
+      over the INCLUDED accounts only ("Money moved into these accounts counts
+      as saved, not spent." above, "Savings accounts are shown by name, with
+      their saved amounts and balances, to everyone with access to this
+      budget." below). With nothing included the Savings row is disabled and
+      reads "Include an account above to mark it as savings."; excluding a
+      savings account also drops it from Savings accounts. The savings role
+      can be changed at any time — when creating the budget, or later on an
+      existing (even locked) member. Escape (desktop) closes only the picker,
+      not the budget dialog. On a 320px phone in German or Ukrainian the rows
+      truncate long name lists with "…" and the pickers open as bottom sheets.
 - [ ] 📱 Turn off (or remove) a savings member that still carries plans or
       comments in that budget: saving asks "Delete planned savings?" —
       "Planned amounts and comments of the savings accounts you turned off or
@@ -694,7 +704,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       that ends BEFORE the deletion month and has no activity on the account
       (e.g. one over March): the account drops out of the Plan sheet's
       Savings section and the monthly Savings block entirely (no row), yet
-      its balance still counts as Savings balance, not everyday Balance — the
+      its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
       budget, a "Savings" section appears below Expenses and above Archived,
@@ -724,12 +734,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       months, the larger of actual and planned for the current and future
       months); without savings accounts the line is absent.
 - [ ] 📱 Balance split: the sticky area shows "Balance" (everyday accounts) and
-      "Savings balance"; for every month the two add up to the single
+      "Total savings"; for every month the two add up to the single
       Balance the same budget showed before its savings account was marked
       savings. Without savings accounts only "Balance" shows, unchanged.
 - [ ] 📱 Two savings accounts in the current month, one planned 500 with
       nothing saved yet, the other planned 0 with 300 saved: the Savings line
-      shows 800 and the Savings balance rises by exactly 800 over the previous
+      shows 800 and the Total savings rises by exactly 800 over the previous
       month (Balance drops by the same). A transfer already booked into a future
       month above that month's plan counts at its booked amount in both.
 - [ ] 📱 Book a future-dated transfer of 20 from a savings account to an
@@ -739,55 +749,67 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 A past month where a savings account saved less than planned: the
       cell does NOT take the green under-plan style an expense row gets.
 - [ ] 📱 Edit a savings account's balance (the correction transaction), then
-      switch to the Plan view in the same tab: the Savings balance updates
+      switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
-- [ ] 📱 "Savings balance" carries an info note (hover on desktop, tap the
-      info icon on a phone): "Includes interest and other activity on savings
-      accounts, which is not counted as saved". Record interest on a savings
-      account: the Savings balance rises by it while the Savings line does
-      not — intended, not a bug.
+- [ ] 📱 "Total savings" is a plain label with no info icon. Record
+      interest on a savings account: the Total savings rises by it while the
+      Savings line does not — intended, not a bug.
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.
 - [ ] 📱 Each savings cell shows, under the planned amount, the account's
-      balance on the 1st of that month (hover: "Balance on the 1st of the
-      month…"), in the row's currency. Past and current months show the
-      booked balance; a later month also adds each earlier month's plan not yet
-      met from the current month on (current month planned 200, saved 50: next
-      month opens 150 higher). Expense and income cells carry no such line.
+      balance at the END of that month (hover: "Balance at the end of the
+      month…"), in the row's currency: a past month shows the actual booked
+      balance; the current month shows the balance so far plus the plan not
+      yet met (planned 200, saved 50: 150 higher than booked); a future month
+      adds its own unmet plan on top (planned 200 more: 350 higher). A month
+      saved over plan adds nothing. It matches the same month's Balance column
+      in the monthly Savings block. Expense and income cells carry no such
+      line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
       savings accounts in the budget): neither row's Saved / Actual moves, the
-      Savings balance is unchanged, and from the next month the TFSA row
-      opens that much lower and the RRSP row that much higher.
+      Total savings is unchanged, and from that month on the TFSA row's
+      balance is that much lower and the RRSP row's that much higher.
 - [ ] 📱 **Monthly view — Savings block**: with a savings account in the
       budget, a foldable "Savings" block appears below the budget table and
       above Total, one row per savings account in their saved order, with
-      Planned / Saved / Remaining in the account's currency (all three columns
-      also on a phone). A budget without savings accounts shows no block.
-      Folding it survives a reload. On a phone (320px and 375px, also in
-      German, Polish and Ukrainian) the title has its own line, the
-      Planned / Saved / Remaining headers show in full (never cut off with
-      "…"), each account name has its own full-width line above its three
-      amounts, the amounts line up under the headers (also in Edit structure
-      mode, with the grips), and a five-digit amount such as 12,345.67 fits
-      without overlapping its neighbour. From 640px wide the title, headers,
-      names and amounts share one line again.
+      Planned / Saved / Balance in the account's currency. On a phone it
+      follows the budget table's two-figure layout: name, Planned and Saved on
+      one line, lined up under the table's Spent / Available columns, and no
+      Balance column. A budget without savings accounts shows no block.
+      Folding it survives a reload, and folded it shows only its title — the
+      Planned / Saved / Balance labels hide with the rows, so nothing reads
+      as a header for the Total row below. On a phone (320px and 375px, also in
+      German, Polish and Ukrainian) the Planned / Saved headers show in full
+      (a long one wraps, never cut off with "…"), a long account name
+      truncates rather than pushing the amounts, the amounts line up under
+      the headers (also in Edit structure mode, with the grips), and a
+      five-digit amount such as 12,345.67 fits without overlapping its
+      neighbour.
 - [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
       and includes it, in the budget currency: Budget + Planned, Spent +
-      Saved, Available + Remaining. A budget without savings accounts shows
-      the same Total as before.
-- [ ] 📱 Under each savings account's name the block shows "Balance on the
-      1st: <amount>" — the account's balance before the selected month, in the
-      row's currency; switching months updates it, and on a phone the line
-      fits under the name without pushing the amounts.
-- [ ] 📱 Save more into a savings account than planned for the month:
-      Remaining goes negative and turns red, the same over-plan style as a
-      negative Available in the table.
+      Saved, Available + (Planned − Saved). On a phone the Total card adds two
+      last lines, in the budget currency, matching the same month's Plan view
+      totals: "Savings" (a past month: what was saved; the current and later
+      months: each account's larger of planned and saved) and "Savings
+      balance" (the savings accounts' end-of-month balance) — the phone rows
+      leave the Balance column out. A budget without savings accounts shows
+      the same Total as before, with neither line.
+- [ ] 📱 The Balance column is the account's balance at the end of the
+      selected month (no extra line under the account name): a past month
+      shows the actual booked end-of-month balance; the current month shows
+      the current balance plus the plan not yet met this month; a future month
+      also adds every unmet plan from the current month through it. Saving
+      more than planned in a month adds nothing (and does not cover another
+      month's shortfall). A deleted savings account shows its booked balance.
+- [ ] 📱 Change a savings row's Planned amount in the current month: its
+      Balance moves by the change at once; then open a later month — its
+      Balance reflects the new plan too (no manual reload).
 - [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
       on desktop a click opens the inline editor popover (with its comments
       disclosure), on a phone a tap opens the set-limit dialog with the
       cell's comments; either way the current value is prefilled and saving shows the new
-      Planned and Remaining at once, and they survive a reload (the Plan view
+      Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
       shows the same amount for that month). As a guest, on a month before
       the budget start, or on a deleted account's row, Planned opens the
       comments instead and the amount cannot be changed.

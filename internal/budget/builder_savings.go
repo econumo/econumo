@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/econumo/econumo/internal/model"
+	"github.com/econumo/econumo/internal/shared/datetime"
+	"github.com/econumo/econumo/internal/shared/reqctx"
 	"github.com/econumo/econumo/internal/shared/sortkey"
 	"github.com/econumo/econumo/internal/shared/vo"
 )
@@ -118,42 +120,114 @@ func (s *Service) addSavings(ctx context.Context, f filters, options map[string]
 	return rows, hasActual, nil
 }
 
-// addMonthlySavings queues each savings row's actual for the period into the
-// structure's single bulk conversion, account currency -> element currency.
-func (s *Service) addMonthlySavings(ctx context.Context, f filters, options map[string]elementOption, toConvert map[string][]model.ConvertItem) ([]savingsRow, error) {
+// monthlySavings is the monthly builder's savings state between queueing the
+// bulk conversion and emitting the rows: pending holds, per account, the months
+// whose unmet plan still adds to the closing balance.
+type monthlySavings struct {
+	rows    []savingsRow
+	pending map[string][]pendingSavingsMonth
+}
+
+// pendingSavingsMonth is one month from the caller's current month through the
+// selected one: its plan (element currency) and the key of its converted actual.
+type pendingSavingsMonth struct {
+	planned   vo.DecimalNumber
+	actualKey string
+}
+
+// addMonthlySavings queues each savings row's actual for the period, its
+// closing balance and — from the caller's current month on — every month's
+// actual since then into the structure's single bulk conversion, account
+// currency -> element currency.
+func (s *Service) addMonthlySavings(ctx context.Context, b *budgetAggregate, f filters, options map[string]elementOption, toConvert map[string][]model.ConvertItem) (monthlySavings, error) {
 	rows, _, err := s.addSavings(ctx, f, options, f.periodStart, f.periodEnd,
 		func(a model.SavingsMonthRow) (string, time.Time, time.Time, bool) {
 			return savingsSpentKey(a.AccountID), f.periodStart, f.periodEnd, true
 		}, toConvert)
+	out := monthlySavings{rows: rows, pending: map[string][]pendingSavingsMonth{}}
 	if err != nil || len(rows) == 0 {
-		return rows, err
+		return out, err
 	}
 	ids, err := savingsAccountIDs(f)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
-	balances, err := s.read.AccountsBalancesBeforeDate(ctx, ids, f.periodStart)
+	balances, err := s.read.AccountsBalancesBeforeDate(ctx, ids, f.periodEnd)
 	if err != nil {
-		return nil, err
+		return out, err
 	}
-	opening := map[string]vo.DecimalNumber{}
-	for _, b := range balances {
-		opening[b.AccountID] = vo.NewDecimal(b.Balance)
+	closing := map[string]vo.DecimalNumber{}
+	for _, bal := range balances {
+		closing[bal.AccountID] = vo.NewDecimal(bal.Balance)
 	}
 	for _, r := range rows {
-		if err := queueSavingsOpening(toConvert, savingsOpeningKey(r.account.ID), f.periodStart, f.periodEnd, r, opening[r.account.ID]); err != nil {
-			return nil, err
+		if err := queueSavingsBalance(toConvert, savingsClosingKey(r.account.ID), f.periodStart, f.periodEnd, r, closing[r.account.ID]); err != nil {
+			return out, err
 		}
 	}
-	return rows, nil
+	return out, s.addSavingsPending(ctx, b, f, ids, &out, toConvert)
 }
 
-func savingsOpeningKey(accountID string) string { return "savings-opening_" + accountID }
+// addSavingsPending fills out.pending when the selected month is the caller's
+// current month or a later one: the closing balance is then a projection, the
+// booked balance plus each month's plan not yet met by its actual, from the
+// current month through the selected one. A past month's closing balance is
+// what is booked.
+func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f filters, ids []vo.Id, out *monthlySavings, toConvert map[string][]model.ConvertItem) error {
+	cur := localMonth(s.clock.Now(), reqctx.Location(ctx))
+	if f.periodStart.Before(cur) {
+		return nil
+	}
+	limitRows, err := s.read.LimitsByMonth(ctx, b.budget.ID, cur, f.periodEnd)
+	if err != nil {
+		return err
+	}
+	planned := map[string]vo.DecimalNumber{}
+	for _, l := range limitRows {
+		if model.ElementType(l.Type) == model.ElementSavings {
+			planned[l.ExternalID+"_"+l.Month] = vo.NewDecimal(l.Amount)
+		}
+	}
+	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, cur, f.periodEnd)
+	if err != nil {
+		return err
+	}
+	actualByKey := map[string]string{}
+	for _, a := range actual {
+		actualByKey[a.AccountID+"_"+a.Month] = a.Amount
+	}
+	for _, r := range out.rows {
+		if r.account.IsDeleted {
+			continue
+		}
+		accountCur, err := vo.ParseId(r.account.CurrencyID)
+		if err != nil {
+			return err
+		}
+		for m := cur; m.Before(f.periodEnd); m = m.AddDate(0, 1, 0) {
+			month := m.Format(datetime.DateLayout)
+			p, ok := planned[r.account.ID+"_"+month]
+			if !ok {
+				continue
+			}
+			key := "savings-pending_" + r.account.ID + "_" + month
+			if amount, ok := actualByKey[r.account.ID+"_"+month]; ok {
+				toConvert[key] = append(toConvert[key], model.ConvertItem{
+					PeriodStart: m, PeriodEnd: m.AddDate(0, 1, 0), From: accountCur, To: r.currencyID, Amount: vo.NewDecimal(amount),
+				})
+			}
+			out.pending[r.account.ID] = append(out.pending[r.account.ID], pendingSavingsMonth{planned: p, actualKey: key})
+		}
+	}
+	return nil
+}
 
-// queueSavingsOpening converts an opening balance (account currency) to the
-// row's element currency at the rate of the month it opens. A zero or absent
-// balance queues nothing: the getter reads a missing key as zero.
-func queueSavingsOpening(toConvert map[string][]model.ConvertItem, key string, start, end time.Time, r savingsRow, amount vo.DecimalNumber) error {
+func savingsClosingKey(accountID string) string { return "savings-closing_" + accountID }
+
+// queueSavingsBalance converts a balance (account currency) to the row's
+// element currency at the rate of its month. A zero or absent balance queues
+// nothing: the getter reads a missing key as zero.
+func queueSavingsBalance(toConvert map[string][]model.ConvertItem, key string, start, end time.Time, r savingsRow, amount vo.DecimalNumber) error {
 	if amount.IsZero() {
 		return nil
 	}
@@ -165,21 +239,29 @@ func queueSavingsOpening(toConvert map[string][]model.ConvertItem, key string, s
 	return nil
 }
 
-func emitMonthlySavings(rows []savingsRow, limits map[string]budgetedAmount, get func(string) vo.DecimalNumber) []model.SavingsElementResult {
+func emitMonthlySavings(ms monthlySavings, limits map[string]budgetedAmount, get func(string) vo.DecimalNumber) []model.SavingsElementResult {
 	zero := vo.NewDecimal("0")
 	out := []model.SavingsElementResult{}
-	for _, r := range rows {
+	for _, r := range ms.rows {
 		budgeted := orZero(limits[elementKey(r.account.ID, model.ElementSavings)].budgeted, zero)
 		spent := get(savingsSpentKey(r.account.ID))
 		// A deleted account stays only while it still carries a plan or activity.
 		if r.account.IsDeleted && budgeted.IsZero() && spent.IsZero() {
 			continue
 		}
+		closing := get(savingsClosingKey(r.account.ID))
+		// the gap is per month, so saving more than planned in one month does not
+		// cover another month's shortfall
+		for _, p := range ms.pending[r.account.ID] {
+			if gap := p.planned.Sub(get(p.actualKey)); gap.IsGreaterThan(zero) {
+				closing = closing.Add(gap)
+			}
+		}
 		out = append(out, model.SavingsElementResult{
 			Id: r.account.ID, Type: int(model.ElementSavings.Int16()), Name: r.account.Name, Icon: r.account.Icon,
 			CurrencyId: r.currencyID.String(), OwnerUserId: r.account.OwnerID, IsArchived: boolToInt(r.account.IsDeleted),
 			Position: len(out), Budgeted: budgeted.String(), Spent: spent.String(), Available: budgeted.Sub(spent).String(),
-			OpeningBalance: get(savingsOpeningKey(r.account.ID)).String(),
+			ClosingBalance: closing.String(),
 		})
 	}
 	return out
@@ -202,17 +284,18 @@ func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[str
 	if err != nil || len(rows) == 0 {
 		return rows, hasActual, err
 	}
-	if err := s.addPlanSavingsOpenings(ctx, f, rows, monthsList, monthIdx, toConvert); err != nil {
+	if err := s.addPlanSavingsClosings(ctx, f, rows, monthsList, monthIdx, toConvert); err != nil {
 		return nil, nil, err
 	}
 	return rows, hasActual, nil
 }
 
-// addPlanSavingsOpenings queues each savings row's balance on the 1st of every
-// window month: the balance before the window plus the net change of the
-// months before it, every booked transaction counted (interest and
-// savings<->savings moves included, unlike the row's actual).
-func (s *Service) addPlanSavingsOpenings(ctx context.Context, f filters, rows []savingsRow, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) error {
+// addPlanSavingsClosings queues each savings row's booked balance at the end of
+// every window month: the balance before the window plus the net change of the
+// months through it, every booked transaction counted (interest and
+// savings<->savings moves included, unlike the row's actual). The client adds
+// the unmet plans of the current and later months on top.
+func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []savingsRow, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) error {
 	ids, err := savingsAccountIDs(f)
 	if err != nil {
 		return err
@@ -246,13 +329,13 @@ func (s *Service) addPlanSavingsOpenings(ctx context.Context, f filters, rows []
 		if !ok {
 			running = vo.NewDecimal("0")
 		}
-		index := savingsOpeningKey(r.account.ID)
+		index := savingsClosingKey(r.account.ID)
 		for i, m := range monthsList {
-			if err := queueSavingsOpening(toConvert, planKey(i, index), m, m.AddDate(0, 1, 0), r, running); err != nil {
-				return err
-			}
 			if net := netByMonth[r.account.ID]; net != nil && !net[i].IsZero() {
 				running = running.Add(net[i])
+			}
+			if err := queueSavingsBalance(toConvert, planKey(i, index), m, m.AddDate(0, 1, 0), r, running); err != nil {
+				return err
 			}
 		}
 	}
@@ -279,7 +362,7 @@ func emitPlanSavings(rows []savingsRow, plannedFor func(string) []string, hasAct
 		for i := range cells {
 			cells[i] = model.PlanSavingsCellResult{
 				Actual: get(planKey(i, index)).String(), Planned: planned[i],
-				OpeningBalance: get(planKey(i, savingsOpeningKey(r.account.ID))).String(),
+				ClosingBalance: get(planKey(i, savingsClosingKey(r.account.ID))).String(),
 			}
 		}
 		out = append(out, model.PlanSavingsElementResult{

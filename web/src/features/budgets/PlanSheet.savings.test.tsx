@@ -314,9 +314,8 @@ it('edit mode: savings rows reorder within their own band only, with folderId nu
   await waitFor(() => expect(rowIds(screen.getByTestId('plan-section-savings'))).toEqual(['acc-s2:5', 'acc-s1:5', 'acc-s3:5']))
 })
 
-it('totals gain a Savings line below Transfers; the balance splits into Balance and Savings balance', async () => {
+it('totals gain a Savings line below Transfers; the balance splits into Balance and Total savings', async () => {
   useHandlers()
-  const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-section-savings')
 
@@ -340,11 +339,10 @@ it('totals gain a Savings line below Transfers; the balance splits into Balance 
 
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
-  const tooltip = 'Includes interest and other activity on savings accounts, which is not counted as saved'
-  expect(within(balanceArea).getByText('Savings balance').closest('[title]')).toHaveAttribute('title', tooltip)
-  // the same note is reachable by tap (no hover on touch screens)
-  await user.click(within(balanceArea).getByRole('button', { name: 'About' }))
-  expect(await screen.findByTestId('plan-savings-balance-info')).toHaveTextContent(tooltip)
+  // a plain label: no info note beside it
+  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
+  expect(within(balanceArea).queryByRole('button', { name: 'About' })).toBeNull()
+  expect(screen.queryByTestId('plan-savings-balance-info')).toBeNull()
 })
 
 it('a savings cell with comments shows the marker, and Shift+Enter opens its thread', async () => {
@@ -385,7 +383,7 @@ it('without savings rows: no Savings section, totals line or balance row, and Ba
   const labels = within(screen.getByTestId('plan-totals')).getAllByRole('row').map((r) => r.firstElementChild?.textContent)
   expect(labels).toEqual(['Income', 'Expenses', 'Transfers'])
   expect(screen.queryByTestId('plan-savings-balance-0')).not.toBeInTheDocument()
-  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Savings balance')).not.toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-balance-row')).queryByText('Total savings')).not.toBeInTheDocument()
 
   const plan = fixtureWirePlan as unknown as BudgetPlanDto
   const ex = makePlanExchange(plan, [fixtureUsd, fixtureEur])
@@ -423,31 +421,33 @@ it('a deleted savings account with only an opening balance splits the balance wi
 
   const balanceArea = screen.getByTestId('plan-balance-row')
   expect(within(balanceArea).getByText('Balance')).toBeInTheDocument()
-  expect(within(balanceArea).getByText('Savings balance')).toBeInTheDocument()
+  expect(within(balanceArea).getByText('Total savings')).toBeInTheDocument()
   for (let col = 0; col < 3; col++) {
     expect(screen.getByTestId(`plan-balance-${col}`)).toHaveTextContent(fmt(everyday[col + 1]))
     expect(screen.getByTestId(`plan-savings-balance-${col}`)).toHaveTextContent(fmt(savings[col + 1]))
   }
 })
 
-it('each savings cell shows the balance on the 1st; a future month adds the unmet plan of the months before it', async () => {
+it('each savings cell shows the balance at the end of its month; from the current month on it adds the unmet plans so far', async () => {
   vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August future
-  const openings = ['1000', '1100', '1200', '1250']
+  const closings = ['1100', '1200', '1250', '1250']
   const plan = {
     ...savingsPlan,
     structure: {
       ...savingsPlan.structure,
-      savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, openingBalance: openings[i] })) }],
+      savings: [{ ...savingsS1, cells: savingsS1.cells.map((c, i) => ({ ...c, closingBalance: closings[i] })) }],
     },
   }
   useHandlers(plan)
   renderPage()
   await screen.findByTestId('plan-cell-acc-s1:0')
-  // columns start in June: 0 = June, 1 = July, 2 = August
-  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-opening')).toHaveTextContent('1,100.00')
-  expect(within(screen.getByTestId('plan-cell-acc-s1:1')).getByTestId('cell-opening')).toHaveTextContent('1,200.00')
-  // July planned 200, saved 50: the 150 still to come opens August at 1,400
-  expect(within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-opening')).toHaveTextContent('1,400.00')
+  // columns start in June: 0 = June, 1 = July, 2 = August. June is past: booked, its
+  // missed 50 never arrives
+  expect(within(screen.getByTestId('plan-cell-acc-s1:0')).getByTestId('cell-closing')).toHaveTextContent('1,200.00')
+  // July planned 200, saved 50: the 150 still to come closes July at 1,400
+  expect(within(screen.getByTestId('plan-cell-acc-s1:1')).getByTestId('cell-closing')).toHaveTextContent('1,400.00')
+  // August adds its own 200 on top
+  expect(within(screen.getByTestId('plan-cell-acc-s1:2')).getByTestId('cell-closing')).toHaveTextContent('1,600.00')
   // expense rows carry no balance line
-  expect(document.querySelectorAll('[data-testid="cell-opening"]')).toHaveLength(3)
+  expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
 })

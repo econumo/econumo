@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { http, HttpResponse } from 'msw'
@@ -6,6 +6,7 @@ import { server } from '@/test/msw'
 import { coreHandlers, fixtureOwner } from '@/test/fixtures'
 import type { BudgetDto } from '@/api/dto/budget'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
+import { openPicker, toggleInPicker } from './budgetFormTestUtils'
 
 const baseBudget: BudgetDto = {
   meta: {
@@ -53,12 +54,21 @@ it('renders the locked member disabled and submits the unchanged membership', as
   )
   const user = userEvent.setup()
   renderDialog(baseBudget)
-  const cash = await screen.findByRole('switch', { name: 'include Cash' })
-  expect(cash).toBeChecked()
-  expect(cash).toBeDisabled()
-  const bank = screen.getByRole('switch', { name: 'include Bank' })
-  expect(bank).toBeChecked()
-  expect(bank).not.toBeDisabled()
+  await screen.findByText(/ of 4 included/)
+  expect(screen.getByTestId('budget-accounts-field')).toHaveTextContent('Cash, Bank')
+  const picker = await openPicker(user, 'accounts')
+  const cash = within(picker).getByRole('option', { name: 'include Cash' })
+  expect(cash).toHaveAttribute('data-checked', 'true')
+  expect(cash).toHaveAttribute('aria-disabled', 'true')
+  expect(within(cash).getByTestId('locked-a1')).toBeInTheDocument()
+  expect(within(picker).getByText("Accounts with transactions in past months can't be removed")).toBeInTheDocument()
+  // a locked member ignores a tap
+  await user.click(cash)
+  expect(cash).toHaveAttribute('data-checked', 'true')
+  const bank = within(picker).getByRole('option', { name: 'include Bank' })
+  expect(bank).toHaveAttribute('data-checked', 'true')
+  expect(bank).toHaveAttribute('aria-disabled', 'false')
+  await user.click(within(picker).getByRole('button', { name: 'OK' }))
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.accountIds).toEqual(['a1', 'a2'])
@@ -74,8 +84,8 @@ it('toggling an unlocked member off drops it from the submitted accountIds', asy
   )
   const user = userEvent.setup()
   renderDialog(baseBudget)
-  await screen.findByRole('switch', { name: 'include Cash' })
-  await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+  await screen.findByText(/ of 4 included/)
+  await toggleInPicker(user, 'accounts', 'include Bank')
   await user.click(screen.getByRole('button', { name: 'Update' }))
   await waitFor(() => expect(body).toBeDefined())
   expect(body!.accountIds).toEqual(['a1'])
@@ -101,7 +111,7 @@ it('a deleted member absent from the live account list still round-trips in acco
   )
   const user = userEvent.setup()
   renderDialog(budgetWithDeletedMember)
-  await screen.findByRole('switch', { name: 'include Cash' })
+  await screen.findByText(/ of 4 included/)
   // no row is rendered for the deleted member — it has no matching live account
   expect(screen.queryByText('a-deleted')).toBeNull()
   await user.click(screen.getByRole('button', { name: 'Update' }))
@@ -127,7 +137,7 @@ it('renders when the server omits filters entirely', async () => {
 describe('savings flags omitted for a server/cache that never reported isSavings', () => {
   // baseBudget's filters.accounts carries no isSavings field on either member, as
   // an older server or a stale cache would report it.
-  it('omits savingsAccountIds when the user never touches a savings switch', async () => {
+  it('omits savingsAccountIds when the user never touches the savings picker', async () => {
     let body: Record<string, unknown> | undefined
     server.use(
       http.post('*/api/v1/budget/update-budget', async ({ request }) => {
@@ -137,13 +147,13 @@ describe('savings flags omitted for a server/cache that never reported isSavings
     )
     const user = userEvent.setup()
     renderDialog(baseBudget)
-    await screen.findByRole('switch', { name: 'include Cash' })
+    await screen.findByText(/ of 4 included/)
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(body).toBeDefined())
     expect(body).not.toHaveProperty('savingsAccountIds')
   })
 
-  it('sends the full savings set once the user touches a savings switch, even with no known isSavings field', async () => {
+  it('sends the full savings set once the user touches the savings picker, even with no known isSavings field', async () => {
     let body: Record<string, unknown> | undefined
     server.use(
       http.post('*/api/v1/budget/update-budget', async ({ request }) => {
@@ -153,7 +163,7 @@ describe('savings flags omitted for a server/cache that never reported isSavings
     )
     const user = userEvent.setup()
     renderDialog(baseBudget)
-    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await toggleInPicker(user, 'savings', 'Cash is a savings account')
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(body).toBeDefined())
     expect(body).toHaveProperty('savingsAccountIds', ['a1'])
@@ -169,8 +179,8 @@ describe('savings flags omitted for a server/cache that never reported isSavings
     )
     const user = userEvent.setup()
     renderDialog(baseBudget)
-    await screen.findByRole('switch', { name: 'include Cash' })
-    await user.click(screen.getByRole('switch', { name: 'include Bank' }))
+    await screen.findByText(/ of 4 included/)
+    await toggleInPicker(user, 'accounts', 'include Bank')
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(body).toBeDefined())
     expect(body).not.toHaveProperty('savingsAccountIds')
@@ -209,12 +219,18 @@ describe('savings toggles', () => {
     const bodies = captureUpdate()
     const user = userEvent.setup()
     renderDialog(savingsBudget)
-    const cashSavings = await screen.findByRole('switch', { name: 'Cash is a savings account' })
-    expect(cashSavings).toBeChecked()
+    await screen.findByText(/ of 4 included/)
+    expect(screen.getByTestId('budget-savings-field')).toHaveTextContent('Cash')
+    const picker = await openPicker(user, 'savings')
+    const cashSavings = within(picker).getByRole('option', { name: 'Cash is a savings account' })
+    expect(cashSavings).toHaveAttribute('data-checked', 'true')
     // a locked member can still change its savings role
-    expect(cashSavings).not.toBeDisabled()
-    expect(screen.getByRole('switch', { name: 'Bank is a savings account' })).not.toBeChecked()
-    await user.click(screen.getByRole('switch', { name: 'Bank is a savings account' }))
+    expect(cashSavings).toHaveAttribute('aria-disabled', 'false')
+    const bankSavings = within(picker).getByRole('option', { name: 'Bank is a savings account' })
+    expect(bankSavings).toHaveAttribute('data-checked', 'false')
+    await user.click(bankSavings)
+    await user.click(within(picker).getByRole('button', { name: 'OK' }))
+    expect(screen.getByTestId('budget-savings-field')).toHaveTextContent('Cash, Bank')
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0].accountIds).toEqual(['a1', 'a2'])
@@ -229,9 +245,13 @@ describe('savings toggles', () => {
       ...savingsBudget,
       filters: { ...savingsBudget.filters, accounts: [{ id: 'a1', removable: false, isSavings: false }, { id: 'a2', removable: true, isSavings: true }] },
     })
-    await screen.findByRole('switch', { name: 'Bank is a savings account' })
-    await user.click(screen.getByRole('switch', { name: 'include Bank' }))
-    expect(screen.queryByRole('switch', { name: 'Bank is a savings account' })).toBeNull()
+    await screen.findByText(/ of 4 included/)
+    expect(screen.getByTestId('budget-savings-field')).toHaveTextContent('Bank')
+    await toggleInPicker(user, 'accounts', 'include Bank')
+    expect(screen.getByTestId('budget-savings-field')).toHaveTextContent('None')
+    const picker = await openPicker(user, 'savings')
+    expect(within(picker).queryByRole('option', { name: 'Bank is a savings account' })).toBeNull()
+    await user.click(within(picker).getByRole('button', { name: 'OK' }))
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await waitFor(() => expect(bodies).toHaveLength(1))
     expect(bodies[0].accountIds).toEqual(['a1'])
@@ -243,14 +263,14 @@ describe('savings toggles', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog(savingsBudget, onClose)
-    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await toggleInPicker(user, 'savings', 'Cash is a savings account')
     await user.click(screen.getByRole('button', { name: 'Update' }))
     expect(await screen.findByText(confirmQuestion)).toBeInTheDocument()
     await user.click(screen.getAllByRole('button', { name: 'Cancel' }).at(-1)!)
     await waitFor(() => expect(screen.queryByText(confirmQuestion)).toBeNull())
     expect(bodies).toHaveLength(1)
     expect(onClose).not.toHaveBeenCalled()
-    expect(screen.getByRole('switch', { name: 'Cash is a savings account' })).not.toBeChecked()
+    expect(screen.getByTestId('budget-savings-field')).toHaveTextContent('None')
     expect(screen.queryByText('confirm to continue')).toBeNull()
   })
 
@@ -259,7 +279,7 @@ describe('savings toggles', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog(savingsBudget, onClose)
-    await user.click(await screen.findByRole('switch', { name: 'Cash is a savings account' }))
+    await toggleInPicker(user, 'savings', 'Cash is a savings account')
     await user.click(screen.getByRole('button', { name: 'Update' }))
     await user.click(await screen.findByRole('button', { name: 'Delete plans' }))
     await waitFor(() => expect(bodies).toHaveLength(2))
@@ -273,7 +293,7 @@ describe('savings toggles', () => {
     const onClose = vi.fn()
     const user = userEvent.setup()
     renderDialog(savingsBudget, onClose)
-    await screen.findByRole('switch', { name: 'Cash is a savings account' })
+    await screen.findByText(/ of 4 included/)
     await user.click(screen.getByRole('button', { name: 'Update' }))
     expect(await screen.findByText('Savings accounts must be your own accounts in this budget')).toBeInTheDocument()
     expect(screen.queryByText(confirmQuestion)).toBeNull()

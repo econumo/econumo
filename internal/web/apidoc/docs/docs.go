@@ -15383,7 +15383,7 @@ const docTemplate = `{
                 "actual": {
                     "type": "string"
                 },
-                "openingBalance": {
+                "closingBalance": {
                     "type": "string"
                 },
                 "planned": {
@@ -15863,6 +15863,9 @@ const docTemplate = `{
                 "budgeted": {
                     "type": "string"
                 },
+                "closingBalance": {
+                    "type": "string"
+                },
                 "currencyId": {
                     "type": "string"
                 },
@@ -15876,9 +15879,6 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "name": {
-                    "type": "string"
-                },
-                "openingBalance": {
                     "type": "string"
                 },
                 "ownerUserId": {

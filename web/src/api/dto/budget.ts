@@ -145,9 +145,10 @@ export interface BudgetSavingsElementDto {
   budgeted: string
   spent: string
   available: string
-  /** the account's balance before the 1st of the month; absent from servers
-   *  older than the savings opening balance */
-  openingBalance?: string
+  /** the account's balance at the end of the month: booked for a past month;
+   *  from the current month on, booked plus every month's plan not yet met from
+   *  the current month through this one. Absent from older servers. */
+  closingBalance?: string
 }
 
 /** one of the requester's own member accounts */
@@ -180,9 +181,9 @@ export interface BudgetDto {
 export interface PlanCellDto {
   actual: string
   planned: string
-  /** savings rows only: the account's balance on the 1st of the month; absent
-   *  from servers older than the savings opening balance */
-  openingBalance?: string
+  /** savings rows only: the account's booked balance at the end of the month;
+   *  absent from older servers */
+  closingBalance?: string
 }
 
 /** per-month cell on a plan-view child row: children never carry their own limit. */

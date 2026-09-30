@@ -117,46 +117,68 @@ it('renders one row per savings account in position order, deleted accounts last
   expect(ids).toEqual(['savings-row-acc-s1', 'savings-row-acc-s2', 'savings-row-acc-s3'])
   expect(within(block).getByText('Planned')).toBeInTheDocument()
   expect(within(block).getByText('Saved')).toBeInTheDocument()
-  expect(within(block).getByText('Remaining')).toBeInTheDocument()
+  expect(within(block).getByText('Balance')).toBeInTheDocument()
 })
 
 it('below sm the column labels wrap instead of truncating; from sm up they truncate', () => {
   renderBlock()
-  for (const label of ['Planned', 'Saved', 'Remaining']) {
+  for (const label of ['Planned', 'Saved', 'Balance']) {
     const el = within(screen.getByTestId('budget-savings-block')).getByText(label)
     expect(el.className).not.toMatch(/(?:^|\s)truncate(?:\s|$)/)
     expect(el.className).toMatch(/(?:^|\s)sm:truncate(?:\s|$)/)
   }
 })
 
-it('shows Planned / Saved / Remaining in the row currency; a negative Remaining carries the over-plan style', () => {
-  renderBlock()
+it('shows Planned / Saved / Balance in the row currency, the balance as the server projects it', () => {
+  renderBlock({ budget: budgetWith([{ ...s1, closingBalance: '1234.5' }, { ...s2, closingBalance: '0' }]) })
   const r1 = screen.getByTestId('savings-row-acc-s1')
   expect(within(r1).getByTestId('savings-planned')).toHaveTextContent('100.00')
   expect(within(r1).getByTestId('savings-saved')).toHaveTextContent('120.00')
-  const remaining1 = within(r1).getByTestId('savings-remaining')
-  expect(remaining1).toHaveTextContent('-20.00')
-  expect(remaining1.className).toContain('text-expense')
+  expect(within(r1).getByTestId('savings-balance')).toHaveTextContent('1,234.50')
   expect(within(r1).getByText('$')).toBeInTheDocument()
 
   const r2 = screen.getByTestId('savings-row-acc-s2')
   expect(within(r2).getByTestId('savings-planned')).toHaveTextContent('90.00')
   expect(within(r2).getByTestId('savings-saved')).toHaveTextContent('45.00')
-  const remaining2 = within(r2).getByTestId('savings-remaining')
-  expect(remaining2).toHaveTextContent('45.00')
-  expect(remaining2.className).toContain('text-income')
-  expect(remaining2.className).not.toContain('text-expense')
+  expect(within(r2).getByTestId('savings-balance')).toHaveTextContent('0.00')
   expect(within(r2).getByText('€')).toBeInTheDocument()
+  // no remaining pill and no second line under the name any more
+  expect(screen.queryByTestId('savings-remaining')).toBeNull()
+  expect(within(r1).queryByText(/Balance on the 1st/)).toBeNull()
+})
+
+it('shows a dash for the balance when the server sends none', () => {
+  renderBlock({ budget: budgetWith([s1]) })
+  expect(screen.getByTestId('savings-balance')).toHaveTextContent('—')
 })
 
 it('folds and persists the fold under planFolds["monthly-savings"]', async () => {
   const user = userEvent.setup()
   renderBlock()
+  expect(screen.getByText('Planned')).toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: /Savings/ }))
   expect(screen.queryByTestId('savings-row-acc-s1')).not.toBeInTheDocument()
   expect(useBudgetPeriodStore.getState().planFolds['monthly-savings']).toBe(true)
+  // folded, the column labels would read as the Total row's header: they go too
+  expect(screen.queryByText('Planned')).toBeNull()
+  expect(screen.queryByText('Balance')).toBeNull()
   await user.click(screen.getByRole('button', { name: /Savings/ }))
   expect(screen.getByTestId('savings-row-acc-s1')).toBeInTheDocument()
+  expect(screen.getByText('Planned')).toBeInTheDocument()
+})
+
+it('a phone shows two figures like the budget table (Planned, Saved); Balance joins from sm up', () => {
+  renderBlock({ budget: budgetWith([{ ...s1, closingBalance: '5' }]) })
+  const row = screen.getByTestId('savings-row-acc-s1')
+  const phoneOnlyHidden = /(?:^|\s)hidden(?:\s|$)/
+  expect(within(row).getByTestId('savings-balance').className).toMatch(phoneOnlyHidden)
+  expect(within(row).getByTestId('savings-balance').className).toMatch(/(?:^|\s)sm:block(?:\s|$)/)
+  expect(screen.getByText('Balance').className).toMatch(phoneOnlyHidden)
+  for (const id of ['savings-planned', 'savings-saved']) {
+    expect(within(row).getByTestId(id).className).not.toMatch(phoneOnlyHidden)
+    // the table's phone column width, so the figures line up under Spent / Available
+    expect(within(row).getByTestId(id).className).toMatch(/(?:^|\s)w-20(?:\s|$)/)
+  }
 })
 
 it('clicking Planned opens the planned editor when the cell is editable', async () => {
@@ -306,18 +328,4 @@ describe('BudgetPage wiring', () => {
     capturedDragEnds[capturedDragEnds.length - 1]({ active: { id: 'acc-s2' }, over: { id: 'acc-s1' } })
     await waitFor(() => expect(body).toEqual({ budgetId: 'b1', id: 'acc-s2', folderId: null, afterId: null }))
   })
-})
-
-it('shows each account\'s balance on the 1st of the month under its name', () => {
-  renderBlock({ budget: budgetWith([{ ...s1, openingBalance: '1234.5' }, { ...s2, openingBalance: '0' }]) })
-  const r1 = screen.getByTestId('savings-row-acc-s1')
-  const opening = within(r1).getByTestId('savings-opening')
-  expect(opening).toHaveTextContent('Balance on the 1st:')
-  expect(opening).toHaveTextContent('1,234.50')
-  expect(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('savings-opening')).toHaveTextContent('0.00')
-})
-
-it('omits the balance line when the server sends no opening balance', () => {
-  renderBlock({ budget: budgetWith([s1]) })
-  expect(screen.queryByTestId('savings-opening')).toBeNull()
 })

@@ -260,7 +260,7 @@ func TestGetBudgetPlanSavings_EmptyIsArray(t *testing.T) {
 	}
 }
 
-func TestGetBudgetPlanSavings_CellOpeningBalances(t *testing.T) {
+func TestGetBudgetPlanSavings_CellClosingBalances(t *testing.T) {
 	h, tok, _ := newSavingsBudget(t)
 	withSavingsHistory(t, h)
 	env := h.mustDo(t, http.MethodGet, "/api/v1/budget/get-budget-plan?id="+budgetID1+savingsPlanWindow, tok, nil)
@@ -270,7 +270,7 @@ func TestGetBudgetPlanSavings_CellOpeningBalances(t *testing.T) {
 				Savings []struct {
 					Id    string `json:"id"`
 					Cells []struct {
-						OpeningBalance string `json:"openingBalance"`
+						ClosingBalance string `json:"closingBalance"`
 					} `json:"cells"`
 				} `json:"savings"`
 			} `json:"structure"`
@@ -278,8 +278,8 @@ func TestGetBudgetPlanSavings_CellOpeningBalances(t *testing.T) {
 	}](t, env.Data)
 
 	want := map[string][]string{
-		savingsUSDID: {"1000", "1000", "1245"},
-		savingsEURID: {"0", "0", "150"},
+		savingsUSDID: {"1000", "1245", "1245"},
+		savingsEURID: {"0", "150", "150"},
 	}
 	for _, r := range view.Item.Structure.Savings {
 		w := want[r.Id]
@@ -287,8 +287,8 @@ func TestGetBudgetPlanSavings_CellOpeningBalances(t *testing.T) {
 			t.Fatalf("%s cells = %+v, want %d", r.Id, r.Cells, len(w))
 		}
 		for i := range w {
-			if !decEq(r.Cells[i].OpeningBalance, w[i]) {
-				t.Errorf("%s month %d opening = %q, want %s", r.Id, i, r.Cells[i].OpeningBalance, w[i])
+			if !decEq(r.Cells[i].ClosingBalance, w[i]) {
+				t.Errorf("%s month %d closing = %q, want %s", r.Id, i, r.Cells[i].ClosingBalance, w[i])
 			}
 		}
 	}
