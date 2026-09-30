@@ -101,7 +101,7 @@ it('edit and delete are icon buttons revealed on hover or focus where a mouse ex
   const item = screen.getByRole('listitem')
   expect(item).toHaveClass('group/comment')
   const actions = within(item).getByRole('button', { name: 'Edit' }).parentElement!
-  expect(actions).toHaveClass('[@media(hover:hover)]:opacity-0', 'group-hover/comment:opacity-100', 'group-focus-within/comment:opacity-100')
+  expect(actions).toHaveClass('[@media(hover:hover)]:opacity-0', 'group-hover/comment:opacity-100', 'group-has-[:focus-visible]/comment:opacity-100')
   expect(within(item).getByRole('button', { name: 'Delete' }).querySelector('svg')).not.toBeNull()
 })
 

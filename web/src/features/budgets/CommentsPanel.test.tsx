@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
@@ -74,4 +74,12 @@ it('ignores the anchor on a phone', async () => {
   renderPanel(makeAnchor())
   expect(await screen.findByTestId('comments-sheet')).toBeInTheDocument()
   expect(screen.queryByTestId('comments-popover')).toBeNull()
+})
+
+it('focuses the panel, not the first comment\'s edit icon, when it opens', async () => {
+  mockMatchMedia(() => false)
+  renderPanel(makeAnchor())
+  const popover = await screen.findByTestId('comments-popover')
+  await waitFor(() => expect(popover).toHaveFocus())
+  expect(screen.getByRole('button', { name: 'Edit' })).not.toHaveFocus()
 })

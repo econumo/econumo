@@ -193,9 +193,9 @@ export function CommentThread({ budgetId, elementId, period, comments, currentUs
                       <span className="text-xs text-muted-foreground">{t('budgets.page.plan.comments.edited')}</span>
                     ) : null}
                     {!readOnly && !isEditing && (isAuthor || canModerate) ? (
-                      // revealed on hover where there is a mouse; always shown on touch
+                      // revealed on hover or keyboard focus where there is a mouse; always shown on touch
                       // screens, which have no hover to reveal them with
-                      <span className="ml-auto flex gap-0.5 self-center transition-opacity [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 group-focus-within/comment:opacity-100">
+                      <span className="ml-auto flex gap-0.5 self-center transition-opacity [@media(hover:hover)]:opacity-0 group-hover/comment:opacity-100 group-has-[:focus-visible]/comment:opacity-100">
                         {isAuthor ? (
                           <Button
                             type="button"

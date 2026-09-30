@@ -55,6 +55,13 @@ function AnchoredThread({
         align="end"
         aria-label={title}
         data-testid="comments-popover"
+        tabIndex={-1}
+        // focus the panel itself, not its first button: that is the first comment's
+        // edit icon, and a focused comment reveals its hover-only icons
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          ;(e.currentTarget as HTMLElement).focus()
+        }}
         onEscapeKeyDown={() => {
           escaped.current = true
         }}
