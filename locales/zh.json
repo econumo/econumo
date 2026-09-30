@@ -1188,9 +1188,7 @@
         "description": "访问此预算前，请先接受邀请。"
       },
       "expense_widget": {
-        "header": "支出进度",
-        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "已储蓄 {saved}，计划 {planned}"
+        "conversion_rate": "{period} 平均汇率：1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "复制预算",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "此处的评论可以查看，但无法更改。",
           "empty": "暂无评论。",
-          "truncated": "仅显示最新的 2000 条评论。"
+          "truncated": "仅显示最新的 2000 条评论。",
+          "add": "添加评论",
+          "more": "还有 {count} 条"
         }
       },
       "savings": {

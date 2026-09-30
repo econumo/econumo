@@ -1188,9 +1188,7 @@
         "description": "U moet de uitnodiging accepteren voordat u toegang krijgt tot dit budget."
       },
       "expense_widget": {
-        "header": "Uitgaven",
-        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "{saved} van {planned} gepland gespaard"
+        "conversion_rate": "Gemiddelde koers voor {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Budget dupliceren",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Opmerkingen hier kunnen worden gelezen, maar niet gewijzigd.",
           "empty": "Nog geen opmerkingen.",
-          "truncated": "De laatste 2000 opmerkingen worden weergegeven."
+          "truncated": "De laatste 2000 opmerkingen worden weergegeven.",
+          "add": "Opmerking toevoegen",
+          "more": "+{count} meer"
         }
       },
       "savings": {

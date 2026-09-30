@@ -5,7 +5,7 @@ import { http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
 import { coreHandlers } from '@/test/fixtures'
 import type { BudgetCommentDto } from '@/api/dto/budget'
-import { CommentThread, type CommentThreadProps } from './CommentThread'
+import { CommentMarker, CommentThread, type CommentThreadProps } from './CommentThread'
 
 const ada = { id: 'u1', avatar: 'face:emerald', name: 'Ada' }
 const bob = { id: 'u2', avatar: 'pets:sky', name: 'Bob' }
@@ -92,6 +92,17 @@ it('own comment offers Edit and Delete; another author\'s offers neither when ca
   expect(within(items[0]).getByRole('button', { name: 'Delete' })).toBeInTheDocument()
   expect(within(items[1]).queryByRole('button', { name: 'Edit' })).toBeNull()
   expect(within(items[1]).queryByRole('button', { name: 'Delete' })).toBeNull()
+})
+
+// jsdom has no CSS: the classes are the honest check that the icons hide until the
+// comment is hovered or focused, and only on devices that can hover at all
+it('edit and delete are icon buttons revealed on hover or focus where a mouse exists', () => {
+  renderThread({ comments: [commentByAda], currentUserId: 'u1', canModerate: false })
+  const item = screen.getByRole('listitem')
+  expect(item).toHaveClass('group/comment')
+  const actions = within(item).getByRole('button', { name: 'Edit' }).parentElement!
+  expect(actions).toHaveClass('[@media(hover:hover)]:opacity-0', 'group-hover/comment:opacity-100', 'group-has-[:focus-visible]/comment:opacity-100')
+  expect(within(item).getByRole('button', { name: 'Delete' }).querySelector('svg')).not.toBeNull()
 })
 
 it('another author\'s comment offers Delete but not Edit when canModerate is true', () => {
@@ -298,4 +309,40 @@ it('drops an in-flight edit box and delete confirm when readOnly turns on mid-mo
   expect(within(items[0]).queryByRole('textbox', { name: 'Comment' })).toBeNull()
   expect(within(items[0]).queryByRole('button', { name: 'Save' })).toBeNull()
   expect(screen.queryByText('Delete this comment?')).toBeNull()
+})
+
+it('the marker reports the cell it sits in as the anchor', async () => {
+  const user = userEvent.setup()
+  const onOpen = vi.fn()
+  render(
+    <div data-comment-anchor="" data-testid="cell">
+      <CommentMarker count={2} onOpen={onOpen} />
+    </div>,
+  )
+  await user.click(screen.getByTestId('comment-marker'))
+  expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
+})
+
+// jsdom applies no stylesheet, so the classes are the honest check: `invisible`
+// until a mouse hovers the enclosing `group/cell` (Tailwind emits that variant
+// under `@media (hover: hover)` only, so touch screens never reveal it)
+it('with no comments, the marker is a hover-only "Add comment" corner that opens the thread', async () => {
+  const user = userEvent.setup()
+  const onOpen = vi.fn()
+  render(
+    <div data-comment-anchor="" data-testid="cell" className="group/cell">
+      <CommentMarker count={0} placement="outset" onOpen={onOpen} />
+    </div>,
+  )
+  expect(screen.queryByTestId('comment-marker')).toBeNull()
+  const add = screen.getByTestId('comment-marker-add')
+  expect(add).toHaveAccessibleName('Add comment')
+  expect(add).toHaveClass('invisible', 'group-hover/cell:visible', '-right-3', '-top-1')
+  await user.click(add)
+  expect(onOpen).toHaveBeenCalledWith(screen.getByTestId('cell'))
+})
+
+it('a marker with comments is always visible', () => {
+  render(<CommentMarker count={2} onOpen={vi.fn()} />)
+  expect(screen.getByTestId('comment-marker')).not.toHaveClass('invisible')
 })

@@ -1188,9 +1188,7 @@
         "description": "Aby uzyskać dostęp do tego budżetu, najpierw przyjmij zaproszenie."
       },
       "expense_widget": {
-        "header": "Postęp wydatków",
-        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Zaoszczędzono {saved} z {planned} zaplanowanych"
+        "conversion_rate": "Średni kurs za {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Duplikuj budżet",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Komentarze tutaj można odczytywać, ale nie można ich zmieniać.",
           "empty": "Brak komentarzy.",
-          "truncated": "Wyświetlono 2000 najnowszych komentarzy."
+          "truncated": "Wyświetlono 2000 najnowszych komentarzy.",
+          "add": "Dodaj komentarz",
+          "more": "+{count} więcej"
         }
       },
       "savings": {

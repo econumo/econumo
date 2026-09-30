@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
-import { render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -34,6 +34,12 @@ function mockViewport() {
 function mockCompactViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
+function mockTabletViewport() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 
@@ -97,7 +103,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-it('marks a cell that has comments and opens its thread from the limit popover', async () => {
+it('opens the thread from the marker as a popover, and keeps the amount editor comment-free', async () => {
   usePlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -107,8 +113,12 @@ it('marks a cell that has comments and opens its thread from the limit popover',
   expect(within(cell).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
 
   await user.click(within(cell).getByLabelText(/^limit /))
-  await user.click(await screen.findByRole('button', { name: /Comments \(1\)/ }))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+  await user.keyboard('{Escape}')
+
+  await user.click(within(cell).getByTestId('comment-marker'))
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
 it('shows the truncated notice when get-comment-list reports its cap was hit', async () => {
@@ -125,8 +135,7 @@ it('shows the truncated notice when get-comment-list reports its cap was hit', a
   renderPage('/plan')
 
   const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByLabelText(/^limit /))
-  await user.click(await screen.findByRole('button', { name: /Comments \(1\)/ }))
+  await user.click(within(cell).getByTestId('comment-marker'))
   expect(await screen.findByText('Showing the latest 2000 comments.')).toBeInTheDocument()
 })
 
@@ -165,7 +174,7 @@ it('opens the thread with Shift+Enter and leaves Enter editing the amount', asyn
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
 })
 
-it('opens the thread in a dialog on compact viewports', async () => {
+it('opens the thread in a sheet on a phone', async () => {
   usePlanHandlers()
   mockCompactViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
@@ -174,24 +183,7 @@ it('opens the thread in a dialog on compact viewports', async () => {
   const cell = await screen.findByTestId('plan-cell-pe1:1')
   await user.click(within(cell).getByTestId('comment-marker'))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-})
-
-it('clicking the marker while the popover is already open expands the thread in place, without closing the popover or losing the draft amount', async () => {
-  usePlanHandlers()
-  mockViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  renderPage('/plan')
-
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByLabelText(/^limit /))
-  const input = await screen.findByLabelText('Budget')
-  await user.clear(input)
-  await user.type(input, '999')
-
-  await user.click(within(cell).getByTestId('comment-marker'))
-
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.getByLabelText('Budget')).toHaveValue('999')
+  expect(screen.getByTestId('comments-sheet')).toBeInTheDocument()
 })
 
 it('does not steal focus from a later mouse-opened dialog after a keyboard-opened thread closes', async () => {
@@ -219,4 +211,145 @@ it('does not steal focus from a later mouse-opened dialog after a keyboard-opene
   await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit envelope' })).not.toBeInTheDocument())
 
   expect(screen.getByTestId('plan-sheet')).not.toHaveFocus()
+})
+
+it('opens the thread with Shift+F2', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(cell)
+  screen.getByTestId('plan-sheet').focus()
+  await user.keyboard('{Shift>}{F2}{/Shift}')
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+})
+
+it('leaves a right-click on a plan cell to the browser: no app menu', async () => {
+  usePlanHandlers()
+  mockViewport()
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  // fireEvent returns false when a handler called preventDefault
+  expect(fireEvent.contextMenu(cell)).toBe(true)
+  await new Promise((r) => setTimeout(r, 100))
+  expect(screen.queryByRole('menu')).toBeNull()
+})
+
+it('offers a hover-only "Add comment" corner on a plan cell without comments, opening an empty thread beside it', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  expect(within(await screen.findByTestId('plan-cell-pe1:1')).queryByTestId('comment-marker-add')).toBeNull()
+  const cell = screen.getByTestId('plan-cell-pe1:0')
+  expect(cell).toHaveClass('group/cell')
+  const add = within(cell).getByTestId('comment-marker-add')
+  expect(add).toHaveAccessibleName('Add comment')
+  expect(add).toHaveClass('invisible', 'group-hover/cell:visible')
+  await user.click(add)
+  const popover = await screen.findByTestId('comments-popover')
+  expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()
+  expect(within(popover).getByRole('button', { name: 'Post' })).toBeInTheDocument()
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+})
+
+it('offers no add-comment corner on the uncategorized row', async () => {
+  usePlanHandlers()
+  mockViewport()
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-uncategorized:1')
+  expect(within(cell).queryByTestId('comment-marker-add')).toBeNull()
+})
+
+it('offers no add-comment corner in edit-structure mode', async () => {
+  usePlanHandlers()
+  mockViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+  await waitFor(() => expect(within(screen.getByTestId('plan-cell-pe1:0')).queryByTestId('comment-marker-add')).toBeNull())
+})
+
+it('offers no add-comment corner on a month after the budget ends (its thread is read-only)', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: { item: { ...fixtureWireBudget, meta: { ...fixtureWireBudget.meta, endedAt: '2026-08-01 00:00:00' } } },
+      }),
+    ),
+    planHandler(),
+    http.get('*/api/v1/budget/get-comment-list', () => HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })),
+  )
+  mockViewport()
+  renderPage('/plan')
+
+  // column 0 = July, inside the range; column 2 = September, after the end month
+  expect(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add')).toBeInTheDocument()
+  expect(within(screen.getByTestId('plan-cell-pe1:2')).queryByTestId('comment-marker-add')).toBeNull()
+})
+
+it('opens the actions modal from a long-press on a plan cell on a tablet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  // the modal's open Radix dialog sets pointer-events:none on the body, and the
+  // touch release lands after that
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.pointer({ keys: '[TouchA>]', target: cell })
+  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
+  await user.pointer({ keys: '[/TouchA]', target: cell })
+  // the release's click is swallowed: no amount dialog under the modal
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+  expect(within(modal).getByRole('button', { name: 'Set budget' })).toBeInTheDocument()
+  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+})
+
+it('opens the thread as a popover from a marker tap on a tablet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+})
+
+it('keeps the amount dialog free of comments on a tablet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByLabelText(/^limit /))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
+it('opens the thread as a sheet, not a popover, from the amount dialog on a phone', async () => {
+  usePlanHandlers()
+  mockCompactViewport()
+  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  renderPage('/plan')
+
+  const cell = await screen.findByTestId('plan-cell-pe1:1')
+  await user.click(within(cell).getByLabelText(/^limit /))
+  await user.click(await screen.findByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  expect(screen.getByTestId('comments-sheet')).toBeInTheDocument()
+  expect(screen.queryByTestId('comments-popover')).toBeNull()
 })

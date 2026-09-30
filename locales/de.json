@@ -1188,9 +1188,7 @@
         "description": "Sie müssen die Einladung annehmen, bevor Sie auf dieses Budget zugreifen können."
       },
       "expense_widget": {
-        "header": "Ausgaben",
-        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "{saved} von {planned} geplant gespart"
+        "conversion_rate": "Durchschnittskurs für {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Budget duplizieren",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Kommentare können hier gelesen, aber nicht geändert werden.",
           "empty": "Noch keine Kommentare.",
-          "truncated": "Die neuesten 2000 Kommentare werden angezeigt."
+          "truncated": "Die neuesten 2000 Kommentare werden angezeigt.",
+          "add": "Kommentar hinzufügen",
+          "more": "+{count} weitere"
         }
       },
       "savings": {

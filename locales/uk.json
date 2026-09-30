@@ -1188,9 +1188,7 @@
         "description": "Щоб отримати доступ до цього бюджету, спочатку прийміть запрошення."
       },
       "expense_widget": {
-        "header": "Витрати",
-        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}",
-        "saved_of_planned": "Відкладено {saved} з {planned} запланованих"
+        "conversion_rate": "Середній курс за {period}: 1 {defaultCurrency} = {rate}"
       },
       "duplicate_budget_form": {
         "header": "Дублювати бюджет",
@@ -1405,7 +1403,9 @@
           "counter": "{count}/500",
           "read_only": "Коментарі тут можна читати, але не можна змінювати.",
           "empty": "Поки що немає коментарів.",
-          "truncated": "Показано останні 2000 коментарів."
+          "truncated": "Показано останні 2000 коментарів.",
+          "add": "Додати коментар",
+          "more": "ще {count}"
         }
       },
       "savings": {
