@@ -141,13 +141,28 @@ it('offers set budget, comments and transactions on a right-clicked budgeted cel
 
   const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
   await user.pointer({ keys: '[MouseRight]', target: cell })
-  await user.click(await screen.findByRole('menuitem', { name: 'Comments (1)' }))
+  expect(await screen.findByRole('menuitem', { name: 'Show transactions' })).toBeInTheDocument()
+  await user.click(screen.getByRole('menuitem', { name: 'Comments (1)' }))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 
   await user.keyboard('{Escape}')
   await user.pointer({ keys: '[MouseRight]', target: cell })
   await user.click(await screen.findByRole('menuitem', { name: 'Set budget' }))
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+})
+
+it('edit-structure mode opens no menu on a right-clicked budgeted cell', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  await user.click(await screen.findByRole('button', { name: 'Configure' }))
+  await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  expect(screen.queryByRole('menu')).toBeNull()
 })
 
 it('lets a guest comment from the menu but not set a budget', async () => {
@@ -174,7 +189,10 @@ it('opens the actions modal from a long-press on a tablet and goes on to the thr
   await user.pointer({ keys: '[TouchA>]', target: cell })
   const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
   await user.pointer({ keys: '[/TouchA]', target: cell })
+  // the release must be swallowed: no leaked tap into the plain amount / thread
   expect(screen.queryByLabelText('Budget')).toBeNull()
+  expect(screen.queryByTestId('comments-popover')).toBeNull()
+  expect(screen.queryByText('Trip to Lisbon')).toBeNull()
   await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
 })
@@ -187,6 +205,19 @@ it('opens the thread as a popover from a marker tap on a tablet', async () => {
 
   await user.click(within(await screen.findByTestId('element-cat-food')).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+})
+
+// Fix round 1 gap: an editable cell on a tablet has no `renderBudgetCell` (the
+// inline editor is desktop-only), so it fell through to the comments-button
+// branch and an owner's editable amount read as "comments Food" — desktop
+// keeps that branch for non-editable cells only, and the tablet must match.
+it('keeps the tablet amount plain text for an editable cell (no comments button)', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  renderPage('/budget')
+
+  const row = await screen.findByTestId('element-cat-food')
+  expect(within(row).queryByLabelText(/^comments /)).toBeNull()
 })
 
 // the thread is its own dialog, reached from a button: rendered inside the set-limit

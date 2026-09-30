@@ -544,7 +544,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     <CellShell
       title={elementDisplayName(element.id, element.name, t)}
       comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
-      previewDisabled={commentsTarget !== null}
+      previewDisabled={commentsTarget !== null || editMode}
       menuDisabled={cellMenuDisabled}
       onSetBudget={limitsEditable && !readOnly ? setBudgetFor(element) : undefined}
       onOpenComments={(anchor) => openComments(element, anchor)}
@@ -557,7 +557,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     <CellShell
       title={row.name}
       comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
-      previewDisabled={commentsTarget !== null}
+      previewDisabled={commentsTarget !== null || editMode}
       menuDisabled={cellMenuDisabled}
       onSetBudget={limitsEditable && row.isArchived === 0 ? setBudgetFor(row) : undefined}
       onOpenComments={(anchor) => openComments(row, anchor)}
@@ -795,7 +795,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
-                    onBudgetCellComments={!editMode ? (element, anchor) => openComments(element, anchor) : undefined}
+                    // an editable cell on a tablet has no `renderBudgetCell` (the inline
+                    // editor is desktop-only) but must still read as a plain amount, not a
+                    // comments button: the marker and the long-press actions modal are its
+                    // entry points there, matching desktop's separation of amount vs. thread
+                    onBudgetCellComments={
+                      !editMode && !(isCompact && limitsEditable) ? (element, anchor) => openComments(element, anchor) : undefined
+                    }
                     wrapBudgetCell={wrapBudgetCell}
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
@@ -812,9 +818,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                             </DraggableElement>
                           )
                         : isPhone
-                          // a non-editable cell (guest role, readonly access, archived
-                          // budget, out-of-range month) still gets the long-press — it
-                          // opens the comments dialog instead of the limit editor, so a
+                          // phone-only: a non-editable cell (guest role, readonly access,
+                          // archived budget, out-of-range month) still gets the long-press —
+                          // it opens the comments dialog instead of the limit editor, so a
                           // guest on a real phone has a way to reach the thread at all
                           ? (element, _bucket, row) => (
                               <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : (el) => openComments(el)}>

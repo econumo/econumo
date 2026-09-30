@@ -21,8 +21,9 @@ import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 export interface ElementRowExtras {
   /** the budget cell contents (set-limit editor) — defaults to a plain value */
   renderBudgetCell?: (element: BudgetElementDto) => ReactNode
-  /** the entry point of a cell without `renderBudgetCell` (non-editable, or an
-   *  archived element's row): the plain budgeted value opens the cell's thread */
+  /** the entry point of a cell without `renderBudgetCell` that is not editable
+   *  here (non-editable role, an archived element, or a read-only section): the
+   *  plain budgeted value opens the cell's thread */
   onBudgetCellComments?: (element: BudgetElementDto, anchor: HTMLElement) => void
   /** wraps the budgeted cell (hover preview + cell menu); `readOnly` marks a row
    *  whose limit can never be set here (the Archive section) */
@@ -628,7 +629,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                           wrapBudgetCell: extras.wrapBudgetCell
                             ? (el, node) => extras.wrapBudgetCell!(el, node, { readOnly: true })
                             : undefined,
-                          // the marker and popover sit in the phone-hidden budgeted
+                          // the marker and thread sit in the phone-hidden budgeted
                           // column, so this tap is the thread's only way in on a phone
                           onAvailableCommentsClick: extras.onAvailableCommentsClick,
                         }
