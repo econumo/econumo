@@ -209,7 +209,7 @@ it('a non-editable Planned cell never opens the editor: it falls back to the com
   const { props } = renderBlock({ canEdit: false })
   await user.click(within(screen.getByTestId('savings-row-acc-s1')).getByRole('button', { name: 'comments Rainy day' }))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
-  expect(props.onOpenComments).toHaveBeenCalledWith(s1)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s1, expect.any(HTMLElement))
   expect(screen.queryByRole('button', { name: /^planned / })).not.toBeInTheDocument()
 })
 
@@ -220,7 +220,7 @@ it('a deleted account row is never editable, even when limits are', async () => 
   expect(within(row).queryByRole('button', { name: 'planned Closed deposit' })).not.toBeInTheDocument()
   await user.click(within(row).getByRole('button', { name: 'comments Closed deposit' }))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
-  expect(props.onOpenComments).toHaveBeenCalledWith(s3)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s3, expect.any(HTMLElement))
 })
 
 it('a row with comments shows the marker; clicking it opens the thread', async () => {
@@ -228,7 +228,7 @@ it('a row with comments shows the marker; clicking it opens the thread', async (
   const { props } = renderBlock({ commentsByCell: new Map([[commentCellKey('acc-s2', '2026-07-01'), [comment]]]) })
   expect(within(screen.getByTestId('savings-row-acc-s1')).queryByTestId('comment-marker')).not.toBeInTheDocument()
   await user.click(within(screen.getByTestId('savings-row-acc-s2')).getByTestId('comment-marker'))
-  expect(props.onOpenComments).toHaveBeenCalledWith(s2)
+  expect(props.onOpenComments).toHaveBeenCalledWith(s2, expect.any(HTMLElement))
   expect(props.onEditPlanned).not.toHaveBeenCalled()
 })
 

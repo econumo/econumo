@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core'
 import type { DragEndEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -13,6 +13,7 @@ import { moneyFormat } from '@/lib/money'
 import type { BudgetCommentDto, BudgetDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { CommentMarker } from './CommentThread'
 import { useBudgetPeriodStore } from './budgetStore'
 import { commentCellKey } from './queries'
@@ -36,11 +37,13 @@ interface SavingsBlockProps {
   commentsByCell: Map<string, BudgetCommentDto[]>
   /** compact viewports: opens the page's set-limit dialog */
   onEditPlanned: (row: BudgetSavingsElementDto) => void
-  onOpenComments: (row: BudgetSavingsElementDto) => void
+  onOpenComments: (row: BudgetSavingsElementDto, anchor?: HTMLElement) => void
   onMove: (id: Id, afterId: Id | null) => void
   /** desktop: the inline editor the table's budgeted cells use; replaces the
    *  onEditPlanned button on editable cells */
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
+  /** wraps the planned cell (hover preview + cell menu), mirroring the table's `wrapBudgetCell` */
+  wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
 }
 
 function SortableSavingsRow({ id, children }: { id: string; children: ReactNode }) {
@@ -68,6 +71,7 @@ function SavingsRow({
   onEditPlanned,
   onOpenComments,
   renderPlannedEditor,
+  wrapPlannedCell,
 }: {
   row: BudgetSavingsElementDto
   currency: CurrencyDto | undefined
@@ -75,13 +79,35 @@ function SavingsRow({
   comments: BudgetCommentDto[]
   editMode: boolean
   onEditPlanned: (row: BudgetSavingsElementDto) => void
-  onOpenComments: (row: BudgetSavingsElementDto) => void
+  onOpenComments: (row: BudgetSavingsElementDto, anchor?: HTMLElement) => void
   renderPlannedEditor?: (row: BudgetSavingsElementDto) => ReactNode
+  wrapPlannedCell?: (row: BudgetSavingsElementDto, cell: ReactElement) => ReactNode
 }) {
   const { t } = useTranslation()
   const opts = { showCurrency: false, useNativePrecision: false, maxPrecision: currency?.fractionDigits ?? 2 }
   const planned = moneyFormat(row.budgeted, currency, opts)
   const deleted = row.isArchived === 1
+  const cell = (
+    <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className={`relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
+      {editMode ? (
+        planned
+      ) : editable && renderPlannedEditor ? (
+        renderPlannedEditor(row)
+      ) : (
+        // a cell that cannot be edited (guest, pre-start month, deleted account)
+        // still opens its thread, like a non-editable budgeted cell in the table
+        <button
+          type="button"
+          className="w-full text-right underline-offset-2 hover:underline"
+          aria-label={`${editable ? 'planned' : 'comments'} ${row.name}`}
+          onClick={(e) => (editable ? onEditPlanned(row) : onOpenComments(row, commentAnchorOf(e.currentTarget)))}
+        >
+          {planned}
+        </button>
+      )}
+      {comments.length > 0 ? <CommentMarker count={comments.length} onOpen={(anchor) => onOpenComments(row, anchor)} /> : null}
+    </span>
+  )
   return (
     <div className="flex items-center gap-1.5 rounded-md px-1.5 py-2.5 hover:bg-accent/50 sm:gap-2 sm:px-2" data-testid={`savings-row-${row.id}`}>
       <span className="flex min-w-0 flex-1 items-center gap-2">
@@ -91,25 +117,7 @@ function SavingsRow({
           {row.name}
         </span>
       </span>
-      <span className={`relative ${AMOUNT_COL} text-right text-[15px] tabular-nums`} data-testid="savings-planned">
-          {editMode ? (
-            planned
-          ) : editable && renderPlannedEditor ? (
-            renderPlannedEditor(row)
-          ) : (
-            // a cell that cannot be edited (guest, pre-start month, deleted account)
-            // still opens its thread, like a non-editable budgeted cell in the table
-            <button
-              type="button"
-              className="w-full text-right underline-offset-2 hover:underline"
-              aria-label={`${editable ? 'planned' : 'comments'} ${row.name}`}
-              onClick={() => (editable ? onEditPlanned(row) : onOpenComments(row))}
-            >
-              {planned}
-            </button>
-          )}
-          {comments.length > 0 ? <CommentMarker count={comments.length} onOpen={() => onOpenComments(row)} /> : null}
-      </span>
+      {wrapPlannedCell ? wrapPlannedCell(row, cell) : cell}
       <span className={`${AMOUNT_COL} text-center text-[15px] tabular-nums text-muted-foreground`} data-testid="savings-saved">
         {moneyFormat(row.spent, currency, opts)}
       </span>
@@ -132,6 +140,7 @@ export function SavingsBlock({
   onOpenComments,
   onMove,
   renderPlannedEditor,
+  wrapPlannedCell,
 }: SavingsBlockProps) {
   const { t } = useTranslation()
   const folded = useBudgetPeriodStore((s) => !!s.planFolds[FOLD_KEY])
@@ -185,6 +194,7 @@ export function SavingsBlock({
       onEditPlanned={onEditPlanned}
       onOpenComments={onOpenComments}
       renderPlannedEditor={renderPlannedEditor}
+      wrapPlannedCell={wrapPlannedCell}
     />
   )
 

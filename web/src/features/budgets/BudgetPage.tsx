@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import { DndContext, MeasuringStrategy, PointerSensor, pointerWithin, rectIntersection, useDroppable, useSensor, useSensors } from '@dnd-kit/core'
 import type { CollisionDetection, DragEndEvent, DragOverEvent } from '@dnd-kit/core'
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
@@ -29,11 +29,12 @@ import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
 import { PromptDialog } from '@/components/PromptDialog'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { useIsCompact } from '@/hooks/useIsCompact'
+import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useLongPress } from '@/hooks/useLongPress'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetCommentDto, BudgetDto, BudgetElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto, BudgetSavingsElementDto } from '@/api/dto/budget'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
@@ -74,8 +75,10 @@ import { PlanSheet, commentsReadOnly } from './PlanSheet'
 import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
-import { CommentMarker, CommentThread } from './CommentThread'
+import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
+import { CellShell } from './CellShell'
+import { openLimitEditorIn } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
 import { BudgetTransactionsDialog } from './BudgetTransactionsDialog'
@@ -203,59 +206,11 @@ function ElementLongPress({ element, onLongPress, children }: { element: BudgetE
   return <div {...handlers}>{children}</div>
 }
 
-// The desktop LimitEditor popover's own comments entry point, mirroring PlanSheet's
-// disclosure (same collapsed-by-default footer): the monthly view has no keyboard
-// grid to sync an auto-expand key against, so unlike PlanSheet's version this one
-// only tracks its own toggle state.
-function CommentsFooter({
-  budget,
-  element,
-  period,
-  comments,
-  userId,
-  truncated,
-}: {
-  budget: BudgetDto
-  element: { id: Id }
-  period: string
-  comments: BudgetCommentDto[]
-  userId: Id | undefined
-  truncated: boolean
-}) {
-  const { t } = useTranslation()
-  const [expanded, setExpanded] = useState(false)
-  return (
-    <div className="mt-2 border-t pt-2">
-      <button
-        type="button"
-        className="text-xs font-medium text-muted-foreground hover:underline"
-        aria-expanded={expanded}
-        onClick={() => setExpanded((e) => !e)}
-      >
-        {t('budgets.page.plan.comments.disclosure', { count: comments.length })}
-      </button>
-      {expanded ? (
-        <div className="mt-2">
-          <CommentThread
-            budgetId={budget.meta.id}
-            elementId={element.id}
-            period={period}
-            comments={comments}
-            currentUserId={userId}
-            canModerate={canConfigureBudget(budget.meta, userId)}
-            readOnly={commentsReadOnly(budget.meta, period)}
-            truncated={truncated}
-          />
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
 export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const isCompact = useIsCompact()
+  const isPhone = useIsPhone()
   const { data: user } = useUserData()
   // isPending covers the whole cold boot (incl. the disabled phase while the
   // user record loads); month switches show the previous period as placeholder
@@ -283,7 +238,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const budgetId = userOption(user, UserOptions.BUDGET)
   const { byCell: commentsByCell, truncated: commentsTruncated } = useBudgetComments(mode === 'budget' ? budgetId : null, selectedDate, 1)
   // an element or a savings row: both dialogs need only the cell's id and name
-  const [commentsTarget, setCommentsTarget] = useState<CellTarget | null>(null)
+  const [commentsTarget, setCommentsTarget] = useState<{ el: CellTarget; anchor: HTMLElement | null } | null>(null)
+  const openComments = (el: CellTarget, anchor: HTMLElement | null = null) => setCommentsTarget({ el, anchor })
 
   const setLimit = useSetLimit()
   const createEnvelope = useCreateEnvelope()
@@ -569,19 +525,46 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             value={cell.budgeted}
             currency={currencies.find((c) => c.id === (cell.currencyId ?? budget.meta.currencyId))}
             onCommit={(amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId: cell.id, period: selectedDate, amount })}
-            footer={
-              <CommentsFooter
-                budget={budget}
-                element={cell}
-                period={selectedDate}
-                comments={commentsByCell.get(commentCellKey(cell.id, selectedDate)) ?? []}
-                userId={user?.id}
-                truncated={commentsTruncated}
-              />
-            }
           />
         )
       : undefined
+
+  const transactionsTargetOf = (element: BudgetElementDto): BudgetTransactionsTarget => ({
+    id: element.id,
+    type: element.type,
+    name: elementDisplayName(element.id, element.name, t),
+    icon: element.icon,
+    currencyId: element.currencyId,
+  })
+  const setBudgetFor = (target: CellTarget) => (anchor: HTMLElement) =>
+    isCompact ? setLimitTarget(target) : openLimitEditorIn(anchor)
+  // phones keep stage 1's tap/long-press paths; edit mode owns the pointer for dragging
+  const cellMenuDisabled = isPhone || editMode
+  const wrapBudgetCell = (element: BudgetElementDto, cell: ReactElement, { readOnly }: { readOnly: boolean }) => (
+    <CellShell
+      title={elementDisplayName(element.id, element.name, t)}
+      comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
+      previewDisabled={commentsTarget !== null}
+      menuDisabled={cellMenuDisabled}
+      onSetBudget={limitsEditable && !readOnly ? setBudgetFor(element) : undefined}
+      onOpenComments={(anchor) => openComments(element, anchor)}
+      onShowTransactions={() => setTransactionsTarget(transactionsTargetOf(element))}
+    >
+      {cell}
+    </CellShell>
+  )
+  const wrapPlannedCell = (row: BudgetSavingsElementDto, cell: ReactElement) => (
+    <CellShell
+      title={row.name}
+      comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
+      previewDisabled={commentsTarget !== null}
+      menuDisabled={cellMenuDisabled}
+      onSetBudget={limitsEditable && row.isArchived === 0 ? setBudgetFor(row) : undefined}
+      onOpenComments={(anchor) => openComments(row, anchor)}
+    >
+      {cell}
+    </CellShell>
+  )
 
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
   // columns line up with the element rows; folder ordering moved to dragging.
@@ -812,30 +795,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}
-                    // a fallback behind renderBudgetCell, so passed even when limits are
-                    // editable: the Archive section keeps only this one of the two
-                    renderBudgetCellComments={
-                      !editMode && !isCompact
-                        ? (element) => (
-                            <CommentThread
-                              budgetId={budget.meta.id}
-                              elementId={element.id}
-                              period={selectedDate}
-                              comments={commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []}
-                              currentUserId={user?.id}
-                              canModerate={canConfigureBudget(budget.meta, user?.id)}
-                              readOnly={commentsReadOnly(budget.meta, selectedDate)}
-                              truncated={commentsTruncated}
-                            />
-                          )
-                        : undefined
-                    }
+                    onBudgetCellComments={!editMode ? (element, anchor) => openComments(element, anchor) : undefined}
+                    wrapBudgetCell={wrapBudgetCell}
                     renderBudgetCellMarker={(element) => {
                       const cellComments = commentsByCell.get(commentCellKey(element.id, selectedDate)) ?? []
                       if (cellComments.length === 0) {
                         return null
                       }
-                      return <CommentMarker count={cellComments.length} onOpen={() => setCommentsTarget(element)} />
+                      return <CommentMarker count={cellComments.length} onOpen={(anchor) => openComments(element, anchor)} />
                     }}
                     renderRowWrapper={
                       editMode
@@ -844,13 +811,13 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                               {row}
                             </DraggableElement>
                           )
-                        : isCompact
+                        : isPhone
                           // a non-editable cell (guest role, readonly access, archived
                           // budget, out-of-range month) still gets the long-press — it
                           // opens the comments dialog instead of the limit editor, so a
                           // guest on a real phone has a way to reach the thread at all
                           ? (element, _bucket, row) => (
-                              <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : setCommentsTarget}>
+                              <ElementLongPress key={element.id} element={element} onLongPress={limitsEditable ? setLimitTarget : (el) => openComments(el)}>
                                 {row}
                               </ElementLongPress>
                             )
@@ -877,7 +844,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     onAvailableClick={isCompact && limitsEditable && !editMode ? setLimitTarget : undefined}
                     // a fallback behind onAvailableClick, so passed even when limits are
                     // editable: the Archive section keeps only this one of the two
-                    onAvailableCommentsClick={isCompact && !editMode ? setCommentsTarget : undefined}
+                    onAvailableCommentsClick={isCompact && !editMode ? (el) => openComments(el) : undefined}
                   />
                   </SortableContext>
                 </DndContext>
@@ -891,8 +858,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     editMode={editMode}
                     commentsByCell={commentsByCell}
                     onEditPlanned={setLimitTarget}
-                    onOpenComments={setCommentsTarget}
+                    onOpenComments={(row, anchor) => openComments(row, anchor ?? null)}
                     renderPlannedEditor={inlineLimitEditor}
+                    wrapPlannedCell={wrapPlannedCell}
                     onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
                   />
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} savings={phoneSavings} /> : null}
@@ -1044,7 +1012,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onCommit={(elementId, amount) => setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })}
         commentCount={limitTarget ? (commentsByCell.get(commentCellKey(limitTarget.id, selectedDate)) ?? []).length : 0}
         onOpenComments={() => {
-          setCommentsTarget(limitTarget)
+          if (limitTarget) {
+            openComments(limitTarget)
+          }
           setLimitTarget(null)
         }}
       />
@@ -1052,12 +1022,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       <CommentsPanel
         open={commentsTarget !== null}
         onClose={() => setCommentsTarget(null)}
-        title={commentsTarget ? elementDisplayName(commentsTarget.id, commentsTarget.name, t) : ''}
-        anchor={null}
+        title={commentsTarget ? elementDisplayName(commentsTarget.el.id, commentsTarget.el.name, t) : ''}
+        anchor={commentsTarget?.anchor ?? null}
         budgetId={budget.meta.id}
-        elementId={commentsTarget?.id ?? ''}
+        elementId={commentsTarget?.el.id ?? ''}
         period={selectedDate}
-        comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.id, selectedDate)) ?? [] : []}
+        comments={commentsTarget ? commentsByCell.get(commentCellKey(commentsTarget.el.id, selectedDate)) ?? [] : []}
         currentUserId={user?.id}
         canModerate={canConfigureBudget(budget.meta, user?.id)}
         readOnly={commentsTarget ? commentsReadOnly(budget.meta, selectedDate) : true}

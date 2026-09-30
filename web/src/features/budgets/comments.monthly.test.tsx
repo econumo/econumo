@@ -1,5 +1,5 @@
 import { render, screen, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -47,6 +47,12 @@ function mockCompactViewport() {
   }))
 }
 
+function mockTabletViewport() {
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+}
+
 function renderPage(initialPath: '/budget' | '/plan' = '/budget') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
@@ -85,7 +91,7 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
 })
 
-it('marks the budgeted cell and opens the thread from the limit popover', async () => {
+it('opens the thread from the marker as a popover beside the cell, and keeps the amount editor comment-free', async () => {
   registerMonthlyHandlers()
   mockViewport()
   const user = userEvent.setup()
@@ -95,8 +101,92 @@ it('marks the budgeted cell and opens the thread from the limit popover', async 
   expect(within(row).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
 
   await user.click(within(row).getByLabelText(/^limit /))
-  await user.click(await screen.findByRole('button', { name: /Comments \(1\)/ }))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+  await user.keyboard('{Escape}')
+
+  await user.click(within(row).getByTestId('comment-marker'))
+  const popover = await screen.findByTestId('comments-popover')
+  expect(within(popover).getByText('Trip to Lisbon')).toBeInTheDocument()
+})
+
+it('switches the thread when another marker is clicked', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    http.get('*/api/v1/budget/get-comment-list', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: { items: [comment, { ...comment, id: 'cm2', elementId: 'env-1', comment: 'Envelope note' }], truncated: false },
+      }),
+    ),
+  )
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByTestId('comment-marker'))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+  await user.click(within(screen.getByTestId('element-env-1')).getByTestId('comment-marker'))
+  expect(await screen.findByText('Envelope note')).toBeInTheDocument()
+  expect(screen.queryByText('Trip to Lisbon')).toBeNull()
+})
+
+it('offers set budget, comments and transactions on a right-clicked budgeted cell', async () => {
+  registerMonthlyHandlers()
+  mockViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  await user.click(await screen.findByRole('menuitem', { name: 'Comments (1)' }))
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+
+  await user.keyboard('{Escape}')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  await user.click(await screen.findByRole('menuitem', { name: 'Set budget' }))
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+})
+
+it('lets a guest comment from the menu but not set a budget', async () => {
+  mockViewport()
+  const user = userEvent.setup()
+  renderGuestPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-env-1')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[MouseRight]', target: cell })
+  expect(await screen.findByRole('menuitem', { name: 'Add comment' })).toBeInTheDocument()
+  expect(screen.queryByRole('menuitem', { name: 'Set budget' })).toBeNull()
+})
+
+it('opens the actions modal from a long-press on a tablet and goes on to the thread', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  // the modal's open Radix dialog sets pointer-events:none on the body, and the
+  // touch release lands after that — same landmine as the tablet long-press test
+  // in cell-shell.test.tsx (Task 3)
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+
+  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
+  await user.pointer({ keys: '[TouchA>]', target: cell })
+  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
+  await user.pointer({ keys: '[/TouchA]', target: cell })
+  expect(screen.queryByLabelText('Budget')).toBeNull()
+  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
+})
+
+it('opens the thread as a popover from a marker tap on a tablet', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup()
+  renderPage('/budget')
+
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByTestId('comment-marker'))
+  expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
 // the thread is its own dialog, reached from a button: rendered inside the set-limit

@@ -512,11 +512,9 @@ describe('monthly Savings block', () => {
     const user = userEvent.setup()
     renderPage()
     const row = await screen.findByTestId('savings-row-acc-s1')
-    // the table's own LimitEditor popover, with its comments footer
+    // the table's own LimitEditor popover
     await user.click(within(row).getByRole('button', { name: 'limit Rainy day' }))
     expect(screen.queryByRole('dialog', { name: 'Set limit' })).not.toBeInTheDocument()
-    await user.click(await screen.findByRole('button', { name: /Comments \(1\)/ }))
-    expect(await screen.findByText('Bonus goes here')).toBeInTheDocument()
     const input = screen.getByLabelText('Budget')
     await user.clear(input)
     await user.type(input, '200+50')
@@ -525,6 +523,17 @@ describe('monthly Savings block', () => {
     await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
     // July 2026 is a past month: its balance is booked, so a plan edit leaves it alone
     expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
+  })
+
+  it('desktop: the planned cell menu offers comments alongside set budget', async () => {
+    useSavingsHandlers()
+    const user = userEvent.setup()
+    renderPage()
+    const row = await screen.findByTestId('savings-row-acc-s1')
+    const cell = within(row).getByTestId('savings-planned')
+    await user.pointer({ keys: '[MouseRight]', target: cell })
+    await user.click(await screen.findByRole('menuitem', { name: 'Comments (1)' }))
+    expect(await screen.findByText('Bonus goes here')).toBeInTheDocument()
   })
 
   it('compact: Planned opens the set-limit dialog with a button to the cell thread', async () => {
@@ -548,15 +557,14 @@ describe('monthly Savings block', () => {
     await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
   })
 
-  it('the comment marker on a planned cell opens the page comments dialog', async () => {
+  it('the comment marker on a planned cell opens the page comments popover', async () => {
     useSavingsHandlers()
     const user = userEvent.setup()
     renderPage()
     const row = await screen.findByTestId('savings-row-acc-s1')
     await user.click(await within(row).findByTestId('comment-marker'))
-    const dialog = await screen.findByRole('dialog')
-    expect(within(dialog).getByText('Rainy day')).toBeInTheDocument()
-    expect(within(dialog).getByText('Bonus goes here')).toBeInTheDocument()
+    const popover = await screen.findByTestId('comments-popover')
+    expect(within(popover).getByText('Bonus goes here')).toBeInTheDocument()
   })
 
   it('a budget without savings rows renders no block', async () => {
