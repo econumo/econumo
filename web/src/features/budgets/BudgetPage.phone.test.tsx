@@ -5,10 +5,11 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import type { HttpHandler } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureUser, fixtureWireBudget, planHandler } from '@/test/fixtures'
+import { coreHandlers, fixtureUser, fixtureWireBudget, fixtureWirePlan, planHandler } from '@/test/fixtures'
 import { queryKeys } from '@/app/queryKeys'
 import { BudgetPage } from './BudgetPage'
 import { useBudgetPeriodStore } from './budgetStore'
+import { addMonths } from './planMath'
 
 const userWithBudget = {
   ...fixtureUser,
@@ -265,4 +266,46 @@ it('edit structure on a phone still shows the table editor', async () => {
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
   expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
   expect(screen.queryByTestId('phone-month-view')).toBeNull()
+})
+
+it('a month three past the current one still carries the unmet plans of the months between', async () => {
+  vi.useFakeTimers({ toFake: ['Date'] })
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  useBudgetPeriodStore.setState({ selectedDate: '2026-10-01' })
+  const froms: string[] = []
+  handlers({
+    plan: http.get('*/api/v1/budget/get-budget-plan', ({ request }) => {
+      const params = new URL(request.url).searchParams
+      const from = params.get('from') ?? ''
+      froms.push(from)
+      const months = Array.from({ length: Number(params.get('months')) }, (_, i) => addMonths(from, i))
+      const cells = (planned: string) => months.map(() => ({ actual: '0', planned }))
+      const plan = {
+        meta: fixtureWirePlan.meta,
+        months,
+        openingBalances: [{ currencyId: 'cur-usd', amount: '500' }],
+        currencyRates: months.map((m) => ({
+          period: m,
+          rates: [{ currencyId: 'cur-usd', baseCurrencyId: 'cur-usd', rate: '1', periodStart: m, periodEnd: addMonths(m, 1) }],
+        })),
+        transfers: months.map((m) => ({ period: m, items: [] })),
+        structure: {
+          folders: [],
+          elements: [
+            { id: 'ie1', type: 4, name: 'Salaries', icon: 'payments', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 0, ownerUserId: null, cells: cells('1000'), children: [] },
+            { id: 'cat-food', type: 1, name: 'Food', icon: 'restaurant', currencyId: 'cur-usd', isArchived: 0, folderId: null, position: 1, ownerUserId: 'u1', cells: cells('300'), children: [] },
+          ],
+        },
+      }
+      return HttpResponse.json({ success: true, message: '', data: { item: plan } })
+    }),
+  })
+  try {
+    renderPage()
+    // July (current) through October, each planned +1000 −300 and nothing booked yet
+    expect(await screen.findByTestId('phone-total-balance')).toHaveTextContent('3,300.00')
+    expect(froms.every((f) => f <= '2026-07-01')).toBe(true)
+  } finally {
+    vi.useRealTimers()
+  }
 })

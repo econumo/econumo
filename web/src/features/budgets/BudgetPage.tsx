@@ -69,7 +69,7 @@ import {
 import { useBudgetPeriodStore } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, savingsTotals, totalsWithSavings } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
-import { currentMonth } from './planMath'
+import { currentMonth, monthDiff } from './planMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
@@ -253,8 +253,12 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
   // the phone view's income, Balance and Total savings: the Plan view's own figures
-  // for the selected month; null until that month's window has really loaded
-  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, selectedDate, 1)
+  // for the selected month; null until that month's window has really loaded.
+  // The window starts no later than the current month: the server books only
+  // what precedes the window, so a future month's Balance needs every unmet plan
+  // from the current month on inside it.
+  const phonePlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
+  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, phonePlanFirst, monthDiff(phonePlanFirst, selectedDate) + 1)
   const planSetLimit = usePlanSetLimit(phonePlan.planKey)
   const planMonth = useMemo(
     () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
