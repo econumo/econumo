@@ -1,3 +1,4 @@
+import { isIncomeType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -51,11 +52,19 @@ export function planMonthFigures(plan: BudgetPlanDto, currencies: CurrencyDto[],
   const savings = planHasSavingsData(plan) ? savingsBalanceRow(plan, totals, ex, now) : null
   const balance = savings ? everydayBalanceRow(combined, savings) : combined
 
-  const income = bucketPlanRows(plan, false).income
+  const buckets = bucketPlanRows(plan, false)
+  const income = buckets.income
+  const received = (el: PlanElementDto) => !isZero(el.cells[index]?.actual ?? '0')
   const rows = [...income.folders.flatMap((f) => f.rows), ...income.loose].map((r) => planCellFigures(r.element, index))
   const uncategorized = income.uncategorized?.element
-  if (uncategorized && !isZero(uncategorized.cells[index]?.actual ?? '0')) {
+  if (uncategorized && received(uncategorized)) {
     rows.push(planCellFigures(uncategorized, index))
+  }
+  // the received total counts archived rows too, so the ones with money this month must be listed
+  for (const { element } of buckets.archived) {
+    if (isIncomeType(element.type) && received(element)) {
+      rows.push(planCellFigures(element, index))
+    }
   }
 
   return {

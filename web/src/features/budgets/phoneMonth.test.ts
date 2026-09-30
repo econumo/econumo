@@ -89,3 +89,17 @@ it('sheetCell names the id, currency and settable amount of each target kind', (
   const saving = { id: 'acc-s1', type: 5 as const, name: 'Rainy day', icon: 'savings', currencyId: 'cur-eur', ownerUserId: 'u1', isArchived: 0 as const, position: 0, budgeted: '50', spent: '0', available: '50' }
   expect(sheetCell({ kind: 'savings', row: saving }, 'cur-usd')).toEqual({ id: 'acc-s1', name: 'Rainy day', currencyId: 'cur-eur', amount: '50' })
 })
+
+it('lists an archived income row only in a month it received something, so the rows add up to the total', () => {
+  const plan = usdPlan()
+  plan.structure.elements.push({
+    id: 'cat-old-gig', type: 3, name: 'Old gig', icon: 'work', currencyId: 'cur-usd', isArchived: 1,
+    folderId: null, position: 9, ownerUserId: 'u1',
+    cells: [{ actual: '0', planned: '' }, { actual: '0', planned: '' }, { actual: '70', planned: '' }, { actual: '0', planned: '' }],
+    children: [],
+  } as unknown as BudgetPlanDto['structure']['elements'][number])
+  const july = planMonthFigures(plan, [usd, eur], '2026-07-01', past)!
+  expect(july.income.rows.map((r) => [r.element.id, r.actual])).toContainEqual(['cat-old-gig', '70'])
+  expect(cmp(july.income.received, '470')).toBe(0)
+  expect(planMonthFigures(plan, [usd, eur], '2026-06-01', past)!.income.rows.map((r) => r.element.id)).not.toContain('cat-old-gig')
+})
