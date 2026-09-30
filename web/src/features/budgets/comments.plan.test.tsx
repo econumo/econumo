@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import userEvent, { PointerEventsCheckLevel } from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { http, HttpResponse } from 'msw'
@@ -291,15 +291,52 @@ it('opens the thread as a popover from a marker tap on a tablet', async () => {
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
 })
 
-it('keeps the amount dialog free of comments on a tablet', async () => {
+it('a tablet tap on a plan cell opens the item sheet for that month', async () => {
   usePlanHandlers()
   mockTabletViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
   renderPage('/plan')
 
-  const cell = await screen.findByTestId('plan-cell-pe1:1')
-  await user.click(within(cell).getByLabelText(/^limit /))
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByTestId('sheet-figure-budget')).toBeInTheDocument()
+  expect(within(sheet).getByTestId('sheet-figure-spent')).toBeInTheDocument()
+  expect(within(sheet).getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
+})
+
+it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
   expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
+
+it('a tablet sheet’s Comments opens the thread', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/plan')
+
+  await user.click(await screen.findByTestId('plan-cell-pe1:1'))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('a tablet marker tap opens only the thread, not the sheet', async () => {
+  usePlanHandlers()
+  mockTabletViewport()
+  const user = userEvent.setup()
+  renderPage('/plan')
+
+  await user.click(within(await screen.findByTestId('plan-cell-pe1:1')).getByTestId('comment-marker'))
+  expect(await screen.findByTestId('comments-popover')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 

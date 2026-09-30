@@ -865,6 +865,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       "Comments" replaces it with the thread. A guest's sheet has no "Set
       budget". The Available pill is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
+- [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
+      the cell is selected and the item sheet opens for that element and
+      month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
+      for savings), latest comment, "Set budget" ("Set plan" for income),
+      "Comments", and "Transactions" for expense rows. The sheet's month and
+      any foreign-currency rate are the tapped column's. The corner marker still
+      opens only the thread.
 - [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
       menu, no text-selection callout from the app) and the tap still works.
 - [ ] 📱 Phone: a comment thread opens as a sheet whose composer stays pinned
