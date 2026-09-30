@@ -413,9 +413,11 @@ navigation (single-pane vs sidebar).
 - [ ] Inbox clears itself 📱: accepting/declining an invite, importing/skipping
       every queued row, and a successful re-sync each remove the item and lower
       the badge without a reload.
+- [ ] Import data fails to load 📱: the Inbox shows an error with Retry, keeps
+      any rows it already had, and never reads "All caught up".
 - [ ] Sync problem 📱: a SimpleFIN sync that fails shows "<source> sync failed",
       the time and the error in the Inbox; tapping it opens the SimpleFIN
-      settings page.
+      settings page; a per-account failure names the card.
 - [ ] Remap is not a sync problem 📱: mapping an Apple Wallet card in a
       currency with no stored rate leaves its taps under To review and adds
       nothing to Sync problems or the badge beyond those rows.

@@ -131,6 +131,48 @@ it('shows the generic error with a working retry when the queue fails to load', 
   await waitFor(() => expect(calls).toBeGreaterThanOrEqual(2))
 })
 
+it('shows the error and Retry (never blank, never All caught up) when the source list fails with an empty queue', async () => {
+  let sourceCalls = 0
+  let queueCalls = 0
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] } }))
+  server.use(
+    http.get('*/api/v1/import/get-source-list', () => {
+      sourceCalls += 1
+      return HttpResponse.json({ success: false, message: 'Something went wrong. Please try again.', code: 500, errors: {} }, { status: 500 })
+    }),
+    http.get('*/api/v1/import/get-queued-event-list', () => {
+      queueCalls += 1
+      return HttpResponse.json({ success: true, message: '', data: { queued: [], skipped: [], failed: [] } })
+    }),
+  )
+  renderInbox()
+  expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument()
+  expect(screen.queryByText('All caught up')).toBeNull()
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Retry' }))
+  await waitFor(() => expect(sourceCalls).toBeGreaterThanOrEqual(2))
+  await waitFor(() => expect(queueCalls).toBeGreaterThanOrEqual(2))
+})
+
+it('keeps a cached queued row visible alongside the error notice when a background refetch fails', async () => {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  server.use(...coreHandlers({ importQueue: { queued: [queued()], skipped: [], failed: [] } }))
+  const router = createMemoryRouter([{ path: '/inbox', element: <InboxPage /> }], { initialEntries: ['/inbox'] })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('Blue Bottle')).toBeInTheDocument()
+
+  server.use(http.get('*/api/v1/import/get-queued-event-list', () =>
+    HttpResponse.json({ success: false, message: 'Something went wrong. Please try again.', code: 500, errors: {} }, { status: 500 })))
+  await queryClient.refetchQueries({ queryKey: ['importQueue'] })
+
+  await screen.findByText('Something went wrong. Please try again.')
+  expect(screen.getByText('Blue Bottle')).toBeInTheDocument()
+})
+
 it('a failed sync problem links to SimpleFIN settings and shows the run error', async () => {
   server.use(...coreHandlers({ importSources: [syncProblemSource()] }))
   renderInbox()

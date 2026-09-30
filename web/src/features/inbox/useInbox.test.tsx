@@ -25,7 +25,7 @@ function makeWrapper() {
 
 const src = (over: Record<string, unknown> = {}) => ({
   id: 's1', provider: 'simplefin', name: 'Bank', status: 'active', createdAt: '2026-08-01 00:00:00',
-  lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', credentialCiphertext: '', cards: [], ...over,
+  lastSyncedAt: '', lastRunStatus: '', lastRunAt: '', lastRunError: '', lastRunErrorAccountId: '', credentialCiphertext: '', cards: [], ...over,
 })
 const q = (linkId: string) => ({ linkId, sourceId: 's1', externalAccountId: 'Apple Card', accountId: '', payee: 'P', amount: '1',
   currency: 'USD', type: 'expense', postedAt: '2026-08-20 10:42:03', reason: 'unmapped' })
@@ -77,5 +77,40 @@ it('is not loaded until the queue and sources resolve, and flags a failed queue 
   const { result } = renderHook(() => useInbox(), { wrapper })
   expect(result.current.isLoaded).toBe(false)
   await waitFor(() => expect(result.current.importsError).toBe(true))
-  expect(result.current.isLoaded).toBe(false)
+  // sources resolved (empty list) and the queue resolved to an error: both
+  // queries are settled, so the page has enough information to render.
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+})
+
+it('flags importsError and still loads when the source list fails, even with an empty queue', async () => {
+  const wrapper = makeWrapper()
+  server.use(...coreHandlers({ importQueue: { queued: [], skipped: [], failed: [] } }))
+  server.use(http.get('*/api/v1/import/get-source-list', () => HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })))
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  expect(result.current.importsError).toBe(true)
+})
+
+it('retryImports refetches both the queue and the source list', async () => {
+  const wrapper = makeWrapper()
+  let queueCalls = 0
+  let sourceCalls = 0
+  server.use(...coreHandlers())
+  server.use(
+    http.get('*/api/v1/import/get-queued-event-list', () => {
+      queueCalls += 1
+      return HttpResponse.json({ success: false, message: 'boom', code: 0 }, { status: 500 })
+    }),
+    http.get('*/api/v1/import/get-source-list', () => {
+      sourceCalls += 1
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  const { result } = renderHook(() => useInbox(), { wrapper })
+  await waitFor(() => expect(result.current.isLoaded).toBe(true))
+  const queueCallsBefore = queueCalls
+  const sourceCallsBefore = sourceCalls
+  result.current.retryImports()
+  await waitFor(() => expect(queueCalls).toBeGreaterThan(queueCallsBefore))
+  await waitFor(() => expect(sourceCalls).toBeGreaterThan(sourceCallsBefore))
 })

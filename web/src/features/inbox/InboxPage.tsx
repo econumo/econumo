@@ -33,34 +33,31 @@ export function InboxPage() {
         {inbox.invites.length > 0 ? (
           <InboxSection title={t('inbox.sections.sharing')}><SharingSection invites={inbox.invites} /></InboxSection>
         ) : null}
-        {inbox.syncProblems.length > 0 ? (
-          <InboxSection title={t('inbox.sections.sync')}><SyncProblemsSection sources={inbox.syncProblems} /></InboxSection>
-        ) : null}
         {inbox.importsError ? (
           <div className="flex flex-col items-center gap-3 p-6 text-center">
             <p className="max-w-md text-sm text-muted-foreground">{t('common.app.error')}</p>
             <Button type="button" onClick={inbox.retryImports}>{t('imports.queue.retry')}</Button>
           </div>
-        ) : (
-          <>
-            {inbox.failed.length > 0 ? (
-              <InboxSection title={t('inbox.sections.failed')}><FailedImportsSection failed={inbox.failed} /></InboxSection>
-            ) : null}
-            {inbox.queued.length > 0 ? (
-              <InboxSection title={t('inbox.sections.to_review')}><ToReviewSection queued={inbox.queued} /></InboxSection>
-            ) : null}
-            {inbox.skipped.length > 0 ? (
-              <section className="flex flex-col gap-2">
-                <button type="button" aria-expanded={skippedOpen} onClick={() => setSkippedOpen((o) => !o)}
-                  className="flex items-center gap-1 px-1 text-left text-xs uppercase text-muted-foreground">
-                  {skippedOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
-                  <span role="heading" aria-level={2}>{t('inbox.sections.skipped', { count: inbox.skipped.length })}</span>
-                </button>
-                {skippedOpen ? <SkippedSection skipped={inbox.skipped} /> : null}
-              </section>
-            ) : null}
-          </>
-        )}
+        ) : null}
+        {inbox.syncProblems.length > 0 ? (
+          <InboxSection title={t('inbox.sections.sync')}><SyncProblemsSection sources={inbox.syncProblems} /></InboxSection>
+        ) : null}
+        {inbox.failed.length > 0 ? (
+          <InboxSection title={t('inbox.sections.failed')}><FailedImportsSection failed={inbox.failed} /></InboxSection>
+        ) : null}
+        {inbox.queued.length > 0 ? (
+          <InboxSection title={t('inbox.sections.to_review')}><ToReviewSection queued={inbox.queued} /></InboxSection>
+        ) : null}
+        {inbox.skipped.length > 0 ? (
+          <section className="flex flex-col gap-2">
+            <button type="button" aria-expanded={skippedOpen} onClick={() => setSkippedOpen((o) => !o)}
+              className="flex items-center gap-1 px-1 text-left text-xs uppercase text-muted-foreground">
+              {skippedOpen ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+              <span role="heading" aria-level={2}>{t('inbox.sections.skipped', { count: inbox.skipped.length })}</span>
+            </button>
+            {skippedOpen ? <SkippedSection skipped={inbox.skipped} /> : null}
+          </section>
+        ) : null}
       </div>
     </SettingsShell>
   )

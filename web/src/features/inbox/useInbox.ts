@@ -10,18 +10,19 @@ export interface Inbox {
   skipped: ImportQueuedEventDto[]
   /** invites + syncProblems + failed + queued; skipped is never counted */
   count: number
-  /** queue AND sources have resolved at least once (no "All caught up" flash) */
+  /** queue AND sources have each resolved (success or error) at least once (no "All caught up" flash) */
   isLoaded: boolean
-  /** the import queue request failed; imports sections are unknown */
+  /** the import queue or the source list request failed; either section may be showing stale/partial data */
   importsError: boolean
   retryImports: () => void
 }
 
 export function isSyncProblem(source: ImportSourceDto): boolean {
-  // Only SimpleFIN sources pull on a schedule; a push provider's (Apple
-  // Wallet) only run is a card remap that leaves taps queued (e.g. no stored
-  // exchange rate) and marks itself "partial" — those taps already surface
-  // under To review, and the Apple Wallet page has no sync action to retry.
+  // SimpleFIN is the only pull provider (syncs are manual, not scheduled). A
+  // push provider (Apple Wallet) never syncs at all — its only "run" is a
+  // card remap that leaves a leftover tap queued (e.g. no stored exchange
+  // rate) and marks itself "partial"; that tap already surfaces under To
+  // review, and the Apple Wallet page has no sync action to retry.
   if (source.provider !== 'simplefin') return false
   return source.lastRunStatus === 'failed' || source.lastRunStatus === 'partial'
 }
@@ -45,8 +46,11 @@ export function useInbox(): Inbox {
     queued,
     skipped,
     count: invites.length + syncProblems.length + failed.length + queued.length,
-    isLoaded: queue.data !== undefined && sources.data !== undefined,
-    importsError: queue.isError,
-    retryImports: () => void queue.refetch(),
+    isLoaded: (queue.data !== undefined || queue.isError) && (sources.data !== undefined || sources.isError),
+    importsError: queue.isError || sources.isError,
+    retryImports: () => {
+      void queue.refetch()
+      void sources.refetch()
+    },
   }
 }
