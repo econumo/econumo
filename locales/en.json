@@ -1427,7 +1427,6 @@
       "sheet": {
         "received": "Received",
         "covered": "Over by {over} — covered by {carry} left from earlier months",
-        "overspent": "Overspent by {amount}",
         "transactions": "Transactions",
         "set_plan": "Set plan",
         "converted": "≈ {amount} {currency}"

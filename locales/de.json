@@ -1427,7 +1427,6 @@
       "sheet": {
         "received": "Empfangen",
         "covered": "Um {over} überzogen — gedeckt durch {carry}, die noch aus früheren Monaten übrig sind",
-        "overspent": "Um {amount} überzogen",
         "transactions": "Transaktionen",
         "set_plan": "Plan festlegen",
         "converted": "≈ {amount} {currency}"

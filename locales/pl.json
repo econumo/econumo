@@ -1427,7 +1427,6 @@
       "sheet": {
         "received": "Odebrano",
         "covered": "Przekroczono o {over} — pokryte z {carry} pozostałych z wcześniejszych miesięcy",
-        "overspent": "Przekroczono o {amount}",
         "transactions": "Transakcje",
         "set_plan": "Ustaw plan",
         "converted": "≈ {amount} {currency}"

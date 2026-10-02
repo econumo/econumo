@@ -61,7 +61,7 @@ For an expense element in a month, with `budget`, `spent`, `available` as today:
 | none | `budget` is zero and `spent` is zero | no bar |
 | ok | `available ≥ 0` and `spent ≤ budget` | no sentence |
 | covered | `available ≥ 0` and `spent > budget` | sheet: "Over by … — covered by … left from earlier months" |
-| over | `available < 0` | sheet: "Overspent by …"; Available shown red where visible |
+| over | `available < 0` | Available shown red (the sheet adds no sentence) |
 
 - Row colour (revised 2026-10-01): the Spent figure and bar are red only in the
   `over` state with `spent > budget` (this month over budget and not covered by
@@ -147,11 +147,12 @@ Over by 101.37 — covered by 750.69 left from earlier months
 [ Set budget ]   [ Transactions ]
 ```
 
-- State sentence per row state (none for `ok`/`none`; "covered by …" for amber;
-  "Overspent by …" for red).
-- Latest comment preview (author + text, one line) and a `Comments (N)` link; with
-  no comments the link reads "Add comment" (hidden when the thread is read-only
-  and empty).
+- Figures centred in their columns. State sentence only for `covered` ("Over by …
+  — covered by … left from earlier months"); an overspend shows as the red
+  Available *(revised 2026-10-01)*.
+- The two latest comments (author + text, one line each) and a `Comments (N)`
+  link; with none, "No comments yet." in gray and an "Add comment" link (no link
+  when the thread is read-only).
 - **Set budget** → existing `SetLimitDialog` (amount keypad only). Hidden for
   guests, readonly access, archived budgets, out-of-range months, deleted
   elements, uncategorized.

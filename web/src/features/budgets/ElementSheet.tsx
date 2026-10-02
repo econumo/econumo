@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { ResponsiveDialog } from '@/components/ResponsiveDialog'
 import { moneyFormat } from '@/lib/money'
-import { abs, cmp, sub } from '@/lib/decimal'
+import { cmp, sub } from '@/lib/decimal'
 import type { BudgetCommentDto } from '@/api/dto/budget'
 import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
@@ -97,8 +97,6 @@ export function ElementSheet({
       const state = rowState({ budgeted: el.budgeted, spent: el.spent, available }, future)
       if (state === 'covered') {
         stateSentence = t('budgets.page.sheet.covered', { over: fmt(sub(el.spent, el.budgeted)), carry: fmt(carryOver(el)) })
-      } else if (state === 'over') {
-        stateSentence = t('budgets.page.sheet.overspent', { amount: fmt(abs(available)) })
       }
     }
     actualInBase = el.budgetSpent
@@ -122,8 +120,9 @@ export function ElementSheet({
     actualInBase = foreign ? exchange(cell.currencyId, baseCurrencyId, done) : done
   }
 
-  const latest = sortByCreatedAt(comments).at(-1)
-  const showCommentsLink = !isUncategorized && !(commentsReadOnly && comments.length === 0)
+  // the two most recent, oldest first, as the desktop hover preview shows them
+  const latest = sortByCreatedAt(comments).slice(-2)
+  const canComment = !isUncategorized && !(commentsReadOnly && comments.length === 0)
   const rate = foreign ? exchange(baseCurrencyId, cell.currencyId, '1') : null
 
   return (
@@ -131,7 +130,7 @@ export function ElementSheet({
       <div className="flex flex-col gap-4" data-testid="element-sheet">
         <div className={`grid gap-2 ${figures.length === 1 ? 'grid-cols-1' : figures.length === 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
           {figures.map((f) => (
-            <div key={f.key} className="flex flex-col" data-testid={`sheet-figure-${f.key}`}>
+            <div key={f.key} className="flex flex-col items-center text-center" data-testid={`sheet-figure-${f.key}`}>
               <span className="text-[13px] text-muted-foreground">{f.label}</span>
               <span className={`text-[17px] font-medium tabular-nums ${f.negative ? 'text-expense' : ''}`}>{f.value}</span>
             </div>
@@ -160,18 +159,26 @@ export function ElementSheet({
             ) : null}
           </div>
         ) : null}
-        {showCommentsLink ? (
-          <div className="flex items-center gap-2 border-t pt-3">
-            {latest ? (
-              <p className="min-w-0 flex-1 truncate text-sm" data-testid="sheet-latest-comment">
-                <span className="font-medium">{latest.author.name}</span> <span className="text-muted-foreground">{latest.comment}</span>
-              </p>
+        {!isUncategorized ? (
+          <div className="flex items-start gap-2 border-t pt-3">
+            {latest.length > 0 ? (
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                {latest.map((c) => (
+                  <p key={c.id} className="truncate text-sm" data-testid="sheet-comment">
+                    <span className="font-medium">{c.author.name}</span> <span className="text-muted-foreground">{c.comment}</span>
+                  </p>
+                ))}
+              </div>
             ) : (
-              <span className="flex-1" />
+              <p className="min-w-0 flex-1 text-sm text-muted-foreground" data-testid="sheet-no-comments">
+                {t('budgets.page.plan.comments.empty')}
+              </p>
             )}
-            <button type="button" className="shrink-0 text-sm font-medium text-primary hover:underline" onClick={onOpenComments}>
-              {comments.length > 0 ? t('budgets.page.plan.comments.disclosure', { count: comments.length }) : t('budgets.page.plan.comments.add')}
-            </button>
+            {canComment ? (
+              <button type="button" className="shrink-0 text-sm font-medium text-primary hover:underline" onClick={onOpenComments}>
+                {comments.length > 0 ? t('budgets.page.plan.comments.disclosure', { count: comments.length }) : t('budgets.page.plan.comments.add')}
+              </button>
+            ) : null}
           </div>
         ) : null}
         {canSetAmount || onShowTransactions ? (

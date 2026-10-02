@@ -301,7 +301,7 @@ it('a tablet tap on the budgeted amount opens the item sheet, whose Comments ope
   expect(within(row).queryByLabelText(/^comments /)).toBeNull()
   await user.click(within(row).getByRole('button', { name: 'details Food' }))
   const sheet = await screen.findByTestId('element-sheet')
-  expect(within(sheet).getByTestId('sheet-latest-comment')).toHaveTextContent('Trip to Lisbon')
+  expect(within(sheet).getByTestId('sheet-comment')).toHaveTextContent('Trip to Lisbon')
   await user.click(within(sheet).getByRole('button', { name: 'Comments (1)' }))
   expect(await screen.findByText('Trip to Lisbon', { selector: 'p' })).toBeInTheDocument()
   expect(screen.queryByTestId('element-sheet')).toBeNull()

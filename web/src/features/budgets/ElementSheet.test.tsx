@@ -65,10 +65,16 @@ it('explains a month over budget that carry-over still covers', () => {
   expect(screen.getByTestId('sheet-state')).toHaveTextContent('Over by 101.37 — covered by 750.69 left from earlier months')
 })
 
-it('names the overspend when Available is negative', () => {
+it('adds no sentence for an overspend: the red Available already says it', () => {
   const over: BudgetElementDto = { ...food, budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' }
   renderSheet({ target: { kind: 'expense', element: over } })
-  expect(screen.getByTestId('sheet-state')).toHaveTextContent('Overspent by 20.00')
+  expect(screen.queryByTestId('sheet-state')).toBeNull()
+  expect(screen.getByTestId('sheet-figure-available')).toHaveTextContent('-20.00')
+})
+
+it('centres each figure in its column', () => {
+  renderSheet()
+  expect(screen.getByTestId('sheet-figure-budget').className).toContain('text-center')
 })
 
 it('shows a dash for Spent and no state sentence in a future month', () => {
@@ -97,23 +103,33 @@ it('takes the rate note from the exchange it is given (a Plan column month)', ()
   expect(screen.getByTestId('sheet-rate')).toHaveTextContent(`Average rate for ${formatPlanMonth('2026-05-01', 'en')}: 1 USD = 0.5 EUR`)
 })
 
-it('previews the latest comment and links to the thread', async () => {
+it('previews the two latest comments, oldest first, and links to the thread', async () => {
   const props = renderSheet({
-    comments: [comment('c2', 'Back to 700 next month', '2026-07-20 09:00:00'), comment('c1', 'First', '2026-07-01 09:00:00')],
+    comments: [
+      comment('c3', 'Back to 700 next month', '2026-07-20 09:00:00'),
+      comment('c1', 'First', '2026-07-01 09:00:00'),
+      comment('c2', 'Second', '2026-07-10 09:00:00'),
+    ],
   })
-  expect(screen.getByTestId('sheet-latest-comment')).toHaveTextContent('Ada')
-  expect(screen.getByTestId('sheet-latest-comment')).toHaveTextContent('Back to 700 next month')
-  await userEvent.click(screen.getByRole('button', { name: 'Comments (2)' }))
+  const shown = screen.getAllByTestId('sheet-comment')
+  expect(shown).toHaveLength(2)
+  expect(shown[0]).toHaveTextContent('Ada Second')
+  expect(shown[1]).toHaveTextContent('Ada Back to 700 next month')
+  await userEvent.click(screen.getByRole('button', { name: 'Comments (3)' }))
   expect(props.onOpenComments).toHaveBeenCalled()
 })
 
-it('offers "Add comment" on an empty writable thread', () => {
+it('says there are no comments yet, in gray, and offers "Add comment" on a writable thread', () => {
   renderSheet()
+  const empty = screen.getByTestId('sheet-no-comments')
+  expect(empty).toHaveTextContent('No comments yet.')
+  expect(empty.className).toContain('text-muted-foreground')
   expect(screen.getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
 })
 
-it('hides the comments link when the thread is read-only and empty', () => {
+it('a read-only empty thread says so but offers no link', () => {
   renderSheet({ commentsReadOnly: true })
+  expect(screen.getByTestId('sheet-no-comments')).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Add comment' })).toBeNull()
 })
 

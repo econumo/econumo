@@ -1427,7 +1427,6 @@
       "sheet": {
         "received": "Отримано",
         "covered": "Перевищення на {over} — покрито за рахунок {carry}, що залишилися з попередніх місяців",
-        "overspent": "Перевищення на {amount}",
         "transactions": "Транзакції",
         "set_plan": "Задати план",
         "converted": "≈ {amount} {currency}"

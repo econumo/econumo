@@ -859,7 +859,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       opens in a popover beside it, ready for a first comment.
 - [ ] 📱 Tablet (640–1023 px), Budget view: tap a budgeted amount (editable or
       not, Archive rows included) or a Savings planned amount: the item sheet
-      opens ("Food · July": Budget, Spent, Available, latest comment,
+      opens ("Food · July": Budget, Spent, Available, the two latest comments,
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
       "Comments" replaces it with the thread. A savings row's sheet has no
@@ -868,7 +868,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and
       month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
-      for savings), latest comment, "Set budget" ("Set plan" for income),
+      for savings), the two latest comments, "Set budget" ("Set plan" for income),
       "Comments", and "Transactions" for expense rows. The sheet's month and
       any foreign-currency rate are the tapped column's. The corner marker still
       opens only the thread.
@@ -958,9 +958,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       always add up to the received total; an archived row's sheet has no
       "Set plan".
 - [ ] 📱 Tapping a row opens its item sheet ("Food · July"): Budget, Spent,
-      Available; "Over by … — covered by … left from earlier months" when
-      carry-over covers an overspend, "Overspent by …" when Available is
-      negative; the latest comment and "Comments (N)" (or "Add comment");
+      Available, each centred in its column; "Over by … — covered by … left
+      from earlier months" when carry-over covers an overspend (no sentence
+      when Available is negative: it shows in red); the two latest comments
+      (author and text) and "Comments (N)", or "No comments yet." in gray with
+      "Add comment";
       "Set budget" and "Transactions". A foreign-currency item adds its code to
       every amount, the amount in the budget currency, and the month's average
       rate.

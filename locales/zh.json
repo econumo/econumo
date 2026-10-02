@@ -1427,7 +1427,6 @@
       "sheet": {
         "received": "已收款",
         "covered": "超支 {over} — 由以前月份结转的 {carry} 覆盖",
-        "overspent": "超支 {amount}",
         "transactions": "交易",
         "set_plan": "设置计划",
         "converted": "≈ {amount} {currency}"
