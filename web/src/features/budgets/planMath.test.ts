@@ -6,7 +6,6 @@ import { sub } from '@/lib/decimal'
 import { fixtureWirePlan } from '@/test/fixtures'
 import {
   PLAN_ACTIONS_COL_PX,
-  PLAN_CURRENCY_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -112,17 +111,17 @@ describe('window math', () => {
 
   it('planVisibleCount: 3..12 fit, collapse below 3, cap at 12', () => {
     // Derived from the constants so widening a fixed column cannot silently drift.
-    // `fixed` is everything that is not a month: name + currency track + the row's
-    // px-2, plus the leading gap; `month` is a month column plus its own gap.
-    const fixed = PLAN_NAME_COL_PX + PLAN_CURRENCY_COL_PX + 16 + 4
+    // `fixed` is everything that is not a month: name + the row's px-2, plus the
+    // leading gap; `month` is a month column plus its own gap.
+    const fixed = PLAN_NAME_COL_PX + 16 + 4
     const month = PLAN_MIN_MONTH_COL_PX + 4
     expect(planVisibleCount(fixed + month * 2)).toBe(1) // only 2 fit -> mobile collapse
     expect(planVisibleCount(fixed + month * 3)).toBe(3)
     expect(planVisibleCount(fixed + month * 7 + 50)).toBe(7)
     expect(planVisibleCount(fixed + month * 40)).toBe(12)
 
-    // edit mode widens the tail by the actions slot; months must not be measured
-    // against space it takes, or they stretch and the window silently narrows
+    // edit mode adds the actions slot; months must not be measured against space it
+    // takes, or they stretch and the window silently narrows
     expect(planVisibleCount(fixed + month * 8, true)).toBe(7)
     expect(planVisibleCount(fixed + PLAN_ACTIONS_COL_PX + month * 8, true)).toBe(8)
     expect(planVisibleCount(fixed + month * 8)).toBe(8)

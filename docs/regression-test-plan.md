@@ -673,8 +673,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] **Plan sheet** 📱: spreadsheet grid renders months; inline edit of a
       planned amount; keyboard cell navigation (arrows), Excel-style
       fill-right by drag handle (desktop) and Shift+Arrow; month window
-      scrolling; hide-empty-rows toggle; transfers/balance totals rows show
-      tooltips.
+      scrolling; hide-empty-rows toggle; the Transfers line appears only when
+      money crossed the budget boundary in a visible month and shows the in/out
+      split as a tooltip; the Balance row shows tooltips. No amount carries a
+      currency symbol: the budget currency code sits at the left of the month
+      header, and a row in another currency has a code tag next to its name.
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and

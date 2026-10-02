@@ -44,6 +44,7 @@ import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
+import { CurrencyTag } from './CurrencyTag'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import {
@@ -82,7 +83,6 @@ import { METRICS, trackEvent } from '@/lib/metrics'
 import { SetLimitDialog } from './SetLimitDialog'
 import {
   PLAN_ACTIONS_COL_PX,
-  PLAN_CURRENCY_COL_PX,
   PLAN_MIN_MONTH_COL_PX,
   PLAN_NAME_COL_PX,
   addMonths,
@@ -511,6 +511,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
       <span className="truncate text-sm" title={displayName}>
         {displayName}
       </span>
+      {el.currencyId !== ctx.meta.currencyId && currency ? <CurrencyTag code={currency.code} /> : null}
     </>
   )
 
@@ -664,12 +665,8 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
             </CellShell>
           )
         })}
-        {/* trailing track: currency, then the actions menu in edit mode — the budget
-            table's geometry. Uncategorized has neither but still occupies the track. */}
-        <div className="flex items-center justify-end gap-1">
-          <span className="w-6 text-center text-xs text-muted-foreground">
-            {isUncategorized ? null : currency?.symbol}
-          </span>
+        {/* trailing track: the actions menu in edit mode */}
+        <div className="flex items-center justify-end">
           {ctx.editMode && !isUncategorized ? <RowMenu el={el} ctx={ctx} /> : null}
         </div>
       </div>
@@ -935,7 +932,14 @@ function PlanTotals({
 }) {
   const { t } = useTranslation()
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
-  const specs = showSavings ? [...TOTALS_ROWS, SAVINGS_TOTALS_ROW] : TOTALS_ROWS
+  // the Transfers line only earns its row when some visible month actually moved
+  // money across the budget boundary — a window with nothing to show has nothing to say
+  const transfersInView = visibleMonths.some((m) => {
+    const idx = monthIndex(m)
+    const row = idx >= 0 ? totals[idx] : undefined
+    return row !== undefined && !(isZero(row.transfersIn) && isZero(row.transfersOut))
+  })
+  const specs = [...TOTALS_ROWS.filter((s) => s.key !== 'transfers' || transfersInView), ...(showSavings ? [SAVINGS_TOTALS_ROW] : [])]
   return (
     <div role="rowgroup" className="mt-2 flex flex-col border-t" data-testid="plan-totals">
       {specs.map((spec) => (
@@ -1365,11 +1369,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     const label = periodLabeler(i18n.language)
     return (m: string) => label(monthDate(m))
   }, [i18n.language])
-  // A trailing track closes every row with the element's currency and, in edit mode,
-  // its actions menu — the budget table's geometry. Every grid consumer (rows, month
-  // header, totals, balance) shares this string, so they gain the column together and
-  // stay aligned.
-  const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
+  // The trailing track holds the actions menu in edit mode. Every grid consumer (rows,
+  // month header, totals, balance) shares this string, so they gain the column together
+  // and stay aligned.
+  const tailPx = editMode ? PLAN_ACTIONS_COL_PX : 0
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
@@ -2100,6 +2103,10 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       <div role="rowgroup">
         <div role="row" className="grid items-center bg-background" style={{ gridTemplateColumns: gridCols }}>
           <div className="flex items-center gap-1 px-2">
+            <span data-testid="plan-currency-code" className="text-xs uppercase tracking-wide text-muted-foreground">
+              {planCurrency?.code}
+            </span>
+            <span className="flex-1" />
             <Button
               type="button"
               variant="ghost"

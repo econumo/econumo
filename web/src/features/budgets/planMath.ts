@@ -45,20 +45,19 @@ export function formatPlanMonth(m: string, lang: string, now?: Date): string {
 
 export const PLAN_NAME_COL_PX = 210
 export const PLAN_MIN_MONTH_COL_PX = 110
-/** the trailing track closing every row: the currency symbol always, plus the actions
- *  menu in edit mode. Months must not be measured against space it occupies, or they
- *  stretch and the visible window silently narrows. */
-export const PLAN_CURRENCY_COL_PX = 24
+/** the trailing track: the actions menu in edit mode, nothing otherwise. Months must
+ *  not be measured against space it occupies, or they stretch and the visible window
+ *  silently narrows. */
 export const PLAN_ACTIONS_COL_PX = 32
 
 /** the row's own chrome the grid template does not describe: px-2 either side, plus a
  *  gap-1 between every track. Ignoring it made the row wider than its container, which
- *  is what produced a horizontal scrollbar once the currency track was added. */
+ *  is what produced a horizontal scrollbar. */
 const PLAN_ROW_PADDING_PX = 16
 const PLAN_TRACK_GAP_PX = 4
 
 export function planVisibleCount(containerWidthPx: number, editMode = false): number {
-  const tail = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
+  const tail = editMode ? PLAN_ACTIONS_COL_PX : 0
   const fixed = PLAN_NAME_COL_PX + tail + PLAN_ROW_PADDING_PX
   // n months means n + 2 tracks (name + months + tail), so n + 1 gaps
   const perMonth = PLAN_MIN_MONTH_COL_PX + PLAN_TRACK_GAP_PX

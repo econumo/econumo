@@ -2500,25 +2500,23 @@ it('measures the grid with a callback ref so the loader cannot skip the measurem
   }
 })
 
-it('closes every row with the currency, then the actions menu in edit mode', async () => {
+it('leaves the trailing track empty at rest, and gives it only the actions menu in edit mode', async () => {
   usePlanHandlers()
   const user = userEvent.setup()
   renderPage()
   await screen.findByTestId('plan-sheet')
 
-  // the currency closes the row at rest — the name cell no longer carries it
+  // at rest the trailing track carries nothing — no currency symbol lives there anymore
   const row = screen.getByTestId('plan-cell-pe1:0').closest('[role="row"]')!
-  expect(row.querySelector('[role="gridcell"]')!.textContent).not.toContain('$')
-  expect(row.lastElementChild!.textContent).toContain('$')
+  expect(row.lastElementChild!.textContent).toBe('')
 
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   await user.click(await screen.findByRole('menuitem', { name: 'Edit structure' }))
   const menu = await screen.findByRole('button', { name: 'element actions Living' })
 
-  // the menu joins the currency in that same trailing track, not the name cell
+  // the menu is the trailing track's only occupant, not the name cell
   const editRow = menu.closest('[role="row"]')!
   expect(editRow.lastElementChild).toContainElement(menu)
-  expect(editRow.lastElementChild!.textContent).toContain('$')
   expect(menu.closest('[role="gridcell"]')).toBeNull()
 })
 
@@ -2816,4 +2814,53 @@ it('rejects a too-short folder name inline instead of letting the server refuse 
 
   expect(await within(dialog).findByText('Folder name must be 3-64 characters')).toBeInTheDocument()
   expect(called).toBe(false)
+})
+
+it('names the budget currency once and shows no currency symbols', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  const sheet = await screen.findByTestId('plan-sheet')
+  await waitFor(() => expect(screen.getByTestId('plan-currency-code')).toHaveTextContent('USD'))
+  expect(sheet).not.toHaveTextContent('$')
+  expect(sheet).not.toHaveTextContent('€')
+})
+
+it('tags the foreign-currency plan row', async () => {
+  usePlanHandlers()
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const eurRow = document.querySelector('[data-row-id="env-eur:0"]') as HTMLElement
+  await waitFor(() => expect(within(eurRow).getByTestId('currency-tag')).toHaveTextContent('EUR'))
+  const foodRow = document.querySelector('[data-row-id="cat-food:1"]') as HTMLElement
+  expect(within(foodRow).queryByTestId('currency-tag')).not.toBeInTheDocument()
+})
+
+it('hides the transfers line only when nothing crossed in the window', async () => {
+  usePlanHandlers()
+  // window from July: the fixture's only transfers are in June
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-07-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  const totals = screen.getByTestId('plan-totals')
+  expect(within(totals).queryByText('Transfers')).not.toBeInTheDocument()
+  // back one month: June is in view again
+  await userEvent.setup().click(screen.getByRole('button', { name: 'Earlier months' }))
+  await waitFor(() => expect(within(screen.getByTestId('plan-totals')).getByText('Transfers')).toBeInTheDocument())
+})
+
+it('keeps the transfers line when in and out cancel out to a net zero', async () => {
+  const planWithNetZeroTransfer = {
+    ...fixtureWirePlan,
+    transfers: fixtureWirePlan.transfers.map((t) => (t.period === '2026-06-01' ? { period: t.period, items: [{ currencyId: 'cur-usd', in: '50', out: '50' }] } : t)),
+  }
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(planWithNetZeroTransfer),
+  )
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  renderPage()
+  await screen.findByTestId('plan-sheet')
+  expect(within(screen.getByTestId('plan-totals')).getByText('Transfers')).toBeInTheDocument()
 })
