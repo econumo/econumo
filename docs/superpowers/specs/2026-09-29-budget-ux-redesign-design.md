@@ -107,9 +107,9 @@ it on a phone (URLs keep working; no redirect).
 - **Month strip:** the Budget view's scrollable `PeriodStrip`. Past, current and
   future months share the screen.
 - **Section headings** *(revised 2026-10-01 — Dmitry)*: income and savings share
-  one card under a `PLANNED · ACTUAL` heading; `EXPENSES · BUDGET · SPENT` heads
-  the expense folders. The budget currency is no longer spelled out on the
-  phone; foreign-currency items keep their tag.
+  one card under a `USD · PLANNED · ACTUAL` heading (the budget currency named
+  once, at its left); `EXPENSES · BUDGET · SPENT` heads the expense folders,
+  set apart by a wider gap. Foreign-currency items keep their tag.
 - **Income** (a line of the shared card, collapsed by default, fold state kept):
   `Income` with the planned and received sums. Expands into the income rows (same row
   component; labels Planned / Received in the sheet). The income "Uncategorized"

@@ -48,15 +48,17 @@ beforeEach(() => {
 it('heads income and savings with one Planned · Actual row and the expenses with Expenses · Budget · Spent', () => {
   renderView()
   const flows = screen.getByTestId('phone-heading-flows')
-  expect(flows).toHaveTextContent(/^PlannedActual$/)
+  // the budget currency is named once, at the left of the top heading
+  expect(flows).toHaveTextContent(/^USDPlannedActual$/)
+  expect(screen.getAllByText('USD')).toHaveLength(1)
   const expenses = screen.getByTestId('phone-heading-expenses')
   expect(expenses).toHaveTextContent(/^ExpensesBudgetSpent$/)
+  // a wider gap sets the expenses apart from the income/savings card
+  expect(expenses.className).toContain('mt-3')
   // the headings sit right above their cards
   expect(flows.nextElementSibling).toBe(screen.getByTestId('phone-flows'))
   expect(screen.getByTestId('phone-flows').nextElementSibling).toBe(expenses)
   expect(expenses.nextElementSibling).toBe(screen.getByTestId('phone-folder-bf1'))
-  // the budget currency is no longer spelled out; foreign items keep their tag
-  expect(screen.queryByText('USD')).toBeNull()
 })
 
 it('the income line names itself inside the shared card', () => {

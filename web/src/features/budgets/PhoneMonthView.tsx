@@ -125,9 +125,9 @@ function Card({ testId, header, children }: { testId: string; header?: ReactNode
 
 // a section's column labels, above its cards: the section name stands where the
 // currency code used to, and each section names its own two figures
-function SectionHeading({ testId, name, first, second }: { testId: string; name: string; first: string; second: string }) {
+function SectionHeading({ testId, name, first, second, className = '' }: { testId: string; name: string; first: string; second: string; className?: string }) {
   return (
-    <div className={`${GRID} px-3 text-[11px] uppercase tracking-wide text-muted-foreground`} data-testid={testId}>
+    <div className={`${GRID} px-3 text-[11px] uppercase tracking-wide text-muted-foreground ${className}`} data-testid={testId}>
       <span className="truncate">{name}</span>
       <span className="text-right">{first}</span>
       <span className="text-right">{second}</span>
@@ -362,7 +362,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         // line each, folded by default, so the money coming in and set aside costs
         // two rows above the expenses
         <>
-          <SectionHeading testId="phone-heading-flows" name="" first={t('budgets.page.savings.planned')} second={t('budgets.page.phone.actual')} />
+          <SectionHeading testId="phone-heading-flows" name={currencyOf(base)?.code ?? ''} first={t('budgets.page.savings.planned')} second={t('budgets.page.phone.actual')} />
           <Card testId="phone-flows">
             {planMonth ? (
               <>
@@ -396,6 +396,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         </>
       ) : null}
       <SectionHeading
+        className={showFlows ? 'mt-3' : ''}
         testId="phone-heading-expenses"
         name={t('budgets.page.plan.totals.expenses')}
         first={t('budgets.page.budget.structure.tab.budgeted')}
