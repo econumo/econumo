@@ -1300,7 +1300,6 @@
           }
         },
         "structure": {
-          "no_folder": "Dossier par défaut",
           "in_archive": "Archivés",
           "carry_over_hint": "Restant des mois précédents",
           "tab": {

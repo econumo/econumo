@@ -13,6 +13,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
+import { CurrencyTag } from './CurrencyTag'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
@@ -77,7 +78,7 @@ export function AvailablePill({ available, currency, testId }: { available: stri
   )
 }
 
-function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats; currency: CurrencyDto | undefined; hideSymbol?: boolean }) {
+function StatCells({ stats, currency }: { stats: BucketStats; currency: CurrencyDto | undefined }) {
   const opts = cellOpts(currency)
   const available = stats.available
   return (
@@ -87,7 +88,6 @@ function StatCells({ stats, currency, hideSymbol = false }: { stats: BucketStats
       <span className={`w-20 text-center tabular-nums sm:w-24 ${cmp(available, '0') >= 0 ? 'text-income' : 'text-expense'}`}>
         {moneyFormat(available, currency, opts)}
       </span>
-      {hideSymbol ? null : <span className="hidden w-6 text-center sm:block">{currency?.symbol}</span>}
     </span>
   )
 }
@@ -120,6 +120,12 @@ export function InfoNote({ text, testId }: { text: string; testId: string }) {
    one must pad the slot or its amount columns drift out of alignment */
 function ActionsSpacer() {
   return <span data-testid="actions-spacer" className="w-8 shrink-0" />
+}
+
+/* edit mode puts the folder header's "+" in this slot, so every other row pads it
+   to keep the amount columns aligned */
+function EditSlot() {
+  return <span data-testid="edit-slot" className="hidden w-6 shrink-0 sm:block" />
 }
 
 function ElementRow({
@@ -157,6 +163,7 @@ function ElementRow({
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
   const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
+  const tag = element.currencyId && element.currencyId !== budget.meta.currencyId ? currency?.code : undefined
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
@@ -205,6 +212,7 @@ function ElementRow({
       <span className="truncate text-[15px]" title={displayName}>
         {displayName}
       </span>
+      {tag ? <CurrencyTag code={tag} /> : null}
       {isUncategorized ? <InfoNote text={t('budgets.page.budget.structure.uncategorized.info')} testId="budget-uncategorized-info-note" /> : null}
     </>
   )
@@ -290,7 +298,7 @@ function ElementRow({
             <AvailablePill available={available} currency={currency} testId="cell-available" />
           )}
         </span>
-        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
+        {actionsColumn ? <EditSlot /> : null}
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
       {expandable && unfolded ? (
@@ -316,7 +324,7 @@ function ElementRow({
                   {spentCell({ id: child.id, type: child.type, name: childDisplayName, icon: child.icon, currencyId: element.currencyId, parent: { id: element.id, type: element.type } }, child.spent)}
                 </span>
                 <span className="w-20 sm:w-24" />
-                <span className="hidden w-6 sm:block" />
+                {actionsColumn ? <EditSlot /> : null}
                 {actionsColumn ? <ActionsSpacer /> : null}
               </li>
             )
@@ -329,10 +337,10 @@ function ElementRow({
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
 
-/** one reporting tag: the same [name flex-1][budgeted w-24][spent w-20/24][available w-20/24][symbol w-6]
- *  geometry as ElementRow, so the amount lands under the Spent header and gets
- *  a currency symbol like every neighbouring row -- a label has only one
- *  amount, so budgeted/available render as the same empty-cell dash Uncategorized uses */
+/** one reporting tag: the same [name flex-1][budgeted w-24][spent w-20/24][available w-20/24]
+ *  geometry as ElementRow, so the amount lands under the Spent header -- a label
+ *  has only one amount, so budgeted/available render as the same empty-cell dash
+ *  Uncategorized uses */
 function LabelRow({
   label,
   currency,
@@ -417,7 +425,6 @@ function LabelRow({
           {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent)}
         </span>
         <span className="flex w-20 justify-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
-        <span className="hidden w-6 text-center text-xs text-muted-foreground sm:block">{currency?.symbol}</span>
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">
@@ -450,7 +457,6 @@ function LabelRow({
                   )}
                 </span>
                 <span className="w-20 sm:w-24" />
-                <span className="hidden w-6 sm:block" />
               </li>
             )
           })}
@@ -516,7 +522,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const realFolders = buckets.withFolder
   const sections: { key: string; name: string; bucket: FolderBucket; folderIndex: number | null }[] = [
     ...realFolders.map((bucket, index) => ({ key: bucket.folder!.id, name: bucket.folder!.name, bucket, folderIndex: index })),
-    { key: '__no_folder__', name: t('budgets.page.budget.structure.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
+    { key: '__no_folder__', name: t('budgets.page.plan.menu.no_folder'), bucket: buckets.withoutFolder, folderIndex: null },
     { key: '__uncategorized__', name: t('common.uncategorized'), bucket: buckets.uncategorized, folderIndex: null },
     { key: '__archive__', name: t('budgets.page.budget.structure.in_archive'), bucket: buckets.archive, folderIndex: null },
   ]
@@ -524,12 +530,16 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   return (
     <div className="flex flex-col gap-3" data-testid="budget-table">
       <div className="flex items-center gap-1.5 px-3 text-[11px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:px-4" data-testid="column-headers">
-        <span className="min-w-0 flex-1" />
+        <span className="min-w-0 flex-1 truncate">{budgetCurrency?.code}</span>
         <span className="hidden w-24 text-right sm:block">{t('budgets.page.budget.structure.tab.budgeted')}</span>
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.spent')}</span>
         <span className="w-20 text-center sm:w-24">{t('budgets.page.budget.structure.tab.available')}</span>
-        <span className="hidden w-6 sm:block" />
-        {actionsColumn ? <ActionsSpacer /> : null}
+        {actionsColumn ? (
+          <>
+            <EditSlot />
+            <ActionsSpacer />
+          </>
+        ) : null}
       </div>
 
       {sections.flatMap((section) => {
@@ -577,7 +587,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         }
         if (section.bucket.elements.length === 0 && section.folderIndex === null) {
           // both read-only sections hide when they have nothing to show; the
-          // empty Default folder survives only in edit mode (folder actions
+          // empty No folder bucket survives only in edit mode (folder actions
           // present), where it is the drop target for dragging elements out
           if (isReadOnlySection || realFolders.length === 0 || !renderFolderActions) {
             return []
@@ -590,16 +600,14 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
               <span className="min-w-0 flex-1 truncate text-sm font-medium" title={section.name}>
                 {section.name}
               </span>
-              {section.bucket.elements.length > 0 ? (
-                <StatCells
-                  stats={section.bucket.stats}
-                  currency={budgetCurrency}
-                  // edit mode: the plus button takes the symbol slot instead
-                  hideSymbol={!isReadOnlySection && !!renderFolderActions}
-                />
-              ) : null}
+              {section.bucket.elements.length > 0 ? <StatCells stats={section.bucket.stats} currency={budgetCurrency} /> : null}
               {!isReadOnlySection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
-              {isReadOnlySection && actionsColumn ? <ActionsSpacer /> : null}
+              {isReadOnlySection && actionsColumn ? (
+                <>
+                  <EditSlot />
+                  <ActionsSpacer />
+                </>
+              ) : null}
             </header>
             {hideContents ? null : section.bucket.elements.length === 0 ? (
               <p className="px-2 py-1 text-xs text-muted-foreground">{t('budgets.page.budget.structure.empty_folder.note')}</p>
@@ -687,8 +695,12 @@ export function BudgetTotals({
         <span className="flex w-24 justify-center">
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
-        <span className="w-6 text-center text-xs text-muted-foreground">{budgetCurrency?.symbol}</span>
-        {actionsColumn ? <ActionsSpacer /> : null}
+        {actionsColumn ? (
+          <>
+            <EditSlot />
+            <ActionsSpacer />
+          </>
+        ) : null}
       </div>
 
       {/* the phone table hides the budget column, so the totals unfold into

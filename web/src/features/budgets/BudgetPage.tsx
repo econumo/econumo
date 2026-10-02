@@ -576,13 +576,14 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     </CellShell>
   )
 
-  // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
-  // columns line up with the element rows; folder ordering moved to dragging.
+  // In edit mode the plus takes the w-6 slot every row pads (EditSlot in
+  // BudgetTable), so the stat columns line up with the element rows; folder
+  // ordering moved to dragging.
   const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
     if (!editMode) {
       return null
     }
-    const name = bucket.folder?.name ?? t('budgets.page.budget.structure.no_folder')
+    const name = bucket.folder?.name ?? t('budgets.page.plan.menu.no_folder')
     const plus = (
       <Button
         type="button"
@@ -825,7 +826,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                     hideChildren={dragInProgress}
                     hideContents={draggingFolderId !== null}
                     renderFolderHandle={editMode ? (bucket) => (bucket.folder ? <FolderGrip name={bucket.folder.name} /> : null) : undefined}
-                    // only in edit mode — its presence also swaps the folder currency symbol for the plus slot
+                    // only in edit mode
                     renderFolderActions={editMode ? folderActions : undefined}
                     renderActions={editMode ? elementActions : undefined}
                     renderBudgetCell={inlineLimitEditor}

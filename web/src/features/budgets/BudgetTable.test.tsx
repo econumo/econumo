@@ -54,7 +54,7 @@ it('renders column headers, folder, default and archived sections with aligned s
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('45.50')
   expect(within(essentials).getByTestId('stat-line')).not.toHaveTextContent('-45.50')
   expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('354.50')
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).getByText('Living')).toBeInTheDocument()
   // the only archived element is all-zero, so the whole Archived section hides
   expect(screen.queryByTestId('budget-folder-Archived')).not.toBeInTheDocument()
@@ -69,15 +69,15 @@ it('archived elements with a nonzero number stay listed; all-zero ones hide', as
   expect(within(archive).queryByText('zzz-archived')).not.toBeInTheDocument()
 })
 
-it('an empty Default folder hides outside edit mode', async () => {
+it('an empty No folder hides outside edit mode', async () => {
   renderTable((budget) => {
     budget.structure.elements[1].folderId = 'bf1'
   })
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.queryByTestId('budget-folder-Default folder')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('budget-folder-No folder')).not.toBeInTheDocument()
 })
 
-it('edit mode keeps the empty Default folder as a drop target', async () => {
+it('edit mode keeps the empty No folder as a drop target', async () => {
   renderTable(
     (budget) => {
       budget.structure.elements[1].folderId = 'bf1'
@@ -85,7 +85,7 @@ it('edit mode keeps the empty Default folder as a drop target', async () => {
     { renderFolderActions: () => null } as never,
   )
   await screen.findByTestId('budget-folder-Essentials')
-  expect(screen.getByTestId('budget-folder-Default folder')).toBeInTheDocument()
+  expect(screen.getByTestId('budget-folder-No folder')).toBeInTheDocument()
 })
 
 it('shows spent as-is and available+budgeted as a sign-colored pill', async () => {
@@ -359,7 +359,7 @@ it('Uncategorized lives in its own section, not the no-folder one', async () => 
   const section = await screen.findByTestId('budget-folder-Uncategorized')
   expect(within(section).getByTestId(`element-${UNCATEGORIZED_ID}`)).toBeInTheDocument()
   // the no-folder section keeps its own rows and does NOT hold Uncategorized
-  const noFolder = screen.getByTestId('budget-folder-Default folder')
+  const noFolder = screen.getByTestId('budget-folder-No folder')
   expect(within(noFolder).queryByTestId(`element-${UNCATEGORIZED_ID}`)).not.toBeInTheDocument()
   expect(within(noFolder).getByTestId('element-env-1')).toBeInTheDocument()
 })
@@ -623,4 +623,41 @@ it('shows no carry-over when earlier months left nothing, and a negative one in 
   const debt = within(screen.getByTestId('element-env-1')).getByTestId('cell-carry')
   await waitFor(() => expect(debt).toHaveTextContent('-30.00 +'))
   expect(debt.className).toContain('text-expense')
+})
+
+it('names the budget currency once and shows no currency symbols', async () => {
+  renderTable()
+  await screen.findByTestId('budget-folder-Essentials')
+  await waitFor(() => expect(screen.getByTestId('column-headers')).toHaveTextContent('USD'))
+  const table = screen.getByTestId('budget-table')
+  expect(table).not.toHaveTextContent('$')
+  expect(table).not.toHaveTextContent('€')
+})
+
+it('tags a foreign-currency element with its code', async () => {
+  renderTable()
+  const living = await screen.findByTestId('element-env-1')
+  await waitFor(() => expect(within(living).getByTestId('currency-tag')).toHaveTextContent('EUR'))
+  expect(within(screen.getByTestId('element-cat-food')).queryByTestId('currency-tag')).not.toBeInTheDocument()
+  // the folder line is already converted to the budget currency: no tag there
+  const noFolder = screen.getByTestId('budget-folder-No folder')
+  expect(within(within(noFolder).getByTestId('stat-line')).queryByTestId('currency-tag')).not.toBeInTheDocument()
+})
+
+it('edit mode pads the "+" slot on every row', async () => {
+  renderTable(undefined, {
+    renderActions: () => <button type="button">actions</button>,
+    renderFolderActions: () => <span />,
+  })
+  const food = await screen.findByTestId('element-cat-food')
+  expect(within(food).getAllByTestId('edit-slot')).toHaveLength(1)
+  expect(within(screen.getByTestId('element-env-1')).getAllByTestId('edit-slot')).toHaveLength(1)
+  expect(within(screen.getByTestId('column-headers')).getAllByTestId('edit-slot')).toHaveLength(1)
+  expect(within(screen.getByTestId('budget-totals')).getAllByTestId('edit-slot')).toHaveLength(1)
+})
+
+it('outside edit mode there is no "+" slot', async () => {
+  renderTable()
+  await screen.findByTestId('element-cat-food')
+  expect(screen.queryByTestId('edit-slot')).not.toBeInTheDocument()
 })

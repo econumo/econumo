@@ -644,6 +644,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       edge keeps extending the window (past months included).
 - [ ] 📱 The budget header shows no currency chips on /budget or /plan, and
       no "Spending progress" widget appears anywhere on the page.
+- [ ] 📱 Budget view (desktop and tablet): no amount carries a currency
+      symbol; the budget currency code (e.g. "USD") sits once at the left of
+      the column headings. An envelope in another currency shows a small code
+      tag next to its name ("Travel EUR") and its amounts in that currency;
+      folder lines and the Total stay in the budget currency. Items outside
+      any folder are listed under "No folder". In Edit structure mode the
+      folder "+" buttons and the row menus keep every amount column aligned.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
       envelope), delete folder; leaving the mode persists the layout.

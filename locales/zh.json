@@ -1300,7 +1300,6 @@
           }
         },
         "structure": {
-          "no_folder": "默认文件夹",
           "in_archive": "已归档",
           "carry_over_hint": "以前月份结转",
           "tab": {
