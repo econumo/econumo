@@ -394,8 +394,9 @@ type PlanMonthRatesResult struct {
 }
 
 // PlanSavingsElementResult is one savings account's plan row. Cells align with
-// BudgetPlanResult.Months; Actual is money moved in from the everyday accounts,
-// in CurrencyId (the element currency); Planned is "" with no limit.
+// BudgetPlanResult.Months; Actual is the account's net change that month (every
+// transaction on it, interest and transfers with any account included), in
+// CurrencyId (the element currency); Planned is "" with no limit.
 type PlanSavingsElementResult struct {
 	Id          string                  `json:"id"`
 	Type        int                     `json:"type"`
@@ -418,8 +419,8 @@ type PlanSavingsCellResult struct {
 
 // PlanSavingsFlowResult is one (month, account currency) net change of the
 // savings accounts: every transaction on them, interest and boundary transfers
-// included, so it deliberately exceeds the Savings row, which counts only what
-// was moved in from the everyday accounts.
+// included — the same figure as the Savings rows' actuals, unconverted and
+// grouped by account currency.
 type PlanSavingsFlowResult struct {
 	Month      string `json:"month"`
 	CurrencyId string `json:"currencyId"`

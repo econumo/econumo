@@ -252,9 +252,9 @@ export interface PlanOpeningBalanceDto {
 }
 
 /** one (month, account currency) net change of the savings accounts: every
- *  transaction on them, interest included, so it exceeds the savings rows,
- *  which count only what moved in from everyday accounts. Only pairs with
- *  activity are listed; amounts are unconverted. */
+ *  transaction on them, interest included — the savings rows' actuals, grouped
+ *  by account currency. Only pairs with activity are listed; amounts are
+ *  unconverted. */
 export interface PlanSavingsFlowDto {
   /** date-only Y-m-d, first of the month */
   month: string

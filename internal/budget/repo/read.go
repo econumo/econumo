@@ -818,65 +818,6 @@ func (r *ReadRepo) transfersByMonthSQL(out bool, accountIDs []vo.Id, from, to ti
 	return sql, args
 }
 
-// SavingsByMonth implements ReadModel: one grouped query per direction, merged
-// per (account, month) as in - out.
-func (r *ReadRepo) SavingsByMonth(ctx context.Context, savingsIDs, everydayIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
-	if len(savingsIDs) == 0 || len(everydayIDs) == 0 {
-		return nil, nil
-	}
-	merged := map[string]vo.DecimalNumber{}
-	keys := map[string]model.SavingsMonthRow{}
-	for _, out := range []bool{false, true} {
-		sql, args := r.savingsByMonthSQL(out, savingsIDs, everydayIDs, from, to)
-		rows, err := r.monthAccountAmounts(ctx, sql, args)
-		if err != nil {
-			return nil, err
-		}
-		for _, row := range rows {
-			k := row.Month + "|" + row.AccountID
-			acc, ok := merged[k]
-			if !ok {
-				acc = vo.NewDecimal("0")
-			}
-			amt := vo.NewDecimal(row.Amount)
-			if out {
-				acc = acc.Sub(amt)
-			} else {
-				acc = acc.Add(amt)
-			}
-			merged[k] = acc
-			keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
-		}
-	}
-	return sortedSavingsRows(merged, keys), nil
-}
-
-// savingsByMonthSQL: out=false sums amount_recipient of everyday -> savings
-// transfers (grouped by the recipient); out=true sums amount of savings ->
-// everyday transfers (grouped by the source).
-func (r *ReadRepo) savingsByMonthSQL(out bool, savingsIDs, everydayIDs []vo.Id, from, to time.Time) (string, []any) {
-	amountCol, savingsCol, everydayCol := "t.amount_recipient", "t.account_recipient_id", "t.account_id"
-	if out {
-		amountCol, savingsCol, everydayCol = "t.amount", "t.account_id", "t.account_recipient_id"
-	}
-	s, e := idArgs(savingsIDs), idArgs(everydayIDs)
-	args := append(append([]any{}, s...), e...)
-	dStart, dEnd := "?", "?"
-	if r.driver == "postgresql" {
-		dStart = "$" + itoa(1+len(s)+len(e))
-		dEnd = "$" + itoa(2+len(s)+len(e))
-		args = append(args, from, to)
-	} else {
-		// See sqliteDatetime.
-		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
-	}
-	month := r.planMonthExpr("t.spent_at")
-	sql := "SELECT " + month + " as month, " + savingsCol + " as account_id, SUM(" + amountCol + ") as amount FROM transactions t WHERE t.type = 2 AND " +
-		savingsCol + " IN (" + r.ph(1, len(s)) + ") AND " + everydayCol + " IN (" + r.ph(1+len(s), len(e)) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
-		" GROUP BY month, " + savingsCol
-	return sql, args
-}
-
 // AccountsNetByMonth implements ReadModel. The sign rules are balanceSQL's,
 // bucketed by month.
 func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {

@@ -21,7 +21,7 @@ be planned.
 
 | Question | Decision |
 |---|---|
-| What is "actual saved"? | **Net money moved in**: transfers from the budget's everyday member accounts into a savings account, minus withdrawals back to them. Interest/gains are not "saved". |
+| What is "actual saved"? | *(2026-10-02, supersedes the original)* **The account's whole net change**: income − expenses + transfers in − transfers out, every counterparty (everyday members, non-members, other savings accounts). Interest and fees count. Originally only everyday↔savings transfers counted, which hid real savings booked any other way. |
 | Granularity | **One row per savings account** that is a member of the budget. |
 | Effect on totals | **Savings is an outflow**: Net = Income − Expenses + Transfers − Savings; balance splits into everyday **Balance** and **Savings balance**. |
 | Views | **Both** the Plan view (`/plan`) and the monthly Budget view. |
@@ -497,3 +497,19 @@ visible rows — is implemented as designed.
 1. **The plan view keeps `effectiveNet` as the combined-balance contribution only**;
    no separate "Net" row is rendered in the UI. Net = Income − Expenses + Transfers
    − Savings is spec math backing the balance split, not a row a caller sees.
+
+## Revision 2026-10-02 — Saved counts every transaction
+
+User report: real savings were missing from the Saved / Actual figures, because only
+everyday↔savings transfers counted. "Actual savings" is now the savings account's
+whole net change in the month — `AccountsNetByMonth`, the query `savingsFlows` and
+the closing balances already used — and `SavingsByMonth` is gone. Consequences:
+
+- Interest, fees, transfers with non-member accounts, and moves between two savings
+  accounts all move the row (a TFSA→RRSP move lowers one row and raises the other;
+  the Savings line total is unchanged).
+- The Savings rows' actuals now equal `savingsFlows`, so Net = Income − Expenses +
+  Transfers − Savings is exactly the everyday accounts' change: interest on a
+  savings account is income AND saved, so it leaves the everyday Balance alone.
+- The "Savings balance rises by more than Saved" divergence described under
+  *Wire: get-budget-plan* no longer exists.
