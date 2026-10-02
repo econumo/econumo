@@ -683,6 +683,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       is blank (not 0.00) and clicking it still opens the editor. An expense
       actual is red only when it is over the plan; nothing turns green. The
       current month's column has a light tint.
+- [ ] Plan grid (desktop): clicking a month's actual opens that month's
+      transactions for the row, the Uncategorized rows included; a zero
+      actual, a future month and a savings row are not links. 📱 On a tablet a
+      tap on an Uncategorized cell with spending opens its transactions (other
+      cells open the item sheet).
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and

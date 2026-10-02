@@ -233,6 +233,8 @@ interface GridCtx {
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
   /** touch viewports: a cell tap opens the item sheet */
   openSheet: (target: PlanLimitTarget) => void
+  /** the month's transaction list for a row (desktop: the actual is a link; touch: the Uncategorized cell) */
+  openTransactions: (el: PlanElementDto, month: string) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
   /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
   commentsTruncated: boolean
@@ -581,18 +583,36 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}${m === ctx.cur && !filled ? ` ${PLAN_CURRENT_MONTH_TINT}` : ''}`}
               onClick={(e) => {
                 ctx.select(rk, i, e)
-                // touch: the whole cell opens the item sheet; the marker stops its own click
-                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
-                  ctx.openSheet(target)
+                // touch: the cell opens the item sheet — or, for Uncategorized (no sheet), its transactions; the marker stops its own click
+                if (ctx.isCompact && !ctx.editMode && idx >= 0) {
+                  if (!isUncategorized) {
+                    ctx.openSheet(target)
+                  } else if (cell && !isZero(cell.actual)) {
+                    ctx.openTransactions(el, m)
+                  }
                 }
               }}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {future ? null : (
+              {future ? null : ctx.isCompact || ctx.editMode || !cell || isZero(cell.actual) || el.type === BudgetElementType.SAVINGS ? (
                 <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {actualText}
                 </span>
+              ) : (
+                <button
+                  type="button"
+                  data-testid="cell-actual"
+                  title={t('budgets.page.budget.structure.element.action.show_transactions')}
+                  aria-label={`transactions ${displayName} ${ctx.monthLabel(m)}`}
+                  className={`text-xs underline-offset-2 hover:underline ${overspend ? 'text-destructive' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    ctx.openTransactions(el, m)
+                  }}
+                >
+                  {actualText}
+                </button>
               )}
               <span data-testid="cell-planned" className="text-sm">
                 {ctx.isCompact ? (
@@ -1538,6 +1558,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       monthLabel,
       commit,
       openSheet,
+      openTransactions,
       commentsByCell,
       commentsTruncated,
       openComments,
@@ -1574,6 +1595,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     isCompact,
     monthLabel,
     commit,
+    openTransactions,
     commentsByCell,
     commentsTruncated,
     openComments,

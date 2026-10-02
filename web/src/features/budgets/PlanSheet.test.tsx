@@ -2048,6 +2048,61 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
   expect(within(screen.getByTestId('plan-totals')).queryByText('Uncategorized')).not.toBeInTheDocument()
 })
 
+it("desktop: an actual opens that month's transactions, the Uncategorized row included", async () => {
+  usePlanHandlers()
+  server.use(http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  const user = userEvent.setup()
+  // the expense Uncategorized row: May actual 10
+  const uncatRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
+  await user.click(within(uncatRow).getAllByRole('button', { name: /^transactions /i })[0])
+  const dialog = await screen.findByRole('dialog')
+  expect(dialog).toHaveTextContent('Uncategorized')
+})
+
+it('desktop: a zero actual is not a link, and a future month renders no actual at all', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  // expense Uncategorized June actual is 0 — scope to this row's own cell: the
+  // income Uncategorized row shares the same el.id, so the plain testid is ambiguous
+  const uncatRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
+  const juneCell = within(uncatRow).getByTestId('plan-cell-uncategorized:1')
+  expect(within(juneCell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
+  // Food May 120: a link
+  expect(within(screen.getAllByTestId('plan-cell-cat-food:0')[0]).getByRole('button', { name: /^transactions Food/ })).toBeInTheDocument()
+})
+
+it('desktop: a future month renders no actual (and so no link)', async () => {
+  // May-June-July (the default window) never includes a future month under the
+  // suite's August clock (see the sibling "a future month shows only the plan"
+  // test above), so pin July as current and shift the window to June-July-August
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August is future
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  renderPage()
+  await screen.findByText(/jun/i)
+  // pe1/Living August cell: future, so no actual node at all — not even a link
+  expect(within(screen.getAllByTestId('plan-cell-pe1:2')[0]).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  expect(within(screen.getAllByTestId('plan-cell-pe1:2')[0]).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
+})
+
+it('tablet: a tap on an Uncategorized cell opens its transactions', async () => {
+  mockCompactViewport()
+  usePlanHandlers()
+  server.use(http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  const user = userEvent.setup()
+  const uncatRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
+  await user.click(within(uncatRow).getAllByRole('gridcell')[1]) // May (index 0 is the name)
+  expect(await screen.findByRole('dialog')).toHaveTextContent('Uncategorized')
+})
+
 it('rules element rows flush with hairline dividers', async () => {
   usePlanHandlers()
   renderPage()

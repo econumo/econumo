@@ -451,3 +451,15 @@ it('each savings cell shows the balance at the end of its month; from the curren
   // expense rows carry no balance line
   expect(document.querySelectorAll('[data-testid="cell-closing"]')).toHaveLength(3)
 })
+
+it('a savings cell with a non-zero actual is plain text, never a transactions link', async () => {
+  useHandlers()
+  renderPage()
+  await screen.findByTestId('plan-section-savings')
+  // Rainy day, June: actual 100 — a savings row's transfers are not listed by the
+  // transactions dialog, so it stays plain even though Food/Uncategorized cells
+  // the same shape are now links
+  const cell = screen.getByTestId('plan-cell-acc-s1:0')
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('100.00')
+  expect(within(cell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
+})
