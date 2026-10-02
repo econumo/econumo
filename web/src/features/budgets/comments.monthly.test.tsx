@@ -41,12 +41,6 @@ function mockViewport() {
   }))
 }
 
-function mockCompactViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
 function mockTabletViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
@@ -277,70 +271,13 @@ it('offers no add-comment corner on the uncategorized row', async () => {
   expect(within(screen.getByTestId('element-env-1')).getByTestId('comment-marker-add')).toBeInTheDocument()
 })
 
-it('offers no add-comment corner on a phone', async () => {
-  registerMonthlyHandlers()
-  mockCompactViewport()
-  renderPage('/budget')
-
-  const row = await screen.findByTestId('element-env-1')
-  expect(within(row).queryByTestId('comment-marker-add')).toBeNull()
-})
-
-it('lets a guest add a comment from the corner, and their tablet actions modal has no set budget', async () => {
+it('lets a guest add a comment from the corner', async () => {
   mockViewport()
   const user = userEvent.setup()
-  const { unmount } = renderGuestPage('/budget')
+  renderGuestPage('/budget')
 
   await user.click(within(await screen.findByTestId('element-env-1')).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
-  unmount()
-
-  mockTabletViewport()
-  const touch = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/budget')
-  const cell = within(await screen.findByTestId('element-env-1')).getByTestId('cell-budgeted')
-  await touch.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await touch.pointer({ keys: '[/TouchA]', target: cell })
-  expect(within(modal).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
-  expect(within(modal).getByRole('button', { name: 'Show transactions' })).toBeInTheDocument()
-  expect(within(modal).queryByRole('button', { name: 'Set budget' })).toBeNull()
-})
-
-it('opens the actions modal from a long-press on a tablet and goes on to the thread', async () => {
-  registerMonthlyHandlers()
-  mockTabletViewport()
-  // the modal's open Radix dialog sets pointer-events:none on the body, and the
-  // touch release lands after that — same landmine as the tablet long-press test
-  // in cell-shell.test.tsx (Task 3)
-  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/budget')
-
-  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
-  await user.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await user.pointer({ keys: '[/TouchA]', target: cell })
-  // the release must be swallowed: no leaked tap into the plain amount / thread
-  expect(screen.queryByLabelText('Budget')).toBeNull()
-  expect(screen.queryByTestId('comments-popover')).toBeNull()
-  expect(screen.queryByText('Trip to Lisbon')).toBeNull()
-  await user.click(within(modal).getByRole('button', { name: 'Comments (1)' }))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-})
-
-it('keeps the tablet amount dialog free of comments (the actions modal reaches the thread)', async () => {
-  registerMonthlyHandlers()
-  mockTabletViewport()
-  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/budget')
-
-  const cell = within(await screen.findByTestId('element-cat-food')).getByTestId('cell-budgeted')
-  await user.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await user.pointer({ keys: '[/TouchA]', target: cell })
-  await user.click(within(modal).getByRole('button', { name: 'Set budget' }))
-  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
 })
 
 it('opens the thread as a popover from a marker tap on a tablet', async () => {
@@ -351,37 +288,73 @@ it('opens the thread as a popover from a marker tap on a tablet', async () => {
 
   await user.click(within(await screen.findByTestId('element-cat-food')).getByTestId('comment-marker'))
   expect(await screen.findByTestId('comments-popover')).toHaveTextContent('Trip to Lisbon')
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 
-// Fix round 1 gap: an editable cell on a tablet has no `renderBudgetCell` (the
-// inline editor is desktop-only), so it fell through to the comments-button
-// branch and an owner's editable amount read as "comments Food" — desktop
-// keeps that branch for non-editable cells only, and the tablet must match.
-it('keeps the tablet amount plain text for an editable cell (no comments button)', async () => {
+it('a tablet tap on the budgeted amount opens the item sheet, whose Comments opens the thread', async () => {
   registerMonthlyHandlers()
   mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
   renderPage('/budget')
 
   const row = await screen.findByTestId('element-cat-food')
   expect(within(row).queryByLabelText(/^comments /)).toBeNull()
+  await user.click(within(row).getByRole('button', { name: 'details Food' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).getByTestId('sheet-comment')).toHaveTextContent('Trip to Lisbon')
+  await user.click(within(sheet).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByText('Trip to Lisbon', { selector: 'p' })).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
 })
 
-// the thread is its own dialog, reached from a button: rendered inside the set-limit
-// sheet, the composer pushed the amount out of view above a phone's keyboard
-it('opens the thread from SetLimitDialog as its own dialog on compact viewports', async () => {
+it('a tablet sheet’s Set budget opens the amount dialog with no comments in it', async () => {
   registerMonthlyHandlers()
-  mockCompactViewport()
-  const user = userEvent.setup()
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
   renderPage('/budget')
 
-  const row = await screen.findByTestId('element-cat-food')
-  await user.click(within(row).getByTestId('cell-available'))
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
   expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
-  expect(screen.queryByText('Trip to Lisbon')).toBeNull()
+  expect(screen.queryByRole('button', { name: /Comments \(/ })).toBeNull()
+})
 
-  await user.click(screen.getByRole('button', { name: 'Comments (1)' }))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.queryByLabelText('Budget')).toBeNull()
+it('a guest’s tablet sheet has no Set budget but reaches the thread', async () => {
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderGuestPage('/budget')
+
+  await user.click(within(await screen.findByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Comments (1)' }))
+  expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
+})
+
+it('a tablet tap on an archived element’s amount opens its sheet without Set budget', async () => {
+  const archivedElementBudget = {
+    ...fixtureWireBudget,
+    structure: {
+      ...fixtureWireBudget.structure,
+      elements: fixtureWireBudget.structure.elements.map((el) => (el.id === 'tag-old' ? { ...el, budgeted: '50', available: '50' } : el)),
+    },
+  }
+  registerMonthlyHandlers(archivedElementBudget)
+  mockTabletViewport()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage('/budget')
+  await user.click(within(await screen.findByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  expect(within(sheet).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
+})
+
+it('the tablet Available pill is plain text', async () => {
+  registerMonthlyHandlers()
+  mockTabletViewport()
+  renderPage('/budget')
+  const row = await screen.findByTestId('element-cat-food')
+  expect(within(row).getByTestId('cell-available').closest('button')).toBeNull()
 })
 
 it('lets a guest open a read-only thread on a cell they cannot edit', async () => {
@@ -407,21 +380,6 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   expect(within(row).queryByTestId('comment-marker')).toBeNull()
   await user.click(within(row).getByLabelText(/^comments /))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
-})
-
-// Review round 1 gap: `cell-budgeted` (and its marker) is `hidden sm:block` —
-// invisible on a real phone — and `onAvailableClick` was gated on
-// `limitsEditable`, so a guest on a compact viewport had NO way to reach the
-// thread at all. Tapping the Available pill must open it instead.
-it('lets a guest reach the thread from the Available cell on compact viewports', async () => {
-  mockCompactViewport()
-  const user = userEvent.setup()
-  renderGuestPage('/budget')
-
-  const row = await screen.findByTestId('element-cat-food')
-  await user.click(within(row).getByTestId('cell-available'))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
 it('shows the truncated notice when get-comment-list reports its cap was hit', async () => {
@@ -478,37 +436,6 @@ it('keeps the marker reachable on an individually-archived element', async () =>
   expect(within(row).getByTestId('comment-marker')).toHaveAccessibleName('1 comment')
   await user.click(within(row).getByTestId('comment-marker'))
   expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-})
-
-// The Archive section's read-only extras dropped every compact entry point: the
-// tap and long-press were stripped and the marker lives in the phone-hidden
-// budgeted column, so on a phone an archived element's thread was unreachable
-// even for the owner of an otherwise editable budget.
-it('lets a phone user open the thread of an individually-archived element from the Available cell', async () => {
-  const archivedElementBudget = {
-    ...fixtureWireBudget,
-    structure: {
-      ...fixtureWireBudget.structure,
-      elements: fixtureWireBudget.structure.elements.map((el) =>
-        el.id === 'tag-old' ? { ...el, budgeted: '50', available: '50' } : el,
-      ),
-    },
-  }
-  server.use(
-    ...coreHandlers({ user: userWithBudget }),
-    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: archivedElementBudget } })),
-    http.get('*/api/v1/budget/get-comment-list', () =>
-      HttpResponse.json({ success: true, message: '', data: { items: [{ ...comment, elementId: 'tag-old' }], truncated: false } }),
-    ),
-  )
-  mockCompactViewport()
-  const user = userEvent.setup()
-  renderPage('/budget')
-
-  const row = await screen.findByTestId('element-tag-old')
-  await user.click(within(row).getByTestId('cell-available'))
-  expect(await screen.findByText('Trip to Lisbon')).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
 // An editable budget gives its live rows the limit editor (which hosts the

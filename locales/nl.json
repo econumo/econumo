@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Standaardmap",
           "in_archive": "Gearchiveerd",
+          "carry_over_hint": "Over van eerdere maanden",
           "tab": {
             "budgeted": "Budget",
             "spent": "Uitgegeven",
@@ -1412,8 +1413,22 @@
         "title": "Sparen",
         "planned": "Gepland",
         "saved": "Gespaard",
-        "balance": "Saldo",
         "balance_hint": "Saldo aan het einde van de maand. Voor de huidige en latere maanden telt het geplande sparen dat nog moet komen mee."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
+        "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
+        "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
+        "available": "{amount} beschikbaar",
+        "actual": "Werkelijk",
+        "balance": "Saldo aan het einde van de maand"
+      },
+      "sheet": {
+        "received": "Ontvangen",
+        "covered": "{over} overschreden — gedekt door {carry} die over is van eerdere maanden",
+        "transactions": "Transacties",
+        "set_plan": "Plan instellen",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgetten & plannen",

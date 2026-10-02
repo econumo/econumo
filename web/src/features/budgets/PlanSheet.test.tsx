@@ -64,9 +64,10 @@ function mockViewport() {
   }))
 }
 
+// a tablet: compact but not a phone, which gets the single month view instead of the grid
 function mockCompactViewport() {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
 }
 

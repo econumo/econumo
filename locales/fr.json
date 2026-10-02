@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Dossier par défaut",
           "in_archive": "Archivés",
+          "carry_over_hint": "Restant des mois précédents",
           "tab": {
             "budgeted": "Budget",
             "spent": "Dépensé",
@@ -1412,8 +1413,22 @@
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "balance": "Solde",
         "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, dépensé {spent}",
+        "income_row_aria": "{name}, prévu {planned}, reçu {received}",
+        "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",
+        "available": "{amount} disponible",
+        "actual": "Réel",
+        "balance": "Solde en fin de mois"
+      },
+      "sheet": {
+        "received": "Reçu",
+        "covered": "Dépassé de {over} — couvert par {carry} restant des mois précédents",
+        "transactions": "Transactions",
+        "set_plan": "Définir le plan",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgets et plans",

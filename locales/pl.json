@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Folder domyślny",
           "in_archive": "W archiwum",
+          "carry_over_hint": "Pozostało z wcześniejszych miesięcy",
           "tab": {
             "budgeted": "Budżet",
             "spent": "Wydano",
@@ -1412,8 +1413,22 @@
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "balance": "Saldo",
         "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
+      },
+      "phone": {
+        "row_aria": "{name}, budżet {budget}, wydano {spent}",
+        "income_row_aria": "{name}, zaplanowano {planned}, odebrano {received}",
+        "savings_row_aria": "{name}, zaplanowano {planned}, zaoszczędzono {saved}",
+        "available": "{amount} dostępne",
+        "actual": "Faktycznie",
+        "balance": "Saldo na koniec miesiąca"
+      },
+      "sheet": {
+        "received": "Odebrano",
+        "covered": "Przekroczono o {over} — pokryte z {carry} pozostałych z wcześniejszych miesięcy",
+        "transactions": "Transakcje",
+        "set_plan": "Ustaw plan",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budżety i plany",

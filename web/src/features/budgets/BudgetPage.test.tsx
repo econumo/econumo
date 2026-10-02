@@ -351,9 +351,9 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('compact viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+it('tablet viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
   server.use(
     ...coreHandlers({ user: userWithBudget }),
@@ -455,150 +455,7 @@ it('a live budget shows no archived banner', async () => {
   expect(screen.queryByText('This budget is archived and read-only')).not.toBeInTheDocument()
 })
 
-describe('monthly Savings block', () => {
-  const savingsWireBudget = {
-    ...fixtureWireBudget,
-    structure: {
-      ...fixtureWireBudget.structure,
-      savings: [
-        {
-          id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
-          budgeted: '100', spent: '120', available: '-20', closingBalance: '900',
-        },
-      ],
-    },
-  }
-  const savingsComment = {
-    id: 'cm-s1',
-    elementId: 'acc-s1',
-    period: '2026-07-01',
-    comment: 'Bonus goes here',
-    author: { id: 'u1', avatar: 'face:emerald', name: 'Ada' },
-    createdAt: '2026-07-17 09:00:00',
-    updatedAt: '2026-07-17 09:00:00',
-  }
-
-  function useSavingsHandlers(extra: Parameters<typeof server.use> = []) {
-    server.use(
-      ...coreHandlers({ user: userWithBudget }),
-      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: savingsWireBudget } })),
-      http.get('*/api/v1/budget/get-comment-list', () =>
-        HttpResponse.json({ success: true, message: '', data: { items: [savingsComment], truncated: false } }),
-      ),
-      ...extra,
-    )
-  }
-
-  it('renders below the budget table', async () => {
-    useSavingsHandlers()
-    renderPage()
-    const block = await screen.findByTestId('budget-savings-block')
-    const table = screen.getByTestId('budget-table')
-    expect(table.compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(table.contains(block)).toBe(false)
-  })
-
-  function hangingSetLimit(capture: (body: unknown) => void) {
-    return http.post('*/api/v1/budget/set-limit', async ({ request }) => {
-      capture(await request.json())
-      await delay('infinite')
-      return HttpResponse.json({ success: true, message: '', data: {} })
-    })
-  }
-
-  it('desktop: Planned edits inline like a budgeted cell, sends set-limit for the account id and patches the row optimistically', async () => {
-    let body: unknown
-    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
-    const user = userEvent.setup()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    // the table's own LimitEditor popover
-    await user.click(within(row).getByRole('button', { name: 'limit Rainy day' }))
-    expect(screen.queryByRole('dialog', { name: 'Set limit' })).not.toBeInTheDocument()
-    const input = screen.getByLabelText('Budget')
-    await user.clear(input)
-    await user.type(input, '200+50')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
-    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-    // July 2026 is a past month: its balance is booked, so a plan edit leaves it alone
-    expect(within(row).getByTestId('savings-balance')).toHaveTextContent('900.00')
-  })
-
-  it('desktop: a planned cell without comments offers the hover-only "Add comment" corner, opening an empty thread', async () => {
-    useSavingsHandlers()
-    server.use(
-      http.get('*/api/v1/budget/get-comment-list', () => HttpResponse.json({ success: true, message: '', data: { items: [], truncated: false } })),
-    )
-    const user = userEvent.setup()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    const cell = within(row).getByTestId('savings-planned')
-    expect(cell).toHaveClass('group/cell')
-    expect(within(cell).queryByTestId('comment-marker')).toBeNull()
-    const add = await within(cell).findByTestId('comment-marker-add')
-    expect(add).toHaveAccessibleName('Add comment')
-    expect(add).toHaveClass('invisible', 'group-hover/cell:visible')
-    await user.click(add)
-    const popover = await screen.findByTestId('comments-popover')
-    expect(within(popover).getByText('No comments yet.')).toBeInTheDocument()
-    expect(within(popover).getByRole('button', { name: 'Post' })).toBeInTheDocument()
-  })
-
-  it('desktop: a commented planned cell shows its marker and no add corner', async () => {
-    useSavingsHandlers()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    await within(row).findByTestId('comment-marker')
-    expect(within(row).queryByTestId('comment-marker-add')).toBeNull()
-  })
-
-  it('compact: Planned opens the set-limit dialog with a button to the cell thread', async () => {
-    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-      matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-    }))
-    let body: unknown
-    useSavingsHandlers([hangingSetLimit((b) => (body = b))])
-    const user = userEvent.setup()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    expect(within(row).queryByRole('button', { name: 'limit Rainy day' })).not.toBeInTheDocument()
-    await user.click(within(row).getByRole('button', { name: 'planned Rainy day' }))
-    const input = await screen.findByLabelText('Budget')
-    expect(screen.getByRole('button', { name: 'Comments (1)' })).toBeInTheDocument()
-    expect(screen.queryByText('Bonus goes here')).not.toBeInTheDocument()
-    await user.clear(input)
-    await user.type(input, '250')
-    await user.click(screen.getByRole('button', { name: 'Save' }))
-    await waitFor(() => expect(body).toEqual({ budgetId: 'b1', elementId: 'acc-s1', period: '2026-07-01', amount: '250' }))
-    await waitFor(() => expect(within(row).getByTestId('savings-planned')).toHaveTextContent('250.00'))
-  })
-
-  it('the comment marker on a planned cell opens the page comments popover', async () => {
-    useSavingsHandlers()
-    const user = userEvent.setup()
-    renderPage()
-    const row = await screen.findByTestId('savings-row-acc-s1')
-    await user.click(await within(row).findByTestId('comment-marker'))
-    const popover = await screen.findByTestId('comments-popover')
-    expect(within(popover).getByText('Bonus goes here')).toBeInTheDocument()
-  })
-
-  it('a budget without savings rows renders no block', async () => {
-    server.use(
-      ...coreHandlers({ user: userWithBudget }),
-      http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
-    )
-    renderPage()
-    expect(await screen.findByTestId('budget-table')).toBeInTheDocument()
-    expect(screen.queryByTestId('budget-savings-block')).not.toBeInTheDocument()
-    // nor Savings / Total savings lines in the phone Total card
-    expect(screen.queryByTestId('budget-totals-mobile-savings')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('budget-totals-mobile-savings-balance')).not.toBeInTheDocument()
-  })
-})
-
-it('the savings block sits above Total, and Total adds the savings rows', async () => {
+it('the Budget view shows no savings: no block, and Total counts the expenses only', async () => {
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
@@ -609,21 +466,13 @@ it('the savings block sits above Total, and Total adds the savings rows', async 
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
   )
   renderPage()
-  const block = await screen.findByTestId('budget-savings-block')
-  const totals = screen.getByTestId('budget-totals')
-  expect(block.compareDocumentPosition(totals) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  expect(screen.getByTestId('budget-table').compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-  // the table alone totals 300.00 / 45.50 / 554.50 (BudgetTable.test)
-  await waitFor(() => expect(totals).toHaveTextContent('400.00'))
-  expect(totals).toHaveTextContent('165.50')
-  expect(totals).toHaveTextContent('534.50')
-  expect(screen.getByTestId('budget-totals-mobile')).toHaveTextContent('534.50')
-  // the phone rows leave Balance out, so the phone Total card carries both savings lines:
-  // a past month (July 2026) counts what was saved, 120 over the 100 planned
-  const savingsLine = screen.getByTestId('budget-totals-mobile-savings')
-  expect(savingsLine).toHaveTextContent('Savings')
-  expect(savingsLine).toHaveTextContent('120.00')
-  const balanceLine = screen.getByTestId('budget-totals-mobile-savings-balance')
-  expect(balanceLine).toHaveTextContent('Total savings')
-  expect(balanceLine).toHaveTextContent('2,500.00')
+  const totals = await screen.findByTestId('budget-totals')
+  expect(screen.queryByTestId('budget-savings-block')).toBeNull()
+  expect(screen.queryByText('Rainy day')).toBeNull()
+  // the table alone: 300.00 budgeted, 45.50 spent, 554.50 available (BudgetTable.test)
+  await waitFor(() => expect(totals).toHaveTextContent('554.50'))
+  expect(totals).toHaveTextContent('45.50')
+  expect(totals).not.toHaveTextContent('400.00')
+  expect(totals).not.toHaveTextContent('165.50')
 })
+

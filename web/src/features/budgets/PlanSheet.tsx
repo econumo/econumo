@@ -38,7 +38,6 @@ import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import { useIsCompact } from '@/hooks/useIsCompact'
-import { useIsPhone } from '@/hooks/useIsPhone'
 import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
@@ -72,7 +71,9 @@ import type { ElementContainer } from './elementMove'
 import { CommentsPanel } from './CommentsPanel'
 import { CommentMarker } from './CommentThread'
 import { CellShell } from './CellShell'
-import { COMMENT_ANCHOR_ATTR, commentAnchorOf, openLimitEditorIn } from './cellDom'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
+import { ElementSheet } from './ElementSheet'
+import { planCellFigures } from './phoneMonth'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -99,6 +100,7 @@ import {
   planHasSavingsData,
   projectSavingsClosings,
   planInitialFirstMonth,
+  planMonthExchange,
   planTotals,
   planVisibleCount,
   savingsAsPlanElement,
@@ -233,7 +235,8 @@ interface GridCtx {
   isCompact: boolean
   monthLabel: (m: string) => string
   commit: (elementId: Id, month: string, monthIndex: number, amount: string | null) => void
-  openDialog: (target: PlanLimitTarget) => void
+  /** touch viewports: a cell tap opens the item sheet */
+  openSheet: (target: PlanLimitTarget) => void
   commentsByCell: Map<string, BudgetCommentDto[]>
   /** the fetch backing `commentsByCell` hit the 2000-item server cap and dropped the oldest */
   commentsTruncated: boolean
@@ -242,10 +245,8 @@ interface GridCtx {
    *  popover to: undefined = look it up from the grid; null = no anchor, open as a
    *  sheet/dialog */
   openComments: (target: PlanLimitTarget, opts?: { fromGrid?: boolean; anchor?: HTMLElement | null }) => void
-  openTransactions: (el: PlanElementDto, month: string) => void
   /** a thread is open: hover previews stay shut */
   commentsOpen: boolean
-  isPhone: boolean
   canEdit: boolean
   selection: PlanSelection | null
   select: (rowKey: string, col: number, e?: { target: EventTarget | null }) => void
@@ -580,7 +581,13 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
               className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
-              onClick={(e) => ctx.select(rk, i, e)}
+              onClick={(e) => {
+                ctx.select(rk, i, e)
+                // touch: the whole cell opens the item sheet; the marker stops its own click
+                if (ctx.isCompact && !ctx.editMode && !isUncategorized && idx >= 0) {
+                  ctx.openSheet(target)
+                }
+              }}
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
@@ -591,7 +598,9 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 {actualText}
               </span>
               <span data-testid="cell-planned" className="text-sm">
-                {editable && !ctx.isCompact ? (
+                {ctx.isCompact ? (
+                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
+                ) : editable ? (
                   <LimitEditor
                     id={`${el.id}-${m}`}
                     name={displayName}
@@ -599,15 +608,6 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                     currency={currency}
                     onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
                   />
-                ) : editable ? (
-                  <button
-                    type="button"
-                    className="w-full text-right underline-offset-2 hover:underline"
-                    aria-label={`limit ${displayName}`}
-                    onClick={() => ctx.openDialog({ el, month: m, monthIndex: idx })}
-                  >
-                    {moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false })}
-                  </button>
                 ) : !isUncategorized ? (
                   // a non-editable cell (guest role, archived element, month outside the budget) still opens its thread, so a guest can start one
                   <button
@@ -634,7 +634,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                   {moneyFormat(cell.closingBalance, currency, { showCurrency: false, useNativePrecision: false })}
                 </span>
               ) : null}
-              {(commentCount > 0 || (!ctx.isPhone && !ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
+              {(commentCount > 0 || (!ctx.editMode && !commentsReadOnly(ctx.meta, m))) && !isUncategorized ? (
                 <CommentMarker count={commentCount} onOpen={(anchor) => ctx.openComments(target, { anchor })} />
               ) : null}
               {showFillHandle ? (
@@ -655,17 +655,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           return (
             <CellShell
               key={m}
-              title={displayName}
               comments={isUncategorized ? [] : cellComments}
               previewDisabled={ctx.commentsOpen || ctx.editMode}
-              actionsDisabled={ctx.isPhone || ctx.editMode}
-              onSetBudget={editable ? (anchor) => (ctx.isCompact ? ctx.openDialog(target) : openLimitEditorIn(anchor)) : undefined}
+              shortcutDisabled={ctx.editMode}
               onOpenComments={isUncategorized ? undefined : (anchor) => ctx.openComments(target, { anchor })}
-              onShowTransactions={
-                !isUncategorized && !isIncomeType(el.type) && el.type !== BudgetElementType.SAVINGS
-                  ? () => ctx.openTransactions(el, m)
-                  : undefined
-              }
             >
               {cellNode}
             </CellShell>
@@ -1175,8 +1168,9 @@ function PlanBand({
 export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetProps) {
   const { t, i18n } = useTranslation()
   const isCompact = useIsCompact()
-  const isPhone = useIsPhone()
   const [planLimitTarget, setPlanLimitTarget] = useState<PlanLimitTarget | null>(null)
+  const [sheetCellTarget, setSheetCellTarget] = useState<PlanLimitTarget | null>(null)
+  const openSheet = useCallback((target: PlanLimitTarget) => setSheetCellTarget(target), [])
   const [dragArrangement, setDragArrangement] = useState<ElementContainer[] | null>(null)
   const [draggingFolder, setDraggingFolder] = useState(false)
   const [moveFolderTarget, setMoveFolderTarget] = useState<PlanElementDto | null>(null)
@@ -1541,13 +1535,11 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       isCompact,
       monthLabel,
       commit,
-      openDialog: setPlanLimitTarget,
+      openSheet,
       commentsByCell,
       commentsTruncated,
       openComments,
-      openTransactions,
       commentsOpen,
-      isPhone,
       canEdit,
       selection,
       select,
@@ -1583,9 +1575,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
     commentsByCell,
     commentsTruncated,
     openComments,
-    openTransactions,
     commentsOpen,
-    isPhone,
     canEdit,
     selection,
     select,
@@ -1790,11 +1780,15 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
       return
     }
     const idx = monthIndex(month)
-    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
+    if (isCompact) {
+      // touch: Enter opens the same item sheet a tap would — any non-uncategorized
+      // cell outside edit-structure mode, editable or not.
+      if (!editMode && entry.el.id !== UNCATEGORIZED_ID && idx >= 0) {
+        openSheet({ el: entry.el, month, monthIndex: idx })
+      }
       return
     }
-    if (isCompact) {
-      setPlanLimitTarget({ el: entry.el, month, monthIndex: idx })
+    if (!isEditableCell(entry.el, month, idx, budget.meta, userId)) {
       return
     }
     const trigger = containerRef.current?.querySelector<HTMLButtonElement>(
@@ -2388,15 +2382,39 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        // phones only: a tablet reaches the thread from the marker or the actions modal
-        commentCount={isPhone && planLimitTarget ? (commentsByCell.get(commentCellKey(planLimitTarget.el.id, planLimitTarget.month)) ?? []).length : 0}
-        onOpenComments={
-          isPhone
+        title={planLimitTarget && isIncomeType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}
+      />
+
+      <ElementSheet
+        target={sheetCellTarget ? { kind: 'plan', cell: planCellFigures(sheetCellTarget.el, sheetCellTarget.monthIndex) } : null}
+        month={sheetCellTarget?.month ?? ''}
+        baseCurrencyId={budget.meta.currencyId}
+        currencies={currencies}
+        exchange={plan && sheetCellTarget ? planMonthExchange(plan, currencies, sheetCellTarget.monthIndex) : (_from, _to, amount) => amount}
+        comments={sheetCellTarget ? commentsByCell.get(commentCellKey(sheetCellTarget.el.id, sheetCellTarget.month)) ?? [] : []}
+        commentsReadOnly={sheetCellTarget ? commentsReadOnly(budget.meta, sheetCellTarget.month) : true}
+        canSetAmount={sheetCellTarget ? isEditableCell(sheetCellTarget.el, sheetCellTarget.month, sheetCellTarget.monthIndex, budget.meta, userId) : false}
+        onClose={() => setSheetCellTarget(null)}
+        onSetAmount={() => {
+          if (sheetCellTarget) {
+            setPlanLimitTarget(sheetCellTarget)
+            setSheetCellTarget(null)
+          }
+        }}
+        onOpenComments={() => {
+          if (sheetCellTarget) {
+            openComments(sheetCellTarget, { anchor: null })
+            setSheetCellTarget(null)
+          }
+        }}
+        onShowTransactions={
+          sheetCellTarget &&
+          sheetCellTarget.el.id !== UNCATEGORIZED_ID &&
+          !isIncomeType(sheetCellTarget.el.type) &&
+          sheetCellTarget.el.type !== BudgetElementType.SAVINGS
             ? () => {
-                if (planLimitTarget) {
-                  openComments(planLimitTarget, { anchor: null })
-                }
-                setPlanLimitTarget(null)
+                openTransactions(sheetCellTarget.el, sheetCellTarget.month)
+                setSheetCellTarget(null)
               }
             : undefined
         }

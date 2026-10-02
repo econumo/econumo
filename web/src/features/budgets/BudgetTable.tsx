@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EntityIcon } from '@/components/EntityIcon'
-import { cmp } from '@/lib/decimal'
+import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
@@ -13,9 +13,9 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
-import type { BudgetBuckets, BucketStats, FolderBucket, SavingsTotals } from './budgetMath'
-import { budgetTotals, displayAvailable, elementDisplayName } from './budgetMath'
-import { useBudgetPeriodStore } from './budgetStore'
+import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
+import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
 export interface ElementRowExtras {
@@ -25,9 +25,11 @@ export interface ElementRowExtras {
    *  here (non-editable role, an archived element, or a read-only section): the
    *  plain budgeted value opens the cell's thread */
   onBudgetCellComments?: (element: BudgetElementDto, anchor: HTMLElement) => void
-  /** wraps the budgeted cell (hover preview + touch actions); `readOnly` marks a row
-   *  whose limit can never be set here (the Archive section) */
-  wrapBudgetCell?: (element: BudgetElementDto, cell: ReactElement, opts: { readOnly: boolean }) => ReactNode
+  /** touch viewports: the budgeted amount opens the item sheet; wins over
+   *  `renderBudgetCell` and `onBudgetCellComments` */
+  onBudgetCellDetails?: (element: BudgetElementDto) => void
+  /** wraps the budgeted cell (hover preview, Shift+F2) */
+  wrapBudgetCell?: (element: BudgetElementDto, cell: ReactElement) => ReactNode
   /** the comment-marker overlay for the budgeted cell — absolutely positioned by
    *  the caller; returns null/undefined for a cell with no comments */
   renderBudgetCellMarker?: (element: BudgetElementDto) => ReactNode
@@ -35,11 +37,6 @@ export interface ElementRowExtras {
   renderActions?: (element: BudgetElementDto, bucket: FolderBucket) => ReactNode
   renderRowWrapper?: (element: BudgetElementDto, bucket: FolderBucket, row: ReactNode) => ReactNode
   onSpentClick?: (target: BudgetTransactionsTarget) => void
-  /** compact screens hide the budget column — tapping Available opens the set-limit dialog instead */
-  onAvailableClick?: (element: BudgetElementDto) => void
-  /** compact screens: tapping Available opens the comments dialog on a cell
-   *  without `onAvailableClick` (non-editable, or an archived element's row) */
-  onAvailableCommentsClick?: (element: BudgetElementDto) => void
 }
 
 interface BudgetTableProps extends ElementRowExtras {
@@ -152,12 +149,14 @@ function ElementRow({
   const currencyId = element.currencyId ?? budget.meta.currencyId
   const currency = currencies.find((c) => c.id === currencyId)
   const available = displayAvailable(element)
+  const carry = carryOver(element)
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
+  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
@@ -227,14 +226,35 @@ function ElementRow({
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
         {(() => {
+          // what earlier months left leads the budget inside the cell, so "530.00 + 700.00"
+          // reads as one figure; the cell grows to the left and the name gives way
           const cell = (
             <span
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
-              className="group/cell relative hidden w-24 text-right text-[15px] tabular-nums sm:block"
+              className="group/cell relative hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right text-[15px] tabular-nums sm:flex"
               data-testid="cell-budgeted"
             >
+              {carryText !== null ? (
+                <span
+                  data-testid="cell-carry"
+                  title={t('budgets.page.budget.structure.carry_over_hint')}
+                  className={`shrink-0 text-[13px] ${cmp(carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+                >
+                  {carryText}
+                </span>
+              ) : null}
+              <span className="shrink-0">
               {isUncategorized ? (
                 EMPTY_CELL
+              ) : extras.onBudgetCellDetails ? (
+                <button
+                  type="button"
+                  className="w-full text-right underline-offset-2 hover:underline"
+                  aria-label={`details ${displayName}`}
+                  onClick={() => extras.onBudgetCellDetails!(element)}
+                >
+                  {moneyFormat(element.budgeted, currency, opts)}
+                </button>
               ) : extras.renderBudgetCell ? (
                 extras.renderBudgetCell(element)
               ) : extras.onBudgetCellComments ? (
@@ -249,10 +269,11 @@ function ElementRow({
               ) : (
                 moneyFormat(element.budgeted, currency, opts)
               )}
+              </span>
               {extras.renderBudgetCellMarker?.(element)}
             </span>
           )
-          return !isUncategorized && extras.wrapBudgetCell ? extras.wrapBudgetCell(element, cell, { readOnly: false }) : cell
+          return !isUncategorized && extras.wrapBudgetCell ? extras.wrapBudgetCell(element, cell) : cell
         })()}
         <span data-testid="cell-spent" className="flex justify-end">
           {spentCell(
@@ -265,24 +286,6 @@ function ElementRow({
             <span data-testid="cell-available" className="text-[15px] tabular-nums text-muted-foreground">
               {EMPTY_CELL}
             </span>
-          ) : extras.onAvailableClick ? (
-            <button
-              type="button"
-              title={t('budgets.modal.set_limit_form.header')}
-              aria-label={`limit ${displayName}`}
-              onClick={() => extras.onAvailableClick!(element)}
-            >
-              <AvailablePill available={available} currency={currency} testId="cell-available" />
-            </button>
-          ) : extras.onAvailableCommentsClick ? (
-            <button
-              type="button"
-              title={t('budgets.page.plan.comments.title')}
-              aria-label={`comments ${displayName}`}
-              onClick={() => extras.onAvailableCommentsClick!(element)}
-            >
-              <AvailablePill available={available} currency={currency} testId="cell-available" />
-            </button>
           ) : (
             <AvailablePill available={available} currency={currency} testId="cell-available" />
           )}
@@ -325,11 +328,6 @@ function ElementRow({
 
   return extras.renderRowWrapper ? <>{extras.renderRowWrapper(element, bucket, row)}</> : row
 }
-
-/** the reporting-tags folder exists only in rendering: it has no folder row
- *  behind it, so it is keyed by a reserved literal that no real element id
- *  (a UUID) can collide with, and both fold levels persist like real ones */
-const REPORTING_TAGS_FOLD_ID = '__reporting_tags__'
 
 /** one reporting tag: the same [name flex-1][budgeted w-24][spent w-20/24][available w-20/24][symbol w-6]
  *  geometry as ElementRow, so the amount lands under the Spent header and gets
@@ -626,12 +624,8 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
                           // earlier, above, with its own fixed extras)
                           renderBudgetCellMarker: extras.renderBudgetCellMarker,
                           onBudgetCellComments: extras.onBudgetCellComments,
-                          wrapBudgetCell: extras.wrapBudgetCell
-                            ? (el, node) => extras.wrapBudgetCell!(el, node, { readOnly: true })
-                            : undefined,
-                          // the marker and thread sit in the phone-hidden budgeted
-                          // column, so this tap is the thread's only way in on a phone
-                          onAvailableCommentsClick: extras.onAvailableCommentsClick,
+                          onBudgetCellDetails: extras.onBudgetCellDetails,
+                          wrapBudgetCell: extras.wrapBudgetCell,
                         }
                       : extras
                   }
@@ -662,13 +656,10 @@ export function BudgetTotals({
   budget,
   totals,
   actionsColumn,
-  savings = null,
 }: {
   budget: BudgetDto
   totals: BucketStats
   actionsColumn: boolean
-  /** phone card only: the desktop row has the Savings block's Balance column above it */
-  savings?: SavingsTotals | null
 }) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
@@ -678,7 +669,18 @@ export function BudgetTotals({
     <>
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
-        <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        <span className="flex min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right text-[15px] tabular-nums">
+          {!isZero(totals.carry) ? (
+            <span
+              data-testid="totals-carry"
+              title={t('budgets.page.budget.structure.carry_over_hint')}
+              className={`shrink-0 text-[13px] font-normal ${cmp(totals.carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+            >
+              {moneyFormat(totals.carry, budgetCurrency, opts)} +
+            </span>
+          ) : null}
+          <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        </span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
           {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
@@ -708,20 +710,6 @@ export function BudgetTotals({
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
-        {savings ? (
-          <>
-            <span className="flex items-baseline justify-between border-t pt-2" data-testid="budget-totals-mobile-savings">
-              <span className="text-[13px] text-muted-foreground">{t('budgets.page.plan.totals.savings')}</span>
-              <span className="text-[15px] tabular-nums">{moneyFormat(savings.savings, budgetCurrency, opts)}</span>
-            </span>
-            {savings.balance !== null ? (
-              <span className="flex items-baseline justify-between" data-testid="budget-totals-mobile-savings-balance">
-                <span className="text-[13px] text-muted-foreground">{t('budgets.page.plan.totals.savings_balance')}</span>
-                <span className="text-[15px] font-medium tabular-nums">{moneyFormat(savings.balance, budgetCurrency, opts)}</span>
-              </span>
-            ) : null}
-          </>
-        ) : null}
       </div>
     </>
   )

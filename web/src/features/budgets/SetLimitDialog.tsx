@@ -12,16 +12,11 @@ interface SetLimitDialogProps {
   target: { id: string; name: string; value: string } | null
   onClose: () => void
   onCommit: (elementId: string, amount: string | null) => void
-  /** the cell's comment count, shown on the button that opens its thread */
-  commentCount?: number
-  /** hands the cell over to the standalone comments dialog. The thread is never
-   *  rendered inside this sheet: on a phone the composer pushed the amount card
-   *  out of view above the on-screen keyboard. */
-  onOpenComments?: () => void
+  title?: string
 }
 
-// Mobile tap/long-press path (Vue's BudgetSetLimitModal), same unified amount rule.
-export function SetLimitDialog({ target, onClose, onCommit, commentCount = 0, onOpenComments }: SetLimitDialogProps) {
+// Compact viewports' amount dialog (Vue's BudgetSetLimitModal), same unified amount rule.
+export function SetLimitDialog({ target, onClose, onCommit, title }: SetLimitDialogProps) {
   const { t } = useTranslation()
   const [value, setValue] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +47,7 @@ export function SetLimitDialog({ target, onClose, onCommit, commentCount = 0, on
   }
 
   return (
-    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={t('budgets.modal.set_limit_form.header')} description={target.name}>
+    <ResponsiveDialog open onOpenChange={(o) => !o && onClose()} title={title ?? t('budgets.modal.set_limit_form.header')} description={target.name}>
       <form
         className="flex flex-col gap-4"
         noValidate
@@ -67,11 +62,6 @@ export function SetLimitDialog({ target, onClose, onCommit, commentCount = 0, on
             <CalculatorInput id="set-limit-amount" autoFocus value={value} onChange={setValue} />
           </div>
         </CardField>
-        {onOpenComments ? (
-          <button type="button" className="self-start text-sm font-medium text-muted-foreground hover:underline" onClick={onOpenComments}>
-            {t('budgets.page.plan.comments.disclosure', { count: commentCount })}
-          </button>
-        ) : null}
         <div className={dialogActionsClass}>
           <Button type="button" variant="secondary" onClick={onClose}>
             {t('common.button.cancel.label')}

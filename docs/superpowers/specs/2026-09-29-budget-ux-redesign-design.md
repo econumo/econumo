@@ -32,12 +32,14 @@ contract changes.
 | Phone row interaction | One tap on a row opens the **item sheet**; all other row gestures go |
 | Phone modes | **Single month view** on phones — no Budget/Plan switch |
 | Phone row numbers | **Budget** and **Spent**; Available moves into the item sheet |
-| Row colour | Driven by Available: neutral / amber (over this month, covered by carry-over) / red (Available < 0) |
+| Row colour | Spent and bar: red only when this month spent more than its budget AND earlier months' money does not cover it (Available < 0); gray otherwise. *(2026-10-01: amber dropped — Dmitry)* |
+| Leftovers | What earlier months left is shown read-only before the budget, `530.00 + 700.00` (only the budget is editable), on phone rows and in the desktop/tablet Budget table. *(2026-10-01 — Dmitry)* |
 | Income on phone | One collapsed summary row at the top, expands to income rows |
 | Comments | Fully separate from the amount editor, both views, all viewports |
-| Starting a thread | Faint corner triangle on hover (desktop); long-press actions modal (tablet); item sheet (phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions)* |
+| Starting a thread | Faint corner triangle on hover (desktop); item sheet (tablet and phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions; tablet long-press modal replaced by the item sheet on tap — no long taps anywhere)* |
 | Desktop density | One emphasised number per view, colour only for problems, drop repeated chrome |
 | Currency | No symbol on budget-currency amounts; budget currency named once in the column-heading row; foreign-currency items get a tag next to the name |
+| Savings in the desktop/tablet Budget view | **Hidden** *(2026-10-01 — Dmitry)*: no Savings block; the Total row counts expenses only. Savings stay in the Plan view and the phone month view |
 | Header currency chips + "Spending progress" widget | **Removed**; the average-rate note moves into the item sheet |
 
 ## Breakpoints
@@ -58,18 +60,25 @@ For an expense element in a month, with `budget`, `spent`, `available` as today:
 | State | Condition | Signal |
 |---|---|---|
 | none | `budget` is zero and `spent` is zero | no bar |
-| ok | `available ≥ 0` and `spent ≤ budget` | neutral Spent, neutral bar |
-| covered | `available ≥ 0` and `spent > budget` | **amber** Spent and bar |
-| over | `available < 0` | **red** Spent and bar; Available shown as a red pill where visible |
+| ok | `available ≥ 0` and `spent ≤ budget` | no sentence |
+| covered | `available ≥ 0` and `spent > budget` | sheet: "Over by … — covered by … left from earlier months" |
+| over | `available < 0` | Available shown red (the sheet adds no sentence) |
 
-- Progress bar value is `min(spent / budget, 1)`; hidden when `budget` is zero.
+- Row colour (revised 2026-10-01): the Spent figure and bar are red only in the
+  `over` state with `spent > budget` (this month over budget and not covered by
+  earlier months); every other row is gray. The state drives the sheet's sentence.
+- Carry-over (`available − (budget − spent)`) is shown read-only before the budget:
+  `530.00 + 700.00`; nothing when it is zero; a negative carry-over (earlier
+  overspend) in red.
+- Progress bar value is `min(spent / (budget + max(carry-over, 0)), 1)` — spending
+  against everything the month can draw on; hidden when that is zero.
 - Future months (after the current month) have no Spent: shown as `—`, no bar,
   state `none`.
 - Carry-over shown in the sheet = `available − (budget − spent)`.
 - The rule is one pure function (`rowState(element)`) in `budgetMath`, unit-tested
-  against the table above, used by the phone rows, the desktop rows, and the sheet.
+  against the table above, used by the sheet (and the desktop rows in stage 3).
 
-Income and savings rows do not use amber/red: received above plan and saved above
+Income and savings rows are never coloured: received above plan and saved above
 plan are not problems.
 
 ## Currency display rule (all views, all viewports)
@@ -98,25 +107,29 @@ it on a phone (URLs keep working; no redirect).
   menu. No mode switch, no currency chips.
 - **Month strip:** the Budget view's scrollable `PeriodStrip`. Past, current and
   future months share the screen.
-- **Heading row** (once): `USD` at the left, `BUDGET` and `SPENT` above the two
-  number columns.
-- **Income summary row** (collapsed by default, state kept for the session):
-  `Income · {received} of {planned}`. Expands into the income rows (same row
+- **Section headings** *(revised 2026-10-01 — Dmitry)*: income and savings share
+  one card under a `USD · PLANNED · ACTUAL` heading (the budget currency named
+  once, at its left); `EXPENSES · BUDGET · SPENT` heads the expense folders,
+  set apart by a wider gap. Foreign-currency items keep their tag.
+- **Income** (a line of the shared card, collapsed by default, fold state kept):
+  `Income` with the planned and received sums. Expands into the income rows (same row
   component; labels Planned / Received in the sheet). The income "Uncategorized"
   row appears only when non-zero.
 - **Expense folder cards:** header = folder name + Budget sum + Spent sum; rows as
   below. The unfoldered bucket is labelled "No folder" (was "Default folder").
-- **Savings card:** Planned and Saved columns; row tap opens the sheet (which adds
-  the month-end Balance).
-- **Totals card:** Expenses (`spent of budget`), Savings (`saved of planned`),
-  Available (total, incl. carry-over), Balance at month end, Total savings;
-  Transfers only when non-zero.
+- **Savings** (the shared card's second line, collapsed by default): `Savings`
+  with the planned and saved sums; expands into the savings rows; row tap opens the sheet
+  (which adds the month-end Balance).
+- **Totals card** *(revised 2026-10-01 — Dmitry)*: Budget (`left + budget`, with
+  "{amount} available" under it; expenses only), Income (received),
+  Expenses (spent), Transfers (only when non-zero), Savings (saved, with savings
+  accounts), Total savings, Balance at month end.
 
 ### Expense row
 
 ```
 [icon] Groceries          700.00   801.37 ◤
-       ▓▓▓▓▓▓▓▓▓▓▓▓▓░ (amber)
+       ▓▓▓▓▓▓▓▓▓▓░░░░ (gray; red only when not covered)
 ```
 
 - Spent coloured per the row state rule; thin progress bar under the name.
@@ -135,11 +148,12 @@ Over by 101.37 — covered by 750.69 left from earlier months
 [ Set budget ]   [ Transactions ]
 ```
 
-- State sentence per row state (none for `ok`/`none`; "covered by …" for amber;
-  "Overspent by …" for red).
-- Latest comment preview (author + text, one line) and a `Comments (N)` link; with
-  no comments the link reads "Add comment" (hidden when the thread is read-only
-  and empty).
+- Figures centred in their columns. State sentence only for `covered` ("Over by …
+  — covered by … left from earlier months"); an overspend shows as the red
+  Available *(revised 2026-10-01)*.
+- The two latest comments (author + text, one line each) and a `Comments (N)`
+  link; with none, "No comments yet." in gray and an "Add comment" link (no link
+  when the thread is read-only).
 - **Set budget** → existing `SetLimitDialog` (amount keypad only). Hidden for
   guests, readonly access, archived budgets, out-of-range months, deleted
   elements, uncategorized.
@@ -206,13 +220,15 @@ is unchanged.
 
 ### Tablet (touch, 640–1023 px)
 
+*(Revised 2026-09-30: stage 1 shipped a long-press actions modal here; stage 2
+replaces it with a tap that opens the phone's item sheet — no long taps anywhere.)*
+
 - No hover preview.
 - Tap marker → `CommentsPopover`.
-- Long-press a cell → a **modal** titled with the item's name, listing the same
-  cell actions (Set budget, Comments (N) / Add comment, Show transactions) as
-  full-width buttons — the phone's item-sheet
-  pattern rather than a small popup menu. The finger's release must not also
-  trigger the cell's tap action.
+- Tap an amount cell (Budget view budgeted amount, Savings planned amount, Plan grid
+  cell) → the item sheet (`ElementSheet`, Part 1) for that element and month, with
+  Set budget / Comments / Transactions. A Plan grid cell's sheet shows that
+  month's planned and actual figures.
 
 ### Phone
 
@@ -281,8 +297,8 @@ navigation, not an action. `metrics-coverage.test.ts` must stay green.
   income row collapses/expands; `/plan` renders the same view.
 - Comments: amount popover has no comments UI; marker opens `CommentsPopover`;
   hover preview appears after the delay and not while a popover is open;
-  context menu items per role; Shift+F2 and Shift+Enter open the thread; tablet
-  long-press opens the menu.
+  Shift+F2 and Shift+Enter open the thread; a tablet tap on an amount opens the
+  item sheet.
 - Plan view: future cells show no actual; empty plan cells render blank; current
   month tinted.
 - Existing comment/savings suites updated where they assert removed entry points
