@@ -389,7 +389,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           <TotalLine
             testId="phone-total-income"
             label={t('budgets.page.plan.totals.income')}
-            value={t('budgets.page.phone.of', { value: future ? EMPTY : fmt(planMonth.income.received), total: fmt(planMonth.income.planned) })}
+            value={future ? EMPTY : fmt(planMonth.income.received)}
           />
         ) : null}
         <TotalLine testId="phone-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future ? EMPTY : fmt(expenseTotals.spent)} />

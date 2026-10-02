@@ -117,7 +117,7 @@ it on a phone (URLs keep working; no redirect).
 - **Savings card:** Planned and Saved columns; row tap opens the sheet (which adds
   the month-end Balance).
 - **Totals card** *(revised 2026-10-01 — Dmitry)*: Budget (`left + budget`, with
-  "{amount} available" under it; expenses only), Income (`received of planned`),
+  "{amount} available" under it; expenses only), Income (received),
   Expenses (spent), Transfers (only when non-zero), Savings (`saved of planned`,
   with savings accounts), Total savings, Balance (at month end).
 

@@ -187,7 +187,7 @@ it('the Total card reads Budget, Income, Expenses and Balance; Transfers only wh
   expect(budgetLine).toHaveTextContent('300.00 + 300.00')
   // expenses only: Food 354.50 + Living 180 EUR → 200 USD
   expect(within(budgetLine).getByTestId('phone-budget-available')).toHaveTextContent('554.50 available')
-  expect(screen.getByTestId('phone-total-income')).toHaveTextContent('Income400.00 of 2,000.00')
+  expect(screen.getByTestId('phone-total-income')).toHaveTextContent(/^Income400\.00$/)
   expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses45.50')
   expect(screen.getByTestId('phone-total-balance')).toHaveTextContent('Balance4,545.00')
 })
@@ -209,7 +209,7 @@ it('Budget shows only this month\'s budget when earlier months left nothing, and
 it('a future month shows dashes for what has not happened yet', () => {
   renderView({ selectedDate: '2099-01-01' })
   expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses—')
-  expect(screen.getByTestId('phone-total-income')).toHaveTextContent('— of 2,000.00')
+  expect(screen.getByTestId('phone-total-income')).toHaveTextContent(/^Income—$/)
 })
 
 it('shows Transfers when money crossed the budget boundary', () => {
