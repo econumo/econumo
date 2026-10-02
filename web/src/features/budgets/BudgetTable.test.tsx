@@ -586,3 +586,27 @@ it('explains the uncategorized bucket behind its own info button', async () => {
   await user.click(within(row).getByRole('button', { name: 'About' }))
   expect(await screen.findByTestId('budget-uncategorized-info-note')).toBeInTheDocument()
 })
+
+it('shows what earlier months left, read-only, before the budgeted amount', async () => {
+  // Food: wire available 154.50 + spent 45.50 = 200.00 left from earlier months
+  renderTable(undefined, { renderBudgetCell: () => 'editor' })
+  const food = await screen.findByTestId('element-cat-food')
+  const carry = within(food).getByTestId('cell-carry')
+  // amounts reformat once the currency list has loaded
+  await waitFor(() => expect(carry).toHaveTextContent('200.00 +'))
+  expect(carry).toHaveAttribute('title', 'Left from earlier months')
+  expect(carry.closest('button')).toBeNull()
+  // the carry sits right before the (editable) budgeted cell
+  expect(carry.nextElementSibling).toBe(within(food).getByTestId('cell-budgeted'))
+})
+
+it('shows no carry-over when earlier months left nothing, and a negative one in red', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })
+    Object.assign(b.structure.elements.find((el) => el.id === 'env-1')!, { available: '-30' })
+  })
+  expect(within(await screen.findByTestId('element-cat-food')).queryByTestId('cell-carry')).toBeNull()
+  const debt = within(screen.getByTestId('element-env-1')).getByTestId('cell-carry')
+  await waitFor(() => expect(debt).toHaveTextContent('-30.00 +'))
+  expect(debt.className).toContain('text-expense')
+})

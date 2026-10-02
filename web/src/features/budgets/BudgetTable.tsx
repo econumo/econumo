@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { EntityIcon } from '@/components/EntityIcon'
-import { cmp } from '@/lib/decimal'
+import { cmp, isZero } from '@/lib/decimal'
 import { moneyFormat } from '@/lib/money'
 import type { MoneyFormatOptions } from '@/lib/money'
 import type { BudgetDto, BudgetElementDto, LabelSpendDto } from '@/api/dto/budget'
@@ -14,7 +14,7 @@ import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import type { BudgetBuckets, BucketStats, FolderBucket, SavingsTotals } from './budgetMath'
-import { budgetTotals, displayAvailable, elementDisplayName } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -149,12 +149,14 @@ function ElementRow({
   const currencyId = element.currencyId ?? budget.meta.currencyId
   const currency = currencies.find((c) => c.id === currencyId)
   const available = displayAvailable(element)
+  const carry = carryOver(element)
   const expandable = element.children.length > 0
   const opts = cellOpts(currency)
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
+  const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
 
   const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
     extras.onSpentClick ? (
@@ -223,6 +225,17 @@ function ElementRow({
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
+        {/* read-only lead-in to the budget: "530.00 + 700.00" makes the money this
+            month can draw on visible; the name column gives way, the budget column stays put */}
+        {carryText !== null ? (
+          <span
+            data-testid="cell-carry"
+            title={t('budgets.page.budget.structure.carry_over_hint')}
+            className={`hidden shrink-0 text-[13px] tabular-nums sm:block ${cmp(carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+          >
+            {carryText}
+          </span>
+        ) : null}
         {(() => {
           const cell = (
             <span

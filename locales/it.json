@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Cartella predefinita",
           "in_archive": "In archivio",
+          "carry_over_hint": "Rimasto dai mesi precedenti",
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",

@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Default folder",
           "in_archive": "Archived",
+          "carry_over_hint": "Left from earlier months",
           "tab": {
             "budgeted": "Budget",
             "spent": "Spent",

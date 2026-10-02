@@ -217,11 +217,21 @@ export function rowState(row: { budgeted: string; spent: string; available: stri
   return cmp(row.spent, row.budgeted) > 0 ? 'covered' : 'ok'
 }
 
-export function rowProgress(row: { budgeted: string; spent: string }, future = false): number | null {
-  if (future || cmp(row.budgeted, '0') <= 0) {
+/** Spending against what this month can draw on: its budget plus what earlier
+ *  months left (an earlier overspend does not shrink the bar's scale). */
+export function rowProgress(row: { budgeted: string; spent: string; carry?: string }, future = false): number | null {
+  const carry = row.carry !== undefined && cmp(row.carry, '0') > 0 ? row.carry : '0'
+  const pool = add(row.budgeted, carry)
+  if (future || cmp(pool, '0') <= 0) {
     return null
   }
-  return Math.max(0, Math.min(Number(div(row.spent, row.budgeted)), 1))
+  return Math.max(0, Math.min(Number(div(row.spent, pool)), 1))
+}
+
+/** The row turns red only when this month spent more than its budget and what
+ *  earlier months left does not cover it. `available` is the displayed Available. */
+export function overBudget(row: { budgeted: string; spent: string; available: string }, future = false): boolean {
+  return !future && cmp(row.spent, row.budgeted) > 0 && cmp(row.available, '0') < 0
 }
 
 // the wire `available` already nets this month's spending against what earlier

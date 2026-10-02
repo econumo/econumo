@@ -9,7 +9,7 @@ import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
 import type { BudgetBuckets, FolderBucket } from './budgetMath'
-import { budgetTotals, elementDisplayName, makeBudgetExchange, rowProgress, totalsWithSavings } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, makeBudgetExchange, overBudget, rowProgress, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -40,6 +40,8 @@ interface RowProps {
   icon: string
   name: string
   tag?: string
+  /** read-only lead-in to `first`: what earlier months left, e.g. "530.00 +" */
+  carry?: { text: string; negative: boolean }
   first: string
   second: string
   secondClass?: string
@@ -52,7 +54,7 @@ interface RowProps {
   toggle?: { open: boolean; onToggle: () => void; label: string }
 }
 
-function PhoneRow({ testId, icon, name, tag, first, second, secondClass = '', progress = null, barClass = '', commented = false, ariaLabel, onOpen, toggle }: RowProps) {
+function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass = '', progress = null, barClass = '', commented = false, ariaLabel, onOpen, toggle }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
   return (
     <div className="relative" data-testid={testId}>
@@ -64,6 +66,14 @@ function PhoneRow({ testId, icon, name, tag, first, second, secondClass = '', pr
             {tag ? (
               <span data-testid="phone-currency-tag" className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
                 {tag}
+              </span>
+            ) : null}
+            {carry ? (
+              <span
+                data-testid="phone-carry"
+                className={`ml-auto shrink-0 text-[13px] tabular-nums ${carry.negative ? 'text-expense' : 'text-muted-foreground'}`}
+              >
+                {carry.text}
               </span>
             ) : null}
           </span>
@@ -149,10 +159,10 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const expenseRow = (element: BudgetElementDto) => {
     const name = elementDisplayName(element.id, element.name, t)
     const isUncategorized = element.id === UNCATEGORIZED_ID
-    const figures = { budgeted: element.budgeted, spent: element.spent }
-    // the colour reads this month alone: any spend over the budget is red, even when
-    // earlier months' money still covers it (the sheet tells those cases apart)
-    const overspent = !isUncategorized && !future && cmp(element.spent, element.budgeted) > 0
+    const carry = carryOver(element)
+    const figures = { budgeted: element.budgeted, spent: element.spent, available: displayAvailable(element), carry }
+    const overspent = !isUncategorized && overBudget(figures, future)
+    const carryText = isUncategorized || isZero(carry) ? null : `${fmt(carry, element.currencyId)} +`
     const budgetText = isUncategorized ? EMPTY : fmt(element.budgeted, element.currencyId)
     const spentText = future ? EMPTY : fmt(element.spent, element.currencyId)
     const expandable = element.children.length > 0
@@ -164,13 +174,14 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           icon={element.icon}
           name={name}
           tag={tagOf(element.currencyId)}
+          carry={carryText ? { text: carryText, negative: cmp(carry, '0') < 0 } : undefined}
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
           progress={isUncategorized ? null : rowProgress(figures, future)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
-          ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
+          ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
           toggle={expandable ? { open, onToggle: () => toggleElement(element.id), label: expandLabel(open) } : undefined}
         />

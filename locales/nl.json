@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Standaardmap",
           "in_archive": "Gearchiveerd",
+          "carry_over_hint": "Over van eerdere maanden",
           "tab": {
             "budgeted": "Budget",
             "spent": "Uitgegeven",

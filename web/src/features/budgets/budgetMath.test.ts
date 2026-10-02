@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
@@ -200,6 +200,28 @@ describe('rowProgress', () => {
   })
   it('never goes below zero (refunds)', () => {
     expect(rowProgress({ budgeted: '200', spent: '-30' })).toBe(0)
+  })
+  it('measures against what earlier months left plus this month’s budget', () => {
+    expect(rowProgress({ budgeted: '700', spent: '615', carry: '530' })).toBe(0.5)
+    // only budget left over, no budget this month: still a bar
+    expect(rowProgress({ budgeted: '0', spent: '50', carry: '200' })).toBe(0.25)
+  })
+  it('ignores a negative carry-over (earlier overspend) for the bar', () => {
+    expect(rowProgress({ budgeted: '200', spent: '50', carry: '-120' })).toBe(0.25)
+  })
+})
+
+describe('overBudget', () => {
+  it('is true only when this month is over budget and earlier months do not cover it', () => {
+    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' })).toBe(true)
+    // covered by earlier months: not over
+    expect(overBudget({ budgeted: '100', spent: '150', available: '10' })).toBe(false)
+    // an earlier overspend with this month within budget: not over
+    expect(overBudget({ budgeted: '120', spent: '100', available: '-150' })).toBe(false)
+    expect(overBudget({ budgeted: '100', spent: '100', available: '0' })).toBe(false)
+  })
+  it('is false in a future month', () => {
+    expect(overBudget({ budgeted: '100', spent: '150', available: '-20' }, true)).toBe(false)
   })
 })
 

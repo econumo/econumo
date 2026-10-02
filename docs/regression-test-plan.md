@@ -923,10 +923,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       (e.g. `USD`) above Budget and Spent, no Budget/Plan switch in the
       settings menu.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
-      thin bar under the name; Spent and the bar are gray while spending is
-      within the budget and red once it exceeds it (even when money left from
-      earlier months covers it). A future month shows `—` for Spent, with no
-      bar and no colour.
+      thin bar under the name. Spent and the bar turn red only when the month
+      spent more than its budget and money left from earlier months does not
+      cover it; otherwise they stay gray. The bar measures spending against
+      the budget plus what earlier months left. A future month shows `—` for
+      Spent, with no bar and no colour.
+- [ ] 📱 What earlier months left shows read-only before the budget, e.g.
+      "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
+      tablet, with a "Left from earlier months" tooltip); only the budget is
+      editable. Nothing shows when nothing is left; an earlier overspend shows
+      as a red negative amount ("-30.00 +").
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
 - [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds

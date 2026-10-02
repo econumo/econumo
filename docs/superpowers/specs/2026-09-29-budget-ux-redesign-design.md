@@ -32,7 +32,8 @@ contract changes.
 | Phone row interaction | One tap on a row opens the **item sheet**; all other row gestures go |
 | Phone modes | **Single month view** on phones — no Budget/Plan switch |
 | Phone row numbers | **Budget** and **Spent**; Available moves into the item sheet |
-| Row colour | Spent and bar: gray when spent ≤ budget, red when spent > budget (this month alone). *(2026-10-01: amber dropped — Dmitry)* |
+| Row colour | Spent and bar: red only when this month spent more than its budget AND earlier months' money does not cover it (Available < 0); gray otherwise. *(2026-10-01: amber dropped — Dmitry)* |
+| Leftovers | What earlier months left is shown read-only before the budget, `530.00 + 700.00` (only the budget is editable), on phone rows and in the desktop/tablet Budget table. *(2026-10-01 — Dmitry)* |
 | Income on phone | One collapsed summary row at the top, expands to income rows |
 | Comments | Fully separate from the amount editor, both views, all viewports |
 | Starting a thread | Faint corner triangle on hover (desktop); item sheet (tablet and phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions; tablet long-press modal replaced by the item sheet on tap — no long taps anywhere)* |
@@ -62,10 +63,14 @@ For an expense element in a month, with `budget`, `spent`, `available` as today:
 | covered | `available ≥ 0` and `spent > budget` | sheet: "Over by … — covered by … left from earlier months" |
 | over | `available < 0` | sheet: "Overspent by …"; Available shown red where visible |
 
-- Row colour (revised 2026-10-01) is separate from the state: the Spent figure and
-  bar are gray while `spent ≤ budget` and red once `spent > budget`, whatever the
-  carry-over. The state drives the sheet's sentence.
-- Progress bar value is `min(spent / budget, 1)`; hidden when `budget` is zero.
+- Row colour (revised 2026-10-01): the Spent figure and bar are red only in the
+  `over` state with `spent > budget` (this month over budget and not covered by
+  earlier months); every other row is gray. The state drives the sheet's sentence.
+- Carry-over (`available − (budget − spent)`) is shown read-only before the budget:
+  `530.00 + 700.00`; nothing when it is zero; a negative carry-over (earlier
+  overspend) in red.
+- Progress bar value is `min(spent / (budget + max(carry-over, 0)), 1)` — spending
+  against everything the month can draw on; hidden when that is zero.
 - Future months (after the current month) have no Spent: shown as `—`, no bar,
   state `none`.
 - Carry-over shown in the sheet = `available − (budget − spent)`.
@@ -119,7 +124,7 @@ it on a phone (URLs keep working; no redirect).
 
 ```
 [icon] Groceries          700.00   801.37 ◤
-       ▓▓▓▓▓▓▓▓▓▓▓▓▓░ (red: over budget)
+       ▓▓▓▓▓▓▓▓▓▓░░░░ (gray; red only when not covered)
 ```
 
 - Spent coloured per the row state rule; thin progress bar under the name.

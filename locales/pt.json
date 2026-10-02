@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Pasta predefinida",
           "in_archive": "Em arquivo",
+          "carry_over_hint": "Restante de meses anteriores",
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",

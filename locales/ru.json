@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Папка по умолчанию",
           "in_archive": "В архиве",
+          "carry_over_hint": "Осталось с прошлых месяцев",
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Потрачено",

@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Folder domyślny",
           "in_archive": "W archiwum",
+          "carry_over_hint": "Pozostało z wcześniejszych miesięcy",
           "tab": {
             "budgeted": "Budżet",
             "spent": "Wydano",

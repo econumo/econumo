@@ -56,7 +56,7 @@ it('names the budget currency once in the heading row, above Budget and Spent', 
 
 it('shows each expense row as one button with Budget and Spent, no symbols', async () => {
   const props = renderView()
-  const food = screen.getByRole('button', { name: 'Food, budget 200.00, spent 45.50' })
+  const food = screen.getByRole('button', { name: 'Food, budget 200.00 + 200.00, spent 45.50' })
   expect(within(screen.getByTestId('phone-row-cat-food')).queryByText(/\$/)).toBeNull()
   await userEvent.click(food)
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'expense', element: expect.objectContaining({ id: 'cat-food' }) })
@@ -80,14 +80,37 @@ it('draws the progress bar and colours Spent by row state', () => {
   expect(within(row).getByText('150.00').className).toContain('text-expense')
 })
 
-it('any spend over the budget is red, even when carry-over covers it', () => {
+it('an overspend that earlier months still cover stays gray', () => {
   renderView({}, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
     Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '10' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
-  expect(within(row).getByText('150.00').className).toContain('text-expense')
-  expect(within(row).getByTestId('phone-progress').firstElementChild?.className).toContain('bg-expense')
+  expect(within(row).getByText('150.00').className).not.toContain('text-expense')
+  expect(within(row).getByTestId('phone-progress').firstElementChild?.className).toContain('bg-muted-foreground/40')
+})
+
+it('shows what earlier months left, read-only, before this month’s budget', () => {
+  // Food: wire available 154.50 + spent 45.50 = 200.00 left from earlier months
+  renderView()
+  const row = screen.getByTestId('phone-row-cat-food')
+  expect(within(row).getByTestId('phone-carry')).toHaveTextContent('200.00 +')
+  expect(within(row).getByTestId('phone-carry').className).toContain('text-muted-foreground')
+  // the bar measures spending against carry-over plus budget: 45.50 of 400
+  expect(within(row).getByTestId('phone-progress').firstElementChild).toHaveStyle({ width: '11%' })
+})
+
+it('shows no carry-over when earlier months left nothing, and a negative one in red', () => {
+  renderView({}, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { available: '-45.5' })
+    const living = b.structure.elements.find((el) => el.id === 'env-1')!
+    Object.assign(living, { available: '-30' })
+  })
+  expect(within(screen.getByTestId('phone-row-cat-food')).queryByTestId('phone-carry')).toBeNull()
+  const debt = within(screen.getByTestId('phone-row-env-1')).getByTestId('phone-carry')
+  expect(debt).toHaveTextContent('-30.00 +')
+  expect(debt.className).toContain('text-expense')
 })
 
 it('spend within the budget stays gray, even when Available is negative from earlier months', () => {
@@ -107,7 +130,7 @@ it('a future month shows a dash for Spent, no bar, and no colour', () => {
   })
   const row = screen.getByTestId('phone-row-cat-food')
   expect(within(row).queryByTestId('phone-progress')).toBeNull()
-  expect(screen.getByRole('button', { name: 'Food, budget 100.00, spent —' })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
 })
 
 it('marks a commented row with a non-interactive indicator', () => {
