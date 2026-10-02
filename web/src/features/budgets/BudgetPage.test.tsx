@@ -476,3 +476,13 @@ it('the Budget view shows no savings: no block, and Total counts the expenses on
   expect(totals).not.toHaveTextContent('165.50')
 })
 
+it('shows the budget name in normal case', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+  )
+  renderPage()
+  const heading = await screen.findByRole('heading', { name: 'Main budget' })
+  expect(heading).not.toHaveClass('uppercase')
+  expect(heading).toHaveClass('text-lg')
+})

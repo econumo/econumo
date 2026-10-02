@@ -88,14 +88,14 @@ it('edit mode keeps the empty No folder as a drop target', async () => {
   expect(screen.getByTestId('budget-folder-No folder')).toBeInTheDocument()
 })
 
-it('shows spent as-is and available+budgeted as a sign-colored pill', async () => {
+it('shows spent as-is and available+budgeted as a plain emphasised figure', async () => {
   renderTable()
   const food = await screen.findByTestId('element-cat-food')
   // exact match: the wire value is positive and must NOT be rendered negated
   await waitFor(() => expect(within(food).getByTestId('cell-spent')).toHaveTextContent(/^45\.50$/))
   expect(within(food).getByTestId('cell-available')).toHaveTextContent('354.50')
-  expect(within(food).getByTestId('cell-available').className).toContain('text-income')
-  expect(within(food).getByTestId('cell-available').className).toContain('rounded-full')
+  expect(within(food).getByTestId('cell-available').className).toContain('font-semibold')
+  expect(within(food).getByTestId('cell-available').className).not.toContain('rounded-full')
 })
 
 it('rounds float noise in cells to the currency precision', async () => {
@@ -660,4 +660,94 @@ it('outside edit mode there is no "+" slot', async () => {
   renderTable()
   await screen.findByTestId('element-cat-food')
   expect(screen.queryByTestId('edit-slot')).not.toBeInTheDocument()
+})
+
+const food = (budget: BudgetDto) => budget.structure.elements.find((el) => el.id === 'cat-food')!
+
+it('shows Available as plain emphasised text when it is not negative', async () => {
+  renderTable()
+  const row = await screen.findByTestId('element-cat-food')
+  const available = within(row).getByTestId('cell-available')
+  await waitFor(() => expect(available).toHaveTextContent('354.50'))
+  expect(available).toHaveClass('font-semibold')
+  expect(available).not.toHaveClass('text-income')
+  expect(available).not.toHaveClass('bg-expense/10')
+})
+
+it('an earlier overspend reds the Available, not the Spent', async () => {
+  // spent 45.5 of 200 this month, but earlier months left -260: Available -60
+  renderTable(
+    (b) => {
+      food(b).available = '-260'
+    },
+    { onSpentClick: () => {} },
+  )
+  const row = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(row).getByTestId('cell-available')).toHaveTextContent('-60.00'))
+  expect(within(row).getByTestId('cell-available')).toHaveClass('bg-expense/10')
+  expect(within(row).getByRole('button', { name: 'transactions Food' })).not.toHaveClass('text-expense')
+})
+
+it('reds the Spent and the bar when this month went over budget and nothing covers it', async () => {
+  renderTable(
+    (b) => {
+      Object.assign(food(b), { spent: '250', budgetSpent: '250', available: '-250' })
+    },
+    { onSpentClick: () => {} },
+  )
+  const row = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(row).getByRole('button', { name: 'transactions Food' })).toHaveClass('text-expense'))
+  expect(within(row).getByTestId('row-progress').firstElementChild).toHaveClass('bg-expense')
+})
+
+it('keeps an overspend covered by earlier months gray', async () => {
+  // 250 spent of 200, but 200 left from earlier months: Available +150
+  renderTable(
+    (b) => {
+      Object.assign(food(b), { spent: '250', budgetSpent: '250', available: '-50' })
+    },
+    { onSpentClick: () => {} },
+  )
+  const row = await screen.findByTestId('element-cat-food')
+  await waitFor(() => expect(within(row).getByTestId('cell-available')).toHaveTextContent('150.00'))
+  expect(within(row).getByRole('button', { name: 'transactions Food' })).not.toHaveClass('text-expense')
+  expect(within(row).getByTestId('row-progress').firstElementChild).not.toHaveClass('bg-expense')
+})
+
+it('draws the bar against the budget plus what earlier months left', async () => {
+  renderTable()
+  const row = await screen.findByTestId('element-cat-food')
+  // 45.5 / (200 + 200) = 11.4%
+  await waitFor(() => expect(within(row).getByTestId('row-progress').firstElementChild).toHaveStyle({ width: '11%' }))
+})
+
+it('a future month shows no Spent and no bar', async () => {
+  renderTable((b) => {
+    b.filters.periodStart = '2099-01-01 00:00:00'
+  })
+  const row = await screen.findByTestId('element-cat-food')
+  expect(within(row).getByTestId('cell-spent')).toHaveTextContent('—')
+  expect(within(row).queryByTestId('row-progress')).not.toBeInTheDocument()
+})
+
+it('the uncategorized row has no bar', async () => {
+  renderTable(pushUncategorized)
+  const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
+  expect(within(row).queryByTestId('row-progress')).not.toBeInTheDocument()
+})
+
+it('folder headers are a tinted band with semibold totals', async () => {
+  renderTable()
+  const essentials = await screen.findByTestId('budget-folder-Essentials')
+  const header = within(essentials).getByTestId('folder-header')
+  expect(header).toHaveClass('bg-muted/60')
+  expect(within(header).getByTestId('stat-line')).toHaveClass('font-semibold')
+})
+
+it('the Total row shows Available as plain emphasised text', async () => {
+  renderTable()
+  const totals = await screen.findByTestId('budget-totals')
+  const available = within(totals).getByTestId('totals-available')
+  expect(available).toHaveClass('font-semibold')
+  expect(available).not.toHaveClass('bg-income/10')
 })

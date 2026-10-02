@@ -624,6 +624,16 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] 📱 Budget view (desktop and tablet): Available is the one bold figure,
+      plain when zero or above and a red pill when below zero; there are no
+      green pills. Spent and the thin bar under each row are gray, and turn
+      red only when the month spent more than its budget and earlier months
+      do not cover it (Available below zero). A row whose earlier months
+      overspent but which is within this month's budget shows a red
+      Available and a gray Spent. The bar fills against budget plus what
+      earlier months left. A future month shows "—" for Spent and no bars.
+      Folder headers are a tinted band with bold totals; the budget name is
+      in normal case.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the

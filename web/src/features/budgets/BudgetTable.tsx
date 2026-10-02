@@ -15,7 +15,8 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { CurrencyTag } from './CurrencyTag'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, overBudget, rowProgress } from './budgetMath'
+import { currentMonth } from './planMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -65,13 +66,23 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
   maxPrecision: currency?.fractionDigits ?? 2,
 })
 
-export function AvailablePill({ available, currency, testId }: { available: string; currency: CurrencyDto | undefined; testId?: string }) {
+/* the view's one emphasised number: plain unless it is negative */
+export function AvailableFigure({
+  available,
+  currency,
+  testId,
+  className = 'text-[15px]',
+}: {
+  available: string
+  currency: CurrencyDto | undefined
+  testId?: string
+  className?: string
+}) {
+  const negative = cmp(available, '0') < 0
   return (
     <span
       data-testid={testId}
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums ${
-        cmp(available, '0') >= 0 ? 'bg-income/10 text-income' : 'bg-expense/10 text-expense'
-      }`}
+      className={`inline-flex items-center font-semibold tabular-nums ${className} ${negative ? 'rounded-full bg-expense/10 px-2 py-0.5 text-expense' : ''}`}
     >
       {moneyFormat(available, currency, cellOpts(currency))}
     </span>
@@ -82,11 +93,11 @@ function StatCells({ stats, currency }: { stats: BucketStats; currency: Currency
   const opts = cellOpts(currency)
   const available = stats.available
   return (
-    <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stat-line">
+    <span className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
       <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
-      <span className={`w-20 text-center tabular-nums sm:w-24 ${cmp(available, '0') >= 0 ? 'text-income' : 'text-expense'}`}>
-        {moneyFormat(available, currency, opts)}
+      <span className="flex w-20 justify-center sm:w-24">
+        <AvailableFigure available={available} currency={currency} className="text-[13px]" />
       </span>
     </span>
   )
@@ -162,25 +173,31 @@ function ElementRow({
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
+  const future = budget.filters.periodStart.slice(0, 7) > currentMonth().slice(0, 7)
+  const figures = { budgeted: element.budgeted, spent: element.spent, available, carry }
+  const overspent = !isUncategorized && overBudget(figures, future)
+  const progress = isUncategorized ? null : rowProgress(figures, future)
   const carryText = isUncategorized || isZero(carry) ? null : `${moneyFormat(carry, currency, opts)} +`
   const tag = element.currencyId && element.currencyId !== budget.meta.currencyId ? currency?.code : undefined
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
-    extras.onSpentClick ? (
+  const spentCell = (target: BudgetTransactionsTarget, spent: string, tone = 'text-muted-foreground') => {
+    if (future) {
+      return <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
+    }
+    return extras.onSpentClick ? (
       <button
         type="button"
         title={showTransactionsTitle}
         aria-label={`transactions ${target.name}`}
-        className="w-20 text-center text-[15px] tabular-nums text-muted-foreground underline-offset-2 hover:text-foreground hover:underline sm:w-24"
+        className={`w-20 text-center text-[15px] tabular-nums underline-offset-2 hover:text-foreground hover:underline sm:w-24 ${tone}`}
         onClick={() => extras.onSpentClick!(target)}
       >
         {moneyFormat(spent, currency, opts)}
       </button>
     ) : (
-      <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">
-        {moneyFormat(spent, currency, opts)}
-      </span>
+      <span className={`w-20 text-center text-[15px] tabular-nums sm:w-24 ${tone}`}>{moneyFormat(spent, currency, opts)}</span>
     )
+  }
 
   // mobile has no room for a chevron column: the chevron replaces the entity
   // icon on expandable rows, childless rows drop the alignment spacer
@@ -287,6 +304,7 @@ function ElementRow({
           {spentCell(
             { id: element.id, type: element.type, name: displayName, icon: element.icon, currencyId: element.currencyId },
             element.spent,
+            overspent ? 'text-expense' : 'text-muted-foreground',
           )}
         </span>
         <span className="flex w-20 justify-center sm:w-24">
@@ -295,12 +313,20 @@ function ElementRow({
               {EMPTY_CELL}
             </span>
           ) : (
-            <AvailablePill available={available} currency={currency} testId="cell-available" />
+            <AvailableFigure available={available} currency={currency} testId="cell-available" />
           )}
         </span>
         {actionsColumn ? <EditSlot /> : null}
         {extras.renderActions ? extras.renderActions(element, bucket) : actionsColumn ? <ActionsSpacer /> : null}
       </div>
+      {progress !== null ? (
+        <span data-testid="row-progress" className="mx-1.5 -mt-1.5 mb-1 h-1 overflow-hidden rounded-full bg-muted sm:mx-2">
+          <span
+            className={`block h-full rounded-full ${overspent ? 'bg-expense' : 'bg-muted-foreground/40'}`}
+            style={{ width: `${Math.round(progress * 100)}%` }}
+          />
+        </span>
+      ) : null}
       {expandable && unfolded ? (
         <ul className="pb-1">
           {element.children.map((child) => {
@@ -483,7 +509,7 @@ function ReportingTagsFolder({
   return (
     <Collapsible open={open} onOpenChange={() => toggleElement(REPORTING_TAGS_FOLD_ID)}>
       <section className="rounded-md border p-1.5 sm:p-2" data-testid="budget-labels-section">
-        <div className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
+        <div className="flex items-center gap-1.5 rounded bg-muted/60 px-1.5 py-1.5 mb-1 sm:gap-2 sm:px-2">
           <CollapsibleTrigger asChild>
             <button
               type="button"
@@ -492,7 +518,7 @@ function ReportingTagsFolder({
               title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
             >
               {open ? <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-3.5 shrink-0 text-muted-foreground" />}
-              <span className="min-w-0 truncate text-sm font-medium" data-testid="budget-labels-heading">
+              <span className="min-w-0 truncate text-sm font-semibold" data-testid="budget-labels-heading">
                 {t('budgets.page.budget.structure.labels.heading')}
               </span>
             </button>
@@ -528,7 +554,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   ]
 
   return (
-    <div className="flex flex-col gap-3" data-testid="budget-table">
+    <div className="flex flex-col gap-5" data-testid="budget-table">
       <div className="flex items-center gap-1.5 px-3 text-[11px] uppercase tracking-wide text-muted-foreground sm:gap-2 sm:px-4" data-testid="column-headers">
         <span className="min-w-0 flex-1 truncate">{budgetCurrency?.code}</span>
         <span className="hidden w-24 text-right sm:block">{t('budgets.page.budget.structure.tab.budgeted')}</span>
@@ -595,9 +621,12 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
         }
         const sectionNode = (
           <section key={section.key} className="rounded-md border p-1.5 sm:p-2" data-testid={`budget-folder-${section.name}`}>
-            <header className="flex items-center gap-1.5 px-1.5 pb-1 sm:gap-2 sm:px-2">
+            <header
+              data-testid="folder-header"
+              className="flex items-center gap-1.5 rounded bg-muted/60 px-1.5 py-1.5 mb-1 sm:gap-2 sm:px-2"
+            >
               {!isReadOnlySection ? renderFolderHandle?.(section.bucket) : null}
-              <span className="min-w-0 flex-1 truncate text-sm font-medium" title={section.name}>
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={section.name}>
                 {section.name}
               </span>
               {section.bucket.elements.length > 0 ? <StatCells stats={section.bucket.stats} currency={budgetCurrency} /> : null}
@@ -693,7 +722,7 @@ export function BudgetTotals({
           {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
         <span className="flex w-24 justify-center">
-          <AvailablePill available={totals.available} currency={budgetCurrency} />
+          <AvailableFigure available={totals.available} currency={budgetCurrency} testId="totals-available" />
         </span>
         {actionsColumn ? (
           <>
@@ -720,7 +749,7 @@ export function BudgetTotals({
         </span>
         <span className="flex items-center justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
-          <AvailablePill available={totals.available} currency={budgetCurrency} />
+          <AvailableFigure available={totals.available} currency={budgetCurrency} />
         </span>
       </div>
     </>

@@ -671,10 +671,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
             <ChevronLeft className="size-5" />
           </Button>
         ) : null}
-        <h1
-          className={isPhone ? 'min-w-0 shrink truncate text-lg font-medium' : 'min-w-0 shrink truncate text-[22px] uppercase tracking-wide'}
-          title={budget.meta.name}
-        >
+        <h1 className="min-w-0 shrink truncate text-lg font-medium" title={budget.meta.name}>
           {budget.meta.name}
         </h1>
         {isCompact ? null : (
