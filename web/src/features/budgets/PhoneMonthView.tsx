@@ -93,7 +93,7 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
         {progress !== null ? (
           // the bar spans the row, not the name column: a carry-over widens the Budget
           // column per row, which would leave every bar a different length
-          <span data-testid="phone-progress" className="col-span-full mt-1 ml-7 h-1 overflow-hidden rounded-full bg-muted">
+          <span data-testid="phone-progress" className="col-span-full mt-1 h-1 overflow-hidden rounded-full bg-muted">
             <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
           </span>
         ) : null}
