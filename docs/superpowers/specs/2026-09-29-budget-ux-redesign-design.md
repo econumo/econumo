@@ -118,8 +118,8 @@ it on a phone (URLs keep working; no redirect).
   the month-end Balance).
 - **Totals card** *(revised 2026-10-01 — Dmitry)*: Budget (`left + budget`, with
   "{amount} available" under it; expenses only), Income (received),
-  Expenses (spent), Transfers (only when non-zero), Savings (`saved of planned`,
-  with savings accounts), Total savings, Balance (at month end).
+  Expenses (spent), Transfers (only when non-zero), Savings (saved, with savings
+  accounts), Total savings, Balance at month end.
 
 ### Expense row
 

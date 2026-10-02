@@ -296,7 +296,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const labelsOpen = !!unfolded[REPORTING_TAGS_FOLD_ID]
   const incomeOpen = !!unfolded[INCOME_FOLD_ID]
   const hasFolders = buckets.withFolder.length > 0
-  const of = (value: string, totalAmount: string) => t('budgets.page.phone.of', { value: future ? EMPTY : fmt(value), total: fmt(totalAmount) })
 
   return (
     <div className="flex flex-col gap-3" data-testid="phone-month-view">
@@ -396,11 +395,11 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         {planMonth && !isZero(planMonth.transfersNet) ? (
           <TotalLine testId="phone-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} />
         ) : null}
-        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={of(savingsSum.spent, savingsSum.budgeted)} /> : null}
+        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={future ? EMPTY : fmt(savingsSum.spent)} /> : null}
         {planMonth?.savingsBalance != null ? (
           <TotalLine testId="phone-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} />
         ) : null}
-        {planMonth ? <TotalLine testId="phone-total-balance" label={t('budgets.page.plan.totals.balance')} value={fmt(planMonth.balance)} /> : null}
+        {planMonth ? <TotalLine testId="phone-total-balance" label={t('budgets.page.phone.balance')} value={fmt(planMonth.balance)} /> : null}
       </section>
     </div>
   )

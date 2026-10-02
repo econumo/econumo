@@ -189,7 +189,7 @@ it('the Total card reads Budget, Income, Expenses and Balance; Transfers only wh
   expect(within(budgetLine).getByTestId('phone-budget-available')).toHaveTextContent('554.50 available')
   expect(screen.getByTestId('phone-total-income')).toHaveTextContent(/^Income400\.00$/)
   expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses45.50')
-  expect(screen.getByTestId('phone-total-balance')).toHaveTextContent('Balance4,545.00')
+  expect(screen.getByTestId('phone-total-balance')).toHaveTextContent('Balance at month end4,545.00')
 })
 
 it('Budget shows only this month\'s budget when earlier months left nothing, and a negative Available in red', () => {
@@ -228,7 +228,7 @@ it('lists savings rows with Planned and Saved, and the totals card adds the savi
   expect(savings).toHaveTextContent('Saved')
   await userEvent.click(screen.getByRole('button', { name: 'Rainy day, planned 100.00, saved 40.00' }))
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'savings', row: expect.objectContaining({ id: 'acc-s1' }) })
-  expect(screen.getByTestId('phone-total-savings')).toHaveTextContent('40.00 of 100.00')
+  expect(screen.getByTestId('phone-total-savings')).toHaveTextContent(/^Savings40\.00$/)
   expect(screen.getByTestId('phone-total-savings-balance')).toHaveTextContent('1,040.00')
   expect(totalLines()).toEqual([
     'phone-total-budget', 'phone-total-income', 'phone-total-expenses', 'phone-total-savings', 'phone-total-savings-balance', 'phone-total-balance',

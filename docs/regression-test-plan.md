@@ -968,9 +968,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 The Totals card lists, in order: Budget ("left + budget", with
       "… available" under it, red when negative; expenses only), Income
       (received), Expenses (spent), Transfers (only when money
-      crossed the budget boundary that month), Savings (saved of planned, only
-      with savings accounts), Total savings (with savings accounts), Balance.
-      A future month shows "—" for received and spent. Balance and Total savings match
+      crossed the budget boundary that month), Savings (saved, only with
+      savings accounts), Total savings (with savings accounts), Balance at
+      month end. A future month shows "—" for received, spent and saved. Balance and Total savings match
       the Plan view's figures for the same month on a desktop, including a
       month several months ahead of the current one whose earlier months
       carry unmet plans.
