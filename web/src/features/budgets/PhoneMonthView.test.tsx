@@ -169,21 +169,47 @@ it('collapses income into one summary row that unfolds into income rows', async 
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'plan', cell: planMonth.income.rows[0] })
 })
 
+const totalLines = () =>
+  Array.from(screen.getByTestId('phone-totals').querySelectorAll('[data-testid^="phone-total-"]')).map((el) => el.getAttribute('data-testid'))
+
 it('leaves income and the plan lines out while the plan is not loaded', () => {
   renderView({ planMonth: null })
   expect(screen.queryByTestId('phone-income')).toBeNull()
-  expect(screen.queryByTestId('phone-total-balance')).toBeNull()
-  // spent of (what earlier months left + budget): 200 + 90 EUR → 300 USD left
-  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('45.50 of 300.00 + 300.00')
+  expect(totalLines()).toEqual(['phone-total-budget', 'phone-total-expenses'])
 })
 
-it('the totals card lists Expenses, Available and Balance; Transfers only when non-zero', () => {
+it('the Total card reads Budget, Income, Expenses and Balance; Transfers only when non-zero', () => {
   renderView()
-  expect(screen.getByTestId('phone-total-available')).toBeInTheDocument()
-  expect(screen.getByTestId('phone-total-balance')).toHaveTextContent('4,545.00')
-  expect(screen.queryByTestId('phone-total-transfers')).toBeNull()
-  expect(screen.queryByTestId('phone-total-savings')).toBeNull()
-  expect(screen.queryByTestId('phone-total-savings-balance')).toBeNull()
+  expect(totalLines()).toEqual(['phone-total-budget', 'phone-total-income', 'phone-total-expenses', 'phone-total-balance'])
+  // what earlier months left + this month's budget: 200 + 90 EUR → 300 USD left
+  const budgetLine = screen.getByTestId('phone-total-budget')
+  expect(budgetLine).toHaveTextContent('Budget')
+  expect(budgetLine).toHaveTextContent('300.00 + 300.00')
+  // expenses only: Food 354.50 + Living 180 EUR → 200 USD
+  expect(within(budgetLine).getByTestId('phone-budget-available')).toHaveTextContent('554.50 available')
+  expect(screen.getByTestId('phone-total-income')).toHaveTextContent('Income400.00 of 2,000.00')
+  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses45.50')
+  expect(screen.getByTestId('phone-total-balance')).toHaveTextContent('Balance4,545.00')
+})
+
+it('Budget shows only this month\'s budget when earlier months left nothing, and a negative Available in red', () => {
+  renderView({}, (b) => {
+    // nothing left from earlier months (carry 0) and Food overspent by 145.50
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { spent: '345.5', budgetSpent: '345.5', available: '-345.5' })
+    Object.assign(b.structure.elements.find((el) => el.id === 'env-1')!, { available: '0' })
+  })
+  const budgetLine = screen.getByTestId('phone-total-budget')
+  expect(budgetLine).not.toHaveTextContent('+')
+  const available = within(budgetLine).getByTestId('phone-budget-available')
+  // -145.50 (Food) + 100.00 (Living, 90 EUR)
+  expect(available).toHaveTextContent('-45.50 available')
+  expect(available.className).toContain('text-expense')
+})
+
+it('a future month shows dashes for what has not happened yet', () => {
+  renderView({ selectedDate: '2099-01-01' })
+  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses—')
+  expect(screen.getByTestId('phone-total-income')).toHaveTextContent('— of 2,000.00')
 })
 
 it('shows Transfers when money crossed the budget boundary', () => {
@@ -204,6 +230,9 @@ it('lists savings rows with Planned and Saved, and the totals card adds the savi
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'savings', row: expect.objectContaining({ id: 'acc-s1' }) })
   expect(screen.getByTestId('phone-total-savings')).toHaveTextContent('40.00 of 100.00')
   expect(screen.getByTestId('phone-total-savings-balance')).toHaveTextContent('1,040.00')
+  expect(totalLines()).toEqual([
+    'phone-total-budget', 'phone-total-income', 'phone-total-expenses', 'phone-total-savings', 'phone-total-savings-balance', 'phone-total-balance',
+  ])
 })
 
 it('shows the uncategorized row without a budget, and it opens the sheet', async () => {

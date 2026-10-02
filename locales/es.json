@@ -1422,6 +1422,7 @@
         "row_aria": "{name}, presupuesto {budget}, gastado {spent}",
         "income_row_aria": "{name}, previsto {planned}, recibido {received}",
         "savings_row_aria": "{name}, previsto {planned}, ahorrado {saved}",
+        "available": "{amount} disponible",
         "balance": "Saldo a fin de mes"
       },
       "sheet": {

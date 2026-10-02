@@ -290,7 +290,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
 
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const expenseTotals = budgetTotals(buckets)
-  const total = totalsWithSavings(expenseTotals, budget, exchangeFn)
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
   const savingsSum = savingsRows.length > 0 ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn) : null
   const labels = budget.structure.labels ?? []
@@ -363,36 +362,45 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         data-testid="phone-totals"
       >
         <span className="text-[15px] font-medium">{t('budgets.page.budget.structure.total.name')}</span>
-        <TotalLine
-          testId="phone-total-expenses"
-          label={t('budgets.page.plan.totals.expenses')}
-          value={
-            isZero(expenseTotals.carry)
-              ? of(expenseTotals.spent, expenseTotals.budgeted)
-              : t('budgets.page.phone.of', {
-                  value: future ? EMPTY : fmt(expenseTotals.spent),
-                  total: `${fmt(expenseTotals.carry)} + ${fmt(expenseTotals.budgeted)}`,
-                })
-          }
-        />
-        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={of(savingsSum.spent, savingsSum.budgeted)} /> : null}
-        <TotalLine
-          testId="phone-total-available"
-          label={t('budgets.page.budget.structure.tab.available')}
-          value={fmt(total.available)}
-          negative={cmp(total.available, '0') < 0}
-        />
+        <div className="flex items-baseline justify-between gap-3" data-testid="phone-total-budget">
+          <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.budgeted')}</span>
+          <span className="flex flex-col items-end">
+            <span className="text-[15px] tabular-nums">
+              {isZero(expenseTotals.carry) ? (
+                fmt(expenseTotals.budgeted)
+              ) : (
+                <>
+                  <span className={`text-[13px] ${cmp(expenseTotals.carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}>
+                    {fmt(expenseTotals.carry)} +
+                  </span>{' '}
+                  {fmt(expenseTotals.budgeted)}
+                </>
+              )}
+            </span>
+            <span
+              data-testid="phone-budget-available"
+              className={`text-[13px] tabular-nums ${cmp(expenseTotals.available, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+            >
+              {t('budgets.page.phone.available', { amount: fmt(expenseTotals.available) })}
+            </span>
+          </span>
+        </div>
         {planMonth ? (
-          <>
-            <TotalLine testId="phone-total-balance" label={t('budgets.page.phone.balance')} value={fmt(planMonth.balance)} />
-            {planMonth.savingsBalance !== null ? (
-              <TotalLine testId="phone-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} />
-            ) : null}
-            {!isZero(planMonth.transfersNet) ? (
-              <TotalLine testId="phone-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} />
-            ) : null}
-          </>
+          <TotalLine
+            testId="phone-total-income"
+            label={t('budgets.page.plan.totals.income')}
+            value={t('budgets.page.phone.of', { value: future ? EMPTY : fmt(planMonth.income.received), total: fmt(planMonth.income.planned) })}
+          />
         ) : null}
+        <TotalLine testId="phone-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={future ? EMPTY : fmt(expenseTotals.spent)} />
+        {planMonth && !isZero(planMonth.transfersNet) ? (
+          <TotalLine testId="phone-total-transfers" label={t('budgets.page.plan.totals.transfers')} value={fmt(planMonth.transfersNet)} />
+        ) : null}
+        {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={of(savingsSum.spent, savingsSum.budgeted)} /> : null}
+        {planMonth?.savingsBalance != null ? (
+          <TotalLine testId="phone-total-savings-balance" label={t('budgets.page.plan.totals.savings_balance')} value={fmt(planMonth.savingsBalance)} />
+        ) : null}
+        {planMonth ? <TotalLine testId="phone-total-balance" label={t('budgets.page.plan.totals.balance')} value={fmt(planMonth.balance)} /> : null}
       </section>
     </div>
   )

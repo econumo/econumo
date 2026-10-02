@@ -116,9 +116,10 @@ it on a phone (URLs keep working; no redirect).
   below. The unfoldered bucket is labelled "No folder" (was "Default folder").
 - **Savings card:** Planned and Saved columns; row tap opens the sheet (which adds
   the month-end Balance).
-- **Totals card:** Expenses (`spent of budget`), Savings (`saved of planned`),
-  Available (total, incl. carry-over), Balance at month end, Total savings;
-  Transfers only when non-zero.
+- **Totals card** *(revised 2026-10-01 — Dmitry)*: Budget (`left + budget`, with
+  "{amount} available" under it; expenses only), Income (`received of planned`),
+  Expenses (spent), Transfers (only when non-zero), Savings (`saved of planned`,
+  with savings accounts), Total savings, Balance (at month end).
 
 ### Expense row
 

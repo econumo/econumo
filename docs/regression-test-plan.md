@@ -935,8 +935,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       as a red negative amount ("-30.00 +").
 - [ ] 📱 The Total row (desktop and tablet) leads its budget with the sum of
       what earlier months left, in the budget currency ("2,530.00 +
-      3,725.00"); on a phone the Totals card's Expenses line reads "spent of
-      left + budget". Savings and Uncategorized add nothing to it.
+      3,725.00"); on a phone the Totals card's Budget line reads "left +
+      budget". Savings and Uncategorized add nothing to it.
 - [ ] 📱 Open September, then August; change a category's August budget (e.g.
       to 0), then go back to September without reloading: September's
       leftover for that category follows the change at once (it equals
@@ -965,10 +965,12 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       budget's range, an archived element and the Uncategorized row get no
       "Set budget" in the sheet; Uncategorized has no comments link, and an
       empty read-only thread shows none.
-- [ ] 📱 The Totals card lists Expenses (spent of budget), Savings (saved of
-      planned, only with savings accounts), Available, Balance at month end,
-      Total savings (with savings accounts), and Transfers only when money
-      crossed the budget boundary that month. Balance and Total savings match
+- [ ] 📱 The Totals card lists, in order: Budget ("left + budget", with
+      "… available" under it, red when negative; expenses only), Income
+      (received of planned), Expenses (spent), Transfers (only when money
+      crossed the budget boundary that month), Savings (saved of planned, only
+      with savings accounts), Total savings (with savings accounts), Balance.
+      A future month shows "—" for received and spent. Balance and Total savings match
       the Plan view's figures for the same month on a desktop, including a
       month several months ahead of the current one whose earlier months
       carry unmet plans.

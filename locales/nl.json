@@ -1422,6 +1422,7 @@
         "row_aria": "{name}, budget {budget}, uitgegeven {spent}",
         "income_row_aria": "{name}, gepland {planned}, ontvangen {received}",
         "savings_row_aria": "{name}, gepland {planned}, gespaard {saved}",
+        "available": "{amount} beschikbaar",
         "balance": "Saldo aan het einde van de maand"
       },
       "sheet": {

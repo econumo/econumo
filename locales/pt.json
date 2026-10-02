@@ -1422,6 +1422,7 @@
         "row_aria": "{name}, orçamento {budget}, gasto {spent}",
         "income_row_aria": "{name}, planeado {planned}, recebido {received}",
         "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
+        "available": "{amount} disponível",
         "balance": "Saldo no fim do mês"
       },
       "sheet": {

@@ -1422,6 +1422,7 @@
         "row_aria": "{name}, бюджет {budget}, витрачено {spent}",
         "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
         "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
+        "available": "доступно {amount}",
         "balance": "Баланс на кінець місяця"
       },
       "sheet": {
