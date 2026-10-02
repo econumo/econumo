@@ -760,6 +760,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       Balance does not move. A fee (expense) on it lowers them the same way,
       and a transfer into it from an account that is not in the budget counts
       as saved too.
+- [ ] 📱 Income and expenses booked on a savings account stay out of the
+      category rows: interest in an income category and a fee in an expense
+      category leave both categories' amounts (monthly Budget view and Plan
+      view) and their "Show transactions" lists unchanged; the same
+      transactions on an everyday account do show there.
 - [ ] 📱 A savings cell carries comment threads like any other cell: the
       corner marker shows on a commented cell, and Shift+Enter (desktop) or a
       tap on the marker opens its thread.

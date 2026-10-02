@@ -30,8 +30,11 @@ type filters struct {
 	tags               map[string]model.TagMeta
 	labels             map[string]model.LabelMeta
 	// savingsAccounts are the members flagged savings in this budget, in
-	// membership order.
-	savingsAccounts []model.AccountView
+	// membership order; everydayAccountIDs is every other member. Category,
+	// tag and label figures count the everyday accounts only: income and
+	// expenses booked on a savings account belong to its savings row.
+	savingsAccounts    []model.AccountView
+	everydayAccountIDs []vo.Id
 }
 
 // BuildBudget assembles the full model.BudgetResult for a budget as of periodStart
@@ -143,9 +146,12 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 	var ownIDs []vo.Id
 	ownSavings := map[string]bool{}
 	var savings []model.AccountView
+	var everyday []vo.Id
 	for i, v := range views {
 		if b.accounts[i].IsSavings {
 			savings = append(savings, v)
+		} else {
+			everyday = append(everyday, memberIDs[i])
 		}
 		if v.OwnerID == userID.String() {
 			ownIDs = append(ownIDs, memberIDs[i])
@@ -206,7 +212,7 @@ func (s *Service) buildFilters(ctx context.Context, userID vo.Id, b *budgetAggre
 		userIDs: userIDs, accountFilters: accountFilters,
 		includedAccountIDs: included, currencyIDs: currencyIDs,
 		categories: catMap, incomeCategories: incomeCatMap, tags: tagMap, labels: labels,
-		savingsAccounts: savings,
+		savingsAccounts: savings, everydayAccountIDs: everyday,
 	}, nil
 }
 

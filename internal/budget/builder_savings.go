@@ -417,16 +417,17 @@ func savingsCurrencies(f filters, budgetCurrencyID vo.Id) []string {
 	return rest
 }
 
-// buildSavingsFlows sums AccountsNetByMonth per (month, account currency),
-// ordered by month, then budget currency first, then currency id. Months
-// without activity have no entry.
-func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time) ([]model.PlanSavingsFlowResult, error) {
+// buildSavingsFlows sums byMonth's per-account rows over the savings accounts
+// per (month, account currency), ordered by month, then budget currency first,
+// then currency id. Months without activity have no entry.
+func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time,
+	byMonth func(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error)) ([]model.PlanSavingsFlowResult, error) {
 	out := []model.PlanSavingsFlowResult{}
 	ids, err := savingsAccountIDs(f)
 	if err != nil || len(ids) == 0 {
 		return out, err
 	}
-	rows, err := s.read.AccountsNetByMonth(ctx, ids, from, to)
+	rows, err := byMonth(ctx, ids, from, to)
 	if err != nil {
 		return nil, err
 	}

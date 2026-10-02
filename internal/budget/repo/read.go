@@ -859,6 +859,39 @@ func (r *ReadRepo) AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, f
 	return sortedSavingsRows(merged, keys), nil
 }
 
+// AccountsIncomeExpenseByMonth implements ReadModel: AccountsNetByMonth
+// without the transfers.
+func (r *ReadRepo) AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error) {
+	if len(accountIDs) == 0 {
+		return nil, nil
+	}
+	ids := idArgs(accountIDs)
+	n := len(ids)
+	args := append([]any{}, ids...)
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		dStart, dEnd = "$"+itoa(n+1), "$"+itoa(n+2)
+		args = append(args, from, to)
+	} else {
+		args = append(args, sqliteDatetime(from), sqliteDatetime(to))
+	}
+	month := r.planMonthExpr("t.spent_at")
+	sql := "SELECT " + month + " as month, t.account_id as account_id, SUM(CASE WHEN t.type = 1 THEN t.amount ELSE 0 - t.amount END) as amount FROM transactions t WHERE t.type IN (0, 1) AND t.account_id IN (" + r.ph(1, n) + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		" GROUP BY month, t.account_id"
+	rows, err := r.monthAccountAmounts(ctx, sql, args)
+	if err != nil {
+		return nil, err
+	}
+	merged := map[string]vo.DecimalNumber{}
+	keys := map[string]model.SavingsMonthRow{}
+	for _, row := range rows {
+		k := row.Month + "|" + row.AccountID
+		merged[k] = vo.NewDecimal(row.Amount)
+		keys[k] = model.SavingsMonthRow{AccountID: row.AccountID, Month: row.Month}
+	}
+	return sortedSavingsRows(merged, keys), nil
+}
+
 // monthAccountAmounts scans (month, account_id, amount) rows with the
 // engine's SUM representation.
 func (r *ReadRepo) monthAccountAmounts(ctx context.Context, sql string, args []any) ([]model.SavingsMonthRow, error) {

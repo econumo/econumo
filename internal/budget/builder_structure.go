@@ -104,7 +104,7 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 	}
 
 	count := func(periodStart, periodEnd time.Time, current bool) error {
-		rows, err := s.read.CountSpending(ctx, categoryIDs, f.includedAccountIDs, periodStart, periodEnd)
+		rows, err := s.read.CountSpending(ctx, categoryIDs, f.everydayAccountIDs, periodStart, periodEnd)
 		if err != nil {
 			return err
 		}
@@ -169,7 +169,7 @@ func (s *Service) buildElementsSpending(ctx context.Context, b *budgetAggregate,
 // filed under the shared UncategorizedID so it renders as one child rather than
 // vanishing. A label's own total is the sum over its categories.
 func (s *Service) buildLabelSpending(ctx context.Context, f filters) (map[string]map[string][]amountSpent, error) {
-	rows, err := s.read.CountSpendingByLabel(ctx, f.includedAccountIDs, f.periodStart, f.periodEnd)
+	rows, err := s.read.CountSpendingByLabel(ctx, f.everydayAccountIDs, f.periodStart, f.periodEnd)
 	if err != nil {
 		return nil, err
 	}

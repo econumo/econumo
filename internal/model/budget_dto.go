@@ -438,6 +438,9 @@ type PlanStructureResult struct {
 // BudgetPlanResult is the full get-budget-plan shape. SavingsOpeningBalances
 // is OpeningBalances over the savings accounts only, per savings-account
 // currency; SavingsFlows lists only (month, currency) pairs with activity.
+// SavingsIncomeExpense is the income minus the expenses booked on the savings
+// accounts, same shape as SavingsFlows: the category rows count the everyday
+// accounts only, so the combined balance needs it added back.
 type BudgetPlanResult struct {
 	Meta                   MetaResult                 `json:"meta"`
 	Months                 []string                   `json:"months"`
@@ -446,6 +449,7 @@ type BudgetPlanResult struct {
 	CurrencyRates          []PlanMonthRatesResult     `json:"currencyRates"`
 	Transfers              []PlanMonthTransfersResult `json:"transfers"`
 	SavingsFlows           []PlanSavingsFlowResult    `json:"savingsFlows"`
+	SavingsIncomeExpense   []PlanSavingsFlowResult    `json:"savingsIncomeExpense"`
 	Structure              PlanStructureResult        `json:"structure"`
 }
 

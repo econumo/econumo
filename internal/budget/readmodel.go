@@ -55,6 +55,9 @@ type ReadModel interface {
 	// balanceSQL's sign rules: +income, -expense, -transfer out (amount),
 	// +transfer in (amount_recipient), every counterparty.
 	AccountsNetByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error)
+	// AccountsIncomeExpenseByMonth: per (account, month) income - expense over
+	// [from, to); transfers are not counted.
+	AccountsIncomeExpenseByMonth(ctx context.Context, accountIDs []vo.Id, from, to time.Time) ([]model.SavingsMonthRow, error)
 
 	// BudgetTransactionsByCategories returns expense transactions (type=0, tag IS
 	// NULL) in [start, end) on the given accounts, in the given categories,

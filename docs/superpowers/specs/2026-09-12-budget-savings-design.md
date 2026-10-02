@@ -513,3 +513,15 @@ the closing balances already used — and `SavingsByMonth` is gone. Consequences
   savings account is income AND saved, so it leaves the everyday Balance alone.
 - The "Savings balance rises by more than Saved" divergence described under
   *Wire: get-budget-plan* no longer exists.
+
+**Same day, follow-up: savings accounts leave the category rows.** Income and
+expenses booked on a savings account count in its Savings row only. Category, tag,
+label and uncategorized figures — the monthly spent amounts, the plan's income and
+expense cells and every "Show transactions" list except Transfers — read the
+everyday members (`filters.everydayAccountIDs`); opening balances and the Transfers
+line still cover every member. The combined balance would then miss that money, so
+`get-budget-plan` gains `savingsIncomeExpense` (same shape as `savingsFlows`: income
+− expenses on the savings accounts per month and account currency, from
+`AccountsIncomeExpenseByMonth`), which `planTotals` adds to `effectiveNet` and
+`netActual`. Net = Income − Expenses + Transfers + savingsIncomeExpense − Savings is
+again exactly the everyday accounts' change.

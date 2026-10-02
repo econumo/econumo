@@ -76,6 +76,34 @@ func TestAccountsNetByMonth(t *testing.T) {
 	}
 }
 
+func TestAccountsIncomeExpenseByMonth(t *testing.T) {
+	read, db := newReadRepo(t)
+	ctx := context.Background()
+	f := fixture.New(t, db)
+	s1 := "aaaa2222-0000-0000-0000-00000000005a"
+	f.Account(fixture.Account{ID: s1, UserID: userA, CurrencyID: usdID, Name: "S1"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000011", UserID: userA, AccountID: s1, Type: 1, Amount: "12.00", SpentAt: "2026-03-01 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000012", UserID: userA, AccountID: s1, Type: 0, Amount: "5.00", SpentAt: "2026-03-31 23:59:59"})
+	// transfers either way: not counted
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000013", UserID: userA, AccountID: acctA, AccountRecipientID: s1, Type: 2, Amount: "500.00", AmountRecipient: "500.00", SpentAt: "2026-03-10 00:00:00"})
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000014", UserID: userA, AccountID: s1, AccountRecipientID: acctA, Type: 2, Amount: "20.00", AmountRecipient: "20.00", SpentAt: "2026-03-11 00:00:00"})
+	// outside [from, to)
+	f.Transaction(fixture.Transaction{ID: "7d000000-0000-0000-0000-000000000015", UserID: userA, AccountID: s1, Type: 1, Amount: "7.00", SpentAt: "2026-04-01 00:00:00"})
+
+	mar := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	apr := time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)
+	rows, err := read.AccountsIncomeExpenseByMonth(ctx, []vo.Id{vo.MustParseId(s1)}, mar, apr)
+	if err != nil {
+		t.Fatalf("AccountsIncomeExpenseByMonth: %v", err)
+	}
+	if len(rows) != 1 || rows[0].AccountID != s1 || rows[0].Month != "2026-03-01" || vo.NewDecimal(rows[0].Amount).String() != vo.NewDecimal("7").String() {
+		t.Fatalf("rows = %+v, want one March row of 7 (12 - 5)", rows)
+	}
+	if rows, err := read.AccountsIncomeExpenseByMonth(ctx, nil, mar, apr); err != nil || rows != nil {
+		t.Errorf("empty accountIDs should be nil,nil; got %v, %v", rows, err)
+	}
+}
+
 func TestAccountsNetByMonth_EmptyIDSet(t *testing.T) {
 	read, _ := newReadRepo(t)
 	ctx := context.Background()

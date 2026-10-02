@@ -279,4 +279,8 @@ export interface BudgetPlanDto {
   /** optional for the same reason as structure.savings */
   savingsOpeningBalances?: PlanOpeningBalanceDto[]
   savingsFlows?: PlanSavingsFlowDto[]
+  /** income minus expenses booked on the savings accounts, same shape as
+   *  savingsFlows. The category rows count the everyday accounts only, so the
+   *  combined balance adds this back. Optional for the same reason. */
+  savingsIncomeExpense?: PlanSavingsFlowDto[]
 }
