@@ -52,26 +52,49 @@ interface RowProps {
   commented?: boolean
   ariaLabel: string
   onOpen: () => void
-  /** an expandable row's chevron: a separate button over the icon slot */
-  toggle?: { open: boolean; onToggle: () => void; label: string }
+  /** an expandable row's name folds and unfolds its children */
+  toggle?: { open: boolean; onToggle: () => void }
 }
 
+// with a bar under it, the row's first line gives up its bottom padding and minimum
+// height so the bar sits right under the figures and the whole row stays 44px tall
+const cellPad = (barred: boolean) => (barred ? 'pt-2 pb-1' : 'min-h-11 py-2')
+const NAME_CELL = 'flex min-w-0 items-center gap-2 pl-2'
+
+// the name and the figures are separate targets: the name folds an expandable row
+// (and does nothing otherwise), only Budget/Spent open the item sheet
 function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass = '', progress = null, barClass = '', commented = false, ariaLabel, onOpen, toggle }: RowProps) {
   const Chevron = toggle?.open ? ChevronDown : ChevronRight
-  return (
-    <div className="relative" data-testid={testId}>
-      <button type="button" aria-label={ariaLabel} onClick={onOpen} className={`${GRID} min-h-11 w-full rounded-md px-2 py-2 text-left active:bg-accent/50`}>
-        <span className="flex min-w-0 flex-col gap-1">
-          <span className="flex min-w-0 items-center gap-2">
-            {toggle ? <span className="size-5 shrink-0" /> : <EntityIcon name={icon} className="text-lg text-muted-foreground" />}
-            <span className="min-w-0 truncate text-[15px]">{name}</span>
-            {tag ? (
-              <span data-testid="phone-currency-tag" className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-                {tag}
-              </span>
-            ) : null}
-          </span>
+  const pad = cellPad(progress !== null)
+  const label = (
+    <>
+      <span className="min-w-0 truncate text-[15px]">{name}</span>
+      {tag ? (
+        <span data-testid="phone-currency-tag" className="shrink-0 rounded bg-muted px-1 text-[10px] font-medium text-muted-foreground">
+          {tag}
         </span>
+      ) : null}
+    </>
+  )
+  return (
+    <div className={`${GRID} rounded-md`} data-testid={testId}>
+      {toggle ? (
+        <button type="button" aria-expanded={toggle.open} onClick={toggle.onToggle} className={`${NAME_CELL} ${pad} rounded-md text-left active:bg-accent/50`}>
+          <Chevron aria-hidden="true" className="size-5 shrink-0 text-muted-foreground" />
+          {label}
+        </button>
+      ) : (
+        <span className={`${NAME_CELL} ${pad}`}>
+          <EntityIcon name={icon} className="text-lg text-muted-foreground" />
+          {label}
+        </span>
+      )}
+      <button
+        type="button"
+        aria-label={ariaLabel}
+        onClick={onOpen}
+        className={`col-span-2 grid grid-cols-subgrid items-center rounded-md pr-2 active:bg-accent/50 ${pad}`}
+      >
         <span className="flex items-baseline justify-end gap-1 text-right text-[15px] tabular-nums">
           {carry ? (
             <span data-testid="phone-carry" className={`shrink-0 text-[13px] ${carry.negative ? 'text-expense' : 'text-muted-foreground'}`}>
@@ -90,25 +113,13 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
             />
           ) : null}
         </span>
-        {progress !== null ? (
-          // the bar spans the row, not the name column: a carry-over widens the Budget
-          // column per row, which would leave every bar a different length
-          <span data-testid="phone-progress" className="col-span-full mt-1 h-1 overflow-hidden rounded-full bg-muted">
-            <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
-          </span>
-        ) : null}
       </button>
-      {toggle ? (
-        // a sibling, never nested in the row button: the chevron folds, the row opens the sheet
-        <button
-          type="button"
-          aria-expanded={toggle.open}
-          aria-label={toggle.label}
-          onClick={toggle.onToggle}
-          className="absolute top-0 -left-1 flex size-11 items-center justify-center text-muted-foreground"
-        >
-          <Chevron className="size-4.5" />
-        </button>
+      {progress !== null ? (
+        // the bar spans the row, not the name column: a carry-over widens the Budget
+        // column per row, which would leave every bar a different length
+        <span data-testid="phone-progress" className="col-span-full mx-2 mb-2 h-1 overflow-hidden rounded-full bg-muted">
+          <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+        </span>
       ) : null}
     </div>
   )
@@ -212,7 +223,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const tagOf = (currencyId: Id | null) => (currencyId && currencyId !== base ? currencyOf(currencyId)?.code : undefined)
   const future = selectedDate > currentMonth()
   const commented = (id: Id) => (commentsByCell.get(commentCellKey(id, selectedDate))?.length ?? 0) > 0
-  const expandLabel = (open: boolean) => t(open ? 'common.button.collapse.label' : 'common.button.expand.label')
 
   const expenseRow = (element: BudgetElementDto) => {
     const name = elementDisplayName(element.id, element.name, t)
@@ -236,40 +246,44 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          progress={isUncategorized ? null : rowProgress(figures, future)}
+          // a row with nothing to measure against still draws the empty track, as a
+          // budgeted row with nothing spent does
+          progress={isUncategorized || future ? null : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
           onOpen={() => onOpenSheet({ kind: 'expense', element })}
-          toggle={expandable ? { open, onToggle: () => toggleElement(element.id), label: expandLabel(open) } : undefined}
+          toggle={expandable ? { open, onToggle: () => toggleElement(element.id) } : undefined}
         />
         {expandable && open
           ? element.children.map((child) => {
               const childName = elementDisplayName(child.id, child.name, t)
+              const childSpent = future ? EMPTY : fmt(child.spent, element.currencyId)
               return (
-                <button
-                  key={child.id}
-                  type="button"
-                  data-testid={`phone-child-${child.id}`}
-                  className={`${GRID} min-h-10 w-full rounded-md py-1.5 pr-2 pl-9 text-left text-sm text-muted-foreground active:bg-accent/50`}
-                  onClick={() =>
-                    onShowTransactions({
-                      id: child.id,
-                      type: child.type,
-                      name: childName,
-                      icon: child.icon,
-                      currencyId: element.currencyId,
-                      parent: { id: element.id, type: element.type },
-                    })
-                  }
-                >
-                  <span className="flex min-w-0 items-center gap-2">
+                <div key={child.id} data-testid={`phone-child-${child.id}`} className={`${GRID} rounded-md text-sm text-muted-foreground`}>
+                  <span className="flex min-h-10 min-w-0 items-center gap-2 py-1.5 pl-9">
                     <EntityIcon name={child.icon} className="text-lg" />
                     <span className="truncate">{childName}</span>
                   </span>
-                  <span />
-                  <span className="text-right tabular-nums">{future ? EMPTY : fmt(child.spent, element.currencyId)}</span>
-                </button>
+                  <button
+                    type="button"
+                    aria-label={t('budgets.page.phone.child_aria', { name: childName, spent: childSpent })}
+                    className="col-span-2 grid min-h-10 grid-cols-subgrid items-center rounded-md py-1.5 pr-2 active:bg-accent/50"
+                    onClick={() =>
+                      onShowTransactions({
+                        id: child.id,
+                        type: child.type,
+                        name: childName,
+                        icon: child.icon,
+                        currencyId: element.currencyId,
+                        parent: { id: element.id, type: element.type },
+                      })
+                    }
+                  >
+                    <span />
+                    <span className="text-right tabular-nums">{childSpent}</span>
+                  </button>
+                </div>
               )
             })
           : null}
@@ -327,22 +341,26 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     )
   }
 
-  const labelRow = (label: LabelSpendDto) => (
-    <button
-      key={label.id}
-      type="button"
-      data-testid={`phone-label-${label.id}`}
-      className={`${GRID} min-h-11 w-full rounded-md px-2 py-2 text-left active:bg-accent/50`}
-      onClick={() => onShowTransactions({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
-    >
-      <span className="flex min-w-0 items-center gap-2">
-        <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
-        <span className="truncate text-[15px]">{label.name}</span>
-      </span>
-      <span className="text-right text-[15px] text-muted-foreground">{EMPTY}</span>
-      <span className="text-right text-[15px] tabular-nums">{future ? EMPTY : fmt(label.spent)}</span>
-    </button>
-  )
+  const labelRow = (label: LabelSpendDto) => {
+    const spent = future ? EMPTY : fmt(label.spent)
+    return (
+      <div key={label.id} data-testid={`phone-label-${label.id}`} className={`${GRID} rounded-md`}>
+        <span className={`${NAME_CELL} ${cellPad(false)}`}>
+          <EntityIcon name={label.icon} className="text-lg text-muted-foreground" />
+          <span className="truncate text-[15px]">{label.name}</span>
+        </span>
+        <button
+          type="button"
+          aria-label={t('budgets.page.phone.child_aria', { name: label.name, spent })}
+          className="col-span-2 grid min-h-11 grid-cols-subgrid items-center rounded-md py-2 pr-2 active:bg-accent/50"
+          onClick={() => onShowTransactions({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null })}
+        >
+          <span className="text-right text-[15px] text-muted-foreground">{EMPTY}</span>
+          <span className="text-right text-[15px] tabular-nums">{spent}</span>
+        </button>
+      </div>
+    )
+  }
 
   const exchangeFn = makeBudgetExchange(budget, currencies)
   const expenseTotals = budgetTotals(buckets)

@@ -142,6 +142,16 @@ it('spend within the budget stays gray, even when Available is negative from ear
   expect(within(row).getByTestId('phone-progress').firstElementChild?.className).toContain('bg-muted-foreground/40')
 })
 
+it('a row with no budget draws the empty gray track', () => {
+  renderView({}, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '0', spent: '0', budgetSpent: '0', available: '0' })
+  })
+  const bar = within(screen.getByTestId('phone-row-cat-food')).getByTestId('phone-progress')
+  expect(bar.className).toContain('bg-muted')
+  expect(bar.firstElementChild).toHaveStyle({ width: '0%' })
+})
+
 it('a future month shows a dash for Spent, no bar, and no colour', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
@@ -168,12 +178,36 @@ it('folders show their Budget and Spent sums; the unfoldered bucket reads "No fo
   expect(screen.getByTestId('phone-folder-__no_folder__')).toHaveTextContent('No folder')
 })
 
-it('the chevron unfolds children, the row opens the sheet, and a child opens its transactions', async () => {
+it('the name of an expandable row folds it; only the figures open the sheet', async () => {
   const props = renderView()
   const living = screen.getByTestId('phone-row-env-1')
-  await userEvent.click(within(living).getByRole('button', { name: 'Expand' }))
+  const name = within(living).getByRole('button', { expanded: false })
+  expect(name).toHaveAttribute('aria-expanded', 'false')
+  await userEvent.click(name)
+  expect(name).toHaveAttribute('aria-expanded', 'true')
   expect(props.onOpenSheet).not.toHaveBeenCalled()
-  await userEvent.click(screen.getByTestId('phone-child-cat-rent'))
+  expect(screen.getByTestId('phone-child-cat-rent')).toBeInTheDocument()
+  await userEvent.click(name)
+  expect(screen.queryByTestId('phone-child-cat-rent')).toBeNull()
+  await userEvent.click(within(living).getByRole('button', { name: /^Living, budget/ }))
+  expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'expense', element: expect.objectContaining({ id: 'env-1' }) })
+})
+
+it('the name of a row without children does nothing', async () => {
+  const props = renderView()
+  const food = screen.getByTestId('phone-row-cat-food')
+  await userEvent.click(within(food).getByText('Food'))
+  expect(props.onOpenSheet).not.toHaveBeenCalled()
+  expect(within(food).getAllByRole('button')).toHaveLength(1)
+})
+
+it('a child opens its transactions from its Spent, not its name', async () => {
+  const props = renderView()
+  await userEvent.click(within(screen.getByTestId('phone-row-env-1')).getByRole('button', { expanded: false }))
+  const child = screen.getByTestId('phone-child-cat-rent')
+  await userEvent.click(within(child).getByText('Rent'))
+  expect(props.onShowTransactions).not.toHaveBeenCalled()
+  await userEvent.click(within(child).getByRole('button', { name: 'Rent, spent 0.00' }))
   expect(props.onShowTransactions).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-rent', parent: { id: 'env-1', type: 0 } }))
 })
 
