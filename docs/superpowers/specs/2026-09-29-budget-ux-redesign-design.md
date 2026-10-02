@@ -240,7 +240,7 @@ Per Part 1: indicator only; item sheet → `CommentsSheet`.
 
 - Available is the emphasised column (semibold); Budget and Spent regular weight.
 - No green pills: Available is plain text; a red pill only when negative. Spent
-  coloured per the row state rule; thin progress bar under the item name.
+  coloured per the row state rule; thin progress bar under the row (it spans the row, as on the phone: the Budget cell widens with a carry-over, so a name-width bar would differ per row).
 - Currency per the currency display rule (symbol column removed).
 - Folder header: subtle tinted band, semibold name and totals in the same
   columns, more space between folders. Unfoldered bucket labelled "No folder".
@@ -254,8 +254,9 @@ Per Part 1: indicator only; item sheet → `CommentsSheet`.
 - Actual coloured red only when over plan; the green under-plan colouring is
   removed.
 - Current month column gets a light background tint.
+- Show transactions: on desktop a non-zero actual in a past or current month is a link to that month's transactions (not for savings rows); on a tablet a tap on an Uncategorized cell opens its transactions, since that row has no item sheet. *(stage 3)*
 - Currency per the currency display rule. Transfers total row and the income
-  "Uncategorized" row appear only when non-zero.
+  "Uncategorized" row appear only when non-zero in the visible months (Transfers: when money crossed the boundary in either direction, even if it nets to zero).
 
 ### Deliberately unchanged
 
