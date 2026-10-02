@@ -169,24 +169,22 @@ export function useSetLimit() {
           },
         }
       })
-      const isSavings = !!previous?.structure.savings?.some((row) => row.id === form.elementId)
-      return { previous, key, isSavings }
+      return { previous, key }
     },
     onError: (_err, _form, context) => {
       if (context) {
         queryClient.setQueryData(context.key, context.previous)
       }
     },
-    onSuccess: (_data, form, context) => {
+    onSuccess: (_data, form) => {
       trackEvent(METRICS.BUDGET_UPDATE_ELEMENT_LIMIT)
       // budget-mode edits patch only the budget-page cache above; the plan cache
       // (a different window/query key) must be invalidated too or the plan sheet
       // keeps showing the pre-edit limit until something else happens to refetch it
       void queryClient.invalidateQueries({ queryKey: queryKeys.budgetPlan })
-      // a savings plan also moves the projected closing balance of every later month
-      if (context?.isSavings) {
-        void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
-      }
+      // every later month moves too: a budget carries over (what a month shows as
+      // left from earlier months), and a savings plan moves later closing balances
+      void queryClient.invalidateQueries({ queryKey: [...queryKeys.budget, form.budgetId] })
     },
   })
 }

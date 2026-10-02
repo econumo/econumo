@@ -933,6 +933,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       tablet, with a "Left from earlier months" tooltip); only the budget is
       editable. Nothing shows when nothing is left; an earlier overspend shows
       as a red negative amount ("-30.00 +").
+- [ ] 📱 Open September, then August; change a category's August budget (e.g.
+      to 0), then go back to September without reloading: September's
+      leftover for that category follows the change at once (it equals
+      August's Available).
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
 - [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds

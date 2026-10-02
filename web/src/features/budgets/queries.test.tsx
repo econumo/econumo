@@ -177,6 +177,24 @@ it('useSetLimit (budget mode) also invalidates the plan cache so the plan sheet 
   expect(spy).toHaveBeenCalledWith({ queryKey: queryKeys.budgetPlan })
 })
 
+it('useSetLimit refreshes the budget\'s later months: a changed budget moves what they carry over', async () => {
+  server.use(
+    http.post('*/api/v1/budget/set-limit', () => HttpResponse.json({ success: true, message: '', data: {} })),
+  )
+  const { queryClient, wrapper } = makeWrapper()
+  const august = [...queryKeys.budget, 'b1', '2026-08-01']
+  const september = [...queryKeys.budget, 'b1', '2026-09-01']
+  const otherBudget = [...queryKeys.budget, 'b2', '2026-09-01']
+  for (const key of [august, september, otherBudget]) {
+    queryClient.setQueryData(key, fixtureWireBudget)
+  }
+  const { result } = renderHook(() => useSetLimit(), { wrapper })
+  result.current.mutate({ budgetId: 'b1', elementId: 'cat-food', period: '2026-08-01', amount: '0' })
+  await waitFor(() => expect(result.current.isSuccess).toBe(true))
+  expect(queryClient.getQueryState(september)?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(otherBudget)?.isInvalidated).toBe(false)
+})
+
 describe('useSetLimit on a savings row', () => {
   const withSavings = (closingBalance: string) => ({
     ...fixtureWireBudget,
