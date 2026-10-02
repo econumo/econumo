@@ -1353,6 +1353,92 @@ func (r *ReadRepo) BudgetTransactionsTransfers(ctx context.Context, accountIDs [
 	return out, rows.Err()
 }
 
+// BudgetTransactionsIncome implements ReadModel.
+func (r *ReadRepo) BudgetTransactionsIncome(ctx context.Context, categoryIDs, accountIDs []vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	if len(categoryIDs) == 0 || len(accountIDs) == 0 {
+		return nil, nil
+	}
+	accArgs := idArgs(accountIDs)
+	catArgs := idArgs(categoryIDs)
+	args := append(append([]any{}, accArgs...), catArgs...)
+	accIn, catIn := r.ph(1, len(accArgs)), r.ph(1, len(catArgs))
+	dStart, dEnd := "?", "?"
+	if r.driver == "postgresql" {
+		catIn = r.ph(1+len(accArgs), len(catArgs))
+		dStart, dEnd = "$"+itoa(1+len(accArgs)+len(catArgs)), "$"+itoa(2+len(accArgs)+len(catArgs))
+		args = append(args, start, end)
+	} else {
+		// See sqliteDatetime.
+		args = append(args, sqliteDatetime(start), sqliteDatetime(end))
+	}
+	sql := "SELECT " + budgetTxCols + ", 'in' as direction, 'income' as type FROM transactions t JOIN accounts a ON a.id = t.account_id" +
+		" WHERE t.type = 1 AND t.account_id IN (" + accIn + ") AND t.category_id IN (" + catIn + ") AND t.spent_at >= " + dStart + " AND t.spent_at < " + dEnd +
+		" ORDER BY t.spent_at DESC, t.id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDirectedTxRows(rows)
+}
+
+// BudgetTransactionsOnAccount implements ReadModel: the account's own rows
+// (income in, expense and outgoing transfer out, at amount) plus the transfers
+// it received (in, at amount_recipient).
+func (r *ReadRepo) BudgetTransactionsOnAccount(ctx context.Context, accountID vo.Id, start, end time.Time) ([]model.BudgetTransactionRow, error) {
+	cols := "t.id as id, t.user_id, a.currency_id, %s as amount, t.description, t.spent_at as spent_at, t.category_id, t.payee_id, t.tag_id, %s as direction, %s as type"
+	own := fmt.Sprintf(cols, "t.amount", "CASE WHEN t.type = 1 THEN 'in' ELSE 'out' END", "CASE t.type WHEN 0 THEN 'expense' WHEN 1 THEN 'income' ELSE 'transfer' END")
+	received := fmt.Sprintf(cols, "t.amount_recipient", "'in'", "'transfer'")
+	var p [6]string
+	var args []any
+	if r.driver == "postgresql" {
+		for i := range p {
+			p[i] = "$" + itoa(i+1)
+		}
+		args = []any{accountID.String(), start, end, accountID.String(), start, end}
+	} else {
+		for i := range p {
+			p[i] = "?"
+		}
+		// See sqliteDatetime.
+		ds, de := sqliteDatetime(start), sqliteDatetime(end)
+		args = []any{accountID.String(), ds, de, accountID.String(), ds, de}
+	}
+	sql := "SELECT " + own + " FROM transactions t JOIN accounts a ON a.id = t.account_id WHERE t.account_id = " + p[0] + " AND t.spent_at >= " + p[1] + " AND t.spent_at < " + p[2] +
+		" UNION ALL SELECT " + received + " FROM transactions t JOIN accounts a ON a.id = t.account_recipient_id WHERE t.type = 2 AND t.account_recipient_id = " + p[3] + " AND t.spent_at >= " + p[4] + " AND t.spent_at < " + p[5] +
+		" ORDER BY spent_at DESC, id"
+	rows, err := r.db(ctx).QueryContext(ctx, sql, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanDirectedTxRows(rows)
+}
+
+// scanDirectedTxRows scans budgetTxCols followed by direction and type.
+func scanDirectedTxRows(rows interface {
+	Next() bool
+	Scan(...any) error
+	Err() error
+}) ([]model.BudgetTransactionRow, error) {
+	var out []model.BudgetTransactionRow
+	for rows.Next() {
+		var row model.BudgetTransactionRow
+		var currencyID, desc *string
+		if err := rows.Scan(&row.ID, &row.UserID, &currencyID, &row.Amount, &desc, &row.SpentAt, &row.CategoryID, &row.PayeeID, &row.TagID, &row.Direction, &row.Type); err != nil {
+			return nil, err
+		}
+		if currencyID != nil {
+			row.CurrencyID = *currencyID
+		}
+		if desc != nil {
+			row.Description = *desc
+		}
+		out = append(out, row)
+	}
+	return out, rows.Err()
+}
+
 // AccountsWithTransactions implements ReadModel.
 func (r *ReadRepo) AccountsWithTransactions(ctx context.Context, accountIDs []vo.Id, start, end time.Time) ([]vo.Id, error) {
 	if len(accountIDs) == 0 {

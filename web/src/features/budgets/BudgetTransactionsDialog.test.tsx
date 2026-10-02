@@ -9,6 +9,12 @@ import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import { useUiStore } from '@/app/uiStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID, type BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import { useBudgetPeriodStore } from './budgetStore'
+import { METRICS, trackEvent } from '@/lib/metrics'
+
+vi.mock('@/lib/metrics', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/metrics')>()
+  return { ...actual, trackEvent: vi.fn() }
+})
 
 const target: BudgetTransactionsTarget = { id: 'cat-food', type: BudgetElementType.CATEGORY, name: 'Food', icon: 'restaurant', currencyId: null }
 
@@ -316,4 +322,77 @@ it('transfer rows are signed by direction: out negative, in positive; a foreign 
   await screen.findByRole('button', { name: 'Edit' })
   expect(screen.getByText('Sender')).toBeInTheDocument()
   expect(screen.getByText('Recipient')).toBeInTheDocument()
+})
+
+it('a savings target requests savingsAccountId alone', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('savingsAccountId')).toBe('acc-savings')
+  for (const key of ['categoryId', 'tagId', 'envelopeId', 'labelId', 'uncategorized', 'transfers', 'income']) {
+    expect(params.has(key)).toBe(false)
+  }
+})
+
+it('an income category requests income=1 with categoryId', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: 'cat-salary', type: BudgetElementType.INCOME_CATEGORY, name: 'Salary', icon: 'payments', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('income')).toBe('1')
+  expect(params.get('categoryId')).toBe('cat-salary')
+  expect(params.has('envelopeId')).toBe(false)
+})
+
+it('an income envelope requests income=1 with envelopeId only', async () => {
+  const getUrl = captureTransactionListUrl()
+  renderDialog({ id: 'env-work', type: BudgetElementType.INCOME_ENVELOPE, name: 'Work', icon: 'work', currencyId: null })
+  await vi.waitFor(() => expect(getUrl()).toBeDefined())
+  const params = new URL(getUrl()!).searchParams
+  expect(params.get('income')).toBe('1')
+  expect(params.get('envelopeId')).toBe('env-work')
+  expect(params.has('categoryId')).toBe(false)
+})
+
+it('savings rows are signed by direction, and a foreign row previews as the kind the wire names', async () => {
+  server.use(
+    ...coreHandlers(),
+    http.get('*/api/v1/budget/get-transaction-list', () =>
+      HttpResponse.json({
+        success: true,
+        message: '',
+        data: {
+          items: [
+            {
+              id: 'tx-interest', author: fixtureOwner, currencyId: 'cur-usd', amount: '12', description: 'interest',
+              category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-03 09:00:00', direction: 'in', type: 'income',
+            },
+            {
+              id: 'tx-fee', author: fixtureOwner, currencyId: 'cur-usd', amount: '5', description: 'fee',
+              category: null, payee: null, tag: null, labelIds: [], spentAt: '2026-07-02 09:00:00', direction: 'out', type: 'expense',
+            },
+          ],
+        },
+      }),
+    ),
+  )
+  const user = userEvent.setup()
+  renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
+  const interest = await screen.findByTestId('budget-tx-tx-interest')
+  expect(interest).toHaveTextContent('12.00')
+  expect(interest).not.toHaveTextContent('-12.00')
+  expect(screen.getByTestId('budget-tx-tx-fee')).toHaveTextContent('-5.00')
+
+  // an income, not a transfer: no Sender/Recipient cards
+  await user.click(interest)
+  await screen.findByRole('button', { name: 'Edit' })
+  expect(screen.queryByText('Sender')).not.toBeInTheDocument()
+})
+
+it('opening a list fires the analytics event with its kind', async () => {
+  vi.mocked(trackEvent).mockClear()
+  renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
+  await vi.waitFor(() => expect(trackEvent).toHaveBeenCalledWith(METRICS.BUDGET_TRANSACTIONS_OPEN, { kind: 'savings' }))
+  expect(trackEvent).toHaveBeenCalledTimes(1)
 })

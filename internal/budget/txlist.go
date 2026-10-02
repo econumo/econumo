@@ -33,10 +33,19 @@ import (
 // ambiguous, and silently picking one would return the wrong set. transfers
 // selects the transfers that crossed the budget boundary (the plan sheet's
 // Transfers line) and composes with nothing: any other selector alongside it
-// is rejected the same way.
+// is rejected the same way. income turns exactly one of categoryId/envelopeId
+// into an income row's list (income on the everyday accounts, tagged or not);
+// savingsAccountId selects every transaction on one of the budget's savings
+// accounts. Both compose with nothing else.
 // Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Transfers && (req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
+	}
+	if optIDSet(req.SavingsAccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
+		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
+	}
+	if req.Income && (req.Transfers || req.Uncategorized || optIDSet(req.TagId) || optIDSet(req.LabelId) || optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if req.Uncategorized && req.CategoryId != nil && strings.TrimSpace(*req.CategoryId) != "" {
@@ -85,6 +94,30 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 
 	var rows []model.BudgetTransactionRow
 	switch {
+	case optIDSet(req.SavingsAccountId):
+		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.SavingsAccountId))
+		if perr != nil {
+			return nil, perr
+		}
+		rows, err = s.read.BudgetTransactionsOnAccount(ctx, accountID, periodStart, periodEnd)
+	case req.Income:
+		var catIDs []vo.Id
+		if cat != "" {
+			catID, perr := vo.ParseId(cat)
+			if perr != nil {
+				return nil, model.ValidateBlank(map[string]string{"categoryId": ""})
+			}
+			catIDs = []vo.Id{catID}
+		} else {
+			envID, perr := vo.ParseId(env)
+			if perr != nil {
+				return nil, model.ValidateBlank(map[string]string{"envelopeId": ""})
+			}
+			if catIDs, err = s.envelopes.EnvelopeCategoryIDs(ctx, envID); err != nil {
+				return nil, err
+			}
+		}
+		rows, err = s.read.BudgetTransactionsIncome(ctx, catIDs, f.everydayAccountIDs, periodStart, periodEnd)
 	// transfers composes with nothing (guarded above), so it needs no
 	// narrowing case of its own.
 	case req.Transfers:
@@ -162,6 +195,17 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 	return s.assembleTxList(ctx, f, rows)
 }
 
+// savingsMemberID parses raw and requires it to be one of the budget's savings
+// accounts, so the list never reaches an account outside the budget.
+func savingsMemberID(f filters, raw string) (vo.Id, error) {
+	for _, a := range f.savingsAccounts {
+		if a.ID == raw {
+			return vo.ParseId(raw)
+		}
+	}
+	return vo.Id{}, model.ValidateBlank(map[string]string{"savingsAccountId": ""})
+}
+
 // assembleTxList resolves author/category/payee/tag names and builds the result.
 func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.BudgetTransactionRow) (*model.GetBudgetTransactionListResult, error) {
 	// category + tag name maps come from the filter set; payees need a lookup.
@@ -220,9 +264,14 @@ func (s *Service) assembleTxList(ctx context.Context, f filters, rows []model.Bu
 			LabelIds:    labelIDs,
 			SpentAt:     normalizeSpentAt(row.SpentAt),
 			Direction:   row.Direction,
+			Type:        row.Type,
 		}
 		if row.CategoryID != nil {
-			if c, ok := f.categories[*row.CategoryID]; ok {
+			c, ok := f.categories[*row.CategoryID]
+			if !ok {
+				c, ok = f.incomeCategories[*row.CategoryID]
+			}
+			if ok {
 				item.Category = &model.TxCategoryResult{Id: c.ID, Name: c.Name, Icon: c.Icon}
 			}
 		}

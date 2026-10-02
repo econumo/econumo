@@ -166,6 +166,43 @@ it('sheet → Transactions opens the month’s transaction list', async () => {
   expect(await screen.findByRole('dialog', { name: /Food/ })).toBeInTheDocument()
 })
 
+function captureTxListParams() {
+  let params: URLSearchParams | undefined
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      params = new URL(request.url).searchParams
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
+  return () => params
+}
+
+it('a savings row’s sheet → Transactions lists every transaction on the account that month', async () => {
+  handlers({ budget: savingsBudget })
+  const params = captureTxListParams()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByTestId('phone-savings-summary'))
+  await user.click(await screen.findByRole('button', { name: /^Rainy day, planned/ }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  expect(await screen.findByRole('dialog', { name: /Rainy day/ })).toBeInTheDocument()
+  await waitFor(() => expect(params()?.get('savingsAccountId')).toBe('acc-s1'))
+  expect(params()?.get('periodStart')).toBe('2026-07-01')
+})
+
+it('an income row’s sheet → Transactions lists the category’s income that month', async () => {
+  handlers()
+  const params = captureTxListParams()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByTestId('phone-income-summary'))
+  await user.click(await screen.findByRole('button', { name: /^Freelance, planned/ }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  expect(await screen.findByRole('dialog', { name: /Freelance/ })).toBeInTheDocument()
+  await waitFor(() => expect(params()?.get('income')).toBe('1'))
+  expect(params()?.get('categoryId')).toBe('cat-freelance')
+})
+
 it('a guest’s sheet has no Set budget but still reaches comments', async () => {
   handlers({ budget: guestBudget })
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
