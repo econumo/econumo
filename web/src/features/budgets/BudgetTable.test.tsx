@@ -269,6 +269,18 @@ it('totals row sums all buckets in the budget currency', async () => {
   expect(totals).toHaveTextContent('45.50')
   expect(totals).not.toHaveTextContent('-45.50')
   expect(totals).toHaveTextContent('554.50')
+  // what earlier months left leads the total budget: 200 (Food) + 90 EUR (Living) = 300.00
+  await waitFor(() => expect(within(totals).getByTestId('totals-carry')).toHaveTextContent('300.00 +'))
+  expect(within(totals).getByTestId('totals-carry')).toHaveAttribute('title', 'Left from earlier months')
+})
+
+it('totals row shows no carry-over when earlier months left nothing', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })
+    Object.assign(b.structure.elements.find((el) => el.id === 'env-1')!, { available: '0' })
+  })
+  const totals = await screen.findByTestId('budget-totals')
+  expect(within(totals).queryByTestId('totals-carry')).toBeNull()
 })
 
 it('phone totals unfold into labeled budget/spent/available lines', async () => {

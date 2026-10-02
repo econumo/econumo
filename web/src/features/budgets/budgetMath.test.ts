@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, savingsTotals } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, savingsTotals, totalsWithSavings } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
@@ -230,4 +230,22 @@ it('carryOver is what earlier months left: displayed Available less this months 
   const el = { budgeted: '700', spent: '801.37', available: '-50.68' }
   expect(displayAvailable(el)).toBe('649.32')
   expect(carryOver(el)).toBe('750.69')
+})
+
+it('totals what earlier months left, in the budget currency, without Uncategorized or savings', () => {
+  // Food 154.50 + 45.50 = 200 USD; Living 90 + 0 = 90 EUR at 0.9 = 100 USD
+  const mutated: BudgetDto = JSON.parse(JSON.stringify(budget))
+  mutated.structure.elements.push({
+    ...mutated.structure.elements[0], id: 'uncategorized', name: 'Uncategorized', folderId: null,
+    budgeted: '0', available: '0', spent: '12', budgetSpent: '12',
+  })
+  mutated.structure.savings = [
+    { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60' },
+  ]
+  const ex = makeBudgetExchange(mutated, [usd, eur])
+  const buckets = bucketElements(mutated, ex)
+  expect(buckets.withFolder[0].stats.carry).toBe('200')
+  const totals = budgetTotals(buckets)
+  expect(Number(totals.carry)).toBeCloseTo(300, 6)
+  expect(Number(totalsWithSavings(totals, mutated, ex).carry)).toBeCloseTo(300, 6)
 })

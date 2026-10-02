@@ -9,6 +9,8 @@ export interface BucketStats {
   budgeted: string
   spent: string
   available: string
+  /** what earlier months left (see carryOver), budget currency */
+  carry: string
 }
 
 export interface FolderBucket {
@@ -40,13 +42,15 @@ export function bucketStats(elements: BudgetElementDto[], budget: BudgetDto, exc
   let budgeted = '0'
   let spent = '0'
   let available = '0'
+  let carry = '0'
   for (const el of elements) {
     const from = el.currencyId ?? base
     budgeted = add(budgeted, exchangeFn(from, base, el.budgeted))
     spent = add(spent, el.budgetSpent)
     available = add(available, exchangeFn(from, base, add(el.available, el.budgeted)))
+    carry = add(carry, exchangeFn(from, base, carryOver(el)))
   }
-  return { budgeted, spent, available }
+  return { budgeted, spent, available, carry }
 }
 
 export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang = 'en'): BudgetBuckets {
@@ -95,12 +99,17 @@ export function bucketElements(budget: BudgetDto, exchangeFn: ExchangeFn, lang =
 export function budgetTotals(buckets: BudgetBuckets): BucketStats {
   const all = [...buckets.withFolder.map((b) => b.stats), buckets.withoutFolder.stats, buckets.archive.stats]
   const totals = all.reduce(
-    (acc, s) => ({ budgeted: add(acc.budgeted, s.budgeted), spent: add(acc.spent, s.spent), available: add(acc.available, s.available) }),
-    { budgeted: '0', spent: '0', available: '0' },
+    (acc, s) => ({
+      budgeted: add(acc.budgeted, s.budgeted),
+      spent: add(acc.spent, s.spent),
+      available: add(acc.available, s.available),
+      carry: add(acc.carry, s.carry),
+    }),
+    { budgeted: '0', spent: '0', available: '0', carry: '0' },
   )
   // Categoryless spending is real money out, so it still counts toward the
   // spent total — but it can never be budgeted, so it adds nothing to the
-  // budgeted/available totals.
+  // budgeted/available/carry totals.
   return { ...totals, spent: add(totals.spent, buckets.uncategorized.stats.spent) }
 }
 
@@ -110,7 +119,9 @@ export function budgetTotals(buckets: BudgetBuckets): BucketStats {
 export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchangeFn: ExchangeFn): BucketStats {
   const base = budget.meta.currencyId
   return (budget.structure.savings ?? []).reduce(
+    // a savings row carries nothing over (its available is planned − saved)
     (acc, row) => ({
+      ...acc,
       budgeted: add(acc.budgeted, exchangeFn(row.currencyId, base, row.budgeted)),
       spent: add(acc.spent, exchangeFn(row.currencyId, base, row.spent)),
       available: add(acc.available, exchangeFn(row.currencyId, base, row.available)),

@@ -292,7 +292,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const expenseTotals = budgetTotals(buckets)
   const total = totalsWithSavings(expenseTotals, budget, exchangeFn)
   const savingsRows = [...(budget.structure.savings ?? [])].sort((a, b) => a.isArchived - b.isArchived || a.position - b.position)
-  const savingsSum = savingsRows.length > 0 ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0' }, budget, exchangeFn) : null
+  const savingsSum = savingsRows.length > 0 ? totalsWithSavings({ budgeted: '0', spent: '0', available: '0', carry: '0' }, budget, exchangeFn) : null
   const labels = budget.structure.labels ?? []
   const labelsOpen = !!unfolded[REPORTING_TAGS_FOLD_ID]
   const incomeOpen = !!unfolded[INCOME_FOLD_ID]
@@ -363,7 +363,18 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         data-testid="phone-totals"
       >
         <span className="text-[15px] font-medium">{t('budgets.page.budget.structure.total.name')}</span>
-        <TotalLine testId="phone-total-expenses" label={t('budgets.page.plan.totals.expenses')} value={of(expenseTotals.spent, expenseTotals.budgeted)} />
+        <TotalLine
+          testId="phone-total-expenses"
+          label={t('budgets.page.plan.totals.expenses')}
+          value={
+            isZero(expenseTotals.carry)
+              ? of(expenseTotals.spent, expenseTotals.budgeted)
+              : t('budgets.page.phone.of', {
+                  value: future ? EMPTY : fmt(expenseTotals.spent),
+                  total: `${fmt(expenseTotals.carry)} + ${fmt(expenseTotals.budgeted)}`,
+                })
+          }
+        />
         {savingsSum ? <TotalLine testId="phone-total-savings" label={t('budgets.page.plan.totals.savings')} value={of(savingsSum.spent, savingsSum.budgeted)} /> : null}
         <TotalLine
           testId="phone-total-available"

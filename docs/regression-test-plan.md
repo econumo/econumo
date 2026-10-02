@@ -933,6 +933,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       tablet, with a "Left from earlier months" tooltip); only the budget is
       editable. Nothing shows when nothing is left; an earlier overspend shows
       as a red negative amount ("-30.00 +").
+- [ ] 📱 The Total row (desktop and tablet) leads its budget with the sum of
+      what earlier months left, in the budget currency ("2,530.00 +
+      3,725.00"); on a phone the Totals card's Expenses line reads "spent of
+      left + budget". Savings and Uncategorized add nothing to it.
 - [ ] 📱 Open September, then August; change a category's August budget (e.g.
       to 0), then go back to September without reloading: September's
       leftover for that category follows the change at once (it equals

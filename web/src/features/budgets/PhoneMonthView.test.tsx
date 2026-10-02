@@ -173,7 +173,8 @@ it('leaves income and the plan lines out while the plan is not loaded', () => {
   renderView({ planMonth: null })
   expect(screen.queryByTestId('phone-income')).toBeNull()
   expect(screen.queryByTestId('phone-total-balance')).toBeNull()
-  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('45.50 of 300.00')
+  // spent of (what earlier months left + budget): 200 + 90 EUR → 300 USD left
+  expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('45.50 of 300.00 + 300.00')
 })
 
 it('the totals card lists Expenses, Available and Balance; Transfers only when non-zero', () => {

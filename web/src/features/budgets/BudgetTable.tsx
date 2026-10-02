@@ -672,7 +672,18 @@ export function BudgetTotals({
     <>
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
         <span className="min-w-0 flex-1 truncate text-[15px]">{t('budgets.page.budget.structure.total.name')}</span>
-        <span className="w-24 text-right text-[15px] tabular-nums">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        <span className="flex min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right text-[15px] tabular-nums">
+          {!isZero(totals.carry) ? (
+            <span
+              data-testid="totals-carry"
+              title={t('budgets.page.budget.structure.carry_over_hint')}
+              className={`shrink-0 text-[13px] font-normal ${cmp(totals.carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+            >
+              {moneyFormat(totals.carry, budgetCurrency, opts)} +
+            </span>
+          ) : null}
+          <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
+        </span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
           {moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
