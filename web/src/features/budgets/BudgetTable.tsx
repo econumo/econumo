@@ -225,24 +225,25 @@ function ElementRow({
         ) : (
           <span className="flex min-w-0 flex-1 items-center gap-2">{name}</span>
         )}
-        {/* read-only lead-in to the budget: "530.00 + 700.00" makes the money this
-            month can draw on visible; the name column gives way, the budget column stays put */}
-        {carryText !== null ? (
-          <span
-            data-testid="cell-carry"
-            title={t('budgets.page.budget.structure.carry_over_hint')}
-            className={`hidden shrink-0 text-[13px] tabular-nums sm:block ${cmp(carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
-          >
-            {carryText}
-          </span>
-        ) : null}
         {(() => {
+          // what earlier months left leads the budget inside the cell, so "530.00 + 700.00"
+          // reads as one figure; the cell grows to the left and the name gives way
           const cell = (
             <span
               {...{ [COMMENT_ANCHOR_ATTR]: '' }}
-              className="group/cell relative hidden w-24 text-right text-[15px] tabular-nums sm:block"
+              className="group/cell relative hidden min-w-24 shrink-0 items-baseline justify-end gap-1.5 text-right text-[15px] tabular-nums sm:flex"
               data-testid="cell-budgeted"
             >
+              {carryText !== null ? (
+                <span
+                  data-testid="cell-carry"
+                  title={t('budgets.page.budget.structure.carry_over_hint')}
+                  className={`shrink-0 text-[13px] ${cmp(carry, '0') < 0 ? 'text-expense' : 'text-muted-foreground'}`}
+                >
+                  {carryText}
+                </span>
+              ) : null}
+              <span className="shrink-0">
               {isUncategorized ? (
                 EMPTY_CELL
               ) : extras.onBudgetCellDetails ? (
@@ -268,6 +269,7 @@ function ElementRow({
               ) : (
                 moneyFormat(element.budgeted, currency, opts)
               )}
+              </span>
               {extras.renderBudgetCellMarker?.(element)}
             </span>
           )

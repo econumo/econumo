@@ -596,8 +596,10 @@ it('shows what earlier months left, read-only, before the budgeted amount', asyn
   await waitFor(() => expect(carry).toHaveTextContent('200.00 +'))
   expect(carry).toHaveAttribute('title', 'Left from earlier months')
   expect(carry.closest('button')).toBeNull()
-  // the carry sits right before the (editable) budgeted cell
-  expect(carry.nextElementSibling).toBe(within(food).getByTestId('cell-budgeted'))
+  // the carry leads the amount inside the budgeted cell, right next to the editor
+  const cell = within(food).getByTestId('cell-budgeted')
+  expect(cell.firstElementChild).toBe(carry)
+  expect(carry.nextElementSibling).toHaveTextContent('editor')
 })
 
 it('shows no carry-over when earlier months left nothing, and a negative one in red', async () => {

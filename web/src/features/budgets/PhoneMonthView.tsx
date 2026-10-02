@@ -18,8 +18,9 @@ import { commentCellKey } from './queries'
 
 const INCOME_FOLD_ID = '__phone_income__'
 const EMPTY = '—'
-// name | Budget | Spent: the heading row, folder headers and rows share one grid
-const GRID = 'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-2'
+// name | Budget | Spent: the heading row, folder headers and rows share one grid; the
+// Budget column grows to the left for a carry-over lead-in while its right edge stays put
+const GRID = 'grid grid-cols-[minmax(0,1fr)_minmax(5.5rem,auto)_5.5rem] items-center gap-x-2'
 
 
 export interface PhoneMonthViewProps {
@@ -68,22 +69,16 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
                 {tag}
               </span>
             ) : null}
-            {carry ? (
-              <span
-                data-testid="phone-carry"
-                className={`ml-auto shrink-0 text-[13px] tabular-nums ${carry.negative ? 'text-expense' : 'text-muted-foreground'}`}
-              >
-                {carry.text}
-              </span>
-            ) : null}
           </span>
-          {progress !== null ? (
-            <span data-testid="phone-progress" className="ml-7 h-1 overflow-hidden rounded-full bg-muted">
-              <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+        </span>
+        <span className="flex items-baseline justify-end gap-1 text-right text-[15px] tabular-nums">
+          {carry ? (
+            <span data-testid="phone-carry" className={`shrink-0 text-[13px] ${carry.negative ? 'text-expense' : 'text-muted-foreground'}`}>
+              {carry.text}
             </span>
           ) : null}
+          <span className="shrink-0">{first}</span>
         </span>
-        <span className="text-right text-[15px] tabular-nums">{first}</span>
         <span className={`relative text-right text-[15px] tabular-nums ${secondClass}`}>
           {second}
           {commented ? (
@@ -94,6 +89,13 @@ function PhoneRow({ testId, icon, name, tag, carry, first, second, secondClass =
             />
           ) : null}
         </span>
+        {progress !== null ? (
+          // the bar spans the row, not the name column: a carry-over widens the Budget
+          // column per row, which would leave every bar a different length
+          <span data-testid="phone-progress" className="col-span-full mt-1 ml-7 h-1 overflow-hidden rounded-full bg-muted">
+            <span className={`block h-full rounded-full ${barClass}`} style={{ width: `${Math.round(progress * 100)}%` }} />
+          </span>
+        ) : null}
       </button>
       {toggle ? (
         // a sibling, never nested in the row button: the chevron folds, the row opens the sheet
