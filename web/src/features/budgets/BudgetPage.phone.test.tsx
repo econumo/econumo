@@ -186,7 +186,7 @@ it('a savings row’s sheet → Transactions lists every transaction on the acco
   await user.click(await screen.findByRole('button', { name: /^Rainy day, planned/ }))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
   expect(await screen.findByRole('dialog', { name: /Rainy day/ })).toBeInTheDocument()
-  await waitFor(() => expect(params()?.get('savingsAccountId')).toBe('acc-s1'))
+  await waitFor(() => expect(params()?.get('accountId')).toBe('acc-s1'))
   expect(params()?.get('periodStart')).toBe('2026-07-01')
 })
 

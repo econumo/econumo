@@ -35,14 +35,15 @@ import (
 // Transfers line) and composes with nothing: any other selector alongside it
 // is rejected the same way. income turns exactly one of categoryId/envelopeId
 // into an income row's list (income on the everyday accounts, tagged or not);
-// savingsAccountId selects every transaction on one of the budget's savings
-// accounts. Both compose with nothing else.
+// accountId selects every transaction on one account of the budget (currently
+// only its savings accounts: see savingsMemberID). Both compose with nothing
+// else.
 // Requires read access.
 func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req model.BudgetTransactionListRequest) (*model.GetBudgetTransactionListResult, error) {
 	if req.Transfers && (req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
-	if optIDSet(req.SavingsAccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
+	if optIDSet(req.AccountId) && (req.Transfers || req.Income || req.Uncategorized || optIDSet(req.CategoryId) || optIDSet(req.TagId) || optIDSet(req.EnvelopeId) || optIDSet(req.LabelId)) {
 		return nil, &errs.ValidationError{Msg: "Validation failed", MsgCode: errs.CodeBudgetTransactionFilterRequired}
 	}
 	if req.Income && (req.Transfers || req.Uncategorized || optIDSet(req.TagId) || optIDSet(req.LabelId) || optIDSet(req.CategoryId) == optIDSet(req.EnvelopeId)) {
@@ -94,8 +95,8 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 
 	var rows []model.BudgetTransactionRow
 	switch {
-	case optIDSet(req.SavingsAccountId):
-		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.SavingsAccountId))
+	case optIDSet(req.AccountId):
+		accountID, perr := savingsMemberID(f, strings.TrimSpace(*req.AccountId))
 		if perr != nil {
 			return nil, perr
 		}
@@ -196,14 +197,15 @@ func (s *Service) GetTransactionList(ctx context.Context, userID vo.Id, req mode
 }
 
 // savingsMemberID parses raw and requires it to be one of the budget's savings
-// accounts, so the list never reaches an account outside the budget.
+// accounts, so the list never reaches an account outside the budget. Widen this
+// to unlock accountId for other members.
 func savingsMemberID(f filters, raw string) (vo.Id, error) {
 	for _, a := range f.savingsAccounts {
 		if a.ID == raw {
 			return vo.ParseId(raw)
 		}
 	}
-	return vo.Id{}, model.ValidateBlank(map[string]string{"savingsAccountId": ""})
+	return vo.Id{}, model.ValidateBlank(map[string]string{"accountId": ""})
 }
 
 // assembleTxList resolves author/category/payee/tag names and builds the result.

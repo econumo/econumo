@@ -324,12 +324,12 @@ it('transfer rows are signed by direction: out negative, in positive; a foreign 
   expect(screen.getByText('Recipient')).toBeInTheDocument()
 })
 
-it('a savings target requests savingsAccountId alone', async () => {
+it('a savings target requests accountId alone', async () => {
   const getUrl = captureTransactionListUrl()
   renderDialog({ id: 'acc-savings', type: BudgetElementType.SAVINGS, name: 'Emergency fund', icon: 'savings', currencyId: 'cur-usd' })
   await vi.waitFor(() => expect(getUrl()).toBeDefined())
   const params = new URL(getUrl()!).searchParams
-  expect(params.get('savingsAccountId')).toBe('acc-savings')
+  expect(params.get('accountId')).toBe('acc-savings')
   for (const key of ['categoryId', 'tagId', 'envelopeId', 'labelId', 'uncategorized', 'transfers', 'income']) {
     expect(params.has(key)).toBe(false)
   }

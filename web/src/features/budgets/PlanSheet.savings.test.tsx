@@ -475,7 +475,7 @@ it('a tablet savings cell’s sheet → Transactions lists the account’s trans
   renderPage()
   await user.click(await screen.findByTestId('plan-cell-acc-s1:2'))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
-  await waitFor(() => expect(tx.params()?.get('savingsAccountId')).toBe('acc-s1'))
+  await waitFor(() => expect(tx.params()?.get('accountId')).toBe('acc-s1'))
   // the tapped column's month, not the page's selected month (2026-07-01)
   expect(tx.params()?.get('periodStart')).toBe('2026-08-01')
 })

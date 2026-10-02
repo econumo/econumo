@@ -175,8 +175,9 @@ export interface BudgetTransactionsParams {
   transfers?: boolean
   /** turns categoryId or envelopeId (exactly one) into an income row's list */
   income?: boolean
-  /** every transaction on this savings account; exclusive with every other selector */
-  savingsAccountId?: Id
+  /** every transaction on this account (the server accepts only the budget's
+   *  savings accounts for now); exclusive with every other selector */
+  accountId?: Id
 }
 
 export async function getBudgetTransactions(params: BudgetTransactionsParams): Promise<BudgetTransactionDto[]> {
@@ -188,7 +189,7 @@ export async function getBudgetTransactions(params: BudgetTransactionsParams): P
   if (params.labelId) query.set('labelId', params.labelId)
   if (params.transfers) query.set('transfers', '1')
   if (params.income) query.set('income', '1')
-  if (params.savingsAccountId) query.set('savingsAccountId', params.savingsAccountId)
+  if (params.accountId) query.set('accountId', params.accountId)
   const response = await api.get<Envelope<{ items: BudgetTransactionDto[] }>>(
     apiUrl(`/api/v1/budget/get-transaction-list?${query.toString()}`),
   )

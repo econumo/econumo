@@ -758,9 +758,10 @@ type BudgetTransactionListRequest struct {
 	// Income turns categoryId/envelopeId into an income row's drill-down.
 	// Requires exactly one of them; composes with nothing else.
 	Income bool `json:"income,omitempty"`
-	// SavingsAccountId selects every transaction on one of the budget's
-	// savings accounts — a savings row's drill-down. Composes with nothing.
-	SavingsAccountId *string `json:"savingsAccountId"`
+	// AccountId selects every transaction on one account of the budget —
+	// currently only its savings accounts are accepted — a savings row's
+	// drill-down. Composes with nothing.
+	AccountId *string `json:"accountId"`
 }
 
 // TxCategoryResult / TxPayeeResult / TxTagResult are the optional embeds.
@@ -794,12 +795,12 @@ type BudgetTransactionResult struct {
 	LabelIds []string `json:"labelIds"`
 	SpentAt  string   `json:"spentAt"`
 	// Direction is present only on rows of the transfers, income and
-	// savingsAccountId selectors: "out" when the money left the included (or
+	// accountId selectors: "out" when the money left the included (or
 	// savings) account, "in" when it arrived — Amount/CurrencyId are that
 	// side's. Omitted on every other list so their bytes are unchanged.
 	Direction string `json:"direction,omitempty"`
 	// Type ("expense", "income" or "transfer") is present only on rows of the
-	// income and savingsAccountId selectors.
+	// income and accountId selectors.
 	Type string `json:"type,omitempty"`
 }
 

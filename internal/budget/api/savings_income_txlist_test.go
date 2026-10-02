@@ -11,7 +11,7 @@ import (
 
 func addDec(a, b string) string { return vo.NewDecimal(a).Add(vo.NewDecimal(b)).String() }
 
-// get-transaction-list's savingsAccountId and income selectors: the item
+// get-transaction-list's accountId and income selectors: the item
 // sheets' Transactions lists for a savings row and an income row.
 
 type directedTxView struct {
@@ -43,7 +43,7 @@ func TestTxList_SavingsAccount(t *testing.T) {
 	h.f.Transaction(fixture.Transaction{UserID: seedUserID, AccountID: savingsUSDID, Type: 1, Amount: "99",
 		SpentAt: time.Date(2026, 9, 1, 12, 0, 0, 0, time.UTC)})
 
-	got := h.directedTxList(t, tok, "&savingsAccountId="+savingsUSDID)
+	got := h.directedTxList(t, tok, "&accountId="+savingsUSDID)
 	type row struct{ amount, direction, typ string }
 	var rows []row
 	signed := "0"
@@ -85,7 +85,7 @@ func TestTxList_SavingsAccount(t *testing.T) {
 	}
 
 	// the EUR side of the S1->S2 move is listed in EUR on S2's list
-	s2 := h.directedTxList(t, tok, "&savingsAccountId="+savingsEURID)
+	s2 := h.directedTxList(t, tok, "&accountId="+savingsEURID)
 	var s2In []string
 	for _, it := range s2.Items {
 		s2In = append(s2In, it.Amount+" "+it.Direction)
@@ -98,10 +98,10 @@ func TestTxList_SavingsAccount(t *testing.T) {
 func TestTxList_SavingsAccountMustBeASavingsMember(t *testing.T) {
 	h, tok := newSavingsCategoriesBudget(t)
 	for _, q := range []string{
-		"&savingsAccountId=" + accountID,                         // an everyday member
-		"&savingsAccountId=aaaa9999-0000-7000-8000-000000000001", // no such account
-		"&savingsAccountId=" + savingsUSDID + "&categoryId=" + catID,
-		"&savingsAccountId=" + savingsUSDID + "&transfers=1",
+		"&accountId=" + accountID,                         // an everyday member
+		"&accountId=aaaa9999-0000-7000-8000-000000000001", // no such account
+		"&accountId=" + savingsUSDID + "&categoryId=" + catID,
+		"&accountId=" + savingsUSDID + "&transfers=1",
 	} {
 		st, env := h.do(t, http.MethodGet, "/api/v1/budget/get-transaction-list?budgetId="+budgetID1+"&periodStart=2026-08-01"+q, tok, nil)
 		if st != http.StatusBadRequest {

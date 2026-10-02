@@ -125,7 +125,7 @@ func (h *Handlers) GetBudget(w http.ResponseWriter, r *http.Request) {
 // @Param    uncategorized query boolean false "Uncategorized bucket (mutually exclusive with categoryId)"
 // @Param    transfers     query boolean false "Transfers across the budget boundary (mutually exclusive with every other selector)"
 // @Param    income        query boolean false "Income of categoryId or envelopeId (exactly one; composes with nothing else)"
-// @Param    savingsAccountId query string false "Every transaction on this savings account of the budget (composes with nothing)"
+// @Param    accountId     query string  false "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)"
 // @Success  200 {object} apidoc.JsonResponseOk{data=model.GetBudgetTransactionListResult}
 // @Failure  401 {object} apidoc.JsonResponseUnauthorized
 // @Failure  500 {object} apidoc.JsonResponseException
@@ -138,16 +138,16 @@ func (h *Handlers) GetTransactionList(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	req := model.BudgetTransactionListRequest{
-		BudgetId:         q.Get("budgetId"),
-		PeriodStart:      q.Get("periodStart"),
-		CategoryId:       optQuery(q.Get("categoryId")),
-		TagId:            optQuery(q.Get("tagId")),
-		EnvelopeId:       optQuery(q.Get("envelopeId")),
-		LabelId:          optQuery(q.Get("labelId")),
-		Uncategorized:    boolQuery(q.Get("uncategorized")),
-		Transfers:        boolQuery(q.Get("transfers")),
-		Income:           boolQuery(q.Get("income")),
-		SavingsAccountId: optQuery(q.Get("savingsAccountId")),
+		BudgetId:      q.Get("budgetId"),
+		PeriodStart:   q.Get("periodStart"),
+		CategoryId:    optQuery(q.Get("categoryId")),
+		TagId:         optQuery(q.Get("tagId")),
+		EnvelopeId:    optQuery(q.Get("envelopeId")),
+		LabelId:       optQuery(q.Get("labelId")),
+		Uncategorized: boolQuery(q.Get("uncategorized")),
+		Transfers:     boolQuery(q.Get("transfers")),
+		Income:        boolQuery(q.Get("income")),
+		AccountId:     optQuery(q.Get("accountId")),
 	}
 	res, err := h.svc.GetTransactionList(r.Context(), userID, req)
 	if err != nil {

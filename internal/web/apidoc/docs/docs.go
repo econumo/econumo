@@ -2545,8 +2545,8 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "Every transaction on this savings account of the budget (composes with nothing)",
-                        "name": "savingsAccountId",
+                        "description": "Every transaction on this account; currently only the budget's savings accounts are accepted (composes with nothing)",
+                        "name": "accountId",
                         "in": "query"
                     }
                 ],
@@ -12765,7 +12765,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "direction": {
-                    "description": "Direction is present only on rows of the transfers, income and\nsavingsAccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
+                    "description": "Direction is present only on rows of the transfers, income and\naccountId selectors: \"out\" when the money left the included (or\nsavings) account, \"in\" when it arrived — Amount/CurrencyId are that\nside's. Omitted on every other list so their bytes are unchanged.",
                     "type": "string"
                 },
                 "id": {
@@ -12788,7 +12788,7 @@ const docTemplate = `{
                     "$ref": "#/definitions/model.TxTagResult"
                 },
                 "type": {
-                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and savingsAccountId selectors.",
+                    "description": "Type (\"expense\", \"income\" or \"transfer\") is present only on rows of the\nincome and accountId selectors.",
                     "type": "string"
                 }
             }
