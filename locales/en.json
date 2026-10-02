@@ -1413,7 +1413,6 @@
         "title": "Savings",
         "planned": "Planned",
         "saved": "Saved",
-        "balance": "Balance",
         "balance_hint": "Balance at the end of the month. For the current and later months it includes the planned savings still to come."
       },
       "phone": {

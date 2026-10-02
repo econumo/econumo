@@ -1413,7 +1413,6 @@
         "title": "Oszczędności",
         "planned": "Zaplanowano",
         "saved": "Zaoszczędzono",
-        "balance": "Saldo",
         "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
       },
       "phone": {

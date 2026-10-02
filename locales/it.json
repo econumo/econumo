@@ -1413,7 +1413,6 @@
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "balance": "Saldo",
         "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
       },
       "phone": {

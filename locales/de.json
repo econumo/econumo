@@ -1413,7 +1413,6 @@
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "balance": "Saldo",
         "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
       },
       "phone": {

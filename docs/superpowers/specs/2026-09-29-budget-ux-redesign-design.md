@@ -39,6 +39,7 @@ contract changes.
 | Starting a thread | Faint corner triangle on hover (desktop); item sheet (tablet and phone). *(2026-09-30: right-click menu dropped after trying it — it only duplicated one-click actions; tablet long-press modal replaced by the item sheet on tap — no long taps anywhere)* |
 | Desktop density | One emphasised number per view, colour only for problems, drop repeated chrome |
 | Currency | No symbol on budget-currency amounts; budget currency named once in the column-heading row; foreign-currency items get a tag next to the name |
+| Savings in the desktop/tablet Budget view | **Hidden** *(2026-10-01 — Dmitry)*: no Savings block; the Total row counts expenses only. Savings stay in the Plan view and the phone month view |
 | Header currency chips + "Spending progress" widget | **Removed**; the average-rate note moves into the item sheet |
 
 ## Breakpoints

@@ -1413,7 +1413,6 @@
         "title": "Épargne",
         "planned": "Prévu",
         "saved": "Épargné",
-        "balance": "Solde",
         "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
       },
       "phone": {

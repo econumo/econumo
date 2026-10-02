@@ -1413,7 +1413,6 @@
         "title": "Ahorros",
         "planned": "Previsto",
         "saved": "Ahorrado",
-        "balance": "Saldo",
         "balance_hint": "Saldo al final del mes. Para el mes actual y los siguientes incluye los ahorros previstos que aún faltan."
       },
       "phone": {

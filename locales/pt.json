@@ -1413,7 +1413,6 @@
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "balance": "Saldo",
         "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
       },
       "phone": {

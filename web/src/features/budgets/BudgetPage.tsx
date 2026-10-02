@@ -33,7 +33,7 @@ import { useIsPhone } from '@/hooks/useIsPhone'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
 import { isNotEmpty, isValidBudgetFolderName } from '@/lib/validation'
-import type { BudgetElementDto, BudgetSavingsElementDto } from '@/api/dto/budget'
+import type { BudgetElementDto } from '@/api/dto/budget'
 import { BudgetElementType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { Id } from '@/api/types'
 import { RouterPage } from '@/app/router-pages'
@@ -67,13 +67,12 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
-import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange, savingsTotals, totalsWithSavings } from './budgetMath'
+import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { currentMonth, monthDiff } from './planMath'
 import { BudgetTable, BudgetTotals } from './BudgetTable'
 import { PeriodStrip } from './PeriodStrip'
 import { PlanSheet, commentsReadOnly } from './PlanSheet'
-import { SavingsBlock } from './SavingsBlock'
 import { LimitEditor } from './LimitEditor'
 import { SetLimitDialog } from './SetLimitDialog'
 import { CommentMarker } from './CommentThread'
@@ -350,14 +349,9 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  const phoneSavings = useMemo(
-    () => (budget ? savingsTotals(budget, makeBudgetExchange(budget, currencies), selectedDate >= currentMonth()) : null),
-    [budget, currencies, selectedDate],
-  )
-  const totals = useMemo(
-    () => (budget && buckets ? totalsWithSavings(budgetTotals(buckets), budget, makeBudgetExchange(budget, currencies)) : null),
-    [budget, buckets, currencies],
-  )
+  // the Budget view tables the expenses only: savings live in the Plan view (and the
+  // phone's month view), so the Total row counts no savings either
+  const totals = useMemo(() => (buckets ? budgetTotals(buckets) : null), [buckets])
 
   // An archived budget is read-only regardless of role: archived wins over
   // whatever the caller's grant would otherwise allow (the server enforces the
@@ -577,16 +571,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
       previewDisabled={commentsTarget !== null || editMode}
       shortcutDisabled={editMode}
       onOpenComments={(anchor) => openComments(element, anchor)}
-    >
-      {cell}
-    </CellShell>
-  )
-  const wrapPlannedCell = (row: BudgetSavingsElementDto, cell: ReactElement) => (
-    <CellShell
-      comments={commentsByCell.get(commentCellKey(row.id, selectedDate)) ?? []}
-      previewDisabled={commentsTarget !== null || editMode}
-      shortcutDisabled={editMode}
-      onOpenComments={(anchor) => openComments(row, anchor)}
     >
       {cell}
     </CellShell>
@@ -887,22 +871,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                   </SortableContext>
                 </DndContext>
                 <div className="mt-3 flex flex-col gap-3">
-                  {/* its own DndContext: a savings row reorders within the block only */}
-                  <SavingsBlock
-                    budget={budget}
-                    currencies={currencies}
-                    selectedDate={selectedDate}
-                    canEdit={limitsEditable && !editMode}
-                    editMode={editMode}
-                    commentsByCell={commentsByCell}
-                    onOpenDetails={isCompact && !editMode ? (row) => setSheetTarget({ kind: 'savings', row }) : undefined}
-                    onOpenComments={(row, anchor) => openComments(row, anchor ?? null)}
-                    renderPlannedEditor={inlineLimitEditor}
-                    wrapPlannedCell={wrapPlannedCell}
-                    canAddComment={canAddComment}
-                    onMove={(id, afterId) => moveElement.mutate({ budgetId: budget.meta.id, item: { id, folderId: null, position: 0, afterId } })}
-                  />
-                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} savings={phoneSavings} /> : null}
+                  {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
                 </div>
               </div>
             </>

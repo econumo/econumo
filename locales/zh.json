@@ -1413,7 +1413,6 @@
         "title": "储蓄",
         "planned": "计划",
         "saved": "已储蓄",
-        "balance": "余额",
         "balance_hint": "月末余额。当前及之后的月份包含尚未存入的计划储蓄。"
       },
       "phone": {

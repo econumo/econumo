@@ -13,7 +13,7 @@ import type { CurrencyDto } from '@/api/dto/currency'
 import type { UserDto } from '@/api/dto/user'
 import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
-import type { BudgetBuckets, BucketStats, FolderBucket, SavingsTotals } from './budgetMath'
+import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
 import { budgetTotals, carryOver, displayAvailable, elementDisplayName } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
@@ -656,13 +656,10 @@ export function BudgetTotals({
   budget,
   totals,
   actionsColumn,
-  savings = null,
 }: {
   budget: BudgetDto
   totals: BucketStats
   actionsColumn: boolean
-  /** phone card only: the desktop row has the Savings block's Balance column above it */
-  savings?: SavingsTotals | null
 }) {
   const { t } = useTranslation()
   const { data: currencies = [] } = useCurrencies()
@@ -713,20 +710,6 @@ export function BudgetTotals({
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>
           <AvailablePill available={totals.available} currency={budgetCurrency} />
         </span>
-        {savings ? (
-          <>
-            <span className="flex items-baseline justify-between border-t pt-2" data-testid="budget-totals-mobile-savings">
-              <span className="text-[13px] text-muted-foreground">{t('budgets.page.plan.totals.savings')}</span>
-              <span className="text-[15px] tabular-nums">{moneyFormat(savings.savings, budgetCurrency, opts)}</span>
-            </span>
-            {savings.balance !== null ? (
-              <span className="flex items-baseline justify-between" data-testid="budget-totals-mobile-savings-balance">
-                <span className="text-[13px] text-muted-foreground">{t('budgets.page.plan.totals.savings_balance')}</span>
-                <span className="text-[15px] font-medium tabular-nums">{moneyFormat(savings.balance, budgetCurrency, opts)}</span>
-              </span>
-            ) : null}
-          </>
-        ) : null}
       </div>
     </>
   )
