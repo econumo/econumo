@@ -151,25 +151,17 @@ export function visibleSectionRows(rows: PlanRow[], folded: boolean, hideEmpty: 
   return hideEmpty && !revealed ? rows.filter((r) => !r.hidden) : rows
 }
 
-/** the overspend highlight: an expense actual past its plan, in ANY month — an
- *  unset plan reads as 0 everywhere else in the grid, so it counts as 0 here too */
+/** the overspend highlight: an expense actual past its plan, in ANY month — an unset
+ *  plan reads as 0 everywhere else in the grid, so it counts as 0 here too. Income
+ *  and savings are never coloured: more received or saved is no problem. */
 export function isOverspent(type: BudgetElementType, cell: PlanCellDto | undefined): boolean {
-  if (!cell || isIncomeType(type)) {
+  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS) {
     return false
   }
   return cmp(cell.actual, cell.planned === '' ? '0' : cell.planned) > 0
 }
 
-/** the underspend highlight: a PAST month whose plan the actual stayed under — the
- *  current and future months are still open, so being under plan there means nothing
- *  yet. Never true without a plan (unset = 0), and never on the income side. Never on
- *  a savings row either: saving less than planned is no win. */
-export function isUnderspent(type: BudgetElementType, cell: PlanCellDto | undefined, month: string, cur: string): boolean {
-  if (!cell || isIncomeType(type) || type === BudgetElementType.SAVINGS || month >= cur) {
-    return false
-  }
-  return cmp(cell.planned === '' ? '0' : cell.planned, cell.actual) > 0
-}
+export const PLAN_CURRENT_MONTH_TINT = 'bg-muted/50'
 
 type Side = 'income' | 'expense'
 const sideOf = (el: PlanElementDto): Side => (isIncomeType(el.type) ? 'income' : 'expense')

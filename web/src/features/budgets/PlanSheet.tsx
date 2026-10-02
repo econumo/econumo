@@ -94,9 +94,9 @@ import {
   fillTargetCol,
   folderSides,
   isOverspent,
-  isUnderspent,
   makePlanExchange,
   monthDate,
+  PLAN_CURRENT_MONTH_TINT,
   planHasSavingsData,
   projectSavingsClosings,
   planInitialFirstMonth,
@@ -150,13 +150,9 @@ const KEYDOWN_ESCAPE_SELECTOR =
 // focus, and the grid regains it naturally once they close.
 const CLICK_ESCAPE_SELECTOR = `button, [role="button"], ${KEYDOWN_ESCAPE_SELECTOR}`
 
-// A future month with no activity yet reads as a dash, same as a missing
-// cell; a real (possibly zero) actual in a past/current month still prints.
-function renderActual(actual: string | undefined, month: string, cur: string, currency: CurrencyDto | undefined): string {
+// A missing cell reads as a dash; a real (possibly zero) actual still prints.
+function renderActual(actual: string | undefined, currency: CurrencyDto | undefined): string {
   if (actual === undefined) {
-    return '—'
-  }
-  if (month > cur && isZero(actual)) {
     return '—'
   }
   return moneyFormat(actual, currency, { showCurrency: false, useNativePrecision: false })
@@ -468,7 +464,8 @@ const ChildRow = memo(function ChildRow({
       {ctx.visibleMonths.map((m, i) => {
         const idx = ctx.monthIndex(m)
         const cell = idx >= 0 ? child.cells[idx] : undefined
-        const actualText = renderActual(cell?.actual, m, ctx.cur, parentCurrency)
+        const future = m > ctx.cur
+        const actualText = future ? '—' : renderActual(cell?.actual, parentCurrency)
         return (
           <div
             key={m}
@@ -477,9 +474,9 @@ const ChildRow = memo(function ChildRow({
             data-month={m}
             data-col={i}
             data-testid={`plan-cell-${child.id}:${i}`}
-            className="flex items-center justify-end px-2 py-1"
+            className={`flex items-center justify-end px-2 py-1${m === ctx.cur ? ` ${PLAN_CURRENT_MONTH_TINT}` : ''}`}
           >
-            <span data-testid="cell-actual">{actualText}</span>
+            {future ? null : <span data-testid="cell-actual">{actualText}</span>}
           </div>
         )
       })}
@@ -554,10 +551,10 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
           const cell = idx >= 0 ? el.cells[idx] : undefined
           const editable = isEditableCell(el, m, idx, ctx.meta, ctx.userId)
           const overspend = isOverspent(el.type, cell)
-          const underspend = isUnderspent(el.type, cell, m, ctx.cur)
-          const plannedValue = cell && cell.planned !== '' ? cell.planned : '0'
-          const plannedText = cell && cell.planned !== '' ? moneyFormat(cell.planned, currency, { showCurrency: false, useNativePrecision: false }) : '—'
-          const actualText = renderActual(cell?.actual, m, ctx.cur, currency)
+          const future = m > ctx.cur
+          const plannedSet = !!cell && cell.planned !== '' && !isZero(cell.planned)
+          const plannedText = plannedSet ? moneyFormat(cell!.planned, currency, { showCurrency: false, useNativePrecision: false }) : ''
+          const actualText = future ? '—' : renderActual(cell?.actual, currency)
           const selected = ctx.selection?.rowKey === rk && ctx.selection.col === i
           const fillSource = ctx.fill.active?.rowKey === rk && ctx.fill.active.startCol === i
           const filled = ctx.fill.active?.rowKey === rk && i > ctx.fill.active.startCol && i <= ctx.fill.active.targetCol
@@ -577,11 +574,11 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               role="gridcell"
               id={cellDomId(rk, i)}
               aria-selected={selected}
-              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: plannedText })}
+              aria-label={t('budgets.page.plan.cell.aria', { name: displayName, month: ctx.monthLabel(m), actual: actualText, planned: plannedText || '—' })}
               data-month={m}
               data-col={i}
               data-testid={`plan-cell-${el.id}:${i}`}
-              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}`}
+              className={`group/cell relative flex flex-col items-end justify-center px-2 py-1${editable ? ' cursor-pointer' : ''} ${selectedClass(selected)}${filled ? ' fill-covered bg-ring/15' : ''}${m === ctx.cur && !filled ? ` ${PLAN_CURRENT_MONTH_TINT}` : ''}`}
               onClick={(e) => {
                 ctx.select(rk, i, e)
                 // touch: the whole cell opens the item sheet; the marker stops its own click
@@ -592,28 +589,28 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              <span
-                data-testid="cell-actual"
-                className={`text-xs ${overspend ? 'text-destructive' : underspend ? 'text-income' : 'text-muted-foreground'}`}
-              >
-                {actualText}
-              </span>
+              {future ? null : (
+                <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
+                  {actualText}
+                </span>
+              )}
               <span data-testid="cell-planned" className="text-sm">
                 {ctx.isCompact ? (
-                  editable ? moneyFormat(plannedValue, currency, { showCurrency: false, useNativePrecision: false }) : plannedText
+                  plannedText
                 ) : editable ? (
                   <LimitEditor
                     id={`${el.id}-${m}`}
                     name={displayName}
-                    value={plannedValue}
+                    value={cell && cell.planned !== '' ? cell.planned : '0'}
                     currency={currency}
                     onCommit={(amount) => ctx.commit(el.id, m, idx, amount)}
+                    blankWhenZero
                   />
                 ) : !isUncategorized ? (
                   // a non-editable cell (guest role, archived element, month outside the budget) still opens its thread, so a guest can start one
                   <button
                     type="button"
-                    className="w-full text-right underline-offset-2 hover:underline"
+                    className="min-h-5 w-full text-right underline-offset-2 hover:underline"
                     aria-label={`comments ${displayName}`}
                     onClick={(e) => {
                       e.stopPropagation()
@@ -921,6 +918,7 @@ function PlanTotals({
   currency,
   showSavings,
   onLinkClick,
+  cur,
 }: {
   visibleMonths: string[]
   monthIndex: (m: string) => number
@@ -929,6 +927,7 @@ function PlanTotals({
   currency: CurrencyDto | undefined
   showSavings: boolean
   onLinkClick: (link: TotalsLink, month: string) => void
+  cur: string
 }) {
   const { t } = useTranslation()
   const fmt = (v: string) => moneyFormat(v, currency, { showCurrency: false, useNativePrecision: false })
@@ -965,7 +964,7 @@ function PlanTotals({
                   ? `${t('budgets.page.plan.totals.transfers_tooltip', { in: fmt(row.transfersIn), out: fmt(row.transfersOut) })}. ${t('budgets.page.plan.totals.show_transactions')}`
                   : t('budgets.page.plan.totals.show_transactions')
               return (
-                <div key={m} data-col={i} className="flex items-center justify-end px-2 py-1">
+                <div key={m} data-col={i} className={`flex items-center justify-end px-2 py-1${m === cur ? ` ${PLAN_CURRENT_MONTH_TINT}` : ''}`}>
                   {linkable ? (
                     <button
                       type="button"
@@ -1024,7 +1023,7 @@ function PlanBalanceLine({
             key={m}
             data-col={i}
             data-testid={`${testIdPrefix}-${i}`}
-            className={`px-2 py-1 text-right text-sm ${m === cur ? 'font-semibold' : ''} ${negative ? 'text-destructive' : ''}`}
+            className={`px-2 py-1 text-right text-sm ${m === cur ? `font-semibold ${PLAN_CURRENT_MONTH_TINT}` : ''} ${negative ? 'text-destructive' : ''}`}
           >
             {value !== undefined ? moneyFormat(value, currency, { showCurrency: false, useNativePrecision: false }) : '—'}
           </div>
@@ -2133,7 +2132,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               role="columnheader"
               data-month={m}
               data-col={i}
-              className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? 'font-bold text-foreground' : 'text-muted-foreground'}`}
+              className={`px-2 py-1 text-right text-xs uppercase tracking-wide ${m === cur ? `font-bold text-foreground ${PLAN_CURRENT_MONTH_TINT}` : 'text-muted-foreground'}`}
             >
               {monthLabel(m)}
             </div>
@@ -2352,6 +2351,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
           currency={planCurrency}
           showSavings={hasSavings}
           onLinkClick={openTotalsTransactions}
+          cur={cur}
         />
 
         <PlanBalanceRow

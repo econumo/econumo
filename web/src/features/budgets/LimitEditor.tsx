@@ -15,10 +15,13 @@ interface LimitEditorProps {
   value: string
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
+  /** an unset-reads-as-zero cell (the plan grid's future-blanked cells) should show
+   *  nothing rather than "0.00" — the SetLimitDialog's own 0 entry still prints it */
+  blankWhenZero?: boolean
 }
 
 // Desktop inline budget-cell editor (Vue's q-popup-edit).
-export function LimitEditor({ id, name, value: currentValue, currency, onCommit }: LimitEditorProps) {
+export function LimitEditor({ id, name, value: currentValue, currency, onCommit, blankWhenZero }: LimitEditorProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState('')
@@ -49,10 +52,10 @@ export function LimitEditor({ id, name, value: currentValue, currency, onCommit 
         <button
           type="button"
           data-limit-trigger=""
-          className="w-full text-right underline-offset-2 hover:underline"
+          className="min-h-5 w-full text-right underline-offset-2 hover:underline"
           aria-label={`limit ${name}`}
         >
-          {moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
+          {blankWhenZero && isZero(currentValue) ? '' : moneyFormat(currentValue, currency, { showCurrency: false, useNativePrecision: false })}
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 p-2" align="end">

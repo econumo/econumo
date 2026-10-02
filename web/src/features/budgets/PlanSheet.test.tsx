@@ -138,25 +138,76 @@ it('/plan renders the sheet: months, income on top, cells', async () => {
   expect(within(cell).getByTestId('cell-planned')).toBeInTheDocument()
 })
 
-it('overspend turns the actual red in a past month and with no plan set; never on income', async () => {
+it('an actual turns red only over plan; under plan and income stay plain', async () => {
   usePlanHandlers()
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   renderPage()
   await screen.findByText(/may/i)
-  // July: 125 spent, no plan stored — a past month by the time this runs (fixture months are 2026)
+  // July: 125 spent, no plan stored
   const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
   expect(within(foodJuly).getByTestId('cell-actual')).toHaveClass('text-destructive')
-  // May: 120 spent against a 150 plan in a past month — under, so green
+  // May: 120 spent against a 150 plan — under plan is not a signal
   const foodMay = screen.getAllByTestId('plan-cell-cat-food:0')[0]
   expect(within(foodMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
-  expect(within(foodMay).getByTestId('cell-actual')).toHaveClass('text-income')
-  // income over an unset plan is neither
+  expect(within(foodMay).getByTestId('cell-actual')).not.toHaveClass('text-income')
   const freelanceMay = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
   expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-destructive')
-  expect(within(freelanceMay).getByTestId('cell-actual')).not.toHaveClass('text-income')
-  // June: 2000 vs 2000 for Salaries (income) — plain; env-eur June 40 vs 100 — green
   const eurJune = screen.getAllByTestId('plan-cell-env-eur:1')[0]
-  expect(within(eurJune).getByTestId('cell-actual')).toHaveClass('text-income')
+  expect(within(eurJune).getByTestId('cell-actual')).not.toHaveClass('text-income')
+})
+
+it('a future month shows only the plan', async () => {
+  // May-June-July (the default window's 3 columns) never includes a future
+  // month under the suite's August clock, so pin July as current and shift
+  // the window to June-July-August to get a real future column in view.
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0)) // July is current, August is future
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-06-01' })
+  renderPage()
+  await screen.findByText(/jun/i)
+  expect(within(screen.getAllByTestId('plan-cell-pe1:1')[0]).getByTestId('cell-actual')).toBeInTheDocument()
+  expect(within(screen.getAllByTestId('plan-cell-pe1:2')[0]).queryByTestId('cell-actual')).not.toBeInTheDocument()
+  // a child row's future cell is empty too
+  const livingRow = document.querySelector('[data-row-id="pe1:0"]') as HTMLElement
+  await userEvent.setup().click(within(livingRow).getByRole('button', { name: 'Expand' }))
+  const rentAug = await screen.findByTestId('plan-cell-cat-rent:2')
+  expect(rentAug.textContent).toBe('')
+})
+
+it('an unplanned month is blank, not 0.00', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  // Food: May planned 150, July unset
+  expect(within(screen.getAllByTestId('plan-cell-cat-food:0')[0]).getByTestId('cell-planned')).toHaveTextContent('150.00')
+  expect(within(screen.getAllByTestId('plan-cell-cat-food:2')[0]).getByTestId('cell-planned').textContent).toBe('')
+})
+
+it('a blank plan cell still opens the editor', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  const user = userEvent.setup()
+  const foodJuly = screen.getAllByTestId('plan-cell-cat-food:2')[0]
+  const trigger = within(foodJuly).getByRole('button', { name: 'limit Food' })
+  expect(trigger).toHaveClass('min-h-5')
+  await user.click(trigger)
+  expect(await screen.findByLabelText('Budget')).toBeInTheDocument()
+})
+
+it('tints the current month column', async () => {
+  // the default window (May-June-July) never carries the suite's August clock,
+  // so pin July as current to get it inside the visible 3-column window.
+  vi.setSystemTime(new Date(2026, 6, 15, 12, 0, 0))
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  expect(screen.getByRole('columnheader', { name: /jul/i })).toHaveClass('bg-muted/50')
+  expect(screen.getAllByTestId('plan-cell-cat-food:2')[0]).toHaveClass('bg-muted/50')
+  expect(screen.getAllByTestId('plan-cell-cat-food:0')[0]).not.toHaveClass('bg-muted/50')
 })
 
 it('arrows shift the window by one month, clamped at the budget start', async () => {

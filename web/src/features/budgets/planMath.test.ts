@@ -17,7 +17,6 @@ import {
   folderSides,
   formatPlanMonth,
   isOverspent,
-  isUnderspent,
   makePlanExchange,
   monthDate,
   monthDiff,
@@ -1036,38 +1035,9 @@ describe('isOverspent', () => {
   it('is false for a missing cell', () => {
     expect(isOverspent(CATEGORY, undefined)).toBe(false)
   })
-})
 
-describe('isUnderspent', () => {
-  const { CATEGORY, INCOME_CATEGORY } = BudgetElementType
-  const cur = '2026-08-01'
-
-  it('is true in a past month when the plan exceeds the actual', () => {
-    expect(isUnderspent(CATEGORY, { actual: '120', planned: '150' }, '2026-05-01', cur)).toBe(true)
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '150' }, '2026-07-01', cur)).toBe(true)
-  })
-
-  it('is false in the current and future months', () => {
-    expect(isUnderspent(CATEGORY, { actual: '120', planned: '150' }, '2026-08-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '150' }, '2026-09-01', cur)).toBe(false)
-  })
-
-  it('needs a plan: unset counts as 0', () => {
-    expect(isUnderspent(CATEGORY, { actual: '0', planned: '' }, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('is false at exactly the plan and when over it', () => {
-    expect(isUnderspent(CATEGORY, { actual: '150', planned: '150' }, '2026-05-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, { actual: '160', planned: '150' }, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('never flags an income row or a missing cell', () => {
-    expect(isUnderspent(INCOME_CATEGORY, { actual: '100', planned: '2000' }, '2026-05-01', cur)).toBe(false)
-    expect(isUnderspent(CATEGORY, undefined, '2026-05-01', cur)).toBe(false)
-  })
-
-  it('never flags a savings row: saving less than planned is not a good outcome', () => {
-    expect(isUnderspent(BudgetElementType.SAVINGS, { actual: '0', planned: '500' }, '2026-05-01', cur)).toBe(false)
+  it('never flags a savings row', () => {
+    expect(isOverspent(BudgetElementType.SAVINGS, { actual: '600', planned: '500' })).toBe(false)
   })
 })
 

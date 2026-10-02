@@ -678,6 +678,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       split as a tooltip; the Balance row shows tooltips. No amount carries a
       currency symbol: the budget currency code sits at the left of the month
       header, and a row in another currency has a code tag next to its name.
+- [ ] 📱 Plan grid: past months and the current month show the small actual
+      above the plan; future months show only the plan. A month with no plan
+      is blank (not 0.00) and clicking it still opens the editor. An expense
+      actual is red only when it is over the plan; nothing turns green. The
+      current month's column has a light tint.
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and
@@ -769,8 +774,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       account that is not in the budget: from that month on the Savings
       balance is 20 lower, and the everyday Balance is the same as before the
       transfer.
-- [ ] 📱 A past month where a savings account saved less than planned: the
-      cell does NOT take the green under-plan style an expense row gets.
+- [ ] 📱 A savings account that saved more or less than planned: its actual
+      stays plain (never red or green).
 - [ ] 📱 Edit a savings account's balance (the correction transaction), then
       switch to the Plan view in the same tab: the Total savings updates
       without a manual reload.
