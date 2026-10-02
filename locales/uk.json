@@ -1417,6 +1417,7 @@
       },
       "phone": {
         "row_aria": "{name}, бюджет {budget}, витрачено {spent}",
+        "child_aria": "{name}, витрачено {spent}",
         "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
         "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
         "available": "доступно {amount}",
