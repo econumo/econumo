@@ -132,6 +132,13 @@ export function totalsWithSavings(totals: BucketStats, budget: BudgetDto, exchan
 
 export const displayAvailable = (el: { available: string; budgeted: string }): string => add(el.available, el.budgeted)
 
+// planMath imports periodLabeler from this module, so importing planMath's own
+// currentMonth back here would cycle; the same "YYYY-MM" comparison is inlined.
+export function isFuturePeriod(periodStart: string, now: Date = new Date()): boolean {
+  const current = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  return periodStart.slice(0, 7) > current
+}
+
 // The wire name for the Uncategorized element is the English literal
 // "Uncategorized" (see internal/model.UncategorizedName); the SPA renders the
 // translated label instead, everywhere this element's (or its tag-child

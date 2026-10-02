@@ -587,7 +587,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
                 if (ctx.isCompact && !ctx.editMode && idx >= 0) {
                   if (!isUncategorized) {
                     ctx.openSheet(target)
-                  } else if (cell && !isZero(cell.actual)) {
+                  } else if (!isIncomeType(el.type) && cell && !isZero(cell.actual)) {
                     ctx.openTransactions(el, m)
                   }
                 }
@@ -595,7 +595,7 @@ const ElementRow = memo(function ElementRow({ row, ctx }: { row: PlanRow; ctx: G
               onMouseEnter={() => setHoverCol(i)}
               onMouseLeave={() => setHoverCol((c) => (c === i ? null : c))}
             >
-              {future ? null : ctx.isCompact || ctx.editMode || !cell || isZero(cell.actual) || el.type === BudgetElementType.SAVINGS ? (
+              {future ? null : ctx.isCompact || ctx.editMode || !cell || isZero(cell.actual) || el.type === BudgetElementType.SAVINGS || isIncomeType(el.type) ? (
                 <span data-testid="cell-actual" className={`text-xs ${overspend ? 'text-destructive' : 'text-muted-foreground'}`}>
                   {actualText}
                 </span>

@@ -1,4 +1,4 @@
-import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithSavings } from './budgetMath'
+import { bucketElements, bucketStats, budgetTotals, periodRange, rowState, rowProgress, carryOver, overBudget, makeBudgetExchange, displayAvailable, totalsWithSavings, isFuturePeriod } from './budgetMath'
 import { fixtureWireBudget } from '@/test/fixtures'
 import type { BudgetDto, BudgetElementDto } from '@/api/dto/budget'
 
@@ -225,4 +225,22 @@ it('totals what earlier months left, in the budget currency, without Uncategoriz
   const totals = budgetTotals(buckets)
   expect(Number(totals.carry)).toBeCloseTo(300, 6)
   expect(Number(totalsWithSavings(totals, mutated, ex).carry)).toBeCloseTo(300, 6)
+})
+
+describe('isFuturePeriod', () => {
+  const now = new Date(2026, 7, 15, 12, 0, 0) // August 2026
+
+  it('is false for the current month and every past month', () => {
+    expect(isFuturePeriod('2026-08-01', now)).toBe(false)
+    expect(isFuturePeriod('2026-07-01', now)).toBe(false)
+  })
+
+  it('is true for a month after the current one', () => {
+    expect(isFuturePeriod('2026-09-01', now)).toBe(true)
+  })
+
+  it('accepts a datetime string, not just a bare date', () => {
+    expect(isFuturePeriod('2026-09-01 00:00:00', now)).toBe(true)
+    expect(isFuturePeriod('2026-08-01 00:00:00', now)).toBe(false)
+  })
 })

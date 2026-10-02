@@ -2050,7 +2050,13 @@ it('clicking a totals link opens the transaction list for THAT column\'s month',
 
 it("desktop: an actual opens that month's transactions, the Uncategorized row included", async () => {
   usePlanHandlers()
-  server.use(http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   renderPage()
   await screen.findByText(/may/i)
@@ -2060,6 +2066,20 @@ it("desktop: an actual opens that month's transactions, the Uncategorized row in
   await user.click(within(uncatRow).getAllByRole('button', { name: /^transactions /i })[0])
   const dialog = await screen.findByRole('dialog')
   expect(dialog).toHaveTextContent('Uncategorized')
+  await waitFor(() => expect(seen).toHaveLength(1))
+  expect(seen[0].searchParams.get('uncategorized')).toBe('1')
+})
+
+it('desktop: an income actual is not a transactions link', async () => {
+  usePlanHandlers()
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  // cat-freelance (INCOME_CATEGORY) May actual 300 — the backend has no
+  // filter shape for an income element, so this must stay plain text
+  const cell = screen.getAllByTestId('plan-cell-cat-freelance:0')[0]
+  expect(within(cell).getByTestId('cell-actual')).toHaveTextContent('300.00')
+  expect(within(cell).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
 })
 
 it('desktop: a zero actual is not a link, and a future month renders no actual at all', async () => {
@@ -2090,10 +2110,16 @@ it('desktop: a future month renders no actual (and so no link)', async () => {
   expect(within(screen.getAllByTestId('plan-cell-pe1:2')[0]).queryByRole('button', { name: /^transactions /i })).not.toBeInTheDocument()
 })
 
-it('tablet: a tap on an Uncategorized cell opens its transactions', async () => {
+it('tablet: a tap on the expense Uncategorized cell opens its transactions', async () => {
   mockCompactViewport()
   usePlanHandlers()
-  server.use(http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  const seen: URL[] = []
+  server.use(
+    http.get('*/api/v1/budget/get-transaction-list', ({ request }) => {
+      seen.push(new URL(request.url))
+      return HttpResponse.json({ success: true, message: '', data: { items: [] } })
+    }),
+  )
   useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
   renderPage()
   await screen.findByText(/may/i)
@@ -2101,6 +2127,22 @@ it('tablet: a tap on an Uncategorized cell opens its transactions', async () => 
   const uncatRow = document.querySelector('[data-row-id="uncategorized:1"]') as HTMLElement
   await user.click(within(uncatRow).getAllByRole('gridcell')[1]) // May (index 0 is the name)
   expect(await screen.findByRole('dialog')).toHaveTextContent('Uncategorized')
+  await waitFor(() => expect(seen).toHaveLength(1))
+  expect(seen[0].searchParams.get('uncategorized')).toBe('1')
+})
+
+it('tablet: a tap on the income Uncategorized cell opens nothing', async () => {
+  mockCompactViewport()
+  usePlanHandlers()
+  server.use(http.get('*/api/v1/budget/get-transaction-list', () => HttpResponse.json({ success: true, message: '', data: { items: [] } })))
+  useBudgetPeriodStore.setState({ planFirstMonth: '2026-05-01' })
+  renderPage()
+  await screen.findByText(/may/i)
+  const user = userEvent.setup()
+  // the income Uncategorized row: June actual 50
+  const uncatRow = document.querySelector('[data-row-id="uncategorized:3"]') as HTMLElement
+  await user.click(within(uncatRow).getAllByRole('gridcell')[2]) // June (0 name, 1 May, 2 June)
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
 it('rules element rows flush with hairline dividers', async () => {

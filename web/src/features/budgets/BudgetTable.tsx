@@ -15,8 +15,7 @@ import { useCurrencies } from '@/features/currencies/queries'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { CurrencyTag } from './CurrencyTag'
 import type { BudgetBuckets, BucketStats, FolderBucket } from './budgetMath'
-import { budgetTotals, carryOver, displayAvailable, elementDisplayName, overBudget, rowProgress } from './budgetMath'
-import { currentMonth } from './planMath'
+import { budgetTotals, carryOver, displayAvailable, elementDisplayName, isFuturePeriod, overBudget, rowProgress } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 
@@ -82,20 +81,20 @@ export function AvailableFigure({
   return (
     <span
       data-testid={testId}
-      className={`inline-flex items-center font-semibold tabular-nums ${className} ${negative ? 'rounded-full bg-expense/10 px-2 py-0.5 text-expense' : ''}`}
+      className={`inline-flex items-center font-semibold tabular-nums ${className} ${negative ? '-mx-1.5 rounded-full bg-expense/10 px-1.5 py-0.5 text-expense' : ''}`}
     >
       {moneyFormat(available, currency, cellOpts(currency))}
     </span>
   )
 }
 
-function StatCells({ stats, currency }: { stats: BucketStats; currency: CurrencyDto | undefined }) {
+function StatCells({ stats, currency, future }: { stats: BucketStats; currency: CurrencyDto | undefined; future: boolean }) {
   const opts = cellOpts(currency)
   const available = stats.available
   return (
     <span className="flex items-center gap-2 text-[13px] font-semibold text-muted-foreground" data-testid="stat-line">
       <span className="hidden w-24 text-right tabular-nums sm:block">{moneyFormat(stats.budgeted, currency, opts)}</span>
-      <span className="w-20 text-center tabular-nums sm:w-24">{moneyFormat(stats.spent, currency, opts)}</span>
+      <span className="w-20 text-center tabular-nums sm:w-24">{future ? EMPTY_CELL : moneyFormat(stats.spent, currency, opts)}</span>
       <span className="flex w-20 justify-center sm:w-24">
         <AvailableFigure available={available} currency={currency} className="text-[13px]" />
       </span>
@@ -173,7 +172,7 @@ function ElementRow({
   const displayName = elementDisplayName(element.id, element.name, t)
   // categoryless spending can never be budgeted: those columns read as a dash
   const isUncategorized = element.id === UNCATEGORIZED_ID
-  const future = budget.filters.periodStart.slice(0, 7) > currentMonth().slice(0, 7)
+  const future = isFuturePeriod(budget.filters.periodStart)
   const figures = { budgeted: element.budgeted, spent: element.spent, available, carry }
   const overspent = !isUncategorized && overBudget(figures, future)
   const progress = isUncategorized ? null : rowProgress(figures, future)
@@ -372,11 +371,15 @@ function LabelRow({
   currency,
   opts,
   onLabelClick,
+  future,
+  actionsColumn = false,
 }: {
   label: LabelSpendDto
   currency: CurrencyDto | undefined
   opts: MoneyFormatOptions
   onLabelClick?: (target: BudgetTransactionsTarget) => void
+  future: boolean
+  actionsColumn?: boolean
 }) {
   const { t } = useTranslation()
   const unfolded = useBudgetPeriodStore((s) => !!s.unfoldedElements[label.id])
@@ -387,8 +390,11 @@ function LabelRow({
   const showTransactionsTitle = t('budgets.page.budget.structure.element.action.show_transactions')
   const Chevron = unfolded ? ChevronDown : ChevronRight
 
-  const spentCell = (target: BudgetTransactionsTarget, spent: string) =>
-    onLabelClick ? (
+  const spentCell = (target: BudgetTransactionsTarget, spent: string) => {
+    if (future) {
+      return <span className="w-20 text-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
+    }
+    return onLabelClick ? (
       <button
         type="button"
         title={showTransactionsTitle}
@@ -403,6 +409,7 @@ function LabelRow({
         {moneyFormat(spent, currency, opts)}
       </span>
     )
+  }
 
   // mirrors ElementRow: on mobile the chevron replaces the entity icon, since
   // there is no room for a separate chevron column
@@ -451,6 +458,12 @@ function LabelRow({
           {spentCell({ id: label.id, type: 'label', name: label.name, icon: label.icon, currencyId: null }, label.spent)}
         </span>
         <span className="flex w-20 justify-center text-[15px] tabular-nums text-muted-foreground sm:w-24">{EMPTY_CELL}</span>
+        {actionsColumn ? (
+          <>
+            <EditSlot />
+            <ActionsSpacer />
+          </>
+        ) : null}
       </div>
       {expandable && unfolded ? (
         <ul className="pb-1">
@@ -483,6 +496,12 @@ function LabelRow({
                   )}
                 </span>
                 <span className="w-20 sm:w-24" />
+                {actionsColumn ? (
+                  <>
+                    <EditSlot />
+                    <ActionsSpacer />
+                  </>
+                ) : null}
               </li>
             )
           })}
@@ -496,10 +515,14 @@ function ReportingTagsFolder({
   labels,
   currency,
   onLabelClick,
+  future,
+  actionsColumn = false,
 }: {
   labels: LabelSpendDto[]
   currency: CurrencyDto | undefined
   onLabelClick?: (target: BudgetTransactionsTarget) => void
+  future: boolean
+  actionsColumn?: boolean
 }) {
   const { t } = useTranslation()
   const open = useBudgetPeriodStore((s) => !!s.unfoldedElements[REPORTING_TAGS_FOLD_ID])
@@ -513,7 +536,7 @@ function ReportingTagsFolder({
           <CollapsibleTrigger asChild>
             <button
               type="button"
-              className="flex min-w-0 items-center gap-1.5 text-left sm:gap-2"
+              className="flex min-w-0 flex-1 items-center gap-1.5 text-left sm:gap-2"
               aria-expanded={open}
               title={t(open ? 'common.button.collapse.label' : 'common.button.expand.label')}
             >
@@ -524,11 +547,25 @@ function ReportingTagsFolder({
             </button>
           </CollapsibleTrigger>
           <InfoNote text={t('budgets.page.budget.structure.labels.info')} testId="budget-labels-info-note" />
+          {actionsColumn ? (
+            <>
+              <EditSlot />
+              <ActionsSpacer />
+            </>
+          ) : null}
         </div>
         <CollapsibleContent>
           <ul>
             {labels.map((label) => (
-              <LabelRow key={label.id} label={label} currency={currency} opts={opts} onLabelClick={onLabelClick} />
+              <LabelRow
+                key={label.id}
+                label={label}
+                currency={currency}
+                opts={opts}
+                onLabelClick={onLabelClick}
+                future={future}
+                actionsColumn={actionsColumn}
+              />
             ))}
           </ul>
         </CollapsibleContent>
@@ -543,6 +580,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const totals = budgetTotals(buckets)
   const actionsColumn = !!extras.renderActions
+  const future = isFuturePeriod(budget.filters.periodStart)
   const accessById = new Map(budget.meta.access.map((a) => [a.user.id, a.user]))
 
   const realFolders = buckets.withFolder
@@ -587,7 +625,16 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
           // renamed, moved, deleted, or become a drop target
           const labelsNode =
             labels.length > 0
-              ? [<ReportingTagsFolder key="__labels__" labels={labels} currency={budgetCurrency} onLabelClick={extras.onSpentClick} />]
+              ? [
+                  <ReportingTagsFolder
+                    key="__labels__"
+                    labels={labels}
+                    currency={budgetCurrency}
+                    onLabelClick={extras.onSpentClick}
+                    future={future}
+                    actionsColumn={actionsColumn}
+                  />,
+                ]
               : []
           if (section.bucket.elements.length === 0) {
             return labelsNode
@@ -629,7 +676,7 @@ export function BudgetTable({ budget, buckets, renderFolderActions, renderFolder
               <span className="min-w-0 flex-1 truncate text-sm font-semibold" title={section.name}>
                 {section.name}
               </span>
-              {section.bucket.elements.length > 0 ? <StatCells stats={section.bucket.stats} currency={budgetCurrency} /> : null}
+              {section.bucket.elements.length > 0 ? <StatCells stats={section.bucket.stats} currency={budgetCurrency} future={future} /> : null}
               {!isReadOnlySection ? renderFolderActions?.(section.bucket, section.folderIndex ?? -1, realFolders.length) : null}
               {isReadOnlySection && actionsColumn ? (
                 <>
@@ -702,6 +749,7 @@ export function BudgetTotals({
   const { data: currencies = [] } = useCurrencies()
   const budgetCurrency = currencies.find((c) => c.id === budget.meta.currencyId)
   const opts = cellOpts(budgetCurrency)
+  const future = isFuturePeriod(budget.filters.periodStart)
   return (
     <>
       <div className="hidden items-center gap-2 rounded-md border px-4 py-2 font-medium sm:flex" data-testid="budget-totals">
@@ -719,7 +767,7 @@ export function BudgetTotals({
           <span className="shrink-0">{moneyFormat(totals.budgeted, budgetCurrency, opts)}</span>
         </span>
         <span className="w-24 text-center text-[15px] tabular-nums text-muted-foreground">
-          {moneyFormat(totals.spent, budgetCurrency, opts)}
+          {future ? EMPTY_CELL : moneyFormat(totals.spent, budgetCurrency, opts)}
         </span>
         <span className="flex w-24 justify-center">
           <AvailableFigure available={totals.available} currency={budgetCurrency} testId="totals-available" />
@@ -745,7 +793,9 @@ export function BudgetTotals({
         </span>
         <span className="flex items-baseline justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.spent')}</span>
-          <span className="text-[15px] tabular-nums text-muted-foreground">{moneyFormat(totals.spent, budgetCurrency, opts)}</span>
+          <span className="text-[15px] tabular-nums text-muted-foreground">
+            {future ? EMPTY_CELL : moneyFormat(totals.spent, budgetCurrency, opts)}
+          </span>
         </span>
         <span className="flex items-center justify-between">
           <span className="text-[13px] text-muted-foreground">{t('budgets.page.budget.structure.tab.available')}</span>

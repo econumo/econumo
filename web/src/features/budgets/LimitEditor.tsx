@@ -15,8 +15,7 @@ interface LimitEditorProps {
   value: string
   currency: CurrencyDto | undefined
   onCommit: (amount: string | null) => void
-  /** an unset-reads-as-zero cell (the plan grid's future-blanked cells) should show
-   *  nothing rather than "0.00" — the SetLimitDialog's own 0 entry still prints it */
+  /** an unplanned plan-grid cell shows nothing rather than 0.00 */
   blankWhenZero?: boolean
 }
 

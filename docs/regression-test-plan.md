@@ -684,10 +684,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       actual is red only when it is over the plan; nothing turns green. The
       current month's column has a light tint.
 - [ ] Plan grid (desktop): clicking a month's actual opens that month's
-      transactions for the row, the Uncategorized rows included; a zero
-      actual, a future month and a savings row are not links. 📱 On a tablet a
-      tap on an Uncategorized cell with spending opens its transactions (other
-      cells open the item sheet).
+      transactions for the row, the expense Uncategorized row included; a zero
+      actual, a future month, and an income or savings row are not links. 📱
+      On a tablet a tap on the expense Uncategorized cell with spending opens
+      its transactions (other cells open the item sheet).
 - [ ] 📱 **Budget settings — Accounts and Savings accounts pickers**: the
       create and edit budget dialogs show Name, Currency, then two picker rows
       (styled like Currency): "Accounts" (the included accounts' names, and
@@ -878,7 +878,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
       budget" replaces the sheet with the amount dialog (no comments in it);
       "Comments" replaces it with the thread. A savings row's sheet has no
-      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
+      "Transactions". A guest's sheet has no "Set budget". Available is not a button; tapping Spent still lists
       the transactions; the corner marker still opens the thread beside the cell.
 - [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
       the cell is selected and the item sheet opens for that element and

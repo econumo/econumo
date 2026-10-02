@@ -641,7 +641,7 @@ it('tags a foreign-currency element with its code', async () => {
   expect(within(screen.getByTestId('element-cat-food')).queryByTestId('currency-tag')).not.toBeInTheDocument()
   // the folder line is already converted to the budget currency: no tag there
   const noFolder = screen.getByTestId('budget-folder-No folder')
-  expect(within(within(noFolder).getByTestId('stat-line')).queryByTestId('currency-tag')).not.toBeInTheDocument()
+  expect(within(noFolder).getByTestId('stat-line')).not.toHaveTextContent('EUR')
 })
 
 it('edit mode pads the "+" slot on every row', async () => {
@@ -654,6 +654,18 @@ it('edit mode pads the "+" slot on every row', async () => {
   expect(within(screen.getByTestId('element-env-1')).getAllByTestId('edit-slot')).toHaveLength(1)
   expect(within(screen.getByTestId('column-headers')).getAllByTestId('edit-slot')).toHaveLength(1)
   expect(within(screen.getByTestId('budget-totals')).getAllByTestId('edit-slot')).toHaveLength(1)
+})
+
+it('edit mode pads the reporting-tag row with the same "+" slot as every other row', async () => {
+  const user = userEvent.setup()
+  renderTable(withLabels, {
+    renderActions: () => <button type="button">actions</button>,
+    renderFolderActions: () => <span />,
+  })
+  await openFolder(user)
+  const label = await screen.findByTestId('budget-label-label-kid-a')
+  expect(within(label).getAllByTestId('edit-slot')).toHaveLength(1)
+  expect(within(label).getAllByTestId('actions-spacer')).toHaveLength(1)
 })
 
 it('outside edit mode there is no "+" slot', async () => {
@@ -686,6 +698,17 @@ it('an earlier overspend reds the Available, not the Spent', async () => {
   await waitFor(() => expect(within(row).getByTestId('cell-available')).toHaveTextContent('-60.00'))
   expect(within(row).getByTestId('cell-available')).toHaveClass('bg-expense/10')
   expect(within(row).getByRole('button', { name: 'transactions Food' })).not.toHaveClass('text-expense')
+})
+
+it('a negative Available absorbs its pill padding with a negative margin, so the text column width is unchanged', async () => {
+  renderTable((b) => {
+    food(b).available = '-260'
+  })
+  const row = await screen.findByTestId('element-cat-food')
+  const available = within(row).getByTestId('cell-available')
+  await waitFor(() => expect(available).toHaveTextContent('-60.00'))
+  expect(available).toHaveClass('-mx-1.5', 'px-1.5')
+  expect(available).not.toHaveClass('px-2')
 })
 
 it('reds the Spent and the bar when this month went over budget and nothing covers it', async () => {
@@ -750,4 +773,22 @@ it('the Total row shows Available as plain emphasised text', async () => {
   const available = within(totals).getByTestId('totals-available')
   expect(available).toHaveClass('font-semibold')
   expect(available).not.toHaveClass('bg-income/10')
+})
+
+it('a future month shows a dash for Spent in a folder header, the Total row, and a reporting-tag row', async () => {
+  const user = userEvent.setup()
+  renderTable((b) => {
+    b.filters.periodStart = '2099-01-01 00:00:00'
+    withLabels(b)
+  })
+  const essentials = await screen.findByTestId('budget-folder-Essentials')
+  await waitFor(() => expect(within(essentials).getByTestId('stat-line')).toHaveTextContent('—'))
+  expect(within(essentials).getByTestId('stat-line')).not.toHaveTextContent('45.50')
+  const totals = screen.getByTestId('budget-totals')
+  expect(totals).toHaveTextContent('—')
+  expect(totals).not.toHaveTextContent('45.50')
+  await openFolder(user)
+  const label = await screen.findByTestId('budget-label-label-kid-a')
+  expect(label).toHaveTextContent('—')
+  expect(label).not.toHaveTextContent('50.00')
 })
