@@ -209,6 +209,8 @@ it('a savings row’s sheet sets its plan and reaches its comment thread', async
   const api = handlers({ budget: savingsBudget })
   const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
   renderPage()
+  // the savings section starts folded
+  await user.click(await screen.findByTestId('phone-savings-summary'))
   await user.click(await screen.findByRole('button', { name: /^Rainy day, planned 100.00/ }))
   await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Set budget' }))
   const input = await screen.findByLabelText('Budget')

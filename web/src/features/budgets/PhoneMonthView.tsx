@@ -17,6 +17,7 @@ import { currentMonth } from './planMath'
 import { commentCellKey } from './queries'
 
 const INCOME_FOLD_ID = '__phone_income__'
+const SAVINGS_FOLD_ID = '__phone_savings__'
 const EMPTY = '—'
 // name | Budget | Spent: the heading row, folder headers and rows share one grid; the
 // Budget column grows to the left for a carry-over lead-in while its right edge stays put
@@ -122,6 +123,62 @@ function Card({ testId, header, children }: { testId: string; header?: ReactNode
   )
 }
 
+// a section's column labels, above its cards: the section name stands where the
+// currency code used to, and each section names its own two figures
+function SectionHeading({ testId, name, first, second }: { testId: string; name: string; first: string; second: string }) {
+  return (
+    <div className={`${GRID} px-3 text-[11px] uppercase tracking-wide text-muted-foreground`} data-testid={testId}>
+      <span className="truncate">{name}</span>
+      <span className="text-right">{first}</span>
+      <span className="text-right">{second}</span>
+    </div>
+  )
+}
+
+/** a folded section's one line: Total and its two sums, the same name | Budget |
+ *  Spent geometry as a folder header, as one fold button */
+function SectionSummary({
+  testId,
+  open,
+  onToggle,
+  label,
+  first,
+  second,
+  firstTestId,
+  secondTestId,
+}: {
+  testId: string
+  open: boolean
+  onToggle: () => void
+  label: string
+  first: string
+  second: string
+  firstTestId?: string
+  secondTestId?: string
+}) {
+  const Chevron = open ? ChevronDown : ChevronRight
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      aria-expanded={open}
+      onClick={onToggle}
+      className={`${GRID} min-h-11 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
+    >
+      <span className="flex min-w-0 items-center gap-1">
+        <Chevron className="size-4 shrink-0" />
+        <span className="truncate">{label}</span>
+      </span>
+      <span data-testid={firstTestId} className="text-right tabular-nums">
+        {first}
+      </span>
+      <span data-testid={secondTestId} className="text-right tabular-nums">
+        {second}
+      </span>
+    </button>
+  )
+}
+
 function CardHeader({ name, first, second }: { name: string; first?: string; second?: string }) {
   return (
     <div className={`${GRID} px-2 pt-1.5 pb-0.5 text-xs font-medium text-muted-foreground`}>
@@ -147,7 +204,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const toggleElement = useBudgetPeriodStore((s) => s.toggleElement)
 
   const base = budget.meta.currencyId
-  const baseCurrency = currencies.find((c) => c.id === base)
   const currencyOf = (id: Id | null) => currencies.find((c) => c.id === (id ?? base))
   const fmt = (amount: string, currencyId: Id | null = base) => {
     const c = currencyOf(currencyId)
@@ -295,41 +351,41 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const labels = budget.structure.labels ?? []
   const labelsOpen = !!unfolded[REPORTING_TAGS_FOLD_ID]
   const incomeOpen = !!unfolded[INCOME_FOLD_ID]
+  const savingsOpen = !!unfolded[SAVINGS_FOLD_ID]
   const hasFolders = buckets.withFolder.length > 0
 
   return (
     <div className="flex flex-col gap-3" data-testid="phone-month-view">
-      <div className={`${GRID} px-3 text-[11px] uppercase tracking-wide text-muted-foreground`} data-testid="phone-heading">
-        <span>{baseCurrency?.code}</span>
-        <span className="text-right">{t('budgets.page.budget.structure.tab.budgeted')}</span>
-        <span className="text-right">{t('budgets.page.budget.structure.tab.spent')}</span>
-      </div>
-
+      {planMonth ? (
+        <SectionHeading
+          testId="phone-heading-income"
+          name={t('budgets.page.plan.section.income')}
+          first={t('budgets.page.savings.planned')}
+          second={t('budgets.page.sheet.received')}
+        />
+      ) : null}
       {planMonth ? (
         <Card testId="phone-income">
-          <button
-            type="button"
-            data-testid="phone-income-summary"
-            aria-expanded={incomeOpen}
-            onClick={() => toggleElement(INCOME_FOLD_ID)}
-            // the same name | Budget | Spent header a folder card has, as one fold button
-            className={`${GRID} min-h-11 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
-          >
-            <span className="flex min-w-0 items-center gap-1">
-              {incomeOpen ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
-              <span className="truncate">{t('budgets.page.plan.section.income')}</span>
-            </span>
-            <span data-testid="phone-income-planned" className="text-right tabular-nums">
-              {fmt(planMonth.income.planned)}
-            </span>
-            <span data-testid="phone-income-received" className="text-right tabular-nums">
-              {future ? EMPTY : fmt(planMonth.income.received)}
-            </span>
-          </button>
+          <SectionSummary
+            testId="phone-income-summary"
+            open={incomeOpen}
+            onToggle={() => toggleElement(INCOME_FOLD_ID)}
+            label={t('budgets.page.budget.structure.total.name')}
+            first={fmt(planMonth.income.planned)}
+            second={future ? EMPTY : fmt(planMonth.income.received)}
+            firstTestId="phone-income-planned"
+            secondTestId="phone-income-received"
+          />
           {incomeOpen ? planMonth.income.rows.map(incomeRow) : null}
         </Card>
       ) : null}
 
+      <SectionHeading
+        testId="phone-heading-expenses"
+        name={t('budgets.page.plan.totals.expenses')}
+        first={t('budgets.page.budget.structure.tab.budgeted')}
+        second={t('budgets.page.budget.structure.tab.spent')}
+      />
       {buckets.withFolder.filter((b) => b.elements.length > 0).map((b) => folderCard(b.folder!.id, b.folder!.name, b))}
       {buckets.withoutFolder.elements.length > 0
         ? folderCard('__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
@@ -351,13 +407,26 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
       ) : null}
       {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
 
-      {savingsRows.length > 0 ? (
-        <Card
-          testId="phone-savings"
-          header={<CardHeader name={t('budgets.page.savings.title')} first={t('budgets.page.savings.planned')} second={t('budgets.page.savings.saved')} />}
-        >
-          {savingsRows.map(savingsRow)}
-        </Card>
+      {savingsRows.length > 0 && savingsSum ? (
+        <>
+          <SectionHeading
+            testId="phone-heading-savings"
+            name={t('budgets.page.savings.title')}
+            first={t('budgets.page.savings.planned')}
+            second={t('budgets.page.savings.saved')}
+          />
+          <Card testId="phone-savings">
+            <SectionSummary
+              testId="phone-savings-summary"
+              open={savingsOpen}
+              onToggle={() => toggleElement(SAVINGS_FOLD_ID)}
+              label={t('budgets.page.budget.structure.total.name')}
+              first={fmt(savingsSum.budgeted)}
+              second={future ? EMPTY : fmt(savingsSum.spent)}
+            />
+            {savingsOpen ? savingsRows.map(savingsRow) : null}
+          </Card>
+        </>
       ) : null}
 
       <section

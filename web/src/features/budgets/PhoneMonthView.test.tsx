@@ -45,13 +45,28 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
-it('names the budget currency once in the heading row, above Budget and Spent', () => {
+it('heads the income card with Income · Planned · Received and the expenses with Expenses · Budget · Spent', () => {
   renderView()
-  const heading = screen.getByTestId('phone-heading')
-  expect(heading).toHaveTextContent('USD')
-  expect(heading).toHaveTextContent('Budget')
-  expect(heading).toHaveTextContent('Spent')
-  expect(heading).not.toHaveTextContent('Available')
+  const income = screen.getByTestId('phone-heading-income')
+  expect(income).toHaveTextContent(/^IncomePlannedReceived$/)
+  const expenses = screen.getByTestId('phone-heading-expenses')
+  expect(expenses).toHaveTextContent(/^ExpensesBudgetSpent$/)
+  // the headings sit right above their cards
+  expect(income.nextElementSibling).toBe(screen.getByTestId('phone-income'))
+  expect(expenses.nextElementSibling).toBe(screen.getByTestId('phone-folder-bf1'))
+  // the budget currency is no longer spelled out; foreign items keep their tag
+  expect(screen.queryByText('USD')).toBeNull()
+})
+
+it('the collapsed income line under its heading reads Total', () => {
+  renderView()
+  expect(screen.getByTestId('phone-income-summary')).toHaveTextContent(/^Total/)
+})
+
+it('drops the income heading while the plan is not loaded', () => {
+  renderView({ planMonth: null })
+  expect(screen.queryByTestId('phone-heading-income')).toBeNull()
+  expect(screen.getByTestId('phone-heading-expenses')).toBeInTheDocument()
 })
 
 it('shows each expense row as one button with Budget and Spent, no symbols', async () => {
@@ -164,7 +179,7 @@ it('collapses income into one summary row that unfolds into income rows', async 
   // a folder-style header: name, planned under Budget, received under Spent
   expect(within(summary).getByTestId('phone-income-planned')).toHaveTextContent('2,000.00')
   expect(within(summary).getByTestId('phone-income-received')).toHaveTextContent('400.00')
-  expect(summary).toHaveTextContent(/^Income2,000\.00400\.00$/)
+  expect(summary).toHaveTextContent(/^Total2,000\.00400\.00$/)
   expect(summary).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByTestId('phone-income-row-ie1')).toBeNull()
   await userEvent.click(summary)
@@ -227,9 +242,16 @@ it('lists savings rows with Planned and Saved, and the totals card adds the savi
       { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' },
     ]
   })
-  const savings = screen.getByTestId('phone-savings')
-  expect(savings).toHaveTextContent('Planned')
-  expect(savings).toHaveTextContent('Saved')
+  const heading = screen.getByTestId('phone-heading-savings')
+  expect(heading).toHaveTextContent(/^SavingsPlannedSaved$/)
+  expect(heading.nextElementSibling).toBe(screen.getByTestId('phone-savings'))
+  // collapsed by default to one Total line: planned and saved, budget currency
+  const summary = screen.getByTestId('phone-savings-summary')
+  expect(summary).toHaveAttribute('aria-expanded', 'false')
+  expect(summary).toHaveTextContent(/^Total100\.0040\.00$/)
+  expect(screen.queryByTestId('phone-savings-row-acc-s1')).toBeNull()
+  await userEvent.click(summary)
+  expect(summary).toHaveAttribute('aria-expanded', 'true')
   await userEvent.click(screen.getByRole('button', { name: 'Rainy day, planned 100.00, saved 40.00' }))
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'savings', row: expect.objectContaining({ id: 'acc-s1' }) })
   expect(screen.getByTestId('phone-total-savings')).toHaveTextContent(/^Savings40\.00$/)
