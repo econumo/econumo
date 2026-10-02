@@ -1421,6 +1421,7 @@
         "income_row_aria": "{name}, planned {planned}, received {received}",
         "savings_row_aria": "{name}, planned {planned}, saved {saved}",
         "available": "{amount} available",
+        "actual": "Actual",
         "balance": "Balance at month end"
       },
       "sheet": {

@@ -1421,6 +1421,7 @@
         "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
         "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
         "available": "доступно {amount}",
+        "actual": "Факт",
         "balance": "Баланс на кінець місяця"
       },
       "sheet": {

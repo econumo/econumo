@@ -106,18 +106,18 @@ it on a phone (URLs keep working; no redirect).
   menu. No mode switch, no currency chips.
 - **Month strip:** the Budget view's scrollable `PeriodStrip`. Past, current and
   future months share the screen.
-- **Section headings** *(revised 2026-10-01 — Dmitry)*: each section names its
-  own columns above its cards, in this order — `INCOME · PLANNED · RECEIVED`,
-  `SAVINGS · PLANNED · SAVED`, `EXPENSES · BUDGET · SPENT`. The budget currency
-  is no longer spelled out on the phone; foreign-currency items keep their tag.
-- **Income** (collapsed by default, fold state kept): one `Total` line with the
-  planned and received sums in the two columns. Expands into the income rows (same row
+- **Section headings** *(revised 2026-10-01 — Dmitry)*: income and savings share
+  one card under a `PLANNED · ACTUAL` heading; `EXPENSES · BUDGET · SPENT` heads
+  the expense folders. The budget currency is no longer spelled out on the
+  phone; foreign-currency items keep their tag.
+- **Income** (a line of the shared card, collapsed by default, fold state kept):
+  `Income` with the planned and received sums. Expands into the income rows (same row
   component; labels Planned / Received in the sheet). The income "Uncategorized"
   row appears only when non-zero.
 - **Expense folder cards:** header = folder name + Budget sum + Spent sum; rows as
   below. The unfoldered bucket is labelled "No folder" (was "Default folder").
-- **Savings** (collapsed by default, fold state kept): one `Total` line with the
-  planned and saved sums; expands into the savings rows; row tap opens the sheet
+- **Savings** (the shared card's second line, collapsed by default): `Savings`
+  with the planned and saved sums; expands into the savings rows; row tap opens the sheet
   (which adds the month-end Balance).
 - **Totals card** *(revised 2026-10-01 — Dmitry)*: Budget (`left + budget`, with
   "{amount} available" under it; expenses only), Income (received),

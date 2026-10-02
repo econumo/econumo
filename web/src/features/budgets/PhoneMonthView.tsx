@@ -353,51 +353,45 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const incomeOpen = !!unfolded[INCOME_FOLD_ID]
   const savingsOpen = !!unfolded[SAVINGS_FOLD_ID]
   const hasFolders = buckets.withFolder.length > 0
+  const showFlows = planMonth !== null || savingsSum !== null
 
   return (
     <div className="flex flex-col gap-3" data-testid="phone-month-view">
-      {planMonth ? (
-        <SectionHeading
-          testId="phone-heading-income"
-          name={t('budgets.page.plan.section.income')}
-          first={t('budgets.page.savings.planned')}
-          second={t('budgets.page.sheet.received')}
-        />
-      ) : null}
-      {planMonth ? (
-        <Card testId="phone-income">
-          <SectionSummary
-            testId="phone-income-summary"
-            open={incomeOpen}
-            onToggle={() => toggleElement(INCOME_FOLD_ID)}
-            label={t('budgets.page.budget.structure.total.name')}
-            first={fmt(planMonth.income.planned)}
-            second={future ? EMPTY : fmt(planMonth.income.received)}
-            firstTestId="phone-income-planned"
-            secondTestId="phone-income-received"
-          />
-          {incomeOpen ? planMonth.income.rows.map(incomeRow) : null}
-        </Card>
-      ) : null}
-
-      {savingsRows.length > 0 && savingsSum ? (
+      {showFlows ? (
+        // income and savings share one card under one Planned · Actual heading: a
+        // line each, folded by default, so the money coming in and set aside costs
+        // two rows above the expenses
         <>
-          <SectionHeading
-            testId="phone-heading-savings"
-            name={t('budgets.page.savings.title')}
-            first={t('budgets.page.savings.planned')}
-            second={t('budgets.page.savings.saved')}
-          />
-          <Card testId="phone-savings">
-            <SectionSummary
-              testId="phone-savings-summary"
-              open={savingsOpen}
-              onToggle={() => toggleElement(SAVINGS_FOLD_ID)}
-              label={t('budgets.page.budget.structure.total.name')}
-              first={fmt(savingsSum.budgeted)}
-              second={future ? EMPTY : fmt(savingsSum.spent)}
-            />
-            {savingsOpen ? savingsRows.map(savingsRow) : null}
+          <SectionHeading testId="phone-heading-flows" name="" first={t('budgets.page.savings.planned')} second={t('budgets.page.phone.actual')} />
+          <Card testId="phone-flows">
+            {planMonth ? (
+              <>
+                <SectionSummary
+                  testId="phone-income-summary"
+                  open={incomeOpen}
+                  onToggle={() => toggleElement(INCOME_FOLD_ID)}
+                  label={t('budgets.page.plan.section.income')}
+                  first={fmt(planMonth.income.planned)}
+                  second={future ? EMPTY : fmt(planMonth.income.received)}
+                  firstTestId="phone-income-planned"
+                  secondTestId="phone-income-received"
+                />
+                {incomeOpen ? planMonth.income.rows.map(incomeRow) : null}
+              </>
+            ) : null}
+            {savingsSum ? (
+              <>
+                <SectionSummary
+                  testId="phone-savings-summary"
+                  open={savingsOpen}
+                  onToggle={() => toggleElement(SAVINGS_FOLD_ID)}
+                  label={t('budgets.page.savings.title')}
+                  first={fmt(savingsSum.budgeted)}
+                  second={future ? EMPTY : fmt(savingsSum.spent)}
+                />
+                {savingsOpen ? savingsRows.map(savingsRow) : null}
+              </>
+            ) : null}
           </Card>
         </>
       ) : null}

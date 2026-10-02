@@ -45,27 +45,29 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null })
 })
 
-it('heads the income card with Income · Planned · Received and the expenses with Expenses · Budget · Spent', () => {
+it('heads income and savings with one Planned · Actual row and the expenses with Expenses · Budget · Spent', () => {
   renderView()
-  const income = screen.getByTestId('phone-heading-income')
-  expect(income).toHaveTextContent(/^IncomePlannedReceived$/)
+  const flows = screen.getByTestId('phone-heading-flows')
+  expect(flows).toHaveTextContent(/^PlannedActual$/)
   const expenses = screen.getByTestId('phone-heading-expenses')
   expect(expenses).toHaveTextContent(/^ExpensesBudgetSpent$/)
   // the headings sit right above their cards
-  expect(income.nextElementSibling).toBe(screen.getByTestId('phone-income'))
+  expect(flows.nextElementSibling).toBe(screen.getByTestId('phone-flows'))
+  expect(screen.getByTestId('phone-flows').nextElementSibling).toBe(expenses)
   expect(expenses.nextElementSibling).toBe(screen.getByTestId('phone-folder-bf1'))
   // the budget currency is no longer spelled out; foreign items keep their tag
   expect(screen.queryByText('USD')).toBeNull()
 })
 
-it('the collapsed income line under its heading reads Total', () => {
+it('the income line names itself inside the shared card', () => {
   renderView()
-  expect(screen.getByTestId('phone-income-summary')).toHaveTextContent(/^Total/)
+  expect(within(screen.getByTestId('phone-flows')).getByTestId('phone-income-summary')).toHaveTextContent(/^Income/)
 })
 
-it('drops the income heading while the plan is not loaded', () => {
+it('drops the income/savings card while the plan is not loaded and there are no savings rows', () => {
   renderView({ planMonth: null })
-  expect(screen.queryByTestId('phone-heading-income')).toBeNull()
+  expect(screen.queryByTestId('phone-heading-flows')).toBeNull()
+  expect(screen.queryByTestId('phone-flows')).toBeNull()
   expect(screen.getByTestId('phone-heading-expenses')).toBeInTheDocument()
 })
 
@@ -179,7 +181,7 @@ it('collapses income into one summary row that unfolds into income rows', async 
   // a folder-style header: name, planned under Budget, received under Spent
   expect(within(summary).getByTestId('phone-income-planned')).toHaveTextContent('2,000.00')
   expect(within(summary).getByTestId('phone-income-received')).toHaveTextContent('400.00')
-  expect(summary).toHaveTextContent(/^Total2,000\.00400\.00$/)
+  expect(summary).toHaveTextContent(/^Income2,000\.00400\.00$/)
   expect(summary).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByTestId('phone-income-row-ie1')).toBeNull()
   await userEvent.click(summary)
@@ -192,7 +194,7 @@ const totalLines = () =>
 
 it('leaves income and the plan lines out while the plan is not loaded', () => {
   renderView({ planMonth: null })
-  expect(screen.queryByTestId('phone-income')).toBeNull()
+  expect(screen.queryByTestId('phone-income-summary')).toBeNull()
   expect(totalLines()).toEqual(['phone-total-budget', 'phone-total-expenses'])
 })
 
@@ -242,16 +244,14 @@ it('lists savings rows with Planned and Saved, and the totals card adds the savi
       { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' },
     ]
   })
-  const heading = screen.getByTestId('phone-heading-savings')
-  expect(heading).toHaveTextContent(/^SavingsPlannedSaved$/)
-  expect(heading.nextElementSibling).toBe(screen.getByTestId('phone-savings'))
-  // savings sits between income and expenses
-  expect(screen.getByTestId('phone-income').nextElementSibling).toBe(heading)
-  expect(screen.getByTestId('phone-savings').nextElementSibling).toBe(screen.getByTestId('phone-heading-expenses'))
-  // collapsed by default to one Total line: planned and saved, budget currency
+  // savings is the second line of the shared card, under income
+  const flows = screen.getByTestId('phone-flows')
+  const lines = within(flows).getAllByRole('button', { expanded: false })
+  expect(lines.map((b) => b.getAttribute('data-testid'))).toEqual(['phone-income-summary', 'phone-savings-summary'])
+  // collapsed by default to one line: planned and saved, budget currency
   const summary = screen.getByTestId('phone-savings-summary')
   expect(summary).toHaveAttribute('aria-expanded', 'false')
-  expect(summary).toHaveTextContent(/^Total100\.0040\.00$/)
+  expect(summary).toHaveTextContent(/^Savings100\.0040\.00$/)
   expect(screen.queryByTestId('phone-savings-row-acc-s1')).toBeNull()
   await userEvent.click(summary)
   expect(summary).toHaveAttribute('aria-expanded', 'true')

@@ -920,13 +920,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
       `/plan` show the same single month view: header with the budget name in
       normal case, the month strip, and no Budget/Plan switch in the settings
-      menu. Sections run Income, Savings, Expenses, each naming its own
-      columns above its cards: "Income · Planned · Received", "Savings ·
-      Planned · Saved", "Expenses · Budget · Spent".
-- [ ] 📱 Income and Savings start folded to one "Total" line with their two
-      sums (Savings: planned and saved, in the budget currency); tapping it
-      unfolds the rows, and the fold state survives a month switch and a
-      reload.
+      menu. At the top, one card under a "Planned · Actual" heading holds an
+      "Income" line (planned, received) and a "Savings" line (planned,
+      saved, in the budget currency); below it "Expenses · Budget · Spent"
+      heads the expense folders.
+- [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
+      rows inside the same card, and the fold state survives a month switch
+      and a reload.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not

@@ -234,7 +234,7 @@ it('keeps the expense list while get-budget-plan is still loading', async () => 
   })
   renderPage()
   expect(await screen.findByTestId('phone-row-cat-food')).toBeInTheDocument()
-  expect(screen.queryByTestId('phone-income')).toBeNull()
+  expect(screen.queryByTestId('phone-income-summary')).toBeNull()
   expect(screen.queryByTestId('phone-total-balance')).toBeNull()
 })
 
@@ -254,7 +254,7 @@ it('leaves the plan lines out when get-budget-plan fails', async () => {
     expect(plan?.state.status).toBe('error')
   })
   expect(planRequests).toBeGreaterThan(0)
-  expect(screen.queryByTestId('phone-income')).toBeNull()
+  expect(screen.queryByTestId('phone-income-summary')).toBeNull()
   expect(screen.queryByTestId('phone-total-balance')).toBeNull()
   expect(screen.getByTestId('phone-row-cat-food')).toBeInTheDocument()
 })

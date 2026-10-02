@@ -1421,6 +1421,7 @@
         "income_row_aria": "{name}，计划 {planned}，已收款 {received}",
         "savings_row_aria": "{name}，计划 {planned}，已储蓄 {saved}",
         "available": "可用 {amount}",
+        "actual": "实际",
         "balance": "月末余额"
       },
       "sheet": {
