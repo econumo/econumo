@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Папка за замовчуванням",
           "in_archive": "В архіві",
+          "carry_over_hint": "Залишилося з попередніх місяців",
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Витрачено",
@@ -1412,8 +1413,22 @@
         "title": "Заощадження",
         "planned": "Заплановано",
         "saved": "Відкладено",
-        "balance": "Баланс",
         "balance_hint": "Баланс на кінець місяця. Для поточного й наступних місяців включає заплановані заощадження, які ще не відкладено."
+      },
+      "phone": {
+        "row_aria": "{name}, бюджет {budget}, витрачено {spent}",
+        "income_row_aria": "{name}, заплановано {planned}, отримано {received}",
+        "savings_row_aria": "{name}, заплановано {planned}, відкладено {saved}",
+        "available": "доступно {amount}",
+        "actual": "Факт",
+        "balance": "Баланс на кінець місяця"
+      },
+      "sheet": {
+        "received": "Отримано",
+        "covered": "Перевищення на {over} — покрито за рахунок {carry}, що залишилися з попередніх місяців",
+        "transactions": "Транзакції",
+        "set_plan": "Задати план",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Бюджети й плани",

@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Cartella predefinita",
           "in_archive": "In archivio",
+          "carry_over_hint": "Rimasto dai mesi precedenti",
           "tab": {
             "budgeted": "Budget",
             "spent": "Speso",
@@ -1412,8 +1413,22 @@
         "title": "Risparmi",
         "planned": "Previsto",
         "saved": "Risparmiato",
-        "balance": "Saldo",
         "balance_hint": "Saldo a fine mese. Per il mese corrente e i successivi include i risparmi previsti ancora da versare."
+      },
+      "phone": {
+        "row_aria": "{name}, budget {budget}, speso {spent}",
+        "income_row_aria": "{name}, previsto {planned}, ricevuto {received}",
+        "savings_row_aria": "{name}, previsto {planned}, risparmiato {saved}",
+        "available": "{amount} disponibile",
+        "actual": "Effettivo",
+        "balance": "Saldo a fine mese"
+      },
+      "sheet": {
+        "received": "Ricevuto",
+        "covered": "Superato di {over} — coperto da {carry} rimasti dai mesi precedenti",
+        "transactions": "Transazioni",
+        "set_plan": "Imposta il piano",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budget e piani",

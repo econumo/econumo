@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Pasta predefinida",
           "in_archive": "Em arquivo",
+          "carry_over_hint": "Restante de meses anteriores",
           "tab": {
             "budgeted": "Orçamento",
             "spent": "Gasto",
@@ -1412,8 +1413,22 @@
         "title": "Poupança",
         "planned": "Planeado",
         "saved": "Poupado",
-        "balance": "Saldo",
         "balance_hint": "Saldo no fim do mês. No mês atual e nos seguintes inclui a poupança planeada que ainda falta."
+      },
+      "phone": {
+        "row_aria": "{name}, orçamento {budget}, gasto {spent}",
+        "income_row_aria": "{name}, planeado {planned}, recebido {received}",
+        "savings_row_aria": "{name}, planeado {planned}, poupado {saved}",
+        "available": "{amount} disponível",
+        "actual": "Real",
+        "balance": "Saldo no fim do mês"
+      },
+      "sheet": {
+        "received": "Recebido",
+        "covered": "Ultrapassado em {over} — coberto por {carry} restantes de meses anteriores",
+        "transactions": "Transações",
+        "set_plan": "Definir plano",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Orçamentos e planos",

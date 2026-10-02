@@ -45,18 +45,6 @@ function mockViewport() {
   }))
 }
 
-function mockCompactViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: true, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
-function mockTabletViewport() {
-  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
-    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
-  }))
-}
-
 function renderPage(initialPath: '/plan' | '/budget' = '/plan') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
@@ -122,35 +110,27 @@ it('lets a guest start a thread on a cell with no existing comments, on desktop'
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
-it('lets a guest start a thread on a cell with no existing comments, on compact viewports', async () => {
+it('a guest’s tablet tap opens the sheet without Set budget, and Add comment starts a thread', async () => {
   useGuestPlanHandlers()
-  mockCompactViewport()
-  const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+  window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+    matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+  }))
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
   renderPage('/plan')
 
-  const cell = await screen.findByTestId('plan-cell-pe1:0')
-  await user.click(within(cell).getByLabelText(/^comments /))
+  await user.click(await screen.findByTestId('plan-cell-pe1:0'))
+  const sheet = await screen.findByTestId('element-sheet')
+  expect(within(sheet).queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await user.click(within(sheet).getByRole('button', { name: 'Add comment' }))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
 })
 
-it("lets a guest add a comment from a plan cell's corner, and their tablet actions modal has no set budget", async () => {
+it("lets a guest add a comment from a plan cell's corner", async () => {
   useGuestPlanHandlers()
   mockViewport()
   const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
-  const { unmount } = renderPage('/plan')
+  renderPage('/plan')
 
   await user.click(within(await screen.findByTestId('plan-cell-pe1:0')).getByTestId('comment-marker-add'))
   expect(await screen.findByRole('button', { name: 'Post' })).toBeInTheDocument()
-  unmount()
-
-  mockTabletViewport()
-  // the modal's open Radix dialog sets pointer-events:none on the body, and the touch release lands after that
-  const touch = userEvent.setup({ advanceTimers: vi.advanceTimersByTime, pointerEventsCheck: PointerEventsCheckLevel.Never })
-  renderPage('/plan')
-  const cell = await screen.findByTestId('plan-cell-pe1:0')
-  await touch.pointer({ keys: '[TouchA>]', target: cell })
-  const modal = await screen.findByTestId('cell-actions', {}, { timeout: 1500 })
-  await touch.pointer({ keys: '[/TouchA]', target: cell })
-  expect(within(modal).getByRole('button', { name: 'Add comment' })).toBeInTheDocument()
-  expect(within(modal).queryByRole('button', { name: 'Set budget' })).toBeNull()
 })

@@ -626,8 +626,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       info notes when relevant.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
-- [ ] Set a limit via the available cell / set-limit dialog; formula input;
-      limit shows immediately and carries into the next period per rules.
+- [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
+      item sheet's "Set budget" (tablet and phone); formula input; limit shows
+      immediately and carries into the next period per rules.
 - [ ] Spent cell drilldown opens the transactions dialog (filtered list,
       preview, delete works and refreshes figures).
 - [ ] Period strip: navigate previous/next months; figures change. Months
@@ -703,7 +704,8 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       zeroes its balance from the deletion month on, so view a Plan window
       that ends BEFORE the deletion month and has no activity on the account
       (e.g. one over March): the account drops out of the Plan sheet's
-      Savings section and the monthly Savings block entirely (no row), yet
+      Savings section and the phone month view's Savings rows entirely (no
+      row), yet
       its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
@@ -715,8 +717,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
       first savings row, and from the last savings row on the first archived
       row; with Savings folded it skips straight to Archived.
-- [ ] 📱 Edit a savings row's planned amount (popover on desktop, dialog on a
-      phone): the new value shows at once and survives a reload.
+- [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
+      or phone the item sheet's "Set budget"): the new value shows at once and
+      survives a reload.
 - [ ] Fill-right a savings planned amount (drag handle and Shift+Arrow): every
       covered month gets the value.
 - [ ] 📱 Edit structure mode: savings rows reorder by drag among themselves
@@ -763,64 +766,42 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       balance; the current month shows the balance so far plus the plan not
       yet met (planned 200, saved 50: 150 higher than booked); a future month
       adds its own unmet plan on top (planned 200 more: 350 higher). A month
-      saved over plan adds nothing. It matches the same month's Balance column
-      in the monthly Savings block. Expense and income cells carry no such
-      line.
+      saved over plan adds nothing. It matches the "Balance at month end" of
+      that account's item sheet on a phone for the same month. Expense and
+      income cells carry no such line.
 - [ ] 📱 Save into a TFSA all year, then transfer the lot to an RRSP (both
       savings accounts in the budget): neither row's Saved / Actual moves, the
       Total savings is unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
-- [ ] 📱 **Monthly view — Savings block**: with a savings account in the
-      budget, a foldable "Savings" block appears below the budget table and
-      above Total, one row per savings account in their saved order, with
-      Planned / Saved / Balance in the account's currency. On a phone it
-      follows the budget table's two-figure layout: name, Planned and Saved on
-      one line, lined up under the table's Spent / Available columns, and no
-      Balance column. A budget without savings accounts shows no block.
-      Folding it survives a reload, and folded it shows only its title — the
-      Planned / Saved / Balance labels hide with the rows, so nothing reads
-      as a header for the Total row below. On a phone (320px and 375px, also in
-      German, Polish and Ukrainian) the Planned / Saved headers show in full
-      (a long one wraps, never cut off with "…"), a long account name
-      truncates rather than pushing the amounts, the amounts line up under
-      the headers (also in Edit structure mode, with the grips), and a
-      five-digit amount such as 12,345.67 fits without overlapping its
-      neighbour.
-- [ ] 📱 Total (desktop row and the phone card) sits below the Savings block
-      and includes it, in the budget currency: Budget + Planned, Spent +
-      Saved, Available + (Planned − Saved). On a phone the Total card adds two
-      last lines, in the budget currency, matching the same month's Plan view
-      totals: "Savings" (a past month: what was saved; the current and later
-      months: each account's larger of planned and saved) and "Savings
-      balance" (the savings accounts' end-of-month balance) — the phone rows
-      leave the Balance column out. A budget without savings accounts shows
-      the same Total as before, with neither line.
-- [ ] 📱 The Balance column is the account's balance at the end of the
-      selected month (no extra line under the account name): a past month
+- [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
+      account in the budget, no Savings block appears and the Total row counts
+      the expense categories only (its Budget, Spent and Available match the
+      folders' sums). Savings are planned and tracked in the Plan view and, on
+      a phone, in the month view.
+- [ ] 📱 Phone month view, Savings unfolded: one row per savings account with
+      Planned and Saved (the row's item sheet adds Balance at month end); at
+      320px and 375px, also in German, Polish and Ukrainian, a long account
+      name truncates rather than pushing the amounts, and a five-digit amount
+      such as 12,345.67 fits without overlapping its neighbour.
+- [ ] 📱 A savings account's Balance at month end (phone item sheet; the Plan
+      view's line under each savings cell) is its balance at the end of the
+      selected month: a past month
       shows the actual booked end-of-month balance; the current month shows
       the current balance plus the plan not yet met this month; a future month
       also adds every unmet plan from the current month through it. Saving
       more than planned in a month adds nothing (and does not cover another
       month's shortfall). A deleted savings account shows its booked balance.
-- [ ] 📱 Change a savings row's Planned amount in the current month: its
-      Balance moves by the change at once; then open a later month — its
-      Balance reflects the new plan too (no manual reload).
-- [ ] 📱 Edit a savings row's Planned amount exactly like a budgeted cell:
-      on desktop a click opens the inline amount popover (no comments in it),
-      on a phone a tap opens the set-limit dialog with a "Comments (N)"
-      button; either way the current value is prefilled and saving shows the new
-      Planned (and, from the current month on, Balance) at once, and they survive a reload (the Plan view
-      shows the same amount for that month). As a guest, on a month before
-      the budget start, or on a deleted account's row, Planned opens the
-      comments instead and the amount cannot be changed.
-- [ ] 📱 Edit structure mode: savings rows show drag grips (a deleted
-      account's row has none) and reorder among themselves only; the order
-      survives a reload and matches the Plan view's Savings section. Dragging
-      a savings row onto a folder or a table row does nothing, and a table
-      row cannot be dropped into the Savings block.
-- [ ] 📱 A commented savings Planned cell carries the corner marker; clicking
-      (tapping) it opens that cell's thread. A comment posted there shows in
-      the Plan view on the same month's savings cell.
+- [ ] 📱 Change a savings account's planned amount in the current month (Plan
+      view, or the phone item sheet): its Balance at month end moves by the
+      change at once; then open a later month — its Balance reflects the new
+      plan too (no manual reload).
+- [ ] Plan view, Edit structure mode: savings rows show drag grips (a
+      deleted account's row has none) and reorder among themselves only; the
+      order survives a reload and is the order of the phone month view's
+      Savings rows.
+- [ ] 📱 A commented savings cell in the Plan view carries the corner marker;
+      clicking (tapping) it opens that cell's thread. A comment posted there
+      shows in the phone month view's item sheet for that account and month.
 - [ ] **Budget cell comments** 📱: post a comment on a plan cell; it appears
       immediately and survives a reload.
 - [ ] 📱 Open the same cell in the monthly view for that month: the comment is
@@ -861,20 +842,25 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Desktop, monthly view: Tab to a budgeted amount (or a savings Planned
       amount) with no comments yet and press Shift+F2: that cell's thread
       opens in a popover beside it, ready for a first comment.
-- [ ] 📱 Tablet (640–1023px): an editable cell's budgeted amount stays plain
-      text — editors reach comments through the corner marker (opens the
-      thread popover) or a long-press, which opens a modal titled with the
-      item's name and the cell's actions (Set budget, Comments (N) or Add
-      comment, Show transactions — a guest gets no Set budget, a savings cell
-      no Show transactions); for a guest or an archived row, tapping the
-      amount opens the thread instead. Lifting the finger does not also open
-      the set-limit dialog, and a quick tap still behaves as before. No hover
-      preview on a tablet, and the set-limit dialog (Budget and Plan views)
-      has no "Comments (N)" button there.
-- [ ] 📱 Phone: the corner marker, tap-Available and long-press still reach
-      comments through the set-limit sheet's "Comments (N)" button or the
-      comments sheet; the comments sheet keeps its composer pinned above the
-      keyboard.
+- [ ] 📱 Tablet (640–1023 px), Budget view: tap a budgeted amount (editable or
+      not, Archive rows included) or a Savings planned amount: the item sheet
+      opens ("Food · July": Budget, Spent, Available, the two latest comments,
+      "Comments (N)" / "Add comment", "Set budget", "Transactions"). "Set
+      budget" replaces the sheet with the amount dialog (no comments in it);
+      "Comments" replaces it with the thread. A savings row's sheet has no
+      "Transactions". A guest's sheet has no "Set budget". The Available pill is not a button; tapping Spent still lists
+      the transactions; the corner marker still opens the thread beside the cell.
+- [ ] 📱 Tablet, Plan view: tap any month cell (not the Uncategorized row):
+      the cell is selected and the item sheet opens for that element and
+      month — Budget/Spent (Planned/Received for income, Planned/Saved/Balance
+      for savings), the two latest comments, "Set budget" ("Set plan" for income),
+      "Comments", and "Transactions" for expense rows. The sheet's month and
+      any foreign-currency rate are the tapped column's. The corner marker still
+      opens only the thread.
+- [ ] 📱 Tablet: holding a finger on a cell opens nothing extra (no actions
+      menu, no text-selection callout from the app) and the tap still works.
+- [ ] 📱 Phone: a comment thread opens as a sheet whose composer stays pinned
+      above the keyboard.
 - [ ] On the plan grid, select a cell and press Shift+F2 (or Shift+Enter):
       its thread opens in a popover beside the cell; Esc closes it and the
       arrow keys keep moving the selection. Plain Enter on the same cell opens
@@ -883,14 +869,6 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       even on a budget you can edit — or a month outside the budget's range):
       clicking its amount opens that cell's thread in a popover beside the
       cell, so a thread can be started there too.
-- [ ] 📱 On a phone (the iOS home-screen PWA included), tap a cell to open
-      "Set budget": the sheet holds only the amount, a "Comments (N)" button
-      and the actions, and the amount stays visible above the keyboard.
-      Tapping "Comments (N)" closes the sheet and opens that cell's thread as
-      its own dialog (monthly view and Plan view alike).
-- [ ] 📱 On a phone, tap the Available pill of an individually-archived
-      element (in the Archive section, on a budget you can edit): its comment
-      thread opens and accepts a new comment.
 - [ ] Double-click Post (or press Post then Cmd/Ctrl+Enter quickly): exactly
       one comment is created, and Post stays disabled until it lands.
 - [ ] Post a comment, then start typing the next one before the first lands:
@@ -921,6 +899,81 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       column carried an RFC3339 offset (e.g. `2024-04-10T10:00:00+03:00`):
       they list and export at the UTC time after the upgrade instead of
       failing the list.
+
+### Phone month view 📱
+
+- [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
+      `/plan` show the same single month view: header with the budget name in
+      normal case, the month strip, and no Budget/Plan switch in the settings
+      menu. At the top, one card under a "USD · Planned · Actual" heading
+      (the budget's currency code at the left) holds an
+      "Income" line (planned, received) and a "Savings" line (planned,
+      saved, in the budget currency); below it, after a wider gap,
+      "Expenses · Budget · Spent" heads the expense folders.
+- [ ] 📱 The Income and Savings lines start folded; tapping one unfolds its
+      rows inside the same card, and the fold state survives a month switch
+      and a reload.
+- [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
+      thin bar under the row. Spent and the bar turn red only when the month
+      spent more than its budget and money left from earlier months does not
+      cover it; otherwise they stay gray. The bar measures spending against
+      the budget plus what earlier months left. A future month shows `—` for
+      Spent, with no bar and no colour.
+- [ ] 📱 What earlier months left shows read-only right before the budget, so
+      the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
+      tablet, with a "Left from earlier months" tooltip); only the budget is
+      editable. Nothing shows when nothing is left; an earlier overspend shows
+      as a red negative amount ("-30.00 +").
+- [ ] 📱 The Total row (desktop and tablet) leads its budget with the sum of
+      what earlier months left, in the budget currency ("2,530.00 +
+      3,725.00"); on a phone the Totals card's Budget line reads "left +
+      budget". Savings and Uncategorized add nothing to it.
+- [ ] 📱 Open September, then August; change a category's August budget (e.g.
+      to 0), then go back to September without reloading: September's
+      leftover for that category follows the change at once (it equals
+      August's Available).
+- [ ] 📱 A category/envelope in another currency carries a small code tag
+      (`Travel EUR`) and its amounts are in that currency.
+- [ ] 📱 Income is one collapsed header like a folder's: "Income", the
+      planned total under Budget and the received total under Spent (— in a
+      future month); tapping it unfolds
+      the income rows (Planned / Received), and the fold state survives a
+      month switch. The income Uncategorized row, and an archived income
+      category, appear only in a month that received something, so the rows
+      always add up to the received total; an archived row's sheet has no
+      "Set plan".
+- [ ] 📱 Tapping a row opens its item sheet ("Food · July"): Budget, Spent,
+      Available, each centred in its column; "Over by … — covered by … left
+      from earlier months" when carry-over covers an overspend (no sentence
+      when Available is negative: it shows in red); the two latest comments
+      (author and text) and "Comments (N)", or "No comments yet." in gray with
+      "Add comment";
+      "Set budget" and "Transactions". A foreign-currency item adds its code to
+      every amount, the amount in the budget currency, and the month's average
+      rate.
+- [ ] 📱 From the sheet, "Set budget", "Comments" and "Transactions" each
+      replace the sheet (never stacked); closing them returns to the list.
+      Saving a budget updates the row at once and survives a reload.
+- [ ] 📱 An income row's sheet offers "Set plan" (Planned / Received); a
+      savings row's sheet shows Planned, Saved and Balance at month end.
+- [ ] 📱 A guest, an archived budget, a month outside the
+      budget's range, an archived element and the Uncategorized row get no
+      "Set budget" in the sheet; Uncategorized has no comments link, and an
+      empty read-only thread shows none.
+- [ ] 📱 The Totals card lists, in order: Budget ("left + budget", with
+      "… available" under it, red when negative; expenses only), Income
+      (received), Expenses (spent), Transfers (only when money
+      crossed the budget boundary that month), Savings (saved, only with
+      savings accounts), Total savings (with savings accounts), Balance at
+      month end. A future month shows "—" for received, spent and saved. Balance and Total savings match
+      the Plan view's figures for the same month on a desktop, including a
+      month several months ahead of the current one whose earlier months
+      carry unmet plans.
+- [ ] 📱 Children of an envelope/tag unfold from the chevron; tapping a child
+      or a reporting tag opens its transactions directly.
+- [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
+      budget table on /budget, the plan grid in edit mode on /plan (drag to
+      reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list
 

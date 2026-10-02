@@ -3,6 +3,11 @@ import { persist } from 'zustand/middleware'
 import type { Id } from '@/api/types'
 import { METRICS, trackEvent } from '@/lib/metrics'
 
+/** the reporting-tags folder exists only in rendering: no folder row stands behind
+ *  it, so its fold state is keyed by a reserved literal no element id (a UUID) can
+ *  collide with; the table and the phone view share it */
+export const REPORTING_TAGS_FOLD_ID = '__reporting_tags__'
+
 function firstOfCurrentMonth(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`

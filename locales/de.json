@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Standardordner",
           "in_archive": "Archiviert",
+          "carry_over_hint": "Aus früheren Monaten übrig",
           "tab": {
             "budgeted": "Budget",
             "spent": "Ausgegeben",
@@ -1412,8 +1413,22 @@
         "title": "Sparen",
         "planned": "Geplant",
         "saved": "Gespart",
-        "balance": "Saldo",
         "balance_hint": "Saldo am Monatsende. Für den laufenden und spätere Monate enthält er die noch ausstehenden geplanten Sparbeträge."
+      },
+      "phone": {
+        "row_aria": "{name}, Budget {budget}, ausgegeben {spent}",
+        "income_row_aria": "{name}, geplant {planned}, empfangen {received}",
+        "savings_row_aria": "{name}, geplant {planned}, gespart {saved}",
+        "available": "{amount} verfügbar",
+        "actual": "Ist",
+        "balance": "Saldo am Monatsende"
+      },
+      "sheet": {
+        "received": "Empfangen",
+        "covered": "Um {over} überzogen — gedeckt durch {carry}, die noch aus früheren Monaten übrig sind",
+        "transactions": "Transaktionen",
+        "set_plan": "Plan festlegen",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Budgets & Pläne",

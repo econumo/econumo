@@ -1302,6 +1302,7 @@
         "structure": {
           "no_folder": "Папка по умолчанию",
           "in_archive": "В архиве",
+          "carry_over_hint": "Осталось с прошлых месяцев",
           "tab": {
             "budgeted": "Бюджет",
             "spent": "Потрачено",
@@ -1412,8 +1413,22 @@
         "title": "Сбережения",
         "planned": "Запланировано",
         "saved": "Отложено",
-        "balance": "Баланс",
         "balance_hint": "Баланс на конец месяца. Для текущего и следующих месяцев включает запланированные сбережения, которые ещё не отложены."
+      },
+      "phone": {
+        "row_aria": "{name}, бюджет {budget}, потрачено {spent}",
+        "income_row_aria": "{name}, запланировано {planned}, получено {received}",
+        "savings_row_aria": "{name}, запланировано {planned}, отложено {saved}",
+        "available": "доступно {amount}",
+        "actual": "Факт",
+        "balance": "Баланс на конец месяца"
+      },
+      "sheet": {
+        "received": "Получено",
+        "covered": "Превышение на {over} — покрыто за счёт {carry}, оставшихся с прошлых месяцев",
+        "transactions": "Транзакции",
+        "set_plan": "Задать план",
+        "converted": "≈ {amount} {currency}"
       },
       "settings": {
         "menu_item": "Бюджеты и планы",

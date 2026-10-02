@@ -211,19 +211,23 @@ it('children hide the owner badge in a single-user budget', async () => {
   expect(within(child).queryByText('Ada')).not.toBeInTheDocument()
 })
 
-it('tapping the available pill reports the element when onAvailableClick is wired (compact set-limit path)', async () => {
-  const user = userEvent.setup()
-  const onAvailableClick = vi.fn()
-  renderTable(undefined, { onAvailableClick })
-  const food = await screen.findByTestId('element-cat-food')
-  await user.click(within(food).getByRole('button', { name: 'limit Food' }))
-  expect(onAvailableClick).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+it('onBudgetCellDetails turns the budgeted amount into the item-sheet button, Archive rows included', async () => {
+  const onDetails = vi.fn()
+  renderTable((b) => {
+    const old = b.structure.elements.find((el) => el.id === 'tag-old')!
+    Object.assign(old, { budgeted: '50', available: '50' })
+  }, { onBudgetCellDetails: onDetails, renderBudgetCell: () => 'editor', onBudgetCellComments: vi.fn() })
+  await userEvent.click(within(screen.getByTestId('element-cat-food')).getByRole('button', { name: 'details Food' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'cat-food' }))
+  await userEvent.click(within(screen.getByTestId('element-tag-old')).getByRole('button', { name: 'details zzz-archived' }))
+  expect(onDetails).toHaveBeenCalledWith(expect.objectContaining({ id: 'tag-old' }))
+  expect(screen.queryByText('editor')).toBeNull()
 })
 
-it('the available pill is not a button without onAvailableClick', async () => {
-  renderTable()
+it('the available pill is never a button', async () => {
+  renderTable(undefined, { onBudgetCellDetails: vi.fn(), onBudgetCellComments: vi.fn() })
   const food = await screen.findByTestId('element-cat-food')
-  expect(within(food).queryByRole('button', { name: 'limit Food' })).not.toBeInTheDocument()
+  expect(within(food).getByTestId('cell-available').closest('button')).toBeNull()
 })
 
 it('edit mode reserves the actions column on headers, children, archive rows and totals', async () => {
@@ -265,6 +269,18 @@ it('totals row sums all buckets in the budget currency', async () => {
   expect(totals).toHaveTextContent('45.50')
   expect(totals).not.toHaveTextContent('-45.50')
   expect(totals).toHaveTextContent('554.50')
+  // what earlier months left leads the total budget: 200 (Food) + 90 EUR (Living) = 300.00
+  await waitFor(() => expect(within(totals).getByTestId('totals-carry')).toHaveTextContent('300.00 +'))
+  expect(within(totals).getByTestId('totals-carry')).toHaveAttribute('title', 'Left from earlier months')
+})
+
+it('totals row shows no carry-over when earlier months left nothing', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })
+    Object.assign(b.structure.elements.find((el) => el.id === 'env-1')!, { available: '0' })
+  })
+  const totals = await screen.findByTestId('budget-totals')
+  expect(within(totals).queryByTestId('totals-carry')).toBeNull()
 })
 
 it('phone totals unfold into labeled budget/spent/available lines', async () => {
@@ -304,12 +320,12 @@ it('the Uncategorized row is read-only, mirroring an archive row', async () => {
   renderTable(pushUncategorized, {
     renderBudgetCell: () => <span data-testid="editor-marker">edit</span>,
     renderActions: (element) => <button type="button" aria-label={`element actions ${element.name}`} />,
-    onAvailableClick: vi.fn(),
+    onBudgetCellDetails: vi.fn(),
   })
   const row = await screen.findByTestId(`element-${UNCATEGORIZED_ID}`)
   expect(within(row).queryByTestId('editor-marker')).not.toBeInTheDocument()
   expect(within(row).queryByRole('button', { name: /^element actions /i })).not.toBeInTheDocument()
-  expect(within(row).queryByRole('button', { name: /^limit /i })).not.toBeInTheDocument()
+  expect(within(row).queryByRole('button', { name: /^details /i })).not.toBeInTheDocument()
 })
 
 it('the Uncategorized row spent amount is still clickable', async () => {
@@ -581,4 +597,30 @@ it('explains the uncategorized bucket behind its own info button', async () => {
   expect(screen.queryByTestId('budget-uncategorized-info-note')).not.toBeInTheDocument()
   await user.click(within(row).getByRole('button', { name: 'About' }))
   expect(await screen.findByTestId('budget-uncategorized-info-note')).toBeInTheDocument()
+})
+
+it('shows what earlier months left, read-only, before the budgeted amount', async () => {
+  // Food: wire available 154.50 + spent 45.50 = 200.00 left from earlier months
+  renderTable(undefined, { renderBudgetCell: () => 'editor' })
+  const food = await screen.findByTestId('element-cat-food')
+  const carry = within(food).getByTestId('cell-carry')
+  // amounts reformat once the currency list has loaded
+  await waitFor(() => expect(carry).toHaveTextContent('200.00 +'))
+  expect(carry).toHaveAttribute('title', 'Left from earlier months')
+  expect(carry.closest('button')).toBeNull()
+  // the carry leads the amount inside the budgeted cell, right next to the editor
+  const cell = within(food).getByTestId('cell-budgeted')
+  expect(cell.firstElementChild).toBe(carry)
+  expect(carry.nextElementSibling).toHaveTextContent('editor')
+})
+
+it('shows no carry-over when earlier months left nothing, and a negative one in red', async () => {
+  renderTable((b) => {
+    Object.assign(b.structure.elements.find((el) => el.id === 'cat-food')!, { available: '-45.5' })
+    Object.assign(b.structure.elements.find((el) => el.id === 'env-1')!, { available: '-30' })
+  })
+  expect(within(await screen.findByTestId('element-cat-food')).queryByTestId('cell-carry')).toBeNull()
+  const debt = within(screen.getByTestId('element-env-1')).getByTestId('cell-carry')
+  await waitFor(() => expect(debt).toHaveTextContent('-30.00 +'))
+  expect(debt.className).toContain('text-expense')
 })
