@@ -943,7 +943,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       August's Available).
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
-- [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds
+- [ ] 📱 Income is one collapsed header like a folder's: "Income", the
+      planned total under Budget and the received total under Spent (— in a
+      future month); tapping it unfolds
       the income rows (Planned / Received), and the fold state survives a
       month switch. The income Uncategorized row, and an archived income
       category, appear only in a month that received something, so the rows

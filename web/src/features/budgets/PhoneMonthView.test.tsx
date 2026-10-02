@@ -161,7 +161,10 @@ it('the chevron unfolds children, the row opens the sheet, and a child opens its
 it('collapses income into one summary row that unfolds into income rows', async () => {
   const props = renderView()
   const summary = screen.getByTestId('phone-income-summary')
-  expect(summary).toHaveTextContent('Income · 400.00 of 2,000.00')
+  // a folder-style header: name, planned under Budget, received under Spent
+  expect(within(summary).getByTestId('phone-income-planned')).toHaveTextContent('2,000.00')
+  expect(within(summary).getByTestId('phone-income-received')).toHaveTextContent('400.00')
+  expect(summary).toHaveTextContent(/^Income2,000\.00400\.00$/)
   expect(summary).toHaveAttribute('aria-expanded', 'false')
   expect(screen.queryByTestId('phone-income-row-ie1')).toBeNull()
   await userEvent.click(summary)
@@ -208,6 +211,7 @@ it('Budget shows only this month\'s budget when earlier months left nothing, and
 
 it('a future month shows dashes for what has not happened yet', () => {
   renderView({ selectedDate: '2099-01-01' })
+  expect(screen.getByTestId('phone-income-received')).toHaveTextContent('—')
   expect(screen.getByTestId('phone-total-expenses')).toHaveTextContent('Expenses—')
   expect(screen.getByTestId('phone-total-income')).toHaveTextContent(/^Income—$/)
 })

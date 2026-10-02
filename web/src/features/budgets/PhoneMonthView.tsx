@@ -312,14 +312,18 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
             data-testid="phone-income-summary"
             aria-expanded={incomeOpen}
             onClick={() => toggleElement(INCOME_FOLD_ID)}
-            className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-left active:bg-accent/50"
+            // the same name | Budget | Spent header a folder card has, as one fold button
+            className={`${GRID} min-h-11 w-full rounded-md px-2 py-1.5 text-left text-xs font-medium text-muted-foreground active:bg-accent/50`}
           >
-            {incomeOpen ? <ChevronDown className="size-4.5 shrink-0 text-muted-foreground" /> : <ChevronRight className="size-4.5 shrink-0 text-muted-foreground" />}
-            <span className="text-[15px]">
-              {t('budgets.page.phone.income_summary', {
-                received: future ? EMPTY : fmt(planMonth.income.received),
-                planned: fmt(planMonth.income.planned),
-              })}
+            <span className="flex min-w-0 items-center gap-1">
+              {incomeOpen ? <ChevronDown className="size-4 shrink-0" /> : <ChevronRight className="size-4 shrink-0" />}
+              <span className="truncate">{t('budgets.page.plan.section.income')}</span>
+            </span>
+            <span data-testid="phone-income-planned" className="text-right tabular-nums">
+              {fmt(planMonth.income.planned)}
+            </span>
+            <span data-testid="phone-income-received" className="text-right tabular-nums">
+              {future ? EMPTY : fmt(planMonth.income.received)}
             </span>
           </button>
           {incomeOpen ? planMonth.income.rows.map(incomeRow) : null}

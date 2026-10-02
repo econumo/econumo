@@ -1417,8 +1417,6 @@
         "balance_hint": "Баланс на конец месяца. Для текущего и следующих месяцев включает запланированные сбережения, которые ещё не отложены."
       },
       "phone": {
-        "income_summary": "Доходы · {received} из {planned}",
-        "of": "{value} из {total}",
         "row_aria": "{name}, бюджет {budget}, потрачено {spent}",
         "income_row_aria": "{name}, запланировано {planned}, получено {received}",
         "savings_row_aria": "{name}, запланировано {planned}, отложено {saved}",

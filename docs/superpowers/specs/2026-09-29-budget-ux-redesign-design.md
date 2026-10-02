@@ -109,7 +109,8 @@ it on a phone (URLs keep working; no redirect).
 - **Heading row** (once): `USD` at the left, `BUDGET` and `SPENT` above the two
   number columns.
 - **Income summary row** (collapsed by default, state kept for the session):
-  `Income · {received} of {planned}`. Expands into the income rows (same row
+  a folder-style header — `Income` + planned (Budget column) + received (Spent
+  column) *(revised 2026-10-01)*. Expands into the income rows (same row
   component; labels Planned / Received in the sheet). The income "Uncategorized"
   row appears only when non-zero.
 - **Expense folder cards:** header = folder name + Budget sum + Spent sum; rows as

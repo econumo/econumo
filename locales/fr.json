@@ -1417,8 +1417,6 @@
         "balance_hint": "Solde en fin de mois. Pour le mois en cours et les suivants, il inclut l'épargne prévue encore à venir."
       },
       "phone": {
-        "income_summary": "Revenus · {received} sur {planned}",
-        "of": "{value} sur {total}",
         "row_aria": "{name}, budget {budget}, dépensé {spent}",
         "income_row_aria": "{name}, prévu {planned}, reçu {received}",
         "savings_row_aria": "{name}, prévu {planned}, épargné {saved}",

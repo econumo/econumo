@@ -1417,8 +1417,6 @@
         "balance_hint": "Saldo na koniec miesiąca. W bieżącym i kolejnych miesiącach uwzględnia zaplanowane oszczędności, które jeszcze nie wpłynęły."
       },
       "phone": {
-        "income_summary": "Przychody · {received} z {planned}",
-        "of": "{value} z {total}",
         "row_aria": "{name}, budżet {budget}, wydano {spent}",
         "income_row_aria": "{name}, zaplanowano {planned}, odebrano {received}",
         "savings_row_aria": "{name}, zaplanowano {planned}, zaoszczędzono {saved}",
