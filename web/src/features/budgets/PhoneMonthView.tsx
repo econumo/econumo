@@ -380,6 +380,27 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         </Card>
       ) : null}
 
+      {savingsRows.length > 0 && savingsSum ? (
+        <>
+          <SectionHeading
+            testId="phone-heading-savings"
+            name={t('budgets.page.savings.title')}
+            first={t('budgets.page.savings.planned')}
+            second={t('budgets.page.savings.saved')}
+          />
+          <Card testId="phone-savings">
+            <SectionSummary
+              testId="phone-savings-summary"
+              open={savingsOpen}
+              onToggle={() => toggleElement(SAVINGS_FOLD_ID)}
+              label={t('budgets.page.budget.structure.total.name')}
+              first={fmt(savingsSum.budgeted)}
+              second={future ? EMPTY : fmt(savingsSum.spent)}
+            />
+            {savingsOpen ? savingsRows.map(savingsRow) : null}
+          </Card>
+        </>
+      ) : null}
       <SectionHeading
         testId="phone-heading-expenses"
         name={t('budgets.page.plan.totals.expenses')}
@@ -407,27 +428,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
       ) : null}
       {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
 
-      {savingsRows.length > 0 && savingsSum ? (
-        <>
-          <SectionHeading
-            testId="phone-heading-savings"
-            name={t('budgets.page.savings.title')}
-            first={t('budgets.page.savings.planned')}
-            second={t('budgets.page.savings.saved')}
-          />
-          <Card testId="phone-savings">
-            <SectionSummary
-              testId="phone-savings-summary"
-              open={savingsOpen}
-              onToggle={() => toggleElement(SAVINGS_FOLD_ID)}
-              label={t('budgets.page.budget.structure.total.name')}
-              first={fmt(savingsSum.budgeted)}
-              second={future ? EMPTY : fmt(savingsSum.spent)}
-            />
-            {savingsOpen ? savingsRows.map(savingsRow) : null}
-          </Card>
-        </>
-      ) : null}
 
       <section
         className="mb-[max(env(safe-area-inset-bottom),0.75rem)] flex flex-col gap-2 rounded-md border px-3 py-2.5"

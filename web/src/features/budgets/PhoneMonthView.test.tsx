@@ -245,6 +245,9 @@ it('lists savings rows with Planned and Saved, and the totals card adds the savi
   const heading = screen.getByTestId('phone-heading-savings')
   expect(heading).toHaveTextContent(/^SavingsPlannedSaved$/)
   expect(heading.nextElementSibling).toBe(screen.getByTestId('phone-savings'))
+  // savings sits between income and expenses
+  expect(screen.getByTestId('phone-income').nextElementSibling).toBe(heading)
+  expect(screen.getByTestId('phone-savings').nextElementSibling).toBe(screen.getByTestId('phone-heading-expenses'))
   // collapsed by default to one Total line: planned and saved, budget currency
   const summary = screen.getByTestId('phone-savings-summary')
   expect(summary).toHaveAttribute('aria-expanded', 'false')

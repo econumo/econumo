@@ -107,8 +107,8 @@ it on a phone (URLs keep working; no redirect).
 - **Month strip:** the Budget view's scrollable `PeriodStrip`. Past, current and
   future months share the screen.
 - **Section headings** *(revised 2026-10-01 — Dmitry)*: each section names its
-  own columns above its cards — `INCOME · PLANNED · RECEIVED`,
-  `EXPENSES · BUDGET · SPENT`, `SAVINGS · PLANNED · SAVED`. The budget currency
+  own columns above its cards, in this order — `INCOME · PLANNED · RECEIVED`,
+  `SAVINGS · PLANNED · SAVED`, `EXPENSES · BUDGET · SPENT`. The budget currency
   is no longer spelled out on the phone; foreign-currency items keep their tag.
 - **Income** (collapsed by default, fold state kept): one `Total` line with the
   planned and received sums in the two columns. Expands into the income rows (same row
