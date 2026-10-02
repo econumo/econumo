@@ -80,12 +80,24 @@ it('draws the progress bar and colours Spent by row state', () => {
   expect(within(row).getByText('150.00').className).toContain('text-expense')
 })
 
-it('amber when carry-over covers the overspend', () => {
+it('any spend over the budget is red, even when carry-over covers it', () => {
   renderView({}, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
     Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '10' })
   })
-  expect(within(screen.getByTestId('phone-row-cat-food')).getByText('150.00').className).toContain('text-amber-600')
+  const row = screen.getByTestId('phone-row-cat-food')
+  expect(within(row).getByText('150.00').className).toContain('text-expense')
+  expect(within(row).getByTestId('phone-progress').firstElementChild?.className).toContain('bg-expense')
+})
+
+it('spend within the budget stays gray, even when Available is negative from earlier months', () => {
+  renderView({}, (b) => {
+    const food = b.structure.elements.find((el) => el.id === 'cat-food')!
+    Object.assign(food, { budgeted: '120', spent: '100', budgetSpent: '100', available: '-150' })
+  })
+  const row = screen.getByTestId('phone-row-cat-food')
+  expect(within(row).getByText('100.00').className).not.toContain('text-expense')
+  expect(within(row).getByTestId('phone-progress').firstElementChild?.className).toContain('bg-muted-foreground/40')
 })
 
 it('a future month shows a dash for Spent, no bar, and no colour', () => {

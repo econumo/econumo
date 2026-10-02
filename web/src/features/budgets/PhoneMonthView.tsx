@@ -8,8 +8,8 @@ import type { BudgetCommentDto, BudgetDto, BudgetElementDto, BudgetSavingsElemen
 import { UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
-import type { BudgetBuckets, FolderBucket, RowState } from './budgetMath'
-import { budgetTotals, displayAvailable, elementDisplayName, makeBudgetExchange, rowProgress, rowState, totalsWithSavings } from './budgetMath'
+import type { BudgetBuckets, FolderBucket } from './budgetMath'
+import { budgetTotals, elementDisplayName, makeBudgetExchange, rowProgress, totalsWithSavings } from './budgetMath'
 import { REPORTING_TAGS_FOLD_ID, useBudgetPeriodStore } from './budgetStore'
 import type { BudgetTransactionsTarget } from './BudgetTransactionsDialog'
 import type { PlanCellFigures, PlanMonthFigures, SheetTarget } from './phoneMonth'
@@ -21,18 +21,6 @@ const EMPTY = '—'
 // name | Budget | Spent: the heading row, folder headers and rows share one grid
 const GRID = 'grid grid-cols-[minmax(0,1fr)_5.5rem_5.5rem] items-center gap-x-2'
 
-const STATE_TEXT: Record<RowState, string> = {
-  none: '',
-  ok: '',
-  covered: 'text-amber-600 dark:text-amber-500',
-  over: 'text-expense',
-}
-const STATE_BAR: Record<RowState, string> = {
-  none: 'bg-muted-foreground/40',
-  ok: 'bg-muted-foreground/40',
-  covered: 'bg-amber-500',
-  over: 'bg-expense',
-}
 
 export interface PhoneMonthViewProps {
   budget: BudgetDto
@@ -161,8 +149,10 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
   const expenseRow = (element: BudgetElementDto) => {
     const name = elementDisplayName(element.id, element.name, t)
     const isUncategorized = element.id === UNCATEGORIZED_ID
-    const figures = { budgeted: element.budgeted, spent: element.spent, available: displayAvailable(element) }
-    const state: RowState = isUncategorized ? 'none' : rowState(figures, future)
+    const figures = { budgeted: element.budgeted, spent: element.spent }
+    // the colour reads this month alone: any spend over the budget is red, even when
+    // earlier months' money still covers it (the sheet tells those cases apart)
+    const overspent = !isUncategorized && !future && cmp(element.spent, element.budgeted) > 0
     const budgetText = isUncategorized ? EMPTY : fmt(element.budgeted, element.currencyId)
     const spentText = future ? EMPTY : fmt(element.spent, element.currencyId)
     const expandable = element.children.length > 0
@@ -176,9 +166,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           tag={tagOf(element.currencyId)}
           first={budgetText}
           second={spentText}
-          secondClass={STATE_TEXT[state]}
+          secondClass={overspent ? 'text-expense' : ''}
           progress={isUncategorized ? null : rowProgress(figures, future)}
-          barClass={STATE_BAR[state]}
+          barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: budgetText, spent: spentText })}
           onOpen={() => onOpenSheet({ kind: 'expense', element })}

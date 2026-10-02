@@ -923,9 +923,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       (e.g. `USD`) above Budget and Spent, no Budget/Plan switch in the
       settings menu.
 - [ ] 📱 Each expense row shows Budget and Spent with no currency symbol and a
-      thin bar under the name; Spent is neutral within budget, amber when this
-      month is over budget but carry-over still covers it, red when Available
-      is negative. A future month shows `—` for Spent, with no bar and no colour.
+      thin bar under the name; Spent and the bar are gray while spending is
+      within the budget and red once it exceeds it (even when money left from
+      earlier months covers it). A future month shows `—` for Spent, with no
+      bar and no colour.
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
 - [ ] 📱 Income is one row "Income · received of planned"; tapping it unfolds
