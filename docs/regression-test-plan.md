@@ -917,7 +917,9 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       thin bar under the row. Spent and the bar turn red only when the month
       spent more than its budget and money left from earlier months does not
       cover it; otherwise they stay gray. The bar measures spending against
-      the budget plus what earlier months left. A future month shows `—` for
+      the budget plus what earlier months left. A row with a 0.00 budget (and
+      nothing left from earlier months) still shows the empty light-gray track,
+      like a row with nothing spent. A future month shows `—` for
       Spent, with no bar and no colour.
 - [ ] 📱 What earlier months left shows read-only right before the budget, so
       the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
@@ -942,7 +944,7 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       category, appear only in a month that received something, so the rows
       always add up to the received total; an archived row's sheet has no
       "Set plan".
-- [ ] 📱 Tapping a row opens its item sheet ("Food · July"): Budget, Spent,
+- [ ] 📱 Tapping a row's Budget or Spent figures opens its item sheet ("Food · July"): Budget, Spent,
       Available, each centred in its column; "Over by … — covered by … left
       from earlier months" when carry-over covers an overspend (no sentence
       when Available is negative: it shows in red); the two latest comments
@@ -969,8 +971,11 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       the Plan view's figures for the same month on a desktop, including a
       month several months ahead of the current one whose earlier months
       carry unmet plans.
-- [ ] 📱 Children of an envelope/tag unfold from the chevron; tapping a child
-      or a reporting tag opens its transactions directly.
+- [ ] 📱 Tapping an item's name never opens a sheet: on an envelope/tag with
+      children it folds/unfolds them (chevron in place of the icon), on any
+      other row — expense, income, savings, a child, a reporting tag — it does
+      nothing. Tapping a child's or a reporting tag's Spent opens its
+      transactions directly.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
       budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.

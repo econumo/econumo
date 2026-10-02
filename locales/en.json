@@ -1417,6 +1417,7 @@
       },
       "phone": {
         "row_aria": "{name}, budget {budget}, spent {spent}",
+        "child_aria": "{name}, spent {spent}",
         "income_row_aria": "{name}, planned {planned}, received {received}",
         "savings_row_aria": "{name}, planned {planned}, saved {saved}",
         "available": "{amount} available",
