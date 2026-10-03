@@ -28,6 +28,9 @@ export type BudgetElementType = (typeof BudgetElementType)[keyof typeof BudgetEl
 export const isIncomeType = (t: BudgetElementType): boolean =>
   t === BudgetElementType.INCOME_CATEGORY || t === BudgetElementType.INCOME_ENVELOPE
 
+/** income and savings amounts are plans to meet, not spending limits */
+export const isPlannedType = (t: BudgetElementType): boolean => isIncomeType(t) || t === BudgetElementType.SAVINGS
+
 /** the presentation-only element the backend emits for spending with no category */
 export const UNCATEGORIZED_ID = 'uncategorized'
 

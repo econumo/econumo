@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Plan"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
@@ -1429,6 +1432,7 @@
         "covered": "{over} overschreden — gedekt door {carry} die over is van eerdere maanden",
         "transactions": "Transacties",
         "set_plan": "Plan instellen",
+        "balance": "Saldo",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {

@@ -33,7 +33,7 @@ import type {
   PlanChildDto,
   PlanElementDto,
 } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -42,6 +42,8 @@ import { CategoryDialog } from '@/features/classifications/CategoryDialog'
 import { TagDialog } from '@/features/classifications/TagDialog'
 import type { TagDialogItem } from '@/features/classifications/TagDialog'
 import { useUpdateCategory } from '@/features/classifications/queries'
+import { useAccounts } from '@/features/accounts/queries'
+import { useUiStore } from '@/app/uiStore'
 import { elementDisplayName, periodLabeler } from './budgetMath'
 import { useBudgetPeriodStore } from './budgetStore'
 import { BudgetTransactionsDialog, TRANSFERS_TARGET_ID } from './BudgetTransactionsDialog'
@@ -74,6 +76,7 @@ import { CellShell } from './CellShell'
 import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { ElementSheet } from './ElementSheet'
 import { planCellFigures } from './phoneMonth'
+import { elementEditAccess, isEnvelopeType } from './elementEdit'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { LimitEditor } from './LimitEditor'
 import { PlanCreateFolderDialog } from './PlanCreateFolderDialog'
@@ -271,8 +274,6 @@ interface GridCtx {
 // (internal/budget/builder_structure_build.go), so the plan sheet is the only surface
 // where an income envelope is reachable — Edit/Delete must live here or an existing
 // one could never be renamed, archived, re-scoped, or removed through any UI.
-const isEnvelopeType = (type: BudgetElementType): boolean =>
-  type === BudgetElementType.ENVELOPE || type === BudgetElementType.INCOME_ENVELOPE
 
 function RowMenu({ el, ctx }: { el: PlanElementDto; ctx: GridCtx }) {
   const { t } = useTranslation()
@@ -1372,6 +1373,25 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
   const tailPx = PLAN_CURRENCY_COL_PX + (editMode ? PLAN_ACTIONS_COL_PX : 0)
   const gridCols = `${PLAN_NAME_COL_PX}px repeat(${visible}, minmax(${PLAN_MIN_MONTH_COL_PX}px, 1fr)) ${tailPx}px`
   const canEdit = canEditBudget(budget.meta, userId)
+  const { data: accounts = [] } = useAccounts()
+  const openAccountModal = useUiStore((s) => s.openAccountModal)
+  const sheetEdit = sheetCellTarget ? elementEditAccess(sheetCellTarget.el, userId, canEdit && budget.meta.isArchived === 0, accounts) : null
+  // the sheet's pencil: the element's own edit dialog replaces the sheet
+  const editFromSheet = (el: PlanElementDto) => {
+    setSheetCellTarget(null)
+    if (isEnvelopeType(el.type)) {
+      setEnvelopeTarget(el)
+    } else if (el.type === BudgetElementType.SAVINGS) {
+      const account = accounts.find((a) => a.id === el.id)
+      if (account) {
+        openAccountModal({ account })
+      }
+    } else if (el.type === BudgetElementType.TAG) {
+      setTagTarget({ id: el.id, name: el.name, kind: 'tag', icon: el.icon })
+    } else {
+      setCategoryTarget({ id: el.id, name: el.name, icon: el.icon, type: isIncomeType(el.type) ? 'income' : 'expense' })
+    }
+  }
   const canDeleteEnvelopes = canDeleteEnvelope(budget.meta, userId)
   const folderNameValidator = (value: string): string | null => {
     if (!isNotEmpty(value)) {
@@ -2382,7 +2402,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        title={planLimitTarget && isIncomeType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}
+        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
       />
 
       <ElementSheet
@@ -2415,6 +2435,8 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
               }
             : undefined
         }
+        onEdit={sheetCellTarget && sheetEdit !== null ? () => editFromSheet(sheetCellTarget.el) : undefined}
+        canEdit={sheetEdit === true}
       />
 
       <CommentsPanel

@@ -1,4 +1,5 @@
-import { isIncomeType } from '@/api/dto/budget'
+import { isIncomeType, isPlannedType } from '@/api/dto/budget'
+import type { BudgetElementType } from '@/api/dto/budget'
 import type { BudgetElementDto, BudgetPlanDto, BudgetSavingsElementDto, PlanElementDto } from '@/api/dto/budget'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -97,5 +98,39 @@ export function sheetCell(target: SheetTarget, baseCurrencyId: Id): SheetCell {
       return { id: target.row.id, name: target.row.name, currencyId: target.row.currencyId, amount: target.row.budgeted }
     case 'plan':
       return { id: target.cell.element.id, name: target.cell.element.name, currencyId: target.cell.element.currencyId, amount: target.cell.planned }
+  }
+}
+
+export function sheetSetsPlan(target: SheetTarget): boolean {
+  switch (target.kind) {
+    case 'expense':
+      return false
+    case 'savings':
+      return true
+    case 'plan':
+      return isPlannedType(target.cell.element.type)
+  }
+}
+
+/** the element a sheet describes, in the shape its edit dialog takes */
+export interface SheetElement {
+  id: Id
+  type: BudgetElementType
+  name: string
+  icon: string
+  ownerUserId: Id | null
+  currencyId: Id | null
+  isArchived: 0 | 1
+  children: { id: Id }[]
+}
+
+export function sheetElement(target: SheetTarget): SheetElement {
+  switch (target.kind) {
+    case 'expense':
+      return target.element
+    case 'savings':
+      return { ...target.row, children: [] }
+    case 'plan':
+      return target.cell.element
   }
 }
