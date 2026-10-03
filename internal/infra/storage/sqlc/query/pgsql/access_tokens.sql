@@ -52,3 +52,12 @@ DELETE FROM access_tokens WHERE id = $1;
 DELETE FROM access_tokens
 WHERE (revoked_at IS NOT NULL AND revoked_at < $1)
    OR (expires_at IS NOT NULL AND expires_at < $2);
+
+-- name: InsertOAuthAccessTokenIfGeneration :execrows
+-- See the sqlite sibling.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id)
+SELECT $1, $2, $3, $4, $5, $6, NULL, $7, $8, $9, NULL, NULL, NULL, $10
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = $11 AND u.credentials_generation = $12);
+
+-- name: RevokeAccessTokensByGrant :exec
+UPDATE access_tokens SET revoked_at = $1 WHERE grant_id = $2 AND revoked_at IS NULL;

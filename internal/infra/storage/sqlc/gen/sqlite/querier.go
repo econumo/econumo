@@ -381,6 +381,9 @@ type Querier interface {
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
 	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	// Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
+	// by the MCP OAuth server; grant_id lets a grant revoke drop them all.
+	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
 	// OAuth authorization server (MCP clients): clients, codes, grants.
 	InsertOAuthClient(ctx context.Context, arg InsertOAuthClientParams) error
 	InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error
@@ -583,6 +586,7 @@ type Querier interface {
 	// not update external_id, hence this dedicated statement.
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
 	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
 	// Set-based, so a revoke sweep is one statement and cannot race a concurrent
 	// touch row by row. The excepted id is the presenting token (or an id that

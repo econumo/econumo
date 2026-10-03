@@ -274,6 +274,8 @@ type Querier interface {
 	// ledger. Liveness/tombstone logic lives in Go (model.ImportTransactionLink).
 	InsertImportSource(ctx context.Context, arg InsertImportSourceParams) error
 	InsertImportTransactionLink(ctx context.Context, arg InsertImportTransactionLinkParams) error
+	// See the sqlite sibling.
+	InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error)
 	// OAuth authorization server (MCP clients): clients, codes, grants.
 	InsertOAuthClient(ctx context.Context, arg InsertOAuthClientParams) error
 	InsertOAuthCode(ctx context.Context, arg InsertOAuthCodeParams) error
@@ -419,6 +421,7 @@ type Querier interface {
 	RepointBudgetComments(ctx context.Context, arg RepointBudgetCommentsParams) error
 	RepointBudgetElement(ctx context.Context, arg RepointBudgetElementParams) error
 	RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error
+	RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error
 	RevokeOAuthGrant(ctx context.Context, arg RevokeOAuthGrantParams) (int64, error)
 	// See the sqlite sibling.
 	RevokeUserAccessTokens(ctx context.Context, arg RevokeUserAccessTokensParams) error

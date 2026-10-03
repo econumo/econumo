@@ -227,6 +227,50 @@ func (q *Queries) InsertAccessTokenIfPresenterLive(ctx context.Context, arg Inse
 	return result.RowsAffected()
 }
 
+const insertOAuthAccessTokenIfGeneration = `-- name: InsertOAuthAccessTokenIfGeneration :execrows
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id)
+SELECT ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?)
+`
+
+type InsertOAuthAccessTokenIfGenerationParams struct {
+	ID                    string
+	UserID                string
+	Kind                  string
+	TokenHash             string
+	Scope                 string
+	Name                  *string
+	CreatedAt             time.Time
+	LastUsedAt            time.Time
+	ExpiresAt             *time.Time
+	GrantID               *string
+	ID_2                  string
+	CredentialsGeneration int64
+}
+
+// Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
+// by the MCP OAuth server; grant_id lets a grant revoke drop them all.
+func (q *Queries) InsertOAuthAccessTokenIfGeneration(ctx context.Context, arg InsertOAuthAccessTokenIfGenerationParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, insertOAuthAccessTokenIfGeneration,
+		arg.ID,
+		arg.UserID,
+		arg.Kind,
+		arg.TokenHash,
+		arg.Scope,
+		arg.Name,
+		arg.CreatedAt,
+		arg.LastUsedAt,
+		arg.ExpiresAt,
+		arg.GrantID,
+		arg.ID_2,
+		arg.CredentialsGeneration,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const listAccessTokensByUser = `-- name: ListAccessTokensByUser :many
 SELECT id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id
 FROM access_tokens
@@ -288,6 +332,20 @@ type RevokeAccessTokenParams struct {
 
 func (q *Queries) RevokeAccessToken(ctx context.Context, arg RevokeAccessTokenParams) error {
 	_, err := q.db.ExecContext(ctx, revokeAccessToken, arg.RevokedAt, arg.ID)
+	return err
+}
+
+const revokeAccessTokensByGrant = `-- name: RevokeAccessTokensByGrant :exec
+UPDATE access_tokens SET revoked_at = ? WHERE grant_id = ? AND revoked_at IS NULL
+`
+
+type RevokeAccessTokensByGrantParams struct {
+	RevokedAt *time.Time
+	GrantID   *string
+}
+
+func (q *Queries) RevokeAccessTokensByGrant(ctx context.Context, arg RevokeAccessTokensByGrantParams) error {
+	_, err := q.db.ExecContext(ctx, revokeAccessTokensByGrant, arg.RevokedAt, arg.GrantID)
 	return err
 }
 

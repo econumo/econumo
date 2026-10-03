@@ -47,6 +47,14 @@ func (accessTokenSqliteQuerier) InsertAccessTokenIfGeneration(ctx context.Contex
 	return sqlitegen.New(db).InsertAccessTokenIfGeneration(ctx, p)
 }
 
+func (accessTokenSqliteQuerier) InsertOAuthAccessTokenIfGeneration(ctx context.Context, db backend.DBTX, p insertOAuthTokenIfGenParams) (int64, error) {
+	return sqlitegen.New(db).InsertOAuthAccessTokenIfGeneration(ctx, p)
+}
+
+func (accessTokenSqliteQuerier) RevokeAccessTokensByGrant(ctx context.Context, db backend.DBTX, p revokeTokensByGrantParams) error {
+	return sqlitegen.New(db).RevokeAccessTokensByGrant(ctx, p)
+}
+
 func (accessTokenSqliteQuerier) InsertAccessTokenIfPresenterLive(ctx context.Context, db backend.DBTX, p insertTokenIfPresenterLiveParams) (int64, error) {
 	return sqlitegen.New(db).InsertAccessTokenIfPresenterLive(ctx, p)
 }

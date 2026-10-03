@@ -19,6 +19,7 @@ import (
 const (
 	sessionTokenPrefix  = "eco_ses_"
 	personalTokenPrefix = "eco_pat_"
+	oauthTokenPrefix    = "eco_oat_"
 	tokenRandomBytes    = 32
 
 	// SessionTTL is the sliding window: a session dies 30 days after its last
@@ -38,8 +39,11 @@ func generateAccessToken(kind string) (string, string, error) {
 		return "", "", err
 	}
 	prefix := sessionTokenPrefix
-	if kind == model.TokenKindPersonal {
+	switch kind {
+	case model.TokenKindPersonal:
 		prefix = personalTokenPrefix
+	case model.TokenKindOAuth:
+		prefix = oauthTokenPrefix
 	}
 	raw := prefix + base64.RawURLEncoding.EncodeToString(b)
 	return raw, HashAccessToken(raw), nil

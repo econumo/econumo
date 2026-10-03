@@ -68,3 +68,13 @@ DELETE FROM access_tokens WHERE id = ?;
 DELETE FROM access_tokens
 WHERE (revoked_at IS NOT NULL AND revoked_at < ?)
    OR (expires_at IS NOT NULL AND expires_at < ?);
+
+-- name: InsertOAuthAccessTokenIfGeneration :execrows
+-- Same generation fence as InsertAccessTokenIfGeneration, for tokens minted
+-- by the MCP OAuth server; grant_id lets a grant revoke drop them all.
+INSERT INTO access_tokens (id, user_id, kind, token_hash, scope, name, user_agent, created_at, last_used_at, expires_at, revoked_at, provider, id_token, grant_id)
+SELECT ?, ?, ?, ?, ?, ?, NULL, ?, ?, ?, NULL, NULL, NULL, ?
+WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = ? AND u.credentials_generation = ?);
+
+-- name: RevokeAccessTokensByGrant :exec
+UPDATE access_tokens SET revoked_at = ? WHERE grant_id = ? AND revoked_at IS NULL;
