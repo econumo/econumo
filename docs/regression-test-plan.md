@@ -297,6 +297,16 @@ navigation (single-pane vs sidebar).
       global add button: date picker, amount (formula), category & payee
       selects with **create-on-type** inline creation, tags & labels chips,
       description.
+- [ ] 📱 Category / payee / tag pickers find an item when a letter is skipped
+      ("grcries" → Groceries); a prefix match is listed before a match later
+      in the name; typing a new name that only resembles an existing one still
+      offers "Add «name»".
+- [ ] 📱 Account / From / To pickers (transaction and recurring dialogs) find
+      an account by name with a skipped letter ("eurstsh" → Euro Stash), and
+      typing digits of a balance (e.g. "2000") matches no account. The same
+      skip-tolerant, closest-first search works in the currency picker (by
+      name, code or symbol), the envelope category picker, the budget accounts
+      field and the Merge dialog.
 - [ ] Cross-currency transfer (USD account → EUR account) asks for both
       amounts; both accounts' balances update by their respective amounts.
 - [ ] Same-currency transfer: single amount; swap from/to button works.
@@ -603,6 +613,61 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Search (inline on desktop, search dialog on compact) and empty states.
 - [ ] Creating from within the transaction dialog (create-on-type) lands the
       item in the settings list too.
+
+## 7a. Global search
+
+Hotkey-only entry (no on-screen button yet), so no 📱 markers: run on desktop,
+and on tablet/phone only with a hardware keyboard.
+
+- [ ] `Ctrl+K` (Windows/Linux) / `⌘K` (macOS) opens search from any page; the
+      input is focused and empty on every open. While another dialog (e.g. Add
+      transaction) is open the shortcut does nothing; pressed while search is
+      open it stays in search and does not trigger the browser's own shortcut.
+      Works with a Cyrillic keyboard layout active.
+- [ ] Layout: on desktop the palette is a wide centered dialog (~670px); on a
+      phone-width viewport it is a full-screen sheet with a close X.
+- [ ] Empty query lists recent transactions across all accounts, newest first,
+      grouped by day; each row names its account with the account icon on the
+      right, under the amount; transfers read "From → To" (both icons) with no
+      +/− sign; a long account name truncates without squeezing the title.
+- [ ] With at least one connection, every transaction row shows its author's
+      avatar on the row icon (even on accounts that are not shared); with no
+      connections there are no avatars. The account page keeps its own rule
+      (avatars only on shared accounts).
+- [ ] Typing filters accounts, your own categories, payees, tags, labels and
+      transactions; a skipped letter still matches ("grcries" finds
+      "Groceries"); amounts match the digits as typed or as displayed
+      ("12.50" and "1,250.00" find those rows; "1250" does not find 12.50 —
+      no skipped digits).
+- [ ] Accounts in a hidden folder and shared accounts appear; a hidden-folder
+      account shows an eye-off icon after its folder name ("Hidden folder" on
+      hover); selecting one opens the account page and closes search; `⋯` shows
+      Edit / Access (admin only) / Delete (owner) or Decline (shared account).
+- [ ] Opening a hidden-folder account from search shows its transactions (they
+      load on opening; their transactions are not part of search results), and
+      adding, editing or deleting one there updates the list.
+- [ ] Deleting or declining an account from its result `⋯` keeps search open
+      and the row disappears from the list.
+- [ ] Access control from an account result `⋯` opens the sharing dialog over the
+      search; changes save and closing it returns to the search.
+- [ ] Connected users' classifications never appear; archived ones appear
+      after the active ones, dimmed with the archived badge, and `⋯` offers
+      Unarchive.
+- [ ] A classification result `⋯` → Edit opens its form over the search and
+      the renamed item shows in the results; Archive moves it after the active
+      ones (dimmed, badged); Merge into another item drops it from the results
+      and its transactions now carry the target.
+- [ ] Selecting a category/payee/tag/label shows only its transactions; typing
+      narrows within it; Back (button, or Backspace on an empty input) returns
+      to the results with the previous query restored; deleting or merging it
+      from the header `⋯` returns to the results. An item with no
+      transactions shows "Nothing found".
+- [ ] A result group with more than 5 matches shows "Show all (N)", which
+      expands the whole group.
+- [ ] Selecting a transaction opens its preview; Edit opens the form (search
+      closes); Delete removes it and the list updates.
+- [ ] Keyboard: ↑/↓ move the highlight, Enter opens the highlighted row, Esc
+      closes search.
 
 ## 8. Currencies
 

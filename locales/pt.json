@@ -1482,6 +1482,12 @@
         "confirm": "Mesclar",
         "warning": "Todas as transações de “{name}” serão movidas e “{name}” será excluído.",
         "envelope_info": "Se os dois estiverem em envelopes diferentes, atualize primeiro o seu orçamento para não perder os valores planejados, pois ao mesclar os limites são somados."
+      },
+      "archive": {
+        "action": "Arquivar"
+      },
+      "unarchive": {
+        "action": "Desarquivar"
       }
     },
     "categories": {
@@ -1778,6 +1784,22 @@
       "general_folder_hint": "General (será criada)",
       "decline_question": "Recusar o acesso a “{name}”?"
     }
+  },
+  "search": {
+    "title": "Pesquisa",
+    "placeholder": "Pesquisar transações, contas, categorias…",
+    "groups": {
+      "accounts": "Contas",
+      "categories": "Categorias",
+      "payees": "Beneficiários",
+      "tags": "Etiquetas",
+      "labels": "Etiquetas de relatório",
+      "transactions": "Transações"
+    },
+    "show_all": "Mostrar todos ({count})",
+    "hidden_folder": "Pasta oculta",
+    "back": "Voltar",
+    "nothing_found": "Nada encontrado"
   },
   "subscription": {
     "banner": {

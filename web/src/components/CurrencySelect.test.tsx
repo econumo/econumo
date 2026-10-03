@@ -36,3 +36,20 @@ it('shows the selected code and picks a currency from the list', async () => {
   await user.click(await screen.findByText('EUR, €, Euro'))
   expect(onChange).toHaveBeenCalledWith('cur-eur')
 })
+
+it('search skips letters and matches the code, symbol or name', async () => {
+  const user = userEvent.setup()
+  render(
+    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+      <CurrencySelect value="cur-usd" onChange={() => {}} aria-label="Currency" />
+    </QueryClientProvider>,
+  )
+  await vi.waitFor(() => expect(screen.getByRole('combobox', { name: 'Currency' })).toHaveTextContent('USD'))
+  await user.click(screen.getByRole('combobox', { name: 'Currency' }))
+  await user.keyboard('ero')
+  expect(await screen.findByText('EUR, €, Euro')).toBeInTheDocument()
+  expect(screen.queryByText('USD, $, US Dollar')).not.toBeInTheDocument()
+  await user.keyboard('{Backspace}{Backspace}{Backspace}$')
+  expect(await screen.findByText('USD, $, US Dollar')).toBeInTheDocument()
+  expect(screen.queryByText('EUR, €, Euro')).not.toBeInTheDocument()
+})

@@ -66,3 +66,14 @@ it('filters candidates by the search field', async () => {
   expect(screen.getByRole('option', { name: 'Transport' })).toBeInTheDocument()
   expect(screen.queryByRole('option', { name: 'Groceries' })).not.toBeInTheDocument()
 })
+
+it('search skips letters and lists the closest name first', async () => {
+  const transfers = { id: 'c4', name: 'Bank transfers', position: 3, isArchived: 0 as const }
+  const transport = { id: 'c3', name: 'Transport', position: 2, isArchived: 0 as const }
+  renderDialog({ candidates: [food, groceries, transfers, transport] })
+  await userEvent.type(screen.getByLabelText(/search/i), 'trnsp')
+  expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Transport'])
+  await userEvent.clear(screen.getByLabelText(/search/i))
+  await userEvent.type(screen.getByLabelText(/search/i), 'trans')
+  expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Transport', 'Bank transfers'])
+})

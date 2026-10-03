@@ -1482,6 +1482,12 @@
         "confirm": "Zusammenführen",
         "warning": "Alle Transaktionen von „{name}“ werden verschoben, und „{name}“ wird gelöscht.",
         "envelope_info": "Wenn beide in verschiedenen Umschlägen liegen, aktualisiere zuerst dein Budget, damit deine geplanten Beträge nicht verloren gehen — beim Zusammenführen werden die Limits addiert."
+      },
+      "archive": {
+        "action": "Archivieren"
+      },
+      "unarchive": {
+        "action": "Aus Archiv holen"
       }
     },
     "categories": {
@@ -1778,6 +1784,22 @@
       "general_folder_hint": "General (wird erstellt)",
       "decline_question": "Zugriff auf „{name}“ ablehnen?"
     }
+  },
+  "search": {
+    "title": "Suche",
+    "placeholder": "Transaktionen, Konten, Kategorien suchen…",
+    "groups": {
+      "accounts": "Konten",
+      "categories": "Kategorien",
+      "payees": "Zahlungsempfänger",
+      "tags": "Tags",
+      "labels": "Auswertungs-Tags",
+      "transactions": "Transaktionen"
+    },
+    "show_all": "Alle anzeigen ({count})",
+    "hidden_folder": "Ausgeblendeter Ordner",
+    "back": "Zurück",
+    "nothing_found": "Nichts gefunden"
   },
   "subscription": {
     "banner": {

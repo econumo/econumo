@@ -134,3 +134,72 @@ it('Enter on a filter that matches only a disabled option selects nothing', asyn
   await user.keyboard('{Enter}')
   expect(onChange).not.toHaveBeenCalled()
 })
+
+it('matches when a character is skipped', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={[...OPTIONS, { value: 'c4', label: 'Groceries' }]} />)
+  await user.click(combobox())
+  await user.keyboard('grcries')
+  expect(await screen.findByRole('option', { name: 'Groceries' })).toBeInTheDocument()
+})
+
+it('lists a prefix match before a substring match', async () => {
+  const user = userEvent.setup()
+  const options = [{ value: 'x1', label: 'Car rent' }, { value: 'x2', label: 'Rent' }]
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={options} />)
+  await user.click(combobox())
+  await user.keyboard('rent')
+  const names = (await screen.findAllByRole('option')).map((o) => o.textContent)
+  expect(names).toEqual(['Rent', 'Car rent'])
+})
+
+it('still offers create when the typed name only fuzzy-matches', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} onCreate={() => {}} />)
+  await user.click(combobox())
+  await user.keyboard('Fod')
+  expect(await screen.findByRole('option', { name: 'Food' })).toBeInTheDocument()
+  expect(screen.getByRole('option', { name: /Fod/ })).toBeInTheDocument()
+})
+
+it('trailing spaces do not make an existing name look new', async () => {
+  const user = userEvent.setup()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} onCreate={() => {}} />)
+  await user.click(combobox())
+  await user.keyboard('rent ')
+  expect(await screen.findByRole('option', { name: 'Rent' })).toBeInTheDocument()
+  expect(screen.queryByRole('option', { name: /Add/ })).not.toBeInTheDocument()
+})
+
+it('creates with the typed name trimmed', async () => {
+  const user = userEvent.setup()
+  const onCreate = vi.fn()
+  render(<EntitySelect aria-label="Category" value={null} onChange={() => {}} options={OPTIONS} onCreate={onCreate} />)
+  await user.click(combobox())
+  await user.keyboard(' Tea ')
+  await user.click(await screen.findByRole('option', { name: /Add.*Tea/ }))
+  expect(onCreate).toHaveBeenCalledWith('Tea')
+})
+
+it('matches on searchText when given, not on the displayed label', async () => {
+  const user = userEvent.setup()
+  const accounts = [
+    { value: 'a1', label: 'Savings ($1,000.00)', searchText: 'Savings' },
+    { value: 'a2', label: 'Cash ($10.00)', searchText: 'Cash' },
+    { value: 'a3', label: 'Cashback card ($5.00)', searchText: 'Cashback card' },
+  ]
+  render(<EntitySelect aria-label="Account" value={null} onChange={() => {}} options={accounts} />)
+  const input = screen.getByRole('combobox', { name: 'Account' })
+
+  await user.click(input)
+  await user.keyboard('csh')
+  expect((await screen.findAllByRole('option')).map((o) => o.textContent)).toEqual(['Cash ($10.00)', 'Cashback card ($5.00)'])
+
+  await user.clear(input)
+  await user.keyboard('1')
+  expect(screen.queryAllByRole('option')).toHaveLength(0)
+
+  await user.clear(input)
+  await user.keyboard('cash')
+  expect((await screen.findAllByRole('option'))[0]).toHaveTextContent('Cash ($10.00)')
+})
