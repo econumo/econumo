@@ -439,6 +439,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         ? folderCard('__no_folder__', hasFolders ? t('budgets.page.plan.menu.no_folder') : null, buckets.withoutFolder)
         : null}
       {buckets.uncategorized.elements.length > 0 ? folderCard('__uncategorized__', null, buckets.uncategorized) : null}
+      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
       {labels.length > 0 ? (
         <Card testId="phone-labels">
           <button
@@ -453,7 +454,6 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           {labelsOpen ? labels.map(labelRow) : null}
         </Card>
       ) : null}
-      {buckets.archive.elements.length > 0 ? folderCard('__archive__', t('budgets.page.budget.structure.in_archive'), buckets.archive) : null}
 
 
       <section

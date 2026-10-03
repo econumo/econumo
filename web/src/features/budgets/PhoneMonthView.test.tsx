@@ -397,3 +397,14 @@ it('shows the uncategorized row without a budget, and it opens the sheet', async
   await userEvent.click(within(row).getByRole('button'))
   expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'expense', element: expect.objectContaining({ id: 'uncategorized' }) })
 })
+
+it('puts the reporting tags card below the Archived card', () => {
+  renderView({}, (b) => {
+    b.structure.labels = [{ id: 'label-kid-a', name: 'kid-A', icon: 'label', isArchived: 0, spent: '50.00', ownerUserId: 'u1', children: [] }]
+    const archived = b.structure.elements.find((e) => e.id === 'tag-old')!
+    archived.spent = '12'
+  })
+  const archive = screen.getByTestId('phone-folder-__archive__')
+  const labels = screen.getByTestId('phone-labels')
+  expect(archive.compareDocumentPosition(labels) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
