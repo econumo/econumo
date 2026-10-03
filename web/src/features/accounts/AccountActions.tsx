@@ -35,8 +35,9 @@ export function AccountActionsMenu({
             variant="ghost"
             size="icon"
             aria-label={`account actions ${account.name}`}
+            /* pointerdown passes on purpose: an enclosing Radix dialog tracks it at
+               the document, and swallowing it costs that dialog its next outside click */
             onClick={stop}
-            onPointerDown={stop}
             onKeyDown={stop}
           >
             <MoreVertical className="size-4" />

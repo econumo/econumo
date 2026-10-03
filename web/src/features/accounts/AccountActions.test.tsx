@@ -58,7 +58,8 @@ it('owned account: Edit, Access control and Delete; delete confirms then posts',
   renderMenu(owned, onDone)
   await user.click(screen.getByRole('button', { name: 'account actions Cash' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit' })).toBeInTheDocument()
-  expect(rowPointerDown).not.toHaveBeenCalled()
+  // pointerdown must reach ancestors: an enclosing dialog's outside-click tracking relies on it
+  expect(rowPointerDown).toHaveBeenCalled()
   // the owner holds admin rights, which unlocks the access control entry
   await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Access control' })).toBeInTheDocument())
   expect(screen.queryByRole('menuitem', { name: 'Decline' })).not.toBeInTheDocument()
