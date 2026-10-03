@@ -91,3 +91,6 @@ func (r RevokeConnectedAppRequest) Validate() error {
 	}
 	return nil
 }
+
+// RevokeConnectedAppResult is the revoke-connected-app response (empty object).
+type RevokeConnectedAppResult struct{}

@@ -21,6 +21,7 @@ import (
 	appadmin "github.com/econumo/econumo/internal/admin"
 	handleradmin "github.com/econumo/econumo/internal/admin/api"
 	appauthserver "github.com/econumo/econumo/internal/authserver"
+	handlerauthserver "github.com/econumo/econumo/internal/authserver/api"
 	"github.com/econumo/econumo/internal/authserver/oauthhttp"
 	authserverrepo "github.com/econumo/econumo/internal/authserver/repo"
 	appbudget "github.com/econumo/econumo/internal/budget"
@@ -432,6 +433,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 	registerAPI := router.Compose(
 		handleruser.RegisterAPI(userHandlers, authn),
 		handleroauth.RegisterAPI(oauthHandlers, authn),
+		handlerauthserver.RegisterAPI(handlerauthserver.NewHandlers(authSrv), authn),
 		handlercategory.RegisterAPI(categoryHandlers, authn),
 		handlertag.RegisterAPI(tagHandlers, authn),
 		handlerlabel.RegisterAPI(labelHandlers, authn),

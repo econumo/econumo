@@ -224,6 +224,42 @@ definitions:
     type: object
   model.ArchiveTagResult:
     type: object
+  model.AuthorizationDecisionResult:
+    properties:
+      redirectUrl:
+        type: string
+    type: object
+  model.AuthorizationRequest:
+    properties:
+      clientId:
+        type: string
+      codeChallenge:
+        type: string
+      codeChallengeMethod:
+        type: string
+      redirectUri:
+        type: string
+      resource:
+        type: string
+      responseType:
+        type: string
+      scope:
+        type: string
+      state:
+        type: string
+    type: object
+  model.AuthorizationRequestResult:
+    properties:
+      clientName:
+        type: string
+      errorRedirectUrl:
+        description: 'non-empty: navigate there instead of showing consent'
+        type: string
+      isLoopback:
+        type: boolean
+      redirectHost:
+        type: string
+    type: object
   model.AverageCurrencyRateResult:
     properties:
       baseCurrencyId:
@@ -474,6 +510,21 @@ definitions:
         type: string
     type: object
   model.ConfirmEmailResult:
+    type: object
+  model.ConnectedAppResult:
+    properties:
+      clientName:
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isLoopback:
+        type: boolean
+      lastUsedAt:
+        type: string
+      redirectHost:
+        type: string
     type: object
   model.ConnectionInviteResult:
     properties:
@@ -2351,6 +2402,13 @@ definitions:
     type: object
   model.RevokeAccountAccessResult:
     type: object
+  model.RevokeConnectedAppRequest:
+    properties:
+      id:
+        type: string
+    type: object
+  model.RevokeConnectedAppResult:
+    type: object
   model.RevokeOtherSessionsResult:
     type: object
   model.RevokePersonalTokenRequest:
@@ -3861,6 +3919,242 @@ paths:
       summary: Update a folder
       tags:
       - Account
+  /api/v1/authserver/approve-authorization:
+    post:
+      consumes:
+      - application/json
+      description: Issues a one-time authorization code for the client and returns
+        the URL the browser must navigate to.
+      parameters:
+      - description: Authorization request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AuthorizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AuthorizationDecisionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Approve an MCP authorization request
+      tags:
+      - AuthServer
+  /api/v1/authserver/decline-authorization:
+    post:
+      consumes:
+      - application/json
+      description: Returns the URL that sends the access_denied error back to the
+        client.
+      parameters:
+      - description: Authorization request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.AuthorizationRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AuthorizationDecisionResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "402":
+          description: Payment Required
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Decline an MCP authorization request
+      tags:
+      - AuthServer
+  /api/v1/authserver/get-authorization-request:
+    get:
+      description: Validates the OAuth parameters the consent page received and returns
+        the app name and redirect host to show the user.
+      parameters:
+      - description: Registered client id
+        in: query
+        name: clientId
+        required: true
+        type: string
+      - description: Redirect URI
+        in: query
+        name: redirectUri
+        required: true
+        type: string
+      - description: Must be code
+        in: query
+        name: responseType
+        required: true
+        type: string
+      - description: PKCE S256 challenge
+        in: query
+        name: codeChallenge
+        required: true
+        type: string
+      - description: Must be S256
+        in: query
+        name: codeChallengeMethod
+        required: true
+        type: string
+      - description: Resource indicator
+        in: query
+        name: resource
+        type: string
+      - description: Scope
+        in: query
+        name: scope
+        type: string
+      - description: Opaque client state
+        in: query
+        name: state
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.AuthorizationRequestResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Describe a pending MCP authorization request
+      tags:
+      - AuthServer
+  /api/v1/authserver/get-connected-app-list:
+    get:
+      description: Returns the apps the authenticated user has authorized to use their
+        account over MCP.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.ConnectedAppResult'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: List connected apps
+      tags:
+      - AuthServer
+  /api/v1/authserver/revoke-connected-app:
+    post:
+      consumes:
+      - application/json
+      description: Revokes one connected app's grant and every access token issued
+        under it. Returns an empty success envelope.
+      parameters:
+      - description: Revoke connected app request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/model.RevokeConnectedAppRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/apidoc.JsonResponseOk'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RevokeConnectedAppResult'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseUnauthorized'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/apidoc.JsonResponseException'
+      security:
+      - Bearer: []
+      summary: Revoke a connected app
+      tags:
+      - AuthServer
   /api/v1/budget/accept-access:
     post:
       consumes:

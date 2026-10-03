@@ -84,6 +84,11 @@ const (
 	ImportRunSeeded   = "0c000000-0000-0000-0000-000000000003" // completed run on ImportSourceBank
 	ImportLinkTxn2    = "0d000000-0000-0000-0000-000000000001"
 
+	// A registered MCP client and one live grant of the owner's on it, for the
+	// authserver scenarios (non-v7 ids, so they survive normalization).
+	OAuthClientID = "e1000000-0000-0000-0000-000000000001"
+	OAuthGrantID  = "e2000000-0000-0000-0000-000000000001"
+
 	ImportEventQueued = "0e000000-0000-0000-0000-000000000001" // processed event behind ImportLinkQueued
 	ImportLinkQueued  = "0d000000-0000-0000-0000-000000000002" // "wallet" tap-2, queued (card unmapped)
 	ImportEventFailed = "0e000000-0000-0000-0000-000000000002" // unparsable payload awaiting retry/discard
@@ -133,6 +138,9 @@ func Seed(t testing.TB, db *dbtest.DB) {
 	f.AccessToken(fixture.AccessToken{ID: IngestTokenID, UserID: OwnerID, Kind: model.TokenKindPersonal,
 		TokenHash: appuser.HashAccessToken(IngestToken), Name: "Phone shortcut", Scope: string(model.TokenScopeIngest)})
 	f.Connect(OwnerID, GuestID)
+
+	f.OAuthClient(fixture.OAuthClient{ID: OAuthClientID, Name: "Claude", RedirectURIs: []string{"https://claude.ai/api/mcp/auth_callback"}})
+	f.OAuthGrant(fixture.OAuthGrant{ID: OAuthGrantID, UserID: OwnerID, ClientID: OAuthClientID, RefreshHash: "seeded-refresh-hash"})
 
 	// Folders.
 	f.Folder(fixture.Folder{ID: OwnerFolder, UserID: OwnerID, Name: "Main"})
