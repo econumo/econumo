@@ -19,8 +19,6 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -71,6 +69,7 @@ import {
   commentCellKey,
 } from './queries'
 import { useBudgetPeriodStore } from './budgetStore'
+import type { BudgetMode } from './budgetStore'
 import { bucketElements, budgetTotals, elementDisplayName, makeBudgetExchange } from './budgetMath'
 import type { FolderBucket } from './budgetMath'
 import { currentMonth, monthDiff } from './planMath'
@@ -85,6 +84,10 @@ import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
 import { planMonthFigures, sheetCell, sheetElement, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
+import { ViewSwitch } from './ViewSwitch'
+import { MonthFlows, MonthTotalsLines } from './MonthFlows'
+import type { FlowTarget } from './MonthFlows'
+import { COMMENT_ANCHOR_ATTR, commentAnchorOf } from './cellDom'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import type { EnvelopeDialogTarget } from './EnvelopeDialog'
 import { elementEditAccess, isEnvelopeType } from './elementEdit'
@@ -139,12 +142,6 @@ const preferRowCollisions: CollisionDetection = (args) => {
 
 type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
-export type BudgetMode = 'budget' | 'plan'
-const BUDGET_MODES: readonly BudgetMode[] = ['budget', 'plan']
-const BUDGET_MODE_LABEL: Record<BudgetMode, string> = {
-  budget: 'budgets.page.plan.toggle.budget',
-  plan: 'budgets.page.plan.toggle.plan',
-}
 const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
   plan: RouterPage.PLAN,
@@ -258,30 +255,35 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const moveElement = useMoveElement()
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
-  // the phone view's income, Balance and Total savings: the Plan view's own figures
-  // for the selected month; null until that month's window has really loaded.
+  // the month view's income, Balance and Total savings (phone and desktop alike): the
+  // Plan view's own figures for the selected month; null until that month's window
+  // has really loaded.
   // The window starts no later than the current month: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan
   // from the current month on inside it.
-  const phonePlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
-  const phonePlan = useBudgetPlan(phoneView ? budgetId : null, phonePlanFirst, monthDiff(phonePlanFirst, selectedDate) + 1)
-  const planSetLimit = usePlanSetLimit(phonePlan.planKey)
+  const monthPlanFirst = selectedDate < currentMonth() ? selectedDate : currentMonth()
+  const monthPlan = useBudgetPlan(mode === 'budget' || phoneView ? budgetId : null, monthPlanFirst, monthDiff(monthPlanFirst, selectedDate) + 1)
+  const planSetLimit = usePlanSetLimit(monthPlan.planKey)
   const planMonth = useMemo(
-    () => (phonePlan.data && !phonePlan.isPlaceholderData ? planMonthFigures(phonePlan.data, currencies, selectedDate) : null),
-    [phonePlan.data, phonePlan.isPlaceholderData, currencies, selectedDate],
+    () => (monthPlan.data && !monthPlan.isPlaceholderData ? planMonthFigures(monthPlan.data, currencies, selectedDate) : null),
+    [monthPlan.data, monthPlan.isPlaceholderData, currencies, selectedDate],
   )
 
+  const setLastMode = useBudgetPeriodStore((s) => s.setLastMode)
   useEffect(() => {
+    setLastMode(mode)
     if (mode === 'plan') {
       trackEvent(METRICS.BUDGET_PLAN_OPEN)
     }
-  }, [mode])
+  }, [mode, setLastMode])
   // the two views are separate routes; the keyed remount ends edit structure
   const switchBudgetMode = (m: BudgetMode) => {
     if (m !== mode) {
       navigate(BUDGET_MODE_ROUTE[m])
     }
   }
+  // phones have one view for both routes, so no switch
+  const viewSwitch = isPhone ? null : <ViewSwitch mode={mode} onSwitch={switchBudgetMode} />
   const [createBudgetOpen, setCreateBudgetOpen] = useState(false)
   const [updateBudgetOpen, setUpdateBudgetOpen] = useState(false)
   const [createFolderOpen, setCreateFolderOpen] = useState(false)
@@ -358,8 +360,8 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     return bucketElements(applyArrangement(budget, dragArrangement), makeBudgetExchange(budget, currencies), i18n.language)
   }, [budget, serverBuckets, dragArrangement, currencies, i18n.language])
 
-  // the Budget view tables the expenses only: savings live in the Plan view (and the
-  // phone's month view), so the Total row counts no savings either
+  // the Total row sums the expenses only, as on the phone: income and savings have
+  // their own sections and totals lines
   const totals = useMemo(() => (buckets ? budgetTotals(buckets) : null), [buckets])
 
   // An archived budget is read-only regardless of role: archived wins over
@@ -632,6 +634,59 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
     </CellShell>
   )
 
+  const commitPlanned = (target: FlowTarget, amount: string | null) => {
+    const elementId = sheetCell(target, budget.meta.currencyId).id
+    // an income plan lives only in the plan window, so it patches that cache
+    if (target.kind === 'plan' && planMonth) {
+      planSetLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount, monthIndex: planMonth.index })
+      return
+    }
+    setLimit.mutate({ budgetId: budget.meta.id, elementId, period: selectedDate, amount })
+  }
+  const renderFlowPlanned = (target: FlowTarget, text: string) => {
+    const cell = sheetCell(target, budget.meta.currencyId)
+    const name = elementDisplayName(cell.id, cell.name, t)
+    if (editMode) {
+      return text
+    }
+    if (isCompact) {
+      return (
+        <button type="button" className="w-full text-right underline-offset-2 hover:underline" aria-label={`details ${name}`} onClick={() => setSheetTarget(target)}>
+          {text}
+        </button>
+      )
+    }
+    const thread = sheetCellTarget(target)
+    const cellComments = commentsByCell.get(commentCellKey(cell.id, selectedDate)) ?? []
+    return (
+      <CellShell comments={cellComments} previewDisabled={commentsTarget !== null} onOpenComments={(anchor) => openComments(thread, anchor)}>
+        <span {...{ [COMMENT_ANCHOR_ATTR]: '' }} className="group/cell relative block">
+          {sheetCanSetAmount(target) ? (
+            <LimitEditor
+              id={cell.id}
+              name={name}
+              value={cell.amount}
+              currency={currencies.find((c) => c.id === cell.currencyId)}
+              onCommit={(amount) => commitPlanned(target, amount)}
+            />
+          ) : (
+            <button
+              type="button"
+              className="w-full text-right underline-offset-2 hover:underline"
+              aria-label={`comments ${name}`}
+              onClick={(e) => openComments(thread, commentAnchorOf(e.currentTarget))}
+            >
+              {text}
+            </button>
+          )}
+          {cellComments.length > 0 || canAddComment ? (
+            <CommentMarker count={cellComments.length} placement="outset" onOpen={(anchor) => openComments(thread, anchor)} />
+          ) : null}
+        </span>
+      </CellShell>
+    )
+  }
+
   // In edit mode the plus sits in the currency-symbol slot (w-6) so the stat
   // columns line up with the element rows; folder ordering moved to dragging.
   const folderActions = (bucket: FolderBucket, _index: number, _total: number) => {
@@ -732,24 +787,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         >
           {budget.meta.name}
         </h1>
-        {isCompact ? null : (
-          // single-pane headers have no room for the tablist: tablets keep the
-          // mode switch in the settings menu, phones have one view for both routes
-          <div role="tablist" aria-label="budget mode" className="flex w-fit shrink-0 rounded-md border p-0.5">
-            {BUDGET_MODES.map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="tab"
-                aria-selected={mode === m}
-                className={`rounded px-3 py-1 text-sm uppercase tracking-wide ${mode === m ? 'bg-accent font-bold' : 'text-muted-foreground'}`}
-                onClick={() => switchBudgetMode(m)}
-              >
-                {t(BUDGET_MODE_LABEL[m])}
-              </button>
-            ))}
-          </div>
-        )}
         <span className="flex-1" />
         {editMode ? (
           <Button type="button" size="sm" onClick={() => setEditMode(false)}>
@@ -771,18 +808,6 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              {isCompact && !isPhone ? (
-                <>
-                  <DropdownMenuRadioGroup value={mode} onValueChange={(m) => switchBudgetMode(m as BudgetMode)}>
-                    {BUDGET_MODES.map((m) => (
-                      <DropdownMenuRadioItem key={m} value={m}>
-                        {t(BUDGET_MODE_LABEL[m])}
-                      </DropdownMenuRadioItem>
-                    ))}
-                  </DropdownMenuRadioGroup>
-                  <DropdownMenuSeparator />
-                </>
-              ) : null}
               <DropdownMenuItem disabled={!editDetails} onSelect={() => setUpdateBudgetOpen(true)}>
                 {t('budgets.page.budget.settings.menu.edit')}
               </DropdownMenuItem>
@@ -829,11 +854,11 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           )}
         </>
       ) : mode === 'plan' ? (
-        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} />
+        <PlanSheet budget={budget} currencies={currencies} userId={user?.id} editMode={editMode} viewSwitch={viewSwitch} />
       ) : (
         <>
           {archived ? <InfoBox>{t('budgets.page.budget.archived_banner')}</InfoBox> : null}
-          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} />
+          <PeriodStrip startedAt={budget.meta.startedAt} endedAt={budget.meta.endedAt} leading={viewSwitch} />
 
           {editMode ? (
             <div>
@@ -853,6 +878,17 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
           ) : (
             <>
               <div ref={tableScrollRef} className="min-h-0 flex-1 overflow-y-auto">
+                <div className="mb-3 flex flex-col gap-3">
+                  <MonthFlows
+                    budget={budget}
+                    currencies={currencies}
+                    planMonth={planMonth}
+                    future={selectedDate > currentMonth()}
+                    actionsColumn={editMode}
+                    renderPlanned={renderFlowPlanned}
+                    onShowTransactions={editMode ? undefined : setTransactionsTarget}
+                  />
+                </div>
                 <DndContext
                   sensors={sensors}
                   collisionDetection={preferRowCollisions}
@@ -928,6 +964,16 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
                 </DndContext>
                 <div className="mt-3 flex flex-col gap-3">
                   {totals ? <BudgetTotals budget={budget} totals={totals} actionsColumn={editMode} /> : null}
+                  {totals ? (
+                    <MonthTotalsLines
+                      budget={budget}
+                      currencies={currencies}
+                      planMonth={planMonth}
+                      expensesSpent={totals.spent}
+                      future={selectedDate > currentMonth()}
+                      actionsColumn={editMode}
+                    />
+                  ) : null}
                 </div>
               </div>
             </>

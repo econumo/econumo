@@ -51,7 +51,7 @@ beforeEach(() => {
   localStorage.clear()
   window.econumoConfig = {}
   mockViewport()
-  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
+  useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false, planFolds: {} })
 })
 
 it('renders the full budget page: strip, chips, table, totals', async () => {
@@ -337,7 +337,10 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   )
   const user = userEvent.setup()
   const { router } = renderPage()
-  await screen.findByRole('tablist', { name: 'period' })
+  const strip = await screen.findByRole('tablist', { name: 'period' })
+  // the views lead the month row, not the header
+  expect(strip.parentElement).toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
+  expect(screen.getByRole('heading', { name: 'Main budget' }).closest('header')).not.toContainElement(screen.getByRole('tablist', { name: 'budget mode' }))
   const modeTabs = within(screen.getByRole('tablist', { name: 'budget mode' }))
   expect(modeTabs.getByRole('tab', { name: 'Budget' })).toHaveAttribute('aria-selected', 'true')
 
@@ -351,7 +354,7 @@ it('the header tabs navigate between /budget and /plan and reflect the route', a
   expect(router.state.location.pathname).toBe('/budget')
 })
 
-it('tablet viewport: the mode switch sits in the settings menu and navigates between the routes', async () => {
+it('tablet viewport: the views lead the month row, as on desktop, and nothing is left in the settings menu', async () => {
   window.matchMedia = vi.fn().mockImplementation((q: string) => ({
     matches: q.includes('1023'), media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
   }))
@@ -363,17 +366,14 @@ it('tablet viewport: the mode switch sits in the settings menu and navigates bet
   const user = userEvent.setup()
   const { router } = renderPage()
   expect(await screen.findByText('Main budget')).toBeInTheDocument()
-  expect(screen.queryByRole('tablist', { name: 'budget mode' })).not.toBeInTheDocument()
-
   await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitemradio', { name: 'Budget' })).toHaveAttribute('aria-checked', 'true')
-  await user.click(screen.getByRole('menuitemradio', { name: 'Plan' }))
+  expect(screen.queryByRole('menuitemradio')).not.toBeInTheDocument()
+  await user.keyboard('{Escape}')
+
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Plan' }))
   await screen.findByTestId('plan-sheet')
   expect(router.state.location.pathname).toBe('/plan')
-
-  await user.click(screen.getByRole('button', { name: 'Configure' }))
-  expect(await screen.findByRole('menuitemradio', { name: 'Plan' })).toHaveAttribute('aria-checked', 'true')
-  await user.click(screen.getByRole('menuitemradio', { name: 'Budget' }))
+  await user.click(within(screen.getByRole('tablist', { name: 'budget mode' })).getByRole('tab', { name: 'Budget' }))
   await screen.findByRole('tablist', { name: 'period' })
   expect(router.state.location.pathname).toBe('/budget')
 })
@@ -394,6 +394,20 @@ it('the route hop remounts the page: edit structure started on /plan is off agai
   await act(() => router.navigate('/budget'))
   await screen.findByRole('tablist', { name: 'period' })
   expect(screen.queryByRole('button', { name: 'Done editing' })).not.toBeInTheDocument()
+})
+
+it('opening a view remembers it for the main menu link', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: fixtureWireBudget } })),
+    planHandler(),
+  )
+  const { router } = renderPage('/plan')
+  await screen.findByTestId('plan-sheet')
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('plan')
+  await act(() => router.navigate('/budget'))
+  await screen.findByRole('tablist', { name: 'period' })
+  expect(useBudgetPeriodStore.getState().lastMode).toBe('budget')
 })
 
 it('rendering /plan fires BUDGET_PLAN_OPEN once; /budget does not', async () => {
@@ -455,24 +469,69 @@ it('a live budget shows no archived banner', async () => {
   expect(screen.queryByText('This budget is archived and read-only')).not.toBeInTheDocument()
 })
 
-it('the Budget view shows no savings: no block, and Total counts the expenses only', async () => {
+const budgetWithSavings = () => {
   const budget = JSON.parse(JSON.stringify(fixtureWireBudget))
   budget.structure.savings = [
     { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0,
       budgeted: '100', spent: '120', available: '-20', closingBalance: '2500' },
   ]
+  return budget
+}
+
+it('the Budget view follows the phone order: Income, Savings, Expenses, then the totals lines', async () => {
+  const budget = budgetWithSavings()
   server.use(
     ...coreHandlers({ user: userWithBudget }),
     http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budget } })),
+    planHandler(),
   )
   renderPage()
-  const totals = await screen.findByTestId('budget-totals')
-  expect(screen.queryByTestId('budget-savings-block')).toBeNull()
-  expect(screen.queryByText('Rainy day')).toBeNull()
-  // the table alone: 300.00 budgeted, 45.50 spent, 554.50 available (BudgetTable.test)
+  const income = await screen.findByTestId('month-income')
+  const savings = screen.getByTestId('month-savings')
+  const expenses = screen.getByTestId('budget-table')
+  expect(income.compareDocumentPosition(savings) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(savings.compareDocumentPosition(expenses) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+  // July of the plan fixture: Salaries planned 2000, nothing in; Freelance 500 planned, 400 in
+  await waitFor(() => expect(within(income).getByTestId('month-income-row-cat-freelance')).toHaveTextContent('400.00'))
+  expect(within(income).getByTestId('month-income-row-ie1')).toHaveTextContent('2,000.00')
+  const savingsRow = within(savings).getByTestId('month-savings-row-acc-s1')
+  expect(savingsRow).toHaveTextContent('100.00')
+  expect(savingsRow).toHaveTextContent('120.00')
+  expect(savingsRow).toHaveTextContent('2,500.00')
+
+  // the Total row stays expenses only (BudgetTable.test: 300.00 / 45.50 / 554.50)
+  const totals = screen.getByTestId('budget-totals')
   await waitFor(() => expect(totals).toHaveTextContent('554.50'))
-  expect(totals).toHaveTextContent('45.50')
-  expect(totals).not.toHaveTextContent('400.00')
   expect(totals).not.toHaveTextContent('165.50')
+  expect(screen.getByTestId('month-total-income')).toHaveTextContent('400.00')
+  expect(screen.getByTestId('month-total-expenses')).toHaveTextContent('45.50')
+  expect(screen.getByTestId('month-total-savings')).toHaveTextContent('120.00')
+  expect(screen.queryByTestId('month-total-transfers')).toBeNull()
+  expect(screen.getByTestId('month-total-balance')).toBeInTheDocument()
+})
+
+it('a Budget view section header folds its section, shows its sums, and shares the fold with the Plan view', async () => {
+  server.use(
+    ...coreHandlers({ user: userWithBudget }),
+    http.get('*/api/v1/budget/get-budget', () => HttpResponse.json({ success: true, message: '', data: { item: budgetWithSavings() } })),
+    planHandler(),
+  )
+  const user = userEvent.setup()
+  renderPage()
+  const header = await screen.findByTestId('month-income-header')
+  await screen.findByTestId('month-income-row-cat-freelance')
+  expect(header).toHaveTextContent('Planned')
+
+  await user.click(within(header).getByRole('button', { name: 'Income' }))
+  expect(screen.queryByTestId('month-income-row-cat-freelance')).toBeNull()
+  expect(useBudgetPeriodStore.getState().planFolds.income).toBe(true)
+  // folded: the section's sums take the column headings' place
+  expect(screen.getByTestId('month-income-header')).toHaveTextContent('2,500.00')
+  expect(screen.getByTestId('month-income-header')).not.toHaveTextContent('Planned')
+
+  await user.click(within(screen.getByTestId('column-headers')).getByRole('button', { name: 'Expenses' }))
+  expect(screen.queryByTestId('budget-folder-Essentials')).toBeNull()
+  expect(useBudgetPeriodStore.getState().planFolds.expense).toBe(true)
 })
 

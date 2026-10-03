@@ -716,9 +716,32 @@ and on tablet/phone only with a hardware keyboard.
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
 - [ ] 📱 Section order: the Reporting tags folder is the last expense section,
-      below Uncategorized and Archived (desktop: right above the Savings block;
+      below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
+- [ ] "Budget" / "Plan" (desktop and tablet) are plain words at the start
+      of the month row, the current one underlined: left of the month strip
+      on /budget, left of the ‹ › arrows in the Plan grid on /plan. They swap
+      between the two; the page header and the Configure menu carry no view
+      switch.
+- [ ] 📱 The main menu's "Budget & Plan" link opens the view last opened on
+      this device (/budget or /plan), also after a reload, with the month
+      (Budget) and the month window (Plan) last shown there.
+- [ ] Budget view (desktop and tablet) uses the phone's order: Income
+      (Planned · Received), Savings (Planned · Saved · Balance, only with
+      savings accounts), Expenses (Budget · Spent · Available: folders, No
+      folder, Uncategorized, Archived, Reporting tags), then the Total row
+      and the lines Income, Expenses, Transfers (only when not zero),
+      Savings, Total savings and Balance at month end. Each section header
+      folds its section; a folded header shows the section's sums in its
+      columns, and the fold carries over to the same section of the Plan
+      grid (and back) and survives a reload. A future month shows "—" for
+      received, saved and the Income / Expenses / Savings lines.
+- [ ] Budget view: the income and savings Planned amounts edit inline on a
+      desktop (popover) and open the item sheet on a tablet; Received and
+      Saved open the transactions dialog (except income Uncategorized);
+      Balance, Total savings and the Income line match the Plan grid's
+      figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
@@ -804,14 +827,17 @@ and on tablet/phone only with a hardware keyboard.
       its balance still counts as Total savings, not everyday Balance — the
       split still sums to the Balance.
 - [ ] 📱 **Plan sheet — Savings section**: with a savings account in the
-      budget, a "Savings" section appears below Expenses and above Archived,
+      budget, a "Savings" section appears right below Income and above the
+      expense folders,
       one row per savings account in their saved order; a budget without
       savings accounts shows no such section.
 - [ ] 📱 Fold the Savings header: its rows hide, and stay hidden after a
       reload; unfold brings them back.
-- [ ] Plan sheet keyboard: ArrowDown from the last expense row lands on the
-      first savings row, and from the last savings row on the first archived
-      row; with Savings folded it skips straight to Archived.
+- [ ] Plan sheet keyboard: ArrowDown from the last income row lands on the
+      first savings row, and from the last savings row on the first expense
+      row (or folder); with Savings folded it skips straight to the expenses.
+- [ ] Plan sheet totals: below Income, Expenses, Transfers and Savings come
+      Total savings and then Balance (the phone's order).
 - [ ] 📱 Edit a savings row's planned amount (popover on desktop; on a tablet
       or phone the item sheet's "Set budget"): the new value shows at once and
       survives a reload.
@@ -877,11 +903,9 @@ and on tablet/phone only with a hardware keyboard.
       drops by the amount and the RRSP row's rises by it, the Savings line and
       the Total savings are unchanged, and from that month on the TFSA row's
       balance is that much lower and the RRSP row's that much higher.
-- [ ] **Budget view (desktop and tablet) shows no savings**: with a savings
-      account in the budget, no Savings block appears and the Total row counts
-      the expense categories only (its Budget, Spent and Available match the
-      folders' sums). Savings are planned and tracked in the Plan view and, on
-      a phone, in the month view.
+- [ ] **Budget view Total row counts expenses only**: with a savings account
+      in the budget, the Savings section lists it, while the Total row's
+      Budget, Spent and Available still match the expense folders' sums.
 - [ ] 📱 Phone month view, Savings unfolded: one row per savings account with
       Planned and Saved (the row's item sheet adds Balance at month end); at
       320px and 375px, also in German, Polish and Ukrainian, a long account
