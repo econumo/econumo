@@ -103,9 +103,10 @@ used / never existed. Expired rows are purged opportunistically on exchange.
 | `revoked_at` DATETIME NULL | |
 
 Index on `prev_refresh_token_hash` and `user_id`. Dead grants (revoked/expired
-> 30 days) are purged by `token:purge` alongside dead access tokens.
+> 30 days) and expired codes are purged best-effort after each successful code
+exchange.
 
-**`access_tokens`** — new `kind = 'oauth'` (`model.TokenKindOAuth`), raw prefix
+**`access_tokens`** — new `kind = 'oauth'` (`model.TokenKindOAuth`), scope `mcp`, raw prefix
 `eco_oat_`, `expires_at = created_at + 1h` fixed (never slides — `Touch` keeps
 the existing session-only slide), `name` = the client name, and a new nullable
 `grant_id` column (indexed) so a grant revoke can revoke its live access tokens
@@ -222,10 +223,11 @@ optional `resource`:
 
 ### Authentication on `/mcp` and REST
 
-`middleware.TokenAuthenticator.Authenticate` additionally returns the token
-kind. The REST auth middleware rejects `kind = oauth` with the frozen
-`401 Invalid access token`; the `/mcp` auth accepts every kind. The token was
-issued for the `<URL>/mcp` resource, so REST must not honour it.
+OAuth-issued access tokens carry the new token scope `mcp`
+(`model.TokenScopeMCP`, not user-selectable for PATs). The auth middleware's
+existing scope allowlist admits `mcp` only on the `/mcp` path; everywhere else
+it is the frozen `401 Invalid access token`. The token was issued for the
+`<URL>/mcp` resource, so REST must not honour it.
 
 ### Cascades
 
@@ -277,8 +279,15 @@ tokens): `oauth-register` (`client_id`), `approve-authorization`
 ## Error codes
 
 New `errs` codes with `errors.*` catalogue entries (11 languages):
+`authserver.disabled` (consent endpoints when `ECONUMO_URL` is unset — the
+`/api/v1/authserver/*` routes are always registered),
 `authserver.client_not_found`, `authserver.redirect_uri_mismatch`,
 `authserver.grant_not_found`.
+
+The consent API carries the OAuth parameters under camelCase names
+(`clientId`, `redirectUri`, `responseType`, `codeChallenge`,
+`codeChallengeMethod`, `resource`, `scope`, `state`) per the API conventions;
+the SPA maps them from the snake_case `/oauth/authorize` query.
 
 ## Testing
 
