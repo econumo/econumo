@@ -931,7 +931,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       the budget plus what earlier months left. A row with a 0.00 budget (and
       nothing left from earlier months) still shows the empty light-gray track,
       like a row with nothing spent. A future month shows `—` for
-      Spent, with no bar and no colour.
+      Spent, the empty track, and no colour.
+- [ ] 📱 Income and savings rows (unfolded) show the same thin bar,
+      measuring Actual against Planned. It stays gray until the plan is met
+      and turns green once received/saved reaches the planned amount; the
+      figures themselves never change colour. A row with no plan, or a
+      savings withdrawal, shows the empty track; so does every row in a future
+      month, even one whose plan is already met.
 - [ ] 📱 What earlier months left shows read-only right before the budget, so
       the two read as one figure, e.g. "530.00 + 700.00" — on phone rows and in the Budget table (desktop and
       tablet, with a "Left from earlier months" tooltip); only the budget is

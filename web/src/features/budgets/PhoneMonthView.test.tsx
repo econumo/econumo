@@ -152,14 +152,84 @@ it('a row with no budget draws the empty gray track', () => {
   expect(bar.firstElementChild).toHaveStyle({ width: '0%' })
 })
 
-it('a future month shows a dash for Spent, no bar, and no colour', () => {
+it('a future month shows a dash for Spent, the empty gray track, and no colour', () => {
   renderView({ selectedDate: '2099-01-01' }, (b) => {
     const food = b.structure.elements.find((el) => el.id === 'cat-food')!
     Object.assign(food, { budgeted: '100', spent: '150', budgetSpent: '150', available: '-120' })
   })
   const row = screen.getByTestId('phone-row-cat-food')
-  expect(within(row).queryByTestId('phone-progress')).toBeNull()
+  const bar = within(row).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '0%' })
+  expect(bar?.className).toContain('bg-muted-foreground/40')
+  expect(within(row).getByText('—').className).not.toContain('text-expense')
   expect(screen.getByRole('button', { name: 'Food, budget 30.00 + 100.00, spent —' })).toBeInTheDocument()
+})
+
+const rainyDay = { id: 'acc-s1', type: 5, name: 'Rainy day', icon: 'savings', currencyId: 'cur-usd', ownerUserId: 'u1', isArchived: 0, position: 0, budgeted: '100', spent: '40', available: '60', closingBalance: '1040' } as const
+
+it('an income row fills its bar toward the plan and stays gray until the plan is met', async () => {
+  renderView()
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  const bar = within(screen.getByTestId('phone-income-row-ie1')).getByTestId('phone-progress')
+  expect(bar.firstElementChild).toHaveStyle({ width: '20%' })
+  expect(bar.firstElementChild?.className).toContain('bg-muted-foreground/40')
+})
+
+it('an income row that received its plan turns its bar green', async () => {
+  const met = { ...planMonth, income: { rows: [{ element: salaries, planned: '2000', actual: '2500' }], planned: '2000', received: '2500' } }
+  renderView({ planMonth: met })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  const row = screen.getByTestId('phone-income-row-ie1')
+  const bar = within(row).getByTestId('phone-progress')
+  expect(bar.firstElementChild).toHaveStyle({ width: '100%' })
+  expect(bar.firstElementChild?.className).toContain('bg-income')
+  // only the bar carries the colour: receiving more than planned is no warning
+  expect(within(row).getByText('2,500.00').className).not.toMatch(/text-(income|expense)/)
+})
+
+it('an income row with no plan draws the empty gray track', async () => {
+  const unplanned = { ...planMonth, income: { rows: [{ element: salaries, planned: '0', actual: '300' }], planned: '0', received: '300' } }
+  renderView({ planMonth: unplanned })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  const bar = within(screen.getByTestId('phone-income-row-ie1')).getByTestId('phone-progress')
+  expect(bar.firstElementChild).toHaveStyle({ width: '0%' })
+  expect(bar.firstElementChild?.className).toContain('bg-muted-foreground/40')
+})
+
+it('a savings row fills its bar toward the plan and turns green once the plan is saved', async () => {
+  renderView({}, (b) => {
+    b.structure.savings = [rainyDay, { ...rainyDay, id: 'acc-s2', name: 'House', position: 1, budgeted: '50', spent: '50' }]
+  })
+  await userEvent.click(screen.getByTestId('phone-savings-summary'))
+  const partial = within(screen.getByTestId('phone-savings-row-acc-s1')).getByTestId('phone-progress').firstElementChild
+  expect(partial).toHaveStyle({ width: '40%' })
+  expect(partial?.className).toContain('bg-muted-foreground/40')
+  const met = within(screen.getByTestId('phone-savings-row-acc-s2')).getByTestId('phone-progress').firstElementChild
+  expect(met).toHaveStyle({ width: '100%' })
+  expect(met?.className).toContain('bg-income')
+})
+
+it('a savings withdrawal draws the empty track', async () => {
+  renderView({}, (b) => {
+    b.structure.savings = [{ ...rainyDay, spent: '-30' }]
+  })
+  await userEvent.click(screen.getByTestId('phone-savings-summary'))
+  const bar = within(screen.getByTestId('phone-savings-row-acc-s1')).getByTestId('phone-progress').firstElementChild
+  expect(bar).toHaveStyle({ width: '0%' })
+  expect(bar?.className).toContain('bg-muted-foreground/40')
+})
+
+it('a future month draws the empty gray track on income and savings rows, even for a met plan', async () => {
+  renderView({ selectedDate: '2099-01-01' }, (b) => {
+    b.structure.savings = [{ ...rainyDay, spent: '100' }]
+  })
+  await userEvent.click(screen.getByTestId('phone-income-summary'))
+  await userEvent.click(screen.getByTestId('phone-savings-summary'))
+  for (const testId of ['phone-income-row-ie1', 'phone-savings-row-acc-s1']) {
+    const bar = within(screen.getByTestId(testId)).getByTestId('phone-progress').firstElementChild
+    expect(bar).toHaveStyle({ width: '0%' })
+    expect(bar?.className).toContain('bg-muted-foreground/40')
+  }
 })
 
 it('marks a commented row with a non-interactive indicator', () => {

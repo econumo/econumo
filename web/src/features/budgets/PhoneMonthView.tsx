@@ -251,9 +251,9 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
           first={budgetText}
           second={spentText}
           secondClass={overspent ? 'text-expense' : ''}
-          // a row with nothing to measure against still draws the empty track, as a
-          // budgeted row with nothing spent does
-          progress={isUncategorized || future ? null : (rowProgress(figures) ?? 0)}
+          // a row with nothing to measure against, or a month that has not happened
+          // yet, still draws the empty track, as a budgeted row with nothing spent does
+          progress={isUncategorized ? null : future ? 0 : (rowProgress(figures) ?? 0)}
           barClass={overspent ? 'bg-expense' : 'bg-muted-foreground/40'}
           commented={commented(element.id)}
           ariaLabel={t('budgets.page.phone.row_aria', { name, budget: carryText ? `${carryText} ${budgetText}` : budgetText, spent: spentText })}
@@ -306,6 +306,13 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
     </Card>
   )
 
+  // income and savings fill toward their plan and turn green once it is met: unlike
+  // spending, reaching the figure is the goal, so only the bar is coloured
+  const planBar = (planned: string, actual: string) => ({
+    progress: future ? 0 : (rowProgress({ budgeted: planned, spent: actual }) ?? 0),
+    barClass: !future && cmp(planned, '0') > 0 && cmp(actual, planned) >= 0 ? 'bg-income' : 'bg-muted-foreground/40',
+  })
+
   const incomeRow = (row: PlanCellFigures) => {
     const el = row.element
     const name = elementDisplayName(el.id, el.name, t)
@@ -320,6 +327,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         tag={tagOf(el.currencyId)}
         first={planned}
         second={received}
+        {...planBar(row.planned, row.actual)}
         commented={commented(el.id)}
         ariaLabel={t('budgets.page.phone.income_row_aria', { name, planned, received })}
         onOpen={() => onOpenSheet({ kind: 'plan', cell: row })}
@@ -339,6 +347,7 @@ export function PhoneMonthView({ budget, buckets, currencies, selectedDate, plan
         tag={tagOf(row.currencyId)}
         first={planned}
         second={saved}
+        {...planBar(row.budgeted, row.spent)}
         commented={commented(row.id)}
         ariaLabel={t('budgets.page.phone.savings_row_aria', { name: row.name, planned, saved })}
         onOpen={() => onOpenSheet({ kind: 'savings', row })}
