@@ -408,3 +408,14 @@ it('puts the reporting tags card below the Archived card', () => {
   const labels = screen.getByTestId('phone-labels')
   expect(archive.compareDocumentPosition(labels) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
+
+it('tapping a reporting tag opens its sheet', async () => {
+  const label = { id: 'label-kid-a', name: 'kid-A', icon: 'label', isArchived: 0 as const, spent: '50.00', ownerUserId: 'u1', children: [] }
+  const props = renderView({}, (b) => {
+    b.structure.labels = [label]
+  })
+  await userEvent.click(screen.getByRole('button', { name: 'Reporting tags' }))
+  await userEvent.click(screen.getByRole('button', { name: 'kid-A, spent 50.00' }))
+  expect(props.onOpenSheet).toHaveBeenCalledWith({ kind: 'label', label })
+  expect(props.onShowTransactions).not.toHaveBeenCalled()
+})

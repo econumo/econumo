@@ -1019,8 +1019,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Tapping an item's name never opens a sheet: on an envelope/tag with
       children it folds/unfolds them (chevron in place of the icon), on any
       other row — expense, income, savings, a child, a reporting tag — it does
-      nothing. Tapping a child's or a reporting tag's Spent opens its
-      transactions directly.
+      nothing. Tapping a child's Spent opens its transactions directly.
+- [ ] 📱 Tapping a reporting tag's Spent opens its sheet ("kid-A · July"):
+      Spent only, no comments, no "Set budget", and "Transactions", which
+      lists that tag's transactions for the month. The pencil opens the
+      reporting tag's own edit dialog (kind locked) in place of the sheet; it
+      is greyed out for a reporting tag that belongs to another user. A rename
+      shows on the row at once.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
       budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.

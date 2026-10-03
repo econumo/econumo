@@ -224,3 +224,20 @@ it('puts the primary action on the right of Transactions', () => {
   const buttons = screen.getAllByRole('button').map((b) => b.textContent)
   expect(buttons.indexOf('Transactions')).toBeLessThan(buttons.indexOf('Set budget'))
 })
+
+const kidA = { id: 'label-kid-a', name: 'kid-A', icon: 'child_care', isArchived: 0 as const, spent: '50', ownerUserId: 'u1', children: [] }
+
+it('a reporting tag shows Spent only, with Transactions and Edit but no comments or Set budget', async () => {
+  const props = renderSheet({ target: { kind: 'label', label: kidA }, canSetAmount: false, onEdit: vi.fn(), canEdit: true })
+  expect(screen.getByText(`kid-A · ${july}`)).toBeInTheDocument()
+  expect(screen.getAllByTestId(/^sheet-figure-/)).toHaveLength(1)
+  expect(screen.getByTestId('sheet-figure-spent')).toHaveTextContent('Spent50.00')
+  // a reporting tag is not a budget cell, so it has no comment thread
+  expect(screen.queryByTestId('sheet-no-comments')).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Add comment' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Set budget' })).toBeNull()
+  await userEvent.click(screen.getByRole('button', { name: 'Transactions' }))
+  expect(props.onShowTransactions).toHaveBeenCalled()
+  await userEvent.click(screen.getByRole('button', { name: 'Edit' }))
+  expect(props.onEdit).toHaveBeenCalled()
+})
