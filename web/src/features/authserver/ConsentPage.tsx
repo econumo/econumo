@@ -11,8 +11,14 @@ import { apiErrorMessage } from '@/lib/apiError'
 import { RouterPage } from '@/app/router-pages'
 import { useUserData } from '@/features/user/queries'
 import logo from '@/assets/econumo.svg'
-import { rememberPostLoginRedirect } from './postLoginRedirect'
-import { useApproveAuthorization, useAuthorizationRequest, useDeclineAuthorization } from './queries'
+import { clearPostLoginRedirect, rememberPostLoginRedirect } from './postLoginRedirect'
+import {
+  InvalidRedirectError,
+  isSafeRedirectUrl,
+  useApproveAuthorization,
+  useAuthorizationRequest,
+  useDeclineAuthorization,
+} from './queries'
 
 function Shell({ children }: { children: ReactNode }) {
   const { t } = useTranslation()
@@ -43,14 +49,20 @@ export function ConsentPage() {
   const decline = useDeclineAuthorization()
   const { data: user } = useUserData()
 
-  const consentable = !!request.data && !request.data.errorRedirectUrl
+  const errorStatus = isAxiosError(request.error) ? request.error.response?.status : undefined
+  // A 401 means the stored session is stale: the api client is already sending the user to
+  // /login, and the remembered URL is what brings them back here afterwards.
+  const unusable = !!request.data?.errorRedirectUrl || (request.isError && errorStatus !== 401)
 
-  // Survives "Switch account" (logout, sign-in elsewhere) so the user lands back here.
+  // Remembered on mount so even a request that dies on a stale session survives the sign-in;
+  // dropped once the request is known to be dead, so a later sign-in does not land on it.
   useEffect(() => {
-    if (consentable) {
+    if (unusable) {
+      clearPostLoginRedirect()
+    } else {
       rememberPostLoginRedirect(location.pathname + location.search)
     }
-  }, [consentable, location.pathname, location.search])
+  }, [unusable, location.pathname, location.search])
 
   if (request.isPending) {
     return (
@@ -75,12 +87,16 @@ export function ConsentPage() {
 
   // The server's error redirect is attacker-controlled (any client may register any https
   // redirect), so it is only ever followed on an explicit click, never on render.
-  if (result.errorRedirectUrl) {
+  const badDecision = approve.error instanceof InvalidRedirectError || decline.error instanceof InvalidRedirectError
+  if (result.errorRedirectUrl || badDecision) {
+    const target = result.errorRedirectUrl
     return (
       <Shell>
         <h1 className="text-lg font-semibold">{t('authserver.consent.invalidTitle')}</h1>
         <p className="text-sm text-muted-foreground">{t('authserver.consent.invalidBody')}</p>
-        <Button onClick={() => window.location.assign(result.errorRedirectUrl)}>{returnLabel(t, result)}</Button>
+        {target && isSafeRedirectUrl(target) && (
+          <Button onClick={() => window.location.assign(target)}>{returnLabel(t, result)}</Button>
+        )}
       </Shell>
     )
   }

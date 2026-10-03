@@ -142,6 +142,39 @@ it('an unknown client shows the server message and never navigates', async () =>
   expect(takePostLoginRedirect()).toBe('/')
 })
 
+it('a stale session keeps the consent URL for after the sign-in', async () => {
+  vi.mocked(getAuthorizationRequest).mockRejectedValue(httpError(401, 'Invalid access token'))
+  renderPage()
+  await waitFor(() => expect(getAuthorizationRequest).toHaveBeenCalled())
+  await new Promise((r) => setTimeout(r, 30))
+  expect(takePostLoginRedirect()).toBe(`/oauth/authorize${SEARCH}`)
+})
+
+it('an invalid request drops the remembered URL', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ ...claude, errorRedirectUrl: 'https://claude.ai/cb?error=invalid_request' })
+  renderPage()
+  await screen.findByText(/sent an invalid request/i)
+  expect(takePostLoginRedirect()).toBe('/')
+})
+
+it('never navigates to a non-http(s) redirect', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
+  vi.mocked(approveAuthorization).mockResolvedValue({ redirectUrl: 'javascript:alert(1)' })
+  renderPage()
+  await userEvent.click(await screen.findByRole('button', { name: /allow/i }))
+  expect(await screen.findByText(/sent an invalid request/i)).toBeInTheDocument()
+  expect(assign).not.toHaveBeenCalled()
+  expect(trackEvent).not.toHaveBeenCalled()
+})
+
+it('offers no return button for a non-http(s) error redirect', async () => {
+  vi.mocked(getAuthorizationRequest).mockResolvedValue({ ...claude, errorRedirectUrl: 'data:text/html,x' })
+  renderPage()
+  expect(await screen.findByText(/sent an invalid request/i)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /return/i })).not.toBeInTheDocument()
+  expect(assign).not.toHaveBeenCalled()
+})
+
 it('a read-only user is told why and can send the app back with a refusal', async () => {
   vi.mocked(getAuthorizationRequest).mockResolvedValue(claude)
   vi.mocked(approveAuthorization).mockRejectedValue(httpError(402, 'Read-only access. Write operations are disabled.'))

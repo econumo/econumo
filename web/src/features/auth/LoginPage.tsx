@@ -1,4 +1,4 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router'
@@ -80,8 +80,11 @@ export function LoginPage() {
     setValue('selfHosted', next)
   }
 
+  // StrictMode runs the effect twice, and the second take would find the entry consumed.
+  const signedInRedirect = useRef(false)
   useEffect(() => {
-    if (getToken()) {
+    if (getToken() && !signedInRedirect.current) {
+      signedInRedirect.current = true
       window.location.assign(takePostLoginRedirect())
     }
   }, [])
