@@ -411,23 +411,43 @@ describe('layout', () => {
     }))
   }
 
-  it('on a phone the full-screen search has a close button and an uncapped list', async () => {
+  it('on a phone the search has a short placeholder, no corner close, and an uncapped list', async () => {
+    phone(true)
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    expect(input()).toHaveAttribute('placeholder', 'Search')
+    expect(document.querySelector('[data-slot="dialog-close"]')).not.toBeInTheDocument()
+    const list = document.querySelector('[cmdk-list]')!
+    expect(list.className).toContain('max-h-none')
+    expect(list.className).toContain('sm:max-h-[70vh]')
+  })
+
+  it('on a phone a bottom Close bar closes the search', async () => {
     phone(true)
     const user = userEvent.setup()
     renderDialog()
     await screen.findByTestId('tx-t1')
-    const list = document.querySelector('[cmdk-list]')!
-    expect(list.className).toContain('max-h-none')
-    expect(list.className).toContain('sm:max-h-[70vh]')
     await user.click(screen.getByRole('button', { name: 'Close' }))
     expect(useUiStore.getState().searchOpen).toBe(false)
   })
 
-  it('on desktop the palette is wide and has no corner close button', async () => {
+  it('on a phone the Close bar is hidden while the transaction preview is open', async () => {
+    phone(true)
+    const user = userEvent.setup()
+    renderDialog()
+    const searchSheet = await screen.findByRole('dialog', { name: 'Search' })
+    expect(within(searchSheet).getByRole('button', { name: 'Close' })).toBeInTheDocument()
+    await user.click(await screen.findByTestId('tx-t1'))
+    await screen.findByRole('dialog', { name: 'Transaction details' })
+    expect(within(searchSheet).queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
+
+  it('on desktop the palette is wide, uses the long placeholder, and has no close button at all', async () => {
     phone(false)
     renderDialog()
     await screen.findByTestId('tx-t1')
     expect(document.querySelector('[data-slot="dialog-content"]')?.className).toContain('sm:max-w-2xl')
+    expect(input()).toHaveAttribute('placeholder', 'Search transactions, accounts, categories…')
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
   })
 })

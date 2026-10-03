@@ -288,7 +288,12 @@ tools/prompts from an `internal/<feature>/mcp/` package, composed at
 
 Directory structure in `web/src/`: `pages/` (routes), `features/`, `components/`
 (shadcn-style UI), `api/` (typed API clients), `hooks/`, `app/` (providers,
-router, i18n setup), `lib/`, `locales/`, `test/`. Runtime config
+router, i18n setup), `lib/`, `locales/`, `test/`. Anything that waits on the
+user (share invites, imported transactions to review, failed imports, failing
+syncs) surfaces in the Inbox (`web/src/features/inbox`, `/inbox`), fed by one
+`useInbox()` hook that also drives the sidebar badge; new attention items go
+there, never into a new top banner (that slot is reserved for the subscription
+and server-version notices). Runtime config
 (`window.econumoConfig`) is served at `/econumo-config.js`: for a running
 instance the Go server generates the whole document (see the "Web UI config"
 bullet below); `public/econumo-config.js` is only the static fallback used

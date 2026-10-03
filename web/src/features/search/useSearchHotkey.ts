@@ -1,6 +1,16 @@
 import { useEffect } from 'react'
 import { useUiStore } from '@/app/uiStore'
 
+// iPadOS 13+ also reports itself as Mac (see lib/platform.ts's isIOS); showing
+// the Apple glyph there is still correct since it has the same ⌘ hardware key.
+export function isMacPlatform(): boolean {
+  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent)
+}
+
+export function searchShortcutLabel(): string {
+  return isMacPlatform() ? '⌘K' : 'Ctrl+K'
+}
+
 export function useSearchHotkey() {
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {

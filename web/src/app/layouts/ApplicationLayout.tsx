@@ -1,16 +1,14 @@
-import { useCallback, useRef, useState, useSyncExternalStore } from 'react'
+import { useCallback, useRef, useSyncExternalStore } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useIsFetching, useIsRestoring, useQueryClient } from '@tanstack/react-query'
-import { RefreshCw, Rocket, Settings, UserPlus, Wallet } from 'lucide-react'
+import { RefreshCw, Rocket, Search, Settings, Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 // ?inline forces a data URI: the file is over vite's 4KB auto-inline cutoff,
-// so without it the footer logo ships as a separate asset and can 404 where
-// the header logo (under the cutoff, auto-inlined) still shows.
+// so without it the sidebar logo ships as a separate asset and can 404 where
+// the login logo (under the cutoff, auto-inlined) still shows.
 import grayLogo from '@/assets/econumo-gray.svg?inline'
 import { Toaster } from '@/components/ui/sonner'
 import { LoadingDialog } from '@/components/LoadingDialog'
-import { UserCard } from '@/components/UserCard'
-import { UserAvatar } from '@/components/UserAvatar'
 import { UpdateNotice } from '@/components/UpdateNotice'
 import { ServerVersionNotice } from '@/components/ServerVersionNotice'
 import { econumoPackage } from '@/lib/package'
@@ -19,21 +17,19 @@ import { useAvailableUpdate } from '@/hooks/useAvailableUpdate'
 import { useIsCompact } from '@/hooks/useIsCompact'
 import { useLogoutEscape } from '@/hooks/useLogoutEscape'
 import { useScrollMemory } from '@/hooks/useScrollMemory'
-import { useSidebarStore } from '@/app/uiStore'
+import { useSidebarStore, useUiStore } from '@/app/uiStore'
 import { RouterPage } from '@/app/router-pages'
 import { LogoutEscapeButton } from '@/features/auth/LogoutEscapeButton'
+import { InboxButton } from '@/features/inbox/InboxButton'
 import { SubscriptionBanner } from '@/features/access/SubscriptionBanner'
-import { ImportQueueBanner } from '@/features/imports/ImportQueueBanner'
 import { SidebarAccountTree } from '@/features/accounts/SidebarAccountTree'
-import { usePendingInvites } from '@/features/connections/pendingInvites'
-import { SharingRequestsDialog } from '@/features/connections/SharingRequestsDialog'
 import { AccountDialog } from '@/features/accounts/AccountDialog'
 import { SwitchAccountPrompt } from '@/features/accounts/SwitchAccountPrompt'
 import { TransactionDialog } from '@/features/transactions/TransactionDialog'
 import { RulePromptDialog } from '@/features/imports/RulePromptDialog'
 import { RecurringDialog } from '@/features/recurring/RecurringDialog'
 import { GlobalSearchDialog } from '@/features/search/GlobalSearchDialog'
-import { useSearchHotkey } from '@/features/search/useSearchHotkey'
+import { searchShortcutLabel, useSearchHotkey } from '@/features/search/useSearchHotkey'
 import { useAccounts, useFolders } from '@/features/accounts/queries'
 import { useTransactions } from '@/features/transactions/queries'
 import { useCategories, usePayees, useTags } from '@/features/classifications/queries'
@@ -89,15 +85,15 @@ export function ApplicationLayout() {
   const isFullyLoaded = useIsFullyLoaded()
   const { data: user } = useUserData()
   const update = useAvailableUpdate()
+  const openSearch = useUiStore((s) => s.openSearch)
+  const searchLabel = t('search.open')
+  const searchTooltip = t('search.open_tooltip', { shortcut: searchShortcutLabel() })
   useSearchHotkey()
 
   // The blocking loader belongs to the FIRST boot only; once data has been on
   // screen, refetches and cache churn must never re-cover the app (Vue parity).
   // While the persisted cache is being restored the data is transiently
   // undefined — that must not flash the loader either.
-  const { count: pendingCount } = usePendingInvites()
-  const [sharingOpen, setSharingOpen] = useState(false)
-
   const isRestoring = useIsRestoring()
   const hasLoadedOnce = useRef(false)
   if (isFullyLoaded) {
@@ -118,22 +114,45 @@ export function ApplicationLayout() {
   const syncClass = `-m-1.5 rounded-full p-1.5 ${
     syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
   }`
+  // the full footer's tap area is already fixed at size-11, so no -m/p offset is needed
+  const syncClassFull = `grid ${isCompact ? 'size-11' : 'size-9'} place-items-center rounded-full ${
+    syncFailing ? 'bg-amber-500/15 text-amber-600 hover:text-amber-700' : 'text-muted-foreground hover:text-foreground'
+  }`
   const { collapsed, toggleCollapsed } = useSidebarStore()
   // compact unmounts the whole sidebar on navigation — going back must land
   // on the same spot in the account list
   const sidebarScrollRef = useScrollMemory('sidebar-accounts')
   // Icon-rail mode is desktop-only; compact keeps the full-width home sidebar.
   const rail = collapsed && !isCompact
+  const appName = t('common.econumo.label')
 
-  const userBlock = user ? (
+  const topRow = user ? (
     rail ? (
-      <Link to={RouterPage.SETTINGS_PROFILE} className="mt-3 flex justify-center px-2 py-3" title={user.name}>
-        <UserAvatar avatar={user.avatar} size="md" className="rounded-xl" />
+      <Link to={RouterPage.HOME} className="mt-3 flex justify-center px-2 py-3" aria-label={appName}>
+        <img src="/icons/apple-touch-icon-120x120.png" width={32} height={32} alt="" className="rounded-lg" />
       </Link>
     ) : (
-      <Link to={RouterPage.SETTINGS_PROFILE} className={`flex px-4 py-4 hover:bg-accent ${isCompact ? '' : 'mt-3'}`}>
-        <UserCard user={user} />
-      </Link>
+      <div className={`flex items-center gap-1 py-3 ${isCompact ? 'px-4' : 'mt-3 px-3'}`} data-testid="sidebar-top-row">
+        <Link
+          to={RouterPage.HOME}
+          aria-label={appName}
+          className="flex min-w-0 flex-1 items-center gap-1.5 rounded-lg px-2 py-1 hover:bg-accent"
+        >
+          {/* the artwork carries ~2.5px of blank space before the "e" */}
+          <img src={grayLogo} width={163} height={26} alt="" className="-ml-0.5" />
+          <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
+        </Link>
+        <button
+          type="button"
+          aria-label={searchLabel}
+          title={searchTooltip}
+          onClick={openSearch}
+          className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          <Search className="size-5" />
+        </button>
+        <InboxButton variant="row" />
+      </div>
     )
   ) : null
 
@@ -152,19 +171,28 @@ export function ApplicationLayout() {
     <div className="flex h-dvh flex-col overflow-hidden pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pl-[env(safe-area-inset-left)]">
       <SubscriptionBanner />
       <ServerVersionNotice />
-      <ImportQueueBanner />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {showSidebar ? (
           <aside className={`flex w-full flex-col bg-sidebar ${rail ? 'lg:w-16' : 'lg:w-80'}`} data-testid="sidebar">
-            {/* On desktop the user block stays pinned above the scrolling tree;
+            {/* On desktop the top row stays pinned above the scrolling tree;
                 on compact it scrolls away with the account list (Vue parity). */}
-            {user && !isCompact ? userBlock : null}
+            {user && !isCompact ? topRow : null}
 
             {isFullyLoaded || hasLoadedOnce.current ? (
               <div ref={sidebarScrollRef} className="flex-1 overflow-y-auto scrollbar-none">
-                {user && isCompact ? userBlock : null}
+                {user && isCompact ? topRow : null}
                 {rail ? (
                   <div className="flex flex-col items-center gap-1 py-1">
+                    <button
+                      type="button"
+                      aria-label={searchLabel}
+                      title={searchTooltip}
+                      onClick={openSearch}
+                      className="grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
+                    >
+                      <Search className="size-5" />
+                    </button>
+                    <InboxButton variant="rail" />
                     {!isOnboardingCompleted(user) ? (
                       <Link
                         to={RouterPage.ONBOARDING}
@@ -173,19 +201,6 @@ export function ApplicationLayout() {
                       >
                         <Rocket className="size-5" />
                       </Link>
-                    ) : null}
-                    {pendingCount > 0 ? (
-                      <button
-                        type="button"
-                        title={t('common.nav.sharing_requests')}
-                        onClick={() => setSharingOpen(true)}
-                        className="relative grid size-10 place-items-center rounded-lg text-muted-foreground hover:bg-accent"
-                      >
-                        <UserPlus className="size-5" />
-                        <span className="absolute top-0.5 right-0.5 rounded-full bg-primary px-1 text-[10px] text-primary-foreground">
-                          {pendingCount}
-                        </span>
-                      </button>
                     ) : null}
                     <Link
                       to={RouterPage.BUDGET}
@@ -202,16 +217,6 @@ export function ApplicationLayout() {
                       <Link to={RouterPage.ONBOARDING} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                         {t('common.nav.onboarding')}
                       </Link>
-                    ) : null}
-                    {pendingCount > 0 ? (
-                      <button
-                        type="button"
-                        onClick={() => setSharingOpen(true)}
-                        className={`flex items-center justify-between rounded-md px-2 py-2 text-left hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}
-                      >
-                        <span>{t('common.nav.sharing_requests')}</span>
-                        <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">{pendingCount}</span>
-                      </button>
                     ) : null}
                     <Link to={RouterPage.BUDGET} className={`rounded-md px-2 py-2 hover:bg-accent ${isCompact ? 'text-lg' : 'text-[15px]'}`}>
                       {t('common.nav.budget')}
@@ -249,25 +254,23 @@ export function ApplicationLayout() {
                 </button>
               </footer>
             ) : (
-              <footer className="flex items-center justify-between border-t px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-0.5">
-                    <img src={grayLogo} width={125} height={20} alt="" />
-                    <span className="self-start text-[10px] text-muted-foreground">{econumoPackage().label}</span>
-                  </div>
-                  <Link to={RouterPage.SETTINGS} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-                    {t('settings.page.menu_item')}
-                    {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
-                  </Link>
-                </div>
+              <footer className={`flex items-center justify-between border-t ${isCompact ? 'px-3' : 'px-2'} pt-1 pb-[max(env(safe-area-inset-bottom),0.25rem)]`}>
+                <Link
+                  to={RouterPage.SETTINGS}
+                  className={`flex items-center gap-1.5 rounded-lg px-3 text-muted-foreground hover:bg-accent hover:text-foreground ${isCompact ? 'h-11' : 'h-9 text-sm'}`}
+                >
+                  <Settings className="size-5" />
+                  {t('settings.page.menu_item')}
+                  {update ? <span className="size-1.5 rounded-full bg-primary" data-testid="update-dot" /> : null}
+                </Link>
                 <button
                   type="button"
                   aria-label="sync"
                   title={syncTitle}
-                  className={syncClass}
+                  className={syncClassFull}
                   onClick={() => void queryClient.invalidateQueries()}
                 >
-                  <RefreshCw className={`size-6 ${isFetching ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`${isCompact ? 'size-6' : 'size-5'} ${isFetching ? 'animate-spin' : ''}`} />
                 </button>
               </footer>
             )}
@@ -298,7 +301,6 @@ export function ApplicationLayout() {
       <RulePromptDialog />
       <RecurringDialog />
       <SwitchAccountPrompt />
-      <SharingRequestsDialog open={sharingOpen} onClose={() => setSharingOpen(false)} />
       <LoadingDialog open={showBootLoader} label={t('common.app.modal.loading.data_loading')} />
       {showLogoutEscape ? <LogoutEscapeButton /> : null}
       <Toaster />

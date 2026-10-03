@@ -16,8 +16,7 @@
       "onboarding": "Aan de slag",
       "create_account": "Rekening toevoegen",
       "collapse_menu": "Menu inklappen",
-      "expand_menu": "Menu uitklappen",
-      "sharing_requests": "Deelverzoeken"
+      "expand_menu": "Menu uitklappen"
     },
     "econumo": {
       "label": "Econumo"
@@ -469,12 +468,33 @@
     "make_recurring": "Terugkerend maken",
     "not_posted": "Niet geboekt"
   },
+  "inbox": {
+    "title": "Postvak IN",
+    "open": "Postvak IN, {count} wachtend",
+    "empty": "Alles is bijgewerkt",
+    "sections": {
+      "sharing": "Gedeeld",
+      "sync": "Synchronisatieproblemen",
+      "failed": "Mislukte imports",
+      "to_review": "Te beoordelen",
+      "skipped": "Overgeslagen ({count})"
+    },
+    "sharing": {
+      "invited_you": "{name} heeft u uitgenodigd",
+      "account": "Rekening",
+      "budget": "Budget",
+      "choose_folder": "Kies een map voor deze rekening",
+      "general_folder_hint": "General (wordt aangemaakt)",
+      "decline_question": "Toegang tot “{name}” weigeren?"
+    },
+    "sync": {
+      "failed": "Synchronisatie van {source} mislukt",
+      "partial": "{source} gesynchroniseerd met fouten",
+      "when": "Laatste poging {date}"
+    }
+  },
   "imports": {
     "badge": "Geïmporteerd",
-    "banner": {
-      "text": "{count} geïmporteerde transactie wacht op controle | {count} geïmporteerde transacties wachten op controle",
-      "cta": "Controleren"
-    },
     "data_page": {
       "menu_item": "Import & export",
       "header": "Import & export",
@@ -650,12 +670,7 @@
       }
     },
     "queue": {
-      "header": "Importwachtrij",
-      "empty": "Niets te controleren.",
       "card_amount": "Kaartbedrag: {amount} {currency}",
-      "queued": "Wacht op controle",
-      "skipped": "Overgeslagen",
-      "failed": "Aandacht nodig",
       "reason": {
         "unmapped": "Kaart niet gekoppeld",
         "account_deleted": "Rekening verwijderd",
@@ -873,7 +888,7 @@
       "settings": {
         "profile": {
           "menu_item": "Profiel",
-          "header": "Profiel",
+          "header": "Persoonlijke instellingen",
           "groups": {
             "personal_details": "Persoonlijke gegevens",
             "preferences": "Voorkeuren",
@@ -1773,16 +1788,6 @@
           "required_field": "Verplicht veld"
         }
       }
-    },
-    "sharing_requests": {
-      "title": "Deelverzoeken",
-      "empty": "Geen openstaande verzoeken",
-      "invited_you": "{name} heeft u uitgenodigd",
-      "account": "Rekening",
-      "budget": "Budget",
-      "choose_folder": "Kies een map voor deze rekening",
-      "general_folder_hint": "General (wordt aangemaakt)",
-      "decline_question": "Toegang tot “{name}” weigeren?"
     }
   },
   "search": {
@@ -1799,7 +1804,9 @@
     "show_all": "Alles tonen ({count})",
     "hidden_folder": "Verborgen map",
     "back": "Terug",
-    "nothing_found": "Niets gevonden"
+    "nothing_found": "Niets gevonden",
+    "open": "Zoeken",
+    "open_tooltip": "Zoeken ({shortcut})"
   },
   "subscription": {
     "banner": {

@@ -219,8 +219,12 @@ export function useSyncImportSource() {
       }
       trackEvent(METRICS.IMPORT_SYNC, { trigger: result.run.trigger, imported: result.run.importedCount, matched: result.run.matchedCount })
     },
-    // a failed sync still wrote a run row
-    onError: () => void queryClient.invalidateQueries({ queryKey: ['importRuns'] }),
+    // a failed sync still wrote a run row, and the source's lastRunStatus
+    // must reach the Inbox badge immediately
+    onError: () => {
+      void queryClient.invalidateQueries({ queryKey: ['importRuns'] })
+      void queryClient.invalidateQueries({ queryKey: queryKeys.importSources })
+    },
   })
 }
 
