@@ -33,7 +33,7 @@ import type {
   PlanChildDto,
   PlanElementDto,
 } from '@/api/dto/budget'
-import { BudgetElementType, isIncomeType, UNCATEGORIZED_ID } from '@/api/dto/budget'
+import { BudgetElementType, isIncomeType, isPlannedType, UNCATEGORIZED_ID } from '@/api/dto/budget'
 import type { CategoryDto } from '@/api/dto/category'
 import type { CurrencyDto } from '@/api/dto/currency'
 import type { Id } from '@/api/types'
@@ -2382,7 +2382,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        title={planLimitTarget && isIncomeType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}
+        title={planLimitTarget && isPlannedType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}
       />
 
       <ElementSheet

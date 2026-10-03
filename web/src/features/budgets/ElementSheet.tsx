@@ -10,7 +10,7 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell } from './phoneMonth'
+import { sheetCell, sheetSetsPlan } from './phoneMonth'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -78,13 +78,12 @@ export function ElementSheet({
     planned: t('budgets.page.savings.planned'),
     received: t('budgets.page.sheet.received'),
     saved: t('budgets.page.savings.saved'),
-    balance: t('budgets.page.phone.balance'),
+    balance: t('budgets.page.sheet.balance'),
   }
 
   const figures: Figure[] = []
   let stateSentence: string | null = null
   let actualInBase: string
-  let income = false
   if (target.kind === 'expense') {
     const el = target.element
     const available = displayAvailable(el)
@@ -105,12 +104,11 @@ export function ElementSheet({
     const done = target.kind === 'savings' ? target.row.spent : target.cell.actual
     const closing = target.kind === 'savings' ? target.row.closingBalance : target.cell.closingBalance
     const type = target.kind === 'savings' ? BudgetElementType.SAVINGS : target.cell.element.type
-    income = isIncomeType(type)
     if (type === BudgetElementType.SAVINGS) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
       figures.push({ key: 'saved', label: label.saved, value: actual(done) })
       figures.push({ key: 'balance', label: label.balance, value: closing !== undefined ? fmt(closing) : EMPTY })
-    } else if (income) {
+    } else if (isIncomeType(type)) {
       figures.push({ key: 'planned', label: label.planned, value: fmt(planned) })
       figures.push({ key: 'received', label: label.received, value: actual(done) })
     } else {
@@ -185,7 +183,7 @@ export function ElementSheet({
           <div className="flex gap-3 [&>button]:h-11 [&>button]:flex-1">
             {canSetAmount ? (
               <Button type="button" onClick={onSetAmount}>
-                {income ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
+                {sheetSetsPlan(target) ? t('budgets.page.sheet.set_plan') : t('budgets.modal.set_limit_form.header')}
               </Button>
             ) : null}
             {onShowTransactions ? (

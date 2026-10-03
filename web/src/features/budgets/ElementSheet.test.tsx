@@ -179,7 +179,8 @@ it('a savings row (monthly or plan cell) shows Planned, Saved and the month-end 
   renderSheet({ target: { kind: 'savings', row: saving }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-planned')).toHaveTextContent('100.00')
   expect(screen.getByTestId('sheet-figure-saved')).toHaveTextContent('40.00')
-  expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('Balance at month end1,040.00')
+  expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('Balance1,040.00')
+  expect(screen.getByRole('button', { name: 'Set plan' })).toBeInTheDocument()
 })
 
 it('a savings plan cell shows its closing balance too', () => {
@@ -187,6 +188,7 @@ it('a savings plan cell shows its closing balance too', () => {
   renderSheet({ target: { kind: 'plan', cell: { element: s, planned: '100', actual: '40', closingBalance: '1040' } }, onShowTransactions: undefined })
   expect(screen.getByTestId('sheet-figure-saved')).toHaveTextContent('40.00')
   expect(screen.getByTestId('sheet-figure-balance')).toHaveTextContent('1,040.00')
+  expect(screen.getByRole('button', { name: 'Set plan' })).toBeInTheDocument()
 })
 
 it('renders nothing without a target', () => {

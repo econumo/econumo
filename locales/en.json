@@ -1429,6 +1429,7 @@
         "covered": "Over by {over} — covered by {carry} left from earlier months",
         "transactions": "Transactions",
         "set_plan": "Set plan",
+        "balance": "Balance",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {

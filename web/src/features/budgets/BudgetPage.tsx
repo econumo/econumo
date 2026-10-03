@@ -79,7 +79,7 @@ import { CommentMarker } from './CommentThread'
 import { CommentsPanel } from './CommentsPanel'
 import { CellShell } from './CellShell'
 import { ElementSheet } from './ElementSheet'
-import { planMonthFigures, sheetCell, type SheetTarget } from './phoneMonth'
+import { planMonthFigures, sheetCell, sheetSetsPlan, type SheetTarget } from './phoneMonth'
 import { PhoneMonthView } from './PhoneMonthView'
 import { EnvelopeDialog } from './EnvelopeDialog'
 import { BudgetUpdateDialog } from './BudgetUpdateDialog'
@@ -284,7 +284,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const [deleteFolderTarget, setDeleteFolderTarget] = useState<{ id: Id; name: string } | null>(null)
   const [currencyTarget, setCurrencyTarget] = useState<BudgetElementDto | null>(null)
   const [moveFolderTarget, setMoveFolderTarget] = useState<BudgetElementDto | null>(null)
-  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean }) | null>(null)
+  const [limitTarget, setLimitTarget] = useState<(CellTarget & { viaPlan?: boolean; setsPlan?: boolean }) | null>(null)
   const [transactionsTarget, setTransactionsTarget] = useState<BudgetTransactionsTarget | null>(null)
   const [sheetTarget, setSheetTarget] = useState<SheetTarget | null>(null)
 
@@ -1030,7 +1030,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
-        title={limitTarget?.viaPlan ? t('budgets.page.sheet.set_plan') : undefined}
+        title={limitTarget?.setsPlan ? t('budgets.page.sheet.set_plan') : undefined}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;
@@ -1055,7 +1055,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
         onClose={() => setSheetTarget(null)}
         onSetAmount={() => {
           if (sheetTarget) {
-            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan' })
+            setLimitTarget({ ...sheetCellTarget(sheetTarget), viaPlan: sheetTarget.kind === 'plan', setsPlan: sheetSetsPlan(sheetTarget) })
             setSheetTarget(null)
           }
         }}

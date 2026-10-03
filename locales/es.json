@@ -1429,6 +1429,7 @@
         "covered": "Superado por {over} — cubierto con {carry} sobrante de meses anteriores",
         "transactions": "Transacciones",
         "set_plan": "Definir el plan",
+        "balance": "Saldo",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {

@@ -1429,6 +1429,7 @@
         "covered": "Przekroczono o {over} — pokryte z {carry} pozostałych z wcześniejszych miesięcy",
         "transactions": "Transakcje",
         "set_plan": "Ustaw plan",
+        "balance": "Saldo",
         "converted": "≈ {amount} {currency}"
       },
       "settings": {
