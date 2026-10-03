@@ -947,6 +947,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
       August's Available).
 - [ ] 📱 A category/envelope in another currency carries a small code tag
       (`Travel EUR`) and its amounts are in that currency.
+- [ ] 📱 Month view: the right edges of the Budget/Planned and Spent/Actual
+      figures line up down the whole screen — the section column labels, the
+      Income and Savings lines, every folder header's totals and every row
+      (a carry-over lead-in grows leftwards without moving them).
 - [ ] 📱 Income is one collapsed header like a folder's: "Income", the
       planned total under Budget and the received total under Spent (— in a
       future month); tapping it unfolds
