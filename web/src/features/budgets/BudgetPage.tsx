@@ -1030,7 +1030,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
 
       <SetLimitDialog
         target={limitTarget ? { id: limitTarget.id, name: elementDisplayName(limitTarget.id, limitTarget.name, t), value: limitTarget.budgeted } : null}
-        title={limitTarget?.setsPlan ? t('budgets.page.sheet.set_plan') : undefined}
+        plan={limitTarget?.setsPlan}
         onClose={() => setLimitTarget(null)}
         onCommit={(elementId, amount) => {
           // an income plan lives only in the plan window, so it patches that cache;

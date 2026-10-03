@@ -2382,7 +2382,7 @@ export function PlanSheet({ budget, currencies, userId, editMode }: PlanSheetPro
             commit(elementId, planLimitTarget.month, planLimitTarget.monthIndex, amount)
           }
         }}
-        title={planLimitTarget && isPlannedType(planLimitTarget.el.type) ? t('budgets.page.sheet.set_plan') : undefined}
+        plan={planLimitTarget ? isPlannedType(planLimitTarget.el.type) : false}
       />
 
       <ElementSheet

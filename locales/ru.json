@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "План"
+        },
         "limit": {
           "label": "Бюджет",
           "validation": {

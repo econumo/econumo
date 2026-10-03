@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "计划"
+        },
         "limit": {
           "label": "预算额度",
           "validation": {

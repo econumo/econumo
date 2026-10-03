@@ -1262,6 +1262,9 @@
         }
       },
       "budget_limit": {
+        "plan": {
+          "label": "Piano"
+        },
         "limit": {
           "label": "Budget",
           "validation": {
