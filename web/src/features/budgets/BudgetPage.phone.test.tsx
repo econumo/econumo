@@ -388,3 +388,46 @@ it('a savings row’s Edit opens the account dialog, and is inactive once the ac
   await user.click(screen.getByRole('button', { name: /^Rainy day, planned/ }))
   expect(within(await screen.findByRole('dialog', { name: /^Rainy day · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
 })
+
+const labelBudget = {
+  ...fixtureWireBudget,
+  structure: {
+    ...fixtureWireBudget.structure,
+    labels: [{ id: 'label-kid-a', name: 'kid-A', icon: 'label', isArchived: 0, spent: '50', ownerUserId: 'u1', children: [] }],
+  },
+}
+
+it('a reporting tag’s sheet → Transactions lists that tag’s spending that month', async () => {
+  handlers({ budget: labelBudget })
+  const params = captureTxListParams()
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  await user.click(within(await screen.findByTestId('element-sheet')).getByRole('button', { name: 'Transactions' }))
+  expect(await screen.findByRole('dialog', { name: /kid-A/ })).toBeInTheDocument()
+  await waitFor(() => expect(params()?.get('labelId')).toBe('label-kid-a'))
+  expect(params()?.get('periodStart')).toBe('2026-07-01')
+})
+
+it('a reporting tag’s Edit opens its tag dialog in place of the sheet', async () => {
+  handlers({ budget: labelBudget })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  await user.click(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' }))
+  const dialog = await screen.findByRole('dialog', { name: 'Edit tag' })
+  expect(within(dialog).getByDisplayValue('kid-A')).toBeInTheDocument()
+  expect(within(dialog).getByTestId('kind-locked-note')).toBeInTheDocument()
+  expect(screen.queryByTestId('element-sheet')).toBeNull()
+})
+
+it('someone else’s reporting tag shows Edit inactive', async () => {
+  handlers({ budget: { ...labelBudget, structure: { ...labelBudget.structure, labels: [{ ...labelBudget.structure.labels[0], ownerUserId: 'u9' }] } } })
+  const user = userEvent.setup({ pointerEventsCheck: PointerEventsCheckLevel.Never })
+  renderPage()
+  await user.click(await screen.findByRole('button', { name: 'Reporting tags' }))
+  await user.click(await screen.findByRole('button', { name: /^kid-A, spent/ }))
+  expect(within(await screen.findByRole('dialog', { name: /^kid-A · / })).getByRole('button', { name: 'Edit' })).toBeDisabled()
+})

@@ -624,6 +624,10 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] Budget table: budgeted / spent / available columns; expanding an element
       shows details; totals row; uncategorized and labels sections appear with
       info notes when relevant.
+- [ ] 📱 Section order: the Reporting tags folder is the last expense section,
+      below Uncategorized and Archived (desktop: right above the Savings block;
+      phone: right above the Total card), and still shows when neither of those
+      has anything to show.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
 - [ ] Set a limit via the inline editor on a budgeted amount (desktop) or the
@@ -1015,8 +1019,13 @@ For **each** of categories / tags / payees (and labels inside the tags page):
 - [ ] 📱 Tapping an item's name never opens a sheet: on an envelope/tag with
       children it folds/unfolds them (chevron in place of the icon), on any
       other row — expense, income, savings, a child, a reporting tag — it does
-      nothing. Tapping a child's or a reporting tag's Spent opens its
-      transactions directly.
+      nothing. Tapping a child's Spent opens its transactions directly.
+- [ ] 📱 Tapping a reporting tag's Spent opens its sheet ("kid-A · July"):
+      Spent only, no comments, no "Set budget", and "Transactions", which
+      lists that tag's transactions for the month. The pencil opens the
+      reporting tag's own edit dialog (kind locked) in place of the sheet; it
+      is greyed out for a reporting tag that belongs to another user. A rename
+      shows on the row at once.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
       budget table on /budget, the plan grid in edit mode on /plan (drag to
       reorder, folder menus); "Done" returns to the month view.

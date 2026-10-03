@@ -12,7 +12,7 @@ import type { Id } from '@/api/types'
 import { carryOver, displayAvailable, elementDisplayName, rowState } from './budgetMath'
 import { sortByCreatedAt } from './CommentThread'
 import type { SheetTarget } from './phoneMonth'
-import { sheetCell, sheetElement, sheetSetsPlan } from './phoneMonth'
+import { sheetCell, sheetIcon, sheetSetsPlan } from './phoneMonth'
 import { currentMonth, formatPlanMonth } from './planMath'
 
 const EMPTY = '—'
@@ -74,6 +74,8 @@ export function ElementSheet({
   const foreign = cell.currencyId !== baseCurrencyId
   const future = month > currentMonth()
   const isUncategorized = cell.id === UNCATEGORIZED_ID
+  // a reporting tag is not a budget cell: no comment thread
+  const hasThread = !isUncategorized && target.kind !== 'label'
   const fmtIn = (amount: string, c: CurrencyDto | undefined) =>
     moneyFormat(amount, c, { showCurrency: false, useNativePrecision: false, maxPrecision: c?.fractionDigits ?? 2 })
   // the sheet repeats a foreign item's code beside every amount (the row only tags its name)
@@ -107,6 +109,9 @@ export function ElementSheet({
       }
     }
     actualInBase = el.budgetSpent
+  } else if (target.kind === 'label') {
+    figures.push({ key: 'spent', label: label.spent, value: actual(target.label.spent) })
+    actualInBase = target.label.spent
   } else {
     const planned = target.kind === 'savings' ? target.row.budgeted : target.cell.planned
     const done = target.kind === 'savings' ? target.row.spent : target.cell.actual
@@ -128,7 +133,7 @@ export function ElementSheet({
 
   // the two most recent, oldest first, as the desktop hover preview shows them
   const latest = sortByCreatedAt(comments).slice(-2)
-  const canComment = !isUncategorized && !(commentsReadOnly && comments.length === 0)
+  const canComment = hasThread && !(commentsReadOnly && comments.length === 0)
   const rate = foreign ? exchange(baseCurrencyId, cell.currencyId, '1') : null
 
   return (
@@ -136,7 +141,7 @@ export function ElementSheet({
       open
       onOpenChange={(o) => !o && onClose()}
       title={`${name} · ${monthLabel}`}
-      titleIcon={<EntityIcon name={sheetElement(target).icon} className="text-xl leading-none text-muted-foreground" />}
+      titleIcon={<EntityIcon name={sheetIcon(target)} className="text-xl leading-none text-muted-foreground" />}
       headerAction={
         onEdit ? (
           <Button type="button" variant="ghost" size="icon-sm" aria-label={t('common.button.edit.label')} disabled={!canEdit} onClick={onEdit}>
@@ -177,7 +182,7 @@ export function ElementSheet({
             ) : null}
           </div>
         ) : null}
-        {!isUncategorized ? (
+        {hasThread ? (
           <div className="flex items-start gap-2 border-t pt-3">
             {latest.length > 0 ? (
               <div className="flex min-w-0 flex-1 flex-col gap-1">
