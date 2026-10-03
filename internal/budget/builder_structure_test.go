@@ -58,11 +58,11 @@ func (s *spendingStub) LimitsByMonth(context.Context, vo.Id, time.Time, time.Tim
 	return nil, nil
 }
 
-func (s *spendingStub) SavingsByMonth(context.Context, []vo.Id, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
+func (s *spendingStub) AccountsNetByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
 	return nil, nil
 }
 
-func (s *spendingStub) AccountsNetByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
+func (s *spendingStub) AccountsIncomeExpenseByMonth(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error) {
 	return nil, nil
 }
 

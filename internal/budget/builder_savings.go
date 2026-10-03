@@ -68,7 +68,7 @@ func savingsAccountIDs(f filters) ([]vo.Id, error) {
 	return out, nil
 }
 
-// savingsConvertKey resolves one SavingsByMonth row to its toConvert bucket
+// savingsConvertKey resolves one AccountsNetByMonth row to its toConvert bucket
 // key and the [start,end) rate period that row's amount was earned in — the
 // monthly builder always returns the same key/period (one period, the whole
 // call), the plan builder returns a distinct key/period per window month, and
@@ -79,7 +79,7 @@ type savingsConvertKey func(row model.SavingsMonthRow) (key string, start, end t
 // single bulk conversion, account currency -> element currency, over
 // [from,to). keyFor is what differs between the monthly and plan builders
 // (see savingsConvertKey); everything else — resolving the rows, loading
-// SavingsByMonth once, and building the ConvertItem — is shared.
+// AccountsNetByMonth once, and building the ConvertItem — is shared.
 func (s *Service) addSavings(ctx context.Context, f filters, options map[string]elementOption, from, to time.Time,
 	keyFor savingsConvertKey, toConvert map[string][]model.ConvertItem) ([]savingsRow, map[string]bool, error) {
 	hasActual := map[string]bool{}
@@ -91,7 +91,7 @@ func (s *Service) addSavings(ctx context.Context, f filters, options map[string]
 	if err != nil {
 		return nil, nil, err
 	}
-	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, from, to)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, from, to)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -188,7 +188,7 @@ func (s *Service) addSavingsPending(ctx context.Context, b *budgetAggregate, f f
 			planned[l.ExternalID+"_"+l.Month] = vo.NewDecimal(l.Amount)
 		}
 	}
-	actual, err := s.read.SavingsByMonth(ctx, ids, f.everydayAccountIDs, cur, f.periodEnd)
+	actual, err := s.read.AccountsNetByMonth(ctx, ids, cur, f.periodEnd)
 	if err != nil {
 		return err
 	}
@@ -292,8 +292,7 @@ func (s *Service) addPlanSavings(ctx context.Context, f filters, options map[str
 
 // addPlanSavingsClosings queues each savings row's booked balance at the end of
 // every window month: the balance before the window plus the net change of the
-// months through it, every booked transaction counted (interest and
-// savings<->savings moves included, unlike the row's actual). The client adds
+// months through it. The client adds
 // the unmet plans of the current and later months on top.
 func (s *Service) addPlanSavingsClosings(ctx context.Context, f filters, rows []savingsRow, monthsList []time.Time, monthIdx map[string]int, toConvert map[string][]model.ConvertItem) error {
 	ids, err := savingsAccountIDs(f)
@@ -418,16 +417,17 @@ func savingsCurrencies(f filters, budgetCurrencyID vo.Id) []string {
 	return rest
 }
 
-// buildSavingsFlows sums AccountsNetByMonth per (month, account currency),
-// ordered by month, then budget currency first, then currency id. Months
-// without activity have no entry.
-func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time) ([]model.PlanSavingsFlowResult, error) {
+// buildSavingsFlows sums byMonth's per-account rows over the savings accounts
+// per (month, account currency), ordered by month, then budget currency first,
+// then currency id. Months without activity have no entry.
+func (s *Service) buildSavingsFlows(ctx context.Context, budgetCurrencyID vo.Id, f filters, from, to time.Time,
+	byMonth func(context.Context, []vo.Id, time.Time, time.Time) ([]model.SavingsMonthRow, error)) ([]model.PlanSavingsFlowResult, error) {
 	out := []model.PlanSavingsFlowResult{}
 	ids, err := savingsAccountIDs(f)
 	if err != nil || len(ids) == 0 {
 		return out, err
 	}
-	rows, err := s.read.AccountsNetByMonth(ctx, ids, from, to)
+	rows, err := byMonth(ctx, ids, from, to)
 	if err != nil {
 		return nil, err
 	}

@@ -12685,6 +12685,12 @@ const docTemplate = `{
                         "$ref": "#/definitions/model.PlanSavingsFlowResult"
                     }
                 },
+                "savingsIncomeExpense": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.PlanSavingsFlowResult"
+                    }
+                },
                 "savingsOpeningBalances": {
                     "type": "array",
                     "items": {

@@ -30,7 +30,9 @@ type filters struct {
 	tags               map[string]model.TagMeta
 	labels             map[string]model.LabelMeta
 	// savingsAccounts are the members flagged savings in this budget, in
-	// membership order; everydayAccountIDs is every other member.
+	// membership order; everydayAccountIDs is every other member. Category,
+	// tag and label figures count the everyday accounts only: income and
+	// expenses booked on a savings account belong to its savings row.
 	savingsAccounts    []model.AccountView
 	everydayAccountIDs []vo.Id
 }

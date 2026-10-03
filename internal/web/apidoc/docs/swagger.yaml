@@ -275,6 +275,10 @@ definitions:
         items:
           $ref: '#/definitions/model.PlanSavingsFlowResult'
         type: array
+      savingsIncomeExpense:
+        items:
+          $ref: '#/definitions/model.PlanSavingsFlowResult'
+        type: array
       savingsOpeningBalances:
         items:
           $ref: '#/definitions/model.OpeningBalanceResult'
