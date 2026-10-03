@@ -4,10 +4,10 @@ export type BudgetMode = 'budget' | 'plan'
 
 const VIEWS: { mode: BudgetMode; labelKey: string }[] = [
   { mode: 'budget', labelKey: 'budgets.page.plan.toggle.month' },
-  { mode: 'plan', labelKey: 'budgets.page.plan.toggle.months' },
+  { mode: 'plan', labelKey: 'budgets.page.plan.toggle.plan' },
 ]
 
-/** Month / Months as plain words at the start of the month navigation row: the views
+/** Month / Plan as plain words at the start of the month navigation row: the views
  *  decide how many months show, so they sit with the months they control. */
 export function ViewSwitch({ mode, onSwitch }: { mode: BudgetMode; onSwitch: (mode: BudgetMode) => void }) {
   const { t } = useTranslation()

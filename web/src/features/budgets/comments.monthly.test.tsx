@@ -47,12 +47,12 @@ function mockTabletViewport() {
   }))
 }
 
-function renderPage(initialPath: '/budget' | '/budget/months' = '/budget') {
+function renderPage(initialPath: '/budget' | '/budget/plan' = '/budget') {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
   const router = createMemoryRouter(
     [
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
-      { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget/plan', element: <BudgetPage key="plan" mode="plan" /> },
     ],
     { initialEntries: [initialPath] },
   )
@@ -73,7 +73,7 @@ function registerMonthlyHandlers(wireBudget: unknown = fixtureWireBudget) {
   )
 }
 
-function renderGuestPage(initialPath: '/budget' | '/budget/months' = '/budget') {
+function renderGuestPage(initialPath: '/budget' | '/budget/plan' = '/budget') {
   registerMonthlyHandlers(guestWireBudget)
   return renderPage(initialPath)
 }

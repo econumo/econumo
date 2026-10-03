@@ -144,7 +144,7 @@ type CellTarget = Pick<BudgetElementDto, 'id' | 'name' | 'budgeted'>
 
 const BUDGET_MODE_ROUTE: Record<BudgetMode, string> = {
   budget: RouterPage.BUDGET,
-  plan: RouterPage.BUDGET_MONTHS,
+  plan: RouterPage.BUDGET_PLAN,
 }
 
 // The section is a sortable item itself (folder reorder); the grip lives in
@@ -256,7 +256,7 @@ export function BudgetPage({ mode }: { mode: BudgetMode }) {
   const changeCurrency = useChangeElementCurrency()
   const createBudget = useCreateBudget()
   // the month view's income, Balance and Total savings (phone and desktop alike): the
-  // Months grid's own figures for the selected month; null until that month's window
+  // Plan view's own figures for the selected month; null until that month's window
   // has really loaded.
   // The window starts no later than the current month: the server books only
   // what precedes the window, so a future month's Balance needs every unmet plan

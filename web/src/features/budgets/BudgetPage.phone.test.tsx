@@ -70,11 +70,11 @@ function handlers({ budget = fixtureWireBudget, plan = planHandler(), accounts =
   return { setLimitBody: () => setLimitBody }
 }
 
-function renderPage(path: '/budget' | '/budget/months' = '/budget') {
+function renderPage(path: '/budget' | '/budget/plan' = '/budget') {
   const router = createMemoryRouter(
     [
       { path: '/budget', element: <BudgetPage key="budget" mode="budget" /> },
-      { path: '/budget/months', element: <BudgetPage key="plan" mode="plan" /> },
+      { path: '/budget/plan', element: <BudgetPage key="plan" mode="plan" /> },
     ],
     { initialEntries: [path] },
   )
@@ -94,21 +94,21 @@ beforeEach(() => {
   useBudgetPeriodStore.setState({ selectedDate: '2026-07-01', unfoldedElements: {}, foldBudgetId: null, planHideEmpty: false })
 })
 
-it('renders the single month view on /budget and on /budget/months alike', async () => {
+it('renders the single month view on /budget and on /budget/plan alike', async () => {
   handlers()
   renderPage('/budget')
   expect(await screen.findByTestId('phone-month-view')).toBeInTheDocument()
   expect(screen.queryByTestId('budget-table')).toBeNull()
 })
 
-it('/budget/months on a phone is the same month view, not the plan grid', async () => {
+it('/budget/plan on a phone is the same month view, not the plan grid', async () => {
   handlers()
-  renderPage('/budget/months')
+  renderPage('/budget/plan')
   expect(await screen.findByTestId('phone-month-view')).toBeInTheDocument()
   expect(screen.queryByTestId('plan-sheet')).toBeNull()
 })
 
-it('has no Month/Months switch anywhere, and the title is not all caps', async () => {
+it('has no Month/Plan switch anywhere, and the title is not all caps', async () => {
   handlers()
   const user = userEvent.setup()
   renderPage()
@@ -120,10 +120,10 @@ it('has no Month/Months switch anywhere, and the title is not all caps', async (
   expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
-it('/budget/months on a phone has no Hide empty rows toggle', async () => {
+it('/budget/plan on a phone has no Hide empty rows toggle', async () => {
   handlers()
   const user = userEvent.setup()
-  renderPage('/budget/months')
+  renderPage('/budget/plan')
   await screen.findByTestId('phone-month-view')
   await user.click(screen.getByRole('button', { name: 'Configure' }))
   expect(await screen.findByRole('menuitem', { name: 'Edit structure' })).toBeInTheDocument()

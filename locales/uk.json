@@ -1345,7 +1345,7 @@
       "plan": {
         "toggle": {
           "month": "Місяць",
-          "months": "Місяці"
+          "plan": "План"
         },
         "section": {
           "income": "Доходи",

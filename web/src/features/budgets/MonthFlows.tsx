@@ -30,7 +30,7 @@ const cellOpts = (currency: CurrencyDto | undefined): MoneyFormatOptions => ({
 })
 
 /** The section line: open, it names the section's columns; folded, it carries the
- *  section's sums in those columns. The fold state is the one the Months grid uses. */
+ *  section's sums in those columns. The fold state is the one the Plan view uses. */
 export function MonthSectionHeader({
   foldKey,
   label,

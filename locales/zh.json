@@ -1345,7 +1345,7 @@
       "plan": {
         "toggle": {
           "month": "单月",
-          "months": "多月"
+          "plan": "计划"
         },
         "section": {
           "income": "收入",

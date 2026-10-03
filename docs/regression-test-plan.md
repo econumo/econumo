@@ -693,14 +693,14 @@ and on tablet/phone only with a hardware keyboard.
       below Uncategorized and Archived (desktop: right above the Total row;
       phone: right above the Total card), and still shows when neither of those
       has anything to show.
-- [ ] Routes: `/budget` opens the Month view and `/budget/months` the Months
-      grid. "Month" / "Months" (desktop and tablet) are plain words at the
+- [ ] Routes: `/budget` opens the Month view and `/budget/plan` the Plan
+      grid. "Month" / "Plan" (desktop and tablet) are plain words at the
       start of the month row, the current one underlined: left of the month
-      strip in the Month view, left of the ‹ › arrows in the Months grid. They
+      strip in the Month view, left of the ‹ › arrows in the Plan grid. They
       swap between the two; the page header and the Configure menu carry no
       view switch.
       Opening the old `/plan` address (bookmark, history) lands on
-      `/budget/months`, and Back does not return to `/plan`.
+      `/budget/plan`, and Back does not return to `/plan`.
 - [ ] Month view (desktop and tablet) uses the phone's order: Income
       (Planned · Received), Savings (Planned · Saved · Balance, only with
       savings accounts), Expenses (Budget · Spent · Available: folders, No
@@ -708,13 +708,13 @@ and on tablet/phone only with a hardware keyboard.
       and the lines Income, Expenses, Transfers (only when not zero),
       Savings, Total savings and Balance at month end. Each section header
       folds its section; a folded header shows the section's sums in its
-      columns, and the fold carries over to the same section of the Months
+      columns, and the fold carries over to the same section of the Plan
       grid (and back) and survives a reload. A future month shows "—" for
       received, saved and the Income / Expenses / Savings lines.
 - [ ] Month view: the income and savings Planned amounts edit inline on a
       desktop (popover) and open the item sheet on a tablet; Received and
       Saved open the transactions dialog (except income Uncategorized);
-      Balance, Total savings and the Income line match the Months grid's
+      Balance, Total savings and the Income line match the Plan grid's
       figures for the same month.
 - [ ] Element visibility rule: a category/tag/envelope with **either** spending
       or a limit (incl. carried over) is visible; with neither it is not.
@@ -734,7 +734,7 @@ and on tablet/phone only with a hardware keyboard.
       where the strip scrolls by touch): they PAN the strip only — the
       selected month and the table below never change; panning to either
       edge keeps extending the window (past months included).
-- [ ] 📱 The budget header shows no currency chips on /budget or /budget/months, and
+- [ ] 📱 The budget header shows no currency chips on /budget or /budget/plan, and
       no "Spending progress" widget appears anywhere on the page.
 - [ ] **Edit structure** mode 📱: create folder, drag elements between folders,
       per-element menu (change currency, move to folder, edit envelope, delete
@@ -1007,8 +1007,8 @@ and on tablet/phone only with a hardware keyboard.
 ### Phone month view 📱
 
 - [ ] 📱 On a phone (< 640 px, the iOS home-screen PWA included) `/budget` and
-      `/budget/months` show the same single month view: header with the budget name in
-      normal case, the month strip, and no Month/Months switch in the settings
+      `/budget/plan` show the same single month view: header with the budget name in
+      normal case, the month strip, and no Month/Plan switch in the settings
       menu. At the top, one card under a "USD · Planned · Actual" heading
       (the budget's currency code at the left) holds an
       "Income" line (planned, received) and a "Savings" line (planned,
@@ -1116,7 +1116,7 @@ and on tablet/phone only with a hardware keyboard.
       is greyed out for a reporting tag that belongs to another user. A rename
       shows on the row at once.
 - [ ] 📱 "Edit structure" on a phone shows the route's structure editor — the
-      budget table on /budget, the plan grid in edit mode on /budget/months (drag to
+      budget table on /budget, the plan grid in edit mode on /budget/plan (drag to
       reorder, folder menus); "Done" returns to the month view.
 
 ## 10. Budget lifecycle & list

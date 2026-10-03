@@ -118,7 +118,7 @@ export interface PlanSheetProps {
   currencies: CurrencyDto[]
   userId: Id | undefined
   editMode: boolean
-  /** the Month / Months switch, at the start of the month header row */
+  /** the Month / Plan switch, at the start of the month header row */
   viewSwitch?: ReactNode
 }
 

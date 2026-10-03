@@ -1345,7 +1345,7 @@
       "plan": {
         "toggle": {
           "month": "Maand",
-          "months": "Maanden"
+          "plan": "Plan"
         },
         "section": {
           "income": "Inkomsten",
