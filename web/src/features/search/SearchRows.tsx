@@ -1,4 +1,6 @@
+import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { CommandItem } from '@/components/ui/command'
 import { EntityIcon } from '@/components/EntityIcon'
 import { UserAvatar } from '@/components/UserAvatar'
@@ -100,5 +102,19 @@ export function TransactionResult({ transaction, onSelect }: { transaction: View
         <TransactionRow transaction={transaction} />
       </div>
     </CommandItem>
+  )
+}
+
+export function DrillHeader({ type, item, onBack, className }: { type: ClassificationType; item: ClassificationItem; onBack: () => void; className?: string }) {
+  const { t } = useTranslation()
+  return (
+    <div data-testid="search-drill-header" className={`flex items-center gap-2 pb-1 ${className ?? ''}`}>
+      <Button type="button" variant="ghost" size="icon" aria-label={t('search.back')} onClick={onBack}>
+        <ArrowLeft className="size-4" />
+      </Button>
+      <EntityIcon name={classificationIcon(type, item)} className="text-lg text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate font-medium">{item.name}</span>
+      <ClassificationActionsMenu type={type} item={item} />
+    </div>
   )
 }

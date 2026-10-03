@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { delay, http, HttpResponse } from 'msw'
 import { server } from '@/test/msw'
-import { coreHandlers, fixtureCategories, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
+import { coreHandlers, fixtureAccounts, fixtureCategories, fixtureOwner, fixtureTransactions } from '@/test/fixtures'
 import { useUiStore } from '@/app/uiStore'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { GlobalSearchDialog } from './GlobalSearchDialog'
@@ -231,4 +231,179 @@ it('an outside click still dismisses the search after a row menu was closed with
   expect(useUiStore.getState().searchOpen).toBe(true)
   await user.click(document.querySelector('[data-slot="dialog-overlay"]')!)
   expect(useUiStore.getState().searchOpen).toBe(false)
+})
+
+describe('drill-down', () => {
+  const header = () => screen.queryByTestId('search-drill-header')
+
+  async function drillIntoFood(user: ReturnType<typeof userEvent.setup>) {
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'foo')
+    await user.click(await screen.findByTestId('search-category-cat-food'))
+    await waitFor(() => expect(header()).toBeInTheDocument())
+  }
+
+  it('selecting a category shows its header with Back and only its transactions', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    expect(header()).toHaveTextContent('Food')
+    expect(within(header()!).getByRole('button', { name: 'Back' })).toBeInTheDocument()
+    expect(within(header()!).getByRole('button', { name: 'actions Food' })).toBeInTheDocument()
+    expect(input()).toHaveValue('')
+    await waitFor(() => expect(screen.queryByTestId('tx-t2')).not.toBeInTheDocument())
+    expect(screen.getByTestId('tx-t1')).toBeInTheDocument()
+  })
+
+  it('typing inside the drill-down narrows within the item transactions', async () => {
+    const pizza = { ...fixtureTransactions[0], id: 't3', description: 'pizza night', date: '2026-07-03 12:00:00' }
+    server.use(...coreHandlers({ transactions: [...fixtureTransactions, pizza] }))
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    expect(await screen.findByTestId('tx-t3')).toBeInTheDocument()
+    expect(screen.getByTestId('tx-t1')).toBeInTheDocument()
+    await user.type(input(), 'pizza')
+    await waitFor(() => expect(screen.queryByTestId('tx-t1')).not.toBeInTheDocument())
+    expect(screen.getByTestId('tx-t3')).toBeInTheDocument()
+    expect(header()).toBeInTheDocument()
+  })
+
+  it('Back returns to the results with the previous query restored', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    await user.click(within(header()!).getByRole('button', { name: 'Back' }))
+    expect(header()).not.toBeInTheDocument()
+    expect(input()).toHaveValue('foo')
+    expect(await screen.findByTestId('search-category-cat-food')).toBeInTheDocument()
+  })
+
+  it('Backspace on an empty input goes back; on a non-empty one it only edits', async () => {
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    await user.type(input(), 'x')
+    await user.keyboard('{Backspace}')
+    expect(input()).toHaveValue('')
+    expect(header()).toBeInTheDocument()
+    await user.keyboard('{Backspace}')
+    expect(header()).not.toBeInTheDocument()
+    expect(input()).toHaveValue('foo')
+  })
+
+  it('a label drill-down shows only transactions carrying that label', async () => {
+    const labelled = fixtureTransactions.map((tx) => (tx.id === 't1' ? { ...tx, labelIds: ['label1'] } : { ...tx, labelIds: [] }))
+    server.use(...coreHandlers({ transactions: labelled }))
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'health')
+    await user.click(await screen.findByTestId('search-label-label1'))
+    await waitFor(() => expect(header()).toHaveTextContent('health'))
+    await waitFor(() => expect(screen.queryByTestId('tx-t2')).not.toBeInTheDocument())
+    expect(screen.getByTestId('tx-t1')).toBeInTheDocument()
+  })
+
+  it('deleting the drilled category from its header returns to the results', async () => {
+    let deleted = false
+    server.use(
+      http.post('*/api/v1/category/delete-category', () => {
+        deleted = true
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+      http.get('*/api/v1/category/get-category-list', () =>
+        HttpResponse.json({ success: true, message: '', data: { items: deleted ? fixtureCategories.filter((c) => c.id !== 'cat-food') : fixtureCategories } }),
+      ),
+    )
+    const user = userEvent.setup()
+    renderDialog()
+    await drillIntoFood(user)
+    await user.click(within(header()!).getByRole('button', { name: 'actions Food' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await user.click(await screen.findByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(deleted).toBe(true))
+    await waitFor(() => expect(header()).not.toBeInTheDocument())
+    expect(input()).toHaveValue('foo')
+    expect(useUiStore.getState().searchOpen).toBe(true)
+  })
+})
+
+describe('account actions from a result', () => {
+  const partner = { id: 'u2', avatar: 'face:amber', name: 'Bob' }
+  const shared = {
+    ...fixtureAccounts[0], id: 'a-shared', name: 'Joint', owner: partner,
+    sharedAccess: [{ user: fixtureOwner, role: 'user' }],
+  }
+
+  function accountHandlers() {
+    const posted: unknown[] = []
+    let accounts = [...fixtureAccounts, shared]
+    server.use(
+      http.get('*/api/v1/account/get-account-list', () => HttpResponse.json({ success: true, message: '', data: { items: accounts } })),
+      http.post('*/api/v1/account/delete-account', async ({ request }) => {
+        const { id } = (await request.json()) as { id: string }
+        posted.push(id)
+        accounts = accounts.filter((a) => a.id !== id)
+        return HttpResponse.json({ success: true, message: '', data: {} })
+      }),
+    )
+    return posted
+  }
+
+  it('an owner Delete keeps the search open and drops the row', async () => {
+    const posted = accountHandlers()
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'bank')
+    await user.click(await screen.findByRole('button', { name: 'account actions Bank' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Delete' }))
+    await user.click(await screen.findByRole('button', { name: 'Delete' }))
+    await waitFor(() => expect(posted).toEqual(['a2']))
+    await waitFor(() => expect(screen.queryByTestId('search-account-a2')).not.toBeInTheDocument())
+    expect(useUiStore.getState().searchOpen).toBe(true)
+  })
+
+  it('a shared-account Decline keeps the search open and drops the row', async () => {
+    const posted = accountHandlers()
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    await user.type(input(), 'joint')
+    await user.click(await screen.findByRole('button', { name: 'account actions Joint' }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Decline' }))
+    await user.click(await screen.findByRole('button', { name: 'Decline' }))
+    await waitFor(() => expect(posted).toEqual(['a-shared']))
+    await waitFor(() => expect(screen.queryByTestId('search-account-a-shared')).not.toBeInTheDocument())
+    expect(useUiStore.getState().searchOpen).toBe(true)
+  })
+})
+
+describe('layout', () => {
+  const phone = (matches: boolean) => {
+    window.matchMedia = vi.fn().mockImplementation((q: string) => ({
+      matches, media: q, addEventListener: vi.fn(), removeEventListener: vi.fn(),
+    }))
+  }
+
+  it('on a phone the full-screen search has a close button and an uncapped list', async () => {
+    phone(true)
+    const user = userEvent.setup()
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    const list = document.querySelector('[cmdk-list]')!
+    expect(list.className).toContain('max-h-none')
+    expect(list.className).toContain('sm:max-h-[70vh]')
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    expect(useUiStore.getState().searchOpen).toBe(false)
+  })
+
+  it('on desktop the palette is wide and has no corner close button', async () => {
+    phone(false)
+    renderDialog()
+    await screen.findByTestId('tx-t1')
+    expect(document.querySelector('[data-slot="dialog-content"]')?.className).toContain('sm:max-w-2xl')
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+  })
 })
