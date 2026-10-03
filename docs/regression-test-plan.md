@@ -243,31 +243,6 @@ navigation (single-pane vs sidebar).
       different origin: the password form is shown again (the provider buttons
       are not), since the serving instance's setting says nothing about that
       backend.
-- [ ] 📱 Connecting an app over MCP (consent page at `/oauth/authorize?...`):
-      signed in, the page shows the app's name, the host it will send you back
-      to (or "an app on this computer" for a loopback client), the full-access
-      warning and "Signed in as <email>"; "Allow" sends the browser to the
-      app's callback, "Deny" sends it back with an access-denied result.
-- [ ] Opening the consent link while signed out lands on Sign in first (also
-      after Google/Apple/SSO sign-in and the email-verification step), then
-      returns to the same consent page; the remembered link is dropped after 10
-      minutes, after Allow/Deny, and an ordinary page is never remembered.
-- [ ] A consent link for an unknown app or a redirect the app never registered
-      shows the server's error and no buttons; one with only a malformed
-      parameter shows "This app sent an invalid request" and does NOT leave the
-      page until you press "Return to <host>" / "Return to the app".
-- [ ] Read-only account: "Allow" shows that the account is read-only and
-      "Return to the app" sends the app back with an access-denied result.
-- [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
-      name, where it sends you back to ("an app on this computer" for a loopback
-      client), when it was connected and when it was last used.
-- [ ] Revoke on a connected app asks for confirmation naming the app; confirming
-      removes it from the list and the app can no longer reach your data (its
-      next MCP call is rejected and it must be authorized again); Cancel keeps it.
-      Works on a read-only account too.
-- [ ] With no connected apps the page shows the MCP address
-      (`<your Econumo URL>/mcp`) with a Copy button (the button shows "Copied")
-      and a one-line hint on adding it to Claude or Codex.
 
 ## 3. Onboarding (fresh user)
 
@@ -1237,6 +1212,73 @@ User C sees none of it.
       stored email to match; the same drift on an account that has a
       password, a second linked provider, or where the new email already
       belongs to another user leaves the stored email unchanged.
+
+## 12a. Connected apps (MCP OAuth)
+
+Needs `ECONUMO_URL` set (for a local run, `ECONUMO_URL=http://localhost:8181`)
+and an MCP client — Claude Code (`claude mcp add --transport http econumo
+<URL>/mcp`, then `/mcp` > Authenticate) is the easiest. Setup guide:
+`docs/mcp-setup.md`.
+
+- [ ] Discovery: `<URL>/.well-known/oauth-authorization-server` and
+      `<URL>/.well-known/oauth-protected-resource/mcp` return JSON naming `<URL>`
+      (no double slash when `ECONUMO_URL` is set with a trailing slash); an
+      unauthenticated `POST <URL>/mcp` answers 401 with a `WWW-Authenticate`
+      header pointing at the protected-resource document. With `ECONUMO_URL`
+      unset, the well-known, `/oauth/register` and `/oauth/token` routes answer a
+      JSON 404 and `/mcp` sends no `WWW-Authenticate`.
+- [ ] 📱 Signed in, the consent page (`/oauth/authorize?...`) is headed "Connect
+      an app to Econumo" and shows the app's name followed by "wants to access
+      your Econumo account.", "After you allow, you'll be sent to <host>." for a
+      web client, "It will be able to read and change all of your Econumo data.",
+      "Signed in as <email>" with "Not you? Switch account", and the Allow and
+      Deny buttons.
+- [ ] 📱 A client that registered a loopback redirect (Claude Code, Codex) shows
+      "After you allow, you'll return to an app on this computer." instead of a
+      host.
+- [ ] "Not you? Switch account" signs out and returns to the same consent page
+      after signing in as the other user.
+- [ ] Allow sends the browser to the client's callback; the client finishes
+      connecting and its MCP tools (for example listing accounts) return the
+      signed-in user's data.
+- [ ] Deny sends the browser back to the client with an `access_denied` result;
+      the client reports that the sign-in was refused and nothing appears under
+      Connected apps.
+- [ ] Opening the consent link while signed out lands on Sign in first (also
+      after Google/Apple/SSO sign-in and the email-verification step), then
+      returns to the same consent page; the remembered link is dropped after 10
+      minutes, after Allow/Deny, and an ordinary page is never remembered.
+- [ ] A consent link for an unknown client or a redirect URI the client never
+      registered shows the server's error and no buttons, and does not redirect.
+      One with only a malformed parameter (missing PKCE challenge, wrong
+      `resource`, bad `scope`) shows "This app sent an invalid request" and does
+      NOT leave the page until you press "Return to <host>" (or "Return to the
+      app" for a loopback client).
+- [ ] Read-only account: pressing Allow shows "Your account is read-only, so apps
+      can't be connected." and "Return to the app" sends the client back with an
+      `access_denied` result; Deny works on a read-only account too.
+- [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
+      name, "Sends you back to <host>" (or "Runs on this computer" for a
+      loopback client), "Connected <date>" and "Last used <when>".
+- [ ] Revoke on a connected app asks for confirmation ("<app> will lose access
+      to your Econumo data."); confirming removes it from the list and the
+      client's next tool call is rejected with 401 and it prompts to sign in
+      again; Cancel keeps it. Works on a read-only account too.
+- [ ] With no connected apps the page shows "No apps are connected yet.", the MCP
+      address (`<your Econumo URL>/mcp`) with a Copy button (the button shows
+      "Copied") and the hint on adding it to Claude or Codex.
+- [ ] An MCP-issued token works only on `/mcp`: using the same token against a
+      REST route (for example `get-user-data`) answers 401 "Invalid access
+      token".
+- [ ] After an hour the client keeps working without asking you to sign in again
+      (silent refresh).
+- [ ] Resetting the password through the emailed link (or the CLI
+      `user:change-password`) disconnects every connected app: the list is empty
+      and each client's next call is rejected.
+- [ ] Changing the password in Settings > Profile keeps connected apps connected;
+      their next tool call still works.
+- [ ] `user:deactivate` for the account makes every connected app's next call
+      fail.
 
 ## 13. Cross-cutting & platform
 

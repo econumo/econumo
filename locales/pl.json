@@ -1826,7 +1826,7 @@
     },
     "apps": {
       "title": "Połączone aplikacje",
-      "description": "Aplikacje takie jak Claude lub Codex, którym pozwoliłeś korzystać z danych Econumo. Cofnięcie dostępu aplikacji natychmiast ją wylogowuje.",
+      "description": "Aplikacje takie jak Claude lub Codex, którym udzielono dostępu do Twoich danych w Econumo. Cofnięcie dostępu aplikacji natychmiast ją wylogowuje.",
       "empty": "Nie połączono jeszcze żadnych aplikacji.",
       "howTo": "W Claude lub Codex dodaj własny konektor lub serwer MCP z tym adresem i zaloguj się, gdy zostaniesz o to poproszony.",
       "copy": "Kopiuj",

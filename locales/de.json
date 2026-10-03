@@ -1810,19 +1810,19 @@
   "authserver": {
     "consent": {
       "title": "App mit Econumo verbinden",
-      "wantsAccess": "möchte auf dein Econumo-Konto zugreifen.",
-      "redirect": "Nach deiner Zustimmung wirst du zu {host} weitergeleitet.",
-      "loopback": "Nach deiner Zustimmung kehrst du zu einer App auf diesem Computer zurück.",
-      "fullAccess": "Sie kann alle deine Econumo-Daten lesen und ändern.",
+      "wantsAccess": "möchte auf Ihr Econumo-Konto zugreifen.",
+      "redirect": "Nach Ihrer Zustimmung werden Sie zu {host} weitergeleitet.",
+      "loopback": "Nach Ihrer Zustimmung kehren Sie zu einer App auf diesem Computer zurück.",
+      "fullAccess": "Die App kann alle Ihre Econumo-Daten lesen und ändern.",
       "signedInAs": "Angemeldet als {email}",
-      "switchAccount": "Nicht du? Konto wechseln",
+      "switchAccount": "Nicht Sie? Konto wechseln",
       "allow": "Erlauben",
       "deny": "Ablehnen",
       "invalidTitle": "Diese App hat eine ungültige Anfrage gesendet",
-      "invalidBody": "Econumo kann sie nicht verbinden. Kehre zur App zurück und versuche es erneut.",
+      "invalidBody": "Econumo kann sie nicht verbinden. Kehren Sie zur App zurück und versuchen Sie es erneut.",
       "returnToHost": "Zurück zu {host}",
       "returnToApp": "Zurück zur App",
-      "readonly": "Dein Konto ist schreibgeschützt, daher können keine Apps verbunden werden."
+      "readonly": "Ihr Konto ist schreibgeschützt, daher können keine Apps verbunden werden."
     },
     "apps": {
       "title": "Verbundene Apps",
@@ -1936,8 +1936,8 @@
     },
     "authserver": {
       "disabled": "Das Verbinden von Apps ist auf diesem Server nicht verfügbar.",
-      "client_not_found": "Diese App ist nicht registriert. Starte die Verbindung erneut in der App.",
-      "redirect_uri_mismatch": "Dieser Anmeldelink ist für diese App nicht gültig. Starte die Verbindung erneut in der App.",
+      "client_not_found": "Diese App ist nicht registriert. Starten Sie die Verbindung erneut in der App.",
+      "redirect_uri_mismatch": "Dieser Anmeldelink ist für diese App nicht gültig. Starten Sie die Verbindung erneut in der App.",
       "grant_not_found": "Verbundene App nicht gefunden."
     },
     "oauth": {
