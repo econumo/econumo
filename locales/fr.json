@@ -1823,6 +1823,21 @@
       "returnToHost": "Retourner vers {host}",
       "returnToApp": "Retourner à l'application",
       "readonly": "Votre compte est en lecture seule : il n'est pas possible de connecter des applications."
+    },
+    "apps": {
+      "title": "Applications connectées",
+      "description": "Les applications comme Claude ou Codex auxquelles vous avez autorisé l'accès à vos données Econumo. Révoquer une application la déconnecte immédiatement.",
+      "empty": "Aucune application n'est encore connectée.",
+      "howTo": "Dans Claude ou Codex, ajoutez un connecteur personnalisé ou un serveur MCP avec cette adresse, puis connectez-vous lorsque c'est demandé.",
+      "copy": "Copier",
+      "copied": "Copié",
+      "revoke": "Révoquer",
+      "revokeConfirm": "{name} perdra l'accès à vos données Econumo.",
+      "connected": "Connectée le {date}",
+      "lastUsed": "Dernière utilisation {when}",
+      "loopback": "S'exécute sur cet ordinateur",
+      "returnsTo": "Vous renvoie vers {host}",
+      "menuItem": "Applications connectées"
     }
   },
   "errors": {

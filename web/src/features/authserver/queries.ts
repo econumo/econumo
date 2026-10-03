@@ -1,6 +1,7 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import * as authserverApi from '@/api/authserver'
 import type { AuthorizationRequestDto } from '@/api/dto/authserver'
+import type { Id } from '@/api/types'
 import { METRICS, trackEvent } from '@/lib/metrics'
 import { clearPostLoginRedirect } from './postLoginRedirect'
 
@@ -51,6 +52,25 @@ export function useDeclineAuthorization() {
     onSuccess: ({ redirectUrl }) => {
       clearPostLoginRedirect()
       window.location.assign(redirectUrl)
+    },
+  })
+}
+
+// Under the 'authserver' root so queryPersist keeps it out of the stored cache
+// along with the rest of this feature.
+const connectedAppsKey = ['authserver', 'connected-apps'] as const
+
+export function useConnectedApps() {
+  return useQuery({ queryKey: connectedAppsKey, queryFn: authserverApi.getConnectedApps })
+}
+
+export function useRevokeConnectedApp() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (id: Id) => authserverApi.revokeConnectedApp(id),
+    onSuccess: () => {
+      trackEvent(METRICS.CONNECTED_APP_REVOKE, {})
+      return queryClient.invalidateQueries({ queryKey: connectedAppsKey })
     },
   })
 }

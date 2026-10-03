@@ -258,6 +258,16 @@ navigation (single-pane vs sidebar).
       page until you press "Return to <host>" / "Return to the app".
 - [ ] Read-only account: "Allow" shows that the account is read-only and
       "Return to the app" sends the app back with an access-denied result.
+- [ ] 📱 Settings > Profile > Connected apps lists each approved app with its
+      name, where it sends you back to ("an app on this computer" for a loopback
+      client), when it was connected and when it was last used.
+- [ ] Revoke on a connected app asks for confirmation naming the app; confirming
+      removes it from the list and the app can no longer reach your data (its
+      next MCP call is rejected and it must be authorized again); Cancel keeps it.
+      Works on a read-only account too.
+- [ ] With no connected apps the page shows the MCP address
+      (`<your Econumo URL>/mcp`) with a Copy button (the button shows "Copied")
+      and a one-line hint on adding it to Claude or Codex.
 
 ## 3. Onboarding (fresh user)
 

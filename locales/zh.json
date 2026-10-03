@@ -1823,6 +1823,21 @@
       "returnToHost": "返回 {host}",
       "returnToApp": "返回应用",
       "readonly": "您的账户为只读，因此无法连接应用。"
+    },
+    "apps": {
+      "title": "已连接的应用",
+      "description": "你已允许访问 Econumo 数据的应用，例如 Claude 或 Codex。撤销某个应用后，它会立即退出登录。",
+      "empty": "尚未连接任何应用。",
+      "howTo": "在 Claude 或 Codex 中，使用此地址添加自定义连接器或 MCP 服务器，并在提示时登录。",
+      "copy": "复制",
+      "copied": "已复制",
+      "revoke": "撤销",
+      "revokeConfirm": "{name} 将无法再访问你的 Econumo 数据。",
+      "connected": "连接于 {date}",
+      "lastUsed": "上次使用 {when}",
+      "loopback": "在这台电脑上运行",
+      "returnsTo": "会将你带回 {host}",
+      "menuItem": "已连接的应用"
     }
   },
   "errors": {

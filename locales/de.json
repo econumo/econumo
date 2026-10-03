@@ -1823,6 +1823,21 @@
       "returnToHost": "Zurück zu {host}",
       "returnToApp": "Zurück zur App",
       "readonly": "Dein Konto ist schreibgeschützt, daher können keine Apps verbunden werden."
+    },
+    "apps": {
+      "title": "Verbundene Apps",
+      "description": "Apps wie Claude oder Codex, denen Sie den Zugriff auf Ihre Econumo-Daten erlaubt haben. Wenn Sie eine App widerrufen, wird sie sofort abgemeldet.",
+      "empty": "Es sind noch keine Apps verbunden.",
+      "howTo": "Fügen Sie in Claude oder Codex einen benutzerdefinierten Connector bzw. MCP-Server mit dieser Adresse hinzu und melden Sie sich an, wenn Sie dazu aufgefordert werden.",
+      "copy": "Kopieren",
+      "copied": "Kopiert",
+      "revoke": "Widerrufen",
+      "revokeConfirm": "{name} verliert den Zugriff auf Ihre Econumo-Daten.",
+      "connected": "Verbunden am {date}",
+      "lastUsed": "Zuletzt verwendet {when}",
+      "loopback": "Läuft auf diesem Computer",
+      "returnsTo": "Leitet Sie zurück zu {host}",
+      "menuItem": "Verbundene Apps"
     }
   },
   "errors": {

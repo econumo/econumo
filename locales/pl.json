@@ -1823,6 +1823,21 @@
       "returnToHost": "Wróć do {host}",
       "returnToApp": "Wróć do aplikacji",
       "readonly": "Twoje konto jest tylko do odczytu, więc nie można łączyć aplikacji."
+    },
+    "apps": {
+      "title": "Połączone aplikacje",
+      "description": "Aplikacje takie jak Claude lub Codex, którym pozwoliłeś korzystać z danych Econumo. Cofnięcie dostępu aplikacji natychmiast ją wylogowuje.",
+      "empty": "Nie połączono jeszcze żadnych aplikacji.",
+      "howTo": "W Claude lub Codex dodaj własny konektor lub serwer MCP z tym adresem i zaloguj się, gdy zostaniesz o to poproszony.",
+      "copy": "Kopiuj",
+      "copied": "Skopiowano",
+      "revoke": "Cofnij dostęp",
+      "revokeConfirm": "{name} straci dostęp do Twoich danych w Econumo.",
+      "connected": "Połączono {date}",
+      "lastUsed": "Ostatnio używana {when}",
+      "loopback": "Działa na tym komputerze",
+      "returnsTo": "Odsyła Cię do {host}",
+      "menuItem": "Połączone aplikacje"
     }
   },
   "errors": {

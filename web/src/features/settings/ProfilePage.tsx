@@ -220,6 +220,13 @@ export function ProfilePage() {
           {t('user.page.settings.profile.tokens.menu_item')}
           <ChevronRight className="size-4 text-muted-foreground" />
         </Link>
+        <Link
+          to={RouterPage.SETTINGS_CONNECTED_APPS}
+          className="flex items-center justify-between gap-2 rounded-lg bg-econumo-card px-4 py-3.5 text-sm hover:bg-econumo-hover"
+        >
+          {t('authserver.apps.menuItem')}
+          <ChevronRight className="size-4 text-muted-foreground" />
+        </Link>
       </div>
 
       <p className="px-1 pb-1 pt-4 text-xs font-medium uppercase text-muted-foreground">

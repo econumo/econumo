@@ -1823,6 +1823,21 @@
       "returnToHost": "Return to {host}",
       "returnToApp": "Return to the app",
       "readonly": "Your account is read-only, so apps can't be connected."
+    },
+    "apps": {
+      "title": "Connected apps",
+      "description": "Apps like Claude or Codex that you allowed to use your Econumo data. Revoking an app signs it out right away.",
+      "empty": "No apps are connected yet.",
+      "howTo": "In Claude or Codex, add a custom connector / MCP server with this address and sign in when asked.",
+      "copy": "Copy",
+      "copied": "Copied",
+      "revoke": "Revoke",
+      "revokeConfirm": "{name} will lose access to your Econumo data.",
+      "connected": "Connected {date}",
+      "lastUsed": "Last used {when}",
+      "loopback": "Runs on this computer",
+      "returnsTo": "Sends you back to {host}",
+      "menuItem": "Connected apps"
     }
   },
   "errors": {
