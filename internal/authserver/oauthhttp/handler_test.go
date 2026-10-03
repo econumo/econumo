@@ -143,7 +143,9 @@ func TestTokenEndpoint_FormAndBasicAuth(t *testing.T) {
 	form := url.Values{"grant_type": {"authorization_code"}, "code": {code}, "redirect_uri": {callback}, "code_verifier": {verifier}}
 	req := httptest.NewRequest("POST", oauthhttp.TokenPath, strings.NewReader(form.Encode()))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.SetBasicAuth(url.QueryEscape(reg.ClientID), url.QueryEscape(reg.ClientSecret))
+	// Percent-encode by hand: UUIDs and base64url need no escaping, so
+	// url.QueryEscape alone would send the raw values and prove nothing.
+	req.SetBasicAuth(strings.ReplaceAll(reg.ClientID, "-", "%2D"), fmt.Sprintf("%%%02X", reg.ClientSecret[0])+reg.ClientSecret[1:])
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != 200 || rec.Header().Get("Cache-Control") != "no-store" || !strings.Contains(rec.Body.String(), `"token_type":"Bearer"`) {
@@ -156,6 +158,16 @@ func TestTokenEndpoint_FormAndBasicAuth(t *testing.T) {
 		"code_verifier": {verifier}, "client_id": {post.ClientID}, "client_secret": {post.ClientSecret}}
 	if rec = do(h, "POST", oauthhttp.TokenPath, "application/x-www-form-urlencoded", strings.NewReader(form.Encode())); rec.Code != 200 {
 		t.Fatalf("post auth: %d %s", rec.Code, rec.Body)
+	}
+
+	// malformed percent-escape -> 401 invalid_client
+	req = httptest.NewRequest("POST", oauthhttp.TokenPath, strings.NewReader(form.Encode()))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.SetBasicAuth(reg.ClientID, "%zz")
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != 401 || !strings.Contains(rec.Body.String(), `"error":"invalid_client"`) {
+		t.Fatalf("malformed escape: %d %s", rec.Code, rec.Body)
 	}
 
 	// wrong secret -> 401 invalid_client with a Basic challenge

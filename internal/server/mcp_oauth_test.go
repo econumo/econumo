@@ -77,13 +77,21 @@ func TestMCPOAuth_Enabled(t *testing.T) {
 
 func TestMCPOAuth_DisabledWithoutAppURL(t *testing.T) {
 	h := buildOAuthTestAPI(t, "")
-	for _, p := range []string{"/.well-known/oauth-authorization-server", "/.well-known/oauth-protected-resource"} {
-		if resp := oauthDo(t, h, "GET", p, ""); resp.StatusCode != 404 {
-			t.Errorf("%s = %d", p, resp.StatusCode)
+	// Mounted but disabled: every route answers the handler's JSON 404 rather
+	// than falling through to the SPA shell.
+	for _, p := range []string{"/.well-known/oauth-protected-resource", "/.well-known/oauth-protected-resource/mcp", "/.well-known/oauth-authorization-server"} {
+		resp := oauthDo(t, h, "GET", p, "")
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != 404 || !strings.Contains(string(body), `"error":"invalid_request"`) {
+			t.Errorf("GET %s = %d %s", p, resp.StatusCode, body)
 		}
 	}
-	if resp := oauthDo(t, h, "POST", "/oauth/register", `{}`); resp.StatusCode == 201 || resp.StatusCode == 400 {
-		t.Errorf("register reachable: %d", resp.StatusCode)
+	for _, p := range []string{"/oauth/register", "/oauth/token"} {
+		resp := oauthDo(t, h, "POST", p, `{}`)
+		body, _ := io.ReadAll(resp.Body)
+		if resp.StatusCode != 404 || !strings.Contains(string(body), `"error":"invalid_request"`) {
+			t.Errorf("POST %s = %d %s", p, resp.StatusCode, body)
+		}
 	}
 	resp := oauthDo(t, h, "POST", "/mcp", `{}`)
 	if resp.StatusCode != 401 || resp.Header.Get("WWW-Authenticate") != "" {

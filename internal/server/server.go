@@ -475,10 +475,6 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		middleware.AuthWith(authn, middleware.AuthOptions{Challenge: oauthhttp.Challenge(authSrv)}),
 		timezoneFallback(userSvc),
 	)(webmcp.NewHandler(mcpRegister))
-	var oauthServer http.Handler
-	if authSrv.Enabled() {
-		oauthServer = oauthhttp.Handler(authSrv)
-	}
 
 	// The SPA is always embedded in the binary. The served econumo-config.js
 	// reports the running binary's version as VERSION; ECONUMO_VERSION only
@@ -498,7 +494,7 @@ func Build(cfg config.Config, db *sql.DB, seams Seams) (http.Handler, http.Handl
 		RegisterAPI:        registerAPI,
 		SupportedLanguages: i18n.Supported,
 		MCP:                mcpHandler,
-		OAuthServer:        oauthServer,
+		OAuthServer:        oauthhttp.Handler(authSrv),
 		SPA:                spaFS,
 		SPAVersion:         version.Version,
 		SPAVersionLabel:    cfg.Version,
